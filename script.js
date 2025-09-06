@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const translateButton = document.getElementById('translateBtn');
     const originalTexts = new Map();
     let isTranslated = false;
-    const workerUrl = 'https://silent-mountain-f3bf.agursel.workers.dev/';
+    const workerUrl = 'https://silent-mountain-f3bf.agursel.workers.dev';
 
     // Buton metnini başlangıçta ayarla
     if (translateButton) {
