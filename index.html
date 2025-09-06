@@ -2275,89 +2275,109 @@ const workerUrl = 'https://silent-mountain-f3bf.agursel.workers.dev/'
       </script>
 <script>
 // =======================================================================
-//          DÜZELTİLMİŞ & GÜVENİLİR ÇEVİRİ KODU
+//          CLOUDFLARE WORKER UYUMLU ÇEVİRİ KODU
 // =======================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
     const translateButton = document.getElementById('translateBtn');
     const originalTexts = new Map();
     let isTranslated = false;
+    const workerUrl = 'https://silent-mountain-f3bf.agursel.workers.dev/'; // Size verilen Worker URL'si
 
+    // Sayfa ilk yüklendiğinde buton metnini ayarla
     translateButton.innerText = 'English';
 
+    // Orijinal metinleri sadece bir kez topla ve sakla
     const collectAndStoreOriginalTexts = () => {
-        const elements = document.querySelectorAll('.translatable');
         if (originalTexts.size === 0) {
+            const elements = document.querySelectorAll('.translatable');
             elements.forEach(el => {
-                // Etiketin içindeki metni alırken boşlukları kırp
+                // Elementin kendisini anahtar, temizlenmiş metnini değer olarak sakla
                 originalTexts.set(el, el.innerText.trim());
             });
         }
     };
 
+    // Saklanan orijinal metinlere geri dön
     const revertToOriginal = () => {
         originalTexts.forEach((text, el) => {
             el.innerText = text;
         });
     };
 
-const translateAllTexts = async (targetLanguage) => {
-    collectAndStoreOriginalTexts();
-    
-    // HTML'den tüm çevrilebilir öğeleri al ve sadece boş olmayanları filtrele
-    const elementsToTranslate = Array.from(originalTexts.keys());
-    const validElements = elementsToTranslate.filter(el => el.innerText.trim().length > 0);
-    
-    // Filtrelenmiş öğelerin metinlerini al
-    const textsToTranslate = validElements.map(el => el.innerText.trim());
+    // Tüm metinleri Cloudflare Worker kullanarak çevir
+    const translateAllTexts = async (targetLanguage) => {
+        collectAndStoreOriginalTexts();
 
-    if (textsToTranslate.length === 0) {
-        console.warn("Çevrilecek metin bulunamadı.");
-        return;
-    }
+        const elementsToTranslate = Array.from(originalTexts.keys());
+        const translationPromises = []; // Tüm çeviri isteklerini tutacak dizi
 
-    try {
-        const response = await fetch('http://localhost:3000/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                texts: textsToTranslate,
-                targetLang: targetLanguage,
-            }),
-        });
+        for (const el of elementsToTranslate) {
+            const originalText = originalTexts.get(el);
 
-        if (!response.ok) {
-            throw new Error(`Sunucu hatası: ${response.status}`);
+            // Eğer metin boşsa çeviri isteği yapma
+            if (!originalText) {
+                continue;
+            }
+
+            // Her bir metin için ayrı bir çeviri isteği oluştur ve diziye ekle
+            const promise = fetch(`${workerUrl}?text=${encodeURIComponent(originalText)}&target=${targetLanguage}`)
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`Server error: ${res.status}`);
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        // Bir hata varsa, orijinal metni koru
+                        console.error('Translation error:', data.error);
+                        return originalText;
+                    }
+                    // Başarılı çeviriyi döndür
+                    return data.data.translations[0].translatedText;
+                })
+                .catch(err => {
+                    // İstek sırasında hata olursa orijinal metni koru
+                    console.error('Fetch error:', err.message);
+                    return originalText; // Hata durumunda orijinal metni kullan
+                });
+
+            translationPromises.push(promise);
         }
 
-        const data = await response.json();
-        
-        // Gelen çeviri sayısı ile filtrelenmiş öğe sayısının eşit olduğunu kontrol et
-        if (data.translations && data.translations.length === validElements.length) {
-            // Çevrilmiş metinleri ilgili HTML öğelerine yerleştir
-            validElements.forEach((el, index) => {
-                el.innerText = data.translations[index];
+        try {
+            // Tüm çeviri isteklerinin tamamlanmasını bekle
+            const translatedTexts = await Promise.all(translationPromises);
+
+            // Sonuçları ilgili elementlere yazdır
+            elementsToTranslate.forEach((el, index) => {
+                // Çevirisi yapılamayan (boş olanlar atlandığı için)
+                // veya hata alan metinler orijinal kalacağından,
+                // burada sadece başarılı olanlar güncellenir.
+                if(translatedTexts[index]){
+                   el.innerText = translatedTexts[index];
+                }
             });
-        } else {
-             console.error('Çeviri yanıtı eksik veya geçersiz. Gelen çeviri sayısı:', data.translations?.length, 'Beklenen:', validElements.length);
-        }
 
-    } catch (error) {
-        console.error('Çeviri isteği başarısız oldu:', error);
-        revertToOriginal();
-        alert('Çeviri hizmeti şu an kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
-    }
-};
+        } catch (error) {
+            console.error('An error occurred during translations:', error);
+            alert('Çeviri hizmeti şu an kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
+            revertToOriginal(); // Herhangi bir büyük hata durumunda tüm metinleri geri al
+        }
+    };
+
+    // Çeviri butonuna tıklama olayını dinle
     translateButton.addEventListener('click', async function() {
         translateButton.innerText = 'Yükleniyor...';
         translateButton.disabled = true;
 
         if (!isTranslated) {
-            await translateAllTexts('en');
+            await translateAllTexts('en'); // İngilizce'ye çevir
             translateButton.innerText = 'Türkçe';
             isTranslated = true;
         } else {
-            revertToOriginal();
+            revertToOriginal(); // Orijinal dile (Türkçe) geri dön
             translateButton.innerText = 'English';
             isTranslated = false;
         }
