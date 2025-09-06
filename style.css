@@ -874,3 +874,17 @@
     }
 }
 
+/* Çeviri yükleniyor durumu için stil */
+#translateBtn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Çeviri animasyonu */
+.translatable {
+    transition: opacity 0.3s ease;
+}
+
+.translating {
+    opacity: 0.7;
+}
