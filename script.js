@@ -486,3 +486,51 @@ document.addEventListener('DOMContentLoaded', function() {
         translateButton.disabled = false;
     });
 });
+function openModal() {
+  document.getElementById('trialModal').classList.remove('hidden');
+  document.body.classList.add('no-scroll');
+}
+
+function closeModal() {
+  document.getElementById('trialModal').classList.add('hidden');
+  document.body.classList.remove('no-scroll');
+}
+
+function openSuggestionModal() {
+  document.getElementById('suggestionModal').classList.remove('hidden');
+  document.body.classList.add('no-scroll');
+}
+
+function closeSuggestionModal() {
+  document.getElementById('suggestionModal').classList.add('hidden');
+  document.body.classList.remove('no-scroll');
+}
+
+function toggleDropdown(button) {
+  const list = button.nextElementSibling;
+  list.classList.toggle('hidden');
+  const icon = button.querySelector('i');
+  icon.classList.toggle('fa-chevron-down');
+  icon.classList.toggle('fa-chevron-up');
+}
+
+function toggleProductsMenu() {
+  const menu = document.getElementById('mobile-products');
+  menu.classList.toggle('hidden');
+
+  const icon = document.querySelector('#products-menu-toggle i');
+  if (icon) {
+    icon.classList.toggle('fa-chevron-down');
+    icon.classList.toggle('fa-chevron-up');
+  }
+}
+
+function openMapModal() {
+  document.getElementById('mapModal').classList.remove('hidden');
+  document.body.classList.add('no-scroll');
+}
+
+function closeMapModal() {
+  document.getElementById('mapModal').classList.add('hidden');
+  document.body.classList.remove('no-scroll');
+}
