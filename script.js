@@ -383,9 +383,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const translateButton = document.getElementById('translateBtn');
     const originalTexts = new Map();
     let isTranslated = false;
-    const workerUrl = 'https://silent-mountain-f3bf.agursel.workers.dev';
+    const workerUrl = 'https://silent-mountain-f3bf.agursel.workers.dev/';
 
-    // Buton metnini başlangıçta ayarla
     if (translateButton) {
         translateButton.innerText = 'English';
     }
@@ -394,9 +393,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (originalTexts.size === 0) {
             const elements = document.querySelectorAll('.translatable');
             elements.forEach(el => {
-                // Sadece metin içeren elementleri sakla
-                if (el.innerText.trim()) {
-                    originalTexts.set(el, el.innerText.trim());
+                let text = el.innerText.trim();
+                if (text.length > 1) {
+                    originalTexts.set(el, text);
                 }
             });
         }
@@ -416,11 +415,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         for (const el of elementsToTranslate) {
             const originalText = originalTexts.get(el);
-            
+
+            // Boş veya çok kısa metinleri atla
             if (!originalText || originalText.length < 2) {
                 translationPromises.push(Promise.resolve(originalText));
                 continue;
             }
+
+            console.log('Translating text:', originalText); // debug log
 
             const promise = fetch(`${workerUrl}?text=${encodeURIComponent(originalText)}&target=${targetLanguage}`)
                 .then(res => {
@@ -431,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return data.data?.translations?.[0]?.translatedText || originalText;
                 })
                 .catch(err => {
-                    console.error('Translation error:', err);
+                    console.error('Translation error for text:', originalText, err);
                     return originalText;
                 });
 
@@ -440,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const translatedTexts = await Promise.all(translationPromises);
-            
+
             elementsToTranslate.forEach((el, index) => {
                 if (translatedTexts[index] && translatedTexts[index] !== originalTexts.get(el)) {
                     el.innerText = translatedTexts[index];
@@ -475,7 +477,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.disabled = false;
             }
         });
-    }});
+    }
+});
 function openModal() {
   document.getElementById('trialModal').classList.remove('hidden');
   document.body.classList.add('no-scroll');
