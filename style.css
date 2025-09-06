@@ -1,70 +1,280 @@
-@media (max-width: 639px) {
-
-}
-.nav-links .group .dropdown {
-
+/* Temel stiller */
+body {
+  font-family: 'Inter', sans-serif;
 }
 
-.dropdown.translating,
-.dropdown-list.translating {
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
-/* Add to your existing styles */
-#mapModal iframe {
-  border-radius: 0.5rem;
-}
-
+/* Modal stilleri */
 .no-scroll {
   overflow: hidden;
 }
 
-/* Yeni Eklenen Form Stilleri */
-#contact form input,
-#contact form textarea {…}
+/* Navigasyon stilleri */
+.nav-links .group .dropdown {
+  display: none;
+  position: absolute;
+  background-color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
 
-#contact form input:focus,
-#contact form textarea:focus {…}
+.nav-links .group:hover .dropdown {
+  display: block;
+}
 
-.dark #contact form input:focus,
-.dark #contact form textarea:focus {…}
+/* Mobil navigasyon */
+@media (max-width: 639px) {
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: white;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .nav-links.active {
+    display: block;
+  }
+  
+  .nav-links .group .dropdown {
+    position: static;
+    box-shadow: none;
+    display: none;
+  }
+  
+  .nav-links .group.active .dropdown {
+    display: block;
+  }
+}
 
+/* Çeviri sırasında dropdown'ları görünür tutma */
+.dropdown.translating,
+.dropdown-list.translating {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Harita modal stilleri */
+#mapModal iframe {
+  border-radius: 0.5rem;
+}
+
+/* Footer stilleri */
 .footer-links ul {
-    list-style: none; /* Liste işaretlerini kaldırır */
-    padding: 0; /* Varsayılan iç boşluğu kaldırır */
-    margin: 0; /* Varsayılan dış boşluğu kaldırır */
-    display: flex; /* Öğeleri yan yana dizer */
-    align-items: center; /* Öğeleri dikeyde ortalar */
-    justify-content: center; /* <<< YENİ: Öğeleri yatayda ortalar */
-    flex-wrap: wrap; /* <<< YENİ: Küçük ekranlarda alt satıra geçmesini sağlar */
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .footer-links li {
-    border-right: 1px solid #ccc; 
-    padding-right: 15px;
-    margin-right: 15px;
-    white-space: nowrap; 
-    font-size: 0.6em; /* <<< YENİ: Yazı boyutunu küçültür (orijinal boyutun %90'ı) */
+  border-right: 1px solid #ccc;
+  padding-right: 15px;
+  margin-right: 15px;
+  white-space: nowrap;
+  font-size: 0.6em;
 }
 
 .footer-links li:last-child {
-    border-right: none;
-    padding-right: 0;
-    margin-right: 0;
+  border-right: none;
+  padding-right: 0;
+  margin-right: 0;
 }
 
 .footer-links a,
-.footer-links span { /* <<< YENİ: Hem linklere hem de span'a stil uygula */
-    text-decoration: none;
-    color: #ffffff; /* <<< YENİ: Yazı rengini değiştirir */
-    /* font-size burada da ayarlanabilir, ama 'li' üzerinde ayarlamak daha kapsayıcıdır */
+.footer-links span {
+  text-decoration: none;
+  color: #ffffff;
 }
-@media (max-width: 639px) {
-    .nav-links .group .dropdown {…}
 
-    .nav-links .group .dropdown a {…}
+/* Ürün kartları ve filtreleme */
+.product-card-container {
+  display: block;
+}
 
-    .nav-links .group.active .dropdown {…}
+.no-results-message {
+  text-align: center;
+  padding: 2rem;
+  font-style: italic;
+  color: #666;
+}
+
+/* Form stilleri */
+#contact form input,
+#contact form textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+#contact form input:focus,
+#contact form textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.dark #contact form input:focus,
+.dark #contact form textarea:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.1);
+}
+
+/* Hero section */
+.hero-container {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.hero-video {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  transform: translateX(-50%) translateY(-50%);
+  z-index: -1;
+}
+
+.hero-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: white;
+  z-index: 1;
+}
+
+.hero-header {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.hero-badges-wrapper {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  z-index: 1;
+}
+
+.hero-badge {
+  background-color: rgba(79, 70, 229, 0.8);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.hero-badge:hover {
+  background-color: rgba(79, 70, 229, 1);
+}
+
+/* Ürün grid */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Flip card */
+.flip-card {
+  perspective: 1000px;
+  height: 100%;
+}
+
+.flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.flip-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-front, .flip-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.flip-back {
+  transform: rotateY(180deg);
+}
+
+/* Filtre butonları */
+.subject-filter-container {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.filter-container {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.subject-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 50px;
+  background-color: white;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s;
+}
+
+.subject-btn.active {
+  background-color: #4f46e5;
+  color: white;
+  border-color: #4f46e5;
+}
+
+/* Partner slider */
+.partner-logo {
+  max-height: 80px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Back to top butonu */
+#backToTop {
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+#backToTop.visible {
+  opacity: 1;
+  visibility: visible;
 }
