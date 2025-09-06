@@ -49,8 +49,72 @@ function toggleProductsMenu() {
   }
 }
 
+// Global değişkenler
+let productsGrid = null;
+let productCards = [];
+let originalOrder = [];
+let activeSubcatOrder = [];
+
+// Filtreleme fonksiyonu (global olarak erişilebilir olmalı)
+function updateFilter() {
+  if (!productsGrid) return;
+  
+  const activeButtons = Array.from(document.querySelectorAll('.subject-btn.active'));
+  const activeSubjects = activeButtons.map(btn => btn.dataset.subject).filter(subcat => subcat !== 'all');
+  const isAllActive = activeButtons.some(btn => btn.dataset.subject === 'all');
+
+  productsGrid.innerHTML = '';
+
+  let cardsToDisplay = [];
+
+  if (isAllActive || activeSubjects.length === 0) {
+    cardsToDisplay = [...originalOrder];
+  } else {
+    cardsToDisplay = productCards.filter(card => {
+      const cardSubjects = card.dataset.subjects.split(',');
+      return activeSubjects.some(s => cardSubjects.includes(s));
+    });
+
+    cardsToDisplay.sort((a, b) => {
+      const aSubjects = a.dataset.subjects.split(',');
+      const bSubjects = b.dataset.subjects.split(',');
+      let aPriority = -1;
+      let bPriority = -1;
+
+      for (let i = 0; i < activeSubcatOrder.length; i++) {
+        const sub = activeSubcatOrder[i];
+        if (aSubjects.includes(sub) && aPriority === -1) aPriority = activeSubcatOrder.length - 1 - i;
+        if (bSubjects.includes(sub) && bPriority === -1) bPriority = activeSubcatOrder.length - 1 - i;
+      }
+      return bPriority - aPriority;
+    });
+  }
+
+  if (cardsToDisplay.length > 0) {
+    cardsToDisplay.forEach(card => {
+      card.style.display = 'block';
+      productsGrid.appendChild(card);
+    });
+  } else {
+    const noResultsMessage = document.createElement('div');
+    noResultsMessage.id = 'no-results-message';
+    noResultsMessage.className = 'no-results-message';
+    noResultsMessage.textContent = 'Seçtiğiniz kriterlere uygun ürün bulunamadı.';
+    productsGrid.appendChild(noResultsMessage);
+  }
+}
+
 /* Ana etkileşimler */
 document.addEventListener('DOMContentLoaded', function() {
+  // Global değişkenleri başlat
+  productsGrid = document.getElementById('products-grid');
+  
+  if (productsGrid) {
+    productCards = Array.from(productsGrid.querySelectorAll('.product-card-container'));
+    originalOrder = [...productCards];
+  }
+  
+  activeSubcatOrder = [];
 
   // --- Flip Card Interaction ---
   document.querySelectorAll('.flip-card').forEach(card => {
@@ -77,19 +141,13 @@ document.addEventListener('DOMContentLoaded', function() {
       flipInner.classList.remove('flipped');
       flipInner.style.transform = '';
     });
-    const productsGrid = document.getElementById('products-grid');
     if (productsGrid) productsGrid.classList.remove('flip-all-cards');
   });
 
   // --- Product Filtering ---
   const subjectButtons = document.querySelectorAll('.subject-btn');
-  const productsGrid = document.getElementById('products-grid');
 
   if (productsGrid && subjectButtons.length > 0) {
-    const productCards = Array.from(productsGrid.querySelectorAll('.product-card-container'));
-    const originalOrder = [...productCards];
-    let activeSubcatOrder = [];
-
     subjectButtons.forEach(button => {
       button.addEventListener('click', function() {
         const subject = this.dataset.subject;
@@ -124,52 +182,6 @@ document.addEventListener('DOMContentLoaded', function() {
         updateFilter();
       });
     });
-
-    function updateFilter() {
-      const activeButtons = Array.from(document.querySelectorAll('.subject-btn.active'));
-      const activeSubjects = activeButtons.map(btn => btn.dataset.subject).filter(subcat => subcat !== 'all');
-      const isAllActive = activeButtons.some(btn => btn.dataset.subject === 'all');
-
-      productsGrid.innerHTML = '';
-
-      let cardsToDisplay = [];
-
-      if (isAllActive || activeSubjects.length === 0) {
-        cardsToDisplay = [...originalOrder];
-      } else {
-        cardsToDisplay = productCards.filter(card => {
-          const cardSubjects = card.dataset.subjects.split(',');
-          return activeSubjects.some(s => cardSubjects.includes(s));
-        });
-
-        cardsToDisplay.sort((a, b) => {
-          const aSubjects = a.dataset.subjects.split(',');
-          const bSubjects = b.dataset.subjects.split(',');
-          let aPriority = -1;
-          let bPriority = -1;
-
-          for (let i = 0; i < activeSubcatOrder.length; i++) {
-            const sub = activeSubcatOrder[i];
-            if (aSubjects.includes(sub) && aPriority === -1) aPriority = activeSubcatOrder.length - 1 - i;
-            if (bSubjects.includes(sub) && bPriority === -1) bPriority = activeSubcatOrder.length - 1 - i;
-          }
-          return bPriority - aPriority;
-        });
-      }
-
-      if (cardsToDisplay.length > 0) {
-        cardsToDisplay.forEach(card => {
-          card.style.display = 'block';
-          productsGrid.appendChild(card);
-        });
-      } else {
-        const noResultsMessage = document.createElement('div');
-        noResultsMessage.id = 'no-results-message';
-        noResultsMessage.className = 'no-results-message';
-        noResultsMessage.textContent = 'Seçtiğiniz kriterlere uygun ürün bulunamadı.';
-        productsGrid.appendChild(noResultsMessage);
-      }
-    }
 
     updateFilter();
   }
