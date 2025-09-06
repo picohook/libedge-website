@@ -1,0 +1,70 @@
+@media (max-width: 639px) {
+
+}
+.nav-links .group .dropdown {
+
+}
+
+.dropdown.translating,
+.dropdown-list.translating {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Add to your existing styles */
+#mapModal iframe {
+  border-radius: 0.5rem;
+}
+
+.no-scroll {
+  overflow: hidden;
+}
+
+/* Yeni Eklenen Form Stilleri */
+#contact form input,
+#contact form textarea {…}
+
+#contact form input:focus,
+#contact form textarea:focus {…}
+
+.dark #contact form input:focus,
+.dark #contact form textarea:focus {…}
+
+.footer-links ul {
+    list-style: none; /* Liste işaretlerini kaldırır */
+    padding: 0; /* Varsayılan iç boşluğu kaldırır */
+    margin: 0; /* Varsayılan dış boşluğu kaldırır */
+    display: flex; /* Öğeleri yan yana dizer */
+    align-items: center; /* Öğeleri dikeyde ortalar */
+    justify-content: center; /* <<< YENİ: Öğeleri yatayda ortalar */
+    flex-wrap: wrap; /* <<< YENİ: Küçük ekranlarda alt satıra geçmesini sağlar */
+}
+
+.footer-links li {
+    border-right: 1px solid #ccc; 
+    padding-right: 15px;
+    margin-right: 15px;
+    white-space: nowrap; 
+    font-size: 0.6em; /* <<< YENİ: Yazı boyutunu küçültür (orijinal boyutun %90'ı) */
+}
+
+.footer-links li:last-child {
+    border-right: none;
+    padding-right: 0;
+    margin-right: 0;
+}
+
+.footer-links a,
+.footer-links span { /* <<< YENİ: Hem linklere hem de span'a stil uygula */
+    text-decoration: none;
+    color: #ffffff; /* <<< YENİ: Yazı rengini değiştirir */
+    /* font-size burada da ayarlanabilir, ama 'li' üzerinde ayarlamak daha kapsayıcıdır */
+}
+@media (max-width: 639px) {
+    .nav-links .group .dropdown {…}
+
+    .nav-links .group .dropdown a {…}
+
+    .nav-links .group.active .dropdown {…}
+}
