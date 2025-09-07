@@ -1,0 +1,6 @@
+name = "silent-mountain-f3bf"
+main = "script.js"
+compatibility_date = "2025-09-06"
+
+[site]
+bucket = "./"
