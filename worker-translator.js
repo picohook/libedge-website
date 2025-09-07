@@ -1,3 +1,10 @@
+import {
+  GoogleAuth
+} from '@google-cloud/local-auth';
+import {
+  Translate
+} from '@google-cloud/translate/v2';
+
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request));
 });
@@ -8,21 +15,56 @@ async function handleRequest(request) {
   const target = url.searchParams.get("target");
 
   if (!text || !target) {
-    return new Response(JSON.stringify({ error: "Text or target param missing" }), {
-      headers: { 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify({
+      error: "Text or target param missing"
+    }), {
+      headers: {
+        'Content-Type': 'application/json'
+      },
       status: 400
     });
   }
 
-  // Here is where you will add the code to call the Google Translate API
-  // and use your SA_CLIENT_EMAIL, SA_PRIVATE_KEY, and SA_PROJECT_ID secrets.
-  // This part is missing, but it's what the worker needs to do.
+  const project_id = SA_PROJECT_ID;
+  const sa_email = SA_CLIENT_EMAIL;
+  const sa_private_key = SA_PRIVATE_KEY.replace(/\\n/g, '\n');
 
-  // For example:
-  const translatedText = await callGoogleTranslateApi(text, target);
+  try {
+    const auth = new GoogleAuth({
+      credentials: {
+        client_email: sa_email,
+        private_key: sa_private_key
+      },
+      scopes: ['https://www.googleapis.com/auth/cloud-platform']
+    });
 
-  return new Response(JSON.stringify({ data: { translations: [{ translatedText: translatedText }] } }), {
-    headers: { 'Content-Type': 'application/json' },
-    status: 200
-  });
+    const translate = new Translate({
+      auth,
+      projectId: project_id
+    });
+
+    const [translation] = await translate.translate(text, target);
+    return new Response(JSON.stringify({
+      data: {
+        translations: [{
+          translatedText: translation
+        }]
+      }
+    }), {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      status: 200
+    });
+  } catch (error) {
+    console.error("Translation API Error:", error);
+    return new Response(JSON.stringify({
+      error: "Translation failed"
+    }), {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      status: 500
+    });
+  }
 }
