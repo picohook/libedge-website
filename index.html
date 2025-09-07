@@ -1059,42 +1059,6 @@
   </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const workerUrl = 'https://silent-mountain-f3bf.agursel.workers.dev';
-    const elements = document.querySelectorAll('.translatable');
-
-    if (!elements.length) {
-        console.warn('Sayfada çevirilecek .translatable elementi bulunamadı.');
-        return;
-    }
-
-    console.log(`Toplam ${elements.length} element test edilecek.`);
-
-    elements.forEach(async (el, index) => {
-        const text = el.innerText.trim();
-        if (!text) {
-            console.log(`Element ${index} boş, atlanıyor.`);
-            return;
-        }
-
-        try {
-            console.log(`Element ${index} gönderiliyor:`, text);
-            const res = await fetch(`${workerUrl}?text=${encodeURIComponent(text)}&target=en`);
-            const data = await res.json();
-
-            if (data.error) {
-                console.error(`Element ${index} hata:`, data.error);
-            } else {
-                const translated = data.data?.translations?.[0]?.translatedText;
-                console.log(`Element ${index} çeviri sonucu:`, translated);
-            }
-        } catch (err) {
-            console.error(`Element ${index} fetch hatası:`, err);
-        }
-    });
-});
-</script>
 
 </body>
 
