@@ -1,5 +1,5 @@
 name = "silent-mountain-f3bf"
-main = "script.js"
+main = "worker-translator.js"
 compatibility_date = "2025-09-06"
 
 [site]
