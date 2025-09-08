@@ -375,26 +375,21 @@ document.getElementById('suggestionForm').addEventListener('submit', function(e)
         }
 
 
-// Basit çeviri sistemi - Statik çeviriler
+// Basit statik çeviri sistemi
 document.addEventListener('DOMContentLoaded', function() {
     const translateButton = document.getElementById('translateBtn');
     let isTranslated = false;
 
     // Türkçe -> İngilizce çeviri mapping
     const translations = {
-        // Başlık ve genel metinler
         'LibEdge Eğitim ve Danışmanlık': 'LibEdge Education and Consulting',
         'LibEdge ile Bilginin Gücünü Keşfedin': 'Discover the Power of Knowledge with LibEdge',
         'Kalite ve dürüstlük ilkesi ile 20 yıla yakın sektör deneyimini harmanlıyoruz. Kütüphanelere ürün danışmanlığı, abonelik süreç desteği ve yerinde eğitim hizmetleri sunuyoruz.': 
         'We blend nearly 20 years of industry experience with quality and integrity principles. We provide product consulting, subscription process support, and on-site training services to libraries.',
-        
-        // Navigasyon
         'Ürünler': 'Products',
         'Broşürler': 'Brochures',
         'İletişim': 'Contact',
         'Duyurular': 'Announcements',
-        
-        // Filtre butonları
         'Tümü': 'All',
         'Fen & Matematik': 'Science & Mathematics',
         'Mühendislik': 'Engineering',
@@ -403,42 +398,30 @@ document.addEventListener('DOMContentLoaded', function() {
         'İş & Hukuk': 'Business & Law',
         'Sanat': 'Arts',
         'Yapay Zeka': 'Artificial Intelligence',
-        
-        // Ürün özellikleri
         'Yetkili Bölge:': 'Authorized Region:',
         'Türkiye': 'Turkey',
         'Orta Doğu': 'Middle East',
         'Türkiye (EKUAL dışı)': 'Turkey (Non-EKUAL)',
         'Broşür': 'Brochure',
         'Erişim Linki': 'Access Link',
-        
-        // Hizmetlerimiz
         'Hizmetlerimiz': 'Our Services',
         'Ürün Danışmanlığı ve Tedarik': 'Product Consulting and Procurement',
         'Kullanıcı ve Yönetici Eğitimleri': 'User and Administrator Trainings',
         'Erişim ve Entegrasyon Desteği': 'Access and Integration Support',
         'Koleksiyon Geliştirme Danışmanlığı': 'Collection Development Consulting',
-        
-        // Müşteri görüşleri
         'Müşteri Görüşleri': 'Customer Reviews',
         'İş Ortakları': 'Business Partners',
         'Bize Ulaşın': 'Contact Us',
-        
-        // İletişim formu
         'Adınız Soyadınız': 'Your Full Name',
         'E-posta Adresiniz': 'Your Email Address',
         'Telefon Numaranız (İsteğe Bağlı)': 'Your Phone Number (Optional)',
         'Konu': 'Subject',
         'Mesajınız': 'Your Message',
         'Gönder': 'Send',
-        
-        // Footer
         'Hızlı Linkler': 'Quick Links',
         'GİZLİLİK POLİTİKASI': 'PRIVACY POLICY',
         'KULLANIM ŞARTLARI': 'TERMS OF USE',
         '© 2025 LIBEDGE TÜM HAKLARI SAKLIDIR': '© 2025 LIBEDGE ALL RIGHTS RESERVED',
-        
-        // Modal pencereler
         'Deneme Erişimi İsteği': 'Request Trial Access',
         'Ürün Öneriniz Var mı?': 'Do You Have a Product Suggestion?',
         'Deneme Erişimi Talep Formu': 'Trial Access Request Form',
@@ -447,7 +430,10 @@ document.addEventListener('DOMContentLoaded', function() {
         'E-posta': 'Email',
         'Kurum Adı': 'Institution Name',
         'Talep Detayınız': 'Your Request Details',
-        'Ürün Öneri Detayınız': 'Your Product Suggestion Details'
+        'Ürün Öneri Detayınız': 'Your Product Suggestion Details',
+        'Back to top': 'Back to top',
+        'Lib': 'Lib',
+        'Edge Eğitim ve Danışmanlık': 'Edge Education and Consulting'
     };
 
     if (translateButton) {
