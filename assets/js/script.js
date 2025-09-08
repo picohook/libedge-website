@@ -386,8 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'LibEdge Eğitim ve Danışmanlık': 'LibEdge Education and Consulting',
         'Edge Eğitim ve Danışmanlık': 'Edge Education and Consulting',
         'LibEdge ile Bilginin Gücünü Keşfedin': 'Discover the Power of Knowledge with LibEdge',
-        'Kalite ve dürüstlük ilkesi ile 20 yıla yakın sektör deneyimini harmanlıyoruz. Kütüphanelere ürün danışmanlığı, abonelik süreç desteği ve yerinde eğitim hizmetleri sunuyoruz.': 
-            'We blend nearly 20 years of industry experience with quality and integrity principles. We provide product consulting, subscription process support, and on-site training services to libraries.',
+        'Kalite ve dürüstlük ilkesi ile 20 yıla yakın sektör deneyimini harmanlıyoruz. Kütüphanelere ürün danışmanlığı, abonelik süreç desteği ve yerinde eğitim hizmetleri sunuyoruz.': 'We blend nearly 20 years of industry experience with quality and integrity principles. We provide product consulting, subscription process support, and on-site training services to libraries.',
         'Ürünler': 'Products',
         'Broşürler': 'Brochures',
         'İletişim': 'Contact',
@@ -403,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'Yetkili Bölge:': 'Authorized Region:',
         'Türkiye': 'Türkiye',
         'Orta Doğu': 'Middle East',
-        'Türkiye (EKUAL dışı)': 'Turkey (Non-EKUAL)',
+        'Türkiye (EKUAL dışı)': 'Türkiye (Non-EKUAL)',
         'Broşür': 'Brochure',
         'Erişim Linki': 'Access Link',
         
