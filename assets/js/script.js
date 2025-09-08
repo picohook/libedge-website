@@ -380,7 +380,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const translateButton = document.getElementById('translateBtn');
     let isTranslated = false;
 
-    // Türkçe -> İngilizce çeviri mapping
+    // Türkçe -> İngilizce çeviri mapping (mevcut objeyi genişletiyoruz)
     const translations = {
         'LibEdge Eğitim ve Danışmanlık': 'LibEdge Education and Consulting',
         'LibEdge ile Bilginin Gücünü Keşfedin': 'Discover the Power of Knowledge with LibEdge',
@@ -433,36 +433,202 @@ document.addEventListener('DOMContentLoaded', function() {
         'Ürün Öneri Detayınız': 'Your Product Suggestion Details',
         'Back to top': 'Back to top',
         'Lib': 'Lib',
-        'Edge Eğitim ve Danışmanlık': 'Edge Education and Consulting'
+        'Edge Eğitim ve Danışmanlık': 'Edge Education and Consulting',
+        'Pangram': 'Pangram',
+        'ChatPDF': 'ChatPDF',
+        'Wonders': 'Wonders',
+        'Piri Keşif': 'Piri Discovery',
+        'Transleyt': 'Transleyt',
+        'Primal Pictures': 'Primal Pictures',
+        'Lecturio': 'Lecturio',
+        'NEJMHealer': 'NEJMHealer',
+        'AccessMedical': 'AccessMedical',
+        'Cochrane Library': 'Cochrane Library',
+        'AccessEngineering': 'AccessEngineering',
+        'BioRender': 'BioRender',
+        'Wiley Dergiler': 'Wiley Journals',
+        'Wiley Kitaplar': 'Wiley Books',
+        'JoVE Research': 'JoVE Research',
+        'JoVE Education': 'JoVE Education',
+        'Klasik Müzik Koleksiyonu': 'Classical Music Collection',
+        'Caz Koleksiyonu': 'Jazz Collection',
+        // Ürün açıklamaları
+        '✔ Yapay zeka içerik tespit': '✔ AI content detection',
+        '✔ Segment bazlı analiz': '✔ Segment-based analysis',
+        '✔ Geniş dil desteği (20+ Dil)': '✔ Wide language support (20+ languages)',
+        '✔ Yüksek doğruluk': '✔ High accuracy',
+        '✔ PDF\'lerle etkileşimli sohbet aracı': '✔ Interactive chat tool with PDFs',
+        '✔ Akademik makaleleri anlama': '✔ Understanding academic papers',
+        '✔ Hızlı doküman analizi': '✔ Fast document analysis',
+        '✔ Yaratıcı içerik platformu': '✔ Creative content platform',
+        '✔ Eğitim materyalleri': '✔ Educational materials',
+        '✔ Interaktif öğrenme': '✔ Interactive learning',
+        '✔ İlk 3D insan anatomisi atlası.': '✔ First 3D human anatomy atlas',
+        '✔ Visible Human Project verileri.': '✔ Visible Human Project data',
+        '✔ Tıp, hemşirelik, fizyoterapi modelleri.': '✔ Medical, nursing, physiotherapy models',
+        '✔ Animasyon, MR ve cerrahi görüntüler.': '✔ Animation, MRI, and surgical images',
+        '✔ Sınırsız erişim platformu.': '✔ Unlimited access platform',
+        '✔ Tıp eğitimi platformu': '✔ Medical education platform',
+        '✔ Video dersler': '✔ Video lectures',
+        '✔ USMLE hazırlık': '✔ USMLE preparation',
+        '✔ Klinik vaka tabanlı öğrenme': '✔ Clinical case-based learning',
+        '✔ Gerçek hasta senaryoları': '✔ Real patient scenarios',
+        '✔ Tıbbi karar verme eğitimi': '✔ Medical decision-making training',
+        '✔ Multidisipliner video dergileri': '✔ Multidisciplinary video journals',
+        '✔ 13 farklı disiplin': '✔ 13 different disciplines',
+        '✔ Görsel öğrenme kaynağı': '✔ Visual learning resource',
+        '✔ Bilimsel eğitim video koleksiyonu': '✔ Scientific education video collection',
+        '✔ Laboratuvar teknikleri': '✔ Laboratory techniques',
+        '✔ Temel bilimler eğitimi': '✔ Basic sciences education',
+        '✔ Mühendislik ve fen bilimleri kaynağı': '✔ Engineering and science resource',
+        '✔ Kapsamlı referans materyaller': '✔ Comprehensive reference materials',
+        '✔ Interaktif araçlar': '✔ Interactive tools',
+        '✔ Kapsamlı tıp kaynakları': '✔ Comprehensive medical resources',
+        '✔ Tanı ve tedavi rehberleri': '✔ Diagnosis and treatment guidelines',
+        '✔ Güncel tıp bilgileri': '✔ Up-to-date medical information',
+        '✔ Zengin klasik müzik arşivi': '✔ Rich classical music archive',
+        '✔ Dünyaca ünlü besteciler': '✔ World-renowned composers',
+        '✔ Yüksek kaliteli kayıtlar': '✔ High-quality recordings',
+        '✔ Geniş caz müzik arşivi': '✔ Extensive jazz music archive',
+        '✔ Efsanevi caz sanatçıları': '✔ Legendary jazz artists',
+        '✔ Tarihi performans kayıtları': '✔ Historical performance recordings',
+        '✔ Bilimsel illüstrasyon aracı': '✔ Scientific illustration tool',
+        '✔ Profesyonel diyagramlar': '✔ Professional diagrams',
+        '✔ 30.000+ bilimsel ikon': '✔ 30,000+ scientific icons',
+        '✔ Kapsamlı akademik dergi koleksiyonu': '✔ Comprehensive academic journal collection',
+        '✔ 1.600+ hakemli dergi': '✔ 1,600+ peer-reviewed journals',
+        '✔ Çok disiplinli içerik': '✔ Multidisciplinary content',
+        '✔ Geniş kapsamlı e-kitap arşivi': '✔ Extensive e-book archive',
+        '✔ 20.000+ akademik kitap': '✔ 20,000+ academic books',
+        '✔ Güncel baskılar': '✔ Current editions',
+        '✔ Kanıta dayalı tıp veritabanı': '✔ Evidence-based medical database',
+        '✔ Sistematik derlemeler': '✔ Systematic reviews',
+        '✔ Klinik karar destek': '✔ Clinical decision support',
+        '✔ Keşif ve araştırma platformu': '✔ Discovery and research platform',
+        '✔ Veri analiz araçları': '✔ Data analysis tools',
+        '✔ Bilgi keşif sistemi': '✔ Knowledge discovery system',
+        '✔ Gelişmiş çeviri aracı': '✔ Advanced translation tool',
+        '✔ 100+ dil desteği': '✔ 100+ language support',
+        '✔ Akademik metin çevirisi': '✔ Academic text translation',
+        // Hizmetler açıklamaları
+        'LibEdge olarak, 15 yılı aşkın sektör deneyimimizle eğitim ve araştırma kurumlarına özel danışmanlık ve destek hizmetleri sunuyoruz. Ürün tedarik süreçlerinin yanı sıra, ihtiyaçlarınıza yönelik çözümler geliştiriyoruz.': 
+        'As LibEdge, with over 15 years of industry experience, we offer specialized consulting and support services to educational and research institutions. In addition to product procurement processes, we develop solutions tailored to your needs.',
+        'Kurumunuz için en uygun eğitim ve araştırma kaynaklarını belirliyor, bütçeniz doğrultusunda en avantajlı tedarik süreçlerini yönetiyoruz.': 
+        'We identify the most suitable educational and research resources for your institution and manage the most advantageous procurement processes within your budget.',
+        'Tedariğini sağladığımız veya kurumunuzda bulunan kaynakların en verimli şekilde kullanılması için yerinde veya online eğitimler düzenliyoruz.': 
+        'We organize on-site or online training sessions to ensure the most efficient use of the resources we provide or those already available at your institution.',
+        'Kaynakların kurumunuzun sistemlerine entegrasyonu, uzaktan erişim ayarları ve teknik sorun giderme konularında destek sağlıyoruz.': 
+        'We provide support for the integration of resources into your institution’s systems, remote access settings, and technical troubleshooting.',
+        'Kütüphane ve bilgi merkezlerinin koleksiyonlarını güncel tutmaları ve geliştirmeleri için uzman danışmanlık hizmeti veriyoruz.': 
+        'We offer expert consulting services to help libraries and information centers keep their collections up-to-date and develop them further.',
+        // Müşteri görüşleri
+        '"LibEdge ile çalışmak işlerimizi çok kolaylaştırdı. Hızlı yanıtları ve çözüm odaklı yaklaşımları sayesinde ihtiyaçlarımıza en uygun kaynaklara ulaştık."': 
+        '"Working with LibEdge has made our work much easier. Thanks to their quick responses and solution-oriented approach, we accessed the most suitable resources for our needs."',
+        '"Sağladıkları eğitimler çok faydalı oldu. Kullanıcılarımız artık kaynakları daha etkin kullanabiliyor. LibEdge ekibine teşekkür ederiz."': 
+        '"The training they provided was very beneficial. Our users can now use resources more effectively. Thank you to the LibEdge team."',
+        // Diğer
+        'Sorularınız, iş birliği teklifleriniz veya geri bildirimleriniz için bize yazmaktan çekinmeyin. Ekibimiz en kısa sürede size geri dönecektir.': 
+        'Feel free to write to us with your questions, collaboration proposals, or feedback. Our team will get back to you as soon as possible.',
+        'İletişim Bilgileri': 'Contact Information',
+        'Bizi Takip Edin': 'Follow Us',
+        'Seçtiğiniz kriterlere uygun ürün bulunamadı.': 'No products found matching your criteria.',
+        'Gönderiliyor...': 'Sending...',
+        'Gönderildi!': 'Sent!',
+        // Yeni eklenen placeholder'lar için
+        'Adınızı Soyadınızı giriniz': 'Enter your full name',
+        'E-posta adresinizi giriniz': 'Enter your email address',
+        'Telefon numaranızı giriniz (isteğe bağlı)': 'Enter your phone number (optional)',
+        'Konuyu giriniz': 'Enter the subject',
+        'Mesajınızı giriniz': 'Enter your message',
+        'Kurum adınızı giriniz': 'Enter your institution name',
+        'Talep detaylarınızı giriniz': 'Enter your request details',
+        'Ürün öneri detaylarınızı giriniz': 'Enter your product suggestion details',
+        'LibEdge ||| Daire: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/İzmir': 'LibEdge ||| Suite: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/Izmir'
     };
+
+    // Metin düğümlerini toplayan fonksiyon
+    function getTextNodes(node) {
+        const textNodes = [];
+        const walker = document.createTreeWalker(
+            node,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: function(node) {
+                    // Script, style ve input elementlerini hariç tut
+                    if (node.parentNode.tagName === 'SCRIPT' || 
+                        node.parentNode.tagName === 'STYLE' || 
+                        node.parentNode.tagName === 'INPUT' ||
+                        node.parentNode.tagName === 'TEXTAREA' ||
+                        node.nodeValue.trim() === '') {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            }
+        );
+
+        let currentNode;
+        while (currentNode = walker.nextNode()) {
+            textNodes.push(currentNode);
+        }
+        return textNodes;
+    }
+
+    // Placeholder'ları çeviren fonksiyon
+    function translatePlaceholders(isTranslated) {
+        const inputs = document.querySelectorAll('input[placeholder], textarea[placeholder]');
+        inputs.forEach(input => {
+            const originalPlaceholder = input.dataset.originalPlaceholder || input.placeholder;
+            if (!input.dataset.originalPlaceholder) {
+                input.dataset.originalPlaceholder = originalPlaceholder;
+            }
+            if (isTranslated) {
+                input.placeholder = translations[originalPlaceholder] || originalPlaceholder;
+            } else {
+                input.placeholder = originalPlaceholder;
+            }
+        });
+    }
+
+    // Çeviri işlemini gerçekleştiren fonksiyon
+    function translatePage() {
+        const textNodes = getTextNodes(document.body);
+
+        textNodes.forEach(node => {
+            const originalText = node.nodeValue.trim();
+            if (originalText && translations[originalText]) {
+                if (!node.parentNode.dataset.originalText) {
+                    node.parentNode.dataset.originalText = originalText;
+                }
+                node.nodeValue = isTranslated ? 
+                    (node.parentNode.dataset.originalText || originalText) : 
+                    translations[originalText];
+            }
+        });
+
+        // Placeholder'ları çevir
+        translatePlaceholders(isTranslated);
+
+        // Çeviri butonunun metnini güncelle
+        translateButton.textContent = isTranslated ? 'Türkçe' : 'English';
+        translateButton.disabled = false;
+    }
 
     if (translateButton) {
         translateButton.addEventListener('click', function() {
-            const translatableElements = document.querySelectorAll('.translatable');
-            
-            translatableElements.forEach(element => {
-                const originalText = element.textContent.trim();
-                
-                if (isTranslated) {
-                    // Orijinal metne geri dön
-                    if (element.dataset.originalText) {
-                        element.textContent = element.dataset.originalText;
-                        delete element.dataset.originalText;
-                    }
-                } else {
-                    // İngilizce'ye çevir
-                    if (translations[originalText]) {
-                        element.dataset.originalText = originalText;
-                        element.textContent = translations[originalText];
-                    }
-                }
-            });
-            
-            isTranslated = !isTranslated;
-            translateButton.textContent = isTranslated ? 'Türkçe' : 'English';
+            translateButton.disabled = true; // Butonu geçici olarak devre dışı bırak
+            translateButton.textContent = 'Translating...'; // Çeviri animasyonu
+            document.body.classList.add('translating'); // Çeviri animasyonu için sınıf ekle
+
+            setTimeout(() => {
+                isTranslated = !isTranslated;
+                translatePage();
+                document.body.classList.remove('translating');
+            }, 300); // Kısa bir gecikme ile animasyon efekti
         });
     }
 });
+
 function openModal() {
   document.getElementById('trialModal').classList.remove('hidden');
   document.body.classList.add('no-scroll');
