@@ -405,6 +405,9 @@ document.addEventListener('DOMContentLoaded', function() {
         'Türkiye (EKUAL dışı)': 'Türkiye (Non-EKUAL)',
         'Broşür': 'Brochure',
         'Erişim Linki': 'Access Link',
+        'Deneme Erişimi İsteği': 'Request Trial Access',
+        'Ürün Öneriniz Var mı?': 'Do You Have a Product Suggestion?',
+
         
         // Services
         'Hizmetlerimiz': 'Our Services',
