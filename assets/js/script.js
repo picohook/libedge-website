@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'Sanat': 'Arts',
         'Yapay Zeka': 'Artificial Intelligence',
         'Yetkili Bölge:': 'Authorized Region:',
-        'Türkiye': 'Turkey',
+        'Türkiye': 'Türkiye',
         'Orta Doğu': 'Middle East',
         'Türkiye (EKUAL dışı)': 'Turkey (Non-EKUAL)',
         'Broşür': 'Brochure',
