@@ -375,103 +375,105 @@ document.getElementById('suggestionForm').addEventListener('submit', function(e)
         }
 
 
+// Basit çeviri sistemi - Statik çeviriler
 document.addEventListener('DOMContentLoaded', function() {
     const translateButton = document.getElementById('translateBtn');
-    const originalTexts = new Map();
     let isTranslated = false;
-    const workerUrl = 'https://silent-mountain-f3bf.agursel.workers.dev/';
+
+    // Türkçe -> İngilizce çeviri mapping
+    const translations = {
+        // Başlık ve genel metinler
+        'LibEdge Eğitim ve Danışmanlık': 'LibEdge Education and Consulting',
+        'LibEdge ile Bilginin Gücünü Keşfedin': 'Discover the Power of Knowledge with LibEdge',
+        'Kalite ve dürüstlük ilkesi ile 20 yıla yakın sektör deneyimini harmanlıyoruz. Kütüphanelere ürün danışmanlığı, abonelik süreç desteği ve yerinde eğitim hizmetleri sunuyoruz.': 
+        'We blend nearly 20 years of industry experience with quality and integrity principles. We provide product consulting, subscription process support, and on-site training services to libraries.',
+        
+        // Navigasyon
+        'Ürünler': 'Products',
+        'Broşürler': 'Brochures',
+        'İletişim': 'Contact',
+        'Duyurular': 'Announcements',
+        
+        // Filtre butonları
+        'Tümü': 'All',
+        'Fen & Matematik': 'Science & Mathematics',
+        'Mühendislik': 'Engineering',
+        'Sağlık': 'Health',
+        'Sosyal Bilimler': 'Social Sciences',
+        'İş & Hukuk': 'Business & Law',
+        'Sanat': 'Arts',
+        'Yapay Zeka': 'Artificial Intelligence',
+        
+        // Ürün özellikleri
+        'Yetkili Bölge:': 'Authorized Region:',
+        'Türkiye': 'Turkey',
+        'Orta Doğu': 'Middle East',
+        'Türkiye (EKUAL dışı)': 'Turkey (Non-EKUAL)',
+        'Broşür': 'Brochure',
+        'Erişim Linki': 'Access Link',
+        
+        // Hizmetlerimiz
+        'Hizmetlerimiz': 'Our Services',
+        'Ürün Danışmanlığı ve Tedarik': 'Product Consulting and Procurement',
+        'Kullanıcı ve Yönetici Eğitimleri': 'User and Administrator Trainings',
+        'Erişim ve Entegrasyon Desteği': 'Access and Integration Support',
+        'Koleksiyon Geliştirme Danışmanlığı': 'Collection Development Consulting',
+        
+        // Müşteri görüşleri
+        'Müşteri Görüşleri': 'Customer Reviews',
+        'İş Ortakları': 'Business Partners',
+        'Bize Ulaşın': 'Contact Us',
+        
+        // İletişim formu
+        'Adınız Soyadınız': 'Your Full Name',
+        'E-posta Adresiniz': 'Your Email Address',
+        'Telefon Numaranız (İsteğe Bağlı)': 'Your Phone Number (Optional)',
+        'Konu': 'Subject',
+        'Mesajınız': 'Your Message',
+        'Gönder': 'Send',
+        
+        // Footer
+        'Hızlı Linkler': 'Quick Links',
+        'GİZLİLİK POLİTİKASI': 'PRIVACY POLICY',
+        'KULLANIM ŞARTLARI': 'TERMS OF USE',
+        '© 2025 LIBEDGE TÜM HAKLARI SAKLIDIR': '© 2025 LIBEDGE ALL RIGHTS RESERVED',
+        
+        // Modal pencereler
+        'Deneme Erişimi İsteği': 'Request Trial Access',
+        'Ürün Öneriniz Var mı?': 'Do You Have a Product Suggestion?',
+        'Deneme Erişimi Talep Formu': 'Trial Access Request Form',
+        'Ürün Öneri Formu': 'Product Suggestion Form',
+        'Ad Soyad': 'Full Name',
+        'E-posta': 'Email',
+        'Kurum Adı': 'Institution Name',
+        'Talep Detayınız': 'Your Request Details',
+        'Ürün Öneri Detayınız': 'Your Product Suggestion Details'
+    };
 
     if (translateButton) {
-        translateButton.innerText = 'English';
-    }
-
-    const collectAndStoreOriginalTexts = () => {
-        if (originalTexts.size === 0) {
-            const elements = document.querySelectorAll('.translatable');
-            elements.forEach(el => {
-                let text = el.innerText.trim();
-                if (text.length > 1) {
-                    originalTexts.set(el, text);
-                }
-            });
-        }
-    };
-
-    const revertToOriginal = () => {
-        originalTexts.forEach((text, el) => {
-            el.innerText = text;
-        });
-    };
-
-    const translateAllTexts = async (targetLanguage) => {
-        collectAndStoreOriginalTexts();
-
-        const elementsToTranslate = Array.from(originalTexts.keys());
-        const translationPromises = [];
-
-        for (const el of elementsToTranslate) {
-            const originalText = originalTexts.get(el);
-
-            // Boş veya çok kısa metinleri atla
-            if (!originalText || originalText.length < 2) {
-                translationPromises.push(Promise.resolve(originalText));
-                continue;
-            }
-
-            console.log('Translating text:', originalText); // debug log
-
-            const promise = fetch(`${workerUrl}?text=${encodeURIComponent(originalText)}&target=${targetLanguage}`)
-                .then(res => {
-                    if (!res.ok) throw new Error(`Server error: ${res.status}`);
-                    return res.json();
-                })
-                .then(data => {
-                    return data.data?.translations?.[0]?.translatedText || originalText;
-                })
-                .catch(err => {
-                    console.error('Translation error for text:', originalText, err);
-                    return originalText;
-                });
-
-            translationPromises.push(promise);
-        }
-
-        try {
-            const translatedTexts = await Promise.all(translationPromises);
-
-            elementsToTranslate.forEach((el, index) => {
-                if (translatedTexts[index] && translatedTexts[index] !== originalTexts.get(el)) {
-                    el.innerText = translatedTexts[index];
-                }
-            });
-
-        } catch (error) {
-            console.error('Translation failed:', error);
-            alert('Çeviri servisi geçici olarak kullanılamıyor.');
-        }
-    };
-
-    if (translateButton) {
-        translateButton.addEventListener('click', async function() {
-            this.disabled = true;
-            this.innerText = 'Yükleniyor...';
-
-            try {
-                if (!isTranslated) {
-                    await translateAllTexts('en');
-                    this.innerText = 'Türkçe';
-                    isTranslated = true;
+        translateButton.addEventListener('click', function() {
+            const translatableElements = document.querySelectorAll('.translatable');
+            
+            translatableElements.forEach(element => {
+                const originalText = element.textContent.trim();
+                
+                if (isTranslated) {
+                    // Orijinal metne geri dön
+                    if (element.dataset.originalText) {
+                        element.textContent = element.dataset.originalText;
+                        delete element.dataset.originalText;
+                    }
                 } else {
-                    revertToOriginal();
-                    this.innerText = 'English';
-                    isTranslated = false;
+                    // İngilizce'ye çevir
+                    if (translations[originalText]) {
+                        element.dataset.originalText = originalText;
+                        element.textContent = translations[originalText];
+                    }
                 }
-            } catch (error) {
-                console.error('Translation error:', error);
-                this.innerText = isTranslated ? 'Türkçe' : 'English';
-            } finally {
-                this.disabled = false;
-            }
+            });
+            
+            isTranslated = !isTranslated;
+            translateButton.textContent = isTranslated ? 'Türkçe' : 'English';
         });
     }
 });
