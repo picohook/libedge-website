@@ -1,6 +1,0 @@
-name = "silent-mountain-f3bf"
-main = "worker-translator.js"
-compatibility_date = "2025-09-06"
-
-[site]
-bucket = "./public"

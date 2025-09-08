@@ -373,11 +373,7 @@ document.getElementById('suggestionForm').addEventListener('submit', function(e)
             icon.classList.toggle('fa-chevron-up');
           }
         }
-      
 
-// =======================================================================
-//          CLOUDFLARE WORKER UYUMLU ÇEVİRİ KODU
-// =======================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
     const translateButton = document.getElementById('translateBtn');
