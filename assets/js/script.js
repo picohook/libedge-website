@@ -385,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Header and Navigation
         'LibEdge Eğitim ve Danışmanlık': 'LibEdge Education and Consulting',
         'Edge Eğitim ve Danışmanlık': 'Edge Education and Consulting',
-        'LibEdge ile Bilginin Gücünü Keşfedin': 'Discover the Power of Knowledge with LibEdge',
+        'Bilginin Gücünü Keşfedin': 'Discover the Power of Knowledge',
         'Kalite ve dürüstlük ilkesi ile 20 yıla yakın sektör deneyimini harmanlıyoruz. Kütüphanelere ürün danışmanlığı, abonelik süreç desteği ve yerinde eğitim hizmetleri sunuyoruz.': 'We blend nearly 20 years of industry experience with quality and integrity principles. We provide product consulting, subscription process support, and on-site training services to libraries.',
         'Ürünler': 'Products',
         'Broşürler': 'Brochures',
