@@ -422,6 +422,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'We provide support for integrating resources into your institution’s systems, setting up remote access, and resolving technical issues.',
         'Kütüphane ve bilgi merkezlerinin koleksiyonlarını güncel tutmaları ve geliştirmeleri için uzman danışmanlık hizmeti veriyoruz.': 
             'We offer expert consulting services to help libraries and information centers keep their collections up-to-date and develop them further.',
+        // Partners
+        'İş Ortakları': 'Partners',
 
         // Customer Reviews
         'Müşteri Görüşleri': 'Customer Reviews',
