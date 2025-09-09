@@ -546,6 +546,10 @@ document.addEventListener('DOMContentLoaded', function() {
         '✔ Bilimsel eğitim video koleksiyonu': '✔ Scientific educational video collection',
         '✔ Laboratuvar teknikleri': '✔ Laboratory techniques',
         '✔ Temel bilimler eğitimi': '✔ Basic science education',
+        '✔ İşletme ve yönetim odaklı video içeriği': '✔ Business and management-focused video content',
+        '✔ Finans, Pazarlama, Mikroekonomi': '✔ Finance, Marketing, Microeconomics',
+        '✔ Animasyonlu dersler': '✔ Animated lessons',
+
         // Add more translations as needed
     };
 
