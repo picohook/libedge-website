@@ -686,12 +686,7 @@
             background-position: center;
             background-repeat: no-repeat;
         }
-        #nejmhealer .flip-back {
-            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/nejm.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
+
         #jove-education .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/educa.webp');
             background-size: cover;
