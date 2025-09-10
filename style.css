@@ -988,6 +988,10 @@ body.translating * {
   filter: grayscale(0%) brightness(100%);
 }
 
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
 .partner-link {
     position: absolute;
     bottom: 0;
