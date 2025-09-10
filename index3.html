@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LibEdge offers premium education and research solutions, including AI tools, databases, books and academic journals for institutions in Türkiye and the Middle East.">
+    <title>LibEdge Eğitim ve Danışmanlık</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Glide.js/3.6.0/css/glide.core.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Glide.js/3.6.0/css/glide.theme.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #220f60;
+        }
+
+        .bg-primary {
+            background-color: #220f60;
+        }
+
+        .text-primary {
+            color: #220f60;
+        }
+
+.hero-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.hero-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+    filter: brightness(0.75) blur(1px);
+}
+
+.hero-container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        circle at 20% 30%, rgba(255, 255, 255, 0.05),
+        transparent 60%
+    ), radial-gradient(
+        circle at 80% 70%, rgba(255, 255, 255, 0.05),
+        transparent 60%
+    );
+    backdrop-filter: blur(2px);
+    z-index: 1;
+}
+
+
+/* Hero Content stilleri */
+.hero-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    text-align: center;
+    color: white;
+    padding: 0 1rem;
+}
+
+.hero-header {
+    font-size: 3rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: white;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.6);
+    animation: fadeIn 1.5s ease-in-out;
+}
+
+@media (min-width: 640px) {
+    .hero-header {
+        font-size: 4.5rem;
+    }
+}
+
+.hero-subtitle {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.8;
+    max-width: 900px;
+    margin: 0 auto;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    animation: fadeIn 1.5s ease-in-out 0.5s backwards;
+}
+
+@media (min-width: 640px) {
+    .hero-subtitle {
+        font-size: 1.3rem;
+    }
+}
+
+/* Genel hero-badge stilleri (Masaüstünde de geçerli olacak temel stiller) */
+.hero-badge {
+    z-index: 3; /* Z-index'i genel badge stilinde bırakın */
+    padding: 1rem 2rem;
+    border-radius: 2rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    background-color: #ffffff;
+    color: #220f60;
+    padding: 0.8rem 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.hero-badge:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    background-color: #f3f4f6;
+}
+
+/* Hero Badges Wrapper için stil (hem mobil hem masaüstü varsayılanları) */
+.hero-badges-wrapper {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap; /* Ensures badges wrap on smaller screens */
+    justify-content: center;
+    z-index: 10;
+}
+
+
+@media (max-width: 768px) {
+    .hero-badges-wrapper {
+        flex-direction: column; /* Stack badges vertically on smaller screens */
+        gap: 0.5rem;
+    }
+
+    .hero-badge {
+        width: 100%;
+        max-width: 300px;
+        justify-content: center;
+        text-align: center;
+    }
+}
+        .flip-card {
+            perspective: 1000px;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .flip-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .flip-front,
+        .flip-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+
+        .flip-back {
+            transform: rotateY(180deg);
+        }
+
+        @media (hover: hover) {
+            .flip-card:hover .flip-inner {
+                transform: rotateY(180deg);
+            }
+        }
+
+        .flip-front {
+            background-color: white;
+            border-top: 4px solid;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .flip-back a {
+            pointer-events: auto;
+            border: 1px solid white
+        }
+
+        .border-blue-400 { border-top-color: #60A5FA; }
+        .border-red-400 { border-top-color: #F87171; }
+        .border-purple-400 { border-top-color: #C084FC; }
+        .border-teal-400 { border-top-color: #2DD4BF; }
+        .border-indigo-400 { border-top-color: #A78BFA; }
+        .border-gray-400 { border-top-color: #9CA3AF; }
+
+        .bg-blue-50 { background-color: #EFF6FF; }
+        .bg-red-50 { background-color: #FEF2F2; }
+        .bg-purple-50 { background-color: #FAF5FF; }
+        .bg-teal-50 { background-color: #F0FDFA; }
+        .bg-indigo-50 { background-color: #EEF2FF; }
+        .bg-gray-50 { background-color: #F9FAFB; }
+
+        .text-blue-800 { color: #1E40AF; }
+        .text-red-800 { color: #991B1B; }
+        .text-purple-800 { color: #6B21A8; }
+        .text-teal-800 { color: #0E7490; }
+        .text-indigo-800 { color: #4338CA; }
+        .text-gray-800 { color: #374151; }
+
+        .badge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            width: 100%;
+            margin-top: auto;
+            padding: 0 0.5rem;
+        }
+
+        .badge-label {
+            font-size: 0.625rem;
+            font-weight: 500;
+            color: #220f60;
+            margin-bottom: 0.25rem;
+        }
+
+        .badge-turkey {
+            background: #e1f5fe;
+            color: #0288d1;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.75rem;
+            font-size: 0.625rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .badge-middleeast {
+            background: #fff3e0;
+            color: #ef6c00;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.75rem;
+            font-size: 0.625rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .subject-btn {
+            background-color: white;
+            color: #220f60;
+            padding: 0.4rem 0.8rem;
+            border-radius: 1.25rem;
+            text-decoration: none;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid #220f60;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        @media (min-width: 640px) {
+            .subject-btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+        }
+
+        .subject-btn:hover {
+            background-color: #220f60;
+            color: white;
+        }
+
+        .subject-btn.active {
+            background-color: #220f60;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 1.875rem;
+            margin-top: 1.25rem;
+        }
+
+        @media (min-width: 640px) {
+            .tools-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (min-width: 1024px) {
+            .tools-grid { grid-template-columns: repeat(5, 1fr); }
+        }
+
+        .no-results-message {
+            color: #d9534f;
+            text-align: center;
+            font-size: 1.1rem;
+            margin-top: 1.25rem;
+            grid-column: 1 / -1;
+        }
+
+        .nav-logo {
+            margin-right: auto;
+            margin-left: 0;
+        }
+
+        .products-header {
+            font-size: 1.875rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.375rem;
+            border-bottom: 2px solid #220f60;
+        }
+
+        .filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .product-card-container {
+            display: block;
+            height: 340px;
+            overflow: hidden;
+        }
+
+        .product-image {
+            height: 6rem;
+            margin-bottom: 1rem;
+            object-fit: contain;
+            width: 100%;
+        }
+
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            cursor: pointer;
+            color: #220f60;
+            font-size: 1.5rem;
+            z-index: 1002;
+            padding: 0.5rem;
+            position: relative;
+        }
+
+        @media (max-width: 639px) {
+            .hamburger {
+                display: flex;
+            }
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #4b5563;
+        }
+
+@media (max-width: 639px) {
+    .nav-links {
+        position: fixed;
+        /* Nav bar yüksekliğine göre ayarlayın.
+           Nav barınızın yaklaşık yüksekliği 50-60px civarı olabilir.
+           Deneyerek en uygun değeri bulun. */
+        top: 56px;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.60); /* %60 opaklık */
+        backdrop-filter: blur(8px); /* Arkayı hafif bulanıklaştır */
+        flex-direction: column;
+        padding: 1rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 1001;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-20px); /* Biraz daha yukarıdan gelsin */
+        transition: all 0.3s ease,backdrop-filter 0.3s ease;
+        /* Nav bar yüksekliğini çıkararak max yüksekliği ayarlayın */
+        max-height: calc(100vh - 56px);
+        overflow-y: auto; /* Dikey scroll eklendi */
+    }
+
+    .nav-links.active {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+}
+        .nav-links .group {
+            position: relative;
+            width: 100%;
+        }
+
+        .nav-links .group>a {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 0;
+            color: #220f60;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .nav-links a {
+        padding: 0.5rem 0;
+        text-align: center;
+    }
+
+        .nav-links a:hover,
+        .nav-links .group>a:hover {
+            color: #1e0e50;
+        }
+
+        .nav-links .group .dropdown {
+            position: absolute;
+            left: 0;
+            margin-top: 0.5rem;
+            min-width: 200px;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0px 10px 25px -5px rgba(0, 0, 0, 0.1), 0px 8px 10px -6px rgba(0, 0, 0, 0.1);
+            border: 1px solid #f3f4f6;
+            z-index: 52;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px) scale(0.98);
+            transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .nav-links .group .dropdown a {
+            display: block;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.9rem;
+            color: #220f60;
+            font-weight: 500;
+            text-decoration: none;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .nav-links .group .dropdown a:hover {
+            background-color: #eef2ff;
+            color: #1e0e50;
+        }
+
+        .nav-links .group>a .fa-chevron-down {
+            transition: transform 0.3s ease;
+            font-size: 0.7rem;
+            margin-left: 0.5rem;
+        }
+
+        @media (min-width: 640px) {
+
+            .nav-links .group:hover .dropdown,
+            .nav-links .group>a:focus+.dropdown,
+            .nav-links .group .dropdown:hover {
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0) scale(1);
+            }
+
+            .nav-links .group:hover>a .fa-chevron-down,
+            .nav-links .group>a:focus .fa-chevron-down {
+                transform: rotate(180deg);
+            }
+        }
+
+        @media (max-width: 639px) {
+    .nav-links .group .dropdown {
+        position: static;
+        width: 100%;
+        box-shadow: none;
+        background-color: #f8f9fa;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem; /* Alt boşluk eklendi */
+        transform: none;
+        border-radius: 0.25rem;
+        border: 1px solid #e9ecef; /* Hafif border ekle */
+        max-height: 0; /* Başlangıçta yüksekliği 0 yap */
+        opacity: 0; /* Başlangıçta görünmez yap */
+        visibility: hidden; /* Erişilebilirlik ve olaylar için gizle */
+        overflow: hidden; /* max-height animasyonu için gerekli */
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin-top 0.3s ease-out, margin-bottom 0.3s ease-out; /* Geçiş ekle */
+        /* Başlangıçta margin olmasın */
+        margin-top: 0;
+        margin-bottom: 0;
+            }
+
+            .nav-links .group.active .dropdown {
+                opacity: 1;
+                visibility: visible;
+        /* Açıldığında margin'leri geri getir */
+                overflow-y: auto; /* Dikey kaydırmayı etkinleştir */
+                -webkit-overflow-scrolling: touch; /* iOS cihazlarda daha pürüzsüz kaydırma deneyimi için */
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+            }
+
+            .nav-links .group.active>a .fa-chevron-down {
+                transform: rotate(180deg);
+            }
+
+            .nav-links .group .dropdown a {
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+                border-bottom: 1px solid #e9ecef;
+            }
+
+            .nav-links .group .dropdown a:last-child {
+                border-bottom: none;
+            }
+        }
+
+        #backToTop {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background-color: #220f60;
+            color: white;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 999;
+            border: none;
+            cursor: pointer;
+        }
+
+        #backToTop.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #backToTop:hover {
+            transform: translateY(-3px);
+            background-color: #1a0a4a;
+        }
+
+        .company-logo {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 70px;
+            width: auto;
+        }
+
+        @media (max-width: 1024px) {
+            .company-logo {
+                display: none;
+            }
+        }
+
+        .social-container {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .flip-all-cards .flip-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-inner.flipped {
+            transform: rotateY(180deg) !important;
+            z-index: 1;
+        }
+
+        @media (hover: hover) {
+            .flip-card:hover .flip-inner:not(.flip-all-cards) {
+                transform: rotateY(180deg);
+            }
+        }
+
+        .flip-all-cards .flip-front,
+        .flip-all-cards .flip-back {
+            overflow: hidden;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        .flip-back ul {
+            padding-left: 0.3rem;
+            margin: 0.5rem 0;
+            max-height: 60%;
+            overflow-y: auto;
+            list-style-position: inside;
+        }
+
+        .no-scroll {
+            overflow: hidden;
+        }
+
+        .aspect-w-16 {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+        }
+
+        .aspect-w-16 iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glide__slide img.partner-logo {
+            height: 4rem;
+            width: auto;
+            object-fit: contain;
+            margin: auto;
+        }
+
+        .glide__slide {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 10px;
+        }
+
+        .glide__slides {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        #primal-pictures .flip-back {
+            background: linear-gradient(rgba(254, 242, 242, 0.3)), url('assets/images/anatomy.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #caz-koleksiyonu .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/jazz.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #klasik-muzik .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/classic.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #lecturio .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/lect_back.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #nejmhealer .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/nejm.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #jove-education .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/educa.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #accessengineering .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/eng.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #pangram .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/pangram.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #chatpdf .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/chat.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #biorender .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/bio.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #wonders .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/wond.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #piri-discovery .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/piri.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #transleyt .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/transl.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .bg-video-container {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bg-video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            opacity: 0.7;
+        }
+
+        .bg-video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            z-index: 10;
+        }
+
+        .bg-video-content {
+            position: relative;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            height: 100%;
+            width: 100%;
+            padding: 0.5rem 1rem;
+        }
+
+        .social-container .flex a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+        }
+
+        .nav-logo .lib-bold {
+            font-weight: 700 !important;
+        }
+
+
+
+.dropdown.translating,
+.dropdown-list.translating {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Add to your existing styles */
+#mapModal iframe {
+  border-radius: 0.5rem;
+}
+
+.no-scroll {
+  overflow: hidden;
+}
+
+
+        /* Yeni Eklenen Form Stilleri */
+        #contact form input,
+        #contact form textarea {
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        #contact form input:focus,
+        #contact form textarea:focus {
+            outline: none;
+            border-color: #4F46E5; /* Tailwind indigo-600 */
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4); /* Daha belirgin ring */
+        }
+
+        .dark #contact form input:focus,
+        .dark #contact form textarea:focus {
+            border-color: #818CF8; /* Tailwind indigo-400 */
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.4);
+        }
+
+        .footer-links ul {
+    list-style: none; /* Liste işaretlerini kaldırır */
+    padding: 0; /* Varsayılan iç boşluğu kaldırır */
+    margin: 0; /* Varsayılan dış boşluğu kaldırır */
+    display: flex; /* Öğeleri yan yana dizer */
+    align-items: center; /* Öğeleri dikeyde ortalar */
+    justify-content: center; /* <<< YENİ: Öğeleri yatayda ortalar */
+    flex-wrap: wrap; /* <<< YENİ: Küçük ekranlarda alt satıra geçmesini sağlar */
+}
+
+.footer-links li {
+    border-right: 1px solid #ccc; 
+    padding-right: 15px;
+    margin-right: 15px;
+    white-space: nowrap; 
+    font-size: 0.6em; /* <<< YENİ: Yazı boyutunu küçültür (orijinal boyutun %90'ı) */
+}
+
+.footer-links li:last-child {
+    border-right: none;
+    padding-right: 0;
+    margin-right: 0;
+}
+
+.footer-links a,
+.footer-links span { /* <<< YENİ: Hem linklere hem de span'a stil uygula */
+    text-decoration: none;
+    color: #ffffff; /* <<< YENİ: Yazı rengini değiştirir */
+    /* font-size burada da ayarlanabilir, ama 'li' üzerinde ayarlamak daha kapsayıcıdır */
+}
+@media (max-width: 639px) {
+    .nav-links .group .dropdown {
+        background-color: transparent !important; /* Şeffaf arkaplan */
+        border: none !important; /* Border'ı kaldır */
+        box-shadow: none !important; /* Gölgeyi kaldır */
+        padding: 0; /* İç boşluğu sıfırla */
+    }
+
+    .nav-links .group .dropdown a {
+        background-color: rgba(255,255,255,0.9) !important; /* Yarı şeffaf beyaz */
+        margin: 2px 0; /* Öğeler arası boşluk */
+        border-radius: 4px; /* Hafif yuvarlak köşeler */
+        border: none !important;
+    }
+
+    .nav-links .group.active .dropdown {
+        max-height: 500px; /* Yeterli maksimum yükseklik */
+    }
+}
+
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+<header class="bg-primary text-white py-6 px-4">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center relative">
+        <div class="flex flex-wrap items-center space-x-4 mb-2 sm:mb-0">
+            <div class="flex items-center">
+                <i class="fas fa-envelope mr-2 text-purple-300" aria-hidden="true"></i>
+                <span class="text-xs sm:text-sm">info@libedge.com</span>
+            </div>
+            <div class="flex flex-col">
+                <div class="flex items-center">
+                    <i class="fas fa-mobile-alt mr-2 text-purple-300" aria-hidden="true"></i>
+                    <span class="text-xs sm:text-sm">+90 535 624 4016</span>
+                </div>
+                <div class="flex items-center mt-1">
+                    <i class="fas fa-mobile-alt mr-2 text-purple-300" aria-hidden="true"></i>
+                    <span class="text-xs sm:text-sm ">+90 530 353 3932</span>
+                </div>
+            </div>
+        </div>
+
+        <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="company-logo">
+
+        <div class="flex items-center space-x-4 ml-auto">
+            <a class="text-white hover:text-purple-300" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank">
+                <i class="fab fa-linkedin-in text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://twitter.com/" target="_blank">
+                <i class="fab fa-x-twitter text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://facebook.com/" target="_blank">
+                <i class="fab fa-facebook-f text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://instagram.com/" target="_blank">
+                <i class="fab fa-instagram text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://youtube.com/" target="_blank">
+                <i class="fab fa-youtube text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" onclick="openMapModal()" style="cursor:pointer">
+                <i class="fas fa-map-marker-alt text-lg"></i>
+            </a>
+
+            <div class="ml-auto pl-8">
+                <a class="text-white hover:text-purple-300" href="#" aria-label="User Management">
+                    <i class="fas fa-user text-xl"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+    <nav class="bg-white shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <a class="text-2xl text-primary nav-logo" href="#">
+                <span class="lib-bold">Lib</span><span>Edge Eğitim ve Danışmanlık</span>
+            </a>
+            <button class="hamburger" aria-label="Menüyü aç/kapat" aria-expanded="false">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-links flex items-center space-x-2 sm:space-x-6 text-xs sm:text-sm font-medium text-gray-700">
+
+
+<div class="relative group">
+    <a id="products-menu-toggle" onclick="toggleProductsMenu()" class="hover:text-primary font-semibold flex items-center cursor-pointer sm:cursor-default">
+Ürünler</span>
+      <i class="fas fa-chevron-down ml-1 text-xs"></i>
+    </a>
+  
+    <div class="dropdown absolute left-0 mt-2 bg-white shadow-lg rounded-lg z-20 p-4 space-y-4 w-[340px] hidden sm:block">
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1">Yapay Zeka</h4>
+        <a href="#pangram" class="block text-gray-700">Pangram</a>
+        <a href="#chatpdf" class="block px-2 py-1 text-sm hover:text-primary">ChatPDF</a>
+        <a href="#wonders" class="block px-2 py-1 text-sm hover:text-primary">Wonders</a>
+        <a href="#piri-discovery" class="block px-2 py-1 text-sm hover:text-primary">Piri Keşif</a>
+        <a href="#transleyt" class="block px-2 py-1 text-sm hover:text-primary">Transleyt</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1">Sağlık</h4>
+        <a href="#primal-pictures" class="block px-2 py-1 text-sm hover:text-primary">Primal Pictures</a>
+        <a href="#nejmhealer" class="block px-2 py-1 text-sm hover:text-primary">NEJM Healer</a>
+        <a href="#jove-education" class="block px-2 py-1 text-sm hover:text-primary">JoVE Education</a>
+        <a href="#lecturio" class="block px-2 py-1 text-sm hover:text-primary">Lecturio</a>
+        <a href="#biorender" class="block px-2 py-1 text-sm hover:text-primary">BioRender</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1">Mühendislik</h4>
+        <a href="#accessengineering" class="block px-2 py-1 text-sm hover:text-primary">Access Engineering</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1">Müzik</h4>
+        <a href="#caz-koleksiyonu" class="block px-2 py-1 text-sm hover:text-primary">Caz Koleksiyonu</a>
+        <a href="#klasik-muzik" class="block px-2 py-1 text-sm hover:text-primary">Klasik Müzik</a>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+  function toggleProductsMenu() {
+    const dropdown = document.querySelector('#products-menu-toggle').nextElementSibling;
+    const isMobile = window.innerWidth < 640;
+  
+    if (isMobile) {
+      dropdown.classList.toggle('hidden');
+    }
+  }
+  
+  // Masaüstü için hover etkileşimi
+  document.querySelectorAll('.group').forEach(group => {
+    if (window.innerWidth >= 640) {
+      group.addEventListener('mouseenter', () => {
+        group.querySelector('.dropdown').classList.remove('hidden');
+      });
+      group.addEventListener('mouseleave', () => {
+        group.querySelector('.dropdown').classList.add('hidden');
+      });
+    }
+  });
+  </script>
+                <a href="#about" class="hover:text-primary font-semibold">Hakkımızda</a>
+                <a href="#contact" class="hover:text-primary font-semibold">İletişim</a>
+                <a href="#partners" class="hover:text-primary font-semibold">İş Ortaklarımız</a>
+                <a href="#mapModal" onclick="openMapModal()" class="hover:text-primary font-semibold">Konum</a>
+            </div>
+        </div>
+    </nav>
+    <div class="hero-container">
+        <video class="hero-video" autoplay loop muted playsinline>
+            <source src="assets/videos/hero.mp4" type="video/mp4">
+        </video>
+        <div class="hero-content">
+            <h1 class="hero-header">LibEdge</h1>
+            <p class="hero-subtitle">
+                Türkiye ve Orta Doğu'daki eğitim ve araştırma kurumları için öncü çözümler sunuyoruz. Yapay zeka araçları, veritabanları, kitap ve akademik dergi koleksiyonları ile eğitim ve araştırma süreçlerinizi güçlendiriyoruz.
+            </p>
+        </div>
+        <div class="hero-badges-wrapper">
+            <a href="#products" class="hero-badge">
+                <i class="fas fa-box-open mr-2"></i> Ürünlerimizi Keşfedin
+            </a>
+            <a href="#contact" class="hero-badge">
+                <i class="fas fa-envelope mr-2"></i> Bize Ulaşın
+            </a>
+        </div>
+    </div>
+    <section id="products" class="py-16 px-4 max-w-7xl mx-auto">
+        <h2 class="products-header">Ürünlerimiz</h2>
+        <div class="filter-container">
+            <button class="subject-btn active" data-subject="all">Tümü</button>
+            <button class="subject-btn" data-subject="health">Sağlık</button>
+            <button class="subject-btn" data-subject="engineering">Mühendislik</button>
+            <button class="subject-btn" data-subject="music">Müzik</button>
+            <button class="subject-btn" data-subject="ai">Yapay Zeka</button>
+        </div>
+        <div class="tools-grid">
+            <div class="product-card-container" data-subjects="health" id="primal-pictures">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-blue-400 bg-blue-50">
+                            <img src="assets/images/primal.webp" alt="Primal Pictures" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-blue-800">Primal Pictures</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Tıp Fakültesi</span>
+                                    <span class="badge-turkey">Sağlık Bilimleri</span>
+                                    <span class="badge-middleeast">Anatomi Eğitimi</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-blue-400 bg-blue-50 text-blue-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">Primal Pictures</h3>
+                            <p class="text-sm text-center mb-4">3B anatomi ve fizyoloji eğitim platformu.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>Detaylı 3B modeller</li>
+                                <li>Etkileşimli anatomi dersleri</li>
+                                <li>Klinik vaka çalışmaları</li>
+                                <li>Özelleştirilmiş öğrenme yolları</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="health" id="nejmhealer">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-red-400 bg-red-50">
+                            <img src="assets/images/nejm.webp" alt="NEJM Healer" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-red-800">NEJM Healer</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Tıp Eğitimi</span>
+                                    <span class="badge-middleeast">Klinik Beceri</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-red-400 bg-red-50 text-red-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">NEJM Healer</h3>
+                            <p class="text-sm text-center mb-4">Klinik karar verme becerilerini geliştirme platformu.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>Gerçek vakalar üzerinden öğrenme</li>
+                                <li>Tanı ve tedavi simülasyonları</li>
+                                <li>Uzman geri bildirimleri</li>
+                                <li>Akran karşılaştırmaları</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="health" id="jove-education">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-purple-400 bg-purple-50">
+                            <img src="assets/images/jove.webp" alt="JoVE Education" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-purple-800">JoVE Education</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Fen Bilimleri</span>
+                                    <span class="badge-middleeast">Laboratuvar Eğitimi</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-purple-400 bg-purple-50 text-purple-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">JoVE Education</h3>
+                            <p class="text-sm text-center mb-4">Görsel bilim eğitimi için video kütüphanesi.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>15.000+ bilimsel video</li>
+                                <li>Deney protokolleri</li>
+                                <li>Animasyonlar ve illüstrasyonlar</li>
+                                <li>Ölçme ve değerlendirme araçları</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="health" id="lecturio">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-teal-400 bg-teal-50">
+                            <img src="assets/images/lecturio.webp" alt="Lecturio" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-teal-800">Lecturio</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Tıp Eğitimi</span>
+                                    <span class="badge-middleeast">Sınav Hazırlık</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-teal-400 bg-teal-50 text-teal-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">Lecturio</h3>
+                            <p class="text-sm text-center mb-4">Tıp ve sağlık bilimleri için online eğitim platformu.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>Video dersler</li>
+                                <li>Soru bankaları</li>
+                                <li>USMLE hazırlık içerikleri</li>
+                                <li>Klinik beceri eğitimleri</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="engineering" id="accessengineering">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-indigo-400 bg-indigo-50">
+                            <img src="assets/images/access.webp" alt="Access Engineering" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-indigo-800">Access Engineering</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Mühendislik</span>
+                                    <span class="badge-middleeast">Teknik Eğitim</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-indigo-400 bg-indigo-50 text-indigo-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">Access Engineering</h3>
+                            <p class="text-sm text-center mb-4">Mühendislik bilgi ve referans kaynağı.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>Mühendislik veritabanı</li>
+                                <li>Teknik standartlar</li>
+                                <li>E-kitaplar ve referanslar</li>
+                                <li>Hesaplama araçları</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="music" id="caz-koleksiyonu">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-gray-400 bg-gray-50">
+                            <img src="assets/images/jazz.webp" alt="Caz Koleksiyonu" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-gray-800">Caz Koleksiyonu</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Müzik Okulları</span>
+                                    <span class="badge-middleeast">Kültürel Eğitim</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-gray-400 bg-gray-50 text-gray-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">Caz Koleksiyonu</h3>
+                            <p class="text-sm text-center mb-4">Kapsamlı caz müziği arşivi ve eğitim platformu.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>50.000+ caz kaydı</li>
+                                <li>Müzisyen biyografileri</li>
+                                <li>Tarihsel kayıtlar</li>
+                                <li>Eğitim materyalleri</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="music" id="klasik-muzik">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-gray-400 bg-gray-50">
+                            <img src="assets/images/classic.webp" alt="Klasik Müzik" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-gray-800">Klasik Müzik</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Konservatuvarlar</span>
+                                    <span class="badge-middleeast">Müzik Eğitimi</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-gray-400 bg-gray-50 text-gray-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">Klasik Müzik</h3>
+                            <p class="text-sm text-center mb-4">Klasik müzik eserleri ve eğitim içerikleri.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>100.000+ klasik eser</li>
+                                <li>Besteciler ve dönemler</li>
+                                <li>Analiz ve yorumlar</li>
+                                <li>Performans kayıtları</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="ai" id="pangram">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-blue-400 bg-blue-50">
+                            <img src="assets/images/pangram.webp" alt="Pangram" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-blue-800">Pangram</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Tüm Fakülteler</span>
+                                    <span class="badge-middleeast">Araştırma Desteği</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-blue-400 bg-blue-50 text-blue-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">Pangram</h3>
+                            <p class="text-sm text-center mb-4">Akademik yazım ve araştırma için yapay zeka asistanı.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>Akademik yazım desteği</li>
+                                <li>Kaynak tarama ve özetleme</li>
+                                <li>Atıf ve referans yönetimi</li>
+                                <li>Dil ve gramer kontrolü</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="ai" id="chatpdf">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-red-400 bg-red-50">
+                            <img src="assets/images/chatpdf.webp" alt="ChatPDF" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-red-800">ChatPDF</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Araştırma</span>
+                                    <span class="badge-middleeast">Belge Yönetimi</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-red-400 bg-red-50 text-red-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">ChatPDF</h3>
+                            <p class="text-sm text-center mb-4">PDF belgeleri ile etkileşimli sohbet aracı.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>PDF sorgulama</li>
+                                <li>Otomatik özetleme</li>
+                                <li>Anahtar kelime çıkarma</li>
+                                <li>Çoklu dil desteği</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="ai" id="wonders">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-purple-400 bg-purple-50">
+                            <img src="assets/images/wonders.webp" alt="Wonders" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-purple-800">Wonders</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Eğitim</span>
+                                    <span class="badge-middleeast">İçerik Üretimi</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-purple-400 bg-purple-50 text-purple-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">Wonders</h3>
+                            <p class="text-sm text-center mb-4">Yapay zeka destekli içerik oluşturma platformu.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>Metin oluşturma</li>
+                                <li>Görsel tasarım</li>
+                                <li>Sunum hazırlama</li>
+                                <li>Eğitim materyali oluşturma</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="ai" id="piri-discovery">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-teal-400 bg-teal-50">
+                            <img src="assets/images/piri.webp" alt="Piri Keşif" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-teal-800">Piri Keşif</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Araştırma</span>
+                                    <span class="badge-middleeast">Veri Analizi</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-teal-400 bg-teal-50 text-teal-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">Piri Keşif</h3>
+                            <p class="text-sm text-center mb-4">Veri keşfi ve analiz için yapay zeka platformu.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>Veri görselleştirme</li>
+                                <li>Öngörücü analiz</li>
+                                <li>Doğal dil sorgulama</li>
+                                <li>Otomatik raporlama</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="ai" id="transleyt">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-indigo-400 bg-indigo-50">
+                            <img src="assets/images/transleyt.webp" alt="Transleyt" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-indigo-800">Transleyt</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Uluslararası İletişim</span>
+                                    <span class="badge-middleeast">Çeviri Hizmetleri</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-indigo-400 bg-indigo-50 text-indigo-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">Transleyt</h3>
+                            <p class="text-sm text-center mb-4">Akıllı çeviri ve dil işleme platformu.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>Gerçek zamanlı çeviri</li>
+                                <li>Belge çevirisi</li>
+                                <li>Sesli çeviri</li>
+                                <li>Akademik terminoloji desteği</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="product-card-container" data-subjects="health" id="biorender">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front h-full flex flex-col items-center justify-between border-gray-400 bg-gray-50">
+                            <img src="assets/images/biorender.webp" alt="BioRender" class="product-image">
+                            <h3 class="text-lg font-semibold text-center text-gray-800">BioRender</h3>
+                            <div class="badge-container">
+                                <span class="badge-label">Kullanım Alanları</span>
+                                <div class="flex flex-wrap">
+                                    <span class="badge-turkey">Biyoloji</span>
+                                    <span class="badge-middleeast">Bilimsel İllüstrasyon</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-back h-full flex flex-col items-center justify-center border-gray-400 bg-gray-50 text-gray-800">
+                            <h3 class="text-lg font-semibold text-center mb-4">BioRender</h3>
+                            <p class="text-sm text-center mb-4">Bilimsel illüstrasyon ve şema oluşturma aracı.</p>
+                            <ul class="text-xs text-center list-disc pl-4">
+                                <li>10.000+ bilimsel ikon</li>
+                                <li>Dergi standartlarında şablonlar</li>
+                                <li>Kolay sürükle-bırak arayüzü</li>
+                                <li>İşbirliği özellikleri</li>
+                            </ul>
+                            <a href="#contact" class="mt-4 px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700 transition-colors">Demo Talep Et</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section id="about" class="py-16 px-4 max-w-7xl mx-auto">
+        <h2 class="text-3xl font-semibold text-primary mb-8 text-center">Hakkımızda</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-video-container rounded-lg overflow-hidden shadow-lg h-96">
+                <video autoplay loop muted playsinline>
+                    <source src="assets/videos/about.mp4" type="video/mp4">
+                </video>
+                <div class="bg-video-overlay"></div>
+                <div class="bg-video-content flex items-center justify-center">
+                    <div class="text-center p-4 bg-white bg-opacity-90 rounded-lg max-w-md">
+                        <h3 class="text-xl font-semibold text-primary mb-2">Vizyonumuz</h3>
+                        <p class="text-gray-700">Eğitim ve araştırma kurumlarını dijital dönüşümde destekleyerek bölgenin lider danışmanlık firması olmak.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-primary mb-3">Misyonumuz</h3>
+                    <p class="text-gray-700">Türkiye ve Orta Doğu'daki eğitim kurumlarına yenilikçi teknoloji çözümleri sunarak eğitim ve araştırma kalitesini artırmak, dijital dönüşüm süreçlerinde yanlarında olmak.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-primary mb-3">Değerlerimiz</h3>
+                    <ul class="list-disc list-inside text-gray-700 space-y-2">
+                        <li><strong>Yenilikçilik:</strong> Sürekli gelişen teknolojileri takip ediyoruz</li>
+                        <li><strong>Güvenilirlik:</strong> Müşteri memnuniyetini ön planda tutuyoruz</li>
+                        <li><strong>İş Birliği:</strong> Kurumlarla uzun vadeli partnerlikler kuruyoruz</li>
+                        <li><strong>Kalite:</strong> En iyi hizmet ve ürünleri sunmaya özen gösteriyoruz</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section id="partners" class="py-16 px-4 max-w-7xl mx-auto">
+        <h2 class="text-3xl font-semibold text-primary mb-8 text-center">İş Ortaklarımız</h2>
+        <div class="glide">
+            <div class="glide__track" data-glide-el="track">
+                <ul class="glide__slides">
+                    <li class="glide__slide"><img src="assets/partners/partner1.webp" alt="Partner 1" class="partner-logo"></li>
+                    <li class="glide__slide"><img src="assets/partners/partner2.webp" alt="Partner 2" class="partner-logo"></li>
+                    <li class="glide__slide"><img src="assets/partners/partner3.webp" alt="Partner 3" class="partner-logo"></li>
+                    <li class="glide__slide"><img src="assets/partners/partner4.webp" alt="Partner 4" class="partner-logo"></li>
+                    <li class="glide__slide"><img src="assets/partners/partner5.webp" alt="Partner 5" class="partner-logo"></li>
+                    <li class="glide__slide"><img src="assets/partners/partner6.webp" alt="Partner 6" class="partner-logo"></li>
+                    <li class="glide__slide"><img src="assets/partners/partner7.webp" alt="Partner 7" class="partner-logo"></li>
+                    <li class="glide__slide"><img src="assets/partners/partner8.webp" alt="Partner 8" class="partner-logo"></li>
+                    <li class="glide__slide"><img src="assets/partners/partner9.webp" alt="Partner 9" class="partner-logo"></li>
+                    <li class="glide__slide"><img src="assets/partners/partner10.webp" alt="Partner 10" class="partner-logo"></li>
+                </ul>
+            </div>
+            <div class="glide__arrows" data-glide-el="controls">
+                <button class="glide__arrow glide__arrow--left" data-glide-dir="<">←</button>
+                <button class="glide__arrow glide__arrow--right" data-glide-dir=">">→</button>
+            </div>
+        </div>
+    </section>
+    <section id="contact" class="py-16 px-4 max-w-4xl mx-auto">
+        <h2 class="text-3xl font-semibold text-primary mb-8 text-center">İletişim</h2>
+        <form class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Adınız Soyadınız</label>
+                    <input type="text" id="name" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">E-posta Adresiniz</label>
+                    <input type="email" id="email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+            </div>
+            <div>
+                <label for="institution" class="block text-sm font-medium text-gray-700 mb-1">Kurumunuz</label>
+                <input type="text" id="institution" name="institution" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <div>
+                <label for="subject" class="block text-sm font-medium text-gray-700 mb-1">Konu</label>
+                <select id="subject" name="subject" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="">Konu seçin</option>
+                    <option value="demo">Demo Talep</option>
+                    <option value="info">Genel Bilgi</option>
+                    <option value="support">Teknik Destek</option>
+                    <option value="partnership">İş Birliği</option>
+                    <option value="other">Diğer</option>
+                </select>
+            </div>
+            <div>
+                <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Mesajınız</label>
+                <textarea id="message" name="message" rows="5" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"></textarea>
+            </div>
+            <button type="submit" class="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-opacity-90 transition-colors font-semibold">Gönder</button>
+        </form>
+    </section>
+    <footer class="bg-primary text-white py-8 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">LibEdge Eğitim ve Danışmanlık</h3>
+                    <p class="text-sm opacity-80">Türkiye ve Orta Doğu'daki eğitim ve araştırma kurumları için öncü çözümler.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">İletişim</h3>
+                    <p class="text-sm opacity-80"><i class="fas fa-envelope mr-2"></i> info@libedge.com</p>
+                    <p class="text-sm opacity-80"><i class="fas fa-phone mr-2"></i> +90 535 624 4016</p>
+                    <p class="text-sm opacity-80"><i class="fas fa-phone mr-2"></i> +90 530 353 3932</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Sosyal Medya</h3>
+                    <div class="flex space-x-4">
+                        <a href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank" class="text-white hover:text-purple-300"><i class="fab fa-linkedin-in text-lg"></i></a>
+                        <a href="https://twitter.com/" target="_blank" class="text-white hover:text-purple-300"><i class="fab fa-x-twitter text-lg"></i></a>
+                        <a href="https://facebook.com/" target="_blank" class="text-white hover:text-purple-300"><i class="fab fa-facebook-f text-lg"></i></a>
+                        <a href="https://instagram.com/" target="_blank" class="text-white hover:text-purple-300"><i class="fab fa-instagram text-lg"></i></a>
+                        <a href="https://youtube.com/" target="_blank" class="text-white hover:text-purple-300"><i class="fab fa-youtube text-lg"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-600 mt-8 pt-6 text-center">
+                <div class="footer-links">
+                    <ul>
+                        <li><a href="#products">Ürünler</a></li>
+                        <li><a href="#about">Hakkımızda</a></li>
+                        <li><a href="#contact">İletişim</a></li>
+                        <li><a href="#partners">İş Ortaklarımız</a></li>
+                        <li><a href="#" onclick="openMapModal(); return false;">Konum</a></li>
+                        <li><span>&copy; 2024 LibEdge. Tüm hakları saklıdır.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <button id="backToTop" aria-label="Başa dön">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    <div id="mapModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">Konumumuz</h3>
+                <button onclick="closeMapModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="aspect-w-16 aspect-h-9">
+                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3009.674133296944!2d29.01886997662426!3d41.05120297131715!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cab7a249a7b8d1%3A0x6d70e3c35348b387!2sLibEdge%20E%C4%9Fitim%20ve%20Dan%C4%B1%C5%9Fmanl%C4%B1k%20Hizmetleri!5e0!3m2!1str!2str!4v1705582345678!5m2!1str!2str" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Glide.js/3.6.0/glide.min.js"></script>
+    <script>
+        // Mobile menu toggle
+        const hamburger = document.querySelector('.hamburger');
+        const navLinks = document.querySelector('.nav-links');
+        
+        hamburger.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+            hamburger.setAttribute('aria-expanded', 
+                hamburger.getAttribute('aria-expanded') === 'false' ? 'true' : 'false');
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!hamburger.contains(e.target) && !navLinks.contains(e.target) && navLinks.classList.contains('active')) {
+                navLinks.classList.remove('active');
+                hamburger.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        // Back to top button
+        const backToTopButton = document.getElementById('backToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTopButton.classList.add('visible');
+            } else {
+                backToTopButton.classList.remove('visible');
+            }
+        });
+        
+        backToTopButton.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Product filtering
+        const filterButtons = document.querySelectorAll('.subject-btn');
+        const productCards = document.querySelectorAll('.product-card-container');
+        
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                
+                // Add active class to clicked button
+                button.classList.add('active');
+                
+                const filter = button.getAttribute('data-subject');
+                
+                // Show all cards if filter is 'all'
+                if (filter === 'all') {
+                    productCards.forEach(card => {
+                        card.style.display = 'block';
+                    });
+                    return;
+                }
+                
+                // Filter cards based on subject
+                productCards.forEach(card => {
+                    const subjects = card.getAttribute('data-subjects').split(' ');
+                    if (subjects.includes(filter)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // Initialize Glide.js for partners carousel
+        new Glide('.glide', {
+            type: 'carousel',
+            perView: 5,
+            gap: 30,
+            autoplay: 3000,
+            breakpoints: {
+                1024: {
+                    perView: 4
+                },
+                768: {
+                    perView: 3
+                },
+                640: {
+                    perView: 2
+                },
+                480: {
+                    perView: 1
+                }
+            }
+        }).mount();
+
+        // Map modal functions
+        function openMapModal() {
+            document.getElementById('mapModal').classList.remove('hidden');
+            document.body.classList.add('no-scroll');
+        }
+
+        function closeMapModal() {
+            document.getElementById('mapModal').classList.add('hidden');
+            document.body.classList.remove('no-scroll');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('mapModal').addEventListener('click', (e) => {
+            if (e.target.id === 'mapModal') {
+                closeMapModal();
+            }
+        });
+
+        // Form submission
+        const contactForm = document.querySelector('#contact form');
+        contactForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Here you would typically send the form data to a server
+            alert('Mesajınız için teşekkürler! En kısa sürede sizinle iletişime geçeceğiz.');
+            contactForm.reset();
+        });
+
+        // Mobile dropdown toggle for products menu
+        const productsMenuToggle = document.getElementById('products-menu-toggle');
+        if (productsMenuToggle) {
+            productsMenuToggle.addEventListener('click', (e) => {
+                if (window.innerWidth < 640) {
+                    e.preventDefault();
+                    const dropdown = productsMenuToggle.nextElementSibling;
+                    dropdown.classList.toggle('hidden');
+                }
+            });
+        }
+
+        // Prevent card flipping on link click
+        document.querySelectorAll('.flip-card a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        });
+
+        // Card flipping on touch devices
+        document.querySelectorAll('.flip-card').forEach(card => {
+            card.addEventListener('touchstart', function(e) {
+                if (window.innerWidth < 1024) {
+                    if (!this.classList.contains('flipped')) {
+                        this.classList.add('flipped');
+                        this.querySelector('.flip-inner').classList.add('flipped');
+                    } else {
+                        this.classList.remove('flipped');
+                        this.querySelector('.flip-inner').classList.remove('flipped');
+                    }
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 640 && navLinks.classList.contains('active')) {
+                navLinks.classList.remove('active');
+                hamburger.setAttribute('aria-expanded', 'false');
+            }
+        });
+    </script>
+</body>
+
+</html>

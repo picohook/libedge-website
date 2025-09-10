@@ -1,5 +1,4 @@
-    
-        document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
 
             // --- Flip Card Interaction ---
             document.querySelectorAll('.flip-card').forEach(card => {
@@ -375,8 +374,36 @@ document.getElementById('suggestionForm').addEventListener('submit', function(e)
           }
         }
 
+/* Hızlı düzeltme: yatay taşmayı engelle */
+html, body {
+  overflow-x: hidden;
+}
 
-// Basit statik çeviri sistemi
+/* Slider ve ürün ızgarası taşmayı oluşturuyorsa */
+#hero-slider,
+#products-grid,
+.products-wrapper {
+  overflow-x: hidden;
+}
+
+/* Slider yapılandırması (track + slide kullanıyorsanız) */
+.hero-slider-track {
+  display: flex;
+  width: 100%;
+}
+.hero-slide {
+  flex: 0 0 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Flip / 3D transform'ların scroll oluşturmasını engelle */
+.flip-inner {
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Basit statik çeviri sistemi */
 document.addEventListener('DOMContentLoaded', function() {
     const translateButton = document.getElementById('translateBtn');
     let isTranslated = localStorage.getItem('language') === 'en';
