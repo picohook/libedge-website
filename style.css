@@ -984,6 +984,10 @@ body.translating * {
   transition: filter 0.3s ease;
 
 }
+.marquee-item:hover .marquee-logo {
+  filter: grayscale(0%) brightness(100%);
+}
+
 .marquee-track:hover {
   animation-play-state: paused;
   filter: grayscale(0%) brightness(100%);
