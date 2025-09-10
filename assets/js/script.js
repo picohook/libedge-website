@@ -185,7 +185,7 @@
             });
 
             // --- Partner Logo Slider (Glide.js) ---
-            const partnersSliderElement = document.querySelector('.glide');
+           /* const partnersSliderElement = document.querySelector('.glide');
             if (partnersSliderElement) {
                 new Glide('.glide', {
                     type: 'carousel',
@@ -197,7 +197,8 @@
                         500: { perView: 2 }
                     }
                 }).mount();
-            }
+            }*/
+
 // Update the mobile menu toggle to be more touch-friendly
 document.querySelectorAll('.nav-links .group > a').forEach(link => {
   link.addEventListener('click', function(e) {
