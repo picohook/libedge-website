@@ -710,3 +710,141 @@ function closeMapModal() {
   document.getElementById('mapModal').classList.add('hidden');
   document.body.classList.remove('no-scroll');
 }
+
+// Hero Slider Fonksiyonu
+document.addEventListener('DOMContentLoaded', () => {
+    const slider = document.getElementById('hero-slider');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const autoplayToggle = document.getElementById('autoplayToggle');
+    const slides = document.querySelectorAll('.hero-slide');
+    const dotsContainer = document.querySelector('.slider-dots-container');
+    
+    const totalSlides = slides.length;
+    let currentSlide = 0;
+    let autoplayInterval;
+    let isAutoplayActive = true;
+    
+    // Slider dots oluştur
+    slides.forEach((_, index) => {
+        const dot = document.createElement('button');
+        dot.classList.add('slider-dot');
+        dot.setAttribute('aria-label', `Slide ${index + 1} göster`);
+        dot.addEventListener('click', () => showSlide(index));
+        dotsContainer.appendChild(dot);
+    });
+    
+    const dots = document.querySelectorAll('.slider-dot');
+    
+    function showSlide(index) {
+        // Slide sınır kontrolleri
+        if (index >= totalSlides) {
+            currentSlide = 0;
+        } else if (index < 0) {
+            currentSlide = totalSlides - 1;
+        } else {
+            currentSlide = index;
+        }
+        
+        // Slide'ı hareket ettir
+        const offset = -currentSlide * 100;
+        slider.style.transform = `translateX(${offset}%)`;
+        
+        // Aktif dot'u güncelle
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === currentSlide);
+        });
+        
+        // Otomatik geçişi resetle
+        resetAutoplay();
+    }
+    
+    function nextSlide() {
+        showSlide(currentSlide + 1);
+    }
+    
+    function prevSlide() {
+        showSlide(currentSlide - 1);
+    }
+    
+    function startAutoplay() {
+        if (isAutoplayActive) {
+            autoplayInterval = setInterval(nextSlide, 10000); // 10 saniye
+            autoplayToggle.innerHTML = '<i class="fas fa-pause"></i>';
+            autoplayToggle.setAttribute('aria-label', 'Slayt otomatik oynatmayı duraklat');
+        }
+    }
+    
+    function stopAutoplay() {
+        clearInterval(autoplayInterval);
+        autoplayToggle.innerHTML = '<i class="fas fa-play"></i>';
+        autoplayToggle.setAttribute('aria-label', 'Slayt otomatik oynatmayı başlat');
+    }
+    
+    function resetAutoplay() {
+        if (isAutoplayActive) {
+            clearInterval(autoplayInterval);
+            startAutoplay();
+        }
+    }
+    
+    function toggleAutoplay() {
+        isAutoplayActive = !isAutoplayActive;
+        if (isAutoplayActive) {
+            startAutoplay();
+        } else {
+            stopAutoplay();
+        }
+    }
+    
+    // Event listeners
+    prevBtn.addEventListener('click', prevSlide);
+    nextBtn.addEventListener('click', nextSlide);
+    autoplayToggle.addEventListener('click', toggleAutoplay);
+    
+    // Klavye navigasyonu
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') prevSlide();
+        if (e.key === 'ArrowRight') nextSlide();
+        if (e.key === ' ') {
+            e.preventDefault();
+            toggleAutoplay();
+        }
+    });
+    
+    // Touch events for mobile swipe
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    slider.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    slider.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+    
+    function handleSwipe() {
+        const swipeThreshold = 50;
+        if (touchEndX < touchStartX - swipeThreshold) {
+            nextSlide(); // Sola kaydırma → sonraki slide
+        }
+        if (touchEndX > touchStartX + swipeThreshold) {
+            prevSlide(); // Sağa kaydırma → önceki slide
+        }
+    }
+    
+    // İlk dot'u aktif yap ve autoplay'ı başlat
+    if (dots.length > 0) dots[0].classList.add('active');
+    startAutoplay();
+    
+    // Sayfa görünürlüğü değiştiğinde autoplay'ı kontrol et
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopAutoplay();
+        } else if (isAutoplayActive) {
+            startAutoplay();
+        }
+    });
+});
