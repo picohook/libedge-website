@@ -980,9 +980,13 @@ body.translating * {
   max-height: 70px;
   object-fit: contain;
   margin: auto;
+  filter: grayscale(100%) brightness(150%);
+  transition: filter 0.3s ease;
+
 }
 .marquee-track:hover {
   animation-play-state: paused;
+  filter: grayscale(0%) brightness(100%);
 }
 .partner-link {
     position: absolute;
