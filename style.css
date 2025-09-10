@@ -962,8 +962,8 @@ body.translating * {
     display: flex;          /* zaten vardı ama kesinleştir */
     align-items: center;
     justify-content: center;
-    width: 150px;
-    height: 90px;
+    width: 160px;
+    height: 100px;
     margin: 0 1rem;
     background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 1px solid rgba(255, 255, 255, 0.1);
