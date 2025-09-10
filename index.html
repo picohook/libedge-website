@@ -239,72 +239,58 @@
 
 <!-- Hero Slider Yapısı -->
 <main class="hero-slider-container">
-    <div id="hero-slider" class="hero-slider">
-        <!-- SLIDE 1: Mevcut İçerik (Video) -->
-        <div class="hero-slide active">
-            <video class="hero-video" src="assets/videos/library.mp4" autoplay muted loop playsinline aria-hidden="true" role="presentation"></video>
-            <div class="hero-content">
-                <h1 class="hero-header translatable"><span class="font-normal">Bilginin Gücünü Keşfedin</span></h1>
-                <p class="hero-subtitle translatable">Kalite ve dürüstlük ilkesi ile 20 yıla yakın sektör deneyimini harmanlıyoruz. Kütüphanelere ürün danışmanlığı, abonelik süreç desteği ve yerinde eğitim hizmetleri sunuyoruz.</p>
-            </div>
-            <!-- Badges wrapper slide içine taşındı -->
-            <div class="hero-badges-wrapper">
-                <button onclick="openModal()" class="hero-badge translatable" aria-label="Ürün önerisi gönder">
-                    <i class="fas fa-ticket-alt mr-2" aria-hidden="true"></i>
-                    <span>Deneme Erişimi İsteği</span>
-                </button>
-                <button onclick="openSuggestionModal()" class="hero-badge translatable">
-                    <i class="fas fa-lightbulb mr-2" aria-hidden="true"></i>
-                    <span>Ürün Öneriniz Var mı?</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- SLIDE 2: Yeni Slide (Örnek - Görsel ve farklı mesaj) -->
-        <div class="hero-slide">
-            <img src="assets/images/hero-slide-2.jpg" alt="LibEdge İş Ortaklıkları" class="hero-bg-image" loading="lazy">
-            <div class="hero-content">
-                <h1 class="hero-header translatable"><span class="font-normal">Öncü Yayıncılarla İş Birliği</span></h1>
-                <p class="hero-subtitle translatable">Dünyanın önde gelen akademik yayıncıları ve teknoloji sağlayıcıları ile stratejik iş birlikleri. Kurumunuz için en güncel ve nitelikli içeriğe erişin.</p>
-            </div>
-            <!-- Bu slide'a özel buton veya link eklenebilir -->
-            <div class="hero-badges-wrapper">
-                <a href="#partners" class="hero-badge translatable">
-                    <i class="fas fa-handshake mr-2" aria-hidden="true"></i>
-                    <span>İş Ortaklarımızı Görün</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- SLIDE 3: Yeni Slide (Örnek - Başka bir görsel ve mesaj) -->
-        <div class="hero-slide">
-            <img src="assets/images/hero-slide-3.jpg" alt="LibEdge Eğitim Çözümleri" class="hero-bg-image" loading="lazy">
-            <div class="hero-content">
-                <h1 class="hero-header translatable"><span class="font-normal">Eğitim ve Danışmanlık Çözümleri</span></h1>
-                <p class="hero-subtitle translatable">Kütüphane personeli ve akademisyenler için özelleştirilmiş eğitim programları ve stratejik danışmanlık hizmetleri.</p>
-            </div>
-            <div class="hero-badges-wrapper">
-                <a href="#services" class="hero-badge translatable">
-                    <i class="fas fa-chalkboard-teacher mr-2" aria-hidden="true"></i>
-                    <span>Hizmetlerimizi Keşfedin</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- SLIDE 4: Video yerine gradient arka plan (Örnek) -->
-        <div class="hero-slide" style="background: linear-gradient(135deg, #220f60 0%, #6C63FF 100%);">
-            <div class="hero-content">
-                <h1 class="hero-header translatable"><span class="font-normal">Teknoloji ve İnovasyon</span></h1>
-                <p class="hero-subtitle translatable">Yapay zeka destekli araştırma araçlarından, interaktif öğrenme platformlarına kadar yenilikçi çözümler.</p>
-            </div>
-            <div class="hero-badges-wrapper">
-                <a href="#products" class="hero-badge translatable">
-                    <i class="fas fa-robot mr-2" aria-hidden="true"></i>
-                    <span>Yapay Zeka Ürünlerimiz</span>
-                </a>
-            </div>
-        </div>
+<!-- Add this as the main hero area, replacing the separate <section class="hero-container"> elements -->
+<div class="hero-slider-container">
+  <div id="hero-slider" class="hero-slider">
+    <!-- Slide 1 -->
+    <div class="hero-slide">
+      <img src="assets/images/bg1.jpg" alt="Background 1" class="hero-bg-image"> <!-- Or use <video> if preferred -->
+      <div class="hero-content">
+        <h1 class="hero-header">Bilginin Gücünü Keşfedin</h1>
+        <p class="hero-subtitle">Kalite ve dürüstlük ilkesi ile 20 yıla yakın sektör deneyimini harmanlıyoruz. Kütüphanelere ürün danışmanlığı, abonelik süreç desteği ve yerinde eğitim hizmetleri sunuyoruz.</p>
+      </div>
+      <div class="hero-badges-wrapper">
+        <a href="#" onclick="openModal()" class="hero-badge"><i class="fas fa-rocket mr-2"></i> Deneme Erişimi İsteği</a>
+        <a href="#" onclick="openSuggestionModal()" class="hero-badge"><i class="fas fa-lightbulb mr-2"></i> Ürün Öneriniz Var mı?</a>
+      </div>
     </div>
+
+    <!-- Slide 2 -->
+    <div class="hero-slide">
+      <img src="assets/images/bg2.jpg" alt="Background 2" class="hero-bg-image">
+      <div class="hero-content">
+        <h1 class="hero-header">Öncü Yayıncılarla İş Birliği</h1>
+        <p class="hero-subtitle">Dünyanın önde gelen akademik yayıncıları ve teknoloji sağlayıcıları ile stratejik iş birlikleri. Kurumunuz için en güncel ve nitelikli içeriğe erişin.</p>
+      </div>
+      <div class="hero-badges-wrapper">
+        <a href="#partners" class="hero-badge"><i class="fas fa-handshake mr-2"></i> İş Ortaklarımızı Görün</a>
+      </div>
+    </div>
+
+    <!-- Slide 3 (add more as needed) -->
+    <div class="hero-slide">
+      <img src="assets/images/bg3.jpg" alt="Background 3" class="hero-bg-image">
+      <div class="hero-content">
+        <h1 class="hero-header">Eğitim ve Danışmanlık Çözümleri</h1>
+        <p class="hero-subtitle">Kütüphane personeli ve akademisyenler için özelleştirilmiş eğitim programları ve stratejik danışmanlık hizmetleri.</p>
+      </div>
+      <div class="hero-badges-wrapper">
+        <a href="#services" class="hero-badge"><i class="fas fa-graduation-cap mr-2"></i> Hizmetlerimizi Keşfedin</a>
+      </div>
+    </div>
+
+    <!-- Slide 4 -->
+    <div class="hero-slide">
+      <!-- Similar structure for the fourth hero -->
+    </div>
+  </div>
+
+  <!-- Add navigation controls (match IDs/classes in JS) -->
+  <button id="prevBtn" class="slider-nav-btn slider-prev"><i class="fas fa-chevron-left"></i></button>
+  <button id="nextBtn" class="slider-nav-btn slider-next"><i class="fas fa-chevron-right"></i></button>
+  <div class="slider-dots-container"></div> <!-- Dots will be generated by JS -->
+  <button id="autoplayToggle" class="autoplay-toggle"><i class="fas fa-pause"></i></button> <!-- Starts as paused; toggle icon -->
+</div>
 
     <!-- Navigation Buttons -->
     <button id="prevBtn" class="slider-nav-btn slider-prev" aria-label="Önceki slide">
