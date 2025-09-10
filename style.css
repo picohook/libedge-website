@@ -979,7 +979,9 @@ body.translating * {
     max-height: 100%;       /* kutunun yüksekliğine göre sınırla */
     object-fit: contain;   /* width/height belirlendiğinde korur */
 }
-
+.marquee-track:hover {
+  animation-play-state: paused;
+}
 .partner-link {
     position: absolute;
     bottom: 0;
