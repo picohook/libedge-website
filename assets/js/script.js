@@ -875,3 +875,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// Hero slider kodunun en sonuna bu satırları ekleyin:
+if (dots.length > 0) dots[0].classList.add('active');
+startAutoplay();
