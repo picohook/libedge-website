@@ -17,12 +17,9 @@
     position: relative;
     width: 100%;
     height: 100vh;
-    overflow: hidden;
+
 }
 
-.slider-container {
-  overflow: visible !important;
-}
 .hero-video {
     position: absolute;
     top: 50%;
