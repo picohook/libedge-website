@@ -982,16 +982,12 @@ body.translating * {
   margin: auto;
   filter: grayscale(100%) brightness(150%);
   transition: filter 0.3s ease;
-
 }
+
 .marquee-item:hover .marquee-logo {
   filter: grayscale(0%) brightness(100%);
 }
 
-.marquee-track:hover {
-  animation-play-state: paused;
-  filter: grayscale(0%) brightness(100%);
-}
 .partner-link {
     position: absolute;
     bottom: 0;
