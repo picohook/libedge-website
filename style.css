@@ -6,6 +6,7 @@
 
         .bg-primary {
             background-color: #220f60;
+            overflow-x: hidden;
         }
 
         .text-primary {
