@@ -6,7 +6,6 @@
 
         .bg-primary {
             background-color: #220f60;
-            overflow-x: hidden;
         }
 
         .text-primary {
@@ -1063,12 +1062,8 @@ body.translating * {
     width: 100%;
     height: 100%;
     position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
-/* Hero arkaplan görüntüsü için (video yoksa) */
 .hero-bg-image {
     position: absolute;
     top: 0;
@@ -1078,34 +1073,6 @@ body.translating * {
     object-fit: cover;
     z-index: 0;
     filter: brightness(0.7);
-}
-
-/* Hero video için mevcut stil aynen kalacak */
-.hero-video {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: translate(-50%, -50%);
-    z-index: 0;
-    filter: brightness(0.75) blur(1px);
-}
-
-/* Hero içerik - mevcut stil geliştirildi */
-.hero-content {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    color: white;
-    padding: 0 1rem;
-    max-width: 1200px;
-    margin: 0 auto;
 }
 
 /* Navigation Buttons */
@@ -1144,7 +1111,7 @@ body.translating * {
 /* Slider Dots */
 .slider-dots-container {
     position: absolute;
-    bottom: 100px; /* Badges'in üstüne gelecek şekilde */
+    bottom: 100px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -1193,15 +1160,6 @@ body.translating * {
 
 .autoplay-toggle:hover {
     background: rgba(255, 255, 255, 0.3);
-}
-
-/* Badges wrapper pozisyonu slider için ayarlandı */
-.hero-slide .hero-badges-wrapper {
-    position: absolute;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
 }
 
 /* Responsive Tasarım */
