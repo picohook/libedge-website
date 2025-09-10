@@ -974,8 +974,11 @@ body.translating * {
     overflow: hidden;
 }
 .marquee-logo {
-    max-height: 60px; /* Yeni, daha küçük logo yüksekliği */
-    max-width: 90%;
+    max-width: 90%; /* Kutunun genişliğinin en fazla %90'ı */
+    max-height: 90%; /* Kutunun yüksekliğinin en fazla %90'ı */
+    width: auto; /* Genişliği otomatik ayarla */
+    height: auto; /* Yüksekliği otomatik ayarla */
+    object-fit: contain; /* Görselin en boy oranını koruyarak kutuya sığmasını sağlar */
 }
 
 .partner-link {
