@@ -961,6 +961,7 @@ body.translating * {
     overflow: hidden;       /* kutudan taşan içeriği kırpar */
     display: flex;          /* zaten vardı ama kesinleştir */
     align-items: center;
+    padding: 0.5rem;
     justify-content: center;
     width: 160px;
     height: 100px;
