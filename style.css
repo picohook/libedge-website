@@ -974,10 +974,11 @@ body.translating * {
     /* overflow: hidden; zaten eklendi */
 }
 .marquee-logo {
-    display: block;        /* inline boşluğu kaldırır */
-    max-width: 100%;        /* kutu içi boşluk bırak */
-    max-height: 100%;       /* kutunun yüksekliğine göre sınırla */
-    object-fit: contain;   /* width/height belirlendiğinde korur */
+  display: block;
+  max-width: 80%;
+  max-height: 70px;
+  object-fit: contain;
+  margin: auto;
 }
 .marquee-track:hover {
   animation-play-state: paused;
