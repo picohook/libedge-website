@@ -738,8 +738,6 @@ function closeMapModal() {
   document.body.classList.remove('no-scroll');
 }
 
-// ...existing code...
-
 // --- Robust Hero Slider (id ile hedefleme, prev/next, dots, autoplay, touch) ---
 document.addEventListener('DOMContentLoaded', () => {
   const slider = document.getElementById('hero-slider'); // kesin hedef: id kullan
