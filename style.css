@@ -937,7 +937,7 @@ body.translating * {
     color: #220f60;
   }
 }
-/* Modern Marquey Stilleri */
+/* Modern Marquee Stilleri */
 .modern-marquee {
     overflow: hidden;
     position: relative;
@@ -952,58 +952,45 @@ body.translating * {
 
 .marquee-track {
     display: flex;
-    animation: marqueeScroll 40s linear infinite; /* Hız 40s */
+    animation: marqueeScroll 30s linear infinite;
     padding: 1rem 0;
 }
 
+.marquee-track:hover {
+    animation-play-state: paused;
+}
+
 .marquee-item {
-    box-sizing: border-box; /* padding/border'ın toplam genişliği etkilemesini engelle */
-    overflow: hidden;       /* kutudan taşan içeriği kırpar */
-    display: flex;          /* zaten vardı ama kesinleştir */
-    align-items: center;
-    justify-content: center;
-    width: 150px;
-    height: 90px;
-    margin: 0 1rem;
+    flex: 0 0 auto;
+    width: 200px;
+    height: 120px;
+    margin: 0 1.5rem;
     background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
-    position: relative;
-    /* overflow: hidden; zaten eklendi */
-}
-.marquee-logo {
-    display: block;        /* inline boşluğu kaldırır */
-    max-width: 90%;        /* kutu içi boşluk bırak */
-    max-height: 80%;       /* kutunun yüksekliğine göre sınırla */
-    width: auto;
-    height: auto;
-    object-fit: contain;   /* width/height belirlendiğinde korur */
 }
 
-.partner-link {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(34, 15, 96, 0.85);
-    color: white;
-    text-align: center;
-    padding: 0.4rem;
-    font-size: 0.75rem;
-    opacity: 0;
-    transform: translateY(100%);
-    transition: all 0.3s ease;
-    text-decoration: none;
-    z-index: 10;
-    border-bottom-left-radius: 16px;
-    border-bottom-right-radius: 16px;
+.marquee-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
 }
 
-.marquee-item:hover .partner-link {
-    opacity: 1;
-    transform: translateY(0);
+.partner-logo {
+    max-width: 80%;
+    max-height: 70px;
+    object-fit: contain;
+    filter: grayscale(100%) brightness(150%);
+    transition: filter 0.3s ease;
+}
+
+.marquee-item:hover .partner-logo {
+    filter: grayscale(0%) brightness(100%);
 }
 
 @keyframes marqueeScroll {
@@ -1012,5 +999,23 @@ body.translating * {
     }
     100% {
         transform: translateX(-50%);
+    }
+}
+
+/* Responsive tasarım */
+@media (max-width: 768px) {
+    .marquee-item {
+        width: 150px;
+        height: 100px;
+        margin: 0 1rem;
+    }
+    
+    @keyframes marqueeScroll {
+        0% {
+            transform: translateX(0);
+        }
+        100% {
+            transform: translateX(-100%);
+        }
     }
 }
