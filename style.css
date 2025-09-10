@@ -20,6 +20,9 @@
     overflow: hidden;
 }
 
+.slider-container {
+  overflow: visible !important;
+}
 .hero-video {
     position: absolute;
     top: 50%;
