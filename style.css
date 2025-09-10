@@ -957,21 +957,21 @@ body.translating * {
 }
 
 .marquee-item {
-    flex: 0 0 auto;
-    width: 150px; /* Yeni, daha küçük genişlik */
-    height: 90px; /* Yeni, daha küçük yükseklik */
-    margin: 0 1rem; /* Logo aralarındaki boşluk */
+    box-sizing: border-box; /* padding/border'ın toplam genişliği etkilemesini engelle */
+    overflow: hidden;       /* kutudan taşan içeriği kırpar */
+    display: flex;          /* zaten vardı ama kesinleştir */
+    align-items: center;
+    justify-content: center;
+    width: 150px;
+    height: 90px;
+    margin: 0 1rem;
     background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
     position: relative;
-    overflow: hidden;
+    /* overflow: hidden; zaten eklendi */
 }
 .marquee-logo {
     display: block;        /* inline boşluğu kaldırır */
