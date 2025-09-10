@@ -375,9 +375,7 @@ document.getElementById('suggestionForm').addEventListener('submit', function(e)
         }
 
 /* Hızlı düzeltme: yatay taşmayı engelle */
-html, body {
-  overflow-x: hidden;
-}
+
 
 /* Slider ve ürün ızgarası taşmayı oluşturuyorsa */
 #hero-slider,
