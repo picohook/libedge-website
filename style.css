@@ -958,8 +958,8 @@ body.translating * {
 
 .marquee-item {
     flex: 0 0 auto;
-    width: 220px;
-    height: 140px;
+    width: 200px;
+    height: 120px;
     margin: 0 1.5rem;
     background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 1px solid rgba(255, 255, 255, 0.1);
