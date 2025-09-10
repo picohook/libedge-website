@@ -958,9 +958,9 @@ body.translating * {
 
 .marquee-item {
     flex: 0 0 auto;
-    width: 200px;
-    height: 120px;
-    margin: 0 1.5rem;
+    width: 150px; /* Yeni, daha küçük genişlik */
+    height: 90px; /* Yeni, daha küçük yükseklik */
+    margin: 0 1rem; /* Logo aralarındaki boşluk */
     background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
@@ -972,6 +972,10 @@ body.translating * {
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+}
+.marquee-logo {
+    max-height: 60px; /* Yeni, daha küçük logo yüksekliği */
+    max-width: 90%;
 }
 
 .partner-link {
