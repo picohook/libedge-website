@@ -952,7 +952,7 @@ body.translating * {
 
 .marquee-track {
     display: flex;
-    animation: marqueeScroll 40s linear infinite; /* Hız 40s */
+    animation: marqueeScroll 30s linear infinite; /* Hız 30s */
     padding: 1rem 0;
 }
 
