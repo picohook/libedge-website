@@ -175,35 +175,31 @@
     const currentUrl = window.location.origin;
     const currentPath = window.location.pathname;
     
+    // GitHub OAuth için Client ID (Cloudflare Pages environment variable'dan alınabilir)
+    // BU DEĞERİ GÜNCELLEMEYİ UNUTMAYIN!
+    const GITHUB_CLIENT_ID = 'YOUR_GITHUB_CLIENT_ID';
+    
     // CMS'in daha önce yüklenip yüklenmediğini kontrol et
     let cmsInitialized = false;
     
     // Manuel GitHub kimlik doğrulama URL'si oluştur
     function manualGitHubAuth() {
-      // Bu değerleri GitHub OAuth uygulamanızdan almalısınız
-      const clientId = 'Ov23lidMzyuYibko4gCs'; // GitHub OAuth App Client ID
       const redirectUri = encodeURIComponent(currentUrl + currentPath);
       const scope = encodeURIComponent('repo');
       const state = encodeURIComponent('libedge-cms');
       
-      const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+      const authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
       window.location.href = authUrl;
     }
     
-    // CMS yapılandırması - GitHub backend için özel ayarlar
+    // Basit CMS yapılandırması
     const getConfig = () => ({
       backend: {
         name: "github",
         repo: "picohook/libedge-website",
         branch: "main",
-        // Aşağıdaki ayarlar URL birleştirme hatasını çözecektir
-        base_url: "https://api.github.com",
-        auth_endpoint: "auth", // Göreli yol kullanıyoruz
-        api_root: "https://api.github.com",
         // Netlify gateway'i tamamen devre dışı bırak
-        use_gateway: false,
-        // GitHub App yerine OAuth App kullan
-        proxy_url: ""
+        use_gateway: false
       },
       locale: 'tr',
       load_config_file: false,
@@ -289,9 +285,6 @@
         // Yapılandırmayı al
         const config = getConfig();
         
-        // GitHub backend için özel işleyici ekle
-        overrideGitHubBackend();
-        
         // CMS'i başlat
         CMS.init({ config });
         
@@ -308,43 +301,19 @@
       }
     }
     
-    function overrideGitHubBackend() {
-      // GitHub backend'inin auth URL oluşturma metodunu override et
-      const originalGitHubBackend = CMS.getBackend('github');
-      
-      if (originalGitHubBackend) {
-        // Özelleştirilmiş GitHub backend sınıfı
-        const CustomGitHubBackend = class extends originalGitHubBackend {
-          constructor(config) {
-            super(config);
-            
-            // Auth URL'yi düzelt
-            this.auth_url = this.buildCorrectAuthURL();
-          }
-          
-          buildCorrectAuthURL() {
-            // Doğru GitHub OAuth URL'sini oluştur
-            const clientId = 'Ov23lidMzyuYibko4gCs'; // GitHub OAuth App Client ID
-            const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
-            const scope = encodeURIComponent('repo');
-            const state = encodeURIComponent('libedge-cms');
-            
-            return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
-          }
-        };
-        
-        // Özelleştirilmiş backend'i kaydet
-        CMS.registerBackend('github', CustomGitHubBackend);
-      }
-    }
-    
     function handleOAuthCallback(code) {
       // Burada GitHub OAuth callback işlemini yönet
       console.log('OAuth callback received, code:', code);
       
       // Token'ı localStorage'a kaydet ve sayfayı yenile
       localStorage.setItem('github_token', 'temp_token_' + code);
-      window.location.href = currentUrl + currentPath;
+      
+      // URL'den code ve state parametrelerini temizle
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+      
+      // Sayfayı yenile
+      window.location.reload();
     }
     
     function showError(message, error = null) {
