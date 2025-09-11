@@ -4,13 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LibEdge | İçerik Yönetim Paneli</title>
-  <script>
-    window.CMS_MANUAL_INIT = true;
-  </script>
 </head>
 <body>
+  <script>
+    // 1. Manuel başlatma komutu
+    window.CMS_MANUAL_INIT = true;
+
+    // 2. Decap CMS'i yükleyin
+  </script>
   <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
   <script>
+    // 3. Decap CMS yüklendikten sonra, yapılandırmayı başlatın
     CMS.init({
       config: {
         backend: {
