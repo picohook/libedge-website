@@ -145,6 +145,14 @@
       font-size: 12px;
       margin-top: 10px;
     }
+    
+    .github-config {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 20px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -161,9 +169,32 @@
       </div>
       
       <div class="error-message" id="error-message" style="display: none;">
-        <h3>Yapılandırma Hatası</h3>
-        <p id="error-details">İçerik yönetim paneli yüklenirken bir hata oluştu. Lütfen aşağıdaki hata detaylarını kontrol edin.</p>
+        <h3>Kimlik Doğrulama Hatası</h3>
+        <p id="error-details">GitHub kimlik doğrulama sırasında bir hata oluştu. Lütfen aşağıdaki talimatları izleyin.</p>
         <div id="error-details-container" style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 5px;"></div>
+        
+        <div class="github-config">
+          <h4>GitHub OAuth Uygulaması Kurulumu:</h4>
+          <ol>
+            <li>GitHub'da <a href="https://github.com/settings/developers" target="_blank">Developer Settings</a> sayfasına gidin</li>
+            <li>"OAuth Apps" bölümüne tıklayın ve "New OAuth App" seçin</li>
+            <li>Gerekli bilgileri doldurun:
+              <ul>
+                <li>Application name: LibEdge CMS</li>
+                <li>Homepage URL: <span id="homepage-url"></span></li>
+                <li>Authorization callback URL: <span id="callback-url"></span></li>
+              </ul>
+            </li>
+            <li>Oluşturduktan sonra Client ID ve Client Secret değerlerini alın</li>
+            <li>Cloudflare Pages'de Environment Variables olarak ekleyin:
+              <ul>
+                <li>GITHUB_CLIENT_ID: [Client ID değeriniz]</li>
+                <li>GITHUB_CLIENT_SECRET: [Client Secret değeriniz]</li>
+              </ul>
+            </li>
+          </ol>
+        </div>
+        
         <button class="btn" onclick="window.location.reload()">Sayfayı Yenile</button>
         <button class="btn" onclick="resetConfiguration()">Yapılandırmayı Sıfırla</button>
       </div>
@@ -173,10 +204,10 @@
       <div class="troubleshooting">
         <h3>Sorun Giderme Önerileri</h3>
         <ul>
-          <li>Yapılandırma dosyasında aynı isme sahip koleksiyonlar olmadığından emin olun</li>
-          <li>GitHub repository ayarlarını kontrol edin</li>
+          <li>GitHub OAuth uygulamasının doğru yapılandırıldığından emin olun</li>
+          <li>Callback URL'in doğru olduğundan emin olun</li>
+          <li>Cloudflare Pages environment variables'larını kontrol edin</li>
           <li>Tarayıcı önbelleğini temizleyin (Ctrl+F5)</li>
-          <li>Farklı bir tarayıcı deneyin (Chrome, Firefox, Edge)</li>
         </ul>
       </div>
     </div>
@@ -190,20 +221,26 @@
   <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
   
   <script>
+    // Sayfa URL'lerini ayarla
+    document.getElementById('homepage-url').textContent = window.location.origin;
+    document.getElementById('callback-url').textContent = window.location.origin + window.location.pathname;
+    
     // CMS'in daha önce yüklenip yüklenmediğini kontrol et
     let cmsInitialized = false;
     
-    // CMS yapılandırması
+    // CMS yapılandırması - Netlify referansları kaldırıldı
     const getConfig = () => ({
       backend: {
         name: "github",
         repo: "picohook/libedge-website",
         branch: "main",
-        site_domain: window.location.hostname,
-        auth_endpoint: "api.github.com"
+        base_url: "https://api.github.com",
+        auth_endpoint: "https://github.com/login/oauth/authorize",
+        // Netlify gateway kaldırıldı, doğrudan GitHub API kullanılıyor
+        api_root: "https://api.github.com"
       },
       locale: 'tr',
-      load_config_file: false, // Harici config dosyası yüklemesini devre dışı bırak
+      load_config_file: false,
       media_folder: "assets/images/uploads",
       public_folder: "/assets/images/uploads",
       collections: [
