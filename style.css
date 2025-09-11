@@ -1048,19 +1048,18 @@ body.translating * {
     position: relative;
     width: 100%;
     height: 100vh;
-    overflow: hidden;
+    overflow: hidden; /* Kayma sırasında taşan slide'ları gizle */
 }
 
 .hero-slider {
-    display: flex;
+    display: flex; /* Slide'ları yan yana dizer */
     width: 100%;
     height: 100%;
     transition: transform 0.5s ease-in-out;
 }
 
-
 .hero-slide {
-    flex: 0 0 100%;     /* Her slide tam genişlik */
+    flex: 0 0 100%;   /* Her slide tam genişlik */
     max-width: 100%;
     height: 100%;
     position: relative;
@@ -1069,7 +1068,6 @@ body.translating * {
     justify-content: center;
     box-sizing: border-box;
 }
-
 
 /* Hero arkaplan görüntüsü için (video yoksa) */
 .hero-bg-image {
@@ -1083,7 +1081,7 @@ body.translating * {
     filter: brightness(0.7);
 }
 
-/* Hero video için mevcut stil aynen kalacak */
+/* Hero video için mevcut stil */
 .hero-video {
     position: absolute;
     top: 50%;
@@ -1096,7 +1094,7 @@ body.translating * {
     filter: brightness(0.75) blur(1px);
 }
 
-/* Hero içerik - mevcut stil geliştirildi */
+/* Hero içerik */
 .hero-content {
     position: relative;
     z-index: 2;
@@ -1198,7 +1196,7 @@ body.translating * {
     background: rgba(255, 255, 255, 0.3);
 }
 
-/* Badges wrapper pozisyonu slider için ayarlandı */
+/* Badges wrapper */
 .hero-slide .hero-badges-wrapper {
     position: absolute;
     bottom: 2rem;
@@ -1232,27 +1230,20 @@ body.translating * {
     .slider-dots-container {
         bottom: 90px;
     }
-}/* Yatay taşmayı engelleme (ek kontroller) 
-#hero-slider,*/
-#products-grid,
-.products-wrapper {
-    overflow-x: hidden;
 }
-
-/* Hero slider track yapılandırması
-.hero-slider-track {
-    display: flex;
-    width: 100%;
-}
-*/
 
 /* Flip-inner stillerini güncelle (mevcut stillere ekleme) */
 .flip-inner {
-    /* Mevcut stiller korunacak, sadece eksik olanları ekle: */
     -webkit-backface-visibility: hidden; /* Safari desteği */
     backface-visibility: hidden;
     transform-style: preserve-3d;
 }
+
+/* Hatalı kısımları temizledim:
+   - #hero-slider için overflow-x: hidden kaldırıldı.
+   - .hero-slider-track tamamen kaldırıldı (çünkü HTML'de yok).
+*/
+
 
 /* Çeviri sistemi için loading stilleri */
 body.translating {
