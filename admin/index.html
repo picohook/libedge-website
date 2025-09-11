@@ -17,16 +17,13 @@
       color: #333;
       background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
       padding: 20px;
     }
     
     .container {
       width: 100%;
-      max-width: 800px;
+      max-width: 1000px;
+      margin: 0 auto;
       background: white;
       border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
@@ -83,12 +80,6 @@
     
     .error-message h3 {
       margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-    }
-    
-    .error-message h3 svg {
-      margin-right: 10px;
     }
     
     .btn {
@@ -104,20 +95,11 @@
       transition: background 0.3s;
       text-decoration: none;
       margin-top: 10px;
+      margin-right: 10px;
     }
     
     .btn:hover {
       background: #3a5ace;
-    }
-    
-    .btn-outline {
-      background: transparent;
-      color: #4a6bdf;
-      border: 2px solid #4a6bdf;
-    }
-    
-    .btn-outline:hover {
-      background: #f0f3ff;
     }
     
     .troubleshooting {
@@ -142,7 +124,8 @@
     }
     
     #cms-root {
-      min-height: 400px;
+      min-height: 500px;
+      position: relative;
     }
     
     footer {
@@ -150,6 +133,17 @@
       margin-top: 30px;
       color: #666;
       font-size: 14px;
+      padding: 20px;
+    }
+    
+    pre {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 5px;
+      overflow: auto;
+      font-size: 12px;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -167,17 +161,11 @@
       </div>
       
       <div class="error-message" id="error-message" style="display: none;">
-        <h3>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-          Yapılandırma Hatası
-        </h3>
+        <h3>Yapılandırma Hatası</h3>
         <p id="error-details">İçerik yönetim paneli yüklenirken bir hata oluştu. Lütfen aşağıdaki hata detaylarını kontrol edin.</p>
         <div id="error-details-container" style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 5px;"></div>
         <button class="btn" onclick="window.location.reload()">Sayfayı Yenile</button>
+        <button class="btn" onclick="resetConfiguration()">Yapılandırmayı Sıfırla</button>
       </div>
       
       <div id="cms-root"></div>
@@ -187,82 +175,103 @@
         <ul>
           <li>Yapılandırma dosyasında aynı isme sahip koleksiyonlar olmadığından emin olun</li>
           <li>GitHub repository ayarlarını kontrol edin</li>
-          <li>Tarayıcınızın JavaScript engelleyici eklentilerini devre dışı bırakın</li>
+          <li>Tarayıcı önbelleğini temizleyin (Ctrl+F5)</li>
           <li>Farklı bir tarayıcı deneyin (Chrome, Firefox, Edge)</li>
         </ul>
       </div>
     </div>
+    
+    <footer>
+      <p>LibEdge © 2024. Tüm hakları saklıdır.</p>
+    </footer>
   </div>
-  
-  <footer>
-    <p>LibEdge © 2024. Tüm hakları saklıdır.</p>
-  </footer>
 
   <!-- Decap CMS'i doğrudan yükle -->
   <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
   
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // CMS yüklendikten sonra çalışacak
-      if (typeof CMS !== 'undefined') {
-        initializeCMS();
-      } else {
-        showError('Decap CMS kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
-      }
-    });
-
-    function initializeCMS() {
-      try {
-        // Yapılandırma - benzersiz koleksiyon isimlerine dikkat edin
-        const config = {
-          backend: {
-            name: "github",
-            repo: "picohook/libedge-website",
-            branch: "main",
-            site_domain: window.location.hostname,
-            auth_endpoint: "api.github.com"
-          },
-          locale: 'tr',
-          media_folder: "assets/images/uploads",
-          public_folder: "/assets/images/uploads",
-          collections: [
+    // CMS yapılandırması
+    const getConfig = () => ({
+      backend: {
+        name: "github",
+        repo: "picohook/libedge-website",
+        branch: "main",
+        site_domain: window.location.hostname
+      },
+      locale: 'tr',
+      media_folder: "assets/images/uploads",
+      public_folder: "/assets/images/uploads",
+      collections: [
+        {
+          name: "announcements",
+          label: "Duyurular",
+          label_singular: "Duyuru",
+          description: "Web sitesindeki duyuruları buradan ekleyebilir veya düzenleyebilirsiniz.",
+          files: [
             {
-              name: "announcements",
-              label: "Duyurular",
-              label_singular: "Duyuru",
-              description: "Web sitesindeki duyuruları buradan ekleyebilir veya düzenleyebilirsiniz.",
-              files: [
+              file: "content/announcements.json",
+              label: "Tüm Duyurular",
+              name: "announcements_list",
+              fields: [
                 {
-                  file: "content/duyurular.json",
-                  label: "Tüm Duyurular",
-                  name: "all_announcements",
+                  label: "Duyuru Listesi",
+                  name: "items",
+                  widget: "list",
                   fields: [
-                    {
-                      label: "Duyuru Listesi",
-                      name: "items",
-                      widget: "list",
-                      fields: [
-                        {label: "Başlık", name: "title", widget: "string"},
-                        {label: "Tarih", name: "date", widget: "datetime", format: "YYYY-MM-DD", date_format: "YYYY-MM-DD"},
-                        {label: "Kategori", name: "category", widget: "select", options: ["urgent", "new-product", "event", "maintenance", "general"]},
-                        {label: "Özet (Kısa Açıklama)", name: "summary", widget: "text"},
-                        {label: "Tam İçerik (Detaylı Açıklama)", name: "full_content", widget: "markdown"}
-                      ]
-                    }
+                    {label: "Başlık", name: "title", widget: "string"},
+                    {label: "Tarih", name: "date", widget: "datetime", format: "YYYY-MM-DD", date_format: "YYYY-MM-DD"},
+                    {label: "Kategori", name: "category", widget: "select", options: ["urgent", "new-product", "event", "maintenance", "general"]},
+                    {label: "Özet (Kısa Açıklama)", name: "summary", widget: "text"},
+                    {label: "Tam İçerik (Detaylı Açıklama)", name: "full_content", widget: "markdown"}
                   ]
                 }
               ]
             }
           ]
-        };
+        }
+      ]
+    });
+
+    // Sayfa yüklendiğinde
+    document.addEventListener('DOMContentLoaded', function() {
+      // Eski CMS örneğini temizle
+      if (window.CMS) {
+        try {
+          // CMS'i manuel olarak temizle
+          const rootElement = document.getElementById('cms-root');
+          if (rootElement) {
+            rootElement.innerHTML = '';
+          }
+        } catch (error) {
+          console.warn('Temizleme hatası:', error);
+        }
+      }
+      
+      // CMS yüklendikten sonra çalışacak
+      if (typeof CMS !== 'undefined') {
+        initializeCMS();
+      } else {
+        showError('Decap CMS kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
+        
+        // 5 saniye sonra tekrar dene
+        setTimeout(() => {
+          window.location.reload();
+        }, 5000);
+      }
+    });
+
+    function initializeCMS() {
+      try {
+        // Yapılandırmayı al
+        const config = getConfig();
         
         // CMS'i başlat
-        CMS.init({
-          config: config
-        });
+        CMS.init({ config });
         
         // Yükleme ekranını gizle
         document.getElementById('loading').style.display = 'none';
+        
+        console.log('Decap CMS başarıyla yüklendi ve yapılandırıldı');
         
       } catch (error) {
         showError('CMS başlatma hatası: ' + error.message, error);
@@ -274,14 +283,41 @@
       document.getElementById('error-details').textContent = message;
       
       if (error) {
-        document.getElementById('error-details-container').innerHTML = `
-          <strong>Detaylar:</strong><br>
-          <pre style="font-size: 12px; overflow: auto;">${error.stack || error.message}</pre>
+        const errorDetails = `
+          <strong>Hata Detayları:</strong><br>
+          <pre>${error.stack || error.message}</pre>
         `;
+        document.getElementById('error-details-container').innerHTML = errorDetails;
       }
       
       document.getElementById('error-message').style.display = 'block';
     }
+    
+    function resetConfiguration() {
+      // LocalStorage'daki CMS yapılandırmasını temizle
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('decap-cms')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // SessionStorage'ı temizle
+      sessionStorage.clear();
+      
+      // Sayfayı yenile
+      window.location.reload();
+    }
+    
+    // Hata yakalama
+    window.addEventListener('error', function(e) {
+      console.error('Global hata yakalandı:', e.error);
+    });
+    
+    // Promise hatalarını yakala
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('Promise hatası yakalandı:', e.reason);
+      showError('Beklenmeyen bir hata oluştu: ' + e.reason.message);
+    });
   </script>
 </body>
 </html>
