@@ -2,13 +2,21 @@ backend:
   name: github
   repo: picohook/libedge-website
   branch: main
-  site_domain: libedge-website.pages.dev
   base_url: https://api.github.com
   auth_endpoint: https://github.com/login/oauth/authorize
+  app_id: # GitHub OAuth App ID'nizi buraya ekleyin
+  # Aşağıdaki ayarlar Cloudflare Pages için gereklidir
+  api_root: https://api.github.com
+  site_domain: libedge-website.pages.dev
 
+# Media library ayarları
 media_folder: "assets/images/uploads"
 public_folder: "/assets/images/uploads"
 
+# İstemci tarafı kimlik doğrulama için özel ayarlar
+local_backend: false
+
+# Collections
 collections:
   - name: "announcements"
     label: "Duyurular"
