@@ -854,6 +854,29 @@
     color: #ffffff; /* <<< YENİ: Yazı rengini değiştirir */
     /* font-size burada da ayarlanabilir, ama 'li' üzerinde ayarlamak daha kapsayıcıdır */
 }
+
+
+/* Hero Slider için ek CSS */
+.hero-slider {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s ease-in-out;
+}
+
+.hero-slide {
+    flex-shrink: 0;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Slider Dots için ek CSS */
+.slider-dot.active {
+    background: white;
+    transform: scale(1.2);
+}
+
 @media (max-width: 639px) {
     .nav-links .group .dropdown {
         background-color: transparent !important; /* Şeffaf arkaplan */
