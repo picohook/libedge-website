@@ -502,12 +502,9 @@ document.addEventListener('DOMContentLoaded', function() {
         'Seçtiğiniz kriterlere uygun ürün bulunamadı.': 'No products found matching your criteria.',
         'Gönder': 'Send',
         'Gönderiliyor...': 'Sending...',
-        'Gönderildi!': 'Sent!'
+        'Gönderildi!': 'Sent!',
 
-
-
-                // Product Cards
-        'Seçtiğiniz kriterlere uygun ürün bulunamadı.': 'No products found matching your criteria.',
+        // Product Cards
         'Pangram': 'Pangram',
         '✔ Yapay zeka içerik tespit': '✔ AI content detection',
         '✔ Segment bazlı analiz': '✔ Segment-based analysis',
