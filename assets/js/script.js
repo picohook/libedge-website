@@ -503,6 +503,61 @@ document.addEventListener('DOMContentLoaded', function() {
         'Gönder': 'Send',
         'Gönderiliyor...': 'Sending...',
         'Gönderildi!': 'Sent!',
+  // Services
+        'Hizmetlerimiz': 'Our Services',
+        'Ürün Danışmanlığı ve Tedarik': 'Product Consulting and Procurement',
+        'Kullanıcı ve Yönetici Eğitimleri': 'User and Administrator Trainings',
+        'Erişim ve Entegrasyon Desteği': 'Access and Integration Support',
+        'Koleksiyon Geliştirme Danışmanlığı': 'Collection Development Consulting',
+        'LibEdge olarak, 15 yılı aşkın sektör deneyimimizle eğitim ve araştırma kurumlarına özel danışmanlık ve destek hizmetleri sunuyoruz. Ürün tedarik süreçlerinin yanı sıra, ihtiyaçlarınıza yönelik çözümler geliştiriyoruz.': 
+            'As LibEdge, with over 15 years of industry experience, we offer specialized consulting and support services to educational and research institutions. In addition to product procurement processes, we develop solutions tailored to your needs.',
+        'Kurumunuz için en uygun eğitim ve araştırma kaynaklarını belirliyor, bütçeniz doğrultusunda en avantajlı tedarik süreçlerini yönetiyoruz.': 
+            'We identify the most suitable educational and research resources for your institution and manage the most advantageous procurement processes within your budget.',
+        'Tedariğini sağladığımız veya kurumunuzda bulunan kaynakların en verimli şekilde kullanılması için yerinde veya online eğitimler düzenliyoruz.': 
+            'We organize on-site or online training to ensure the most efficient use of the resources we provide or those already available at your institution.',
+        'Kaynakların kurumunuzun sistemlerine entegrasyonu, uzaktan erişim ayarları ve teknik sorun giderme konularında destek sağlıyoruz.': 
+            'We provide support for integrating resources into your institution’s systems, setting up remote access, and resolving technical issues.',
+        'Kütüphane ve bilgi merkezlerinin koleksiyonlarını güncel tutmaları ve geliştirmeleri için uzman danışmanlık hizmeti veriyoruz.': 
+            'We offer expert consulting services to help libraries and information centers keep their collections up-to-date and develop them further.',
+        // Partners
+        'İş Ortakları': 'Partners',
+        // Customer Reviews
+        'Müşteri Görüşleri': 'Customer Reviews',
+        '"LibEdge ile çalışmak işlerimizi çok kolaylaştırdı. Hızlı yanıtları ve çözüm odaklı yaklaşımları sayesinde ihtiyaçlarımıza en uygun kaynaklara ulaştık."': 
+            '"Working with LibEdge has made our work much easier. Thanks to their quick responses and solution-oriented approach, we accessed the most suitable resources for our needs."',
+        '"Sağladıkları eğitimler çok faydalı oldu. Kullanıcılarımız artık kaynakları daha etkin kullanabiliyor. LibEdge ekibine teşekkür ederiz."': 
+            '"The training they provided was very beneficial. Our users can now use the resources more effectively. Thank you to the LibEdge team."',
+        '"Hizmete sunduğu kaynakların yanı sıra yeni ürünlerle ilgili danışmanlık ve yenilikçi çözümler sunma anlayışında olması nedeniyle LibEdge firması ile çalışmak her zaman avantajlı."':'"Working with LibEdge is always advantageous due to their understanding of providing consulting on new products and innovative solutions alongside the resources they offer."' ,
+        // Contact
+        'Bize Ulaşın': 'Contact Us',
+        'Sorularınız, iş birliği teklifleriniz veya geri bildirimleriniz için bize yazmaktan çekinmeyin. Ekibimiz en kısa sürede size geri dönecektir.': 
+            'Feel free to write to us with your questions, collaboration proposals, or feedback. Our team will get back to you as soon as possible.',
+        'Adınız Soyadınız': 'Your Full Name',
+        'E-posta Adresiniz': 'Your Email Address',
+        'Telefon Numaranız (İsteğe Bağlı)': 'Your Phone Number (Optional)',
+        'Konu': 'Subject',
+        'Mesajınız': 'Your Message',
+        'İletişim Bilgileri': 'Contact Information',
+        'Bizi Takip Edin': 'Follow Us',
+
+        // Footer
+        'Hızlı Linkler': 'Quick Links',
+        'GİZLİLİK POLİTİKASI': 'PRIVACY POLICY',
+        'KULLANIM ŞARTLARI': 'TERMS OF USE',
+        '© 2025 LIBEDGE TÜM HAKLARI SAKLIDIR': '© 2025 LIBEDGE ALL RIGHTS RESERVED',
+        'LibEdge ||| Daire: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/İzmir': 
+            'LibEdge ||| Suite: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/Izmir',
+
+        // Modals
+        'Deneme Erişimi İsteği': 'Request Trial Access',
+        'Ürün Öneriniz Var mı?': 'Do You Have a Product Suggestion?',
+        'Deneme Erişimi Talep Formu': 'Trial Access Request Form',
+        'Ürün Öneri Formu': 'Product Suggestion Form',
+        'Ad Soyad': 'Full Name',
+        'E-posta': 'Email',
+        'Kurum Adı': 'Institution Name',
+        'Talep Detayınız': 'Your Request Details',
+        'Ürün Öneri Detayınız': 'Your Product Suggestion Details',
 
         // Product Cards
         'Pangram': 'Pangram',
