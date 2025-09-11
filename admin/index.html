@@ -190,15 +190,20 @@
   <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
   
   <script>
+    // CMS'in daha önce yüklenip yüklenmediğini kontrol et
+    let cmsInitialized = false;
+    
     // CMS yapılandırması
     const getConfig = () => ({
       backend: {
         name: "github",
         repo: "picohook/libedge-website",
         branch: "main",
-        site_domain: window.location.hostname
+        site_domain: window.location.hostname,
+        auth_endpoint: "api.github.com"
       },
       locale: 'tr',
+      load_config_file: false, // Harici config dosyası yüklemesini devre dışı bırak
       media_folder: "assets/images/uploads",
       public_folder: "/assets/images/uploads",
       collections: [
@@ -235,21 +240,12 @@
     // Sayfa yüklendiğinde
     document.addEventListener('DOMContentLoaded', function() {
       // Eski CMS örneğini temizle
-      if (window.CMS) {
-        try {
-          // CMS'i manuel olarak temizle
-          const rootElement = document.getElementById('cms-root');
-          if (rootElement) {
-            rootElement.innerHTML = '';
-          }
-        } catch (error) {
-          console.warn('Temizleme hatası:', error);
-        }
-      }
+      cleanupExistingCMS();
       
       // CMS yüklendikten sonra çalışacak
       if (typeof CMS !== 'undefined') {
-        initializeCMS();
+        // Kısa bir gecikme ekleyerek DOM'un tamamen hazır olmasını bekleyelim
+        setTimeout(initializeCMS, 100);
       } else {
         showError('Decap CMS kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
         
@@ -260,13 +256,41 @@
       }
     });
 
+    function cleanupExistingCMS() {
+      try {
+        // CMS root elementini temizle
+        const rootElement = document.getElementById('cms-root');
+        if (rootElement) {
+          rootElement.innerHTML = '';
+        }
+        
+        // Eski React root'larını temizle
+        const reactRoots = document.querySelectorAll('[data-reactroot], .react-root');
+        reactRoots.forEach(element => {
+          if (element.parentNode) {
+            element.parentNode.removeChild(element);
+          }
+        });
+      } catch (error) {
+        console.warn('Temizleme sırasında hata oluştu:', error);
+      }
+    }
+    
     function initializeCMS() {
+      if (cmsInitialized) {
+        console.warn('CMS zaten başlatılmış');
+        return;
+      }
+      
       try {
         // Yapılandırmayı al
         const config = getConfig();
         
         // CMS'i başlat
         CMS.init({ config });
+        
+        // Başarılı olduğunu işaretle
+        cmsInitialized = true;
         
         // Yükleme ekranını gizle
         document.getElementById('loading').style.display = 'none';
@@ -296,7 +320,7 @@
     function resetConfiguration() {
       // LocalStorage'daki CMS yapılandırmasını temizle
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('decap-cms')) {
+        if (key.startsWith('decap-cms') || key.startsWith('netlify-cms')) {
           localStorage.removeItem(key);
         }
       });
@@ -316,7 +340,16 @@
     // Promise hatalarını yakala
     window.addEventListener('unhandledrejection', function(e) {
       console.error('Promise hatası yakalandı:', e.reason);
-      showError('Beklenmeyen bir hata oluştu: ' + e.reason.message);
+      
+      // "removeChild" hatasını özellikle ele al
+      if (e.reason && e.reason.message && e.reason.message.includes('removeChild')) {
+        console.warn('removeChild hatası yakalandı, sayfa yeniden yükleniyor...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        showError('Beklenmeyen bir hata oluştu: ' + e.reason.message);
+      }
     });
   </script>
 </body>
