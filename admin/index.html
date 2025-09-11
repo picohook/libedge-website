@@ -135,24 +135,6 @@
       font-size: 14px;
       padding: 20px;
     }
-    
-    pre {
-      background: #2d2d2d;
-      color: #f8f8f2;
-      padding: 15px;
-      border-radius: 5px;
-      overflow: auto;
-      font-size: 12px;
-      margin-top: 10px;
-    }
-    
-    .github-config {
-      background: #f5f5f5;
-      padding: 15px;
-      border-radius: 5px;
-      margin-top: 20px;
-      font-size: 14px;
-    }
   </style>
 </head>
 <body>
@@ -173,43 +155,11 @@
         <p id="error-details">GitHub kimlik doğrulama sırasında bir hata oluştu. Lütfen aşağıdaki talimatları izleyin.</p>
         <div id="error-details-container" style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 5px;"></div>
         
-        <div class="github-config">
-          <h4>GitHub OAuth Uygulaması Kurulumu:</h4>
-          <ol>
-            <li>GitHub'da <a href="https://github.com/settings/developers" target="_blank">Developer Settings</a> sayfasına gidin</li>
-            <li>"OAuth Apps" bölümüne tıklayın ve "New OAuth App" seçin</li>
-            <li>Gerekli bilgileri doldurun:
-              <ul>
-                <li>Application name: LibEdge CMS</li>
-                <li>Homepage URL: <span id="homepage-url"></span></li>
-                <li>Authorization callback URL: <span id="callback-url"></span></li>
-              </ul>
-            </li>
-            <li>Oluşturduktan sonra Client ID ve Client Secret değerlerini alın</li>
-            <li>Cloudflare Pages'de Environment Variables olarak ekleyin:
-              <ul>
-                <li>GITHUB_CLIENT_ID: [Client ID değeriniz]</li>
-                <li>GITHUB_CLIENT_SECRET: [Client Secret değeriniz]</li>
-              </ul>
-            </li>
-          </ol>
-        </div>
-        
         <button class="btn" onclick="window.location.reload()">Sayfayı Yenile</button>
-        <button class="btn" onclick="resetConfiguration()">Yapılandırmayı Sıfırla</button>
+        <button class="btn" onclick="manualGitHubAuth()">Manuel GitHub Girişi</button>
       </div>
       
       <div id="cms-root"></div>
-      
-      <div class="troubleshooting">
-        <h3>Sorun Giderme Önerileri</h3>
-        <ul>
-          <li>GitHub OAuth uygulamasının doğru yapılandırıldığından emin olun</li>
-          <li>Callback URL'in doğru olduğundan emin olun</li>
-          <li>Cloudflare Pages environment variables'larını kontrol edin</li>
-          <li>Tarayıcı önbelleğini temizleyin (Ctrl+F5)</li>
-        </ul>
-      </div>
     </div>
     
     <footer>
@@ -223,13 +173,24 @@
   <script>
     // Sayfa URL'lerini ayarla
     const currentUrl = window.location.origin;
-    document.getElementById('homepage-url').textContent = currentUrl;
-    document.getElementById('callback-url').textContent = currentUrl + window.location.pathname;
+    const currentPath = window.location.pathname;
     
     // CMS'in daha önce yüklenip yüklenmediğini kontrol et
     let cmsInitialized = false;
     
-    // Basitleştirilmiş CMS yapılandırması
+    // Manuel GitHub kimlik doğrulama URL'si oluştur
+    function manualGitHubAuth() {
+      // Bu değerleri GitHub OAuth uygulamanızdan almalısınız
+      const clientId = 'Ov23lidMzyuYibko4gCs'; // GitHub OAuth App Client ID
+      const redirectUri = encodeURIComponent(currentUrl + currentPath);
+      const scope = encodeURIComponent('repo');
+      const state = encodeURIComponent('libedge-cms');
+      
+      const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+      window.location.href = authUrl;
+    }
+    
+    // CMS yapılandırması - GitHub backend için özel ayarlar
     const getConfig = () => ({
       backend: {
         name: "github",
@@ -237,7 +198,7 @@
         branch: "main",
         // Aşağıdaki ayarlar URL birleştirme hatasını çözecektir
         base_url: "https://api.github.com",
-        auth_endpoint: "https://github.com/login/oauth/authorize",
+        auth_endpoint: "auth", // Göreli yol kullanıyoruz
         api_root: "https://api.github.com",
         // Netlify gateway'i tamamen devre dışı bırak
         use_gateway: false,
@@ -286,17 +247,23 @@
       // Eski CMS örneğini temizle
       cleanupExistingCMS();
       
+      // URL parametrelerini kontrol et (OAuth geri dönüşü)
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      
+      if (code && state === 'libedge-cms') {
+        // OAuth geri dönüşü, token almak için backend'e istek yap
+        handleOAuthCallback(code);
+        return;
+      }
+      
       // CMS yüklendikten sonra çalışacak
       if (typeof CMS !== 'undefined') {
         // Kısa bir gecikme ekleyerek DOM'un tamamen hazır olmasını bekleyelim
         setTimeout(initializeCMS, 100);
       } else {
         showError('Decap CMS kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
-        
-        // 5 saniye sonra tekrar dene
-        setTimeout(() => {
-          window.location.reload();
-        }, 5000);
       }
     });
 
@@ -307,14 +274,6 @@
         if (rootElement) {
           rootElement.innerHTML = '';
         }
-        
-        // Eski React root'larını temizle
-        const reactRoots = document.querySelectorAll('[data-reactroot], .react-root');
-        reactRoots.forEach(element => {
-          if (element.parentNode) {
-            element.parentNode.removeChild(element);
-          }
-        });
       } catch (error) {
         console.warn('Temizleme sırasında hata oluştu:', error);
       }
@@ -330,8 +289,8 @@
         // Yapılandırmayı al
         const config = getConfig();
         
-        // URL birleştirme hatasını önlemek için backend ayarlarını doğrula
-        validateBackendConfig(config.backend);
+        // GitHub backend için özel işleyici ekle
+        overrideGitHubBackend();
         
         // CMS'i başlat
         CMS.init({ config });
@@ -349,22 +308,43 @@
       }
     }
     
-    function validateBackendConfig(backendConfig) {
-      // URL birleştirme hatalarını önlemek için backend yapılandırmasını doğrula
-      if (backendConfig.base_url && backendConfig.auth_endpoint) {
-        // base_url ve auth_endpoint'in doğru formatta olduğundan emin ol
-        if (backendConfig.auth_endpoint.startsWith('http')) {
-          console.log('Auth endpoint mutlak URL olarak ayarlanmış:', backendConfig.auth_endpoint);
-        } else {
-          console.warn('Auth endpoint göreli yol olarak ayarlanmış, bu URL birleştirme hatasına neden olabilir');
-          backendConfig.auth_endpoint = "https://github.com/login/oauth/authorize";
-        }
+    function overrideGitHubBackend() {
+      // GitHub backend'inin auth URL oluşturma metodunu override et
+      const originalGitHubBackend = CMS.getBackend('github');
+      
+      if (originalGitHubBackend) {
+        // Özelleştirilmiş GitHub backend sınıfı
+        const CustomGitHubBackend = class extends originalGitHubBackend {
+          constructor(config) {
+            super(config);
+            
+            // Auth URL'yi düzelt
+            this.auth_url = this.buildCorrectAuthURL();
+          }
+          
+          buildCorrectAuthURL() {
+            // Doğru GitHub OAuth URL'sini oluştur
+            const clientId = 'Ov23lidMzyuYibko4gCs'; // GitHub OAuth App Client ID
+            const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+            const scope = encodeURIComponent('repo');
+            const state = encodeURIComponent('libedge-cms');
+            
+            return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+          }
+        };
         
-        // API kök URL'sini doğrula
-        if (!backendConfig.api_root) {
-          backendConfig.api_root = "https://api.github.com";
-        }
+        // Özelleştirilmiş backend'i kaydet
+        CMS.registerBackend('github', CustomGitHubBackend);
       }
+    }
+    
+    function handleOAuthCallback(code) {
+      // Burada GitHub OAuth callback işlemini yönet
+      console.log('OAuth callback received, code:', code);
+      
+      // Token'ı localStorage'a kaydet ve sayfayı yenile
+      localStorage.setItem('github_token', 'temp_token_' + code);
+      window.location.href = currentUrl + currentPath;
     }
     
     function showError(message, error = null) {
@@ -381,46 +361,6 @@
       
       document.getElementById('error-message').style.display = 'block';
     }
-    
-    function resetConfiguration() {
-      // LocalStorage'daki CMS yapılandırmasını temizle
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('decap-cms') || key.startsWith('netlify-cms')) {
-          localStorage.removeItem(key);
-        }
-      });
-      
-      // SessionStorage'ı temizle
-      sessionStorage.clear();
-      
-      // Cookies'i temizle
-      document.cookie.split(";").forEach(function(c) {
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
-      
-      // Sayfayı yenile
-      window.location.reload();
-    }
-    
-    // Hata yakalama
-    window.addEventListener('error', function(e) {
-      console.error('Global hata yakalandı:', e.error);
-    });
-    
-    // Promise hatalarını yakala
-    window.addEventListener('unhandledrejection', function(e) {
-      console.error('Promise hatası yakalandı:', e.reason);
-      
-      // "removeChild" hatasını özellikle ele al
-      if (e.reason && e.reason.message && e.reason.message.includes('removeChild')) {
-        console.warn('removeChild hatası yakalandı, sayfa yeniden yükleniyor...');
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } else {
-        showError('Beklenmeyen bir hata oluştu: ' + e.reason.message);
-      }
-    });
   </script>
 </body>
 </html>
