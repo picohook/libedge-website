@@ -79,7 +79,6 @@
       padding: 20px;
       border-radius: 8px;
       margin-bottom: 20px;
-      display: none;
     }
     
     .error-message h3 {
@@ -142,13 +141,8 @@
       margin-bottom: 8px;
     }
     
-    .success-message {
-      display: none;
-      text-align: center;
-      padding: 30px;
-      background: #e8f5e9;
-      color: #2e7d32;
-      border-radius: 8px;
+    #cms-root {
+      min-height: 400px;
     }
     
     footer {
@@ -172,117 +166,63 @@
         <p>Sistem yükleniyor, lütfen bekleyin...</p>
       </div>
       
-      <div class="error-message" id="error-message">
+      <div class="error-message" id="error-message" style="display: none;">
         <h3>
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="8" x2="12" y2="12"></line>
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
-          Yükleme Hatası
+          Yapılandırma Hatası
         </h3>
-        <p id="error-details">İçerik yönetim paneli yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.</p>
+        <p id="error-details">İçerik yönetim paneli yüklenirken bir hata oluştu. Lütfen aşağıdaki hata detaylarını kontrol edin.</p>
+        <div id="error-details-container" style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 5px;"></div>
         <button class="btn" onclick="window.location.reload()">Sayfayı Yenile</button>
-        <button class="btn btn-outline" onclick="tryAlternativeCDN()">Alternatif Yükleme Yöntemini Dene</button>
       </div>
       
-      <div class="success-message" id="success-message">
-        <h3>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-          Başarıyla Yüklendi!
-        </h3>
-        <p>LibEdge CMS başarıyla yüklendi. Yönetici paneline yönlendiriliyorsunuz.</p>
-      </div>
+      <div id="cms-root"></div>
       
       <div class="troubleshooting">
         <h3>Sorun Giderme Önerileri</h3>
         <ul>
-          <li>İnternet bağlantınızı kontrol edin</li>
+          <li>Yapılandırma dosyasında aynı isme sahip koleksiyonlar olmadığından emin olun</li>
+          <li>GitHub repository ayarlarını kontrol edin</li>
           <li>Tarayıcınızın JavaScript engelleyici eklentilerini devre dışı bırakın</li>
           <li>Farklı bir tarayıcı deneyin (Chrome, Firefox, Edge)</li>
-          <li>Tarayıcı önbelleğini temizleyin ve sayfayı yeniden yükleyin</li>
         </ul>
-        <p>Yukarıdaki çözümler işe yaramazsa, <strong>Alternatif Yükleme Yöntemini Dene</strong> butonuna tıklayın.</p>
       </div>
     </div>
   </div>
   
   <footer>
-    <p>LibEdge © 2023. Tüm hakları saklıdır.</p>
+    <p>LibEdge © 2024. Tüm hakları saklıdır.</p>
   </footer>
 
+  <!-- Decap CMS'i doğrudan yükle -->
+  <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+  
   <script>
-    // CDN kaynakları - birden fazla alternatif
-    const cdnSources = [
-      'https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js',
-      'https://cdn.jsdelivr.net/npm/decap-cms@^3.0.0/dist/decap-cms.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/decap-cms/3.0.0/decap-cms.min.js'
-    ];
-    
-    let currentCdnIndex = 0;
-    
-    // Sayfa yüklendiğinde
     document.addEventListener('DOMContentLoaded', function() {
-      loadDecapCms();
-      
-      // 15 saniye içinde yüklenmezse hata göster
-      setTimeout(function() {
-        if (document.getElementById('loading').style.display !== 'none') {
-          showError('Yükleme zaman aşımına uğradı. Lütfen sayfayı yenileyin veya alternatif yöntemi deneyin.');
-        }
-      }, 15000);
-    });
-    
-    // Decap CMS yükleme fonksiyonu
-    function loadDecapCms() {
-      const script = document.createElement('script');
-      script.src = cdnSources[currentCdnIndex];
-      script.onload = function() {
-        if (typeof CMS !== 'undefined') {
-          initCms();
-        } else {
-          tryNextCdn();
-        }
-      };
-      script.onerror = function() {
-        tryNextCdn();
-      };
-      document.head.appendChild(script);
-    }
-    
-    // Bir sonraki CDN'i dene
-    function tryNextCdn() {
-      currentCdnIndex++;
-      
-      if (currentCdnIndex < cdnSources.length) {
-        loadDecapCms();
+      // CMS yüklendikten sonra çalışacak
+      if (typeof CMS !== 'undefined') {
+        initializeCMS();
       } else {
-        showError('Tüm CDN kaynaklarından yükleme başarısız oldu. Lütfen internet bağlantınızı kontrol edin ve daha sonra tekrar deneyin.');
+        showError('Decap CMS kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
       }
-    }
-    
-    // Alternatif yükleme yöntemi
-    function tryAlternativeCDN() {
-      document.getElementById('error-message').style.display = 'none';
-      document.getElementById('loading').style.display = 'block';
-      currentCdnIndex = 0;
-      loadDecapCms();
-    }
-    
-    // CMS başlatma
-    function initCms() {
+    });
+
+    function initializeCMS() {
       try {
-        // Yapılandırma
+        // Yapılandırma - benzersiz koleksiyon isimlerine dikkat edin
         const config = {
           backend: {
             name: "github",
             repo: "picohook/libedge-website",
             branch: "main",
-            site_domain: window.location.hostname
+            site_domain: window.location.hostname,
+            auth_endpoint: "api.github.com"
           },
+          locale: 'tr',
           media_folder: "assets/images/uploads",
           public_folder: "/assets/images/uploads",
           collections: [
@@ -293,7 +233,7 @@
               description: "Web sitesindeki duyuruları buradan ekleyebilir veya düzenleyebilirsiniz.",
               files: [
                 {
-                  file: "duyurular.json",
+                  file: "content/duyurular.json",
                   label: "Tüm Duyurular",
                   name: "all_announcements",
                   fields: [
@@ -303,7 +243,7 @@
                       widget: "list",
                       fields: [
                         {label: "Başlık", name: "title", widget: "string"},
-                        {label: "Tarih", name: "date", widget: "datetime", format: "YYYY-MM-DD"},
+                        {label: "Tarih", name: "date", widget: "datetime", format: "YYYY-MM-DD", date_format: "YYYY-MM-DD"},
                         {label: "Kategori", name: "category", widget: "select", options: ["urgent", "new-product", "event", "maintenance", "general"]},
                         {label: "Özet (Kısa Açıklama)", name: "summary", widget: "text"},
                         {label: "Tam İçerik (Detaylı Açıklama)", name: "full_content", widget: "markdown"}
@@ -317,28 +257,29 @@
         };
         
         // CMS'i başlat
-        CMS.init({ config });
+        CMS.init({
+          config: config
+        });
         
-        // Başarı mesajını göster
+        // Yükleme ekranını gizle
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('success-message').style.display = 'block';
-        
-        // 2 saniye sonra yönlendirme yap
-        setTimeout(function() {
-          // CMS arayüzünü göster
-          document.querySelector('.container').style.display = 'none';
-          document.body.style.background = '#fff';
-        }, 2000);
         
       } catch (error) {
-        showError('CMS başlatma hatası: ' + error.message);
+        showError('CMS başlatma hatası: ' + error.message, error);
       }
     }
     
-    // Hata gösterimi
-    function showError(message) {
+    function showError(message, error = null) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('error-details').textContent = message;
+      
+      if (error) {
+        document.getElementById('error-details-container').innerHTML = `
+          <strong>Detaylar:</strong><br>
+          <pre style="font-size: 12px; overflow: auto;">${error.stack || error.message}</pre>
+        `;
+      }
+      
       document.getElementById('error-message').style.display = 'block';
     }
   </script>
