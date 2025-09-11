@@ -1229,4 +1229,56 @@ body.translating * {
     .slider-dots-container {
         bottom: 90px;
     }
+}/* Yatay taşmayı engelleme (ek kontroller) */
+#hero-slider,
+#products-grid,
+.products-wrapper {
+    overflow-x: hidden;
+}
+
+/* Hero slider track yapılandırması */
+.hero-slider-track {
+    display: flex;
+    width: 100%;
+}
+
+.hero-slide {
+    flex: 0 0 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Flip-inner stillerini güncelle (mevcut stillere ekleme) */
+.flip-inner {
+    /* Mevcut stiller korunacak, sadece eksik olanları ekle: */
+    -webkit-backface-visibility: hidden; /* Safari desteği */
+    backface-visibility: hidden;
+    transform-style: preserve-3d;
+}
+
+/* Çeviri sistemi için loading stilleri */
+body.translating {
+    pointer-events: none;
+    user-select: none;
+}
+
+body.translating * {
+    transition: opacity 0.3s ease;
+    opacity: 0.8;
+}
+
+#translateBtn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Form validation stilleri */
+.form-error {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+}
+
+.form-success {
+    border-color: #16a34a !important;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1) !important;
 }
