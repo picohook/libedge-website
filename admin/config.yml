@@ -18,7 +18,7 @@ collections:
     files:
       - file: "duyurular.json" # Düzenlenecek dosyanın yolu
         label: "Tüm Duyurular"
-        name: "all_announcements"
+        name: "all_nouncements"
         # Dosyanın içindeki liste yapısını ve form alanlarını tanımlar
         fields:
           - {label: "Duyuru Listesi", name: "items", widget: "list", fields: [
