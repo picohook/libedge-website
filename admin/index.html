@@ -169,8 +169,8 @@
       </div>
       
       <div class="error-message" id="error-message" style="display: none;">
-        <h3>Kimlik Doğrulama Hatası</h3>
-        <p id="error-details">GitHub kimlik doğrulama sırasında bir hata oluştu. Lütfen aşağıdaki talimatları izleyin.</p>
+        <h3>Yapılandırma Hatası</h3>
+        <p id="error-details">İçerik yönetim paneli yüklenirken bir hata oluştu. Lütfen aşağıdaki hata detaylarını kontrol edin.</p>
         <div id="error-details-container" style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 5px;"></div>
         
         <div class="github-config">
@@ -204,10 +204,10 @@
       <div class="troubleshooting">
         <h3>Sorun Giderme Önerileri</h3>
         <ul>
-          <li>GitHub OAuth uygulamasının doğru yapılandırıldığından emin olun</li>
-          <li>Callback URL'in doğru olduğundan emin olun</li>
-          <li>Cloudflare Pages environment variables'larını kontrol edin</li>
+          <li>Yapılandırma dosyasında aynı isme sahip koleksiyonlar olmadığından emin olun</li>
+          <li>GitHub repository ayarlarını kontrol edin</li>
           <li>Tarayıcı önbelleğini temizleyin (Ctrl+F5)</li>
+          <li>Farklı bir tarayıcı deneyin (Chrome, Firefox, Edge)</li>
         </ul>
       </div>
     </div>
@@ -228,36 +228,7 @@
     // CMS'in daha önce yüklenip yüklenmediğini kontrol et
     let cmsInitialized = false;
     
-    // Özel GitHub backend sınıfı - Netlify referanslarını tamamen kaldırıyoruz
-    function CustomGitHubBackendClass() {
-      // Orijinal GitHub backend sınıfını al
-      const GitHubBackend = CMS.getBackend('github');
-      
-      // Özelleştirilmiş backend sınıfı
-      return class CustomGitHubBackend extends GitHubBackend {
-        constructor(config) {
-          // Netlify auth endpoint'ini devre dışı bırak
-          if (config.auth_endpoint && config.auth_endpoint.includes('netlify')) {
-            config.auth_endpoint = 'https://github.com/login/oauth/authorize';
-          }
-          
-          // Netlify API endpoint'ini devre dışı bırak
-          if (config.base_url && config.base_url.includes('netlify')) {
-            config.base_url = 'https://api.github.com';
-          }
-          
-          super(config);
-        }
-        
-        // Kimlik doğrulama URL'sini özelleştir
-        authUrl() {
-          // Netlify auth URL'sini değiştir
-          return `https://github.com/login/oauth/authorize?client_id=YOUR_CLIENT_ID&scope=repo&redirect_uri=${encodeURIComponent(window.location.origin + window.location.pathname)}`;
-        }
-      };
-    }
-    
-    // CMS yapılandırması - Netlify referansları kaldırıldı
+    // Basitleştirilmiş CMS yapılandırması
     const getConfig = () => ({
       backend: {
         name: "github",
@@ -313,10 +284,6 @@
       // Eski CMS örneğini temizle
       cleanupExistingCMS();
       
-      // Özel backend sınıfını kaydet
-      const CustomGitHubBackend = CustomGitHubBackendClass();
-      CMS.registerBackend('github', CustomGitHubBackend);
-      
       // CMS yüklendikten sonra çalışacak
       if (typeof CMS !== 'undefined') {
         // Kısa bir gecikme ekleyerek DOM'un tamamen hazır olmasını bekleyelim
@@ -361,7 +328,7 @@
         // Yapılandırmayı al
         const config = getConfig();
         
-        // CMS'i başlat
+        // Özel backend kaydı yapmadan doğrudan CMS'i başlat
         CMS.init({ config });
         
         // Başarılı olduğunu işaretle
@@ -372,8 +339,29 @@
         
         console.log('Decap CMS başarıyla yüklendi ve yapılandırıldı');
         
+        // Netlify auth yerine doğrudan GitHub auth kullanmak için
+        // auth flow'u manuel olarak yönlendirme
+        redirectGitHubAuthIfNeeded();
+        
       } catch (error) {
         showError('CMS başlatma hatası: ' + error.message, error);
+      }
+    }
+    
+    // GitHub auth yönlendirmesi için
+    function redirectGitHubAuthIfNeeded() {
+      // URL'de auth parametreleri var mı kontrol et
+      const urlParams = new URLSearchParams(window.location.search);
+      const authProvider = urlParams.get('auth');
+      
+      if (authProvider === 'github') {
+        // GitHub OAuth URL'sini oluştur ve yönlendir
+        const clientId = 'Ov23lidMzyuYibko4gCs'; // Client ID'nizi buraya ekleyin
+        const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+        const scope = encodeURIComponent('repo');
+        const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}`;
+        
+        window.location.href = githubAuthUrl;
       }
     }
     
