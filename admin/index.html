@@ -1,101 +1,346 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LibEdge | İçerik Yönetim Paneli</title>
-  <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      background-color: #f5f5f5;
     }
-    .loading-container {
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
-      height: 100vh;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 800px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    
+    header {
+      background: #4a6bdf;
+      color: white;
+      padding: 25px;
       text-align: center;
     }
+    
+    header h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    
+    header p {
+      opacity: 0.9;
+    }
+    
+    .content {
+      padding: 30px;
+    }
+    
+    .loading-container {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    
     .loading-spinner {
       border: 4px solid #f3f3f3;
-      border-top: 4px solid #3498db;
+      border-top: 4px solid #4a6bdf;
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 2s linear infinite;
-      margin-bottom: 20px;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
     }
+    
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    .cms-container {
+    
+    .error-message {
+      background-color: #ffebee;
+      color: #c62828;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
       display: none;
     }
-    .error-message {
-      color: #e74c3c;
+    
+    .error-message h3 {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .error-message h3 svg {
+      margin-right: 10px;
+    }
+    
+    .btn {
+      display: inline-block;
+      background: #4a6bdf;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: background 0.3s;
+      text-decoration: none;
+      margin-top: 10px;
+    }
+    
+    .btn:hover {
+      background: #3a5ace;
+    }
+    
+    .btn-outline {
+      background: transparent;
+      color: #4a6bdf;
+      border: 2px solid #4a6bdf;
+    }
+    
+    .btn-outline:hover {
+      background: #f0f3ff;
+    }
+    
+    .troubleshooting {
+      background: #f9f9f9;
       padding: 20px;
-      background-color: #fdf0ed;
-      border-radius: 5px;
-      margin: 20px;
+      border-radius: 8px;
+      margin-top: 25px;
+    }
+    
+    .troubleshooting h3 {
+      margin-bottom: 15px;
+      color: #4a6bdf;
+    }
+    
+    .troubleshooting ul {
+      padding-left: 20px;
+      margin-bottom: 15px;
+    }
+    
+    .troubleshooting li {
+      margin-bottom: 8px;
+    }
+    
+    .success-message {
+      display: none;
       text-align: center;
+      padding: 30px;
+      background: #e8f5e9;
+      color: #2e7d32;
+      border-radius: 8px;
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #666;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <div class="loading-container" id="loading">
-    <div class="loading-spinner"></div>
-    <p>LibEdge İçerik Yönetim Sistemi yükleniyor...</p>
+  <div class="container">
+    <header>
+      <h1>LibEdge İçerik Yönetim Sistemi</h1>
+      <p>Web sitesi içeriklerinizi yönetmek için güçlü ve kullanımı kolay araç</p>
+    </header>
+    
+    <div class="content">
+      <div class="loading-container" id="loading">
+        <div class="loading-spinner"></div>
+        <p>Sistem yükleniyor, lütfen bekleyin...</p>
+      </div>
+      
+      <div class="error-message" id="error-message">
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          Yükleme Hatası
+        </h3>
+        <p id="error-details">İçerik yönetim paneli yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.</p>
+        <button class="btn" onclick="window.location.reload()">Sayfayı Yenile</button>
+        <button class="btn btn-outline" onclick="tryAlternativeCDN()">Alternatif Yükleme Yöntemini Dene</button>
+      </div>
+      
+      <div class="success-message" id="success-message">
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          Başarıyla Yüklendi!
+        </h3>
+        <p>LibEdge CMS başarıyla yüklendi. Yönetici paneline yönlendiriliyorsunuz.</p>
+      </div>
+      
+      <div class="troubleshooting">
+        <h3>Sorun Giderme Önerileri</h3>
+        <ul>
+          <li>İnternet bağlantınızı kontrol edin</li>
+          <li>Tarayıcınızın JavaScript engelleyici eklentilerini devre dışı bırakın</li>
+          <li>Farklı bir tarayıcı deneyin (Chrome, Firefox, Edge)</li>
+          <li>Tarayıcı önbelleğini temizleyin ve sayfayı yeniden yükleyin</li>
+        </ul>
+        <p>Yukarıdaki çözümler işe yaramazsa, <strong>Alternatif Yükleme Yöntemini Dene</strong> butonuna tıklayın.</p>
+      </div>
+    </div>
   </div>
   
-  <div class="cms-container" id="cms-root">
-    <!-- Decap CMS burada yüklenecek -->
-  </div>
-  
-  <div class="error-message" id="error-message" style="display: none;">
-    <h3>Yükleme Hatası</h3>
-    <p>İçerik yönetim paneli yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.</p>
-    <button onclick="window.location.reload()">Sayfayı Yenile</button>
-  </div>
+  <footer>
+    <p>LibEdge © 2023. Tüm hakları saklıdır.</p>
+  </footer>
 
   <script>
+    // CDN kaynakları - birden fazla alternatif
+    const cdnSources = [
+      'https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js',
+      'https://cdn.jsdelivr.net/npm/decap-cms@^3.0.0/dist/decap-cms.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/decap-cms/3.0.0/decap-cms.min.js'
+    ];
+    
+    let currentCdnIndex = 0;
+    
+    // Sayfa yüklendiğinde
     document.addEventListener('DOMContentLoaded', function() {
-      // CMS yüklendikten sonra çalışacak
-      if (typeof CMS !== 'undefined') {
-        try {
-          // CMS'i manuel olarak başlat
-          CMS.init();
-          console.log('Decap CMS başlatıldı');
-          
-          // Yükleme ekranını gizle, CMS'i göster
-          document.getElementById('loading').style.display = 'none';
-          document.getElementById('cms-root').style.display = 'block';
-        } catch (error) {
-          console.error('CMS başlatma hatası:', error);
-          showError('CMS başlatma hatası: ' + error.message);
+      loadDecapCms();
+      
+      // 15 saniye içinde yüklenmezse hata göster
+      setTimeout(function() {
+        if (document.getElementById('loading').style.display !== 'none') {
+          showError('Yükleme zaman aşımına uğradı. Lütfen sayfayı yenileyin veya alternatif yöntemi deneyin.');
         }
-      } else {
-        console.error('Decap CMS kütüphanesi yüklenemedi');
-        showError('Decap CMS kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
-      }
+      }, 15000);
     });
-
+    
+    // Decap CMS yükleme fonksiyonu
+    function loadDecapCms() {
+      const script = document.createElement('script');
+      script.src = cdnSources[currentCdnIndex];
+      script.onload = function() {
+        if (typeof CMS !== 'undefined') {
+          initCms();
+        } else {
+          tryNextCdn();
+        }
+      };
+      script.onerror = function() {
+        tryNextCdn();
+      };
+      document.head.appendChild(script);
+    }
+    
+    // Bir sonraki CDN'i dene
+    function tryNextCdn() {
+      currentCdnIndex++;
+      
+      if (currentCdnIndex < cdnSources.length) {
+        loadDecapCms();
+      } else {
+        showError('Tüm CDN kaynaklarından yükleme başarısız oldu. Lütfen internet bağlantınızı kontrol edin ve daha sonra tekrar deneyin.');
+      }
+    }
+    
+    // Alternatif yükleme yöntemi
+    function tryAlternativeCDN() {
+      document.getElementById('error-message').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      currentCdnIndex = 0;
+      loadDecapCms();
+    }
+    
+    // CMS başlatma
+    function initCms() {
+      try {
+        // Yapılandırma
+        const config = {
+          backend: {
+            name: "github",
+            repo: "picohook/libedge-website",
+            branch: "main",
+            site_domain: window.location.hostname
+          },
+          media_folder: "assets/images/uploads",
+          public_folder: "/assets/images/uploads",
+          collections: [
+            {
+              name: "announcements",
+              label: "Duyurular",
+              label_singular: "Duyuru",
+              description: "Web sitesindeki duyuruları buradan ekleyebilir veya düzenleyebilirsiniz.",
+              files: [
+                {
+                  file: "duyurular.json",
+                  label: "Tüm Duyurular",
+                  name: "all_announcements",
+                  fields: [
+                    {
+                      label: "Duyuru Listesi",
+                      name: "items",
+                      widget: "list",
+                      fields: [
+                        {label: "Başlık", name: "title", widget: "string"},
+                        {label: "Tarih", name: "date", widget: "datetime", format: "YYYY-MM-DD"},
+                        {label: "Kategori", name: "category", widget: "select", options: ["urgent", "new-product", "event", "maintenance", "general"]},
+                        {label: "Özet (Kısa Açıklama)", name: "summary", widget: "text"},
+                        {label: "Tam İçerik (Detaylı Açıklama)", name: "full_content", widget: "markdown"}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        };
+        
+        // CMS'i başlat
+        CMS.init({ config });
+        
+        // Başarı mesajını göster
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('success-message').style.display = 'block';
+        
+        // 2 saniye sonra yönlendirme yap
+        setTimeout(function() {
+          // CMS arayüzünü göster
+          document.querySelector('.container').style.display = 'none';
+          document.body.style.background = '#fff';
+        }, 2000);
+        
+      } catch (error) {
+        showError('CMS başlatma hatası: ' + error.message);
+      }
+    }
+    
+    // Hata gösterimi
     function showError(message) {
       document.getElementById('loading').style.display = 'none';
+      document.getElementById('error-details').textContent = message;
       document.getElementById('error-message').style.display = 'block';
-      document.getElementById('error-message').innerHTML += '<p>' + message + '</p>';
     }
-
-    // 10 saniye içinde yüklenmezse hata göster
-    setTimeout(function() {
-      if (document.getElementById('loading').style.display !== 'none') {
-        showError('Yükleme zaman aşımına uğradı. Lütfen sayfayı yenileyin.');
-      }
-    }, 10000);
   </script>
 </body>
 </html>
