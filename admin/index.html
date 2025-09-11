@@ -228,6 +228,35 @@
     // CMS'in daha önce yüklenip yüklenmediğini kontrol et
     let cmsInitialized = false;
     
+    // Özel GitHub backend sınıfı - Netlify referanslarını tamamen kaldırıyoruz
+    function CustomGitHubBackendClass() {
+      // Orijinal GitHub backend sınıfını al
+      const GitHubBackend = CMS.getBackend('github');
+      
+      // Özelleştirilmiş backend sınıfı
+      return class CustomGitHubBackend extends GitHubBackend {
+        constructor(config) {
+          // Netlify auth endpoint'ini devre dışı bırak
+          if (config.auth_endpoint && config.auth_endpoint.includes('netlify')) {
+            config.auth_endpoint = 'https://github.com/login/oauth/authorize';
+          }
+          
+          // Netlify API endpoint'ini devre dışı bırak
+          if (config.base_url && config.base_url.includes('netlify')) {
+            config.base_url = 'https://api.github.com';
+          }
+          
+          super(config);
+        }
+        
+        // Kimlik doğrulama URL'sini özelleştir
+        authUrl() {
+          // Netlify auth URL'sini değiştir
+          return `https://github.com/login/oauth/authorize?client_id=YOUR_CLIENT_ID&scope=repo&redirect_uri=${encodeURIComponent(window.location.origin + window.location.pathname)}`;
+        }
+      };
+    }
+    
     // CMS yapılandırması - Netlify referansları kaldırıldı
     const getConfig = () => ({
       backend: {
@@ -236,13 +265,18 @@
         branch: "main",
         base_url: "https://api.github.com",
         auth_endpoint: "https://github.com/login/oauth/authorize",
-        // Netlify gateway kaldırıldı, doğrudan GitHub API kullanılıyor
-        api_root: "https://api.github.com"
+        api_root: "https://api.github.com",
+        // Netlify gateway'i tamamen devre dışı bırak
+        use_gateway: false,
+        // GitHub App yerine OAuth App kullan
+        proxy_url: ""
       },
       locale: 'tr',
       load_config_file: false,
       media_folder: "assets/images/uploads",
       public_folder: "/assets/images/uploads",
+      // Netlify identity servisini devre dışı bırak
+      local_backend: false,
       collections: [
         {
           name: "announcements",
@@ -278,6 +312,10 @@
     document.addEventListener('DOMContentLoaded', function() {
       // Eski CMS örneğini temizle
       cleanupExistingCMS();
+      
+      // Özel backend sınıfını kaydet
+      const CustomGitHubBackend = CustomGitHubBackendClass();
+      CMS.registerBackend('github', CustomGitHubBackend);
       
       // CMS yüklendikten sonra çalışacak
       if (typeof CMS !== 'undefined') {
@@ -364,6 +402,11 @@
       
       // SessionStorage'ı temizle
       sessionStorage.clear();
+      
+      // Cookies'i temizle
+      document.cookie.split(";").forEach(function(c) {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
       
       // Sayfayı yenile
       window.location.reload();
