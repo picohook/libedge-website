@@ -1,10 +1,8 @@
 # Sitenizin GitHub deposu için backend ayarları
 backend:
   name: github
-  repo: picohook/libedge-website # ÖNEMLİ: Kendi GitHub kullanıcı adınızı ve repo adınızı yazın
-  branch: main # veya master (varsayılan branch'iniz hangisiyse)
-  base_url: https://api.netlify.com
-  auth_endpoint: auth
+  repo: picohook/libedge-website
+  branch: main
 
 # Panelde yüklenecek resim gibi dosyaların nereye kaydedileceği
 media_folder: "assets/images/uploads"
