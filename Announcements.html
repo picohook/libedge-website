@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LibEdge - Duyurular</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #220f60;
+            background-color: #f9fafb;
+        }
+        
+        .announcement-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid #220f60;
+        }
+        
+        .announcement-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .category-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+        }
+        
+        .urgent {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border-left: 4px solid #dc2626;
+        }
+        
+        .new-product {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border-left: 4px solid #2563eb;
+        }
+        
+        .event {
+            background-color: #f0fdf4;
+            color: #16a34a;
+            border-left: 4px solid #16a34a;
+        }
+        
+        .filter-btn.active {
+            background-color: #220f60;
+            color: white;
+        }
+        
+        .read-more {
+            color: #220f60;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .read-more:hover {
+            color: #6C63FF;
+        }
+        
+        .modal {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        .date-badge {
+            background-color: #f3f4f6;
+            color: #4b5563;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .pagination-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .pagination-btn:hover:not(.disabled) {
+            background-color: #220f60;
+            color: white;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Navbar (Mevcut yapınızdan uyarlanmış) -->
+    <nav class="bg-white shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <a class="text-2xl text-primary" href="#">
+                <span class="font-bold">Lib</span>Edge Eğitim ve Danışmanlık
+            </a>
+            <div class="flex items-center space-x-6 text-sm font-medium text-gray-700">
+                <a class="hover:text-primary" href="#">Ürünler</a>
+                <a class="hover:text-primary" href="#">Broşürler</a>
+                <a class="hover:text-primary" href="#">İletişim</a>
+                <a class="text-primary font-semibold" href="#">Duyurular</a>
+                <button class="bg-primary text-white px-4 py-2 rounded-md hover:bg-opacity-90">English</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Duyurular Ana İçerik -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Başlık ve Açıklama -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-primary mb-4">Duyurular</h1>
+            <p class="text-gray-600 max-w-3xl mx-auto">En güncel ürün haberleri, etkinlikler, kampanyalar ve sektör duyurularından haberdar olun. LibEdge'den son gelişmeleri takip edin.</p>
+        </div>
+
+        <!-- Filtreleme ve Arama -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="flex flex-wrap gap-2">
+                    <button class="filter-btn active px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="all">
+                        Tümü
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="urgent">
+                        <i class="fas fa-exclamation-circle mr-1"></i> Acil Duyurular
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="new-product">
+                        <i class="fas fa-cube mr-1"></i> Yeni Ürünler
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="event">
+                        <i class="fas fa-calendar-alt mr-1"></i> Etkinlikler
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="maintenance">
+                        <i class="fas fa-tools mr-1"></i> Bakım Duyuruları
+                    </button>
+                </div>
+                
+                <div class="relative w-full md:w-auto">
+                    <input type="text" placeholder="Duyurularda ara..." class="w-full md:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Duyuru Listesi -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <!-- Duyuru 1 -->
+            <div class="announcement-card urgent bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-red-100 text-red-800 rounded-full">Acil Duyuru</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 2 saat önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Yazılım Güncellemesi - Erişim Kesintisi</h3>
+                    <p class="text-gray-600 mb-4">15 Ekim 2023 Cumartesi gecesi 23:00 - 03:00 saatleri arasında sistem güncellemesi yapılacaktır. Bu süre boyunca erişimde kesintiler yaşanabilir.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(1)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Duyuru 2 -->
+            <div class="announcement-card new-product bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-blue-100 text-blue-800 rounded-full">Yeni Ürün</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 1 gün önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Pangram AI Artık Kütüphanenizde!</h3>
+                    <p class="text-gray-600 mb-4">Yapay zeka destekli içerik analiz platformu Pangram, koleksiyonunuza eklendi. Detaylı bilgi ve demo erişim için lütfen iletişime geçin.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(2)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Duyuru 3 -->
+            <div class="announcement-card event bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-green-100 text-green-800 rounded-full">Etkinlik</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 3 gün önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Kütüphane Teknolojileri Semineri</h3>
+                    <p class="text-gray-600 mb-4">25 Ekim'de Ankara'da düzenlenecek Kütüphane Teknolojileri Semineri'ne davetlisiniz. Yapay zeka, veri yönetimi ve dijital dönüşüm konuları ele alınacak.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(3)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Duyuru 4 -->
+            <div class="announcement-card bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-purple-100 text-purple-800 rounded-full">Genel Duyuru</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 1 hafta önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Yeni Dönem Kampanyaları Başladı</h3>
+                    <p class="text-gray-600 mb-4">2023-2024 akademik yılı özel kampanyalarımız ve fırsatlarımız yayınlandı. Özel indirimlerden yararlanmak için son tarih 15 Kasım.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(4)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Duyuru 5 -->
+            <div class="announcement-card bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-yellow-100 text-yellow-800 rounded-full">Yenilik</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 2 hafta önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Mobil Uygulamamız Yayında!</h3>
+                    <p class="text-gray-600 mb-4">LibEdge mobil uygulaması artık App Store ve Google Play'de. Kaynaklara her yerden erişim, kişiselleştirilmiş öneriler ve daha fazlası.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(5)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Duyuru 6 -->
+            <div class="announcement-card bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-indigo-100 text-indigo-800 rounded-full">İş Ortağı</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 3 hafta önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Wiley ile Yeni Anlaşma</h3>
+                    <p class="text-gray-600 mb-4">Wiley yayınevi ile yapılan yeni anlaşma kapsamında 500+ yeni dergi ve 2000+ e-kitap koleksiyonunuza eklendi.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(6)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sayfalama -->
+        <div class="flex justify-center items-center space-x-2">
+            <button class="pagination-btn disabled px-3 py-1 rounded border border-gray-300 text-gray-400">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="pagination-btn px-3 py-1 rounded border border-primary bg-primary text-white">1</button>
+            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">2</button>
+            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">3</button>
+            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <!-- Bülten Aboneliği -->
+        <div class="bg-primary text-white rounded-lg shadow-md p-8 mt-12 text-center">
+            <h2 class="text-2xl font-bold mb-4">Duyuruları Kaçırmayın</h2>
+            <p class="mb-6 max-w-2xl mx-auto">En güncel duyurular, kampanyalar ve etkinliklerden haberdar olmak için e-bültenimize abone olun.</p>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+                <input type="email" placeholder="E-posta adresiniz" class="flex-grow px-4 py-2 rounded-full text-gray-900 focus:outline-none focus:ring-2 focus:ring-white">
+                <button class="bg-white text-primary px-6 py-2 rounded-full font-semibold hover:bg-opacity-90 transition">Abone Ol</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duyuru Detay Modal -->
+    <div id="announcementModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto relative">
+            <button onclick="closeAnnouncementModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            <div id="modalContent" class="p-4">
+                <!-- Modal içeriği JavaScript ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Filtreleme işlevi
+        document.querySelectorAll('.filter-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                // Tüm filtre butonlarından active sınıfını kaldır
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.classList.remove('bg-primary', 'text-white');
+                    btn.classList.add('border-gray-300');
+                });
+                
+                // Tıklanan butona active sınıfını ekle
+                this.classList.add('active', 'bg-primary', 'text-white');
+                this.classList.remove('border-gray-300');
+                
+                const filter = this.dataset.filter;
+                // Burada filtreleme işlemi yapılacak
+                console.log('Filtre:', filter);
+            });
+        });
+
+        // Arama işlevi
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                const searchTerm = this.value;
+                // Burada arama işlemi yapılacak
+                console.log('Arama:', searchTerm);
+            }
+        });
+
+        // Modal işlevleri
+        function openAnnouncementModal(id) {
+            // Burada API'den veya yerel veriden duyuru içeriği alınabilir
+            const modalContent = document.getElementById('modalContent');
+            
+            // Örnek içerikler
+            const announcements = {
+                1: {
+                    title: "Yazılım Güncellemesi - Erişim Kesintisi",
+                    category: "Acil Duyuru",
+                    date: "12 Ekim 2023",
+                    content: `<p class="text-gray-600 mb-4">15 Ekim 2023 Cumartesi gecesi 23:00 - 03:00 saatleri arasında sistem güncellemesi yapılacaktır. Bu süre boyunca aşağıdaki platformlarda erişim kesintisi yaşanacaktır:</p>
+                    <ul class="list-disc list-inside text-gray-600 mb-4">
+                        <li>AccessEngineering</li>
+                        <li>JoVE Education</li>
+                        <li>Primal Pictures</li>
+                    </ul>
+                    <p class="text-gray-600 mb-4">Güncelleme sonrası sistemlerimiz daha hızlı ve güvenli bir şekilde hizmet vermeye devam edecektir. Anlayışınız için teşekkür ederiz.</p>
+                    <p class="text-sm text-gray-500"><i class="far fa-clock mr-1"></i> Güncelleme süresi: 4 saat</p>`
+                },
+                2: {
+                    title: "Pangram AI Artık Kütüphanenizde!",
+                    category: "Yeni Ürün",
+                    date: "11 Ekim 2023",
+                    content: `<p class="text-gray-600 mb-4">Yapay zeka destekli içerik analiz platformu Pangram, koleksiyonunuza eklendi. Pangram ile:</p>
+                    <ul class="list-disc list-inside text-gray-600 mb-4">
+                        <li>Akademik metinleri anında analiz edin</li>
+                        <li>20+ dilde içerik taraması yapın</li>
+                        <li>İntihal tespitini gelişmiş algoritmalarla gerçekleştirin</li>
+                    </ul>
+                    <p class="text-gray-600 mb-4">Demo erişim ve detaylı bilgi için <a href="#contact" class="text-primary hover:underline">iletişim</a> sayfamızdan bizimle iletişime geçebilirsiniz.</p>
+                    <div class="bg-blue-50 p-4 rounded-lg mt-4">
+                        <h4 class="font-semibold text-blue-800 mb-2">Özel Tanıtım Fırsatı</h4>
+                        <p class="text-blue-600">31 Ekim'e kadar geçerli %15 indirimle Pangram'a erişim sağlayın.</p>
+                    </div>`
+                }
+            };
+            
+            const announcement = announcements[id] || {
+                title: "Duyuru Bulunamadı",
+                category: "Hata",
+                date: "",
+                content: "<p class='text-gray-600'>İstenen duyuru bulunamadı.</p>"
+            };
+            
+            modalContent.innerHTML = `
+                <span class="inline-block ${announcement.category === 'Acil Duyuru' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} px-3 py-1 rounded-full text-sm mb-4">${announcement.category}</span>
+                <h2 class="text-2xl font-bold text-primary mb-2">${announcement.title}</h2>
+                <p class="text-gray-500 mb-6"><i class="far fa-calendar-alt mr-1"></i> ${announcement.date}</p>
+                ${announcement.content}
+            `;
+            
+            document.getElementById('announcementModal').classList.remove('hidden');
+            document.body.classList.add('no-scroll');
+        }
+
+        function closeAnnouncementModal() {
+            document.getElementById('announcementModal').classList.add('hidden');
+            document.body.classList.remove('no-scroll');
+        }
+
+        // Modal dışına tıklanınca kapat
+        document.getElementById('announcementModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAnnouncementModal();
+            }
+        });
+    </script>
+</body>
+</html>
