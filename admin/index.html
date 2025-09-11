@@ -169,13 +169,34 @@
       </div>
       
       <div class="error-message" id="error-message" style="display: none;">
-        <h3>React DOM Hatası</h3>
-        <p id="error-details">İçerik yönetim paneli yüklenirken bir React DOM hatası oluştu. Lütfen aşağıdaki çözüm önerilerini deneyin.</p>
+        <h3>GitHub Kimlik Doğrulama Hatası</h3>
+        <p id="error-details">GitHub kimlik doğrulama sırasında bir hata oluştu. Lütfen aşağıdaki talimatları izleyin.</p>
         <div id="error-details-container" style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 5px;"></div>
+        
+        <div class="github-config">
+          <h4>GitHub OAuth Uygulaması Kurulumu:</h4>
+          <ol>
+            <li>GitHub'da <a href="https://github.com/settings/developers" target="_blank">Developer Settings</a> sayfasına gidin</li>
+            <li>"OAuth Apps" bölümüne tıklayın ve "New OAuth App" seçin</li>
+            <li>Gerekli bilgileri doldurun:
+              <ul>
+                <li>Application name: LibEdge CMS</li>
+                <li>Homepage URL: <span id="homepage-url"></span></li>
+                <li>Authorization callback URL: <span id="callback-url"></span></li>
+              </ul>
+            </li>
+            <li>Oluşturduktan sonra Client ID ve Client Secret değerlerini alın</li>
+            <li>Cloudflare Pages'de Environment Variables olarak ekleyin:
+              <ul>
+                <li>GITHUB_CLIENT_ID: [Client ID değeriniz]</li>
+                <li>GITHUB_CLIENT_SECRET: [Client Secret değeriniz]</li>
+              </ul>
+            </li>
+          </ol>
+        </div>
         
         <button class="btn" onclick="window.location.reload()">Sayfayı Yenile</button>
         <button class="btn" onclick="resetConfiguration()">Yapılandırmayı Sıfırla</button>
-        <button class="btn" onclick="useAlternativeApproach()">Alternatif Yaklaşımı Dene</button>
       </div>
       
       <div id="cms-root"></div>
@@ -183,10 +204,10 @@
       <div class="troubleshooting">
         <h3>Sorun Giderme Önerileri</h3>
         <ul>
-          <li>Tarayıcı önbelleğini temizleyin (Ctrl+Shift+Delete)</li>
-          <li>Farklı bir tarayıcı deneyin (Chrome, Firefox, Edge)</li>
-          <li>Sayfayı tamamen yeniden yükleyin (Ctrl+F5)</li>
-          <li>Yukarıdaki "Alternatif Yaklaşımı Dene" butonunu kullanın</li>
+          <li>GitHub OAuth uygulamasının doğru yapılandırıldığından emin olun</li>
+          <li>Callback URL'in doğru olduğundan emin olun</li>
+          <li>Cloudflare Pages environment variables'larını kontrol edin</li>
+          <li>Tarayıcı önbelleğini temizleyin (Ctrl+F5)</li>
         </ul>
       </div>
     </div>
@@ -202,11 +223,11 @@
   <script>
     // Sayfa URL'lerini ayarla
     const currentUrl = window.location.origin;
+    document.getElementById('homepage-url').textContent = currentUrl;
+    document.getElementById('callback-url').textContent = currentUrl + window.location.pathname;
     
     // CMS'in daha önce yüklenip yüklenmediğini kontrol et
     let cmsInitialized = false;
-    let retryCount = 0;
-    const maxRetries = 3;
     
     // Basitleştirilmiş CMS yapılandırması
     const getConfig = () => ({
@@ -214,16 +235,20 @@
         name: "github",
         repo: "picohook/libedge-website",
         branch: "main",
+        // Aşağıdaki ayarlar URL birleştirme hatasını çözecektir
         base_url: "https://api.github.com",
         auth_endpoint: "https://github.com/login/oauth/authorize",
         api_root: "https://api.github.com",
+        // Netlify gateway'i tamamen devre dışı bırak
         use_gateway: false,
+        // GitHub App yerine OAuth App kullan
         proxy_url: ""
       },
       locale: 'tr',
       load_config_file: false,
       media_folder: "assets/images/uploads",
       public_folder: "/assets/images/uploads",
+      // Netlify identity servisini devre dışı bırak
       local_backend: false,
       collections: [
         {
@@ -258,13 +283,13 @@
 
     // Sayfa yüklendiğinde
     document.addEventListener('DOMContentLoaded', function() {
-      // Önce temizlik yap
+      // Eski CMS örneğini temizle
       cleanupExistingCMS();
       
       // CMS yüklendikten sonra çalışacak
       if (typeof CMS !== 'undefined') {
-        // DOM'un tamamen hazır olmasını bekleyelim
-        setTimeout(initializeCMS, 300);
+        // Kısa bir gecikme ekleyerek DOM'un tamamen hazır olmasını bekleyelim
+        setTimeout(initializeCMS, 100);
       } else {
         showError('Decap CMS kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
         
@@ -277,23 +302,19 @@
 
     function cleanupExistingCMS() {
       try {
-        // Tüm React root'larını temizle
-        const reactRoots = document.querySelectorAll('div[data-reactroot], [class*="react"], #cms-root > div');
-        reactRoots.forEach(element => {
-          if (element.parentNode) {
-            try {
-              element.parentNode.removeChild(element);
-            } catch (e) {
-              console.warn('Element kaldırılırken hata oluştu:', e);
-            }
-          }
-        });
-        
         // CMS root elementini temizle
         const rootElement = document.getElementById('cms-root');
         if (rootElement) {
           rootElement.innerHTML = '';
         }
+        
+        // Eski React root'larını temizle
+        const reactRoots = document.querySelectorAll('[data-reactroot], .react-root');
+        reactRoots.forEach(element => {
+          if (element.parentNode) {
+            element.parentNode.removeChild(element);
+          }
+        });
       } catch (error) {
         console.warn('Temizleme sırasında hata oluştu:', error);
       }
@@ -309,8 +330,8 @@
         // Yapılandırmayı al
         const config = getConfig();
         
-        // Önce mevcut React bileşenlerini temizle
-        cleanupReactRoots();
+        // URL birleştirme hatasını önlemek için backend ayarlarını doğrula
+        validateBackendConfig(config.backend);
         
         // CMS'i başlat
         CMS.init({ config });
@@ -323,48 +344,26 @@
         
         console.log('Decap CMS başarıyla yüklendi ve yapılandırıldı');
         
-        // Olası hataları yakala
-        setTimeout(() => {
-          checkForReactErrors();
-        }, 2000);
-        
       } catch (error) {
-        console.error('CMS başlatma hatası:', error);
-        
-        // Belirli sayıda yeniden dene
-        if (retryCount < maxRetries) {
-          retryCount++;
-          console.log(`Yeniden deneme #${retryCount}`);
-          setTimeout(initializeCMS, 1000 * retryCount);
-        } else {
-          showError('CMS başlatma hatası: ' + error.message, error);
-        }
+        showError('CMS başlatma hatası: ' + error.message, error);
       }
     }
     
-    function cleanupReactRoots() {
-      // React'in oluşturduğu kök elementleri bul ve temizle
-      const roots = document.querySelectorAll('body > div:not(.container):not(.modal)');
-      roots.forEach(el => {
-        if (el.id !== 'cms-root' && !el.classList.contains('container')) {
-          try {
-            document.body.removeChild(el);
-          } catch (e) {
-            console.warn('React root temizlenirken hata:', e);
-          }
+    function validateBackendConfig(backendConfig) {
+      // URL birleştirme hatalarını önlemek için backend yapılandırmasını doğrula
+      if (backendConfig.base_url && backendConfig.auth_endpoint) {
+        // base_url ve auth_endpoint'in doğru formatta olduğundan emin ol
+        if (backendConfig.auth_endpoint.startsWith('http')) {
+          console.log('Auth endpoint mutlak URL olarak ayarlanmış:', backendConfig.auth_endpoint);
+        } else {
+          console.warn('Auth endpoint göreli yol olarak ayarlanmış, bu URL birleştirme hatasına neden olabilir');
+          backendConfig.auth_endpoint = "https://github.com/login/oauth/authorize";
         }
-      });
-    }
-    
-    function checkForReactErrors() {
-      // React hata sınırlayıcıları için kontrol yap
-      const errorBoundaries = document.querySelectorAll('[class*="ErrorBoundary"]');
-      if (errorBoundaries.length > 0) {
-        console.warn('React hata sınırlayıcıları tespit edildi');
-        // Hata durumunda sayfayı yeniden yükle
-        setTimeout(() => {
-          window.location.reload();
-        }, 3000);
+        
+        // API kök URL'sini doğrula
+        if (!backendConfig.api_root) {
+          backendConfig.api_root = "https://api.github.com";
+        }
       }
     }
     
@@ -403,42 +402,9 @@
       window.location.reload();
     }
     
-    function useAlternativeApproach() {
-      // Alternatif yaklaşım: CMS'i farklı bir elementte başlat
-      const newRoot = document.createElement('div');
-      newRoot.id = 'cms-alternative-root';
-      newRoot.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: white;';
-      document.body.appendChild(newRoot);
-      
-      // Mevcut içeriği gizle
-      document.querySelector('.container').style.display = 'none';
-      
-      // Yeni kökte CMS'i başlat
-      try {
-        const config = getConfig();
-        CMS.init({ config });
-      } catch (error) {
-        console.error('Alternatif yaklaşım da başarısız oldu:', error);
-        showError('Alternatif yaklaşım da başarısız oldu: ' + error.message);
-      }
-    }
-    
     // Hata yakalama
     window.addEventListener('error', function(e) {
       console.error('Global hata yakalandı:', e.error);
-      
-      // removeChild hatasını özellikle ele al
-      if (e.error && e.error.message && e.error.message.includes('removeChild')) {
-        console.warn('removeChild hatası yakalandı, temizlik yapılıyor...');
-        cleanupExistingCMS();
-        
-        // 2 saniye sonra yeniden dene
-        setTimeout(() => {
-          if (!cmsInitialized) {
-            initializeCMS();
-          }
-        }, 2000);
-      }
     });
     
     // Promise hatalarını yakala
@@ -447,15 +413,10 @@
       
       // "removeChild" hatasını özellikle ele al
       if (e.reason && e.reason.message && e.reason.message.includes('removeChild')) {
-        console.warn('removeChild hatası yakalandı, temizlik yapılıyor...');
-        cleanupExistingCMS();
-        
-        // 2 saniye sonra yeniden dene
+        console.warn('removeChild hatası yakalandı, sayfa yeniden yükleniyor...');
         setTimeout(() => {
-          if (!cmsInitialized) {
-            initializeCMS();
-          }
-        }, 2000);
+          window.location.reload();
+        }, 1000);
       } else {
         showError('Beklenmeyen bir hata oluştu: ' + e.reason.message);
       }
