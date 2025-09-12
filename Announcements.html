@@ -219,13 +219,13 @@
         function renderAnnouncements() {
             announcementsContainer.innerHTML = '';
             
-            // Mevcut sayfaya ait duyuruları belirle
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
             const currentAnnouncements = allAnnouncements.slice(startIndex, endIndex);
 
             if (currentAnnouncements.length === 0) {
                 announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Gösterilecek duyuru bulunamadı.</p>';
+                paginationContainer.innerHTML = '';
                 return;
             }
 
@@ -282,13 +282,11 @@
             renderPaginationButtons();
         }
 
-        // Sayfalama butonlarını oluşturan fonksiyon
         function renderPaginationButtons() {
             paginationContainer.innerHTML = '';
             const totalPages = Math.ceil(allAnnouncements.length / itemsPerPage);
             if (totalPages <= 1) return;
 
-            // Önceki Sayfa butonu
             const prevButton = document.createElement('a');
             prevButton.href = '#';
             prevButton.className = `px-4 py-2 border rounded-md ${currentPage === 1 ? 'cursor-not-allowed bg-gray-200' : 'bg-white hover:bg-gray-100'}`;
@@ -301,7 +299,6 @@
             };
             paginationContainer.appendChild(prevButton);
 
-            // Sayfa numaraları
             for (let i = 1; i <= totalPages; i++) {
                 const pageButton = document.createElement('a');
                 pageButton.href = '#';
@@ -314,7 +311,6 @@
                 paginationContainer.appendChild(pageButton);
             }
 
-            // Sonraki Sayfa butonu
             const nextButton = document.createElement('a');
             nextButton.href = '#';
             nextButton.className = `px-4 py-2 border rounded-md ${currentPage === totalPages ? 'cursor-not-allowed bg-gray-200' : 'bg-white hover:bg-gray-100'}`;
@@ -331,7 +327,7 @@
         function goToPage(page) {
             currentPage = page;
             renderAnnouncements();
-            window.scrollTo({ top: 0, behavior: 'smooth' }); // Sayfanın en üstüne git
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         filterButtons.forEach(button => {
@@ -345,7 +341,6 @@
                     filteredAnnouncements = allAnnouncements.filter(item => item.category === filter);
                 }
                 
-                // Filtreleme sonrası sayfalama
                 allAnnouncements = filteredAnnouncements;
                 currentPage = 1;
                 renderAnnouncements();
@@ -360,7 +355,6 @@
                 (item.full_content && item.full_content.toLowerCase().includes(searchTerm))
             );
             
-            // Arama sonrası sayfalama
             allAnnouncements = filteredAnnouncements;
             currentPage = 1;
             renderAnnouncements();
