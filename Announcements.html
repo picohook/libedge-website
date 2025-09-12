@@ -146,95 +146,7 @@
 
         <!-- Duyuru Listesi -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            <!-- Duyuru 1 -->
-            <div class="announcement-card urgent bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="p-6 relative">
-                    <span class="category-badge bg-red-100 text-red-800 rounded-full">Acil Duyuru</span>
-                    <div class="flex items-center mb-3">
-                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 2 saat önce</span>
-                    </div>
-                    <h3 class="text-xl font-semibold text-primary mb-3">Yazılım Güncellemesi - Erişim Kesintisi</h3>
-                    <p class="text-gray-600 mb-4">15 Ekim 2023 Cumartesi gecesi 23:00 - 03:00 saatleri arasında sistem güncellemesi yapılacaktır. Bu süre boyunca erişimde kesintiler yaşanabilir.</p>
-                    <a href="#" class="read-more" onclick="openAnnouncementModal(1)">
-                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
-                    </a>
-                </div>
-            </div>
 
-            <!-- Duyuru 2 -->
-            <div class="announcement-card new-product bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="p-6 relative">
-                    <span class="category-badge bg-blue-100 text-blue-800 rounded-full">Yeni Ürün</span>
-                    <div class="flex items-center mb-3">
-                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 1 gün önce</span>
-                    </div>
-                    <h3 class="text-xl font-semibold text-primary mb-3">Pangram AI Artık Kütüphanenizde!</h3>
-                    <p class="text-gray-600 mb-4">Yapay zeka destekli içerik analiz platformu Pangram, koleksiyonunuza eklendi. Detaylı bilgi ve demo erişim için lütfen iletişime geçin.</p>
-                    <a href="#" class="read-more" onclick="openAnnouncementModal(2)">
-                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Duyuru 3 -->
-            <div class="announcement-card event bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="p-6 relative">
-                    <span class="category-badge bg-green-100 text-green-800 rounded-full">Etkinlik</span>
-                    <div class="flex items-center mb-3">
-                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 3 gün önce</span>
-                    </div>
-                    <h3 class="text-xl font-semibold text-primary mb-3">Kütüphane Teknolojileri Semineri</h3>
-                    <p class="text-gray-600 mb-4">25 Ekim'de Ankara'da düzenlenecek Kütüphane Teknolojileri Semineri'ne davetlisiniz. Yapay zeka, veri yönetimi ve dijital dönüşüm konuları ele alınacak.</p>
-                    <a href="#" class="read-more" onclick="openAnnouncementModal(3)">
-                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Duyuru 4 -->
-            <div class="announcement-card bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="p-6 relative">
-                    <span class="category-badge bg-purple-100 text-purple-800 rounded-full">Genel Duyuru</span>
-                    <div class="flex items-center mb-3">
-                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 1 hafta önce</span>
-                    </div>
-                    <h3 class="text-xl font-semibold text-primary mb-3">Yeni Dönem Kampanyaları Başladı</h3>
-                    <p class="text-gray-600 mb-4">2023-2024 akademik yılı özel kampanyalarımız ve fırsatlarımız yayınlandı. Özel indirimlerden yararlanmak için son tarih 15 Kasım.</p>
-                    <a href="#" class="read-more" onclick="openAnnouncementModal(4)">
-                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Duyuru 5 -->
-            <div class="announcement-card bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="p-6 relative">
-                    <span class="category-badge bg-yellow-100 text-yellow-800 rounded-full">Yenilik</span>
-                    <div class="flex items-center mb-3">
-                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 2 hafta önce</span>
-                    </div>
-                    <h3 class="text-xl font-semibold text-primary mb-3">Mobil Uygulamamız Yayında!</h3>
-                    <p class="text-gray-600 mb-4">LibEdge mobil uygulaması artık App Store ve Google Play'de. Kaynaklara her yerden erişim, kişiselleştirilmiş öneriler ve daha fazlası.</p>
-                    <a href="#" class="read-more" onclick="openAnnouncementModal(5)">
-                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Duyuru 6 -->
-            <div class="announcement-card bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="p-6 relative">
-                    <span class="category-badge bg-indigo-100 text-indigo-800 rounded-full">İş Ortağı</span>
-                    <div class="flex items-center mb-3">
-                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 3 hafta önce</span>
-                    </div>
-                    <h3 class="text-xl font-semibold text-primary mb-3">Wiley ile Yeni Anlaşma</h3>
-                    <p class="text-gray-600 mb-4">Wiley yayınevi ile yapılan yeni anlaşma kapsamında 500+ yeni dergi ve 2000+ e-kitap koleksiyonunuza eklendi.</p>
-                    <a href="#" class="read-more" onclick="openAnnouncementModal(6)">
-                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
-                    </a>
-                </div>
-            </div>
         </div>
 
         <!-- Sayfalama -->
@@ -274,103 +186,160 @@
     </div>
 
     <script>
-        // Filtreleme işlevi
-        document.querySelectorAll('.filter-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                // Tüm filtre butonlarından active sınıfını kaldır
-                document.querySelectorAll('.filter-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.classList.remove('bg-primary', 'text-white');
-                    btn.classList.add('border-gray-300');
-                });
-                
-                // Tıklanan butona active sınıfını ekle
-                this.classList.add('active', 'bg-primary', 'text-white');
-                this.classList.remove('border-gray-300');
-                
-                const filter = this.dataset.filter;
-                // Burada filtreleme işlemi yapılacak
-                console.log('Filtre:', filter);
-            });
-        });
+document.addEventListener('DOMContentLoaded', () => {
+    // Duyuruların gösterileceği ana kapsayıcı
+    const announcementsContainer = document.querySelector('.grid.gap-6');
+    // Filtreleme butonları
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    // Arama kutusu
+    const searchInput = document.querySelector('input[type="text"]');
 
-        // Arama işlevi
-        const searchInput = document.querySelector('input[type="text"]');
-        searchInput.addEventListener('keyup', function(e) {
-            if (e.key === 'Enter') {
-                const searchTerm = this.value;
-                // Burada arama işlemi yapılacak
-                console.log('Arama:', searchTerm);
+    let allAnnouncements = []; // Tüm duyuruları saklayacak dizi
+
+    // JSON dosyasını çekme fonksiyonu
+    async function fetchAnnouncements() {
+        try {
+            const response = await fetch('/content/duyurular.json'); // JSON dosyasının yolunu kontrol edin
+            if (!response.ok) {
+                throw new Error('Duyurular yüklenemedi.');
             }
-        });
+            const data = await response.json();
+            allAnnouncements = data.items;
+            renderAnnouncements(allAnnouncements); // Duyuruları sayfaya yerleştir
+        } catch (error) {
+            console.error('Hata:', error);
+            announcementsContainer.innerHTML = '<p class="text-center text-red-500">Duyurular yüklenirken bir hata oluştu.</p>';
+        }
+    }
 
-        // Modal işlevleri
-        function openAnnouncementModal(id) {
-            // Burada API'den veya yerel veriden duyuru içeriği alınabilir
-            const modalContent = document.getElementById('modalContent');
+    // Duyuruları sayfaya yerleştirme fonksiyonu
+    function renderAnnouncements(announcements) {
+        announcementsContainer.innerHTML = ''; // Önceki içerikleri temizle
+        if (announcements.length === 0) {
+            announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Gösterilecek duyuru bulunamadı.</p>';
+            return;
+        }
+
+        announcements.forEach((announcement) => {
+            // Duyuru kartı için HTML oluşturma
+            const card = document.createElement('div');
+            const categoryClass = announcement.category;
+            card.className = `announcement-card bg-white rounded-lg shadow-md overflow-hidden ${categoryClass}`;
             
-            // Örnek içerikler
-            const announcements = {
-                1: {
-                    title: "Yazılım Güncellemesi - Erişim Kesintisi",
-                    category: "Acil Duyuru",
-                    date: "12 Ekim 2023",
-                    content: `<p class="text-gray-600 mb-4">15 Ekim 2023 Cumartesi gecesi 23:00 - 03:00 saatleri arasında sistem güncellemesi yapılacaktır. Bu süre boyunca aşağıdaki platformlarda erişim kesintisi yaşanacaktır:</p>
-                    <ul class="list-disc list-inside text-gray-600 mb-4">
-                        <li>AccessEngineering</li>
-                        <li>JoVE Education</li>
-                        <li>Primal Pictures</li>
-                    </ul>
-                    <p class="text-gray-600 mb-4">Güncelleme sonrası sistemlerimiz daha hızlı ve güvenli bir şekilde hizmet vermeye devam edecektir. Anlayışınız için teşekkür ederiz.</p>
-                    <p class="text-sm text-gray-500"><i class="far fa-clock mr-1"></i> Güncelleme süresi: 4 saat</p>`
-                },
-                2: {
-                    title: "Pangram AI Artık Kütüphanenizde!",
-                    category: "Yeni Ürün",
-                    date: "11 Ekim 2023",
-                    content: `<p class="text-gray-600 mb-4">Yapay zeka destekli içerik analiz platformu Pangram, koleksiyonunuza eklendi. Pangram ile:</p>
-                    <ul class="list-disc list-inside text-gray-600 mb-4">
-                        <li>Akademik metinleri anında analiz edin</li>
-                        <li>20+ dilde içerik taraması yapın</li>
-                        <li>İntihal tespitini gelişmiş algoritmalarla gerçekleştirin</li>
-                    </ul>
-                    <p class="text-gray-600 mb-4">Demo erişim ve detaylı bilgi için <a href="#contact" class="text-primary hover:underline">iletişim</a> sayfamızdan bizimle iletişime geçebilirsiniz.</p>
-                    <div class="bg-blue-50 p-4 rounded-lg mt-4">
-                        <h4 class="font-semibold text-blue-800 mb-2">Özel Tanıtım Fırsatı</h4>
-                        <p class="text-blue-600">31 Ekim'e kadar geçerli %15 indirimle Pangram'a erişim sağlayın.</p>
-                    </div>`
-                }
-            };
-            
-            const announcement = announcements[id] || {
-                title: "Duyuru Bulunamadı",
-                category: "Hata",
-                date: "",
-                content: "<p class='text-gray-600'>İstenen duyuru bulunamadı.</p>"
-            };
-            
-            modalContent.innerHTML = `
-                <span class="inline-block ${announcement.category === 'Acil Duyuru' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} px-3 py-1 rounded-full text-sm mb-4">${announcement.category}</span>
-                <h2 class="text-2xl font-bold text-primary mb-2">${announcement.title}</h2>
-                <p class="text-gray-500 mb-6"><i class="far fa-calendar-alt mr-1"></i> ${announcement.date}</p>
-                ${announcement.content}
+            // Kategori adını düzenle
+            let categoryText = '';
+            let badgeClass = '';
+            switch (announcement.category) {
+                case 'urgent':
+                    categoryText = 'Acil Duyuru';
+                    badgeClass = 'bg-red-100 text-red-800';
+                    break;
+                case 'new-product':
+                    categoryText = 'Yeni Ürün';
+                    badgeClass = 'bg-blue-100 text-blue-800';
+                    break;
+                case 'event':
+                    categoryText = 'Etkinlik';
+                    badgeClass = 'bg-green-100 text-green-800';
+                    break;
+                case 'maintenance':
+                    categoryText = 'Bakım Duyurusu';
+                    badgeClass = 'bg-yellow-100 text-yellow-800';
+                    break;
+                default:
+                    categoryText = 'Genel Duyuru';
+                    badgeClass = 'bg-purple-100 text-purple-800';
+                    break;
+            }
+
+            // Tarih formatını ayarla (isteğe bağlı, daha gelişmiş bir kütüphane kullanılabilir)
+            const date = new Date(announcement.date);
+            const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            card.innerHTML = `
+                <div class="p-6 relative">
+                    <span class="category-badge ${badgeClass}">${categoryText}</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">${announcement.title}</h3>
+                    <p class="text-gray-600 mb-4">${announcement.summary}</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal('${announcement.title}', '${formattedDate}', '${categoryText}', '${announcement.full_content.replace(/'/g, "\\'").replace(/"/g, '\\"')}')">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
             `;
-            
-            document.getElementById('announcementModal').classList.remove('hidden');
-            document.body.classList.add('no-scroll');
-        }
-
-        function closeAnnouncementModal() {
-            document.getElementById('announcementModal').classList.add('hidden');
-            document.body.classList.remove('no-scroll');
-        }
-
-        // Modal dışına tıklanınca kapat
-        document.getElementById('announcementModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeAnnouncementModal();
-            }
+            announcementsContainer.appendChild(card);
         });
+    }
+
+    // Filtreleme fonksiyonu
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Aktif sınıfını yönetme
+            filterButtons.forEach(btn => btn.classList.remove('active', 'bg-primary', 'text-white'));
+            this.classList.add('active', 'bg-primary', 'text-white');
+            
+            const filter = this.dataset.filter;
+            let filteredAnnouncements = allAnnouncements;
+            if (filter !== 'all') {
+                filteredAnnouncements = allAnnouncements.filter(item => item.category === filter);
+            }
+            renderAnnouncements(filteredAnnouncements);
+        });
+    });
+
+    // Arama fonksiyonu
+    searchInput.addEventListener('keyup', function(e) {
+        const searchTerm = this.value.toLowerCase();
+        const filteredAnnouncements = allAnnouncements.filter(item => 
+            item.title.toLowerCase().includes(searchTerm) || 
+            item.summary.toLowerCase().includes(searchTerm) ||
+            (item.full_content && item.full_content.toLowerCase().includes(searchTerm))
+        );
+        renderAnnouncements(filteredAnnouncements);
+    });
+    
+    // Modal açma fonksiyonu (HTML'deki `onclick` ile çağrılır)
+    window.openAnnouncementModal = (title, date, category, content) => {
+        const modalContent = document.getElementById('modalContent');
+        
+        let badgeClass = '';
+        switch (category) {
+            case 'Acil Duyuru':
+                badgeClass = 'bg-red-100 text-red-800';
+                break;
+            case 'Yeni Ürün':
+                badgeClass = 'bg-blue-100 text-blue-800';
+                break;
+            case 'Etkinlik':
+                badgeClass = 'bg-green-100 text-green-800';
+                break;
+            default:
+                badgeClass = 'bg-purple-100 text-purple-800';
+                break;
+        }
+
+        // Markdown içeriğini HTML'e dönüştürmek için basit bir regex (daha gelişmiş kütüphane önerilir)
+        const contentHtml = content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
+
+        modalContent.innerHTML = `
+            <span class="inline-block ${badgeClass} px-3 py-1 rounded-full text-sm mb-4">${category}</span>
+            <h2 class="text-2xl font-bold text-primary mb-2">${title}</h2>
+            <p class="text-gray-500 mb-6"><i class="far fa-calendar-alt mr-1"></i> ${date}</p>
+            <div class="prose max-w-none">${contentHtml}</div>
+        `;
+        
+        document.getElementById('announcementModal').classList.remove('hidden');
+        document.body.classList.add('no-scroll');
+    };
+    
+    // Sayfa yüklendiğinde duyuruları getir
+    fetchAnnouncements();
+});
+
+// Modal kapatma fonksiyonu (bu zaten HTML'de var, burada tekrar tanımlamaya gerek yok)
+// function closeAnnouncementModal() { ... }
     </script>
 </body>
 </html>
