@@ -2,52 +2,24 @@
   "items": [
     {
       "title": "Test Duyurusu",
-      "date": "2023-09-12",
+      "date": "2025-09-12",
       "category": "general",
       "summary": "Bu bir test duyurusudur.",
       "full_content": "Markdown destekli içerik buraya yazılır."
     },
     {
       "title": "Yazılım Güncellemesi - Erişim Kesintisi",
-      "date": "2023-10-15",
+      "date": "2023-10-15T23:00:00.000Z",
       "category": "urgent",
       "summary": "15 Ekim 2023 Cumartesi gecesi 23:00 - 03:00 saatleri arasında sistem güncellemesi yapılacaktır.",
       "full_content": "Sistemlerimizde daha iyi performans ve güvenlik sağlamak amacıyla, **15 Ekim 2023 Cumartesi gecesi 23:00** ile **16 Ekim 2023 Pazar sabahı 03:00** saatleri arasında planlı bir bakım çalışması yapılacaktır. \n\nBu süre zarfında tüm platforma erişim kesintisi yaşanacaktır. Anlayışınız için teşekkür ederiz.\n\n![Bakım Duyurusu](https://libedge-website.pages.dev/assets/images/uploads/Screenshot%202025-03-11%20185358.png)"
     },
     {
       "title": "Pangram AI Artık Kütüphanenizde!",
-      "date": "2023-09-11",
+      "date": "2025-09-11T12:00:00.000Z",
       "category": "new-product",
       "summary": "Yapay zeka destekli içerik analiz platformu Pangram, koleksiyonunuza eklendi.",
       "full_content": "Yapay zeka destekli içerik analiz platformumuz olan **Pangram AI** artık kütüphanenizde. Bu yeni araç sayesinde, dökümanlarınızdaki önemli bilgileri hızlı bir şekilde çıkarabilir, metin özetleri oluşturabilir ve anahtar kelime analizi yapabilirsiniz."
-    },
-    {
-      "title": "Kütüphane Yenileme Çalışması",
-      "date": "2023-11-01",
-      "category": "maintenance",
-      "summary": "Kasım ayı boyunca kütüphane altyapımızda yenileme çalışmaları yapılacaktır.",
-      "full_content": "Kasım 2023 boyunca kütüphane altyapımızda performans iyileştirme ve güvenlik güncellemeleri için çalışmalar yapılacaktır. Bu süreçte zaman zaman kısa kesintiler yaşanabilir. Anlayışınız için teşekkür ederiz."
-    },
-    {
-      "title": "yeni bir duyuru",
-      "date": "2025-09-12",
-      "category": "urgent",
-      "summary": "Acil mi acil!!",
-      "full_content": "Doldurulabilir"
-    },
-    {
-      "title": "Yeni Eğitim Programları",
-      "date": "2023-09-20",
-      "category": "event",
-      "summary": "Ekim ayından itibaren başlayacak yeni eğitim programlarımız duyurulmuştur.",
-      "full_content": "Ekim 2023'ten itibaren başlayacak olan yeni eğitim programlarımız açıklanmıştır. Kütüphane yönetimi, dijital dönüşüm ve veri analitiği konularında uzmanlaşmak isteyenler için harika fırsatlar sunuyoruz.\n\nDetaylı bilgi ve kayıt için web sitemizi ziyaret edin."
-    },
-    {
-      "title": "Nerede bu duyuru",
-      "date": "2025-09-12",
-      "category": "urgent",
-      "summary": "neredesin?",
-      "full_content": "..."
     }
   ]
 }
