@@ -197,7 +197,7 @@
             announcementsContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full">Duyurular yükleniyor...</p>';
 
             try {
-                const response = await fetch('duyurular.json');
+                const response = await fetch('/content/duyurular.json');
                 if (!response.ok) {
                     throw new Error('Duyurular yüklenemedi.');
                 }
