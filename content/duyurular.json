@@ -1,6 +1,13 @@
 {
   "items": [
     {
+      "title": "Test Duyurusu",
+      "date": "2025-09-12",
+      "category": "general",
+      "summary": "Bu bir test duyurusudur.",
+      "full_content": "Markdown destekli içerik buraya yazılır."
+    },
+    {
       "title": "Yazılım Güncellemesi - Erişim Kesintisi",
       "date": "2023-10-15T23:00:00.000Z",
       "category": "urgent",
@@ -13,13 +20,6 @@
       "category": "new-product",
       "summary": "Yapay zeka destekli içerik analiz platformu Pangram, koleksiyonunuza eklendi.",
       "full_content": "Yapay zeka destekli içerik analiz platformumuz olan **Pangram AI** artık kütüphanenizde. Bu yeni araç sayesinde, dökümanlarınızdaki önemli bilgileri hızlı bir şekilde çıkarabilir, metin özetleri oluşturabilir ve anahtar kelime analizi yapabilirsiniz."
-    },
-    {
-      "title": "Test Duyurusu",
-      "date": "2025-09-12T12:00:00.000Z",
-      "category": "general",
-      "summary": "Bu bir test duyurusudur.",
-      "full_content": "Bu içerik bir test için eklenmiştir. Markdown dilini kullanarak başlıklar, listeler ve kalın metinler ekleyebilirsiniz.\n\n### Örnek Başlık\n\n- Liste öğesi 1\n- Liste öğesi 2\n\n**Kalın metin**"
     }
   ]
 }
