@@ -188,46 +188,40 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Duyuruların gösterileceği ana kapsayıcı
     const announcementsContainer = document.querySelector('.grid.gap-6');
-    // Filtreleme butonları
     const filterButtons = document.querySelectorAll('.filter-btn');
-    // Arama kutusu
     const searchInput = document.querySelector('input[type="text"]');
 
-    let allAnnouncements = []; // Tüm duyuruları saklayacak dizi
+    let allAnnouncements = []; 
 
-    // JSON dosyasını çekme fonksiyonu
     async function fetchAnnouncements() {
         try {
-            const response = await fetch('/content/duyurular.json'); // JSON dosyasının yolunu kontrol edin
+            const response = await fetch('/content/duyurular.json');
             if (!response.ok) {
                 throw new Error('Duyurular yüklenemedi.');
             }
             const data = await response.json();
             allAnnouncements = data.items;
-            renderAnnouncements(allAnnouncements); // Duyuruları sayfaya yerleştir
+            renderAnnouncements(allAnnouncements);
         } catch (error) {
             console.error('Hata:', error);
             announcementsContainer.innerHTML = '<p class="text-center text-red-500">Duyurular yüklenirken bir hata oluştu.</p>';
         }
     }
 
-    // Duyuruları sayfaya yerleştirme fonksiyonu
     function renderAnnouncements(announcements) {
-        announcementsContainer.innerHTML = ''; // Önceki içerikleri temizle
+        announcementsContainer.innerHTML = '';
         if (announcements.length === 0) {
             announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Gösterilecek duyuru bulunamadı.</p>';
             return;
         }
 
-        announcements.forEach((announcement) => {
-            // Duyuru kartı için HTML oluşturma
+        // `forEach` döngüsü ile index numarasını alıyoruz
+        announcements.forEach((announcement, index) => {
             const card = document.createElement('div');
             const categoryClass = announcement.category;
             card.className = `announcement-card bg-white rounded-lg shadow-md overflow-hidden ${categoryClass}`;
             
-            // Kategori adını düzenle
             let categoryText = '';
             let badgeClass = '';
             switch (announcement.category) {
@@ -253,7 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
             }
 
-            // Tarih formatını ayarla
             const date = new Date(announcement.date);
             const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -265,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <h3 class="text-xl font-semibold text-primary mb-3">${announcement.title}</h3>
                     <p class="text-gray-600 mb-4">${announcement.summary}</p>
-                    <a href="#" class="read-more" onclick="openAnnouncementModal('${announcement.title}', '${formattedDate}', '${categoryText}', '${announcement.full_content.replace(/'/g, "\\'").replace(/"/g, '\\"')}')">
+                    <a href="#" class="read-more" onclick="openAnnouncementModalByIndex(${index})">
                         Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
                     </a>
                 </div>
@@ -274,10 +267,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Filtreleme fonksiyonu
+    // Filtreleme ve arama fonksiyonları burası değişmedi
     filterButtons.forEach(button => {
         button.addEventListener('click', function() {
-            // Aktif sınıfını yönetme
             filterButtons.forEach(btn => btn.classList.remove('active', 'bg-primary', 'text-white'));
             this.classList.add('active', 'bg-primary', 'text-white');
             
@@ -290,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Arama fonksiyonu
     searchInput.addEventListener('keyup', function(e) {
         const searchTerm = this.value.toLowerCase();
         const filteredAnnouncements = allAnnouncements.filter(item => 
@@ -301,33 +292,41 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAnnouncements(filteredAnnouncements);
     });
     
-    // Modal açma fonksiyonu (HTML'deki `onclick` ile çağrılır)
-    window.openAnnouncementModal = (title, date, category, content) => {
+    // YENİ: Modalı index numarasıyla açan fonksiyon
+    window.openAnnouncementModalByIndex = (index) => {
+        const announcement = allAnnouncements[index];
+        if (!announcement) {
+            console.error('Duyuru bulunamadı.');
+            return;
+        }
+
         const modalContent = document.getElementById('modalContent');
         
         let badgeClass = '';
-        switch (category) {
-            case 'Acil Duyuru':
+        switch (announcement.category) {
+            case 'urgent':
                 badgeClass = 'bg-red-100 text-red-800';
                 break;
-            case 'Yeni Ürün':
+            case 'new-product':
                 badgeClass = 'bg-blue-100 text-blue-800';
                 break;
-            case 'Etkinlik':
+            case 'event':
                 badgeClass = 'bg-green-100 text-green-800';
                 break;
             default:
                 badgeClass = 'bg-purple-100 text-purple-800';
                 break;
         }
+        
+        const date = new Date(announcement.date);
+        const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
 
-        // Marked.js ile Markdown içeriğini HTML'e dönüştür
-        const contentHtml = marked.parse(content);
+        const contentHtml = marked.parse(announcement.full_content);
 
         modalContent.innerHTML = `
-            <span class="inline-block ${badgeClass} px-3 py-1 rounded-full text-sm mb-4">${category}</span>
-            <h2 class="text-2xl font-bold text-primary mb-2">${title}</h2>
-            <p class="text-gray-500 mb-6"><i class="far fa-calendar-alt mr-1"></i> ${date}</p>
+            <span class="inline-block ${badgeClass} px-3 py-1 rounded-full text-sm mb-4">${badgeClass.includes('red') ? 'Acil Duyuru' : badgeClass.includes('blue') ? 'Yeni Ürün' : badgeClass.includes('green') ? 'Etkinlik' : 'Genel Duyuru'}</span>
+            <h2 class="text-2xl font-bold text-primary mb-2">${announcement.title}</h2>
+            <p class="text-gray-500 mb-6"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</p>
             <div class="prose max-w-none">${contentHtml}</div>
         `;
         
@@ -335,13 +334,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.add('no-scroll');
     };
     
-    // Modal kapatma fonksiyonu
     window.closeAnnouncementModal = () => {
         document.getElementById('announcementModal').classList.add('hidden');
         document.body.classList.remove('no-scroll');
     };
 
-    // Sayfa yüklendiğinde duyuruları getir
     fetchAnnouncements();
 });
 </script>
