@@ -1,18 +1,25 @@
 {
   "items": [
     {
-      "title": "test2",
-      "date": "2025-09-12",
+      "title": "Yazılım Güncellemesi - Erişim Kesintisi",
+      "date": "2023-10-15T23:00:00.000Z",
       "category": "urgent",
-      "summary": "duyuru sayfası bakımda olacak",
-      "full_content": "![](https://images.examples.com/wp-content/uploads/2018/06/Maintenance-Image.jpeg)"
+      "summary": "15 Ekim 2023 Cumartesi gecesi 23:00 - 03:00 saatleri arasında sistem güncellemesi yapılacaktır.",
+      "full_content": "Sistemlerimizde daha iyi performans ve güvenlik sağlamak amacıyla, **15 Ekim 2023 Cumartesi gecesi 23:00** ile **16 Ekim 2023 Pazar sabahı 03:00** saatleri arasında planlı bir bakım çalışması yapılacaktır. \n\nBu süre zarfında tüm platforma erişim kesintisi yaşanacaktır. Anlayışınız için teşekkür ederiz.\n\n![Bakım Duyurusu](https://libedge-website.pages.dev/assets/images/uploads/Screenshot%202025-03-11%20185358.png)"
     },
     {
-      "title": "testo",
-      "date": "2025-09-12",
-      "category": "urgent",
-      "summary": "?",
-      "full_content": "![](/assets/images/uploads/Screenshot 2025-03-11 185358.png)"
+      "title": "Pangram AI Artık Kütüphanenizde!",
+      "date": "2025-09-11T12:00:00.000Z",
+      "category": "new-product",
+      "summary": "Yapay zeka destekli içerik analiz platformu Pangram, koleksiyonunuza eklendi.",
+      "full_content": "Yapay zeka destekli içerik analiz platformumuz olan **Pangram AI** artık kütüphanenizde. Bu yeni araç sayesinde, dökümanlarınızdaki önemli bilgileri hızlı bir şekilde çıkarabilir, metin özetleri oluşturabilir ve anahtar kelime analizi yapabilirsiniz."
+    },
+    {
+      "title": "Test Duyurusu",
+      "date": "2025-09-12T12:00:00.000Z",
+      "category": "general",
+      "summary": "Bu bir test duyurusudur.",
+      "full_content": "Bu içerik bir test için eklenmiştir. Markdown dilini kullanarak başlıklar, listeler ve kalın metinler ekleyebilirsiniz.\n\n### Örnek Başlık\n\n- Liste öğesi 1\n- Liste öğesi 2\n\n**Kalın metin**"
     }
   ]
 }
