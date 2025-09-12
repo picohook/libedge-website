@@ -91,6 +91,10 @@
             background-color: #220f60;
             color: white;
         }
+        
+        .no-scroll {
+            overflow: hidden;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -122,7 +126,7 @@
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div class="flex flex-wrap gap-2">
-                    <button class="filter-btn active px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="all">
+                    <button class="filter-btn active px-4 py-2 rounded-full border border-gray-300 text-sm bg-primary text-white" data-filter="all">
                         Tümü
                     </button>
                     <button class="filter-btn px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="urgent">
@@ -150,20 +154,9 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
 
         </div>
-        <div id="pagination-container" class="flex justify-center items-center mt-8 space-x-2">
-    </div>
-
+        
         <!-- Sayfalama -->
-        <div class="flex justify-center items-center space-x-2">
-            <button class="pagination-btn disabled px-3 py-1 rounded border border-gray-300 text-gray-400">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <button class="pagination-btn px-3 py-1 rounded border border-primary bg-primary text-white">1</button>
-            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">2</button>
-            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">3</button>
-            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">
-                <i class="fas fa-chevron-right"></i>
-            </button>
+        <div id="pagination-container" class="flex justify-center items-center mt-8 space-x-2">
         </div>
 
         <!-- Bülten Aboneliği -->
@@ -195,9 +188,12 @@
         const searchInput = document.querySelector('input[type="text"]');
         const paginationContainer = document.getElementById('pagination-container');
 
-        let allAnnouncements = [];
+        let allAnnouncements = []; // Tüm duyurular
+        let filteredAnnouncements = []; // Filtrelenmiş duyurular
         let currentPage = 1;
-        const itemsPerPage = 5; // Her sayfada kaç duyuru gösterileceğini buradan ayarlayabilirsiniz
+        const itemsPerPage = 5; // Her sayfada kaç duyuru gösterileceği
+        let currentFilter = 'all'; // Mevcut filtre
+        let currentSearchTerm = ''; // Mevcut arama terimi
 
         async function fetchAnnouncements() {
             announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Duyurular yükleniyor...</p>';
@@ -209,11 +205,35 @@
                 }
                 const data = await response.json();
                 allAnnouncements = data.items;
+                filteredAnnouncements = [...allAnnouncements]; // Başlangıçta tüm duyurular
                 renderAnnouncements();
             } catch (error) {
                 console.error('Hata:', error);
                 announcementsContainer.innerHTML = '<p class="text-center text-red-500">Duyurular yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.</p>';
             }
+        }
+
+        function applyFiltersAndSearch() {
+            let result = [...allAnnouncements];
+            
+            // Filtre uygula
+            if (currentFilter !== 'all') {
+                result = result.filter(item => item.category === currentFilter);
+            }
+            
+            // Arama uygula
+            if (currentSearchTerm) {
+                const searchTerm = currentSearchTerm.toLowerCase();
+                result = result.filter(item => 
+                    item.title.toLowerCase().includes(searchTerm) || 
+                    item.summary.toLowerCase().includes(searchTerm) ||
+                    (item.full_content && item.full_content.toLowerCase().includes(searchTerm))
+                );
+            }
+            
+            filteredAnnouncements = result;
+            currentPage = 1; // Filtre değiştiğinde ilk sayfaya dön
+            renderAnnouncements();
         }
 
         function renderAnnouncements() {
@@ -222,15 +242,16 @@
             // Mevcut sayfaya ait duyuruları belirle
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
-            const currentAnnouncements = allAnnouncements.slice(startIndex, endIndex);
+            const currentAnnouncements = filteredAnnouncements.slice(startIndex, endIndex);
 
             if (currentAnnouncements.length === 0) {
                 announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Gösterilecek duyuru bulunamadı.</p>';
+                renderPaginationButtons();
                 return;
             }
 
             currentAnnouncements.forEach((announcement, index) => {
-                const globalIndex = startIndex + index;
+                const globalIndex = allAnnouncements.findIndex(item => item === announcement);
                 const card = document.createElement('div');
                 const categoryClass = announcement.category;
                 card.className = `announcement-card bg-white rounded-lg shadow-md overflow-hidden ${categoryClass}`;
@@ -285,14 +306,14 @@
         // Sayfalama butonlarını oluşturan fonksiyon
         function renderPaginationButtons() {
             paginationContainer.innerHTML = '';
-            const totalPages = Math.ceil(allAnnouncements.length / itemsPerPage);
+            const totalPages = Math.ceil(filteredAnnouncements.length / itemsPerPage);
             if (totalPages <= 1) return;
 
             // Önceki Sayfa butonu
-            const prevButton = document.createElement('a');
-            prevButton.href = '#';
-            prevButton.className = `px-4 py-2 border rounded-md ${currentPage === 1 ? 'cursor-not-allowed bg-gray-200' : 'bg-white hover:bg-gray-100'}`;
+            const prevButton = document.createElement('button');
+            prevButton.className = `pagination-btn px-4 py-2 border rounded-md ${currentPage === 1 ? 'disabled cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-gray-100'}`;
             prevButton.innerHTML = `<i class="fas fa-chevron-left"></i> Önceki`;
+            prevButton.disabled = currentPage === 1;
             prevButton.onclick = (e) => {
                 e.preventDefault();
                 if (currentPage > 1) {
@@ -303,9 +324,8 @@
 
             // Sayfa numaraları
             for (let i = 1; i <= totalPages; i++) {
-                const pageButton = document.createElement('a');
-                pageButton.href = '#';
-                pageButton.className = `px-4 py-2 mx-1 border rounded-md ${currentPage === i ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}`;
+                const pageButton = document.createElement('button');
+                pageButton.className = `pagination-btn px-4 py-2 mx-1 border rounded-md ${currentPage === i ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}`;
                 pageButton.textContent = i;
                 pageButton.onclick = (e) => {
                     e.preventDefault();
@@ -315,10 +335,10 @@
             }
 
             // Sonraki Sayfa butonu
-            const nextButton = document.createElement('a');
-            nextButton.href = '#';
-            nextButton.className = `px-4 py-2 border rounded-md ${currentPage === totalPages ? 'cursor-not-allowed bg-gray-200' : 'bg-white hover:bg-gray-100'}`;
+            const nextButton = document.createElement('button');
+            nextButton.className = `pagination-btn px-4 py-2 border rounded-md ${currentPage === totalPages ? 'disabled cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-gray-100'}`;
             nextButton.innerHTML = `Sonraki <i class="fas fa-chevron-right"></i>`;
+            nextButton.disabled = currentPage === totalPages;
             nextButton.onclick = (e) => {
                 e.preventDefault();
                 if (currentPage < totalPages) {
@@ -331,86 +351,90 @@
         function goToPage(page) {
             currentPage = page;
             renderAnnouncements();
-            window.scrollTo({ top: 0, behavior: 'smooth' }); // Sayfanın en üstüne git
+            window.scrollTo({ top: announcementsContainer.offsetTop - 100, behavior: 'smooth' });
         }
 
+        // Filtre butonları için event listener'lar
         filterButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                filterButtons.forEach(btn => btn.classList.remove('active', 'bg-primary', 'text-white'));
-                this.classList.add('active', 'bg-primary', 'text-white');
+            button.addEventListener('click', () => {
+                // Tüm butonlardan active sınıfını kaldır
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                // Tıklanan butona active sınıfını ekle
+                button.classList.add('active');
                 
-                const filter = this.dataset.filter;
-                let filteredAnnouncements = allAnnouncements;
-                if (filter !== 'all') {
-                    filteredAnnouncements = allAnnouncements.filter(item => item.category === filter);
-                }
-                
-                // Filtreleme sonrası sayfalama
-                allAnnouncements = filteredAnnouncements;
-                currentPage = 1;
-                renderAnnouncements();
+                currentFilter = button.getAttribute('data-filter');
+                applyFiltersAndSearch();
             });
         });
 
-        searchInput.addEventListener('keyup', function(e) {
-            const searchTerm = this.value.toLowerCase();
-            const filteredAnnouncements = allAnnouncements.filter(item => 
-                item.title.toLowerCase().includes(searchTerm) || 
-                item.summary.toLowerCase().includes(searchTerm) ||
-                (item.full_content && item.full_content.toLowerCase().includes(searchTerm))
-            );
-            
-            // Arama sonrası sayfalama
-            allAnnouncements = filteredAnnouncements;
-            currentPage = 1;
-            renderAnnouncements();
+        // Arama inputu için event listener
+        searchInput.addEventListener('input', (e) => {
+            currentSearchTerm = e.target.value;
+            applyFiltersAndSearch();
         });
-        
-        window.openAnnouncementModalByIndex = (index) => {
-            const announcement = allAnnouncements[index];
-            if (!announcement) {
-                console.error('Duyuru bulunamadı.');
-                return;
-            }
-            const modalContent = document.getElementById('modalContent');
-            let badgeClass = '';
-            switch (announcement.category) {
-                case 'urgent':
-                    badgeClass = 'bg-red-100 text-red-800';
-                    break;
-                case 'new-product':
-                    badgeClass = 'bg-blue-100 text-blue-800';
-                    break;
-                case 'event':
-                    badgeClass = 'bg-green-100 text-green-800';
-                    break;
-                default:
-                    badgeClass = 'bg-purple-100 text-purple-800';
-                    break;
-            }
-            const date = new Date(announcement.date);
-            const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
-            const contentHtml = marked.parse(announcement.full_content);
-
-            modalContent.innerHTML = `
-                <span class="inline-block ${badgeClass} px-3 py-1 rounded-full text-sm mb-4">${badgeClass.includes('red') ? 'Acil Duyuru' : badgeClass.includes('blue') ? 'Yeni Ürün' : badgeClass.includes('green') ? 'Etkinlik' : 'Genel Duyuru'}</span>
-                <h2 class="text-2xl font-bold text-primary mb-2">${announcement.title}</h2>
-                <p class="text-gray-500 mb-6"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</p>
-                <div class="prose max-w-none">${contentHtml}</div>
-            `;
-            
-            document.getElementById('announcementModal').classList.remove('hidden');
-            document.body.classList.add('no-scroll');
-        };
-        
-        window.closeAnnouncementModal = () => {
-            document.getElementById('announcementModal').classList.add('hidden');
-            document.body.classList.remove('no-scroll');
-        };
 
         fetchAnnouncements();
     });
-</script>
 
+    // Modal işlevleri
+    function openAnnouncementModalByIndex(index) {
+        const announcement = allAnnouncements[index];
+        if (!announcement) return;
+        
+        const modal = document.getElementById('announcementModal');
+        const modalContent = document.getElementById('modalContent');
+        
+        const date = new Date(announcement.date);
+        const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
+        
+        let categoryText = '';
+        switch (announcement.category) {
+            case 'urgent':
+                categoryText = 'Acil Duyuru';
+                break;
+            case 'new-product':
+                categoryText = 'Yeni Ürün';
+                break;
+            case 'event':
+                categoryText = 'Etkinlik';
+                break;
+            case 'maintenance':
+                categoryText = 'Bakım Duyurusu';
+                break;
+            default:
+                categoryText = 'Genel Duyuru';
+                break;
+        }
+        
+        modalContent.innerHTML = `
+            <div class="mb-6">
+                <span class="text-sm font-medium text-gray-500">${categoryText}</span>
+                <h2 class="text-2xl font-bold text-primary mt-1">${announcement.title}</h2>
+                <div class="flex items-center mt-2">
+                    <span class="date-badge"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</span>
+                </div>
+            </div>
+            <div class="prose max-w-none">
+                ${announcement.full_content ? announcement.full_content : `<p>${announcement.summary}</p>`}
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+        document.body.classList.add('no-scroll');
+    }
+
+    function closeAnnouncementModal() {
+        const modal = document.getElementById('announcementModal');
+        modal.classList.add('hidden');
+        document.body.classList.remove('no-scroll');
+    }
+
+    // Modal dışına tıklandığında kapat
+    document.getElementById('announcementModal').addEventListener('click', (e) => {
+        if (e.target.id === 'announcementModal') {
+            closeAnnouncementModal();
+        }
+    });
+</script>
 </body>
 </html>
