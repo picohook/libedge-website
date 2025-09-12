@@ -9,3 +9,24 @@
     }
   ]
 }
+
+[
+  {
+    "id": 1,
+    "category": "urgent",
+    "category_text": "Acil Duyuru",
+    "date_relative": "2 saat önce",
+    "title": "Yazılım Güncellemesi - Erişim Kesintisi",
+    "summary": "15 Ekim 2023 Cumartesi gecesi 23:00 - 03:00 saatleri arasında sistem güncellemesi yapılacaktır...",
+    "full_content": "<p>Detaylı açıklama buraya gelecek...</p>"
+  },
+  {
+    "id": 2,
+    "category": "new-product",
+    "category_text": "Yeni Ürün",
+    "date_relative": "1 gün önce",
+    "title": "Pangram AI Artık Kütüphanenizde!",
+    "summary": "Yapay zeka destekli içerik analiz platformu Pangram, koleksiyonunuza eklendi...",
+    "full_content": "<p>Detaylı açıklama buraya gelecek...</p>"
+  }
+]
