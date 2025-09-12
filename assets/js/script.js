@@ -705,11 +705,17 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Update button text
-        if (translateButton) {
-            translateButton.textContent = toEnglish ? 'Türkçe' : 'English';
-        }
 
+// Update button text
+if (translateButton) {
+    const translateText = document.getElementById('translateText');
+    if (translateText) {
+        translateText.textContent = toEnglish ? 'Türkçe' : 'English';
+    } else {
+        // Fallback: doğrudan butonun içeriğini güncelle
+        translateButton.textContent = toEnglish ? 'Türkçe' : 'English';
+    }
+}
         // Persist language preference
         localStorage.setItem('language', toEnglish ? 'en' : 'tr');
 
@@ -721,9 +727,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Apply translations on page load based on saved preference
-    if (isTranslated && translateButton) {
-        translatePage(true);
+// Apply translations on page load based on saved preference
+if (isTranslated && translateButton) {
+    translatePage(true);
+    // Buton metnini güncelle
+    const translateText = document.getElementById('translateText');
+    if (translateText) {
+        translateText.textContent = 'Türkçe';
     }
+} else if (translateButton) {
+    // Türkçe modunda buton metnini ayarla
+    const translateText = document.getElementById('translateText');
+    if (translateText) {
+        translateText.textContent = 'English';
+    }
+}
 
     // Toggle translation on button click
     if (translateButton) {
