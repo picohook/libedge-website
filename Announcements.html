@@ -12,6 +12,7 @@
         body {
             font-family: 'Inter', sans-serif;
             color: #220f60;
+            /* Arka planı daha modern ve uyumlu hale getirir */
             background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
             min-height: 100vh;
         }
@@ -99,9 +100,10 @@
         .search-input {
             transition: all 0.3s ease;
         }
-        
+
+        /* Arama kutusu odaklandığında dış çizgi (ring) stilini düzeltme */
         .search-input:focus {
-            transform: scale(1.02);
+            outline: none;
             box-shadow: 0 0 0 3px rgba(34, 15, 96, 0.1);
         }
         
@@ -181,6 +183,25 @@
             0% { transform: scale(1); opacity: 1; }
             75%, 100% { transform: scale(1.5); opacity: 0; }
         }
+
+        .compact-header {
+            padding: 1.5rem 0;
+        }
+
+        .newsletter-section {
+            background-color: #fefefe;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e5e7eb;
+        }
+        .newsletter-input {
+            border: 1px solid #d1d5db;
+        }
+        .newsletter-button {
+            background-color: #220f60;
+        }
+        .newsletter-button:hover {
+            background-color: #2e1a7b;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -203,53 +224,22 @@
     </nav>
 
     <div class="max-w-7xl mx-auto px-4 py-8">
-        <div class="text-center mb-12">
-            <h1 class="text-5xl font-bold text-primary mb-6">
-                <i class="fas fa-bullhorn mr-3"></i>Duyurular
+        <div class="text-center mb-8 compact-header">
+            <h1 class="text-4xl font-bold text-primary mb-2">
+                <i class="fas fa-bullhorn mr-2"></i>Duyurular
             </h1>
-            <p class="text-gray-600 max-w-3xl mx-auto text-lg leading-relaxed">
-                En güncel ürün haberleri, etkinlikler, kampanyalar ve sektör duyurularından haberdar olun. 
-                LibEdge'den son gelişmeleri takip edin.
+            <p class="text-gray-600 max-w-2xl mx-auto text-base">
+                En güncel ürün haberleri, etkinlikler, kampanyalar ve sektör duyurularından haberdar olun.
             </p>
-        </div>
-
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div class="stats-card rounded-xl p-4 text-center">
-                <div class="text-2xl font-bold text-primary" id="totalCount">0</div>
-                <div class="text-sm text-gray-600">Toplam Duyuru</div>
-            </div>
-            <div class="stats-card rounded-xl p-4 text-center">
-                <div class="text-2xl font-bold text-red-600" id="urgentCount">0</div>
-                <div class="text-sm text-gray-600">Acil Duyuru</div>
-            </div>
-            <div class="stats-card rounded-xl p-4 text-center">
-                <div class="text-2xl font-bold text-blue-600" id="productCount">0</div>
-                <div class="text-sm text-gray-600">Yeni Ürün</div>
-            </div>
-            <div class="stats-card rounded-xl p-4 text-center">
-                <div class="text-2xl font-bold text-green-600" id="eventCount">0</div>
-                <div class="text-sm text-gray-600">Etkinlik</div>
-            </div>
         </div>
 
         <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-8 border border-white/20">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                <div class="flex flex-wrap gap-3">
-                    <button class="filter-btn active px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="all">
-                        <i class="fas fa-list mr-2"></i>Tümü
-                    </button>
-                    <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="urgent">
-                        <i class="fas fa-exclamation-circle mr-2"></i>Acil Duyurular
-                    </button>
-                    <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="new-product">
-                        <i class="fas fa-cube mr-2"></i>Yeni Ürünler
-                    </button>
-                    <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="event">
-                        <i class="fas fa-calendar-alt mr-2"></i>Etkinlikler
-                    </button>
-                    <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="maintenance">
-                        <i class="fas fa-tools mr-2"></i>Bakım
-                    </button>
+                <div class="flex flex-wrap gap-4 text-sm font-medium w-full lg:w-auto">
+                    <span class="stats-card rounded-full px-4 py-2 text-primary">Toplam: <span id="totalCount" class="font-bold">0</span></span>
+                    <span class="stats-card rounded-full px-4 py-2 text-red-600">Acil: <span id="urgentCount" class="font-bold">0</span></span>
+                    <span class="stats-card rounded-full px-4 py-2 text-blue-600">Ürün: <span id="productCount" class="font-bold">0</span></span>
+                    <span class="stats-card rounded-full px-4 py-2 text-green-600">Etkinlik: <span id="eventCount" class="font-bold">0</span></span>
                 </div>
                 
                 <div class="flex gap-3 w-full lg:w-auto">
@@ -269,6 +259,24 @@
                     </select>
                 </div>
             </div>
+            
+            <div class="flex flex-wrap gap-3 mt-4">
+                <button class="filter-btn active px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="all">
+                    <i class="fas fa-list mr-2"></i>Tümü
+                </button>
+                <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="urgent">
+                    <i class="fas fa-exclamation-circle mr-2"></i>Acil Duyurular
+                </button>
+                <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="new-product">
+                    <i class="fas fa-cube mr-2"></i>Yeni Ürünler
+                </button>
+                <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="event">
+                    <i class="fas fa-calendar-alt mr-2"></i>Etkinlikler
+                </button>
+                <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="maintenance">
+                    <i class="fas fa-tools mr-2"></i>Bakım
+                </button>
+            </div>
         </div>
 
         <div id="announcementsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
@@ -279,22 +287,19 @@
         
         <div id="paginationContainer" class="flex justify-center items-center mt-8 space-x-2"></div>
 
-        <div class="bg-gradient-to-r from-primary to-indigo-600 text-white rounded-2xl shadow-xl p-8 mt-16 text-center relative overflow-hidden">
-            <div class="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
-            <div class="relative z-10">
-                <i class="fas fa-envelope text-4xl mb-4 opacity-80"></i>
-                <h2 class="text-3xl font-bold mb-4">Duyuruları Kaçırmayın</h2>
-                <p class="mb-8 max-w-2xl mx-auto text-lg opacity-90">
-                    En güncel duyurular, kampanyalar ve etkinliklerden anında haberdar olmak için e-bültenimize abone olun.
-                </p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-lg mx-auto">
-                    <input type="email" id="newsletterEmail" placeholder="E-posta adresiniz" 
-                           class="flex-grow px-6 py-4 rounded-full text-gray-900 focus:outline-none focus:ring-4 focus:ring-white/30 text-center">
-                    <button onclick="subscribeNewsletter()" 
-                            class="bg-white text-primary px-8 py-4 rounded-full font-semibold hover:bg-opacity-90 transition-all transform hover:scale-105">
-                        <i class="fas fa-bell mr-2"></i>Abone Ol
-                    </button>
-                </div>
+        <div class="newsletter-section rounded-2xl p-8 mt-16 text-center">
+            <i class="fas fa-envelope text-4xl mb-4 text-gray-500"></i>
+            <h2 class="text-3xl font-bold mb-4">Duyuruları Kaçırmayın</h2>
+            <p class="mb-8 max-w-2xl mx-auto text-lg text-gray-600">
+                En güncel duyurular, kampanyalar ve etkinliklerden anında haberdar olmak için e-bültenimize abone olun.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-lg mx-auto">
+                <input type="email" id="newsletterEmail" placeholder="E-posta adresiniz" 
+                       class="newsletter-input flex-grow px-6 py-4 rounded-full text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary">
+                <button onclick="subscribeNewsletter()" 
+                        class="newsletter-button text-white px-8 py-4 rounded-full font-semibold hover:bg-opacity-90 transition-colors">
+                    <i class="fas fa-bell mr-2"></i>Abone Ol
+                </button>
             </div>
         </div>
     </div>
@@ -342,25 +347,21 @@
             }
 
             setupEventListeners() {
-                // Filtre butonları
                 document.querySelectorAll('.filter-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => this.handleFilter(e));
                 });
 
-                // Arama
                 const searchInput = document.getElementById('searchInput');
                 const clearSearch = document.getElementById('clearSearch');
                 
                 searchInput.addEventListener('input', (e) => this.handleSearch(e));
                 clearSearch.addEventListener('click', () => this.clearSearch());
 
-                // Sıralama
                 document.getElementById('sortSelect').addEventListener('change', (e) => this.handleSort(e));
             }
 
             async loadAnnouncements() {
                 try {
-                    // Sveltia CMS entegrasyonu için gerçek API çağrısı
                     const response = await fetch('/content/duyurular.json');
                     if (!response.ok) {
                         throw new Error('Duyurular yüklenemedi.');
@@ -385,7 +386,6 @@
             }
 
             handleFilter(e) {
-                // Aktif buton stilini güncelle
                 document.querySelectorAll('.filter-btn').forEach(btn => {
                     btn.classList.remove('active');
                 });
@@ -425,12 +425,10 @@
             applyFilters() {
                 let filtered = [...this.announcements];
 
-                // Kategori filtresi
                 if (this.currentFilter !== 'all') {
                     filtered = filtered.filter(item => item.category === this.currentFilter);
                 }
 
-                // Arama filtresi
                 if (this.searchTerm) {
                     filtered = filtered.filter(item => 
                         item.title.toLowerCase().includes(this.searchTerm) ||
@@ -439,7 +437,6 @@
                     );
                 }
 
-                // Sıralama
                 filtered = this.sortAnnouncements(filtered);
 
                 this.filteredAnnouncements = filtered;
@@ -539,7 +536,6 @@
 
                 let paginationHTML = '';
 
-                // Önceki butonu
                 paginationHTML += `
                     <button onclick="announcementManager.goToPage(${this.currentPage - 1})" 
                             class="px-4 py-2 border rounded-lg transition-all ${this.currentPage === 1 ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-primary hover:text-white'}"
@@ -548,7 +544,6 @@
                     </button>
                 `;
 
-                // Sayfa numaraları
                 const maxVisiblePages = 5;
                 let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
                 let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
@@ -566,7 +561,6 @@
                     `;
                 }
 
-                // Sonraki butonu
                 paginationHTML += `
                     <button onclick="announcementManager.goToPage(${this.currentPage + 1})" 
                             class="px-4 py-2 border rounded-lg transition-all ${this.currentPage === totalPages ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-primary hover:text-white'}"
@@ -642,7 +636,6 @@
                 document.getElementById('announcementModal').classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
 
-                // Modal içeriğini kaydet (paylaşım için)
                 this.currentAnnouncement = announcement;
             }
 
@@ -662,7 +655,6 @@
                         url: window.location.href
                     });
                 } else {
-                    // Fallback: URL'i panoya kopyala
                     navigator.clipboard.writeText(window.location.href).then(() => {
                         this.showToast('Link panoya kopyalandı!', 'success');
                     });
@@ -702,12 +694,10 @@
 
                 toastContainer.appendChild(toast);
 
-                // Animasyon
                 setTimeout(() => {
                     toast.classList.remove('translate-x-full');
                 }, 100);
 
-                // Otomatik kaldırma
                 setTimeout(() => {
                     toast.classList.add('translate-x-full');
                     setTimeout(() => toast.remove(), 300);
@@ -729,7 +719,6 @@
             }
         }
 
-        // Global fonksiyonlar
         function subscribeNewsletter() {
             const email = document.getElementById('newsletterEmail').value;
             if (!email) {
@@ -742,7 +731,6 @@
                 return;
             }
 
-            // Simüle edilmiş abonelik işlemi
             setTimeout(() => {
                 announcementManager.showToast('Bülten aboneliğiniz başarıyla oluşturuldu!', 'success');
                 document.getElementById('newsletterEmail').value = '';
@@ -761,13 +749,11 @@
             announcementManager.scrollToTop();
         }
 
-        // Uygulama başlat
         let announcementManager;
         document.addEventListener('DOMContentLoaded', () => {
             announcementManager = new AnnouncementManager();
         });
 
-        // Klavye kısayolları
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal();
