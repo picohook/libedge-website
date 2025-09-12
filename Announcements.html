@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <title>Duyurular - LibEdge</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LibEdge - Duyurular</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -166,6 +167,10 @@
             <div class="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
                 <input type="email" placeholder="E-posta adresiniz" class="flex-grow px-4 py-2 rounded-full text-gray-900 focus:outline-none focus:ring-2 focus:ring-white">
                 <button class="bg-white text-primary px-6 py-2 rounded-full font-semibold hover:bg-opacity-90 transition">Abone Ol</button>
+                <form action="/subscribe" method="POST" class="newsletter__form">
+                  <input type="email" name="email" placeholder="E-posta adresiniz" required aria-label="E-posta adresinizi girin">
+                <button type="submit" aria-label="E-bülten'e abone ol">Abone Ol</button>
+                </form>
             </div>
         </div>
     </div>
