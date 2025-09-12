@@ -17,7 +17,7 @@ collections:
     description: "Web sitesindeki duyuruları buradan ekleyebilir veya düzenleyebilirsiniz."
     # Bu koleksiyonun birden çok dosya yerine tek bir dosyayı yöneteceğini belirtir
     files:
-      - file: "duyurular.json" # Düzenlenecek dosyanın yolu
+      - file: "content/duyurular.json"
         label: "Tüm Duyurular"
         name: "all_announcements"
         # Dosyanın içindeki liste yapısını ve form alanlarını tanımlar
