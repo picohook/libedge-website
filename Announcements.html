@@ -7,859 +7,368 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             color: #220f60;
-            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-            min-height: 100vh;
+            background-color: #f9fafb;
         }
         
         .announcement-card {
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            border-left: 4px solid #220f60;
         }
         
         .announcement-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 
-                0 25px 50px -12px rgba(0, 0, 0, 0.15),
-                0 10px 20px -5px rgba(0, 0, 0, 0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         }
         
         .category-badge {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
         }
         
         .urgent {
-            border-left: 6px solid #dc2626;
-            background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+            background-color: #fef2f2;
+            color: #dc2626;
+            border-left: 4px solid #dc2626;
         }
         
         .new-product {
-            border-left: 6px solid #2563eb;
-            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+            background-color: #eff6ff;
+            color: #2563eb;
+            border-left: 4px solid #2563eb;
         }
         
         .event {
-            border-left: 6px solid #16a34a;
-            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
-        }
-        
-        .maintenance {
-            border-left: 6px solid #f59e0b;
-            background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
-        }
-        
-        .general {
-            border-left: 6px solid #8b5cf6;
-            background: linear-gradient(135deg, #f3e8ff 0%, #ffffff 100%);
-        }
-        
-        .filter-btn {
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .filter-btn:before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            transition: left 0.5s;
-        }
-        
-        .filter-btn:hover:before {
-            left: 100%;
+            background-color: #f0fdf4;
+            color: #16a34a;
+            border-left: 4px solid #16a34a;
         }
         
         .filter-btn.active {
-            background: linear-gradient(135deg, #220f60 0%, #6366f1 100%);
+            background-color: #220f60;
             color: white;
-            box-shadow: 0 8px 25px -8px rgba(34, 15, 96, 0.5);
         }
         
-        .search-container {
-            position: relative;
-            overflow: hidden;
+        .read-more {
+            color: #220f60;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
         }
         
-        .search-input {
-            transition: all 0.3s ease;
-        }
-        
-        .search-input:focus {
-            transform: scale(1.02);
-            box-shadow: 0 0 0 3px rgba(34, 15, 96, 0.1);
+        .read-more:hover {
+            color: #6C63FF;
         }
         
         .modal {
-            backdrop-filter: blur(8px);
-            background: rgba(0, 0, 0, 0.6);
+            transition: opacity 0.3s ease, visibility 0.3s ease;
         }
         
-        .modal-content {
-            animation: modalSlideIn 0.3s ease-out;
+        .date-badge {
+            background-color: #f3f4f6;
+            color: #4b5563;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
         }
         
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-50px) scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
+        .pagination-btn {
+            transition: all 0.2s ease;
         }
         
-        .skeleton-card {
-            animation: skeleton-loading 1.5s infinite ease-in-out;
-        }
-        
-        @keyframes skeleton-loading {
-            0% { background-color: #f3f4f6; }
-            50% { background-color: #e5e7eb; }
-            100% { background-color: #f3f4f6; }
-        }
-        
-        .priority-high {
-            position: relative;
-        }
-        
-        .priority-high:before {
-            content: '🔥';
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 1.2em;
-            animation: bounce 2s infinite;
-        }
-        
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-            40% { transform: translateY(-10px); }
-            60% { transform: translateY(-5px); }
-        }
-        
-        .stats-card {
-            background: linear-gradient(135deg, rgba(34, 15, 96, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
-            border: 1px solid rgba(34, 15, 96, 0.2);
-        }
-        
-        .floating-fab {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            box-shadow: 0 8px 25px -8px rgba(34, 15, 96, 0.4);
-        }
-        
-        @media (max-width: 768px) {
-            .announcement-card:hover {
-                transform: translateY(-4px) scale(1.01);
-            }
-        }
-        
-        .notification-dot {
-            animation: ping 2s infinite;
-        }
-        
-        @keyframes ping {
-            0% { transform: scale(1); opacity: 1; }
-            75%, 100% { transform: scale(1.5); opacity: 0; }
+        .pagination-btn:hover:not(.disabled) {
+            background-color: #220f60;
+            color: white;
         }
     </style>
 </head>
 <body class="min-h-screen">
-    <!-- Navbar -->
-    <nav class="bg-white/90 backdrop-blur-md shadow-lg sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+    <!-- Navbar (Mevcut yapınızdan uyarlanmış) -->
+    <nav class="bg-white shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
             <a class="text-2xl text-primary" href="#">
                 <span class="font-bold">Lib</span>Edge Eğitim ve Danışmanlık
             </a>
             <div class="flex items-center space-x-6 text-sm font-medium text-gray-700">
-                <a class="hover:text-primary transition-colors" href="#">Ürünler</a>
-                <a class="hover:text-primary transition-colors" href="#">Broşürler</a>
-                <a class="hover:text-primary transition-colors" href="#">İletişim</a>
-                <a class="text-primary font-semibold relative" href="#">
-                    Duyurular
-                    <span class="notification-dot absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </a>
-                <button class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all">English</button>
+                <a class="hover:text-primary" href="#">Ürünler</a>
+                <a class="hover:text-primary" href="#">Broşürler</a>
+                <a class="hover:text-primary" href="#">İletişim</a>
+                <a class="text-primary font-semibold" href="#">Duyurular</a>
+                <button class="bg-primary text-white px-4 py-2 rounded-md hover:bg-opacity-90">English</button>
             </div>
         </div>
     </nav>
 
-    <!-- Ana İçerik -->
+    <!-- Duyurular Ana İçerik -->
     <div class="max-w-7xl mx-auto px-4 py-8">
-        <!-- Header Section -->
+        <!-- Başlık ve Açıklama -->
         <div class="text-center mb-12">
-            <h1 class="text-5xl font-bold text-primary mb-6">
-                <i class="fas fa-bullhorn mr-3"></i>Duyurular
-            </h1>
-            <p class="text-gray-600 max-w-3xl mx-auto text-lg leading-relaxed">
-                En güncel ürün haberleri, etkinlikler, kampanyalar ve sektör duyurularından haberdar olun. 
-                LibEdge'den son gelişmeleri takip edin.
-            </p>
+            <h1 class="text-4xl font-bold text-primary mb-4">Duyurular</h1>
+            <p class="text-gray-600 max-w-3xl mx-auto">En güncel ürün haberleri, etkinlikler, kampanyalar ve sektör duyurularından haberdar olun. LibEdge'den son gelişmeleri takip edin.</p>
         </div>
 
-        <!-- İstatistik Kartları -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div class="stats-card rounded-xl p-4 text-center">
-                <div class="text-2xl font-bold text-primary" id="totalCount">0</div>
-                <div class="text-sm text-gray-600">Toplam Duyuru</div>
-            </div>
-            <div class="stats-card rounded-xl p-4 text-center">
-                <div class="text-2xl font-bold text-red-600" id="urgentCount">0</div>
-                <div class="text-sm text-gray-600">Acil Duyuru</div>
-            </div>
-            <div class="stats-card rounded-xl p-4 text-center">
-                <div class="text-2xl font-bold text-blue-600" id="productCount">0</div>
-                <div class="text-sm text-gray-600">Yeni Ürün</div>
-            </div>
-            <div class="stats-card rounded-xl p-4 text-center">
-                <div class="text-2xl font-bold text-green-600" id="eventCount">0</div>
-                <div class="text-sm text-gray-600">Etkinlik</div>
-            </div>
-        </div>
-
-        <!-- Gelişmiş Filtreleme ve Arama -->
-        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-8 border border-white/20">
-            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                <div class="flex flex-wrap gap-3">
-                    <button class="filter-btn active px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="all">
-                        <i class="fas fa-list mr-2"></i>Tümü
+        <!-- Filtreleme ve Arama -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="flex flex-wrap gap-2">
+                    <button class="filter-btn active px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="all">
+                        Tümü
                     </button>
-                    <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="urgent">
-                        <i class="fas fa-exclamation-circle mr-2"></i>Acil Duyurular
+                    <button class="filter-btn px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="urgent">
+                        <i class="fas fa-exclamation-circle mr-1"></i> Acil Duyurular
                     </button>
-                    <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="new-product">
-                        <i class="fas fa-cube mr-2"></i>Yeni Ürünler
+                    <button class="filter-btn px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="new-product">
+                        <i class="fas fa-cube mr-1"></i> Yeni Ürünler
                     </button>
-                    <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="event">
-                        <i class="fas fa-calendar-alt mr-2"></i>Etkinlikler
+                    <button class="filter-btn px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="event">
+                        <i class="fas fa-calendar-alt mr-1"></i> Etkinlikler
                     </button>
-                    <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="maintenance">
-                        <i class="fas fa-tools mr-2"></i>Bakım
+                    <button class="filter-btn px-4 py-2 rounded-full border border-gray-300 text-sm" data-filter="maintenance">
+                        <i class="fas fa-tools mr-1"></i> Bakım Duyuruları
                     </button>
                 </div>
                 
-                <div class="flex gap-3 w-full lg:w-auto">
-                    <div class="search-container relative flex-grow lg:flex-grow-0">
-                        <input type="text" id="searchInput" placeholder="Duyurularda ara..." 
-                               class="search-input w-full lg:w-80 pl-12 pr-12 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                        <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <button id="clearSearch" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <select id="sortSelect" class="px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option value="date-desc">En Yeni</option>
-                        <option value="date-asc">En Eski</option>
-                        <option value="priority">Öncelik</option>
-                        <option value="title">Başlık (A-Z)</option>
-                    </select>
+                <div class="relative w-full md:w-auto">
+                    <input type="text" placeholder="Duyurularda ara..." class="w-full md:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 </div>
             </div>
         </div>
 
         <!-- Duyuru Listesi -->
-        <div id="announcementsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-            <!-- Skeleton Loading -->
-            <div class="skeleton-card rounded-2xl p-6 h-64"></div>
-            <div class="skeleton-card rounded-2xl p-6 h-64"></div>
-            <div class="skeleton-card rounded-2xl p-6 h-64"></div>
-        </div>
-        
-        <!-- Sayfalama -->
-        <div id="paginationContainer" class="flex justify-center items-center mt-8 space-x-2"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <!-- Duyuru 1 -->
+            <div class="announcement-card urgent bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-red-100 text-red-800 rounded-full">Acil Duyuru</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 2 saat önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Yazılım Güncellemesi - Erişim Kesintisi</h3>
+                    <p class="text-gray-600 mb-4">15 Ekim 2023 Cumartesi gecesi 23:00 - 03:00 saatleri arasında sistem güncellemesi yapılacaktır. Bu süre boyunca erişimde kesintiler yaşanabilir.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(1)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
 
-        <!-- Bülten Aboneliği -->
-        <div class="bg-gradient-to-r from-primary to-indigo-600 text-white rounded-2xl shadow-xl p-8 mt-16 text-center relative overflow-hidden">
-            <div class="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
-            <div class="relative z-10">
-                <i class="fas fa-envelope text-4xl mb-4 opacity-80"></i>
-                <h2 class="text-3xl font-bold mb-4">Duyuruları Kaçırmayın</h2>
-                <p class="mb-8 max-w-2xl mx-auto text-lg opacity-90">
-                    En güncel duyurular, kampanyalar ve etkinliklerden anında haberdar olmak için e-bültenimize abone olun.
-                </p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center max-w-lg mx-auto">
-                    <input type="email" id="newsletterEmail" placeholder="E-posta adresiniz" 
-                           class="flex-grow px-6 py-4 rounded-full text-gray-900 focus:outline-none focus:ring-4 focus:ring-white/30 text-center">
-                    <button onclick="subscribeNewsletter()" 
-                            class="bg-white text-primary px-8 py-4 rounded-full font-semibold hover:bg-opacity-90 transition-all transform hover:scale-105">
-                        <i class="fas fa-bell mr-2"></i>Abone Ol
-                    </button>
+            <!-- Duyuru 2 -->
+            <div class="announcement-card new-product bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-blue-100 text-blue-800 rounded-full">Yeni Ürün</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 1 gün önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Pangram AI Artık Kütüphanenizde!</h3>
+                    <p class="text-gray-600 mb-4">Yapay zeka destekli içerik analiz platformu Pangram, koleksiyonunuza eklendi. Detaylı bilgi ve demo erişim için lütfen iletişime geçin.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(2)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Duyuru 3 -->
+            <div class="announcement-card event bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-green-100 text-green-800 rounded-full">Etkinlik</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 3 gün önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Kütüphane Teknolojileri Semineri</h3>
+                    <p class="text-gray-600 mb-4">25 Ekim'de Ankara'da düzenlenecek Kütüphane Teknolojileri Semineri'ne davetlisiniz. Yapay zeka, veri yönetimi ve dijital dönüşüm konuları ele alınacak.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(3)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Duyuru 4 -->
+            <div class="announcement-card bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-purple-100 text-purple-800 rounded-full">Genel Duyuru</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 1 hafta önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Yeni Dönem Kampanyaları Başladı</h3>
+                    <p class="text-gray-600 mb-4">2023-2024 akademik yılı özel kampanyalarımız ve fırsatlarımız yayınlandı. Özel indirimlerden yararlanmak için son tarih 15 Kasım.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(4)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Duyuru 5 -->
+            <div class="announcement-card bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-yellow-100 text-yellow-800 rounded-full">Yenilik</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 2 hafta önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Mobil Uygulamamız Yayında!</h3>
+                    <p class="text-gray-600 mb-4">LibEdge mobil uygulaması artık App Store ve Google Play'de. Kaynaklara her yerden erişim, kişiselleştirilmiş öneriler ve daha fazlası.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(5)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Duyuru 6 -->
+            <div class="announcement-card bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6 relative">
+                    <span class="category-badge bg-indigo-100 text-indigo-800 rounded-full">İş Ortağı</span>
+                    <div class="flex items-center mb-3">
+                        <span class="date-badge"><i class="far fa-clock mr-1"></i> 3 hafta önce</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Wiley ile Yeni Anlaşma</h3>
+                    <p class="text-gray-600 mb-4">Wiley yayınevi ile yapılan yeni anlaşma kapsamında 500+ yeni dergi ve 2000+ e-kitap koleksiyonunuza eklendi.</p>
+                    <a href="#" class="read-more" onclick="openAnnouncementModal(6)">
+                        Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                    </a>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Floating Action Button -->
-    <button onclick="scrollToTop()" class="floating-fab bg-primary text-white w-14 h-14 rounded-full shadow-lg hover:bg-opacity-90 transition-all transform hover:scale-110">
-        <i class="fas fa-arrow-up"></i>
-    </button>
-
-    <!-- Gelişmiş Modal -->
-    <div id="announcementModal" class="modal fixed inset-0 flex items-center justify-center z-50 hidden">
-        <div class="modal-content bg-white rounded-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto relative shadow-2xl">
-            <button onclick="closeModal()" class="absolute top-6 right-6 text-gray-500 hover:text-gray-700 text-xl">
-                <i class="fas fa-times"></i>
+        <!-- Sayfalama -->
+        <div class="flex justify-center items-center space-x-2">
+            <button class="pagination-btn disabled px-3 py-1 rounded border border-gray-300 text-gray-400">
+                <i class="fas fa-chevron-left"></i>
             </button>
-            <div id="modalContent" class="pr-8">
-                <!-- İçerik buraya yüklenecek -->
-            </div>
-            <div class="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
-                <button onclick="shareAnnouncement()" class="flex items-center text-primary hover:text-indigo-600 transition-colors">
-                    <i class="fas fa-share-alt mr-2"></i>Paylaş
-                </button>
-                <button onclick="closeModal()" class="bg-gray-100 hover:bg-gray-200 px-6 py-2 rounded-full transition-colors">
-                    Kapat
-                </button>
+            <button class="pagination-btn px-3 py-1 rounded border border-primary bg-primary text-white">1</button>
+            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">2</button>
+            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">3</button>
+            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <!-- Bülten Aboneliği -->
+        <div class="bg-primary text-white rounded-lg shadow-md p-8 mt-12 text-center">
+            <h2 class="text-2xl font-bold mb-4">Duyuruları Kaçırmayın</h2>
+            <p class="mb-6 max-w-2xl mx-auto">En güncel duyurular, kampanyalar ve etkinliklerden haberdar olmak için e-bültenimize abone olun.</p>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+                <input type="email" placeholder="E-posta adresiniz" class="flex-grow px-4 py-2 rounded-full text-gray-900 focus:outline-none focus:ring-2 focus:ring-white">
+                <button class="bg-white text-primary px-6 py-2 rounded-full font-semibold hover:bg-opacity-90 transition">Abone Ol</button>
             </div>
         </div>
     </div>
 
-    <!-- Toast Bildirimleri -->
-    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    <!-- Duyuru Detay Modal -->
+    <div id="announcementModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto relative">
+            <button onclick="closeAnnouncementModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            <div id="modalContent" class="p-4">
+                <!-- Modal içeriği JavaScript ile doldurulacak -->
+            </div>
+        </div>
+    </div>
 
     <script>
-        class AnnouncementManager {
-            constructor() {
-                this.announcements = [];
-                this.filteredAnnouncements = [];
-                this.currentPage = 1;
-                this.itemsPerPage = 6;
-                this.currentFilter = 'all';
-                this.currentSort = 'date-desc';
-                this.searchTerm = '';
-                this.init();
-            }
-
-            init() {
-                this.setupEventListeners();
-                this.loadAnnouncements();
-            }
-
-            setupEventListeners() {
-                // Filtre butonları
-                document.querySelectorAll('.filter-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => this.handleFilter(e));
-                });
-
-                // Arama
-                const searchInput = document.getElementById('searchInput');
-                const clearSearch = document.getElementById('clearSearch');
-                
-                searchInput.addEventListener('input', (e) => this.handleSearch(e));
-                clearSearch.addEventListener('click', () => this.clearSearch());
-
-                // Sıralama
-                document.getElementById('sortSelect').addEventListener('change', (e) => this.handleSort(e));
-            }
-
-            async loadAnnouncements() {
-                try {
-                    // Simüle edilmiş veri - gerçek uygulamada API çağrısı yapılacak
-                    const mockData = {
-                        items: [
-                            {
-                                title: "Acil Sistem Bakımı Duyurusu",
-                                date: "2023-12-15",
-                                category: "urgent",
-                                priority: "high",
-                                summary: "15 Aralık gecesi sistem bakımı yapılacak. 4 saat kesinti beklenmektedir.",
-                                full_content: "# Sistem Bakımı Duyurusu\\n\\nSistemlerimizde **kritik güvenlik güncellemeleri** yapılacaktır.\\n\\n## Kesinti Süresi\\n- **Başlangıç:** 15 Aralık 2023, 23:00\\n- **Bitiş:** 16 Aralık 2023, 03:00\\n\\n⚠️ Bu süre zarfında tüm servislere erişim engellenecektir."
-                            },
-                            {
-                                title: "Pangram AI 2.0 Beta Sürümü Yayınlandı",
-                                date: "2023-12-10",
-                                category: "new-product",
-                                priority: "medium",
-                                summary: "Yapay zeka destekli içerik analiz platformumuz Pangram AI'ın yeni sürümü test için hazır.",
-                                full_content: "# Pangram AI 2.0 Beta\\n\\n🎉 Yepyeni özelliklerle donatılmış **Pangram AI 2.0** beta sürümü artık mevcut!\\n\\n## Yeni Özellikler\\n- Gelişmiş doğal dil işleme\\n- Çoklu dil desteği\\n- Gerçek zamanlı analiz\\n- Görsel içerik tanıma"
-                            },
-                            {
-                                title: "Dijital Dönüşüm Webinarı",
-                                date: "2023-12-20",
-                                category: "event",
-                                priority: "medium",
-                                summary: "Kütüphanelerde dijital dönüşüm konulu ücretsiz webinar. 20 Aralık'ta canlı yayın.",
-                                full_content: "# Dijital Dönüşüm Webinarı\\n\\n📅 **Tarih:** 20 Aralık 2023\\n🕐 **Saat:** 14:00-16:00\\n💻 **Platform:** Zoom\\n\\n## Konular\\n1. Kütüphanelerde dijital dönüşüm stratejileri\\n2. Teknoloji entegrasyonu\\n3. Kullanıcı deneyimi optimizasyonu"
-                            },
-                            {
-                                title: "Veri Tabanı Optimizasyonu Tamamlandı",
-                                date: "2023-12-05",
-                                category: "maintenance",
-                                priority: "low",
-                                summary: "Sistem performansını artırmak için yapılan veri tabanı optimizasyonu başarıyla tamamlandı.",
-                                full_content: "# Veri Tabanı Optimizasyonu\\n\\n✅ **Durum:** Tamamlandı\\n📈 **Performans Artışı:** %40\\n\\nSistem hızında önemli iyileştirmeler sağlanmıştır."
-                            },
-                            {
-                                title: "Kütüphane Yönetim Sistemi Güncellemesi",
-                                date: "2023-11-25",
-                                category: "general",
-                                priority: "medium",
-                                summary: "Kütüphane yönetim sisteminde yeni özellikler ve iyileştirmeler yapıldı.",
-                                full_content: "# KYS Güncellemesi\\n\\n## Yeni Özellikler\\n- Gelişmiş arama algoritması\\n- Mobil uygulama desteği\\n- Otomatik yedekleme sistemi"
-                            },
-                            {
-                                title: "Güvenlik Güncellemesi",
-                                date: "2023-11-20",
-                                category: "urgent",
-                                priority: "high",
-                                summary: "Kritik güvenlik açığı giderildi. Tüm kullanıcıların şifrelerini güncellemesi öneriliyor.",
-                                full_content: "# Güvenlik Güncellemesi\\n\\n🔒 **Durum:** Güvenlik açığı kapatıldı\\n\\n**Önemli:** Tüm kullanıcıların şifrelerini değiştirmesi önerilir."
-                            }
-                        ]
-                    };
-
-                    this.announcements = mockData.items;
-                    this.updateStats();
-                    this.applyFilters();
-                    
-                } catch (error) {
-                    this.showToast('Duyurular yüklenirken hata oluştu', 'error');
-                    this.showErrorState();
-                }
-            }
-
-            updateStats() {
-                document.getElementById('totalCount').textContent = this.announcements.length;
-                document.getElementById('urgentCount').textContent = this.announcements.filter(a => a.category === 'urgent').length;
-                document.getElementById('productCount').textContent = this.announcements.filter(a => a.category === 'new-product').length;
-                document.getElementById('eventCount').textContent = this.announcements.filter(a => a.category === 'event').length;
-            }
-
-            handleFilter(e) {
-                // Aktif buton stilini güncelle
+        // Filtreleme işlevi
+        document.querySelectorAll('.filter-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                // Tüm filtre butonlarından active sınıfını kaldır
                 document.querySelectorAll('.filter-btn').forEach(btn => {
                     btn.classList.remove('active');
+                    btn.classList.remove('bg-primary', 'text-white');
+                    btn.classList.add('border-gray-300');
                 });
-                e.target.classList.add('active');
-
-                this.currentFilter = e.target.dataset.filter;
-                this.currentPage = 1;
-                this.applyFilters();
-            }
-
-            handleSearch(e) {
-                this.searchTerm = e.target.value.toLowerCase();
-                const clearBtn = document.getElementById('clearSearch');
                 
-                if (this.searchTerm) {
-                    clearBtn.classList.remove('hidden');
-                } else {
-                    clearBtn.classList.add('hidden');
-                }
-
-                this.currentPage = 1;
-                this.applyFilters();
-            }
-
-            clearSearch() {
-                document.getElementById('searchInput').value = '';
-                document.getElementById('clearSearch').classList.add('hidden');
-                this.searchTerm = '';
-                this.applyFilters();
-            }
-
-            handleSort(e) {
-                this.currentSort = e.target.value;
-                this.applyFilters();
-            }
-
-            applyFilters() {
-                let filtered = [...this.announcements];
-
-                // Kategori filtresi
-                if (this.currentFilter !== 'all') {
-                    filtered = filtered.filter(item => item.category === this.currentFilter);
-                }
-
-                // Arama filtresi
-                if (this.searchTerm) {
-                    filtered = filtered.filter(item => 
-                        item.title.toLowerCase().includes(this.searchTerm) ||
-                        item.summary.toLowerCase().includes(this.searchTerm) ||
-                        (item.full_content && item.full_content.toLowerCase().includes(this.searchTerm))
-                    );
-                }
-
-                // Sıralama
-                filtered = this.sortAnnouncements(filtered);
-
-                this.filteredAnnouncements = filtered;
-                this.renderAnnouncements();
-                this.renderPagination();
-            }
-
-            sortAnnouncements(announcements) {
-                return announcements.sort((a, b) => {
-                    switch (this.currentSort) {
-                        case 'date-desc':
-                            return new Date(b.date) - new Date(a.date);
-                        case 'date-asc':
-                            return new Date(a.date) - new Date(b.date);
-                        case 'priority':
-                            const priorityOrder = { high: 3, medium: 2, low: 1 };
-                            return priorityOrder[b.priority || 'low'] - priorityOrder[a.priority || 'low'];
-                        case 'title':
-                            return a.title.localeCompare(b.title, 'tr');
-                        default:
-                            return 0;
-                    }
-                });
-            }
-
-            renderAnnouncements() {
-                const container = document.getElementById('announcementsGrid');
-                const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-                const endIndex = startIndex + this.itemsPerPage;
-                const currentAnnouncements = this.filteredAnnouncements.slice(startIndex, endIndex);
-
-                if (currentAnnouncements.length === 0) {
-                    container.innerHTML = `
-                        <div class="col-span-full text-center py-16">
-                            <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
-                            <h3 class="text-xl font-semibold text-gray-600 mb-2">Duyuru bulunamadı</h3>
-                            <p class="text-gray-500">Arama kriterlerinizi değiştirmeyi deneyin.</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                container.innerHTML = currentAnnouncements.map((announcement, index) => {
-                    const globalIndex = startIndex + index;
-                    const categoryInfo = this.getCategoryInfo(announcement.category);
-                    const date = new Date(announcement.date);
-                    const formattedDate = date.toLocaleDateString('tr-TR', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                    });
-
-                    const priorityClass = announcement.priority === 'high' ? 'priority-high' : '';
-
-                    return `
-                        <div class="announcement-card ${announcement.category} ${priorityClass} rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300"
-                             onclick="announcementManager.openModal(${this.filteredAnnouncements.indexOf(announcement)})">
-                            <div class="p-6 relative">
-                                <div class="flex justify-between items-start mb-4">
-                                    <span class="category-badge ${categoryInfo.badgeClass} px-3 py-1 rounded-full text-xs font-medium">
-                                        ${categoryInfo.icon} ${categoryInfo.text}
-                                    </span>
-                                    ${announcement.priority === 'high' ? '<span class="text-red-500 text-lg">🔥</span>' : ''}
-                                </div>
-                                
-                                <div class="flex items-center mb-3">
-                                    <span class="inline-flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                                        <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
-                                    </span>
-                                </div>
-                                
-                                <h3 class="text-xl font-bold text-primary mb-3 line-clamp-2">${announcement.title}</h3>
-                                <p class="text-gray-600 mb-4 line-clamp-3">${announcement.summary}</p>
-                                
-                                <div class="flex justify-between items-center">
-                                    <span class="text-primary font-semibold inline-flex items-center hover:text-indigo-600 transition-colors">
-                                        Devamını oku <i class="fas fa-arrow-right ml-2 text-sm"></i>
-                                    </span>
-                                    <div class="flex items-center text-sm text-gray-500">
-                                        <i class="far fa-eye mr-1"></i>
-                                        <span>${Math.floor(Math.random() * 500) + 50}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-            renderPagination() {
-                const container = document.getElementById('paginationContainer');
-                const totalPages = Math.ceil(this.filteredAnnouncements.length / this.itemsPerPage);
+                // Tıklanan butona active sınıfını ekle
+                this.classList.add('active', 'bg-primary', 'text-white');
+                this.classList.remove('border-gray-300');
                 
-                if (totalPages <= 1) {
-                    container.innerHTML = '';
-                    return;
-                }
-
-                let paginationHTML = '';
-
-                // Önceki butonu
-                paginationHTML += `
-                    <button onclick="announcementManager.goToPage(${this.currentPage - 1})" 
-                            class="px-4 py-2 border rounded-lg transition-all ${this.currentPage === 1 ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-primary hover:text-white'}"
-                            ${this.currentPage === 1 ? 'disabled' : ''}>
-                        <i class="fas fa-chevron-left mr-1"></i> Önceki
-                    </button>
-                `;
-
-                // Sayfa numaraları
-                const maxVisiblePages = 5;
-                let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
-                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-                if (endPage - startPage + 1 < maxVisiblePages) {
-                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                }
-
-                for (let i = startPage; i <= endPage; i++) {
-                    paginationHTML += `
-                        <button onclick="announcementManager.goToPage(${i})" 
-                                class="px-4 py-2 mx-1 border rounded-lg transition-all ${this.currentPage === i ? 'bg-primary text-white' : 'bg-white hover:bg-primary hover:text-white'}">
-                            ${i}
-                        </button>
-                    `;
-                }
-
-                // Sonraki butonu
-                paginationHTML += `
-                    <button onclick="announcementManager.goToPage(${this.currentPage + 1})" 
-                            class="px-4 py-2 border rounded-lg transition-all ${this.currentPage === totalPages ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-primary hover:text-white'}"
-                            ${this.currentPage === totalPages ? 'disabled' : ''}>
-                        Sonraki <i class="fas fa-chevron-right ml-1"></i>
-                    </button>
-                `;
-
-                container.innerHTML = paginationHTML;
-            }
-
-            goToPage(page) {
-                if (page < 1 || page > Math.ceil(this.filteredAnnouncements.length / this.itemsPerPage)) return;
-                this.currentPage = page;
-                this.renderAnnouncements();
-                this.renderPagination();
-                this.scrollToTop();
-            }
-
-            getCategoryInfo(category) {
-                const categoryMap = {
-                    urgent: { text: 'Acil Duyuru', badgeClass: 'bg-red-100 text-red-800', icon: '🚨' },
-                    'new-product': { text: 'Yeni Ürün', badgeClass: 'bg-blue-100 text-blue-800', icon: '🎯' },
-                    event: { text: 'Etkinlik', badgeClass: 'bg-green-100 text-green-800', icon: '📅' },
-                    maintenance: { text: 'Bakım', badgeClass: 'bg-yellow-100 text-yellow-800', icon: '🔧' },
-                    general: { text: 'Genel', badgeClass: 'bg-purple-100 text-purple-800', icon: '📢' }
-                };
-                return categoryMap[category] || categoryMap.general;
-            }
-
-            openModal(index) {
-                const announcement = this.filteredAnnouncements[index];
-                if (!announcement) return;
-
-                const categoryInfo = this.getCategoryInfo(announcement.category);
-                const date = new Date(announcement.date);
-                const formattedDate = date.toLocaleDateString('tr-TR', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    weekday: 'long'
-                });
-
-                const contentHtml = marked.parse(announcement.full_content || announcement.summary);
-
-                document.getElementById('modalContent').innerHTML = `
-                    <div class="mb-6">
-                        <span class="inline-block ${categoryInfo.badgeClass} px-4 py-2 rounded-full text-sm font-medium mb-4">
-                            ${categoryInfo.icon} ${categoryInfo.text}
-                        </span>
-                        ${announcement.priority === 'high' ? '<span class="ml-2 bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">🔥 Yüksek Öncelik</span>' : ''}
-                    </div>
-                    
-                    <h1 class="text-3xl font-bold text-primary mb-4">${announcement.title}</h1>
-                    
-                    <div class="flex items-center text-gray-600 mb-6 space-x-4">
-                        <span class="flex items-center">
-                            <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
-                        </span>
-                        <span class="flex items-center">
-                            <i class="far fa-eye mr-2"></i>${Math.floor(Math.random() * 500) + 50} görüntüleme
-                        </span>
-                        <span class="flex items-center">
-                            <i class="far fa-clock mr-2"></i>${Math.ceil(announcement.full_content?.length / 200 || 1)} dk okuma
-                        </span>
-                    </div>
-                    
-                    <div class="prose max-w-none text-gray-700 leading-relaxed">
-                        ${contentHtml}
-                    </div>
-                `;
-
-                document.getElementById('announcementModal').classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-
-                // Modal içeriğini kaydet (paylaşım için)
-                this.currentAnnouncement = announcement;
-            }
-
-            closeModal() {
-                document.getElementById('announcementModal').classList.add('hidden');
-                document.body.style.overflow = '';
-                this.currentAnnouncement = null;
-            }
-
-            shareAnnouncement() {
-                if (!this.currentAnnouncement) return;
-
-                if (navigator.share) {
-                    navigator.share({
-                        title: this.currentAnnouncement.title,
-                        text: this.currentAnnouncement.summary,
-                        url: window.location.href
-                    });
-                } else {
-                    // Fallback: URL'i panoya kopyala
-                    navigator.clipboard.writeText(window.location.href).then(() => {
-                        this.showToast('Link panoya kopyalandı!', 'success');
-                    });
-                }
-            }
-
-            scrollToTop() {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-
-            showToast(message, type = 'info') {
-                const toastContainer = document.getElementById('toastContainer');
-                const toast = document.createElement('div');
-                
-                const bgColor = {
-                    success: 'bg-green-500',
-                    error: 'bg-red-500',
-                    warning: 'bg-yellow-500',
-                    info: 'bg-blue-500'
-                }[type] || 'bg-blue-500';
-
-                const icon = {
-                    success: 'fas fa-check-circle',
-                    error: 'fas fa-exclamation-circle',
-                    warning: 'fas fa-exclamation-triangle',
-                    info: 'fas fa-info-circle'
-                }[type] || 'fas fa-info-circle';
-
-                toast.className = `${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center transform transition-all duration-300 translate-x-full`;
-                toast.innerHTML = `
-                    <i class="${icon} mr-3"></i>
-                    <span>${message}</span>
-                    <button onclick="this.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-
-                toastContainer.appendChild(toast);
-
-                // Animasyon
-                setTimeout(() => {
-                    toast.classList.remove('translate-x-full');
-                }, 100);
-
-                // Otomatik kaldırma
-                setTimeout(() => {
-                    toast.classList.add('translate-x-full');
-                    setTimeout(() => toast.remove(), 300);
-                }, 5000);
-            }
-
-            showErrorState() {
-                const container = document.getElementById('announcementsGrid');
-                container.innerHTML = `
-                    <div class="col-span-full text-center py-16">
-                        <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
-                        <h3 class="text-xl font-semibold text-gray-600 mb-2">Bir hata oluştu</h3>
-                        <p class="text-gray-500 mb-4">Duyurular yüklenirken bir sorun yaşandı.</p>
-                        <button onclick="location.reload()" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
-                            <i class="fas fa-redo mr-2"></i>Tekrar Dene
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        // Global fonksiyonlar
-        function subscribeNewsletter() {
-            const email = document.getElementById('newsletterEmail').value;
-            if (!email) {
-                announcementManager.showToast('Lütfen e-posta adresinizi girin', 'warning');
-                return;
-            }
-
-            if (!email.includes('@')) {
-                announcementManager.showToast('Geçerli bir e-posta adresi girin', 'error');
-                return;
-            }
-
-            // Simüle edilmiş abonelik işlemi
-            setTimeout(() => {
-                announcementManager.showToast('Bülten aboneliğiniz başarıyla oluşturuldu!', 'success');
-                document.getElementById('newsletterEmail').value = '';
-            }, 1000);
-        }
-
-        function closeModal() {
-            announcementManager.closeModal();
-        }
-
-        function shareAnnouncement() {
-            announcementManager.shareAnnouncement();
-        }
-
-        function scrollToTop() {
-            announcementManager.scrollToTop();
-        }
-
-        // Uygulama başlat
-        let announcementManager;
-        document.addEventListener('DOMContentLoaded', () => {
-            announcementManager = new AnnouncementManager();
-        });
-
-        // Klavye kısayolları
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-            }
-        });
-
-        // Sonsuz kaydırma (opsiyonel)
-        let isLoading = false;
-        window.addEventListener('scroll', () => {
-            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000 && !isLoading) {
-                // Daha fazla içerik yüklemek için kullanılabilir
-            }
-        });
-
-        // PWA support (opsiyonel)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                // Service Worker kaydı yapılabilir
+                const filter = this.dataset.filter;
+                // Burada filtreleme işlemi yapılacak
+                console.log('Filtre:', filter);
             });
-        }
-
-        // Responsive tasarım için touch olayları
-        let touchStartY = 0;
-        document.addEventListener('touchstart', (e) => {
-            touchStartY = e.touches[0].clientY;
         });
 
-        document.addEventListener('touchend', (e) => {
-            const touchEndY = e.changedTouches[0].clientY;
-            if (touchStartY - touchEndY > 50) {
-                // Yukarı kaydırma - yenileme tetikleyici olabilir
+        // Arama işlevi
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                const searchTerm = this.value;
+                // Burada arama işlemi yapılacak
+                console.log('Arama:', searchTerm);
+            }
+        });
+
+        // Modal işlevleri
+        function openAnnouncementModal(id) {
+            // Burada API'den veya yerel veriden duyuru içeriği alınabilir
+            const modalContent = document.getElementById('modalContent');
+            
+            // Örnek içerikler
+            const announcements = {
+                1: {
+                    title: "Yazılım Güncellemesi - Erişim Kesintisi",
+                    category: "Acil Duyuru",
+                    date: "12 Ekim 2023",
+                    content: `<p class="text-gray-600 mb-4">15 Ekim 2023 Cumartesi gecesi 23:00 - 03:00 saatleri arasında sistem güncellemesi yapılacaktır. Bu süre boyunca aşağıdaki platformlarda erişim kesintisi yaşanacaktır:</p>
+                    <ul class="list-disc list-inside text-gray-600 mb-4">
+                        <li>AccessEngineering</li>
+                        <li>JoVE Education</li>
+                        <li>Primal Pictures</li>
+                    </ul>
+                    <p class="text-gray-600 mb-4">Güncelleme sonrası sistemlerimiz daha hızlı ve güvenli bir şekilde hizmet vermeye devam edecektir. Anlayışınız için teşekkür ederiz.</p>
+                    <p class="text-sm text-gray-500"><i class="far fa-clock mr-1"></i> Güncelleme süresi: 4 saat</p>`
+                },
+                2: {
+                    title: "Pangram AI Artık Kütüphanenizde!",
+                    category: "Yeni Ürün",
+                    date: "11 Ekim 2023",
+                    content: `<p class="text-gray-600 mb-4">Yapay zeka destekli içerik analiz platformu Pangram, koleksiyonunuza eklendi. Pangram ile:</p>
+                    <ul class="list-disc list-inside text-gray-600 mb-4">
+                        <li>Akademik metinleri anında analiz edin</li>
+                        <li>20+ dilde içerik taraması yapın</li>
+                        <li>İntihal tespitini gelişmiş algoritmalarla gerçekleştirin</li>
+                    </ul>
+                    <p class="text-gray-600 mb-4">Demo erişim ve detaylı bilgi için <a href="#contact" class="text-primary hover:underline">iletişim</a> sayfamızdan bizimle iletişime geçebilirsiniz.</p>
+                    <div class="bg-blue-50 p-4 rounded-lg mt-4">
+                        <h4 class="font-semibold text-blue-800 mb-2">Özel Tanıtım Fırsatı</h4>
+                        <p class="text-blue-600">31 Ekim'e kadar geçerli %15 indirimle Pangram'a erişim sağlayın.</p>
+                    </div>`
+                }
+            };
+            
+            const announcement = announcements[id] || {
+                title: "Duyuru Bulunamadı",
+                category: "Hata",
+                date: "",
+                content: "<p class='text-gray-600'>İstenen duyuru bulunamadı.</p>"
+            };
+            
+            modalContent.innerHTML = `
+                <span class="inline-block ${announcement.category === 'Acil Duyuru' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} px-3 py-1 rounded-full text-sm mb-4">${announcement.category}</span>
+                <h2 class="text-2xl font-bold text-primary mb-2">${announcement.title}</h2>
+                <p class="text-gray-500 mb-6"><i class="far fa-calendar-alt mr-1"></i> ${announcement.date}</p>
+                ${announcement.content}
+            `;
+            
+            document.getElementById('announcementModal').classList.remove('hidden');
+            document.body.classList.add('no-scroll');
+        }
+
+        function closeAnnouncementModal() {
+            document.getElementById('announcementModal').classList.add('hidden');
+            document.body.classList.remove('no-scroll');
+        }
+
+        // Modal dışına tıklanınca kapat
+        document.getElementById('announcementModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAnnouncementModal();
             }
         });
     </script>
