@@ -91,6 +91,10 @@
             background-color: #220f60;
             color: white;
         }
+        
+        body.no-scroll {
+            overflow: hidden;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -150,20 +154,9 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
 
         </div>
-        <div id="pagination-container" class="flex justify-center items-center mt-8 space-x-2">
-    </div>
-
+        
         <!-- Sayfalama -->
-        <div class="flex justify-center items-center space-x-2">
-            <button class="pagination-btn disabled px-3 py-1 rounded border border-gray-300 text-gray-400">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <button class="pagination-btn px-3 py-1 rounded border border-primary bg-primary text-white">1</button>
-            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">2</button>
-            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">3</button>
-            <button class="pagination-btn px-3 py-1 rounded border border-gray-300">
-                <i class="fas fa-chevron-right"></i>
-            </button>
+        <div id="pagination-container" class="flex justify-center items-center mt-8 space-x-2">
         </div>
 
         <!-- Bülten Aboneliği -->
@@ -196,23 +189,25 @@
         const paginationContainer = document.getElementById('pagination-container');
 
         let allAnnouncements = [];
+        let filteredAnnouncements = [];
         let currentPage = 1;
-        const itemsPerPage = 5; // Her sayfada kaç duyuru gösterileceğini buradan ayarlayabilirsiniz
+        const itemsPerPage = 6; // Duyurular grid yapısına uygun olarak 6 yapıldı
 
         async function fetchAnnouncements() {
-            announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Duyurular yükleniyor...</p>';
+            announcementsContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full">Duyurular yükleniyor...</p>';
 
             try {
-                const response = await fetch('/content/duyurular.json');
+                const response = await fetch('duyurular.json');
                 if (!response.ok) {
                     throw new Error('Duyurular yüklenemedi.');
                 }
                 const data = await response.json();
                 allAnnouncements = data.items;
+                filteredAnnouncements = [...allAnnouncements];
                 renderAnnouncements();
             } catch (error) {
                 console.error('Hata:', error);
-                announcementsContainer.innerHTML = '<p class="text-center text-red-500">Duyurular yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.</p>';
+                announcementsContainer.innerHTML = '<p class="text-center text-red-500 col-span-full">Duyurular yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.</p>';
             }
         }
 
@@ -221,10 +216,10 @@
             
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
-            const currentAnnouncements = allAnnouncements.slice(startIndex, endIndex);
+            const currentAnnouncements = filteredAnnouncements.slice(startIndex, endIndex);
 
             if (currentAnnouncements.length === 0) {
-                announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Gösterilecek duyuru bulunamadı.</p>';
+                announcementsContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full">Gösterilecek duyuru bulunamadı.</p>';
                 paginationContainer.innerHTML = '';
                 return;
             }
@@ -260,8 +255,13 @@
                         break;
                 }
 
+                // Tarih formatını düzelt
                 const date = new Date(announcement.date);
-                const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
+                const formattedDate = date.toLocaleDateString('tr-TR', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
 
                 card.innerHTML = `
                     <div class="p-6 relative">
@@ -271,7 +271,7 @@
                         </div>
                         <h3 class="text-xl font-semibold text-primary mb-3">${announcement.title}</h3>
                         <p class="text-gray-600 mb-4">${announcement.summary}</p>
-                        <a href="#" class="read-more" onclick="openAnnouncementModalByIndex(${globalIndex})">
+                        <a href="#" class="read-more" onclick="openAnnouncementModalByIndex(${filteredAnnouncements.indexOf(announcement)})">
                             Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
                         </a>
                     </div>
@@ -284,13 +284,13 @@
 
         function renderPaginationButtons() {
             paginationContainer.innerHTML = '';
-            const totalPages = Math.ceil(allAnnouncements.length / itemsPerPage);
+            const totalPages = Math.ceil(filteredAnnouncements.length / itemsPerPage);
             if (totalPages <= 1) return;
 
-            const prevButton = document.createElement('a');
-            prevButton.href = '#';
-            prevButton.className = `px-4 py-2 border rounded-md ${currentPage === 1 ? 'cursor-not-allowed bg-gray-200' : 'bg-white hover:bg-gray-100'}`;
+            const prevButton = document.createElement('button');
+            prevButton.className = `pagination-btn px-4 py-2 border rounded-md ${currentPage === 1 ? 'disabled cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-gray-100'}`;
             prevButton.innerHTML = `<i class="fas fa-chevron-left"></i> Önceki`;
+            prevButton.disabled = currentPage === 1;
             prevButton.onclick = (e) => {
                 e.preventDefault();
                 if (currentPage > 1) {
@@ -300,9 +300,8 @@
             paginationContainer.appendChild(prevButton);
 
             for (let i = 1; i <= totalPages; i++) {
-                const pageButton = document.createElement('a');
-                pageButton.href = '#';
-                pageButton.className = `px-4 py-2 mx-1 border rounded-md ${currentPage === i ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}`;
+                const pageButton = document.createElement('button');
+                pageButton.className = `pagination-btn px-4 py-2 mx-1 border rounded-md ${currentPage === i ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}`;
                 pageButton.textContent = i;
                 pageButton.onclick = (e) => {
                     e.preventDefault();
@@ -311,10 +310,10 @@
                 paginationContainer.appendChild(pageButton);
             }
 
-            const nextButton = document.createElement('a');
-            nextButton.href = '#';
-            nextButton.className = `px-4 py-2 border rounded-md ${currentPage === totalPages ? 'cursor-not-allowed bg-gray-200' : 'bg-white hover:bg-gray-100'}`;
+            const nextButton = document.createElement('button');
+            nextButton.className = `pagination-btn px-4 py-2 border rounded-md ${currentPage === totalPages ? 'disabled cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-gray-100'}`;
             nextButton.innerHTML = `Sonraki <i class="fas fa-chevron-right"></i>`;
+            nextButton.disabled = currentPage === totalPages;
             nextButton.onclick = (e) => {
                 e.preventDefault();
                 if (currentPage < totalPages) {
@@ -332,16 +331,20 @@
 
         filterButtons.forEach(button => {
             button.addEventListener('click', function() {
-                filterButtons.forEach(btn => btn.classList.remove('active', 'bg-primary', 'text-white'));
+                filterButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.classList.remove('bg-primary');
+                    btn.classList.remove('text-white');
+                });
                 this.classList.add('active', 'bg-primary', 'text-white');
                 
                 const filter = this.dataset.filter;
-                let filteredAnnouncements = allAnnouncements;
-                if (filter !== 'all') {
+                if (filter === 'all') {
+                    filteredAnnouncements = [...allAnnouncements];
+                } else {
                     filteredAnnouncements = allAnnouncements.filter(item => item.category === filter);
                 }
                 
-                allAnnouncements = filteredAnnouncements;
                 currentPage = 1;
                 renderAnnouncements();
             });
@@ -349,45 +352,64 @@
 
         searchInput.addEventListener('keyup', function(e) {
             const searchTerm = this.value.toLowerCase();
-            const filteredAnnouncements = allAnnouncements.filter(item => 
-                item.title.toLowerCase().includes(searchTerm) || 
-                item.summary.toLowerCase().includes(searchTerm) ||
-                (item.full_content && item.full_content.toLowerCase().includes(searchTerm))
-            );
+            if (searchTerm === '') {
+                filteredAnnouncements = [...allAnnouncements];
+            } else {
+                filteredAnnouncements = allAnnouncements.filter(item => 
+                    item.title.toLowerCase().includes(searchTerm) || 
+                    item.summary.toLowerCase().includes(searchTerm) ||
+                    (item.full_content && item.full_content.toLowerCase().includes(searchTerm))
+                );
+            }
             
-            allAnnouncements = filteredAnnouncements;
             currentPage = 1;
             renderAnnouncements();
         });
         
         window.openAnnouncementModalByIndex = (index) => {
-            const announcement = allAnnouncements[index];
+            const announcement = filteredAnnouncements[index];
             if (!announcement) {
                 console.error('Duyuru bulunamadı.');
                 return;
             }
             const modalContent = document.getElementById('modalContent');
             let badgeClass = '';
+            let categoryText = '';
             switch (announcement.category) {
                 case 'urgent':
                     badgeClass = 'bg-red-100 text-red-800';
+                    categoryText = 'Acil Duyuru';
                     break;
                 case 'new-product':
                     badgeClass = 'bg-blue-100 text-blue-800';
+                    categoryText = 'Yeni Ürün';
                     break;
                 case 'event':
                     badgeClass = 'bg-green-100 text-green-800';
+                    categoryText = 'Etkinlik';
+                    break;
+                case 'maintenance':
+                    badgeClass = 'bg-yellow-100 text-yellow-800';
+                    categoryText = 'Bakım Duyurusu';
                     break;
                 default:
                     badgeClass = 'bg-purple-100 text-purple-800';
+                    categoryText = 'Genel Duyuru';
                     break;
             }
+            
+            // Tarih formatını düzelt
             const date = new Date(announcement.date);
-            const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
-            const contentHtml = marked.parse(announcement.full_content);
+            const formattedDate = date.toLocaleDateString('tr-TR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            
+            const contentHtml = marked.parse(announcement.full_content || '');
 
             modalContent.innerHTML = `
-                <span class="inline-block ${badgeClass} px-3 py-1 rounded-full text-sm mb-4">${badgeClass.includes('red') ? 'Acil Duyuru' : badgeClass.includes('blue') ? 'Yeni Ürün' : badgeClass.includes('green') ? 'Etkinlik' : 'Genel Duyuru'}</span>
+                <span class="inline-block ${badgeClass} px-3 py-1 rounded-full text-sm mb-4">${categoryText}</span>
                 <h2 class="text-2xl font-bold text-primary mb-2">${announcement.title}</h2>
                 <p class="text-gray-500 mb-6"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</p>
                 <div class="prose max-w-none">${contentHtml}</div>
