@@ -1,217 +1,321 @@
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const announcementsContainer = document.querySelector('.grid.gap-6');
-        const filterButtons = document.querySelectorAll('.filter-btn');
-        const searchInput = document.querySelector('input[type="text"]');
-        const paginationContainer = document.getElementById('pagination-container');
-
-        let allAnnouncements = [];
-        let currentPage = 1;
-        const itemsPerPage = 5; // Her sayfada kaç duyuru gösterileceğini buradan ayarlayabilirsiniz
-
-        async function fetchAnnouncements() {
-            announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Duyurular yükleniyor...</p>';
-
-            try {
-                const response = await fetch('/content/duyurular.json');
-                if (!response.ok) {
-                    throw new Error('Duyurular yüklenemedi.');
-                }
-                const data = await response.json();
-                allAnnouncements = data.items;
-                renderAnnouncements();
-            } catch (error) {
-                console.error('Hata:', error);
-                announcementsContainer.innerHTML = '<p class="text-center text-red-500">Duyurular yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.</p>';
-            }
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LibEdge - Duyurular</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #220f60;
+            background-color: #f9fafb;
         }
+        
+        .announcement-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid #220f60;
+        }
+        
+        .announcement-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .category-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+        }
+        .date-badge {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .read-more {
+            color: #4a6bdf;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            transition: color 0.2s ease;
+        }
+        .read-more:hover {
+            color: #3b5cb4;
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .no-scroll {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
 
-        function renderAnnouncements() {
-            announcementsContainer.innerHTML = '';
-            
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const currentAnnouncements = allAnnouncements.slice(startIndex, endIndex);
+    <div class="container mx-auto p-6 md:p-12">
+        <h1 class="text-3xl md:text-4xl font-bold text-primary mb-2">Duyurular</h1>
+        <p class="text-gray-600 mb-8">LibEdge ile ilgili en son gelişmeleri, etkinlikleri ve önemli duyuruları takip edin.</p>
 
-            if (currentAnnouncements.length === 0) {
-                announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Gösterilecek duyuru bulunamadı.</p>';
-                paginationContainer.innerHTML = '';
-                return;
-            }
+        <div class="flex flex-wrap gap-4 mb-8">
+            <button class="filter-btn active bg-primary text-white px-4 py-2 rounded-lg text-sm transition-colors" data-filter="all">Tümü</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm transition-colors" data-filter="urgent">Acil</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm transition-colors" data-filter="new-product">Yeni Ürün</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm transition-colors" data-filter="event">Etkinlik</button>
+        </div>
 
-            currentAnnouncements.forEach((announcement, index) => {
-                const globalIndex = startIndex + index;
-                const card = document.createElement('div');
-                const categoryClass = announcement.category;
-                card.className = `announcement-card bg-white rounded-lg shadow-md overflow-hidden ${categoryClass}`;
-                
-                let categoryText = '';
-                let badgeClass = '';
-                switch (announcement.category) {
-                    case 'urgent':
-                        categoryText = 'Acil Duyuru';
-                        badgeClass = 'bg-red-100 text-red-800';
-                        break;
-                    case 'new-product':
-                        categoryText = 'Yeni Ürün';
-                        badgeClass = 'bg-blue-100 text-blue-800';
-                        break;
-                    case 'event':
-                        categoryText = 'Etkinlik';
-                        badgeClass = 'bg-green-100 text-green-800';
-                        break;
-                    case 'maintenance':
-                        categoryText = 'Bakım Duyurusu';
-                        badgeClass = 'bg-yellow-100 text-yellow-800';
-                        break;
-                    default:
-                        categoryText = 'Genel Duyuru';
-                        badgeClass = 'bg-purple-100 text-purple-800';
-                        break;
+        <div class="mb-8">
+            <input type="text" placeholder="Duyuru ara..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+
+        <div id="pagination-container" class="flex justify-center items-center mt-8 space-x-2">
+            </div>
+
+    </div>
+
+    <div id="announcementModal" class="hidden fixed inset-0 z-50 overflow-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-8 max-w-2xl w-full mx-auto relative transform transition-all scale-95 opacity-0 duration-300">
+            <button onclick="closeAnnouncementModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition-colors">
+                <i class="fas fa-times fa-lg"></i>
+            </button>
+            <div id="modalContent">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const announcementsContainer = document.querySelector('.grid.gap-6');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            const searchInput = document.querySelector('input[type="text"]');
+            const paginationContainer = document.getElementById('pagination-container');
+            const announcementModal = document.getElementById('announcementModal'); // Doğru elementin seçimi
+            const modalContent = document.getElementById('modalContent');
+    
+            let allAnnouncements = [];
+            let currentPage = 1;
+            const itemsPerPage = 5;
+    
+            async function fetchAnnouncements() {
+                announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Duyurular yükleniyor...</p>';
+    
+                try {
+                    const response = await fetch('/content/duyurular.json');
+                    if (!response.ok) {
+                        throw new Error('Duyurular yüklenemedi.');
+                    }
+                    const data = await response.json();
+                    allAnnouncements = data.items;
+                    renderAnnouncements();
+                } catch (error) {
+                    console.error('Hata:', error);
+                    announcementsContainer.innerHTML = '<p class="text-center text-red-500">Duyurular yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.</p>';
                 }
-
-                const date = new Date(announcement.date);
-                const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
-
-                card.innerHTML = `
-                    <div class="p-6 relative">
-                        <span class="category-badge ${badgeClass}">${categoryText}</span>
-                        <div class="flex items-center mb-3">
-                            <span class="date-badge"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</span>
+            }
+    
+            function renderAnnouncements() {
+                announcementsContainer.innerHTML = '';
+                
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const currentAnnouncements = allAnnouncements.slice(startIndex, endIndex);
+    
+                if (currentAnnouncements.length === 0) {
+                    announcementsContainer.innerHTML = '<p class="text-center text-gray-500">Gösterilecek duyuru bulunamadı.</p>';
+                    paginationContainer.innerHTML = '';
+                    return;
+                }
+    
+                currentAnnouncements.forEach((announcement, index) => {
+                    const globalIndex = startIndex + index;
+                    const card = document.createElement('div');
+                    const categoryClass = announcement.category;
+                    card.className = `announcement-card bg-white rounded-lg shadow-md overflow-hidden ${categoryClass}`;
+                    
+                    let categoryText = '';
+                    let badgeClass = '';
+                    switch (announcement.category) {
+                        case 'urgent':
+                            categoryText = 'Acil Duyuru';
+                            badgeClass = 'bg-red-100 text-red-800';
+                            break;
+                        case 'new-product':
+                            categoryText = 'Yeni Ürün';
+                            badgeClass = 'bg-blue-100 text-blue-800';
+                            break;
+                        case 'event':
+                            categoryText = 'Etkinlik';
+                            badgeClass = 'bg-green-100 text-green-800';
+                            break;
+                        case 'maintenance':
+                            categoryText = 'Bakım Duyurusu';
+                            badgeClass = 'bg-yellow-100 text-yellow-800';
+                            break;
+                        default:
+                            categoryText = 'Genel Duyuru';
+                            badgeClass = 'bg-purple-100 text-purple-800';
+                            break;
+                    }
+    
+                    const date = new Date(announcement.date);
+                    const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
+    
+                    card.innerHTML = `
+                        <div class="p-6 relative">
+                            <span class="category-badge ${badgeClass}">${categoryText}</span>
+                            <div class="flex items-center mb-3">
+                                <span class="date-badge"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</span>
+                            </div>
+                            <h3 class="text-xl font-semibold text-primary mb-3">${announcement.title}</h3>
+                            <p class="text-gray-600 mb-4">${announcement.summary}</p>
+                            <a href="#" class="read-more" onclick="openAnnouncementModalByIndex(${globalIndex})">
+                                Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                            </a>
                         </div>
-                        <h3 class="text-xl font-semibold text-primary mb-3">${announcement.title}</h3>
-                        <p class="text-gray-600 mb-4">${announcement.summary}</p>
-                        <a href="#" class="read-more" onclick="openAnnouncementModalByIndex(${globalIndex})">
-                            Devamını oku <i class="fas fa-arrow-right ml-1 text-xs"></i>
-                        </a>
-                    </div>
-                `;
-                announcementsContainer.appendChild(card);
-            });
-
-            renderPaginationButtons();
-        }
-
-        function renderPaginationButtons() {
-            paginationContainer.innerHTML = '';
-            const totalPages = Math.ceil(allAnnouncements.length / itemsPerPage);
-            if (totalPages <= 1) return;
-
-            const prevButton = document.createElement('a');
-            prevButton.href = '#';
-            prevButton.className = `px-4 py-2 border rounded-md ${currentPage === 1 ? 'cursor-not-allowed bg-gray-200' : 'bg-white hover:bg-gray-100'}`;
-            prevButton.innerHTML = `<i class="fas fa-chevron-left"></i> Önceki`;
-            prevButton.onclick = (e) => {
-                e.preventDefault();
-                if (currentPage > 1) {
-                    goToPage(currentPage - 1);
-                }
-            };
-            paginationContainer.appendChild(prevButton);
-
-            for (let i = 1; i <= totalPages; i++) {
-                const pageButton = document.createElement('a');
-                pageButton.href = '#';
-                pageButton.className = `px-4 py-2 mx-1 border rounded-md ${currentPage === i ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}`;
-                pageButton.textContent = i;
-                pageButton.onclick = (e) => {
-                    e.preventDefault();
-                    goToPage(i);
-                };
-                paginationContainer.appendChild(pageButton);
+                    `;
+                    announcementsContainer.appendChild(card);
+                });
+    
+                renderPaginationButtons();
             }
-
-            const nextButton = document.createElement('a');
-            nextButton.href = '#';
-            nextButton.className = `px-4 py-2 border rounded-md ${currentPage === totalPages ? 'cursor-not-allowed bg-gray-200' : 'bg-white hover:bg-gray-100'}`;
-            nextButton.innerHTML = `Sonraki <i class="fas fa-chevron-right"></i>`;
-            nextButton.onclick = (e) => {
-                e.preventDefault();
-                if (currentPage < totalPages) {
-                    goToPage(currentPage + 1);
+    
+            function renderPaginationButtons() {
+                paginationContainer.innerHTML = '';
+                const totalPages = Math.ceil(allAnnouncements.length / itemsPerPage);
+                if (totalPages <= 1) return;
+    
+                const prevButton = document.createElement('a');
+                prevButton.href = '#';
+                prevButton.className = `px-4 py-2 border rounded-md ${currentPage === 1 ? 'cursor-not-allowed bg-gray-200' : 'bg-white hover:bg-gray-100'}`;
+                prevButton.innerHTML = `<i class="fas fa-chevron-left"></i> Önceki`;
+                prevButton.onclick = (e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) {
+                        goToPage(currentPage - 1);
+                    }
+                };
+                paginationContainer.appendChild(prevButton);
+    
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageButton = document.createElement('a');
+                    pageButton.href = '#';
+                    pageButton.className = `px-4 py-2 mx-1 border rounded-md ${currentPage === i ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}`;
+                    pageButton.textContent = i;
+                    pageButton.onclick = (e) => {
+                        e.preventDefault();
+                        goToPage(i);
+                    };
+                    paginationContainer.appendChild(pageButton);
                 }
-            };
-            paginationContainer.appendChild(nextButton);
-        }
-
-        function goToPage(page) {
-            currentPage = page;
-            renderAnnouncements();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        filterButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                filterButtons.forEach(btn => btn.classList.remove('active', 'bg-primary', 'text-white'));
-                this.classList.add('active', 'bg-primary', 'text-white');
-                
-                const filter = this.dataset.filter;
-                let filteredAnnouncements = allAnnouncements;
-                if (filter !== 'all') {
-                    filteredAnnouncements = allAnnouncements.filter(item => item.category === filter);
-                }
+    
+                const nextButton = document.createElement('a');
+                nextButton.href = '#';
+                nextButton.className = `px-4 py-2 border rounded-md ${currentPage === totalPages ? 'cursor-not-allowed bg-gray-200' : 'bg-white hover:bg-gray-100'}`;
+                nextButton.innerHTML = `Sonraki <i class="fas fa-chevron-right"></i>`;
+                nextButton.onclick = (e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages) {
+                        goToPage(currentPage + 1);
+                    }
+                };
+                paginationContainer.appendChild(nextButton);
+            }
+    
+            function goToPage(page) {
+                currentPage = page;
+                renderAnnouncements();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+    
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    filterButtons.forEach(btn => btn.classList.remove('active', 'bg-primary', 'text-white'));
+                    this.classList.add('active', 'bg-primary', 'text-white');
+                    
+                    const filter = this.dataset.filter;
+                    let filteredAnnouncements = allAnnouncements;
+                    if (filter !== 'all') {
+                        filteredAnnouncements = allAnnouncements.filter(item => item.category === filter);
+                    }
+                    
+                    allAnnouncements = filteredAnnouncements;
+                    currentPage = 1;
+                    renderAnnouncements();
+                });
+            });
+    
+            searchInput.addEventListener('keyup', function(e) {
+                const searchTerm = this.value.toLowerCase();
+                const filteredAnnouncements = allAnnouncements.filter(item => 
+                    item.title.toLowerCase().includes(searchTerm) || 
+                    item.summary.toLowerCase().includes(searchTerm) ||
+                    (item.full_content && item.full_content.toLowerCase().includes(searchTerm))
+                );
                 
                 allAnnouncements = filteredAnnouncements;
                 currentPage = 1;
                 renderAnnouncements();
             });
-        });
-
-        searchInput.addEventListener('keyup', function(e) {
-            const searchTerm = this.value.toLowerCase();
-            const filteredAnnouncements = allAnnouncements.filter(item => 
-                item.title.toLowerCase().includes(searchTerm) || 
-                item.summary.toLowerCase().includes(searchTerm) ||
-                (item.full_content && item.full_content.toLowerCase().includes(searchTerm))
-            );
             
-            allAnnouncements = filteredAnnouncements;
-            currentPage = 1;
-            renderAnnouncements();
-        });
-        
-        window.openAnnouncementModalByIndex = (index) => {
-            const announcement = allAnnouncements[index];
-            if (!announcement) {
-                console.error('Duyuru bulunamadı.');
-                return;
-            }
-            const modalContent = document.getElementById('modalContent');
-            let badgeClass = '';
-            switch (announcement.category) {
-                case 'urgent':
-                    badgeClass = 'bg-red-100 text-red-800';
-                    break;
-                case 'new-product':
-                    badgeClass = 'bg-blue-100 text-blue-800';
-                    break;
-                case 'event':
-                    badgeClass = 'bg-green-100 text-green-800';
-                    break;
-                default:
-                    badgeClass = 'bg-purple-100 text-purple-800';
-                    break;
-            }
-            const date = new Date(announcement.date);
-            const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
-            const contentHtml = marked.parse(announcement.full_content);
-
-            modalContent.innerHTML = `
-                <span class="inline-block ${badgeClass} px-3 py-1 rounded-full text-sm mb-4">${badgeClass.includes('red') ? 'Acil Duyuru' : badgeClass.includes('blue') ? 'Yeni Ürün' : badgeClass.includes('green') ? 'Etkinlik' : 'Genel Duyuru'}</span>
-                <h2 class="text-2xl font-bold text-primary mb-2">${announcement.title}</h2>
-                <p class="text-gray-500 mb-6"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</p>
-                <div class="prose max-w-none">${contentHtml}</div>
-            `;
+            window.openAnnouncementModalByIndex = (index) => {
+                const announcement = allAnnouncements[index];
+                if (!announcement) {
+                    console.error('Duyuru bulunamadı.');
+                    return;
+                }
+                
+                let badgeClass = '';
+                switch (announcement.category) {
+                    case 'urgent':
+                        badgeClass = 'bg-red-100 text-red-800';
+                        break;
+                    case 'new-product':
+                        badgeClass = 'bg-blue-100 text-blue-800';
+                        break;
+                    case 'event':
+                        badgeClass = 'bg-green-100 text-green-800';
+                        break;
+                    default:
+                        badgeClass = 'bg-purple-100 text-purple-800';
+                        break;
+                }
+                const date = new Date(announcement.date);
+                const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
+                const contentHtml = marked.parse(announcement.full_content);
+    
+                modalContent.innerHTML = `
+                    <span class="inline-block ${badgeClass} px-3 py-1 rounded-full text-sm mb-4">${badgeClass.includes('red') ? 'Acil Duyuru' : badgeClass.includes('blue') ? 'Yeni Ürün' : badgeClass.includes('green') ? 'Etkinlik' : 'Genel Duyuru'}</span>
+                    <h2 class="text-2xl font-bold text-primary mb-2">${announcement.title}</h2>
+                    <p class="text-gray-500 mb-6"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</p>
+                    <div class="prose max-w-none">${contentHtml}</div>
+                `;
+                
+                announcementModal.classList.remove('hidden');
+                document.body.classList.add('no-scroll');
+            };
             
-            document.getElementById('announcementModal').classList.remove('hidden');
-            document.body.classList.add('no-scroll');
-        };
-        
-        window.closeAnnouncementModal = () => {
-            document.getElementById('announcementModal').classList.add('hidden');
-            document.body.classList.remove('no-scroll');
-        };
-
-        fetchAnnouncements();
-    });
-</script>
+            window.closeAnnouncementModal = () => {
+                announcementModal.classList.add('hidden');
+                document.body.classList.remove('no-scroll');
+            };
+    
+            // Modal dışına tıklayınca kapatma işlevi
+            announcementModal.addEventListener('click', function(e) {
+                if (e.target.id === 'announcementModal') {
+                    closeAnnouncementModal();
+                }
+            });
+    
+            fetchAnnouncements();
+        });
+    </script>
+</body>
+</html>
