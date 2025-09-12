@@ -1,11 +1,18 @@
 {
   "items": [
     {
-      "title": "test",
+      "title": "test2",
       "date": "2025-09-12",
-      "category": "maintenance",
+      "category": "urgent",
       "summary": "duyuru sayfası bakımda olacak",
       "full_content": "![](https://images.examples.com/wp-content/uploads/2018/06/Maintenance-Image.jpeg)"
+    },
+    {
+      "title": "testo",
+      "date": "2025-09-12",
+      "category": "urgent",
+      "summary": "?",
+      "full_content": "![](/assets/images/uploads/Screenshot 2025-03-11 185358.png)"
     }
   ]
 }
