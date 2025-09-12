@@ -97,7 +97,7 @@
             const filterButtons = document.querySelectorAll('.filter-btn');
             const searchInput = document.querySelector('input[type="text"]');
             const paginationContainer = document.getElementById('pagination-container');
-            const announcementModal = document.getElementById('announcementModal'); // Doğru elementin seçimi
+            const announcementModal = document.getElementById('announcementModal'); 
             const modalContent = document.getElementById('modalContent');
     
             let allAnnouncements = [];
@@ -307,7 +307,6 @@
                 document.body.classList.remove('no-scroll');
             };
     
-            // Modal dışına tıklayınca kapatma işlevi
             announcementModal.addEventListener('click', function(e) {
                 if (e.target.id === 'announcementModal') {
                     closeAnnouncementModal();
