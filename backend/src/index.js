@@ -1,17 +1,20 @@
 export default {
   async fetch(request, env, ctx) {
+    const method = request.method.toUpperCase();
+
     // CORS preflight isteği
-    if (request.method === "OPTIONS") {
+    if (method === "OPTIONS") {
       return new Response(null, {
         status: 204,
         headers: {
           "Access-Control-Allow-Origin": "https://libedge-website.pages.dev",
           "Access-Control-Allow-Methods": "POST, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
-          "Content-Type": "application/json"
+          "Access-Control-Max-Age": "86400"
         }
       });
     }
+
 
     // Form gönderimi
     if (request.method === "POST") {
