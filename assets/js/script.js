@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const trialForm = document.getElementById('trialForm');
     const suggestionForm = document.getElementById('suggestionForm');
 
-    if (trialForm) {
+/*     if (trialForm) {
         trialForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const submitBtn = this.querySelector('button[type="submit"]');
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 1500);
             }, 1000);
         });
-    }
+    } */
 
 
     function handleFormSubmit(formId) {
