@@ -255,6 +255,59 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+
+    function handleFormSubmit(formId) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const formType = this.querySelector('input[name="formType"]').value;
+
+    const formData = {
+      formType,
+      name: this.querySelector('input[name="name"]').value,
+      email: this.querySelector('input[name="email"]').value,
+      phone: this.querySelector('input[name="phone"]')?.value || "",
+      subject: this.querySelector('input[name="subject"]')?.value || "",
+      message: this.querySelector('textarea[name="message"]')?.value || ""
+    };
+
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
+
+    try {
+      const response = await fetch("https://form-handler.<subdomain>.workers.dev", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        submitBtn.innerHTML = 'Gönderildi!';
+        this.reset();
+      } else {
+        submitBtn.innerHTML = 'Hata!';
+        alert(result.error || "Gönderim sırasında hata oluştu.");
+      }
+    } catch (error) {
+      alert("Bağlantı hatası: " + error.message);
+      submitBtn.innerHTML = 'Gönder';
+    }
+
+    submitBtn.disabled = false;
+  });
+}
+
+// Formları bağla
+handleFormSubmit("contactForm"); // Contact
+handleFormSubmit("trialForm");   // Trial Access
+handleFormSubmit("suggestForm"); // Suggest Product
+
+
     // --- Mobile Hamburger Menu ---
     const hamburger = document.querySelector('.hamburger');
     const navLinks = document.querySelector('.nav-links');
