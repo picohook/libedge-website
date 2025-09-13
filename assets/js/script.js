@@ -289,9 +289,14 @@ document.addEventListener('DOMContentLoaded', function() {
       if (result.success) {
         submitBtn.innerHTML = 'Gönderildi!';
         this.reset();
-      } else {
-        submitBtn.innerHTML = 'Hata!';
-        alert(result.error || "Gönderim sırasında hata oluştu.");
+
+  if (formId === "trialForm") closeModal();
+  if (formId === "suggestForm") closeSuggestionModal();
+} else {
+  console.error("Sheets webhook hatası:", result.error);
+  alert(result.error || "Gönderim sırasında hata oluştu.");
+  submitBtn.innerHTML = 'Hata!';
+
       }
     } catch (error) {
       alert("Bağlantı hatası: " + error.message);
@@ -306,6 +311,8 @@ document.addEventListener('DOMContentLoaded', function() {
 handleFormSubmit("contactForm"); // Contact
 handleFormSubmit("trialForm");   // Trial Access
 handleFormSubmit("suggestForm"); // Suggest Product
+
+
 
 
     // --- Mobile Hamburger Menu ---
