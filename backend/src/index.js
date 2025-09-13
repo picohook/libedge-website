@@ -1,20 +1,34 @@
 export default {
   async fetch(request, env, ctx) {
     const method = request.method.toUpperCase();
+    const origin = request.headers.get('Origin');
+    
+    // Allowed origins - add your domains here
+    const allowedOrigins = [
+      'https://libedge-website.pages.dev',
+      'http://localhost:3000', // for local development
+      'http://127.0.0.1:3000'  // for local development
+    ];
+    
+    // Check if origin is allowed
+    const isOriginAllowed = allowedOrigins.includes(origin);
+    const corsOrigin = isOriginAllowed ? origin : allowedOrigins[0];
+
+    // CORS headers
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": corsOrigin,
+      "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400"
+    };
 
     // CORS preflight isteği
     if (method === "OPTIONS") {
       return new Response(null, {
-        status: 204,
-        headers: {
-          "Access-Control-Allow-Origin": "https://libedge-website.pages.dev",
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type",
-          "Access-Control-Max-Age": "86400"
-        }
+        status: 200,
+        headers: corsHeaders
       });
     }
-
 
     // Form gönderimi
     if (request.method === "POST") {
