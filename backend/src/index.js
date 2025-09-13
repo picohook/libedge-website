@@ -7,9 +7,12 @@ export default {
           "Access-Control-Allow-Origin": "https://libedge-website.pages.dev", // kendi domaininiz
           "Access-Control-Allow-Methods": "POST, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
+          'Content-Type': 'application/json'
         },
       });
     }
+
+    
 
     if (request.method === "POST") {
       try {
