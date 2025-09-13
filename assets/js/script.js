@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
 
     try {
-      const response = await fetch("https://form-handler.<subdomain>.workers.dev", {
+      const response = await fetch("https://form-handler.agursel.workers.dev", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
