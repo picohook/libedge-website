@@ -238,43 +238,6 @@
             border: 1px solid white
         }
 
-        /* Mobil dokunma deneyimi iyileştirmeleri */
-.flip-card {
-    /* iOS Safari'de mavi highlight'ı kaldır */
-    -webkit-tap-highlight-color: transparent;
-    /* Android'de uzun basma menüsünü engelle */
-    -webkit-touch-callout: none;
-    /* Metin seçimini engelle */
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
-
-/* Link'lerde seçimi tekrar aktif et */
-.flip-card a {
-    -webkit-user-select: auto;
-    -moz-user-select: auto;
-    -ms-user-select: auto;
-    user-select: auto;
-}
-
-/* Mobilde daha hızlı animasyon */
-@media (max-width: 1280px) {
-    .flip-inner {
-        transition: transform 0.3s ease;
-    }
-}
-
-/* Dokunma alanlarını genişlet */
-.flip-card .flip-back a {
-    min-height: 44px; /* Apple'ın önerdiği minimum dokunma alanı */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-}
-
         .border-blue-400 { border-top-color: #60A5FA; }
         .border-red-400 { border-top-color: #F87171; }
         .border-purple-400 { border-top-color: #C084FC; }
@@ -1303,4 +1266,3 @@ body.translating {
     border-color: #16a34a !important;
     box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1) !important;
 }
-

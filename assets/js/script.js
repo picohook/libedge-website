@@ -1,77 +1,26 @@
 document.addEventListener('DOMContentLoaded', function() {
     // --- Flip Card Interaction ---
-// Mevcut flip card kodunuzun yerine geçecek tam çözüm
-document.addEventListener('DOMContentLoaded', function() {
-    // --- Flip Card Interaction (Mobil Dokunma Sorunu Çözümü) ---
-    document.querySelectorAll('.flip-card').forEach(card => {
-        let touchStartTime = 0;
-        let touchStartY = 0;
-        let touchStartX = 0;
-        
-        const performFlip = () => {
+document.querySelectorAll('.flip-card').forEach(card => {
+    const flipHandler = (e) => {
+        // Only apply click-flip on smaller screens (mobile/tablet view)
+        if (window.innerWidth <= 1280) {
             const flipInner = card.querySelector('.flip-inner');
             const isGlobalFlipActive = document.querySelector('.flip-all-cards');
-            
-            if (isGlobalFlipActive) {
-                // Global flip aktifse, bireysel tıklamalar kendi durumunu toggle eder
-                flipInner.classList.toggle('flipped');
-            } else {
-                // Normal davranış: flip toggle
-                flipInner.classList.toggle('flipped');
-            }
-        };
-        
-        // Desktop için click event
-        if (window.matchMedia('(hover: hover) and (min-width: 1281px)').matches) {
-            card.addEventListener('click', (e) => {
-                if (!e.target.closest('a')) {
-                    performFlip();
-                }
-            });
-        } else {
-            // Mobil cihazlar için touch events
-            card.addEventListener('touchstart', (e) => {
-                touchStartTime = Date.now();
-                touchStartY = e.touches[0].clientY;
-                touchStartX = e.touches[0].clientX;
-            }, { passive: true });
-            
-            card.addEventListener('touchend', (e) => {
-                const touchEndTime = Date.now();
-                const touchDuration = touchEndTime - touchStartTime;
-                
-                // Eğer changedTouches mevcut değilse çık
-                if (!e.changedTouches || e.changedTouches.length === 0) return;
-                
-                const touchEndY = e.changedTouches[0].clientY;
-                const touchEndX = e.changedTouches[0].clientX;
-                
-                const deltaY = Math.abs(touchEndY - touchStartY);
-                const deltaX = Math.abs(touchEndX - touchStartX);
-                
-                // Tap koşulları: kısa süre ve minimal hareket
-                if (touchDuration < 250 && deltaY < 15 && deltaX < 15) {
-                    // Link kontrolü
-                    if (!e.target.closest('a')) {
-                        performFlip();
-                    }
-                }
-            }, { passive: true });
-        }
-    });
 
-    // Resize olayında event listener'ları yeniden ayarla
-    window.addEventListener('resize', () => {
-        // Tüm flip durumlarını sıfırla
-        document.querySelectorAll('.flip-inner').forEach(flipInner => {
-            flipInner.classList.remove('flipped');
-        });
-        
-        const productsGrid = document.getElementById('products-grid');
-        if (productsGrid) {
-            productsGrid.classList.remove('flip-all-cards');
+            if (isGlobalFlipActive) {
+                // If global flip is on, individual clicks toggle their state
+                flipInner.classList.toggle('flipped');
+                flipInner.style.transform = flipInner.classList.contains('flipped') ?
+                    'rotateY(180deg)' :
+                    'none';
+            } else {
+                // Normal mobile behavior: flip unless clicking a link
+                if (!e.target.closest('a')) {
+                    flipInner.classList.toggle('flipped');
+                }
+            }
         }
-    });
+    };
     
     card.addEventListener('click', flipHandler);
     card.addEventListener('touchend', flipHandler); // Yeni eklenen satır
