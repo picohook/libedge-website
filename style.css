@@ -880,6 +880,12 @@
     cursor: not-allowed;
 }
 
+/* style.css */
+body.translating * {
+    transition: opacity 0.3s ease;
+    opacity: 0.7;
+}
+
 /* Çeviri animasyonu */
 .translatable {
     transition: opacity 0.3s ease;
