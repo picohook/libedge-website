@@ -150,11 +150,6 @@
         </div>
     </nav>
 
-        </div>
-    </div>
-</nav>
-
-
 <!-- Hero Slider Yapısı -->
 <main class="hero-slider-container">
     <div id="hero-slider" class="hero-slider">
@@ -1109,14 +1104,21 @@
                 <a class="text-gray-300 hover:text-white translatable" href="#">İletişim</a>
             </div>
         </div>
-    </div>
-    <nav class="footer-links">
-        <ul>
-            <li><a href="#" class="translatable">GİZLİLİK POLİTİKASI</a></li>
-            <li><a href="#" class="translatable">KULLANIM ŞARTLARI</a></li>
-            <li><span class="translatable">© 2025 LIBEDGE TÜM HAKLARI SAKLIDIR</span></li>
-        </ul>
-    </nav>
+        
+        <!-- Diğer 3 grid sütunu buraya eklenmeli -->
+        <div></div>
+        <div></div>
+        <div></div>
+        
+        <!-- footer-links nav'ı grid'in İÇİNDE olmalı -->
+        <nav class="footer-links">
+            <ul>
+                <li><a href="#" class="translatable">GİZLİLİK POLİTİKASI</a></li>
+                <li><a href="#" class="translatable">KULLANIM ŞARTLARI</a></li>
+                <li><span class="translatable">© 2025 LIBEDGE TÜM HAKLARI SAKLIDIR</span></li>
+            </ul>
+        </nav>
+    </div> <!-- Grid burada kapanmalı -->
 </footer>
 
     <button id="backToTop" class="fixed bottom-8 right-8 bg-primary text-white p-3 rounded-full shadow-lg opacity-0 invisible transition-all duration-300 hover:bg-opacity-90 z-50">
@@ -1239,53 +1241,13 @@
   handleFormSubmit("suggestionForm");  // Suggestion
 </script>
 
-  <div id="suggestionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
-      <button onclick="closeSuggestionModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-        <i class="fas fa-times"></i>
-      </button>
-      <h2 class="text-lg font-semibold mb-4 text-primary translatable">Ürün Öneri Formu</h2>
-      <form id="suggestionForm" class="space-y-4">
-        <input type="hidden" name="formType" value="suggest">
-        <input type="text" placeholder="Ad Soyad" class="w-full border p-2 rounded" required>
-        <input type="email" placeholder="E-posta" class="w-full border p-2 rounded" required>
-        <input type="text" placeholder="Kurum Adı" class="w-full border p-2 rounded">
-        <textarea placeholder="Ürün Öneri Detayınız" class="w-full border p-2 rounded h-24"></textarea>
-        <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 translatable">Gönder</button>
-      </form>
-    </div>
-  </div>
-
-
-  <script>
-    function openModal() {
-      document.getElementById('trialModal').classList.remove('hidden');
-      document.body.classList.add('no-scroll');
-    }
-    function closeModal() {
-      document.getElementById('trialModal').classList.add('hidden');
-      document.body.classList.remove('no-scroll');
-    }
-  
-    function openSuggestionModal() {
-      document.getElementById('suggestionModal').classList.remove('hidden');
-      document.body.classList.add('no-scroll');
-    }
-  
-    function closeSuggestionModal() {
-      document.getElementById('suggestionModal').classList.add('hidden');
-      document.body.classList.remove('no-scroll');
-    }
-  </script>
-  
-
 <div id="mapModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
   <div class="bg-white rounded-lg p-4 w-full max-w-4xl h-[80vh] relative flex flex-col">
     <button onclick="closeMapModal()" class="absolute top-2 right-2 text-gray-700 hover:text-primary z-10">
       <i class="fas fa-times text-2xl"></i>
     </button>
     <div class="flex-grow w-full">
-<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d6248.890749726966!2d27.166892793579095!3d38.454277999999995!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14bbd7ff8a83562b%3A0xcabe31e138901273!2seOfis%20-%20%C4%B0zmir%20Folkart%20Towers!5e0!3m2!1str!2str!4v1757432797541!5m2!1str!2str" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d6248.890749726966!2d27.166892793579095!3d38.454277999999995!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14bbd7ff8a83562b%3A0xcabe31e138901273!2seOfis%20-%20%C4%B0zmir%20Folkart%20Towers!5e0!3m2!1str!2str!4v1757432797541!5m2!1str!2str" title="LibEdge İzmir Ofis Konumu" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
     </div>
     <div class="mt-2 text-center text-sm text-gray-600 translatable">
       LibEdge ||| Daire: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/İzmir
