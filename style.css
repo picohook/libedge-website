@@ -1,5 +1,4 @@
-
-        body {
+body {
             font-family: 'Inter', sans-serif;
             color: #220f60;
             overflow-x: hidden;
@@ -143,6 +142,7 @@
         text-align: center;
     }
 }
+
         .flip-card {
             perspective: 1000px;
             width: 100%;
@@ -157,6 +157,8 @@
             height: 100%;
             transition: transform 0.6s;
             transform-style: preserve-3d;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
 
         .flip-front,
@@ -175,25 +177,106 @@
             box-sizing: border-box;
         }
 
-        .flip-back {
-            transform: rotateY(180deg);
-        }
-
-        @media (hover: hover) {
-            .flip-card:hover .flip-inner {
-                transform: rotateY(180deg);
-            }
-        }
-
         .flip-front {
             background-color: white;
             border-top: 4px solid;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+            pointer-events: auto;
         }
 
-        .flip-back a {
+        .flip-back {
+            transform: rotateY(180deg);
+            z-index: 2;
             pointer-events: auto;
-            border: 1px solid white
+        }
+
+        /* HOVER durumu - masaüstü */
+        @media (hover: hover) {
+            .flip-card:hover .flip-inner {
+                transform: rotateY(180deg);
+            }
+            
+            .flip-card:hover .flip-front {
+                pointer-events: none;
+                z-index: 0;
+            }
+            
+            .flip-card:hover .flip-back {
+                pointer-events: auto;
+                z-index: 2;
+            }
+        }
+
+        /* Manuel flip durumu */
+        .flip-inner.flipped {
+            transform: rotateY(180deg) !important;
+        }
+
+        .flip-card.flipped .flip-front {
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .flip-card.flipped .flip-back {
+            pointer-events: auto;
+            z-index: 2;
+        }
+
+        /* Tüm kartları flip etme durumu */
+        .flip-all-cards .flip-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-all-cards .flip-front {
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .flip-all-cards .flip-back {
+            pointer-events: auto;
+            z-index: 2;
+        }
+
+        /* Back kısmındaki linkler için özel stil */
+        .flip-back a {
+            pointer-events: auto !important;
+            z-index: 10;
+            position: relative;
+            border: 1px solid white;
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            color: white;
+            text-decoration: none;
+            background: rgba(34, 15, 96, 0.8);
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .flip-back a:hover {
+            background: rgba(34, 15, 96, 1);
+            transform: scale(1.05);
+        }
+
+        /* Mobil cihazlar için touch optimizasyonu */
+        @media (max-width: 768px) {
+            .flip-card {
+                cursor: default;
+            }
+            
+            .flip-card.mobile-flipped .flip-inner {
+                transform: rotateY(180deg);
+            }
+            
+            .flip-card.mobile-flipped .flip-front {
+                pointer-events: none;
+                z-index: 0;
+            }
+            
+            .flip-card.mobile-flipped .flip-back {
+                pointer-events: auto;
+                z-index: 2;
+            }
         }
 
         .border-blue-400 { border-top-color: #60A5FA; }
@@ -486,30 +569,30 @@
         position: static;
         width: 100%;
         box-shadow: none;
-        background-color: #f8f9fa;
+        background-color: transparent !important;
+        border: none !important;
         margin-top: 0.5rem;
-        margin-bottom: 0.5rem; /* Alt boşluk eklendi */
+        margin-bottom: 0.5rem;
         transform: none;
         border-radius: 0.25rem;
-        border: 1px solid #e9ecef; /* Hafif border ekle */
-        max-height: 0; /* Başlangıçta yüksekliği 0 yap */
-        opacity: 0; /* Başlangıçta görünmez yap */
-        visibility: hidden; /* Erişilebilirlik ve olaylar için gizle */
-        overflow: hidden; /* max-height animasyonu için gerekli */
-        transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin-top 0.3s ease-out, margin-bottom 0.3s ease-out; /* Geçiş ekle */
-        /* Başlangıçta margin olmasın */
+        max-height: 0;
+        opacity: 0;
+        visibility: hidden;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin-top 0.3s ease-out, margin-bottom 0.3s ease-out;
         margin-top: 0;
         margin-bottom: 0;
+        padding: 0;
             }
 
             .nav-links .group.active .dropdown {
                 opacity: 1;
                 visibility: visible;
-        /* Açıldığında margin'leri geri getir */
-                overflow-y: auto; /* Dikey kaydırmayı etkinleştir */
-                -webkit-overflow-scrolling: touch; /* iOS cihazlarda daha pürüzsüz kaydırma deneyimi için */
-        margin-top: 0.5rem;
-        margin-bottom: 0.5rem;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                margin-top: 0.5rem;
+                margin-bottom: 0.5rem;
+                max-height: 500px;
             }
 
             .nav-links .group.active>a .fa-chevron-down {
@@ -520,6 +603,10 @@
                 padding: 0.5rem 1rem;
                 font-size: 0.85rem;
                 border-bottom: 1px solid #e9ecef;
+                background-color: rgba(255,255,255,0.9) !important;
+                margin: 2px 0;
+                border-radius: 4px;
+                border: none !important;
             }
 
             .nav-links .group .dropdown a:last-child {
@@ -577,36 +664,6 @@
             width: 100%;
             display: flex;
             justify-content: flex-end;
-        }
-
-        .flip-card:hover .flip-front {
-             pointer-events: none;
-        }
-
-        .flip-card.flipped .flip-front {
-            pointer-events: none;
-        }
-
-        .flip-all-cards .flip-inner {
-            transform: rotateY(180deg);
-        }
-
-        .flip-inner.flipped {
-            transform: rotateY(180deg) !important;
-            z-index: 1;
-        }
-
-        @media (hover: hover) {
-            .flip-card:hover .flip-inner:not(.flip-all-cards) {
-                transform: rotateY(180deg);
-            }
-        }
-
-        .flip-all-cards .flip-front,
-        .flip-all-cards .flip-back {
-            overflow: hidden;
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
         }
 
         .flip-back ul {
@@ -808,23 +865,21 @@
             font-weight: 700 !important;
         }
 
+        .dropdown.translating,
+        .dropdown-list.translating {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
 
+        /* Add to your existing styles */
+        #mapModal iframe {
+          border-radius: 0.5rem;
+        }
 
-.dropdown.translating,
-.dropdown-list.translating {
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
-/* Add to your existing styles */
-#mapModal iframe {
-  border-radius: 0.5rem;
-}
-
-.no-scroll {
-  overflow: hidden;
-}
+        .no-scroll {
+          overflow: hidden;
+        }
 
 
         /* Yeni Eklenen Form Stilleri */
@@ -875,25 +930,6 @@
     text-decoration: none;
     color: #ffffff; /* <<< YENİ: Yazı rengini değiştirir */
     /* font-size burada da ayarlanabilir, ama 'li' üzerinde ayarlamak daha kapsayıcıdır */
-}
-@media (max-width: 639px) {
-    .nav-links .group .dropdown {
-        background-color: transparent !important; /* Şeffaf arkaplan */
-        border: none !important; /* Border'ı kaldır */
-        box-shadow: none !important; /* Gölgeyi kaldır */
-        padding: 0; /* İç boşluğu sıfırla */
-    }
-
-    .nav-links .group .dropdown a {
-        background-color: rgba(255,255,255,0.9) !important; /* Yarı şeffaf beyaz */
-        margin: 2px 0; /* Öğeler arası boşluk */
-        border-radius: 4px; /* Hafif yuvarlak köşeler */
-        border: none !important;
-    }
-
-    .nav-links .group.active .dropdown {
-        max-height: 500px; /* Yeterli maksimum yükseklik */
-    }
 }
 
 /* Çeviri yükleniyor durumu için stil */
@@ -946,6 +982,7 @@ body.translating * {
     color: #220f60;
   }
 }
+
 /* Modern Marquey Stilleri */
 .modern-marquee {
     overflow: hidden;
@@ -983,6 +1020,7 @@ body.translating * {
     position: relative;
     /* overflow: hidden; zaten eklendi */
 }
+
 .marquee-logo {
   display: block;
   max-width: 80%;
@@ -1033,6 +1071,7 @@ body.translating * {
         transform: translateX(-50%);
     }
 }
+
 /* Responsive tasarım */
 @media (max-width: 768px) {
     .marquee-item {
@@ -1087,34 +1126,6 @@ body.translating * {
     object-fit: cover;
     z-index: 0;
     filter: brightness(0.7);
-}
-
-/* Hero video için mevcut stil */
-.hero-video {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: translate(-50%, -50%);
-    z-index: 0;
-    filter: brightness(0.75) blur(1px);
-}
-
-/* Hero içerik */
-.hero-content {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    color: white;
-    padding: 0 1rem;
-    max-width: 1200px;
-    margin: 0 auto;
 }
 
 /* Navigation Buttons */
@@ -1240,33 +1251,10 @@ body.translating * {
     }
 }
 
-/* Flip-inner stillerini güncelle (mevcut stillere ekleme) */
-.flip-inner {
-    -webkit-backface-visibility: hidden; /* Safari desteği */
-    backface-visibility: hidden;
-    transform-style: preserve-3d;
-}
-
-/* Hatalı kısımları temizledim:
-   - #hero-slider için overflow-x: hidden kaldırıldı.
-   - .hero-slider-track tamamen kaldırıldı (çünkü HTML'de yok).
-*/
-
-
 /* Çeviri sistemi için loading stilleri */
 body.translating {
     pointer-events: none;
     user-select: none;
-}
-
-body.translating * {
-    transition: opacity 0.3s ease;
-    opacity: 0.8;
-}
-
-#translateBtn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
 }
 
 /* Form validation stilleri */
