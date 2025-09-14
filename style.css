@@ -143,101 +143,94 @@
         text-align: center;
     }
 }
-        .flip-card {
-            perspective: 1000px;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-            touch-action: manipulation;
-        }
+/* Flip Card CSS - Mobil Uyumlu Versiyon */
+.flip-card {
+    perspective: 1000px;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    touch-action: manipulation;
+}
 
-        .flip-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transition: transform 0.6s;
-            transform-style: preserve-3d;
-        }
+.flip-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s ease;
+    transform-style: preserve-3d;
+}
 
-        .flip-front,
-        .flip-back {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-            border-radius: 1rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.5rem;
-            box-sizing: border-box;
-        }
+.flip-front,
+.flip-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    box-sizing: border-box;
+}
 
-        .flip-front {
-            background-color: white;
-            border-top: 4px solid;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1;
-            pointer-events: auto;
-        }
+.flip-front {
+    background-color: white;
+    border-top: 4px solid;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 2;
+}
 
-        .flip-back {
-            transform: rotateY(180deg);
-        }
+.flip-back {
+    transform: rotateY(180deg);
+    z-index: 1;
+}
 
-        @media (hover: hover) {
-            .flip-card:hover .flip-inner {
-                transform: rotateY(180deg);
-            }
-            
-            .flip-card:hover .flip-front {
-                pointer-events: none;
-                z-index: 0;
-            }
-            
-            .flip-card:hover .flip-back {
-                pointer-events: auto;
-                z-index: 2;
-            }
-        }
+/* Hover efektleri sadece masaüstünde aktif */
+@media (hover: hover) and (min-width: 1281px) {
+    .flip-card:hover .flip-inner {
+        transform: rotateY(180deg);
+    }
+}
 
-        /* Manuel flip durumu */
-        .flip-inner.flipped {
-            transform: rotateY(180deg) !important;
-        }
+/* Manuel flip durumu - tüm cihazlarda çalışır */
+.flip-inner.flipped {
+    transform: rotateY(180deg) !important;
+}
 
-        .flip-card.flipped .flip-front {
-            pointer-events: none;
-            z-index: 0;
-        }
+.flip-card .flip-inner.flipped .flip-front {
+    z-index: 1;
+}
 
-        .flip-card.flipped .flip-back {
-            pointer-events: auto;
-            z-index: 2;
-        }
+.flip-card .flip-inner.flipped .flip-back {
+    z-index: 2;
+}
 
-        /* Tüm kartları flip etme durumu */
-        .flip-all-cards .flip-inner {
-            transform: rotateY(180deg);
-        }
+/* Global flip durumu */
+.flip-all-cards .flip-inner {
+    transform: rotateY(180deg) !important;
+}
 
-        .flip-all-cards .flip-front {
-            pointer-events: none;
-            z-index: 0;
-        }
+.flip-all-cards .flip-front {
+    z-index: 1;
+}
 
-        .flip-all-cards .flip-back {
-            pointer-events: auto;
-            z-index: 2;
-        }
+.flip-all-cards .flip-back {
+    z-index: 2;
+}
 
-        .flip-back a {
-            pointer-events: auto;
-            border: 1px solid white
-        }
-
+/* Mobil özel stilleri */
+@media (max-width: 1280px) {
+    .flip-card {
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .flip-inner {
+        transition: transform 0.4s ease;
+    }
+}
         .border-blue-400 { border-top-color: #60A5FA; }
         .border-red-400 { border-top-color: #F87171; }
         .border-purple-400 { border-top-color: #C084FC; }
