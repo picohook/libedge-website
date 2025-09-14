@@ -256,24 +256,21 @@ document.addEventListener('DOMContentLoaded', function() {
     } */
 
 
-    function handleFormSubmit(formId) {
+function handleFormSubmit(formId) {
   const form = document.getElementById(formId);
   if (!form) return;
 
   form.addEventListener("submit", async function (e) {
     e.preventDefault();
 
-    const formType = this.querySelector('input[name="formType"]').value;
+    // Tüm form alanlarını otomatik oku
+    const formDataObj = {};
+    const formData = new FormData(form);
+    formData.forEach((value, key) => {
+      formDataObj[key] = value;
+    });
 
-    const formData = {
-      formType,
-      name: this.querySelector('input[name="name"]').value,
-      email: this.querySelector('input[name="email"]').value,
-      phone: this.querySelector('input[name="phone"]')?.value || "",
-      subject: this.querySelector('input[name="subject"]')?.value || "",
-      message: this.querySelector('textarea[name="message"]')?.value || ""
-    };
-
+    // Submit butonunu disable + loading spinner
     const submitBtn = this.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
@@ -282,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const response = await fetch("https://form-handler.agursel.workers.dev/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formDataObj)
       });
 
       const result = await response.json();
@@ -290,27 +287,28 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.innerHTML = 'Gönderildi!';
         this.reset();
 
-  if (formId === "trialForm") closeModal();
-  if (formId === "suggestForm") closeSuggestionModal();
-} else {
-  console.error("Sheets webhook hatası:", result.error);
-  alert(result.error || "Gönderim sırasında hata oluştu.");
-  submitBtn.innerHTML = 'Hata!';
-
+        // Modal kapatma
+        if (formId === "trialForm") closeModal();
+        if (formId === "suggestionForm") closeSuggestionModal();
+      } else {
+        console.error("Sheets webhook hatası:", result.error);
+        alert(result.error || "Gönderim sırasında hata oluştu.");
+        submitBtn.innerHTML = 'Hata!';
       }
     } catch (error) {
       alert("Bağlantı hatası: " + error.message);
       submitBtn.innerHTML = 'Gönder';
     }
 
+    // Butonu tekrar aktif et
     submitBtn.disabled = false;
   });
 }
 
-// Formları bağla
-handleFormSubmit("contactForm"); // Contact
-handleFormSubmit("trialForm");   // Trial Access
-handleFormSubmit("suggestForm"); // Suggest Product
+// Tüm formları bağla
+handleFormSubmit("contactForm");     // Contact
+handleFormSubmit("trialForm");       // Trial Access
+handleFormSubmit("suggestionForm");  // Suggest Product
 
 
 
