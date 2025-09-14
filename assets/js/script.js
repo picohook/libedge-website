@@ -275,6 +275,7 @@ function handleFormSubmit(formId) {
 
     // Submit butonunu disable + loading spinner
     const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
 
@@ -291,20 +292,36 @@ function handleFormSubmit(formId) {
         this.reset();
 
         // Modal kapatma
-        if (formId === "trialForm") closeModal();
-        if (formId === "suggestionForm") closeSuggestionModal();
+        if (formId === "trialForm") {
+          setTimeout(() => {
+            closeModal();
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+          }, 1500);
+        } else if (formId === "suggestionForm") {
+          setTimeout(() => {
+            closeSuggestionModal();
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+          }, 1500);
+        } else {
+          // Contact formu için butonu sıfırla
+          setTimeout(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+          }, 1500);
+        }
       } else {
         console.error("Sheets webhook hatası:", result.error);
         alert(result.error || "Gönderim sırasında hata oluştu.");
-        submitBtn.innerHTML = 'Hata!';
+        submitBtn.innerHTML = 'Tekrar Dene';
+        submitBtn.disabled = false;
       }
     } catch (error) {
       alert("Bağlantı hatası: " + error.message);
-      submitBtn.innerHTML = 'Gönder';
+      submitBtn.innerHTML = 'Tekrar Dene';
+      submitBtn.disabled = false;
     }
-
-    // Butonu tekrar aktif et
-    submitBtn.disabled = false;
   });
 }
 
