@@ -579,6 +579,10 @@
             justify-content: flex-end;
         }
 
+        .flip-card:hover .flip-front {
+             pointer-events: none;
+        }
+
         .flip-all-cards .flip-inner {
             transform: rotateY(180deg);
         }
