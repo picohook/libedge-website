@@ -680,9 +680,22 @@
             background-position: center;
             background-repeat: no-repeat;
         }
+        #accessmedical .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/accmed.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
 
         #jove-education .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/educa.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        #jove-business .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/business.webp');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -785,8 +798,6 @@
         .nav-logo .lib-bold {
             font-weight: 700 !important;
         }
-
-
 
 .dropdown.translating,
 .dropdown-list.translating {
