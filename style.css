@@ -183,12 +183,46 @@
             .flip-card:hover .flip-inner {
                 transform: rotateY(180deg);
             }
+            
+            .flip-card:hover .flip-front {
+                pointer-events: none;
+                z-index: 0;
+            }
+            
+            .flip-card:hover .flip-back {
+                pointer-events: auto;
+                z-index: 2;
+            }
         }
 
-        .flip-front {
-            background-color: white;
-            border-top: 4px solid;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        /* Manuel flip durumu */
+        .flip-inner.flipped {
+            transform: rotateY(180deg) !important;
+        }
+
+        .flip-card.flipped .flip-front {
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .flip-card.flipped .flip-back {
+            pointer-events: auto;
+            z-index: 2;
+        }
+
+        /* Tüm kartları flip etme durumu */
+        .flip-all-cards .flip-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-all-cards .flip-front {
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .flip-all-cards .flip-back {
+            pointer-events: auto;
+            z-index: 2;
         }
 
         .flip-back a {
