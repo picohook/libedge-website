@@ -1,30 +1,27 @@
 document.addEventListener('DOMContentLoaded', function() {
     // --- Flip Card Interaction ---
-document.querySelectorAll('.flip-card').forEach(card => {
-    const flipHandler = (e) => {
-        // Only apply click-flip on smaller screens (mobile/tablet view)
-        if (window.innerWidth <= 1280) {
-            const flipInner = card.querySelector('.flip-inner');
-            const isGlobalFlipActive = document.querySelector('.flip-all-cards');
+    document.querySelectorAll('.flip-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            // Only apply click-flip on smaller screens (mobile/tablet view)
+            if (window.innerWidth <= 1280) {
+                const flipInner = card.querySelector('.flip-inner');
+                const isGlobalFlipActive = document.querySelector('.flip-all-cards');
 
-            if (isGlobalFlipActive) {
-                // If global flip is on, individual clicks toggle their state
-                flipInner.classList.toggle('flipped');
-                flipInner.style.transform = flipInner.classList.contains('flipped') ?
-                    'rotateY(180deg)' :
-                    'none';
-            } else {
-                // Normal mobile behavior: flip unless clicking a link
-                if (!e.target.closest('a')) {
+                if (isGlobalFlipActive) {
+                    // If global flip is on, individual clicks toggle their state
                     flipInner.classList.toggle('flipped');
+                    flipInner.style.transform = flipInner.classList.contains('flipped') ?
+                        'rotateY(180deg)' :
+                        'none';
+                } else {
+                    // Normal mobile behavior: flip unless clicking a link
+                    if (!e.target.closest('a')) {
+                        flipInner.classList.toggle('flipped');
+                    }
                 }
             }
-        }
-    };
-    
-    card.addEventListener('click', flipHandler);
-    card.addEventListener('touchend', flipHandler); // Yeni eklenen satır
-});
+        });
+    });
 
     // Reset cards on window resize to avoid inconsistent states
     window.addEventListener('resize', () => {
@@ -275,7 +272,6 @@ function handleFormSubmit(formId) {
 
     // Submit butonunu disable + loading spinner
     const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
 
@@ -292,36 +288,20 @@ function handleFormSubmit(formId) {
         this.reset();
 
         // Modal kapatma
-        if (formId === "trialForm") {
-          setTimeout(() => {
-            closeModal();
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-          }, 1500);
-        } else if (formId === "suggestionForm") {
-          setTimeout(() => {
-            closeSuggestionModal();
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-          }, 1500);
-        } else {
-          // Contact formu için butonu sıfırla
-          setTimeout(() => {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-          }, 1500);
-        }
+        if (formId === "trialForm") closeModal();
+        if (formId === "suggestionForm") closeSuggestionModal();
       } else {
         console.error("Sheets webhook hatası:", result.error);
         alert(result.error || "Gönderim sırasında hata oluştu.");
-        submitBtn.innerHTML = 'Tekrar Dene';
-        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Hata!';
       }
     } catch (error) {
       alert("Bağlantı hatası: " + error.message);
-      submitBtn.innerHTML = 'Tekrar Dene';
-      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Gönder';
     }
+
+    // Butonu tekrar aktif et
+    submitBtn.disabled = false;
   });
 }
 
