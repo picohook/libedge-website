@@ -542,6 +542,7 @@
         /* Başlangıçta margin olmasın */
         margin-top: 0;
         margin-bottom: 0;
+        padding: 0;
             }
 
             .nav-links .group.active .dropdown {
@@ -552,6 +553,7 @@
                 -webkit-overflow-scrolling: touch; /* iOS cihazlarda daha pürüzsüz kaydırma deneyimi için */
         margin-top: 0.5rem;
         margin-bottom: 0.5rem;
+                max-height: 500px;
             }
 
             .nav-links .group.active>a .fa-chevron-down {
