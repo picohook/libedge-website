@@ -1,37 +1,80 @@
 document.addEventListener('DOMContentLoaded', function() {
-// --- Flip Card Interaction (Düzeltilmiş Versiyon) ---
-document.querySelectorAll('.flip-card').forEach(card => {
-    const flipHandler = (e) => {
-        const flipInner = card.querySelector('.flip-inner');
-        const isGlobalFlipActive = document.querySelector('.flip-all-cards');
+    // --- Flip Card Interaction ---
+// Mevcut flip card kodunuzun yerine geçecek tam çözüm
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Flip Card Interaction (Mobil Dokunma Sorunu Çözümü) ---
+    document.querySelectorAll('.flip-card').forEach(card => {
+        let touchStartTime = 0;
+        let touchStartY = 0;
+        let touchStartX = 0;
         
-        // Mobil ve tablet cihazlarda (1280px ve altı) manuel flip aktif
-        if (window.innerWidth <= 1280) {
-            // Link tıklamasını engellemeyiz, sadece kart dönme işlemini yaparız
-            if (!e.target.closest('a')) {
-                e.preventDefault(); // Varsayılan davranışı engelle
-                
-                if (isGlobalFlipActive) {
-                    // Global flip aktifse, bireysel tıklamalar kendi durumunu toggle eder
-                    flipInner.classList.toggle('flipped');
-                } else {
-                    // Normal mobil davranış: flip toggle
-                    flipInner.classList.toggle('flipped');
-                }
+        const performFlip = () => {
+            const flipInner = card.querySelector('.flip-inner');
+            const isGlobalFlipActive = document.querySelector('.flip-all-cards');
+            
+            if (isGlobalFlipActive) {
+                // Global flip aktifse, bireysel tıklamalar kendi durumunu toggle eder
+                flipInner.classList.toggle('flipped');
+            } else {
+                // Normal davranış: flip toggle
+                flipInner.classList.toggle('flipped');
             }
+        };
+        
+        // Desktop için click event
+        if (window.matchMedia('(hover: hover) and (min-width: 1281px)').matches) {
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('a')) {
+                    performFlip();
+                }
+            });
+        } else {
+            // Mobil cihazlar için touch events
+            card.addEventListener('touchstart', (e) => {
+                touchStartTime = Date.now();
+                touchStartY = e.touches[0].clientY;
+                touchStartX = e.touches[0].clientX;
+            }, { passive: true });
+            
+            card.addEventListener('touchend', (e) => {
+                const touchEndTime = Date.now();
+                const touchDuration = touchEndTime - touchStartTime;
+                
+                // Eğer changedTouches mevcut değilse çık
+                if (!e.changedTouches || e.changedTouches.length === 0) return;
+                
+                const touchEndY = e.changedTouches[0].clientY;
+                const touchEndX = e.changedTouches[0].clientX;
+                
+                const deltaY = Math.abs(touchEndY - touchStartY);
+                const deltaX = Math.abs(touchEndX - touchStartX);
+                
+                // Tap koşulları: kısa süre ve minimal hareket
+                if (touchDuration < 250 && deltaY < 15 && deltaX < 15) {
+                    // Link kontrolü
+                    if (!e.target.closest('a')) {
+                        performFlip();
+                    }
+                }
+            }, { passive: true });
         }
-    };
-    
-    // Hem click hem de touchend event'lerini ekle
-    card.addEventListener('click', flipHandler, { passive: false });
-    card.addEventListener('touchend', flipHandler, { passive: false });
-    
-    // Touch start event'i de ekleyelim daha iyi mobile deneyim için
-    card.addEventListener('touchstart', (e) => {
-        if (window.innerWidth <= 1280 && !e.target.closest('a')) {
-            e.preventDefault();
+    });
+
+    // Resize olayında event listener'ları yeniden ayarla
+    window.addEventListener('resize', () => {
+        // Tüm flip durumlarını sıfırla
+        document.querySelectorAll('.flip-inner').forEach(flipInner => {
+            flipInner.classList.remove('flipped');
+        });
+        
+        const productsGrid = document.getElementById('products-grid');
+        if (productsGrid) {
+            productsGrid.classList.remove('flip-all-cards');
         }
-    }, { passive: false });
+    });
+    
+    card.addEventListener('click', flipHandler);
+    card.addEventListener('touchend', flipHandler); // Yeni eklenen satır
 });
 
     // Reset cards on window resize to avoid inconsistent states
