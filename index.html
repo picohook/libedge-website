@@ -50,6 +50,9 @@
             <a class="text-white hover:text-purple-300" href="https://instagram.com/" target="_blank">
                 <i class="fab fa-instagram text-lg"></i>
             </a>
+            <a class="text-white hover:text-purple-300" href="https://youtube.com/" target="_blank">
+                <i class="fab fa-youtube text-lg"></i>
+            </a>
             <a class="text-white hover:text-purple-300" onclick="openMapModal()" style="cursor:pointer">
                 <i class="fas fa-map-marker-alt text-lg"></i>
             </a>
@@ -147,14 +150,17 @@
         </div>
     </nav>
 
+<!-- Hero Slider Yapısı -->
 <main class="hero-slider-container">
     <div id="hero-slider" class="hero-slider">
+        <!-- SLIDE 1: Mevcut İçerik (Video) -->
         <div class="hero-slide active">
             <video class="hero-video" src="assets/videos/library.mp4" autoplay muted loop playsinline aria-hidden="true" role="presentation"></video>
             <div class="hero-content">
                 <h1 class="hero-header translatable"><span class="font-normal">Bilginin Gücünü Keşfedin</span></h1>
                 <p class="hero-subtitle translatable">Kalite ve dürüstlük ilkesi ile 20 yıla yakın sektör deneyimini harmanlıyoruz. Kütüphanelere ürün danışmanlığı, abonelik süreç desteği ve yerinde eğitim hizmetleri sunuyoruz.</p>
             </div>
+            <!-- Badges wrapper slide içine taşındı -->
             <div class="hero-badges-wrapper">
                 <button onclick="openModal()" class="hero-badge translatable" aria-label="Ürün önerisi gönder">
                     <i class="fas fa-ticket-alt mr-2" aria-hidden="true"></i>
@@ -167,12 +173,14 @@
             </div>
         </div>
 
+        <!-- SLIDE 2: Yeni Slide (Örnek - Görsel ve farklı mesaj) -->
         <div class="hero-slide">
             <img src="assets/images/hero-slide-2.jpg" alt="LibEdge İş Ortaklıkları" class="hero-bg-image" loading="lazy">
             <div class="hero-content">
                 <h1 class="hero-header translatable"><span class="font-normal">Öncü Yayıncılarla İş Birliği</span></h1>
                 <p class="hero-subtitle translatable">Dünyanın önde gelen akademik yayıncıları ve teknoloji sağlayıcıları ile stratejik iş birlikleri. Kurumunuz için en güncel ve nitelikli içeriğe erişin.</p>
             </div>
+            <!-- Bu slide'a özel buton veya link eklenebilir -->
             <div class="hero-badges-wrapper">
                 <a href="#partners" class="hero-badge translatable">
                     <i class="fas fa-handshake mr-2" aria-hidden="true"></i>
@@ -181,6 +189,7 @@
             </div>
         </div>
 
+        <!-- SLIDE 3: Yeni Slide (Örnek - Başka bir görsel ve mesaj) -->
         <div class="hero-slide">
             <img src="assets/images/hero-slide-3.jpg" alt="LibEdge Eğitim Çözümleri" class="hero-bg-image" loading="lazy">
             <div class="hero-content">
@@ -195,6 +204,7 @@
             </div>
         </div>
 
+        <!-- SLIDE 4: Video yerine gradient arka plan (Örnek) -->
         <div class="hero-slide" style="background: linear-gradient(135deg, #220f60 0%, #6C63FF 100%);">
             <div class="hero-content">
                 <h1 class="hero-header translatable"><span class="font-normal">Teknoloji ve İnovasyon</span></h1>
@@ -209,6 +219,7 @@
         </div>
     </div>
 
+    <!-- Navigation Buttons -->
     <button id="prevBtn" class="slider-nav-btn slider-prev" aria-label="Önceki slide">
         <i class="fas fa-chevron-left"></i>
     </button>
@@ -216,9 +227,12 @@
         <i class="fas fa-chevron-right"></i>
     </button>
 
+    <!-- Slider Dots (Indicators) -->
     <div class="slider-dots-container">
-        </div>
+        <!-- JavaScript ile doldurulacak -->
+    </div>
 
+    <!-- Autoplay Control -->
     <button id="autoplayToggle" class="autoplay-toggle" aria-label="Slayt otomatik oynatmayı duraklat">
         <i class="fas fa-pause"></i>
     </button>
@@ -229,11 +243,11 @@
         <div class="subject-filter-container mb-8">
             <div class="filter-container" id="subject-filter">
   <button class="subject-btn active translatable" data-subject="all" aria-pressed="true">Tümü</button>
-  <button class="subject-btn translatable" data-subject="fen-matematik" aria-pressed="false">Fen & Matematik</button>
+  <button class="subject-btn translatable" data-subject="fen-matematik" aria-pressed="false">Fen &amp; Matematik</button>
   <button class="subject-btn translatable" data-subject="muhendislik" aria-pressed="false">Mühendislik</button>
   <button class="subject-btn translatable" data-subject="saglik" aria-pressed="false">Sağlık</button>
   <button class="subject-btn translatable" data-subject="sosyal-bilimler" aria-pressed="false">Sosyal Bilimler</button>
-  <button class="subject-btn translatable" data-subject="is-hukuk" aria-pressed="false">İş & Hukuk</button>
+  <button class="subject-btn translatable" data-subject="is-hukuk" aria-pressed="false">İş &amp; Hukuk</button>
   <button class="subject-btn translatable" data-subject="sanat" aria-pressed="false">Sanat</button>
   <button class="subject-btn translatable" data-subject="yapay-zeka" aria-pressed="false">Yapay Zeka</button>
 </div>
@@ -267,814 +281,961 @@
     </div>
   </div>
 </div>
-<div class="product-card-container" data-subjects="yapay-zeka" id="chatpdf">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-blue-400">
-        <img alt="ChatPDF Logo" class="product-image" src="assets/images/ChatPDF_LOGO.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">ChatPDF</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-          <span class="badge-middleeast translatable">Orta Doğu</span>
-        </div>
-      </div>
-      <div class="flip-back bg-blue-50">
-        <h4 class="text-lg font-bold mb-3 text-blue-800 translatable">ChatPDF</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ PDF'lerle etkileşimli sohbet aracı</li>
-          <li class="translatable">✔ Akademik makaleleri anlama</li>
-          <li class="translatable">✔ Hızlı doküman analizi</li>
-        </ul>
-        <div class ="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://chatpdf.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="yapay-zeka" id="wonders">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-blue-400">
-        <img alt="Wonders Logo" class="product-image" src="assets/images/wonders_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">Wonders</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-          <span class="badge-middleeast translatable">Orta Doğu</span>
-        </div>
-      </div>
-      <div class="flip-back bg-blue-50">
-        <h4 class="text-lg font-bold mb-3 text-blue-800 translatable">Wonders</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Sınıf ve kurs yönetimi</li>
-          <li class="translatable">✔ Dinamik ders içeriği oluşturma</li>
-          <li class="translatable">✔ Öğrenme analitiği</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.wonders.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="yapay-zeka" id="piri-discovery">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-blue-400">
-        <img alt="Piri Discovery Logo" class="product-image" src="assets/images/piri_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">Piri Keşif</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-          <span class="badge-middleeast translatable">Orta Doğu</span>
-        </div>
-      </div>
-      <div class="flip-back bg-blue-50">
-        <h4 class="text-lg font-bold mb-3 text-blue-800 translatable">Piri Keşif</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Bilimsel makale keşif platformu</li>
-          <li class="translatable">✔ Anahtar kelime odaklı arama</li>
-          <li class="translatable">✔ İlgili yayıncıları bulma</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://piridiscovery.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="yapay-zeka" id="transleyt">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-blue-400">
-        <img alt="Transleyt Logo" class="product-image" src="assets/images/transleyt_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">Transleyt</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-          <span class="badge-middleeast translatable">Orta Doğu</span>
-        </div>
-      </div>
-      <div class="flip-back bg-blue-50">
-        <h4 class="text-lg font-bold mb-3 text-blue-800 translatable">Transleyt</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Akademik çeviri platformu</li>
-          <li class="translatable">✔ Hızlı ve doğru çeviri</li>
-          <li class="translatable">✔ Alan uzmanlığı çevirileri</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://transleyt.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="saglik" id="primal-pictures">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-green-400">
-        <img alt="Primal Pictures Logo" class="product-image" src="assets/images/primal_pictures.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">Primal Pictures</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-green-50">
-        <h4 class="text-lg font-bold mb-3 text-green-800 translatable">Primal Pictures</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ 3D anatomi veritabanı</li>
-          <li class="translatable">✔ 3D görüntüleme ve animasyonlar</li>
-          <li class="translatable">✔ Gelişmiş içerik modülleri</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.primalpictures.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="saglik" id="lecturio">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-green-400">
-        <img alt="Lecturio Logo" class="product-image" src="assets/images/lecturio_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">Lecturio</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-green-50">
-        <h4 class="text-lg font-bold mb-3 text-green-800 translatable">Lecturio</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Tıp eğitimi video kütüphanesi</li>
-          <li class="translatable">✔ Tam kapsamlı tıp eğitimi</li>
-          <li class="translatable">✔ Etkileşimli öğrenme</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.lecturio.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="saglik" id="nejmhealer">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-green-400">
-        <img alt="NEJMHealer Logo" class="product-image" src="assets/images/nejm_healer_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">NEJMHealer</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-green-50">
-        <h4 class="text-lg font-bold mb-3 text-green-800 translatable">NEJMHealer</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Sanal hasta deneyimi</li>
-          <li class="translatable">✔ Klinik akıl yürütme becerilerini geliştirme</li>
-          <li class="translatable">✔ İnteraktif senaryolar</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://healer.nejm.org/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="saglik" id="accessmedical">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-green-400">
-        <img alt="AccessMedical Logo" class="product-image" src="assets/images/accessmedical_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">AccessMedical</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-green-50">
-        <h4 class="text-lg font-bold mb-3 text-green-800 translatable">AccessMedical</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Tıp alanında en kapsamlı içeriğe erişim</li>
-          <li class="translatable">✔ Tam metin e-kitaplar ve dergiler</li>
-          <li class="translatable">✔ 3D anatomi ve interaktif videolar</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://accessmedical.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="saglik" id="cochrane-library">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-green-400">
-        <img alt="Cochrane Library Logo" class="product-image" src="assets/images/cochrane_library_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">Cochrane Library</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-green-50">
-        <h4 class="text-lg font-bold mb-3 text-green-800 translatable">Cochrane Library</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Kanıta dayalı tıp veritabanı</li>
-          <li class="translatable">✔ Sistematik derlemeler</li>
-          <li class="translatable">✔ Klinik araştırmalar</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.cochranelibrary.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="muhendislik" id="accessengineering">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-orange-400">
-        <img alt="AccessEngineering Logo" class="product-image" src="assets/images/accessengineering_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">AccessEngineering</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-orange-50">
-        <h4 class="text-lg font-bold mb-3 text-orange-800 translatable">AccessEngineering</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Mühendislik alanında referans içeriğe erişim</li>
-          <li class="translatable">✔ İnteraktif araçlar ve hesap makineleri</li>
-          <li class="translatable">✔ Önde gelen yayınevlerinin kitapları</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://accessengineeringlibrary.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="muhendislik" id="biorender">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-orange-400">
-        <img alt="BioRender Logo" class="product-image" src="assets/images/biorender_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">BioRender</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-orange-50">
-        <h4 class="text-lg font-bold mb-3 text-orange-800 translatable">BioRender</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Biyolojik bilimler için çizim aracı</li>
-          <li class="translatable">✔ Yüzlerce şablon ve ikon</li>
-          <li class="translatable">✔ Kolayca profesyonel görseller oluşturma</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.biorender.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="muhendislik" id="wiley-dergiler">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-orange-400">
-        <img alt="Wiley Logo" class="product-image" src="assets/images/wiley.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">Wiley Dergiler</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-orange-50">
-        <h4 class="text-lg font-bold mb-3 text-orange-800 translatable">Wiley Dergiler</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Mühendislik alanında binlerce dergiye erişim</li>
-          <li class="translatable">✔ Tam metin dergiler</li>
-          <li class="translatable">✔ Disiplinlerarası yayınlar</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://onlinelibrary.wiley.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="muhendislik" id="wiley-kitaplar">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-orange-400">
-        <img alt="Wiley Logo" class="product-image" src="assets/images/wiley.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">Wiley Kitaplar</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-orange-50">
-        <h4 class="text-lg font-bold mb-3 text-orange-800 translatable">Wiley Kitaplar</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Mühendislik alanında binlerce kitaba erişim</li>
-          <li class="translatable">✔ Tam metin kitaplar</li>
-          <li class="translatable">✔ E-kitap platformu</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://onlinelibrary.wiley.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="fen-matematik" id="jove-dergiler">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-red-400">
-        <img alt="JoVE Logo" class="product-image" src="assets/images/jove.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">JoVE Research</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-          <span class="badge-middleeast translatable">Orta Doğu</span>
-        </div>
-      </div>
-      <div class="flip-back bg-red-50">
-        <h4 class="text-lg font-bold mb-3 text-red-800 translatable">JoVE Research</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Fen alanında binlerce makale</li>
-          <li class="translatable">✔ Video makaleler</li>
-          <li class="translatable">✔ Fen ve mühendislik bilimleri</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.jove.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="fen-matematik" id="jove-education">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-red-400">
-        <img alt="JoVE Logo" class="product-image" src="assets/images/jove.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">JoVE Education</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-          <span class="badge-middleeast translatable">Orta Doğu</span>
-        </div>
-      </div>
-      <div class="flip-back bg-red-50">
-        <h4 class="text-lg font-bold mb-3 text-red-800 translatable">JoVE Education</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Fen alanında interaktif videolar</li>
-          <li class="translatable">✔ Ders anlatımları ve animasyonlar</li>
-          <li class="translatable">✔ Fen ve mühendislik bilimleri</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.jove.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="sosyal-bilimler" id="jove-dergiler">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-purple-400">
-        <img alt="JoVE Logo" class="product-image" src="assets/images/jove.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">JoVE Research</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-          <span class="badge-middleeast translatable">Orta Doğu</span>
-        </div>
-      </div>
-      <div class="flip-back bg-purple-50">
-        <h4 class="text-lg font-bold mb-3 text-purple-800 translatable">JoVE Research</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Sosyal bilimler alanında binlerce makale</li>
-          <li class="translatable">✔ Video makaleler</li>
-          <li class="translatable">✔ Fen ve mühendislik bilimleri</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.jove.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="sosyal-bilimler" id="jove-education">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-purple-400">
-        <img alt="JoVE Logo" class="product-image" src="assets/images/jove.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">JoVE Education</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-          <span class="badge-middleeast translatable">Orta Doğu</span>
-        </div>
-      </div>
-      <div class="flip-back bg-purple-50">
-        <h4 class="text-lg font-bold mb-3 text-purple-800 translatable">JoVE Education</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Sosyal bilimler alanında interaktif videolar</li>
-          <li class="translatable">✔ Ders anlatımları ve animasyonlar</li>
-          <li class="translatable">✔ Fen ve mühendislik bilimleri</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="assets/brochures/jove.pdf" target="_blank" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.jove.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="is-hukuk" id="jove-dergiler">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-gray-400">
-        <img alt="JoVE Logo" class="product-image" src="assets/images/jove.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">JoVE Research</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-          <span class="badge-middleeast translatable">Orta Doğu</span>
-        </div>
-      </div>
-      <div class="flip-back bg-gray-50">
-        <h4 class="text-lg font-bold mb-3 text-gray-800 translatable">JoVE Research</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ İş ve Hukuk alanında binlerce makale</li>
-          <li class="translatable">✔ Video makaleler</li>
-          <li class="translatable">✔ Fen ve mühendislik bilimleri</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.jove.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="sanat" id="klasik-muzik">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-pink-400">
-        <img alt="Klasik Müzik Koleksiyonu Logo" class="product-image" src="assets/images/naxos_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">Klasik Müzik Koleksiyonu</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-pink-50">
-        <h4 class="text-lg font-bold mb-3 text-pink-800 translatable">Klasik Müzik Koleksiyonu</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Binlerce klasik müzik albümüne erişim</li>
-          <li class="translatable">✔ Müzik tarihi bilgileri ve besteci biyografileri</li>
-          <li class="translatable">✔ Yüksek kaliteli ses</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.naxos.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="product-card-container" data-subjects="sanat" id="caz-koleksiyonu">
-  <div class="flip-card h-full">
-    <div class="flip-inner h-full">
-      <div class="flip-front border-pink-400">
-        <img alt="Caz Koleksiyonu Logo" class="product-image" src="assets/images/naxos_logo.webp" loading="lazy" />
-        <h3 class="text-xl font-semibold text-center text-primary translatable">Caz Koleksiyonu</h3>
-        <div class="badge-container">
-          <span class="badge-label translatable">Yetkili Bölge:</span>
-          <span class="badge-turkey translatable">Türkiye</span>
-        </div>
-      </div>
-      <div class="flip-back bg-pink-50">
-        <h4 class="text-lg font-bold mb-3 text-pink-800 translatable">Caz Koleksiyonu</h4>
-        <ul class="text-xs text-black space-y-1 mb-4">
-          <li class="translatable">✔ Binlerce caz müzik albümüne erişim</li>
-          <li class="translatable">✔ Müzik tarihi bilgileri ve sanatçı biyografileri</li>
-          <li class="translatable">✔ Yüksek kaliteli ses</li>
-        </ul>
-        <div class="flex justify-center space-x-4 mt-auto">
-          <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
-          <a href="https://www.naxos.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-</div>
+
+            <div class="product-card-container" data-subjects="yapay-zeka" id="chatpdf">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-blue-400">
+                            <img alt="ChatPDF Logo" class="product-image" src="assets/images/ChatPDF_LOGO.webp" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">ChatPDF</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-blue-50">
+                            <h4 class="text-lg font-bold mb-3 text-blue-800 translatable">ChatPDF</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ PDF'lerle etkileşimli sohbet aracı</li>
+                                <li class="translatable">✔ Akademik makaleleri anlama</li>
+                                <li class="translatable">✔ Hızlı doküman analizi</li>
+                            </ul>
+                            <div class ="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://www.chatpdf.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="yapay-zeka" id="wonders">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-blue-400">
+                            <img alt="Wonders Logo" class="product-image" src="assets/images/wonders_logo.svg" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">Wonders</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-blue-50">
+                            <h4 class="text-lg font-bold mb-3 text-blue-800 translatable">Wonders</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Yaratıcı içerik platformu</li>
+                                <li class="translatable">✔ Eğitim materyalleri</li>
+                                <li class="translatable">✔ Interaktif öğrenme</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://www.readwonders.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="saglik" id="primal-pictures">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-red-400">
+                            <img alt="Primal Pictures Logo" class="product-image" src="assets/images/primalpictures_logo.svg" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">Primal Pictures</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-red-50">
+                            <h4 class="text-lg font-bold mb-3 text-red-800 translatable">Primal Pictures</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ İlk 3D insan anatomisi atlası.</li>
+                                <li class="translatable">✔ Visible Human Project verileri.</li>
+                                <li class="translatable">✔ Tıp, hemşirelik, fizyoterapi modelleri.</li>
+                                <li class="translatable">✔ Animasyon, MR ve cerrahi görüntüler.</li>
+                                <li class="translatable">✔ Sınırsız erişim platformu.</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://www.anatomy.tv/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="saglik" id="lecturio">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-red-400">
+                            <img alt="Lecturio Logo" class="product-image" src="assets/images/Lecturio_logo.PNG" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">Lecturio</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-red-50">
+                            <h4 class="text-lg font-bold mb-3 text-red-800 translatable">Lecturio</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Tıp eğitimi platformu</li>
+                                <li class="translatable">✔ Video dersler</li>
+                                <li class="translatable">✔ USMLE hazırlık</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://www.lecturio.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="saglik" id="nejmhealer">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-red-400">
+                            <img alt="NEJMHealer Logo" class="product-image" src="assets/images/nejmhealer_logo.svg" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">NEJMHealer</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-red-50">
+                            <h4 class="text-lg font-bold mb-3 text-red-800 translatable">NEJMHealer</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Klinik vaka tabanlı öğrenme</li>
+                                <li class="translatable">✔ Gerçek hasta senaryoları</li>
+                                <li class="translatable">✔ Tıbbi karar verme eğitimi</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://www.lecturio.com/inst/nejm-healer/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="fen-matematik,muhendislik,saglik,sosyal-bilimler" id="jove-dergiler">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-teal-400">
+                            <img alt="JoVE Research Logo" class="product-image" src="assets/images/JOVE_LOGO.PNG" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">JoVE Research</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast invisible translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+
+                        <div class="flip-back bg-video-container">
+                            <video class="bg-video" autoplay muted loop playsinline>
+                                <source src="https://app.jove.com/assets/bg_video_teaser_v3_.mp4" type="video/mp4">
+                            </video>
+                            <div class="bg-video-overlay"></div>
+                            <div class="bg-video-content">
+                                <h4 class="text-lg font-bold text-teal-800 text-center mt-0 mb-2 translatable">JoVE Research</h4>
+                                <ul class="text-xs text-black space-y-1 mb-4">
+                                    <li class="translatable">✔ Multidisipliner video dergileri</li>
+                                    <li class="translatable">✔ 13 farklı disiplin</li>
+                                    <li class="translatable">✔ Görsel öğrenme kaynağı</li>
+                                </ul>
+                                <div class="mt-auto flex justify-center space-x-4">
+                                    <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                    <a href="https://app.jove.com/research" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="fen-matematik,muhendislik,saglik,sosyal-bilimler" id="jove-education">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-teal-400">
+                            <img alt="JoVE Education Logo" class="product-image" src="assets/images/JOVE_LOGO.PNG" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">JoVE Education</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast invisible translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-teal-50">
+                            <h4 class="text-lg font-bold mb-3 text-teal-800 translatable">JoVE Education</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Bilimsel eğitim video koleksiyonu</li>
+                                <li class="translatable">✔ Laboratuvar teknikleri</li>
+                                <li class="translatable">✔ Temel bilimler eğitimi</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://app.jove.com/education" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                        <div class="product-card-container" data-subjects="is-hukuk" id="jove-business">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-teal-400">
+                            <img alt="JoVE Education Logo" class="product-image" src="assets/images/JOVE_LOGO.PNG" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">JoVE Business</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast invisible translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-teal-50">
+                            <h4 class="text-lg font-bold mb-3 text-teal-800 translatable">JoVE Business</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ İşletme ve yönetim odaklı video içeriği</li>
+                                <li class="translatable">✔ Finans, Pazarlama, Mikroekonomi</li>
+                                <li class="translatable">✔ Animasyonlu dersler</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://www.jove.com/business" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="fen-matematik,muhendislik" id="accessengineering">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-gray-400">
+                            <img alt="AccessEngineering Logo" class="product-image" src="assets/images/AccessEngineering_LOGO.PNG" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">AccessEngineering</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast invisible translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-gray-50">
+                            <h4 class="text-lg font-bold mb-3 text-gray-800 translatable">AccessEngineering</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Mühendislik ve fen bilimleri kaynağı</li>
+                                <li class="translatable">✔ Kapsamlı referans materyaller</li>
+                                <li class="translatable">✔ Interaktif araçlar</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://www.accessengineeringlibrary.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="saglik" id="accessmedical">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-red-400">
+                            <img alt="AccessMedical Logo" class="product-image" src="assets/images/mcgraw-hill_logo.svg" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">AccessMedical</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast invisible translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-red-50">
+                            <h4 class="text-lg font-bold mb-3 text-red-800 translatable">AccessMedical</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Kapsamlı tıp kaynakları</li>
+                                <li class="translatable">✔ Tanı ve tedavi rehberleri</li>
+                                <li class="translatable">✔ Güncel tıp bilgileri</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://access.mhmedical.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="sanat" id="klasik-muzik">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-purple-400">
+                            <img alt="Klasik Müzik Koleksiyonu Logo" class="product-image" src="assets/images/medicitv_logo.webp" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">Klasik Müzik Koleksiyonu</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-purple-50">
+                            <h4 class="text-lg font-bold mb-3 text-purple-800 translatable">Klasik Müzik Koleksiyonu</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Zengin klasik müzik arşivi</li>
+                                <li class="translatable">✔ Dünyaca ünlü besteciler</li>
+                                <li class="translatable">✔ Yüksek kaliteli kayıtlar</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://medici.tv/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="sanat" id="caz-koleksiyonu">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-purple-400">
+                            <img alt="Caz Koleksiyonu Logo" class="product-image" src="assets/images/medicitv_logo.webp" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">Caz Koleksiyonu</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-purple-50">
+                            <h4 class="text-lg font-bold mb-3 text-purple-800 translatable">Caz Koleksiyonu</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Geniş caz müzik arşivi</li>
+                                <li class="translatable">✔ Efsanevi caz sanatçıları</li>
+                                <li class="translatable">✔ Tarihi performans kayıtları</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://www.medici.tv/en/jazz" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="fen-matematik,muhendislik,saglik" id="biorender">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-red-400">
+                            <img alt="BioRender Logo" class="product-image" src="assets/images/biorender_logo.webp" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">BioRender</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye</span>
+                                <span class="badge-middleeast invisible translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-red-50">
+                            <h4 class="text-lg font-bold mb-3 text-red-800 translatable">BioRender</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Bilimsel illüstrasyon aracı</li>
+                                <li class="translatable">✔ Profesyonel diyagramlar</li>
+                                <li class="translatable">✔ 30.000+ bilimsel ikon</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://www.biorender.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="fen-matematik,muhendislik,saglik" id="wiley-dergiler">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-indigo-400">
+                            <img alt="Wiley Dergiler Logo" class="product-image" src="assets/images/wiley_logo.svg" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">Wiley Dergiler</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye (EKUAL dışı)</span>
+                                <span class="badge-middleeast invisible translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-indigo-50">
+                            <h4 class="text-lg font-bold mb-3 text-indigo-800 translatable">Wiley Dergiler</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Kapsamlı akademik dergi koleksiyonu</li>
+                                <li class="translatable">✔ 1.600+ hakemli dergi</li>
+                                <li class="translatable">✔ Çok disiplinli içerik</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://onlinelibrary.wiley.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="fen-matematik,muhendislik,saglik" id="wiley-kitaplar">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-indigo-400">
+                            <img alt="Wiley Kitaplar Logo" class="product-image" src="assets/images/wiley_logo.svg" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">Wiley Kitaplar</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye (EKUAL dışı)</span>
+                                <span class="badge-middleeast invisible translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-indigo-50">
+                            <h4 class="text-lg font-bold mb-3 text-indigo-800 translatable">Wiley Kitaplar</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Geniş kapsamlı e-kitap arşivi</li>
+                                <li class="translatable">✔ 20.000+ akademik kitap</li>
+                                <li class="translatable">✔ Güncel baskılar</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://onlinelibrary.wiley.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="saglik" id="cochrane-library">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-red-400">
+                            <img alt="Cochrane Library Logo" class="product-image" src="assets/images/CochraneLibrary_LOGO.PNG" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">Cochrane Library</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey translatable">Türkiye (EKUAL dışı)</span>
+                                <span class="badge-middleeast invisible translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-red-50">
+                            <h4 class="text-lg font-bold mb-3 text-red-800 translatable">Cochrane Library</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Kanıta dayalı tıp veritabanı</li>
+                                <li class="translatable">✔ Sistematik derlemeler</li>
+                                <li class="translatable">✔ Klinik karar destek</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://www.cochranelibrary.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="yapay-zeka" id="piri-discovery">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-blue-400">
+                            <img alt="Piri Discovery Logo" class="product-image" src="assets/images/Piri_LOGO.PNG" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">Piri Keşif</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey invisible translatable">Türkiye</span>
+                                <span class="badge-middleeast translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-blue-50">
+                            <h4 class="text-lg font-bold mb-3 text-blue-800 translatable">Piri Keşif</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Keşif ve araştırma platformu</li>
+                                <li class="translatable">✔ Veri analiz araçları</li>
+                                <li class="translatable">✔ Bilgi keşif sistemi</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://kesifaraci.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card-container" data-subjects="yapay-zeka" id="transleyt">
+                <div class="flip-card h-full">
+                    <div class="flip-inner h-full">
+                        <div class="flip-front border-blue-400">
+                            <img alt="Transleyt Logo" class="product-image" src="assets/images/Transleyt_LOGO.PNG" loading="lazy" />
+                            <h3 class="text-xl font-semibold text-center text-primary translatable">Transleyt</h3>
+                            <div class="badge-container">
+                                <span class="badge-label translatable">Yetkili Bölge:</span>
+                                <span class="badge-turkey invisible translatable">Türkiye</span>
+                                <span class="badge-middleeast translatable">Orta Doğu</span>
+                            </div>
+                        </div>
+                        <div class="flip-back bg-blue-50">
+                            <h4 class="text-lg font-bold mb-3 text-blue-800 translatable">Transleyt</h4>
+                            <ul class="text-xs text-black space-y-1 mb-4">
+                                <li class="translatable">✔ Gelişmiş çeviri aracı</li>
+                                <li class="translatable">✔ 100+ dil desteği</li>
+                                <li class="translatable">✔ Akademik metin çevirisi</li>
+                            </ul>
+                            <div class="flex justify-center space-x-4 mt-auto">
+                                <a href="#brochures" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition text-xs translatable">Broşür</a>
+                                <a href="https://transleyt.com/" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-xs whitespace-nowrap translatable">Erişim Linki</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
     </section>
+
+    <section class="max-w-7xl mx-auto px-6 py-8" id="services">
+        <h2 class="products-header translatable">Hizmetlerimiz</h2>
+        <div class="text-gray-700 space-y-6">
+            <p class="translatable">
+                LibEdge olarak, 15 yılı aşkın sektör deneyimimizle eğitim ve araştırma kurumlarına özel danışmanlık ve destek hizmetleri sunuyoruz. Ürün tedarik süreçlerinin yanı sıra, ihtiyaçlarınıza yönelik çözümler geliştiriyoruz.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-xl font-semibold text-primary mb-2 translatable">Ürün Danışmanlığı ve Tedarik</h3>
+                    <p class="text-sm translatable">
+                        Kurumunuz için en uygun eğitim ve araştırma kaynaklarını belirliyor, bütçeniz doğrultusunda en avantajlı tedarik süreçlerini yönetiyoruz.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-primary mb-2 translatable">Kullanıcı ve Yönetici Eğitimleri</h3>
+                    <p class="text-sm translatable">
+                        Tedariğini sağladığımız veya kurumunuzda bulunan kaynakların en verimli şekilde kullanılması için yerinde veya online eğitimler düzenliyoruz.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-primary mb-2 translatable">Erişim ve Entegrasyon Desteği</h3>
+                    <p class="text-sm translatable">
+                        Kaynakların kurumunuzun sistemlerine entegrasyonu, uzaktan erişim ayarları ve teknik sorun giderme konularında destek sağlıyoruz.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-primary mb-2 translatable">Koleksiyon Geliştirme Danışmanlığı</h3>
+                    <p class="text-sm translatable">
+                        Kütüphane ve bilgi merkezlerinin koleksiyonlarını güncel tutmaları ve geliştirmeleri için uzman danışmanlık hizmeti veriyoruz.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+<section class="bg-gray-100 px-6 py-8" id="testimonials">
+  <div class="max-w-7xl mx-auto">
+    <h2 class="products-header translatable">Müşteri Görüşleri</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <!-- Görüş 1 -->
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-gray-600 italic mb-4 translatable">
+          "LibEdge ile çalışmak işlerimizi çok kolaylaştırdı. Hızlı yanıtları ve çözüm odaklı yaklaşımları sayesinde ihtiyaçlarımıza en uygun kaynaklara ulaştık."
+        </p>
+        <p class="text-right font-semibold text-primary translatable">- Kenan Öztop/Kütüphane Müdürü</p>
+        <p class="text-right text-sm text-gray-600 translatable">İstanbul Okan Üniversitesi</p>
+      </div>
+
+      <!-- Görüş 2 -->
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-gray-600 italic mb-4 translatable">
+          "Hizmete sunduğu kaynakların yanı sıra yeni ürünlerle ilgili danışmanlık ve yenilikçi çözümler sunma anlayışında olması nedeniyle LibEdge firması ile çalışmak her zaman avantajlı."
+        </p>
+        <p class="text-right font-semibold text-primary translatable">- Aykut Bayraktar/Birim Sorumlusu</p>
+        <p class="text-right text-sm text-gray-600 translatable">Bursa Uludağ Üniversitesi</p>
+      </div>
+
+      <!-- Görüş 3 -->
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <p class="text-gray-600 italic mb-4 translatable">
+          "Sağladıkları eğitimler çok faydalı oldu. Kullanıcılarımız artık kaynakları daha etkin kullanabiliyor. LibEdge ekibine teşekkür ederiz."
+        </p>
+        <p class="text-right font-semibold text-primary translatable">- .../...</p>
+        <p class="text-right text-sm text-gray-600 translatable">...</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+    <section class="max-w-7xl mx-auto px-6 py-8" id="partners">
+        <h2 class="products-header translatable">İş Ortakları</h2>
+      <!--
+  <div class="glide">
+            <div class="glide__track" data-glide-el="track">
+                <ul class="glide__slides">
+                    <li class="glide__slide"><img src="assets/images/pangram_logo.webp" alt="Pangram Logo" class="partner-logo" loading="lazy"></li>
+                    <li class="glide__slide"><img src="assets/images/ChatPDF_LOGO.webp" alt="ChatPDF Logo" class="partner-logo" loading="lazy"></li>
+                    <li class="glide__slide"><img src="assets/images/wonders_logo.svg" alt="Wonders Logo" class="partner-logo" loading="lazy"></li>
+                    <li class="glide__slide"><img src="assets/images/primalpictures_logo.svg" alt="Primal Pictures Logo" class="partner-logo" loading="lazy"></li>
+                    <li class="glide__slide"><img src="assets/images/Lecturio_logo.PNG" alt="Lecturio Logo" class="partner-logo" loading="lazy"></li>
+                    <li class="glide__slide"><img src="assets/images/JOVE_LOGO.PNG" alt="JoVE Logo" class="partner-logo" loading="lazy"></li>
+                    <li class="glide__slide"><img src="assets/images/mcgraw-hill_logo.svg" alt="AccessMedical Logo" class="partner-logo" loading="lazy"></li>
+                    <li class="glide__slide"><img src="assets/images/medicitv_logo.webp" alt="Medici.tv Logo" class="partner-logo" loading="lazy"></li>
+                    <li class="glide__slide"><img src="assets/images/biorender_logo.png" alt="BioRender Logo" class="partner-logo" loading="lazy"></li>
+                    <li class="glide__slide"><img src="assets/images/wiley_logo.svg" alt="Wiley Logo" class="partner-logo" loading="lazy"></li>
+                    <li class="glide__slide"><img src="assets/images/aicoor_logo.webp" alt="Aicoor Logo" class="partner-logo" loading="lazy"></li>
+                </ul>
+            </div> 
+        </div>-->
+        <!-- Modern Marquee Implementation -->
+
+            <div class="marquee-container">
+                <div class="marquee-track">
+                    <!-- İlk set -->
+                    <div class="marquee-item">
+                        <img src="assets/images/pangram_logo.webp" alt="Pangram Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.pangram.com/" target="_blank" class="partner-link">Pangram'a Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/ChatPDF_LOGO.webp" alt="ChatPDF Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.chatpdf.com/" target="_blank" class="partner-link">ChatPDF'ye Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/wonders_logo.svg" alt="Wonders Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.readwonders.com/" target="_blank" class="partner-link">Wonders'a Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/primalpictures_logo.svg" alt="Primal Pictures Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.anatomy.tv/" target="_blank" class="partner-link">Primal Pictures'a Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/Lecturio_logo.PNG" alt="Lecturio Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.lecturio.com/" target="_blank" class="partner-link">Lecturio'ya Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/JOVE_LOGO.PNG" alt="JoVE Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.jove.com/" target="_blank" class="partner-link">JoVE'ye Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/mcgraw-hill_logo.svg" alt="AccessMedical Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.mheducation.com/" target="_blank" class="partner-link">AccessMedical'a Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/medicitv_logo.webp" alt="Medici.tv Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://medici.tv/" target="_blank" class="partner-link">Medici.tv'ye Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/biorender_logo.webp" alt="BioRender Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.biorender.com/" target="_blank" class="partner-link">BioRender'a Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/wiley_logo.svg" alt="Wiley Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.wiley.com/" target="_blank" class="partner-link">Wiley'ye Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/aicoor_logo.webp" alt="Aicoor Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.aicoor.com/" target="_blank" class="partner-link">Aicoor'a Git</a>
+                    </div>
+                    
+                    <!-- Aynı seti tekrarla (kesintisiz döngü için) -->
+                    <div class="marquee-item">
+                        <img src="assets/images/pangram_logo.webp" alt="Pangram Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.pangram.com/" target="_blank" class="partner-link">Pangram'a Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/ChatPDF_LOGO.webp" alt="ChatPDF Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.chatpdf.com/" target="_blank" class="partner-link">ChatPDF'ye Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/wonders_logo.svg" alt="Wonders Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.readwonders.com/" target="_blank" class="partner-link">Wonders'a Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/primalpictures_logo.svg" alt="Primal Pictures Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.anatomy.tv/" target="_blank" class="partner-link">Primal Pictures'a Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/Lecturio_logo.PNG" alt="Lecturio Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.lecturio.com/" target="_blank" class="partner-link">Lecturio'ya Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/JOVE_LOGO.PNG" alt="JoVE Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.jove.com/" target="_blank" class="partner-link">JoVE'ye Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/mcgraw-hill_logo.svg" alt="AccessMedical Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://access.mhmedical.com/" target="_blank" class="partner-link">AccessMedical'a Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/medicitv_logo.webp" alt="Medici.tv Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://medici.tv/" target="_blank" class="partner-link">Medici.tv'ye Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/biorender_logo.png" alt="BioRender Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.biorender.com/" target="_blank" class="partner-link">BioRender'a Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/wiley_logo.svg" alt="Wiley Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://onlinelibrary.wiley.com/" target="_blank" class="partner-link">Wiley'ye Git</a>
+                    </div>
+                    <div class="marquee-item">
+                        <img src="assets/images/aicoor_logo.webp" alt="Aicoor Logo" class="marquee-logo" loading="lazy">
+                        <a href="https://www.aicoor.com/" target="_blank" class="partner-link">Aicoor'a Git</a>
+                    </div>
+                </div>
+            </div>
+    </section>
+
+<section class="py-16 px-4 bg-gray-50 dark:bg-gray-800" id="contact">
+    <div class="max-w-4xl mx-auto">
+        <h2 class="text-4xl font-bold text-center text-indigo-800 mb-6 dark:text-indigo-300 translatable">Bize Ulaşın</h2>
+        <p class="text-center text-gray-600 mb-10 dark:text-gray-400 translatable">
+            Sorularınız, iş birliği teklifleriniz veya geri bildirimleriniz için bize yazmaktan çekinmeyin. Ekibimiz en kısa sürede size geri dönecektir.
+        </p>
+
+        <div class="flex flex-col md:flex-row bg-white rounded-lg shadow-xl overflow-hidden dark:bg-gray-900">
+            <div class="md:w-1/3 bg-indigo-700 text-white p-8 flex flex-col justify-between dark:bg-indigo-900">
+                <div class="flex justify-center mb-6">
+                    <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="h-16 w-auto">
+                </div>
+                    <div>
+                    <h3 class="text-2xl font-semibold mb-4 translatable">İletişim Bilgileri</h3>
+
+                    <p class="mb-4 flex items-center">
+                        <i class="fas fa-envelope mr-3 text-lg"></i>
+                        <span class="translatable">info@libedge.com.tr</span>
+                    </p>
+                    <p class="mb-4 flex items-center">
+                        <i class="fas fa-phone mr-3 text-lg"></i>
+                        <span class="translatable">+90 535 624 4016</span>                    </p>
+                    <p class="mb-4 flex items-center">
+                        <i class="fas fa-phone mr-3 text-lg"></i>
+                        <span class="translatable">+90 530 353 3932</span>
+                    </p>
+                </div>
+                <div class="mt-8">
+                    <h3 class="text-xl font-semibold mb-3 translatable">Bizi Takip Edin</h3>
+                    <div class="flex space-x-4">
+                        <a class="text-white hover:text-indigo-200 text-2xl" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a class="text-white hover:text-indigo-200 text-2xl" href="https://twitter.com/libedge" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+                            <i class="fab fa-x-twitter"></i>
+                        </a>
+                        <a class="text-white hover:text-indigo-200 text-2xl" href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a class="text-white hover:text-indigo-200 text-2xl" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a class="text-white hover:text-indigo-200 text-2xl" href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+<div class="md:w-2/3 p-8">
+  <form id="contactForm" method="POST" class="space-y-6">
+    <input type="hidden" name="formType" value="contact">
+    <div>
+      <label for="contactName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 translatable">Adınız Soyadınız</label>
+      <input type="text" name="name" id="contactName" autocomplete="name" required
+        class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm 
+               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+               dark:bg-gray-700 dark:border-gray-600 dark:text-white 
+               dark:focus:ring-indigo-600 dark:focus:border-indigo-600 transition duration-150 ease-in-out">
+    </div>
+    <div>
+      <label for="contactEmail" class="block text-sm font-medium text-gray-700 dark:text-gray-300 translatable">E-posta Adresiniz</label>
+      <input type="email" name="email" id="contactEmail" autocomplete="email" required
+        class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm 
+               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+               dark:bg-gray-700 dark:border-gray-600 dark:text-white 
+               dark:focus:ring-indigo-600 dark:focus:border-indigo-600 transition duration-150 ease-in-out">
+    </div>
+    <div>
+      <label for="contactPhone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 translatable">Telefon Numaranız (İsteğe Bağlı)</label>
+      <input type="tel" name="phone" id="contactPhone" autocomplete="tel"
+        class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm 
+               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+               dark:bg-gray-700 dark:border-gray-600 dark:text-white 
+               dark:focus:ring-indigo-600 dark:focus:border-indigo-600 transition duration-150 ease-in-out">
+    </div>
+    <div>
+      <label for="contactSubject" class="block text-sm font-medium text-gray-700 dark:text-gray-300 translatable">Konu</label>
+      <input type="text" name="subject" id="contactSubject" required
+        class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm 
+               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+               dark:bg-gray-700 dark:border-gray-600 dark:text-white 
+               dark:focus:ring-indigo-600 dark:focus:border-indigo-600 transition duration-150 ease-in-out">
+    </div>
+    <div>
+      <label for="contactMessage" class="block text-sm font-medium text-gray-700 dark:text-gray-300 translatable">Mesajınız</label>
+      <textarea id="contactMessage" name="message" rows="4" required
+        class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm 
+               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+               dark:bg-gray-700 dark:border-gray-600 dark:text-white 
+               dark:focus:ring-indigo-600 dark:focus:border-indigo-600 transition duration-150 ease-in-out"></textarea>
+    </div>
+    <div>
+      <button type="submit"
+        class="w-full flex justify-center py-3 px-6 border border-transparent rounded-md shadow-sm 
+               text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 
+               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 
+               dark:bg-indigo-700 dark:hover:bg-indigo-800 transition duration-150 ease-in-out translatable">
+        Gönder
+      </button>
+    </div>
+  </form>
+</div>
+        </div>
+    </div>
+</section>
+
+
+<footer class="bg-primary text-white py-8">
+    <div class="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+            <h3 class="text-lg font-bold mb-4 translatable">Hızlı Linkler</h3>
+            <div class="flex flex-col space-y-2 text-xs sm:text-sm">
+                <a class="text-gray-300 hover:text-white translatable" href="#">Ürünler</a>
+                <a class="text-gray-300 hover:text-white translatable" href="#">Broşürler</a>
+                <a class="text-gray-300 hover:text-white translatable" href="#">İletişim</a>
+            </div>
+        </div>
+        
+        <!-- Diğer 3 grid sütunu buraya eklenmeli -->
+        <div></div>
+        <div></div>
+        <div></div>
+        
+        <!-- footer-links nav'ı grid'in İÇİNDE olmalı -->
+        <nav class="footer-links">
+            <ul>
+                <li><a href="#" class="translatable">GİZLİLİK POLİTİKASI</a></li>
+                <li><a href="#" class="translatable">KULLANIM ŞARTLARI</a></li>
+                <li><span class="translatable">© 2025 LIBEDGE TÜM HAKLARI SAKLIDIR</span></li>
+            </ul>
+        </nav>
+    </div> <!-- Grid burada kapanmalı -->
+</footer>
+
+    <button id="backToTop" class="fixed bottom-8 right-8 bg-primary text-white p-3 rounded-full shadow-lg opacity-0 invisible transition-all duration-300 hover:bg-opacity-90 z-50">
+        <i class="fas fa-arrow-up"></i>
+        <span class="sr-only translatable">Back to top</span>
+    </button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Glide.js/3.6.0/glide.min.js"></script>
+<script src="assets/js/script.js"></script>
+
     
-    <section id="partners" class="max-w-7xl mx-auto px-6 py-12">
-        <h2 class="section-header translatable">İş Ortaklarımız</h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/pangram.webp" alt="Pangram Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/chatpdf.webp" alt="ChatPDF Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/wonders.webp" alt="Wonders Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/piri.webp" alt="Piri Discovery Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/transleyt.webp" alt="Transleyt Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/primal.webp" alt="Primal Pictures Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/lecturio.webp" alt="Lecturio Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/nejm_healer.webp" alt="NEJMHealer Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/access_medical.webp" alt="Access Medical Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/cochrane_library.webp" alt="Cochrane Library Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/access_engineering.webp" alt="AccessEngineering Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/biorender.webp" alt="BioRender Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/wiley.webp" alt="Wiley Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/jove.webp" alt="JoVE Logo" loading="lazy">
-            </div>
-            <div class="partner-card">
-                <img src="assets/images/publisher-logos/naxos.webp" alt="Naxos Logo" loading="lazy">
-            </div>
-        </div>
-    </section>
+<!-- Trial Modal -->
+<div id="trialModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
+    <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+      <i class="fas fa-times"></i>
+    </button>
+    <h2 class="text-lg font-semibold mb-4 text-primary translatable">Deneme Erişimi Talep Formu</h2>
+    <form id="trialForm" class="space-y-4">
+      <input type="hidden" name="formType" value="trial">
+      <input type="text" name="name" placeholder="Ad Soyad" class="w-full border p-2 rounded" required>
+      <input type="email" name="email" placeholder="E-posta" class="w-full border p-2 rounded" required>
+      <input type="text" name="organization" placeholder="Kurum Adı" class="w-full border p-2 rounded">
+      <textarea name="message" placeholder="Talep Detayınız" class="w-full border p-2 rounded h-24"></textarea>
+      <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 translatable">Gönder</button>
+    </form>
+  </div>
+</div>
 
-    <section id="brochures" class="max-w-7xl mx-auto px-6 py-12">
-      <h2 class="section-header translatable">Broşürler</h2>
-      <div class="brochures-grid">
-        <a href="assets/brochures/pangram.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/pangram-brochure.webp" alt="Pangram Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">Pangram</span>
-        </a>
-        <a href="assets/brochures/chatpdf.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/chatpdf-brochure.webp" alt="ChatPDF Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">ChatPDF</span>
-        </a>
-        <a href="assets/brochures/wonders.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/wonders-brochure.webp" alt="Wonders Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">Wonders</span>
-        </a>
-        <a href="assets/brochures/piri.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/piri-brochure.webp" alt="Piri Keşif Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">Piri Keşif</span>
-        </a>
-        <a href="assets/brochures/transleyt.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/transleyt-brochure.webp" alt="Transleyt Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">Transleyt</span>
-        </a>
-        <a href="assets/brochures/primal_pictures.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/primal-pictures-brochure.webp" alt="Primal Pictures Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">Primal Pictures</span>
-        </a>
-        <a href="assets/brochures/lecturio.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/lecturio-brochure.webp" alt="Lecturio Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">Lecturio</span>
-        </a>
-        <a href="assets/brochures/nejm_healer.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/nejm-healer-brochure.webp" alt="NEJMHealer Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">NEJMHealer</span>
-        </a>
-        <a href="assets/brochures/access_medical.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/access-medical-brochure.webp" alt="Access Medical Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">AccessMedical</span>
-        </a>
-        <a href="assets/brochures/cochrane_library.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/cochrane-library-brochure.webp" alt="Cochrane Library Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">Cochrane Library</span>
-        </a>
-        <a href="assets/brochures/access_engineering.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/access-engineering-brochure.webp" alt="AccessEngineering Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">AccessEngineering</span>
-        </a>
-        <a href="assets/brochures/biorender.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/biorender-brochure.webp" alt="BioRender Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">BioRender</span>
-        </a>
-        <a href="assets/brochures/wiley.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/wiley-brochure.webp" alt="Wiley Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">Wiley</span>
-        </a>
-        <a href="assets/brochures/jove.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/jove-brochure.webp" alt="JoVE Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">JoVE</span>
-        </a>
-        <a href="assets/brochures/naxos.pdf" target="_blank" class="brochure-card">
-          <img src="assets/images/brochures/naxos-brochure.webp" alt="Naxos Brochure" class="brochure-image" loading="lazy">
-          <span class="brochure-text translatable">Naxos</span>
-        </a>
-      </div>
-    </section>
+<!-- Suggestion Modal -->
+<div id="suggestionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
+    <button onclick="closeSuggestionModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+      <i class="fas fa-times"></i>
+    </button>
+    <h2 class="text-lg font-semibold mb-4 text-primary translatable">Ürün Öneri Formu</h2>
+    <form id="suggestionForm" class="space-y-4">
+      <input type="hidden" name="formType" value="suggest">
+      <input type="text" name="name" placeholder="Ad Soyad" class="w-full border p-2 rounded" required>
+      <input type="email" name="email" placeholder="E-posta" class="w-full border p-2 rounded" required>
+      <input type="text" name="organization" placeholder="Kurum Adı" class="w-full border p-2 rounded">
+      <textarea name="message" placeholder="Ürün Öneri Detayınız" class="w-full border p-2 rounded h-24"></textarea>
+      <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 translatable">Gönder</button>
+    </form>
+  </div>
+</div>
 
-    <section id="services" class="max-w-7xl mx-auto px-6 py-12">
-      <h2 class="section-header translatable">Hizmetlerimiz</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <div class="service-card">
-          <img src="assets/images/icons/library-icon.webp" alt="Kütüphane Yönetimi" class="service-icon">
-          <h3 class="text-xl font-bold mb-2 translatable">Kütüphane Yönetimi</h3>
-          <p class="text-gray-700 text-sm translatable">Kurumunuzun dijital kütüphanesini en verimli şekilde yönetmek için uzman danışmanlık hizmetleri sunuyoruz.</p>
-        </div>
-        <div class="service-card">
-          <img src="assets/images/icons/training-icon.webp" alt="Eğitim Hizmetleri" class="service-icon">
-          <h3 class="text-xl font-bold mb-2 translatable">Eğitim Hizmetleri</h3>
-          <p class="text-gray-700 text-sm translatable">Akademisyen ve kütüphane personeli için ürün ve platform eğitimleri, araştırma metodolojisi atölyeleri düzenliyoruz.</p>
-        </div>
-        <div class="service-card">
-          <img src="assets/images/icons/consultancy-icon.webp" alt="Danışmanlık Hizmetleri" class="service-icon">
-          <h3 class="text-xl font-bold mb-2 translatable">Stratejik Danışmanlık</h3>
-          <p class="text-gray-700 text-sm translatable">Dijital dönüşüm, koleksiyon geliştirme ve kaynak seçimi konularında stratejik danışmanlık desteği sağlıyoruz.</p>
-        </div>
-        <div class="service-card">
-          <img src="assets/images/icons/subscription-icon.webp" alt="Abonelik Desteği" class="service-icon">
-          <h3 class="text-xl font-bold mb-2 translatable">Abonelik Süreç Desteği</h3>
-          <p class="text-gray-700 text-sm translatable">Kurumunuz için en uygun yayın ve veritabanı aboneliklerinin tespiti ve yönetimi süreçlerinde rehberlik ediyoruz.</p>
-        </div>
-        <div class="service-card">
-          <img src="assets/images/icons/market-research.webp" alt="Pazar Araştırması" class="service-icon">
-          <h3 class="text-xl font-bold mb-2 translatable">Pazar Araştırması</h3>
-          <p class="text-gray-700 text-sm translatable">Yayıncı ve platform pazarındaki en güncel trendleri takip ediyor, yeni ve yenilikçi ürünleri kurumunuza sunuyoruz.</p>
-        </div>
-        <div class="service-card">
-          <img src="assets/images/icons/tech.webp" alt="Teknik Destek" class="service-icon">
-          <h3 class="text-xl font-bold mb-2 translatable">Teknik Destek</h3>
-          <p class="text-gray-700 text-sm translatable">Erişim ve kullanım sorunlarına hızlı ve etkili çözümler üreterek, kullanıcı deneyimini en üst seviyede tutuyoruz.</p>
-        </div>
-      </div>
-    </section>
+<script>
+  function openModal() {
+    document.getElementById('trialModal').classList.remove('hidden');
+    document.body.classList.add('no-scroll');
+  }
+  function closeModal() {
+    document.getElementById('trialModal').classList.add('hidden');
+    document.body.classList.remove('no-scroll');
+  }
 
-    <section id="contact" class="max-w-7xl mx-auto px-6 py-12">
-      <h2 class="section-header translatable">İletişim</h2>
-      <div class="contact-grid">
-        <div class="contact-info bg-white shadow-lg p-6 rounded-lg text-center">
-          <h3 class="text-xl font-bold text-primary mb-4 translatable">İletişim Bilgileri</h3>
-          <div class="space-y-4">
-            <div class="flex items-center justify-center">
-              <i class="fas fa-map-marker-alt text-lg text-primary mr-3"></i>
-              <p class="text-gray-700 text-sm text-left translatable">
-                Bahçeköy Cd. Koru Sitesi B4 Blok Kat: 14 Daire: 58 Sariyer/Istanbul
-              </p>
-            </div>
-            <div class="flex items-center justify-center">
-              <i class="fas fa-envelope text-lg text-primary mr-3"></i>
-              <a href="mailto:info@libedge.com" class="text-gray-700 text-sm hover:text-primary translatable">info@libedge.com</a>
-            </div>
-            <div class="flex items-center justify-center">
-              <i class="fas fa-phone-alt text-lg text-primary mr-3"></i>
-              <p class="text-gray-700 text-sm translatable">
-                +90 535 624 4016 <br> +90 530 353 3932
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="contact-form bg-white shadow-lg p-6 rounded-lg">
-          <h3 class="text-xl font-bold text-primary mb-4 translatable">Bize Yazın</h3>
-          <form id="contactForm" class="space-y-4">
-            <div>
-              <input type="text" id="name" name="Ad Soyad" placeholder="Adınız Soyadınız" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable">
-            </div>
-            <div>
-              <input type="email" id="email" name="E-posta" placeholder="E-posta Adresiniz" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable">
-            </div>
-            <div>
-              <input type="text" id="subject" name="Konu" placeholder="Konu" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable">
-            </div>
-            <div>
-              <textarea id="message" name="Mesaj" placeholder="Mesajınız" rows="4" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable"></textarea>
-            </div>
-            <button type="submit" id="submitBtn" class="w-full bg-primary text-white p-3 rounded-md hover:bg-opacity-90 transition-all duration-300 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-300 translatable">Gönder</button>
-          </form>
-        </div>
-      </div>
-    </section>
+  function openSuggestionModal() {
+    document.getElementById('suggestionModal').classList.remove('hidden');
+    document.body.classList.add('no-scroll');
+  }
 
-    <section id="announcements" class="max-w-7xl mx-auto px-6 py-12">
-      <h2 class="section-header translatable">Duyurular</h2>
-      <p class="text-center text-gray-700 translatable">En güncel duyurularımız için lütfen <a href="Announcements.html" class="text-primary hover:underline">Duyurular</a> sayfamızı ziyaret edin.</p>
-    </section>
+  function closeSuggestionModal() {
+    document.getElementById('suggestionModal').classList.add('hidden');
+    document.body.classList.remove('no-scroll');
+  }
 
-    <div id="trialModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
-      <div class="bg-white rounded-lg p-6 w-full max-w-lg relative">
-        <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-700 hover:text-primary">
-          <i class="fas fa-times text-2xl"></i>
-        </button>
-        <h3 class="text-xl font-bold text-primary mb-4 translatable">Deneme Erişimi İsteği</h3>
-        <p class="text-gray-700 mb-6 text-sm translatable">
-          İlginizi çeken ürün için deneme erişimi talep etmek üzere aşağıdaki formu doldurunuz.
-        </p>
-        <form id="trialForm" class="space-y-4">
-          <div>
-            <select id="trialProduct" name="trialProduct" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable">
-              <option value="" disabled selected class="translatable">Ürün Seçiniz</option>
-              <option value="Pangram" class="translatable">Pangram</option>
-              <option value="ChatPDF" class="translatable">ChatPDF</option>
-              <option value="Wonders" class="translatable">Wonders</option>
-              <option value="Piri Keşif" class="translatable">Piri Keşif</option>
-              <option value="Transleyt" class="translatable">Transleyt</option>
-              <option value="Primal Pictures" class="translatable">Primal Pictures</option>
-              <option value="Lecturio" class="translatable">Lecturio</option>
-              <option value="NEJMHealer" class="translatable">NEJMHealer</option>
-              <option value="AccessMedical" class="translatable">AccessMedical</option>
-              <option value="Cochrane Library" class="translatable">Cochrane Library</option>
-              <option value="AccessEngineering" class="translatable">AccessEngineering</option>
-              <option value="BioRender" class="translatable">BioRender</option>
-              <option value="Wiley" class="translatable">Wiley</option>
-              <option value="JoVE" class="translatable">JoVE</option>
-              <option value="Naxos" class="translatable">Naxos</option>
-            </select>
-          </div>
-          <div>
-            <input type="text" id="trialName" name="trialName" placeholder="Adınız Soyadınız" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable">
-          </div>
-          <div>
-            <input type="email" id="trialEmail" name="trialEmail" placeholder="E-posta Adresiniz" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable">
-          </div>
-          <div>
-            <input type="text" id="trialInstitution" name="trialInstitution" placeholder="Kurum Adınız" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable">
-          </div>
-          <div>
-            <textarea id="trialNotes" name="trialNotes" placeholder="Notlarınız (isteğe bağlı)" rows="3" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable"></textarea>
-          </div>
-          <button type="submit" id="trialSubmitBtn" class="w-full bg-primary text-white p-3 rounded-md hover:bg-opacity-90 transition-all duration-300 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-300 translatable">Gönder</button>
-        </form>
-      </div>
-    </div>
+  // Form submit handler (contact, trial, suggestion)
+  function handleFormSubmit(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
 
-    <div id="suggestionModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
-      <div class="bg-white rounded-lg p-6 w-full max-w-lg relative">
-        <button onclick="closeSuggestionModal()" class="absolute top-2 right-2 text-gray-700 hover:text-primary">
-          <i class="fas fa-times text-2xl"></i>
-        </button>
-        <h3 class="text-xl font-bold text-primary mb-4 translatable">Ürün Önerisi</h3>
-        <p class="text-gray-700 mb-6 text-sm translatable">
-          Kurumunuz için faydalı olabileceğini düşündüğünüz bir ürün öneriniz varsa, lütfen aşağıdaki formu doldurarak bize iletiniz.
-        </p>
-        <form id="suggestionForm" class="space-y-4">
-          <div>
-            <input type="text" id="suggestionName" name="suggestionName" placeholder="Adınız Soyadınız" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable">
-          </div>
-          <div>
-            <input type="email" id="suggestionEmail" name="suggestionEmail" placeholder="E-posta Adresiniz" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable">
-          </div>
-          <div>
-            <input type="text" id="suggestionProduct" name="suggestionProduct" placeholder="Önerdiğiniz Ürünün Adı" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable">
-          </div>
-          <div>
-            <textarea id="suggestionNotes" name="suggestionNotes" placeholder="Ürün hakkında notlarınız" rows="4" required class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary translatable"></textarea>
-          </div>
-          <button type="submit" id="suggestionSubmitBtn" class="w-full bg-primary text-white p-3 rounded-md hover:bg-opacity-90 transition-all duration-300 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-300 translatable">Gönder</button>
-        </form>
-      </div>
-    </div>
+    form.addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      const formType = this.querySelector('input[name="formType"]').value;
+      const formData = {
+        formType,
+        name: this.querySelector('input[name="name"]').value,
+        email: this.querySelector('input[name="email"]').value,
+        organization: this.querySelector('input[name="organization"]')?.value || "",
+        message: this.querySelector('textarea[name="message"]')?.value || ""
+      };
+
+      const submitBtn = this.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
+
+      try {
+        const response = await fetch("https://form-handler.agursel.workers.dev/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          submitBtn.innerHTML = 'Gönderildi!';
+          this.reset();
+
+          if (formId === "trialForm") closeModal();
+          if (formId === "suggestionForm") closeSuggestionModal();
+        } else {
+          console.error("Sheets webhook hatası:", result.error);
+          alert(result.error || "Gönderim sırasında hata oluştu.");
+          submitBtn.innerHTML = 'Hata!';
+        }
+      } catch (error) {
+        alert("Bağlantı hatası: " + error.message);
+        submitBtn.innerHTML = 'Gönder';
+      }
+
+      submitBtn.disabled = false;
+    });
+  }
+
+</script>
 
 <div id="mapModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
   <div class="bg-white rounded-lg p-4 w-full max-w-4xl h-[80vh] relative flex flex-col">
@@ -1082,69 +1243,16 @@
       <i class="fas fa-times text-2xl"></i>
     </button>
     <div class="flex-grow w-full">
-<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d6248.890749726966!2d27.166892793579095!3d38.454277999999995!2m3!1f0!2f0" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d6248.890749726966!2d27.166892793579095!3d38.454277999999995!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14bbd7ff8a83562b%3A0xcabe31e138901273!2seOfis%20-%20%C4%B0zmir%20Folkart%20Towers!5e0!3m2!1str!2str!4v1757432797541!5m2!1str!2str" title="LibEdge İzmir Ofis Konumu" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    </div>
+    <div class="mt-2 text-center text-sm text-gray-600 translatable">
+      LibEdge ||| Daire: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/İzmir
     </div>
   </div>
 </div>
 
-<footer class="bg-gray-800 text-white py-12 px-6">
-    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-        <div>
-            <h4 class="text-lg font-bold mb-4 translatable">LibEdge</h4>
-            <p class="text-sm text-gray-400 translatable">Eğitim ve araştırma çözümlerinde lider ortağınız.</p>
-            <div class="flex space-x-4 mt-4">
-                <a href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank" class="text-white hover:text-primary transition-colors">
-                    <i class="fab fa-linkedin-in"></i>
-                </a>
-                <a href="https://twitter.com/" target="_blank" class="text-white hover:text-primary transition-colors">
-                    <i class="fab fa-x-twitter"></i>
-                </a>
-                <a href="https://facebook.com/" target="_blank" class="text-white hover:text-primary transition-colors">
-                    <i class="fab fa-facebook-f"></i>
-                </a>
-                <a href="https://instagram.com/" target="_blank" class="text-white hover:text-primary transition-colors">
-                    <i class="fab fa-instagram"></i>
-                </a>
-                <a href="https://youtube.com/" target="_blank" class="text-white hover:text-primary transition-colors">
-                    <i class="fab fa-youtube"></i>
-                </a>
-            </div>
-        </div>
-        <div>
-            <h4 class="text-lg font-bold mb-4 translatable">Hızlı Bağlantılar</h4>
-            <ul class="space-y-2">
-                <li><a href="#products" class="text-sm text-gray-400 hover:text-primary translatable">Ürünler</a></li>
-                <li><a href="#partners" class="text-sm text-gray-400 hover:text-primary translatable">İş Ortakları</a></li>
-                <li><a href="#brochures" class="text-sm text-gray-400 hover:text-primary translatable">Broşürler</a></li>
-                <li><a href="#services" class="text-sm text-gray-400 hover:text-primary translatable">Hizmetlerimiz</a></li>
-                <li><a href="#contact" class="text-sm text-gray-400 hover:text-primary translatable">İletişim</a></li>
-            </ul>
-        </div>
-        <div>
-            <h4 class="text-lg font-bold mb-4 translatable">İletişim</h4>
-            <ul class="space-y-2 text-sm text-gray-400">
-                <li class="translatable">Bahçeköy Cd. Koru Sitesi B4 Blok Kat: 14 Daire: 58 Sariyer/Istanbul</li>
-                <li class="translatable">Email: info@libedge.com</li>
-                <li class="translatable">Telefon: +90 535 624 4016, +90 530 353 3932</li>
-            </ul>
-        </div>
-        <div>
-            <h4 class="text-lg font-bold mb-4 translatable">Bülten</h4>
-            <p class="text-sm text-gray-400 mb-4 translatable">
-                En son haberler, etkinlikler ve yeni ürünler hakkında bilgi almak için bültenimize abone olun.
-            </p>
-            <form id="newsletterForm" class="flex flex-col space-y-2">
-                <input type="email" name="email" placeholder="E-posta Adresiniz" required class="p-2 rounded-md bg-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                <button type="submit" class="bg-primary text-white p-2 rounded-md text-sm hover:bg-opacity-90 transition-colors duration-300 font-semibold translatable">Abone Ol</button>
-            </form>
-        </div>
-    </div>
-    <div class="text-center text-sm text-gray-500 mt-12 border-t border-gray-700 pt-8">
-        <p class="translatable">© 2024 LibEdge. Tüm hakları saklıdır.</p>
-    </div>
-</footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Glide.js/3.6.0/glide.min.js"></script>
-<script src="script.js"></script>
 </body>
+
+
 </html>
