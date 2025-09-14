@@ -1,27 +1,30 @@
 document.addEventListener('DOMContentLoaded', function() {
     // --- Flip Card Interaction ---
-    document.querySelectorAll('.flip-card').forEach(card => {
-        card.addEventListener('click', (e) => {
-            // Only apply click-flip on smaller screens (mobile/tablet view)
-            if (window.innerWidth <= 1280) {
-                const flipInner = card.querySelector('.flip-inner');
-                const isGlobalFlipActive = document.querySelector('.flip-all-cards');
+document.querySelectorAll('.flip-card').forEach(card => {
+    const flipHandler = (e) => {
+        // Only apply click-flip on smaller screens (mobile/tablet view)
+        if (window.innerWidth <= 1280) {
+            const flipInner = card.querySelector('.flip-inner');
+            const isGlobalFlipActive = document.querySelector('.flip-all-cards');
 
-                if (isGlobalFlipActive) {
-                    // If global flip is on, individual clicks toggle their state
+            if (isGlobalFlipActive) {
+                // If global flip is on, individual clicks toggle their state
+                flipInner.classList.toggle('flipped');
+                flipInner.style.transform = flipInner.classList.contains('flipped') ?
+                    'rotateY(180deg)' :
+                    'none';
+            } else {
+                // Normal mobile behavior: flip unless clicking a link
+                if (!e.target.closest('a')) {
                     flipInner.classList.toggle('flipped');
-                    flipInner.style.transform = flipInner.classList.contains('flipped') ?
-                        'rotateY(180deg)' :
-                        'none';
-                } else {
-                    // Normal mobile behavior: flip unless clicking a link
-                    if (!e.target.closest('a')) {
-                        flipInner.classList.toggle('flipped');
-                    }
                 }
             }
-        });
-    });
+        }
+    };
+    
+    card.addEventListener('click', flipHandler);
+    card.addEventListener('touchend', flipHandler); // Yeni eklenen satır
+});
 
     // Reset cards on window resize to avoid inconsistent states
     window.addEventListener('resize', () => {
