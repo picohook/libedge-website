@@ -464,7 +464,7 @@
 
         .nav-links a:hover,
         .nav-links .group>a:hover {
-            color: #1e0e50;
+            color: #6C63FF;
         }
 
         .nav-links .group .dropdown {
@@ -528,7 +528,8 @@
         position: static;
         width: 100%;
         box-shadow: none;
-        background-color: #f8f9fa;
+        background-color: transparent !important;
+        border: none !important;
         margin-top: 0.5rem;
         margin-bottom: 0.5rem; /* Alt boşluk eklendi */
         transform: none;
