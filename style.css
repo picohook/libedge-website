@@ -583,6 +583,10 @@
              pointer-events: none;
         }
 
+        .flip-card.flipped .flip-front {
+            pointer-events: none;
+        }
+
         .flip-all-cards .flip-inner {
             transform: rotateY(180deg);
         }
