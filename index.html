@@ -1127,79 +1127,55 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Glide.js/3.6.0/glide.min.js"></script>
 <script src="assets/js/script.js"></script>
 
-<!-- Trial Modal -->
-<div id="trialModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-  <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
-    <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-      <i class="fas fa-times"></i>
-    </button>
-    <h2 class="text-lg font-semibold mb-4 text-primary translatable">Deneme Erişimi Talep Formu</h2>
-    <form id="trialForm" class="space-y-4">
-      <input type="hidden" name="formType" value="trial">
-      <input type="text" name="name" placeholder="Ad Soyad" class="w-full border p-2 rounded" required>
-      <input type="email" name="email" placeholder="E-posta" class="w-full border p-2 rounded" required>
-      <input type="text" name="organization" placeholder="Kurum Adı" class="w-full border p-2 rounded">
-      <textarea name="message" placeholder="Talep Detayınız" class="w-full border p-2 rounded h-24"></textarea>
-      <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 translatable">Gönder</button>
-    </form>
+    
+    <div id="trialModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
+      <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+        <i class="fas fa-times"></i>
+      </button>
+      <h2 class="text-lg font-semibold mb-4 text-primary translatable">Deneme Erişimi Talep Formu</h2>
+<form id="trialForm" class="space-y-4">
+  <input type="hidden" name="formType" value="trial">
+  <input type="text" name="name" placeholder="Ad Soyad" class="w-full border p-2 rounded" required pattern=".*\S.*" title="Lütfen adınızı girin">
+  <input type="email" name="email" placeholder="E-posta" class="w-full border p-2 rounded" required>
+  <input type="text" name="organization" placeholder="Kurum Adı" class="w-full border p-2 rounded">
+  <textarea name="message" placeholder="Talep Detayınız" class="w-full border p-2 rounded h-24"></textarea>
+  <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 translatable">Gönder</button>
+</form>
+
+<form id="suggestionForm" class="space-y-4">
+  <input type="hidden" name="formType" value="suggest">
+  <input type="text" name="name" placeholder="Ad Soyad" class="w-full border p-2 rounded" required pattern=".*\S.*" title="Lütfen adınızı girin">
+  <input type="email" name="email" placeholder="E-posta" class="w-full border p-2 rounded" required>
+  <input type="text" name="organization" placeholder="Kurum Adı" class="w-full border p-2 rounded">
+  <textarea name="message" placeholder="Ürün Öneri Detayınız" class="w-full border p-2 rounded h-24"></textarea>
+  <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 translatable">Gönder</button>
+</form>
+
+    </div>
   </div>
-</div>
 
-<!-- Suggestion Modal -->
-<div id="suggestionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-  <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
-    <button onclick="closeSuggestionModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-      <i class="fas fa-times"></i>
-    </button>
-    <h2 class="text-lg font-semibold mb-4 text-primary translatable">Ürün Öneri Formu</h2>
-    <form id="suggestionForm" class="space-y-4">
-      <input type="hidden" name="formType" value="suggest">
-      <input type="text" name="name" placeholder="Ad Soyad" class="w-full border p-2 rounded" required>
-      <input type="email" name="email" placeholder="E-posta" class="w-full border p-2 rounded" required>
-      <input type="text" name="organization" placeholder="Kurum Adı" class="w-full border p-2 rounded">
-      <textarea name="message" placeholder="Ürün Öneri Detayınız" class="w-full border p-2 rounded h-24"></textarea>
-      <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 translatable">Gönder</button>
-    </form>
-  </div>
-</div>
 
-<script>
-  function openModal() {
-    document.getElementById('trialModal').classList.remove('hidden');
-    document.body.classList.add('no-scroll');
-  }
-  function closeModal() {
-    document.getElementById('trialModal').classList.add('hidden');
-    document.body.classList.remove('no-scroll');
-  }
-
-  function openSuggestionModal() {
-    document.getElementById('suggestionModal').classList.remove('hidden');
-    document.body.classList.add('no-scroll');
-  }
-
-  function closeSuggestionModal() {
-    document.getElementById('suggestionModal').classList.add('hidden');
-    document.body.classList.remove('no-scroll');
-  }
-
-  // Form submit handler (contact, trial, suggestion)
-  function handleFormSubmit(formId) {
-    const form = document.getElementById(formId);
-    if (!form) return;
-
-    form.addEventListener("submit", async function(e) {
-      e.preventDefault();
-
-      const formType = this.querySelector('input[name="formType"]').value;
-      const formData = {
-        formType,
-        name: this.querySelector('input[name="name"]').value,
-        email: this.querySelector('input[name="email"]').value,
-        organization: this.querySelector('input[name="organization"]')?.value || "",
-        message: this.querySelector('textarea[name="message"]')?.value || ""
-      };
-
+  <script>
+    function openModal() {
+      document.getElementById('trialModal').classList.remove('hidden');
+      document.body.classList.add('no-scroll');
+    }
+    function closeModal() {
+      document.getElementById('trialModal').classList.add('hidden');
+      document.body.classList.remove('no-scroll');
+    }
+  
+    function openSuggestionModal() {
+      document.getElementById('suggestionModal').classList.remove('hidden');
+      document.body.classList.add('no-scroll');
+    }
+  
+    function closeSuggestionModal() {
+      document.getElementById('suggestionModal').classList.add('hidden');
+      document.body.classList.remove('no-scroll');
+    }
+  </script>
   
 
 <div id="mapModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
