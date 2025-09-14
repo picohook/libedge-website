@@ -1,29 +1,37 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // --- Flip Card Interaction ---
+// --- Flip Card Interaction (Düzeltilmiş Versiyon) ---
 document.querySelectorAll('.flip-card').forEach(card => {
     const flipHandler = (e) => {
-        // Only apply click-flip on smaller screens (mobile/tablet view)
+        const flipInner = card.querySelector('.flip-inner');
+        const isGlobalFlipActive = document.querySelector('.flip-all-cards');
+        
+        // Mobil ve tablet cihazlarda (1280px ve altı) manuel flip aktif
         if (window.innerWidth <= 1280) {
-            const flipInner = card.querySelector('.flip-inner');
-            const isGlobalFlipActive = document.querySelector('.flip-all-cards');
-
-            if (isGlobalFlipActive) {
-                // If global flip is on, individual clicks toggle their state
-                flipInner.classList.toggle('flipped');
-                flipInner.style.transform = flipInner.classList.contains('flipped') ?
-                    'rotateY(180deg)' :
-                    'none';
-            } else {
-                // Normal mobile behavior: flip unless clicking a link
-                if (!e.target.closest('a')) {
+            // Link tıklamasını engellemeyiz, sadece kart dönme işlemini yaparız
+            if (!e.target.closest('a')) {
+                e.preventDefault(); // Varsayılan davranışı engelle
+                
+                if (isGlobalFlipActive) {
+                    // Global flip aktifse, bireysel tıklamalar kendi durumunu toggle eder
+                    flipInner.classList.toggle('flipped');
+                } else {
+                    // Normal mobil davranış: flip toggle
                     flipInner.classList.toggle('flipped');
                 }
             }
         }
     };
     
-    card.addEventListener('click', flipHandler);
-    card.addEventListener('touchend', flipHandler); // Yeni eklenen satır
+    // Hem click hem de touchend event'lerini ekle
+    card.addEventListener('click', flipHandler, { passive: false });
+    card.addEventListener('touchend', flipHandler, { passive: false });
+    
+    // Touch start event'i de ekleyelim daha iyi mobile deneyim için
+    card.addEventListener('touchstart', (e) => {
+        if (window.innerWidth <= 1280 && !e.target.closest('a')) {
+            e.preventDefault();
+        }
+    }, { passive: false });
 });
 
     // Reset cards on window resize to avoid inconsistent states
