@@ -842,6 +842,8 @@ function toggleProductsMenu() {
     }
 }
 
+}
+
 // Mobil dropdown menüleri için toggle fonksiyonu
 function toggleMobileDropdown(button) {
   const dropdown = button.nextElementSibling;
