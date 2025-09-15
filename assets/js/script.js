@@ -263,54 +263,59 @@ function handleFormSubmit(formId) {
   form.addEventListener("submit", async function (e) {
     e.preventDefault();
 
-    // Tüm form alanlarını otomatik oku
-    const formDataObj = {};
     const formData = new FormData(form);
+    const formDataObj = {};
     formData.forEach((value, key) => {
       formDataObj[key] = value;
     });
 
-    // Submit butonunu disable + loading spinner
+    // Add formType to the object
+    if (formId === 'trialForm') {
+        formDataObj.formType = 'trial';
+    } else if (formId === 'suggestionForm') {
+        formDataObj.formType = 'suggest';
+    } else if (formId === 'contactForm') {
+        formDataObj.formType = 'contact';
+    }
+
+
     const submitBtn = this.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
 
     try {
-        const formData = new FormData(form);
-        try {
-        const response = await fetch("https://form-handler.agursel.workers.dev/", {
+      const response = await fetch("/form-submission", { // Or your function's route
         method: "POST",
-        body: formData   // JSON yerine FormData gönder
-        });
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formDataObj),
+      });
 
       const result = await response.json();
+
       if (result.success) {
         submitBtn.innerHTML = 'Gönderildi!';
         this.reset();
-
-        // Modal kapatma
         if (formId === "trialForm") closeModal();
         if (formId === "suggestionForm") closeSuggestionModal();
       } else {
-        console.error("Sheets webhook hatası:", result.error);
-        alert(result.error || "Gönderim sırasında hata oluştu.");
-        submitBtn.innerHTML = 'Hata!';
+        alert("Gönderim sırasında bir hata oluştu: " + result.error);
+        submitBtn.innerHTML = 'Gönder';
       }
     } catch (error) {
-      alert("Bağlantı hatası: " + error.message);
+      alert("Bir ağ hatası oluştu. Lütfen daha sonra tekrar deneyin.");
       submitBtn.innerHTML = 'Gönder';
+    } finally {
+        submitBtn.disabled = false;
     }
-
-    // Butonu tekrar aktif et
-    submitBtn.disabled = false;
   });
 }
 
-// Tüm formları bağla
-handleFormSubmit("contactForm");     // Contact
-handleFormSubmit("trialForm");       // Trial Access
-handleFormSubmit("suggestionForm");  // Suggest Product
-
+// Call the function for all your forms
+handleFormSubmit("contactForm");
+handleFormSubmit("trialForm");
+handleFormSubmit("suggestionForm");
 
 
 
