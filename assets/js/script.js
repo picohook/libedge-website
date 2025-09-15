@@ -204,77 +204,56 @@ document.querySelectorAll('.flip-card').forEach(card => {
     const trialForm = document.getElementById('trialForm');
     const suggestionForm = document.getElementById('suggestionForm');
 
-/*     if (trialForm) {
-        trialForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const submitBtn = this.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
-            
-            // Simulate form submission
-            setTimeout(() => {
-                submitBtn.innerHTML = 'Gönderildi!';
-                setTimeout(() => {
-                    closeModal();
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Gönder';
-                }, 1500);
-            }, 1000);
-        });
-    }
 
-    if (suggestionForm) {
-        suggestionForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const submitBtn = this.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
-            
-            // Simulate form submission
-            setTimeout(() => {
-                submitBtn.innerHTML = 'Gönderildi!';
-                setTimeout(() => {
-                    closeSuggestionModal();
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Gönder';
-                }, 1500);
-            }, 1000);
-        });
-    } */
-
-
+// --- Form Handling ---
 function handleFormSubmit(formId) {
     const form = document.getElementById(formId);
     if (!form) return;
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault(); // Varsayılan form gönderimini engelle
 
-  const formData = new FormData(form);
-  const formDataObj = {};
-  formData.forEach((value, key) => {
-    formDataObj[key] = value;
-  });
+        const formData = new FormData(form);
+        const formDataObj = {
+            // ÖNEMLİ: Bu satır form tipini belirler
+            formType: formId.replace('Form', '') 
+        };
 
-  try {
-    const response = await fetch("https://form-handler.agursel.workers.dev/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formDataObj)
+        // FormData'yı JSON nesnesine çevir
+        formData.forEach((value, key) => {
+            formDataObj[key] = value;
+        });
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'Gönderiliyor...';
+
+        try {
+            const response = await fetch("https://form-handler.agursel.workers.dev/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formDataObj)
+            });
+
+            if (!response.ok) {
+                throw new Error("Form gönderilemedi");
+            }
+
+            alert("Form başarıyla gönderildi ✅");
+            form.reset();
+
+            // Modal formları kapat
+            if (formId === 'trialForm') closeModal();
+            if (formId === 'suggestionForm') closeSuggestionModal();
+
+        } catch (err) {
+            console.error("Form hatası:", err);
+            alert("Form gönderiminde hata oluştu ❌");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Gönder';
+        }
     });
-
-    if (!response.ok) {
-      throw new Error("Form gönderilemedi");
-    }
-
-    alert("Form başarıyla gönderildi ✅");
-    form.reset();
-  } catch (err) {
-    console.error("Form hatası:", err);
-    alert("Form gönderiminde hata oluştu ❌");
-  }
-});
-
 }
 
 // Bu fonksiyonu tüm formlarınız için çağırın
