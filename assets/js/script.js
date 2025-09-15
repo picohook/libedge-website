@@ -247,59 +247,34 @@ function handleFormSubmit(formId) {
     const form = document.getElementById(formId);
     if (!form) return;
 
-    form.addEventListener("submit", async function (e) {
-        e.preventDefault();
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-        // Formdaki tüm verileri bir JavaScript nesnesine dönüştür
-        const formData = new FormData(form);
-        const formDataObj = {};
-        formData.forEach((value, key) => {
-            // Form inputlarınızda 'name' attribute'u olduğundan emin olun
-            // Örnek: <input type="text" name="name" ...>
-            formDataObj[key] = value;
-        });
+  const formData = new FormData(form);
+  const formDataObj = {};
+  formData.forEach((value, key) => {
+    formDataObj[key] = value;
+  });
 
-        // Hangi formdan gönderim yapıldığını belirt
-        if (formId === 'trialForm') {
-            formDataObj.formType = 'trial';
-        } else if (formId === 'suggestionForm') {
-            formDataObj.formType = 'suggest';
-        } else if (formId === 'contactForm') {
-            formDataObj.formType = 'contact';
-        }
-
-        const submitBtn = form.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
-
-        try {
-            // Veriyi JSON olarak Cloudflare fonksiyonuna gönder
-            const response = await fetch("api/form-submission", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(formDataObj),
-            });
-
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-                submitBtn.innerHTML = 'Gönderildi!';
-                form.reset();
-                if (formId === "trialForm") closeModal();
-                if (formId === "suggestionForm") closeSuggestionModal();
-            } else {
-                alert("Gönderim sırasında bir hata oluştu: " + (result.error || 'Bilinmeyen hata'));
-                submitBtn.innerHTML = 'Gönder';
-            }
-        } catch (error) {
-            alert("Bir ağ hatası oluştu: " + error.message);
-            submitBtn.innerHTML = 'Gönder';
-        } finally {
-            submitBtn.disabled = false;
-        }
+  try {
+    const response = await fetch("https://form-handler.agursel.workers.dev/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formDataObj)
     });
+
+    if (!response.ok) {
+      throw new Error("Form gönderilemedi");
+    }
+
+    alert("Form başarıyla gönderildi ✅");
+    form.reset();
+  } catch (err) {
+    console.error("Form hatası:", err);
+    alert("Form gönderiminde hata oluştu ❌");
+  }
+});
+
 }
 
 // Bu fonksiyonu tüm formlarınız için çağırın
