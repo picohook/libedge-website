@@ -993,6 +993,7 @@ body.translating * {
 .marquee-container {
     display: flex;
     width: 200%;
+    overflow: hidden; /* Ekle */
 }
 
 .marquee-track {
@@ -1089,6 +1090,11 @@ body.translating * {
     }
 }
 
+@media (max-width: 768px) {
+    .marquee-container {
+        width: 400%; /* Mobilde daha geniş */
+    }
+}
 /* Hero Slider Container */
 .hero-slider-container {
     position: relative;
