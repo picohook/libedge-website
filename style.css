@@ -1315,3 +1315,21 @@ body.translating {
 }
 
 
+/* NAVBAR DÜZELTMELERİ - SADECE GEREKLİ OLANLAR */
+nav {
+    position: static; /* Navbar'ı sabit konumdan kurtarıyoruz */
+}
+
+/* Masaüstü görünümü için dropdown stilleri */
+@media (min-width: 640px) {
+    .nav-links .group:hover .dropdown {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Sayfa içeriğinin navbar altında kalmasını sağla */
+body {
+    padding-top: 0;
+}
