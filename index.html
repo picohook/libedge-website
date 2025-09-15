@@ -1115,7 +1115,7 @@
             </div>
 
             <div class="md:w-2/3 p-8">
-                <form action="#" method="POST" class="space-y-6">
+                <form action="#" method="POST" class="space-y-6" id= "contactForm">
                     <div>
                         <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 translatable">Adınız Soyadınız</label>
                         <input type="text" name="name" id="name" autocomplete="name" required
@@ -1205,28 +1205,6 @@
   <textarea placeholder="Ürün Öneri Detayınız" name="message" class="w-full border p-2 rounded h-24"></textarea>
   <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 translatable">Gönder</button>
 </form>
-
-
-  <script>
-    function openModal() {
-      document.getElementById('trialModal').classList.remove('hidden');
-      document.body.classList.add('no-scroll');
-    }
-    function closeModal() {
-      document.getElementById('trialModal').classList.add('hidden');
-      document.body.classList.remove('no-scroll');
-    }
-  
-    function openSuggestionModal() {
-      document.getElementById('suggestionModal').classList.remove('hidden');
-      document.body.classList.add('no-scroll');
-    }
-  
-    function closeSuggestionModal() {
-      document.getElementById('suggestionModal').classList.add('hidden');
-      document.body.classList.remove('no-scroll');
-    }
-  </script>
   
 
 <div id="mapModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
