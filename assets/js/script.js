@@ -229,7 +229,7 @@ function handleFormSubmit(formId) {
         submitBtn.innerHTML = 'Gönderiliyor...';
 
         try {
-            const response = await fetch("https://form-handler.agursel.workers.dev", {
+            const response = await fetch("https://form-handler.agursel.workers.dev/", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formDataObj)
@@ -723,14 +723,7 @@ document.addEventListener('keydown', (e) => {
             });
         });
 
-// Eksik translation için fallback mekanizması eklenmeli:
-if (toEnglish && translations[originalText]) {
-    element.dataset.originalText = originalText;
-    element.textContent = translations[originalText];
-} else if (toEnglish) {
-    // Çeviri bulunamadığında orijinal metni koru
-    element.dataset.originalText = originalText;
-}
+
 // Update button text
 if (translateButton) {
     const translateText = document.getElementById('translateText');
@@ -789,7 +782,7 @@ function openModal() {
 
 function closeModal() {
     const modal = document.getElementById('trialModal');
-    if (modal && !modal.classList.contains('hidden')) {
+    if (modal) {
         modal.classList.add('hidden');
         document.body.classList.remove('no-scroll');
     }
@@ -823,70 +816,18 @@ function toggleDropdown(button) {
     }
 }
 
-// --- Ürünler Dropdown Menüsü Fonksiyonu ---
 function toggleProductsMenu() {
     const menu = document.getElementById('mobile-products');
     if (menu) {
         menu.classList.toggle('hidden');
         
-    const icon = document.querySelector('#products-menu-toggle i');
-
-    // Mobil menü için (Ekran genişliği 640px'ten küçükse)
-    if (window.innerWidth < 640) {
-        if (mobileMenu) {
-            mobileMenu.classList.toggle('hidden');
-        }
-    } else { // Masaüstü menü için (Ekran genişliği 640px veya daha büyükse)
-        if (desktopMenu) {
-            desktopMenu.classList.toggle('hidden');
+        const icon = document.querySelector('#products-menu-toggle i');
+        if (icon) {
+            icon.classList.toggle('fa-chevron-down');
+            icon.classList.toggle('fa-chevron-up');
         }
     }
-
-    // İkonu yukarı/aşağı çevir
-    if (icon) {
-        icon.classList.toggle('fa-chevron-up');
-        icon.classList.toggle('fa-chevron-down');
-    }
 }
-
-}
-
-// Mobil dropdown menüleri için toggle fonksiyonu
-function toggleMobileDropdown(button) {
-  const dropdown = button.nextElementSibling;
-  const isVisible = !dropdown.classList.contains('hidden');
-  
-  // Tüm dropdown'ları kapat
-  document.querySelectorAll('.dropdown-list').forEach(item => {
-    item.classList.add('hidden');
-  });
-  
-  // Tüm ikonları sıfırla
-  document.querySelectorAll('.group button i').forEach(icon => {
-    icon.classList.remove('fa-chevron-up');
-    icon.classList.add('fa-chevron-down');
-  });
-  
-  // Eğer tıklanan dropdown kapalıysa, aç
-  if (!isVisible) {
-    dropdown.classList.remove('hidden');
-    const icon = button.querySelector('i');
-    if (icon) {
-      icon.classList.remove('fa-chevron-down');
-      icon.classList.add('fa-chevron-up');
-    }
-  }
-}
-
-// Mobil menü butonlarına event listener ekle
-document.querySelectorAll('.group button').forEach(button => {
-  button.addEventListener('click', function() {
-    if (window.innerWidth <= 639) {
-      toggleMobileDropdown(this);
-    }
-  });
-});
-
 
 function openMapModal() {
     const modal = document.getElementById('mapModal');
