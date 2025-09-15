@@ -10,9 +10,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isGlobalFlipActive) {
                     // If global flip is on, individual clicks toggle their state
                     flipInner.classList.toggle('flipped');
-                    flipInner.style.transform = flipInner.classList.contains('flipped') ?
-                        'rotateY(180deg)' :
-                        'none';
                 } else {
                     // Normal mobile behavior: flip unless clicking a link
                     if (!e.target.closest('a')) {
