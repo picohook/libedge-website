@@ -817,15 +817,25 @@ function toggleDropdown(button) {
 }
 
 function toggleProductsMenu() {
-    const menu = document.getElementById('mobile-products');
-    if (menu) {
-        menu.classList.toggle('hidden');
-        
-        const icon = document.querySelector('#products-menu-toggle i');
+    // Mobil ve masaüstü menü elementlerini seçme
+    const mobileMenu = document.getElementById('mobile-products');
+    const desktopMenu = document.querySelector('.dropdown');
+    const icon = document.querySelector('#products-menu-toggle i');
+
+    // Mobil menüyü kontrol et (eğer varsa)
+    if (mobileMenu) {
+        // 'active' sınıfını kullanarak menünün durumunu takip et
+        mobileMenu.classList.toggle('active');
+        // İkonu değiştir
         if (icon) {
-            icon.classList.toggle('fa-chevron-down');
             icon.classList.toggle('fa-chevron-up');
+            icon.classList.toggle('fa-chevron-down');
         }
+    }
+
+    // Masaüstü menüyü kontrol et (eğer varsa)
+    if (desktopMenu) {
+        desktopMenu.classList.toggle('hidden');
     }
 }
 
