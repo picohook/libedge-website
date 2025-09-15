@@ -274,7 +274,7 @@ function handleFormSubmit(formId) {
 
         try {
             // Veriyi JSON olarak Cloudflare fonksiyonuna gönder
-            const response = await fetch("/form-submission", {
+            const response = await fetch("api/form-submission", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
