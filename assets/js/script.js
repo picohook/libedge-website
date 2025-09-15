@@ -829,6 +829,43 @@ function toggleProductsMenu() {
     }
 }
 
+// Mobil dropdown menüleri için toggle fonksiyonu
+function toggleMobileDropdown(button) {
+  const dropdown = button.nextElementSibling;
+  const isVisible = !dropdown.classList.contains('hidden');
+  
+  // Tüm dropdown'ları kapat
+  document.querySelectorAll('.dropdown-list').forEach(item => {
+    item.classList.add('hidden');
+  });
+  
+  // Tüm ikonları sıfırla
+  document.querySelectorAll('.group button i').forEach(icon => {
+    icon.classList.remove('fa-chevron-up');
+    icon.classList.add('fa-chevron-down');
+  });
+  
+  // Eğer tıklanan dropdown kapalıysa, aç
+  if (!isVisible) {
+    dropdown.classList.remove('hidden');
+    const icon = button.querySelector('i');
+    if (icon) {
+      icon.classList.remove('fa-chevron-down');
+      icon.classList.add('fa-chevron-up');
+    }
+  }
+}
+
+// Mobil menü butonlarına event listener ekle
+document.querySelectorAll('.group button').forEach(button => {
+  button.addEventListener('click', function() {
+    if (window.innerWidth <= 639) {
+      toggleMobileDropdown(this);
+    }
+  });
+});
+
+
 function openMapModal() {
     const modal = document.getElementById('mapModal');
     if (modal) {
