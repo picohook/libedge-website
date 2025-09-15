@@ -229,7 +229,7 @@ function handleFormSubmit(formId) {
         submitBtn.innerHTML = 'Gönderiliyor...';
 
         try {
-            const response = await fetch("https://form-handler.agursel.workers.dev/", {
+            const response = await fetch("https://form-handler.agursel.workers.dev", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formDataObj)
@@ -723,7 +723,14 @@ document.addEventListener('keydown', (e) => {
             });
         });
 
-
+// Eksik translation için fallback mekanizması eklenmeli:
+if (toEnglish && translations[originalText]) {
+    element.dataset.originalText = originalText;
+    element.textContent = translations[originalText];
+} else if (toEnglish) {
+    // Çeviri bulunamadığında orijinal metni koru
+    element.dataset.originalText = originalText;
+}
 // Update button text
 if (translateButton) {
     const translateText = document.getElementById('translateText');
@@ -782,7 +789,7 @@ function openModal() {
 
 function closeModal() {
     const modal = document.getElementById('trialModal');
-    if (modal) {
+    if (modal && !modal.classList.contains('hidden')) {
         modal.classList.add('hidden');
         document.body.classList.remove('no-scroll');
     }
