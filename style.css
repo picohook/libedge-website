@@ -96,7 +96,6 @@
 
 /* Genel hero-badge stilleri (Masaüstünde de geçerli olacak temel stiller) */
 .hero-badge {
-    z-index: 3; /* Z-index'i genel badge stilinde bırakın */
     padding: 1rem 2rem;
     border-radius: 2rem;
     font-weight: 500;
@@ -418,7 +417,7 @@
            Nav barınızın yaklaşık yüksekliği 50-60px civarı olabilir.
            Deneyerek en uygun değeri bulun. */
         top: 56px;
-        width: 100%
+        width: 100%;
         left: 0;
         right: 0;
         background: rgba(255, 255, 255, 0.60); /* %60 opaklık */
@@ -633,10 +632,6 @@
             width: 100%;
             display: flex;
             justify-content: flex-end;
-        }
-
-        .flip-all-cards .flip-inner {
-            transform: rotateY(180deg);
         }
 
         .flip-inner.flipped {
