@@ -119,13 +119,11 @@
     padding: 0.8rem 1.5rem;
     box-shadow: var(--shadow);
     transition: var(--transition);
-}
 
 .hero-badge:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-hover);
     background-color: var(--gray-light);
-    
 }
 
 /* Hero Badges Wrapper için stil (hem mobil hem masaüstü varsayılanları) */
@@ -715,64 +713,65 @@
         }
        
         #primal-pictures .flip-back {
-            background: linear-gradient(to bottom, rgba(254, 242, 242, 0.3), transparent), url('assets/images/anatomy.png');
+            background: linear-gradient(rgba(254, 242, 242, 0.3)), url('assets/images/anatomy.png');
         }
 
-#caz-koleksiyonu .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/jazz.webp');
-}
+        #caz-koleksiyonu .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/jazz.webp');
+        }
 
-#klasik-muzik .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/classic.webp');
-}
+        #klasik-muzik .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/classic.webp');
+        }
 
-#lecturio .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/lect_back.webp');
-}
+        #lecturio .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/lect_back.webp');
+        }
 
-#nejmhealer .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/nejm.webp');
-}
+        #nejmhealer .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/nejm.webp');
 
-#accessmedical .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/accmed.webp');
-}
+        }
+        #accessmedical .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/accmed.webp');
+        }
 
-#jove-education .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/educa.webp');
-}
+        #jove-education .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/educa.webp');
+        }
 
-#jove-business .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/business.webp');
-}
+        #jove-business .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/business.webp');
+        }
 
-#accessengineering .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/eng.webp');
-}
+        #accessengineering .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/eng.webp');
+        }
 
-#pangram .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/pangram.webp');
-}
+        #pangram .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/pangram.webp');
+        }
 
-#chatpdf .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/chat.webp');
-}
+        #chatpdf .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/chat.webp');
+        }
 
-#biorender .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/bio.webp');
-}
+        #biorender .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/bio.webp');
+        }
 
-#wonders .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/wond.webp');
-}
+        #wonders .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/wond.webp');
+        }
 
-#piri-discovery .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/piri.webp');
-}
+        #piri-discovery .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/piri.webp');
+        }
 
-#transleyt .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/transl.webp');
-}
+        #transleyt .flip-back {
+            background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/transl.webp');
+        }
+
         .bg-video-container {
             position: relative;
             overflow: hidden;
@@ -1315,21 +1314,3 @@ body.translating {
 }
 
 
-/* NAVBAR DÜZELTMELERİ - SADECE GEREKLİ OLANLAR */
-nav {
-    position: static; /* Navbar'ı sabit konumdan kurtarıyoruz */
-}
-
-/* Masaüstü görünümü için dropdown stilleri */
-@media (min-width: 640px) {
-    .nav-links .group:hover .dropdown {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0) scale(1);
-    }
-}
-
-/* Sayfa içeriğinin navbar altında kalmasını sağla */
-body {
-    padding-top: 0;
-}
