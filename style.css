@@ -1,4 +1,16 @@
-
+:root {
+    --primary-color: #220f60;
+    --primary-hover: #1a0a4a;
+    --secondary-color: #6C63FF;
+    --white: #ffffff;
+    --gray-light: #f3f4f6;
+    --text-dark: #220f60;
+    --text-light: #ffffff;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 6px 12px rgba(0, 0, 0, 0.2);
+    --border-radius: 0.5rem;
+    --transition: all 0.3s ease;
+}
         body {
             font-family: 'Inter', sans-serif;
             color: #220f60;
@@ -44,6 +56,7 @@
         transparent 60%
     );
     backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px); /* Safari için */    
     z-index: 1;
 }
 
@@ -96,7 +109,6 @@
 
 /* Genel hero-badge stilleri (Masaüstünde de geçerli olacak temel stiller) */
 .hero-badge {
-    padding: 1rem 2rem;
     border-radius: 2rem;
     font-weight: 500;
     text-decoration: none;
@@ -422,6 +434,7 @@
         right: 0;
         background: rgba(255, 255, 255, 0.60); /* %60 opaklık */
         backdrop-filter: blur(8px); /* Arkayı hafif bulanıklaştır */
+        -webkit-backdrop-filter: blur(8px); /* Safari için */
         flex-direction: column;
         padding: 1rem;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -634,10 +647,6 @@
             justify-content: flex-end;
         }
 
-        .flip-inner.flipped {
-            transform: rotateY(180deg) !important;
-            z-index: 1;
-        }
 
         @media (hover: hover) {
             .flip-card:hover .flip-inner:not(.flip-all-cards) {
@@ -698,108 +707,70 @@
             list-style: none;
         }
 
-        #primal-pictures .flip-back {
-            background: linear-gradient(rgba(254, 242, 242, 0.3)), url('assets/images/anatomy.png');
+        [class$="flip-back"] {
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+        }
+       
+        #primal-pictures .flip-back {
+            background: linear-gradient(rgba(254, 242, 242, 0.3)), url('assets/images/anatomy.png');
         }
 
         #caz-koleksiyonu .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/jazz.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #klasik-muzik .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/classic.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #lecturio .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/lect_back.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #nejmhealer .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/nejm.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+
         }
         #accessmedical .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/accmed.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #jove-education .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/educa.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #jove-business .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/business.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #accessengineering .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/eng.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #pangram .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/pangram.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #chatpdf .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/chat.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #biorender .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/bio.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #wonders .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/wond.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #piri-discovery .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/piri.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         #transleyt .flip-back {
             background: linear-gradient(rgba(255, 255, 255, 0.5)), url('assets/images/transl.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
         }
 
         .bg-video-container {
@@ -1038,6 +1009,7 @@ body.translating * {
     background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); /* Safari için */    
     border-radius: 16px;
     transition: all 0.3s ease;
     position: relative;
@@ -1093,6 +1065,12 @@ body.translating * {
     100% {
         transform: translateX(-50%);
     }
+}
+
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Responsive tasarım */
@@ -1212,6 +1190,7 @@ html, body {
     cursor: pointer;
     transition: all 0.3s ease;
     backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px); /* Safari için */
 }
 
 .slider-nav-btn:hover {
