@@ -562,10 +562,14 @@
             }
 
             .nav-links .group .dropdown a {
-                padding: 0.5rem 1rem;
+                /* padding: 0.5rem 1rem; */
                 font-size: 0.85rem;
-                border-bottom: 1px solid #e9ecef;
-            }
+                /* border-bottom: 1px solid #e9ecef; */
+                width: 100%;
+                padding: 0.75rem 1rem;
+                box-sizing: border-box;
+                border-bottom: 1px solid #f3f4f6;
+  }
 
             .nav-links .group .dropdown a:last-child {
                 border-bottom: none;
@@ -917,6 +921,10 @@
         border: none !important; /* Border'ı kaldır */
         box-shadow: none !important; /* Gölgeyi kaldır */
         padding: 0; /* İç boşluğu sıfırla */
+        display: block !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
     .nav-links .group .dropdown a {
@@ -927,7 +935,9 @@
     }
 
     .nav-links .group.active .dropdown {
-        max-height: 500px; /* Yeterli maksimum yükseklik */
+       /* max-height: 500px;  Yeterli maksimum yükseklik */ 
+        max-height: 70vh;
+        overflow-y: auto;
     }
 }
 
@@ -964,9 +974,13 @@ body.translating * {
 
   /* Başlık (kategori ismi) tüm sütunları kaplasın */
   .nav-links .group .dropdown h4 {
-    grid-column: span 2;
+    /*grid-column: span 2;*/
     font-weight: 700;
     margin-bottom: 0.5rem;
+    grid-column: span 1 !important;
+    font-size: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
   }
 
   /* Linkleri düzenle */
