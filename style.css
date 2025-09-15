@@ -1,19 +1,19 @@
 :root {
-    --primary-color: var(--primary-color);
-    --primary-hover: var(--primary-hover);
-    --secondary-color: var(--secondary-color);
-    --white: var(--white)
-    --gray-light: var(--gray-light);
-    --text-dark: var(--primary-color);
-    --text-light:var
-    --shadow: var(--shadow);
-    --shadow-hover: var(--shadow-hover);
+    --primary-color: #220f60;
+    --primary-hover: #1a0a4a;
+    --secondary-color: #6C63FF;
+    --white: #ffffff;
+    --gray-light: #f3f4f6;
+    --text-dark: #220f60;
+    --text-light: #ffffff;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 6px 12px rgba(0, 0, 0, 0.2);
     --border-radius: 0.5rem;
-    --transition: var(--transition);
+    --transition: all 0.3s ease;
 }
         body {
             font-family: 'Inter', sans-serif;
-            color: var("--text-dark");
+            color: var(--text-dark);
             overflow-x: hidden;
         }
 
@@ -114,7 +114,7 @@
     text-decoration: none;
     display: flex;
     align-items: center;
-    background-color: var(--white)
+    background-color: var(--white);
     color: var(--primary-color);
     padding: 0.8rem 1.5rem;
     box-shadow: var(--shadow);
@@ -124,6 +124,7 @@
     transform: translateY(-3px);
     box-shadow: var(--shadow-hover);
     background-color: var(--gray-light);
+    }
 }
 
 /* Hero Badges Wrapper için stil (hem mobil hem masaüstü varsayılanları) */
@@ -884,7 +885,7 @@
 .footer-links a,
 .footer-links span { /* <<< YENİ: Hem linklere hem de span'a stil uygula */
     text-decoration: none;
-    color: var(--white) /* <<< YENİ: Yazı rengini değiştirir */
+    color: var(--white); /* <<< YENİ: Yazı rengini değiştirir */
     /* font-size burada da ayarlanabilir, ama 'li' üzerinde ayarlamak daha kapsayıcıdır */
 }
 @media (max-width: 639px) {
@@ -1253,6 +1254,7 @@ html, body {
     cursor: pointer;
     transition: var(--transition);
     backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px); /* Bu satır eklenmeli */
 }
 
 .autoplay-toggle:hover {
