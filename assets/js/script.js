@@ -818,8 +818,10 @@ function toggleDropdown(button) {
 
 // --- Ürünler Dropdown Menüsü Fonksiyonu ---
 function toggleProductsMenu() {
-    const mobileMenu = document.getElementById('mobile-products');
-    const desktopMenu = document.querySelector('.dropdown');
+    const menu = document.getElementById('mobile-products');
+    if (menu) {
+        menu.classList.toggle('hidden');
+        
     const icon = document.querySelector('#products-menu-toggle i');
 
     // Mobil menü için (Ekran genişliği 640px'ten küçükse)
