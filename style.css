@@ -119,12 +119,13 @@
     padding: 0.8rem 1.5rem;
     box-shadow: var(--shadow);
     transition: var(--transition);
+}
 
 .hero-badge:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-hover);
     background-color: var(--gray-light);
-    }
+    
 }
 
 /* Hero Badges Wrapper için stil (hem mobil hem masaüstü varsayılanları) */
@@ -714,7 +715,7 @@
         }
        
         #primal-pictures .flip-back {
-            background: linear-gradient(rgba(254, 242, 242, 0.3)), url('assets/images/anatomy.png');
+            background: linear-gradient(to bottom, rgba(254, 242, 242, 0.3), transparent), url('assets/images/anatomy.png');
         }
 
         #caz-koleksiyonu .flip-back {
