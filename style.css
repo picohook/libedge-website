@@ -418,6 +418,7 @@
            Nav barınızın yaklaşık yüksekliği 50-60px civarı olabilir.
            Deneyerek en uygun değeri bulun. */
         top: 56px;
+        width: 100%
         left: 0;
         right: 0;
         background: rgba(255, 255, 255, 0.60); /* %60 opaklık */
@@ -506,6 +507,12 @@
             font-size: 0.7rem;
             margin-left: 0.5rem;
         }
+            /* Mobil menü item'ları için düzenleme */
+        .nav-links .group > a {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
 
         @media (min-width: 640px) {
 
@@ -920,7 +927,7 @@
         background-color: transparent !important; /* Şeffaf arkaplan */
         border: none !important; /* Border'ı kaldır */
         box-shadow: none !important; /* Gölgeyi kaldır */
-        padding: 0; /* İç boşluğu sıfırla */
+        padding: 0 !important;
         display: block !important;
         grid-template-columns: 1fr !important;
         width: 100% !important;
@@ -932,12 +939,17 @@
         margin: 2px 0; /* Öğeler arası boşluk */
         border-radius: 4px; /* Hafif yuvarlak köşeler */
         border: none !important;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f3f4f6;
     }
 
     .nav-links .group.active .dropdown {
        /* max-height: 500px;  Yeterli maksimum yükseklik */ 
         max-height: 70vh;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* iOS'ta daha pürüzsüz kaydırma */
     }
 }
 
@@ -1005,12 +1017,14 @@ body.translating * {
 }
 
 .marquee-container {
-    display: flex;
-    width: 200%;
+    width: 100%;
+    overflow: hidden !important; /* Taşma sorununu kesin çözmek için */
+    position: relative;
 }
 
 .marquee-track {
     display: flex;
+    width: 200%; /* Çift genişlikte olmalı kesintisiz döngü için */
     animation: marqueeScroll 30s linear infinite; /* Hız 30s */
     padding: 1rem 0;
 }
@@ -1022,6 +1036,7 @@ body.translating * {
     align-items: center;
     padding: 0.5rem;
     justify-content: center;
+    flex: 0 0 auto;
     width: 160px;
     height: 100px;
     margin: 0 1rem;
@@ -1100,6 +1115,49 @@ body.translating * {
         100% {
             transform: translateX(-100%);
         }
+    }
+}
+
+/* Yatay kaymayı önlemek için genel düzenleme */
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Container genişliklerini sınırla */
+.container, .max-w-7xl, .max-w-6xl, .max-w-4xl {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Özellikle mobilde yatay kaymayı önlemek için */
+@media (max-width: 768px) {
+    .marquee-item {
+        width: 140px; /* Daha küçük logo boyutu */
+        margin: 0 0.5rem;
+    }
+    
+    /* Ürün grid'i düzeltmesi */
+    .tools-grid {
+        grid-template-columns: repeat(1, 1fr) !important;
+    }
+    
+    /* Filtre butonları taşmasını önle */
+    .filter-container {
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .subject-btn {
+        white-space: nowrap;
+    }
+}
+
+/* iOS özel düzeltmeler */
+@supports (-webkit-touch-callout: none) {
+    .marquee-track {
+        animation-duration: 40s; /* iOS'ta daha yavaş animasyon */
     }
 }
 
@@ -1280,3 +1338,5 @@ body.translating {
     border-color: #16a34a !important;
     box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1) !important;
 }
+
+
