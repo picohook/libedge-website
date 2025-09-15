@@ -1,14 +1,27 @@
 document.addEventListener('DOMContentLoaded', function() {
     // --- Flip Card Interaction ---
-document.querySelectorAll('.flip-card').forEach(card => {
-    card.addEventListener('click', function(e) {
-        // Allow clicks on links within the card without flipping
-        if (e.target.tagName.toLowerCase() === 'a') {
-            return;
-        }
-        this.querySelector('.flip-inner').classList.toggle('flipped');
+    document.querySelectorAll('.flip-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            // Only apply click-flip on smaller screens (mobile/tablet view)
+            if (window.innerWidth <= 1280) {
+                const flipInner = card.querySelector('.flip-inner');
+                const isGlobalFlipActive = document.querySelector('.flip-all-cards');
+
+                if (isGlobalFlipActive) {
+                    // If global flip is on, individual clicks toggle their state
+                    flipInner.classList.toggle('flipped');
+                    flipInner.style.transform = flipInner.classList.contains('flipped') ?
+                        'rotateY(180deg)' :
+                        'none';
+                } else {
+                    // Normal mobile behavior: flip unless clicking a link
+                    if (!e.target.closest('a')) {
+                        flipInner.classList.toggle('flipped');
+                    }
+                }
+            }
+        });
     });
-});
 
     // Reset cards on window resize to avoid inconsistent states
     window.addEventListener('resize', () => {
@@ -244,68 +257,59 @@ document.querySelectorAll('.flip-card').forEach(card => {
 
 
 function handleFormSubmit(formId) {
-    const form = document.getElementById(formId);
-    if (!form) return;
+  const form = document.getElementById(formId);
+  if (!form) return;
 
-    form.addEventListener("submit", async function (e) {
-        e.preventDefault();
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
 
-        // Formdaki tüm verileri bir JavaScript nesnesine dönüştür
-        const formData = new FormData(form);
-        const formDataObj = {};
-        formData.forEach((value, key) => {
-            // Form inputlarınızda 'name' attribute'u olduğundan emin olun
-            // Örnek: <input type="text" name="name" ...>
-            formDataObj[key] = value;
-        });
-
-        // Hangi formdan gönderim yapıldığını belirt
-        if (formId === 'trialForm') {
-            formDataObj.formType = 'trial';
-        } else if (formId === 'suggestionForm') {
-            formDataObj.formType = 'suggest';
-        } else if (formId === 'contactForm') {
-            formDataObj.formType = 'contact';
-        }
-
-        const submitBtn = form.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
-
-        try {
-            // Veriyi JSON olarak Cloudflare fonksiyonuna gönder
-            const response = await fetch("/form-submission", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(formDataObj),
-            });
-
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-                submitBtn.innerHTML = 'Gönderildi!';
-                form.reset();
-                if (formId === "trialForm") closeModal();
-                if (formId === "suggestionForm") closeSuggestionModal();
-            } else {
-                alert("Gönderim sırasında bir hata oluştu: " + (result.error || 'Bilinmeyen hata'));
-                submitBtn.innerHTML = 'Gönder';
-            }
-        } catch (error) {
-            alert("Bir ağ hatası oluştu: " + error.message);
-            submitBtn.innerHTML = 'Gönder';
-        } finally {
-            submitBtn.disabled = false;
-        }
+    // Tüm form alanlarını otomatik oku
+    const formDataObj = {};
+    const formData = new FormData(form);
+    formData.forEach((value, key) => {
+      formDataObj[key] = value;
     });
+
+    // Submit butonunu disable + loading spinner
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor...';
+
+    try {
+      const response = await fetch("https://form-handler.agursel.workers.dev/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formDataObj)
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        submitBtn.innerHTML = 'Gönderildi!';
+        this.reset();
+
+        // Modal kapatma
+        if (formId === "trialForm") closeModal();
+        if (formId === "suggestionForm") closeSuggestionModal();
+      } else {
+        console.error("Sheets webhook hatası:", result.error);
+        alert(result.error || "Gönderim sırasında hata oluştu.");
+        submitBtn.innerHTML = 'Hata!';
+      }
+    } catch (error) {
+      alert("Bağlantı hatası: " + error.message);
+      submitBtn.innerHTML = 'Gönder';
+    }
+
+    // Butonu tekrar aktif et
+    submitBtn.disabled = false;
+  });
 }
 
-// Bu fonksiyonu tüm formlarınız için çağırın
-handleFormSubmit("contactForm");
-handleFormSubmit("trialForm");
-handleFormSubmit("suggestionForm");
+// Tüm formları bağla
+handleFormSubmit("contactForm");     // Contact
+handleFormSubmit("trialForm");       // Trial Access
+handleFormSubmit("suggestionForm");  // Suggest Product
+
 
 
 
@@ -475,25 +479,15 @@ handleFormSubmit("suggestionForm");
         if (nextBtn) nextBtn.addEventListener('click', nextSlide);
         if (autoplayToggle) autoplayToggle.addEventListener('click', toggleAutoplay);
         
-
-// Klavye navigasyonu
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') prevSlide();
-    if (e.key === 'ArrowRight') nextSlide();
-    
-    // YENİ KONTROL: Boşluk tuşuna basıldığında
-    if (e.key === ' ') {
-        // Aktif olan (içinde bulunulan) elementin ne olduğunu kontrol et
-        const activeElement = document.activeElement;
-
-        // Eğer kullanıcı bir INPUT veya TEXTAREA içinde DEĞİLSE, slaytı kontrol et
-        if (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA') {
-            e.preventDefault(); // Sadece bu durumda varsayılanı engelle (örn. sayfayı aşağı kaydırma)
-            toggleAutoplay();
-        }
-        // Eğer kullanıcı bir form elemanındaysa, bu blok çalışmaz ve boşluk normal şekilde yazılır.
-    }
-});
+        // Klavye navigasyonu
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') prevSlide();
+            if (e.key === 'ArrowRight') nextSlide();
+            if (e.key === ' ') {
+                e.preventDefault();
+                toggleAutoplay();
+            }
+        });
         
         // Touch events for mobile swipe
         let touchStartX = 0;
