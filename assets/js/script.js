@@ -816,26 +816,27 @@ function toggleDropdown(button) {
     }
 }
 
+// --- Ürünler Dropdown Menüsü Fonksiyonu ---
 function toggleProductsMenu() {
-    // Mobil ve masaüstü menü elementlerini seçme
     const mobileMenu = document.getElementById('mobile-products');
     const desktopMenu = document.querySelector('.dropdown');
     const icon = document.querySelector('#products-menu-toggle i');
 
-    // Mobil menüyü kontrol et (eğer varsa)
-    if (mobileMenu) {
-        // 'active' sınıfını kullanarak menünün durumunu takip et
-        mobileMenu.classList.toggle('active');
-        // İkonu değiştir
-        if (icon) {
-            icon.classList.toggle('fa-chevron-up');
-            icon.classList.toggle('fa-chevron-down');
+    // Mobil menü için (Ekran genişliği 640px'ten küçükse)
+    if (window.innerWidth < 640) {
+        if (mobileMenu) {
+            mobileMenu.classList.toggle('hidden');
+        }
+    } else { // Masaüstü menü için (Ekran genişliği 640px veya daha büyükse)
+        if (desktopMenu) {
+            desktopMenu.classList.toggle('hidden');
         }
     }
 
-    // Masaüstü menüyü kontrol et (eğer varsa)
-    if (desktopMenu) {
-        desktopMenu.classList.toggle('hidden');
+    // İkonu yukarı/aşağı çevir
+    if (icon) {
+        icon.classList.toggle('fa-chevron-up');
+        icon.classList.toggle('fa-chevron-down');
     }
 }
 
