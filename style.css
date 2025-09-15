@@ -109,6 +109,8 @@
 
 /* Genel hero-badge stilleri (Masaüstünde de geçerli olacak temel stiller) */
 .hero-badge {
+    z-index: 3; /* Z-index'i genel badge stilinde bırakın */
+    padding: 1rem 2rem;
     border-radius: 2rem;
     font-weight: 500;
     text-decoration: none;
