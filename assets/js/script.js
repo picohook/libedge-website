@@ -502,10 +502,10 @@ document.addEventListener('keydown', (e) => {
         'İş Ortaklarımızı Görün': 'See Our Partners',
         'Hizmetlerimizle Tanışın': 'Explore Our Services',
         'Eğitim ve Danışmanlık Çözümleri': 'Education and Consulting Solutions',
-        'Kütüphane personeli ve akademisyenler için özelleştirilmiş eğitim programları ve stratejik danışmanlık hizmetleri.': 'Customized training programs and strategic consulting services for library staff and academics.',
+        'Kütüphane personeli ve akademisyenler için özelleştirilmiş eğitim programları ve stratejik danışmanlık hizmetleri.' : 'Customized training programs and strategic consulting services for library staff and academics.',
         'Hizmetlerimizi Keşfedin': 'Discover Our Services',
         'Teknoloji ve İnovasyon': 'Technology and Innovation',
-        'Yapay zeka destekli araştırma araçlarından, interaktif öğrenme platformlarına kadar yenilikçi çözümler. Kütüphane ve bilgi merkezlerinin dijital dönüşümünü destekliyoruz.': 'From AI-powered research tools to interactive learning platforms, we support the digital transformation of libraries and information centers.',
+        'Yapay zeka destekli araştırma araçlarından, interaktif öğrenme platformlarına kadar yenilikçi çözümler.' : 'From AI-powered research tools to interactive learning platforms.',
         'Yapay Zeka Ürünlerimiz': 'Our AI Products',
         'Ürünler': 'Products',
         'Broşürler': 'Brochures',
@@ -695,7 +695,19 @@ document.addEventListener('keydown', (e) => {
                     delete element.dataset.originalText;
                 }
             }
-
+        // YENİ EKLENEN KOD: Span içindeki metinleri çevir
+        if (element.children.length && element.querySelector('span.translatable')) {
+            const spanElement = element.querySelector('span.translatable');
+            const originalText = spanElement.textContent.trim();
+            
+            if (toEnglish && translations[originalText]) {
+                spanElement.dataset.originalText = originalText;
+                spanElement.textContent = translations[originalText];
+            } else if (!toEnglish && spanElement.dataset.originalText) {
+                spanElement.textContent = spanElement.dataset.originalText;
+                delete spanElement.dataset.originalText;
+            }
+        }
             // Translate placeholders
             if (element.placeholder) {
                 const originalPlaceholder = element.placeholder.trim();
