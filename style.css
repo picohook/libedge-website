@@ -1091,20 +1091,28 @@ body.translating * {
             transform: translateX(0);
         }
         100% {
-            transform: translateX(-100%);
+            transform: translateX(-50%);
         }
     }
 }
 
-@media (max-width: 768px) {
+/* Çok küçük ekranlar için */
+@media (max-width: 480px) {
     .marquee-item {
-        width: 140px; /* Daha küçük logo boyutu */
+        width: 125px;
+        height: 85px;
         margin: 0 0.5rem;
     }
     
-    /* Ürün grid'i düzeltmesi */
-    .tools-grid {
-        grid-template-columns: repeat(1, 1fr) !important;
+    .marquee-logo {
+        max-width: 100%;
+        max-height: 60px;
+        filter: grayscale(30%) brightness(150%);
+    }
+    
+    .marquee-track {
+        animation-duration: 20s;
+    }
     }
     
     /* Filtre butonları taşmasını önle */
