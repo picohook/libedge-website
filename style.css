@@ -1061,7 +1061,7 @@ body.translating * {
     
     .marquee-track {
         width: auto;
-        animation: marqueeScrollMobile 25s linear infinite;
+        animation: marqueeScrollMobile 15s linear infinite;
     }
     
     .marquee-item {
@@ -1108,7 +1108,7 @@ body.translating * {
     }
     
     .marquee-track {
-        animation-duration: 20s;
+        animation-duration: 12s;
 
     }
     
