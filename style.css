@@ -418,7 +418,6 @@
            Nav barınızın yaklaşık yüksekliği 50-60px civarı olabilir.
            Deneyerek en uygun değeri bulun. */
         top: 56px;
-        width: 100%;
         left: 0;
         right: 0;
         background: rgba(255, 255, 255, 0.60); /* %60 opaklık */
@@ -507,12 +506,6 @@
             font-size: 0.7rem;
             margin-left: 0.5rem;
         }
-            /* Mobil menü item'ları için düzenleme */
-        .nav-links .group > a {
-            padding: 0.75rem 0;
-            border-bottom: 1px solid #e9ecef;
-        }
-
 
         @media (min-width: 640px) {
 
@@ -885,7 +878,11 @@
         background-color: transparent !important; /* Şeffaf arkaplan */
         border: none !important; /* Border'ı kaldır */
         box-shadow: none !important; /* Gölgeyi kaldır */
-        padding: 0; /* İç boşluğu sıfırla */
+        padding: 0 !important;
+        display: block !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
     .nav-links .group .dropdown a {
@@ -979,7 +976,6 @@ body.translating * {
     align-items: center;
     padding: 0.5rem;
     justify-content: center;
-    flex: 0 0 auto;
     width: 160px;
     height: 100px;
     margin: 0 1rem;
