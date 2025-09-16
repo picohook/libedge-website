@@ -626,10 +626,6 @@
             justify-content: flex-end;
         }
 
-        .flip-all-cards .flip-inner {
-            transform: rotateY(180deg);
-        }
-
         .flip-inner.flipped {
             transform: rotateY(180deg) !important;
             z-index: 1;
@@ -1043,15 +1039,6 @@ body.translating * {
     transform: translateY(0);
 }
 
-@keyframes marqueeScroll {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(-50%);
-    }
-}
-
 /* Responsive tasarım */
 @media (max-width: 768px) {
     .modern-marquee {
@@ -1112,7 +1099,7 @@ body.translating * {
     
     .marquee-track {
         animation-duration: 20s;
-    }
+
     }
     
     /* Filtre butonları taşmasını önle */
