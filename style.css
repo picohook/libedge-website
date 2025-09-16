@@ -953,13 +953,14 @@ body.translating * {
 }
 
 .marquee-container {
-    display: flex;
-    width: 200%;
-    overflow: hidden; /* Ekle */
+    width: 100%;
+    overflow: hidden !important; /* Taşma sorununu kesin çözmek için */
+    position: relative;
 }
 
 .marquee-track {
     display: flex;
+    width: 200%; /* Çift genişlikte olmalı kesintisiz döngü için */
     animation: marqueeScroll 30s linear infinite; /* Hız 30s */
     padding: 1rem 0;
 }
