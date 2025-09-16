@@ -959,7 +959,7 @@ body.translating * {
 }
 
 .marquee-container {
-    width: 200%;
+    width: 100%;
     overflow: hidden !important; /* Taşma sorununu kesin çözmek için */
     position: relative;
 }
