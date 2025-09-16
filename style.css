@@ -962,19 +962,25 @@ body.translating * {
     width: 100%;
     overflow: hidden !important; /* Taşma sorununu kesin çözmek için */
     position: relative;
+    max-width: 100vw;
 }
 
 .marquee-track {
     display: flex;
-    width: 200%; /* Çift genişlikte olmalı kesintisiz döngü için */
-    animation: marqueeScroll 30s linear infinite; /* Hız 30s */
+    white-space: nowrap;
+    animation: marqueeScroll 30s linear infinite;
     padding: 1rem 0;
+    will-change: transform;
+    width: 200%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-style: preserve-3d;
 }
 
 .marquee-item {
-    box-sizing: border-box; /* padding/border'ın toplam genişliği etkilemesini engelle */
-    overflow: hidden;       /* kutudan taşan içeriği kırpar */
-    display: flex;          /* zaten vardı ama kesinleştir */
+    box-sizing: border-box;
+    overflow: hidden;
+    display: inline-flex;
     align-items: center;
     padding: 0.5rem;
     justify-content: center;
@@ -988,16 +994,19 @@ body.translating * {
     border-radius: 16px;
     transition: all 0.3s ease;
     position: relative;
-    /* overflow: hidden; zaten eklendi */
+    flex-shrink: 0;
+    vertical-align: top;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 .marquee-logo {
   display: block;
-  max-width: 80%;
+    max-width: 90%;
   max-height: 70px;
   object-fit: contain;
   margin: auto;
-  filter: grayscale(100%) brightness(150%);
+    filter: grayscale(70%) brightness(130%);
   transition: filter 0.3s ease;
 }
 
@@ -1014,11 +1023,12 @@ body.translating * {
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(34, 15, 96, 0.85);
+    background: rgba(34, 15, 96, 0.9);
     color: white;
     text-align: center;
-    padding: 0.4rem;
-    font-size: 0.75rem;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
     opacity: 0;
     transform: translateY(100%);
     transition: all 0.3s ease;
@@ -1044,10 +1054,36 @@ body.translating * {
 
 /* Responsive tasarım */
 @media (max-width: 768px) {
+    .modern-marquee {
+        padding: 1rem 0;
+    }
+    
+    .marquee-container {
+        overflow-x: hidden;
+    }
+    
+    .marquee-track {
+        width: auto;
+        animation: marqueeScrollMobile 25s linear infinite;
+    }
+    
     .marquee-item {
-        width: 150px;
-        height: 100px;
-        margin: 0 1rem;
+        width: 140px;
+        height: 90px;
+        margin: 0 0.75rem;
+        background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+        border: 1.5px solid rgba(255, 255, 255, 0.25);
+    }
+    
+    .marquee-logo {
+        max-width: 95%;
+        max-height: 65px;
+        filter: grayscale(50%) brightness(140%);
+    }
+    
+    .partner-link {
+        font-size: 0.75rem;
+        padding: 0.4rem;
     }
     
     @keyframes marqueeScroll {
