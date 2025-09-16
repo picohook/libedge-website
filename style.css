@@ -1107,15 +1107,15 @@ body.translating * {
         grid-template-columns: repeat(1, 1fr) !important;
     }
     
-    /* Filtre butonları taşmasını önle */
-    .filter-container {
-        overflow-x: auto;
-        padding-bottom: 0.5rem;
-        -webkit-overflow-scrolling: touch;
+/* Touch cihazlar için optimize edilmiş hover davranışı */
+@media (hover: none) and (pointer: coarse) {
+    .marquee-item:active .partner-link {
+        opacity: 1;
+        transform: translateY(0);
     }
     
-    .subject-btn {
-        white-space: nowrap;
+    .marquee-item:active .marquee-logo {
+        filter: grayscale(0%) brightness(100%);
     }
 }
 
