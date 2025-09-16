@@ -44,6 +44,7 @@
         transparent 60%
     );
     backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px); /* Safari için */    
     z-index: 1;
 }
 
@@ -422,6 +423,7 @@
         right: 0;
         background: rgba(255, 255, 255, 0.60); /* %60 opaklık */
         backdrop-filter: blur(8px); /* Arkayı hafif bulanıklaştır */
+        -webkit-backdrop-filter: blur(8px); /* Safari için */
         flex-direction: column;
         padding: 1rem;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -982,6 +984,7 @@ body.translating * {
     background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); /* Safari için */    
     border-radius: 16px;
     transition: all 0.3s ease;
     position: relative;
@@ -1142,6 +1145,7 @@ body.translating * {
     cursor: pointer;
     transition: all 0.3s ease;
     backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px); /* Safari için */
 }
 
 .slider-nav-btn:hover {
@@ -1205,6 +1209,7 @@ body.translating * {
     cursor: pointer;
     transition: all 0.3s ease;
     backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px); /* Bu satır eklenmeli */
 }
 
 .autoplay-toggle:hover {
