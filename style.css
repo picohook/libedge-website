@@ -878,7 +878,11 @@
         background-color: transparent !important; /* Şeffaf arkaplan */
         border: none !important; /* Border'ı kaldır */
         box-shadow: none !important; /* Gölgeyi kaldır */
-        padding: 0; /* İç boşluğu sıfırla */
+        padding: 0 !important;
+        display: block !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
     .nav-links .group .dropdown a {
