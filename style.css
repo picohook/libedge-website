@@ -1086,7 +1086,7 @@ body.translating * {
         padding: 0.4rem;
     }
     
-    @keyframes marqueeScroll {
+    @keyframes marqueeScrollMobile {
         0% {
             transform: translateX(0);
         }
