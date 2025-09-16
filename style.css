@@ -1039,6 +1039,16 @@ body.translating * {
     transform: translateY(0);
 }
 
+
+@keyframes marqueeScroll {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
 /* Responsive tasarım */
 @media (max-width: 768px) {
     .modern-marquee {
