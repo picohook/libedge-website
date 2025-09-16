@@ -673,88 +673,77 @@ document.addEventListener('keydown', (e) => {
     };
 
     // Function to translate text content and attributes
-    function translatePage(toEnglish) {
-        // Add translating class to indicate loading state
-        document.body.classList.add('translating');
-        if (translateButton) translateButton.disabled = true;
+function translatePage(toEnglish) {
+    // Add translating class to indicate loading state
+    document.body.classList.add('translating');
+    if (translateButton) translateButton.disabled = true;
 
-        // Select all elements that might contain text or translatable attributes
-        const elements = document.querySelectorAll(
-            '*:not(script):not(style):not(iframe):not(svg):not(path):not(rect):not(circle):not(g)'
-        );
-
-        elements.forEach(element => {
-            // Translate text content
-            if (element.textContent.trim() && !element.children.length) {
-                const originalText = element.textContent.trim();
-                if (toEnglish && translations[originalText]) {
-                    element.dataset.originalText = originalText;
-                    element.textContent = translations[originalText];
-                } else if (!toEnglish && element.dataset.originalText) {
-                    element.textContent = element.dataset.originalText;
-                    delete element.dataset.originalText;
-                }
-            }
-        // YENİ EKLENEN KOD: Span içindeki metinleri çevir
-        if (element.children.length && element.querySelector('span.translatable')) {
-            const spanElement = element.querySelector('span.translatable');
-            const originalText = spanElement.textContent.trim();
+    // Tüm çevrilebilir öğeleri seç
+    const translatableElements = document.querySelectorAll('[translatable], .translatable');
+    
+    translatableElements.forEach(element => {
+        // Metin içeriğini çevir
+        if (element.textContent.trim()) {
+            const originalText = element.textContent.trim();
             
             if (toEnglish && translations[originalText]) {
-                spanElement.dataset.originalText = originalText;
-                spanElement.textContent = translations[originalText];
-            } else if (!toEnglish && spanElement.dataset.originalText) {
-                spanElement.textContent = spanElement.dataset.originalText;
-                delete spanElement.dataset.originalText;
+                // Orijinal metni sakla ve çeviriyi uygula
+                element.dataset.originalText = originalText;
+                element.textContent = translations[originalText];
+            } else if (!toEnglish && element.dataset.originalText) {
+                // Orijinal metne geri dön
+                element.textContent = element.dataset.originalText;
+                delete element.dataset.originalText;
             }
         }
-            // Translate placeholders
-            if (element.placeholder) {
-                const originalPlaceholder = element.placeholder.trim();
-                if (toEnglish && translations[originalPlaceholder]) {
-                    element.dataset.originalPlaceholder = originalPlaceholder;
-                    element.placeholder = translations[originalPlaceholder];
-                } else if (!toEnglish && element.dataset.originalPlaceholder) {
-                    element.placeholder = element.dataset.originalPlaceholder;
-                    delete element.dataset.originalPlaceholder;
+        
+        // Placeholder'ları çevir
+        if (element.placeholder) {
+            const originalPlaceholder = element.placeholder.trim();
+            if (toEnglish && translations[originalPlaceholder]) {
+                element.dataset.originalPlaceholder = originalPlaceholder;
+                element.placeholder = translations[originalPlaceholder];
+            } else if (!toEnglish && element.dataset.originalPlaceholder) {
+                element.placeholder = element.dataset.originalPlaceholder;
+                delete element.dataset.originalPlaceholder;
+            }
+        }
+        
+        // Diğer öznitelikleri çevir (title, aria-label, vb.)
+        ['title', 'aria-label', 'alt'].forEach(attr => {
+            if (element.getAttribute(attr)) {
+                const originalAttr = element.getAttribute(attr).trim();
+                if (toEnglish && translations[originalAttr]) {
+                    element.dataset[`original${attr.charAt(0).toUpperCase() + attr.slice(1)}`] = originalAttr;
+                    element.setAttribute(attr, translations[originalAttr]);
+                } else if (!toEnglish && element.dataset[`original${attr.charAt(0).toUpperCase() + attr.slice(1)}`]) {
+                    element.setAttribute(attr, element.dataset[`original${attr.charAt(0).toUpperCase() + attr.slice(1)}`]);
+                    delete element.dataset[`original${attr.charAt(0).toUpperCase() + attr.slice(1)}`];
                 }
             }
-
-            // Translate other attributes (e.g., title, aria-label)
-            ['title', 'aria-label'].forEach(attr => {
-                if (element.getAttribute(attr)) {
-                    const originalAttr = element.getAttribute(attr).trim();
-                    if (toEnglish && translations[originalAttr]) {
-                        element.dataset[`original${attr.charAt(0).toUpperCase() + attr.slice(1)}`] = originalAttr;
-                        element.setAttribute(attr, translations[originalAttr]);
-                    } else if (!toEnglish && element.dataset[`original${attr.charAt(0).toUpperCase() + attr.slice(1)}`]) {
-                        element.setAttribute(attr, element.dataset[`original${attr.charAt(0).toUpperCase() + attr.slice(1)}`]);
-                        delete element.dataset[`original${attr.charAt(0).toUpperCase() + attr.slice(1)}`];
-                    }
-                }
-            });
         });
+    });
 
-
-// Update button text
-if (translateButton) {
-    const translateText = document.getElementById('translateText');
-    if (translateText) {
-        translateText.textContent = toEnglish ? 'Türkçe' : 'English';
-    } else {
-        // Fallback: doğrudan butonun içeriğini güncelle
-        translateButton.textContent = toEnglish ? 'Türkçe' : 'English';
+    // Buton metnini güncelle
+    if (translateButton) {
+        const translateText = document.getElementById('translateText');
+        if (translateText) {
+            translateText.textContent = toEnglish ? 'Türkçe' : 'English';
+        } else {
+            // Fallback: doğrudan butonun içeriğini güncelle
+            translateButton.textContent = toEnglish ? 'Türkçe' : 'English';
+        }
     }
+
+    // Dil tercihini sakla
+    localStorage.setItem('language', toEnglish ? 'en' : 'tr');
+
+    // Çeviri tamamlandığında translating sınıfını kaldır
+    setTimeout(() => {
+        document.body.classList.remove('translating');
+        if (translateButton) translateButton.disabled = false;
+    }, 300);
 }
-        // Persist language preference
-        localStorage.setItem('language', toEnglish ? 'en' : 'tr');
-
-        // Remove translating class after a short delay
-        setTimeout(() => {
-            document.body.classList.remove('translating');
-            if (translateButton) translateButton.disabled = false;
-        }, 300);
-    }
 
     // Apply translations on page load based on saved preference
 // Apply translations on page load based on saved preference
