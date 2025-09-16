@@ -1053,9 +1053,46 @@ body.translating * {
     }
 }
 
+/* Yatay kaymayı önlemek için genel düzenleme */
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Container genişliklerini sınırla */
+.container, .max-w-7xl, .max-w-6xl, .max-w-4xl {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Özellikle mobilde yatay kaymayı önlemek için */
 @media (max-width: 768px) {
-    .marquee-container {
-        width: 400%; /* Mobilde daha geniş */
+    .marquee-item {
+        width: 140px; /* Daha küçük logo boyutu */
+        margin: 0 0.5rem;
+    }
+    
+    /* Ürün grid'i düzeltmesi */
+    .tools-grid {
+        grid-template-columns: repeat(1, 1fr) !important;
+    }
+    
+    /* Filtre butonları taşmasını önle */
+    .filter-container {
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .subject-btn {
+        white-space: nowrap;
+    }
+}
+
+/* iOS özel düzeltmeler */
+@supports (-webkit-touch-callout: none) {
+    .marquee-track {
+        animation-duration: 40s; /* iOS'ta daha yavaş animasyon */
     }
 }
 /* Hero Slider Container */
