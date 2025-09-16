@@ -412,16 +412,6 @@
         }
 
 @media (max-width: 639px) {
-        nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        background-color: white;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
     .nav-links {
         position: fixed;
         /* Nav bar yüksekliğine göre ayarlayın.
@@ -982,7 +972,6 @@ body.translating * {
     align-items: center;
     padding: 0.5rem;
     justify-content: center;
-    flex: 0 0 auto;
     width: 160px;
     height: 100px;
     margin: 0 1rem;
@@ -1064,46 +1053,9 @@ body.translating * {
     }
 }
 
-/* Yatay kaymayı önlemek için genel düzenleme */
-html, body {
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
-/* Container genişliklerini sınırla */
-.container, .max-w-7xl, .max-w-6xl, .max-w-4xl {
-    max-width: 100%;
-    overflow: hidden;
-}
-
-/* Özellikle mobilde yatay kaymayı önlemek için */
 @media (max-width: 768px) {
-    .marquee-item {
-        width: 140px; /* Daha küçük logo boyutu */
-        margin: 0 0.5rem;
-    }
-    
-    /* Ürün grid'i düzeltmesi */
-    .tools-grid {
-        grid-template-columns: repeat(1, 1fr) !important;
-    }
-    
-    /* Filtre butonları taşmasını önle */
-    .filter-container {
-        overflow-x: auto;
-        padding-bottom: 0.5rem;
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    .subject-btn {
-        white-space: nowrap;
-    }
-}
-
-/* iOS özel düzeltmeler */
-@supports (-webkit-touch-callout: none) {
-    .marquee-track {
-        animation-duration: 40s; /* iOS'ta daha yavaş animasyon */
+    .marquee-container {
+        width: 400%; /* Mobilde daha geniş */
     }
 }
 /* Hero Slider Container */
