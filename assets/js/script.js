@@ -669,6 +669,9 @@ document.addEventListener('keydown', (e) => {
         '✔ İşletme ve yönetim odaklı video içeriği': '✔ Business and management-focused video content',
         '✔ Finans, Pazarlama, Mikroekonomi': '✔ Finance, Marketing, Microeconomics',
         '✔ Animasyonlu dersler': '✔ Animated lessons',
+        '✔ Daha hızlı yayımlanma için kontrol süresini azalt' : '✔ Reduce review time for faster publication',
+        '✔  Bilimsel makalelerin kalitesini artır' : '✔ Enhance the quality of scientific articles',
+        '✔ Kurumların itibarını koru' : '✔ Protect institutional reputation',
         // Add more translations as needed
     };
 

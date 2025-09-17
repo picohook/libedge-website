@@ -744,6 +744,10 @@
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/bio.webp');
         }
 
+        #imachek .flip-back {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/imachek.webp');
+        }
+
         #wonders .flip-back {
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/wond.webp');
         }
