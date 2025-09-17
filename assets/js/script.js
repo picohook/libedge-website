@@ -770,18 +770,109 @@ if (isTranslated && translateButton) {
         });
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    // script.js dosyanızda DOMContentLoaded içine bu kodu ekleyin:
+
+document.addEventListener('DOMContentLoaded', function() {
     // ... mevcut kodlarınız ...
     
-    // --- "Yapay Zeka Ürünlerimiz" Link Filtre ve Scroll --- (YENİ KOD BURAYA)
-    const aiProductsBadges = document.querySelectorAll('.hero-badge');
-    aiProductsBadges.forEach(badge => {
-        if (badge.querySelector('i.fa-robot')) {
+    // --- "Yapay Zeka Ürünlerimiz" Butonu için Özel Handler ---
+    // Tüm hero-badge butonlarını kontrol et
+    document.querySelectorAll('.hero-badge').forEach(badge => {
+        const iconElement = badge.querySelector('i');
+        const textElement = badge.querySelector('span');
+        
+        // Robot ikonu veya "Yapay Zeka" metni içeren badge'i bul
+        if ((iconElement && iconElement.classList.contains('fa-robot')) || 
+            (textElement && textElement.textContent.includes('Yapay Zeka'))) {
+            
+            console.log('AI products button found!'); // Debug için
+            
             badge.addEventListener('click', function(e) {
-                // ... yukarıdaki kod ...
+                e.preventDefault();
+                console.log('AI products button clicked!'); // Debug için
+                
+                // Products bölümüne scroll yap
+                const productsSection = document.getElementById('products');
+                if (productsSection) {
+                    productsSection.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                    
+                    // Kısa bir gecikme sonrası filtreyi uygula
+                    setTimeout(() => {
+                        console.log('Applying AI filter...'); // Debug için
+                        
+                        // Önce tüm filtreleri temizle
+                        const allFilterButtons = document.querySelectorAll('.subject-btn');
+                        allFilterButtons.forEach(btn => {
+                            btn.classList.remove('active');
+                            btn.setAttribute('aria-pressed', 'false');
+                        });
+                        
+                        // Yapay Zeka filtresini aktif et
+                        const aiFilter = document.querySelector('.subject-btn[data-subject="yapay-zeka"]');
+                        if (aiFilter) {
+                            aiFilter.classList.add('active');
+                            aiFilter.setAttribute('aria-pressed', 'true');
+                            console.log('AI filter activated!'); // Debug için
+                            
+                            // updateFilter fonksiyonunu çağır
+                            if (window.updateFilter && typeof window.updateFilter === 'function') {
+                                window.updateFilter();
+                                console.log('Filter updated!'); // Debug için
+                            } else {
+                                console.error('updateFilter function not found!');
+                            }
+                        } else {
+                            console.error('AI filter button not found!');
+                        }
+                    }, 1000); // 1 saniye bekle
+                }
             });
         }
     });
+    
+    // Alternatif yaklaşım: Eğer yukarısı çalışmazsa, onclick attribute'u manuel olarak ekle
+    setTimeout(() => {
+        const heroContainer = document.querySelector('.hero-badges-wrapper');
+        if (heroContainer) {
+            const aiButton = Array.from(heroContainer.querySelectorAll('.hero-badge')).find(badge => 
+                badge.textContent.includes('Yapay Zeka') || badge.querySelector('i.fa-robot')
+            );
+            
+            if (aiButton && !aiButton.hasAttribute('data-ai-handler')) {
+                aiButton.setAttribute('data-ai-handler', 'true');
+                aiButton.onclick = function(e) {
+                    e.preventDefault();
+                    
+                    // Scroll to products
+                    document.getElementById('products').scrollIntoView({ 
+                        behavior: 'smooth' 
+                    });
+                    
+                    setTimeout(() => {
+                        // Clear all filters
+                        document.querySelectorAll('.subject-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                            btn.setAttribute('aria-pressed', 'false');
+                        });
+                        
+                        // Activate AI filter
+                        const aiFilterBtn = document.querySelector('.subject-btn[data-subject="yapay-zeka"]');
+                        if (aiFilterBtn) {
+                            aiFilterBtn.classList.add('active');
+                            aiFilterBtn.setAttribute('aria-pressed', 'true');
+                            
+                            if (window.updateFilter) {
+                                window.updateFilter();
+                            }
+                        }
+                    }, 1000);
+                };
+            }
+        }
+    }, 2000); // Sayfa tam yüklendikten sonra çalış
     
     // ... diğer kodlarınız devam eder ...
 });
