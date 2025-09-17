@@ -952,3 +952,35 @@ function closeMapModal() {
         document.body.classList.remove('no-scroll');
     }
 }
+// Hero slider yüklendikten sonra çalışacak kod
+window.addEventListener('load', function() {
+    setTimeout(() => {
+        // Yapay Zeka butonunu bul ve event listener ekle
+        const aiButtons = document.querySelectorAll('button, a');
+        aiButtons.forEach(button => {
+            if (button.textContent.includes('Yapay Zeka')) {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Products'a git
+                    document.getElementById('products').scrollIntoView({ behavior: 'smooth' });
+                    
+                    // 1 saniye sonra filtreyi uygula
+                    setTimeout(() => {
+                        const aiFilter = document.querySelector('[data-subject="yapay-zeka"]');
+                        if (aiFilter) {
+                            // Tüm filtreleri temizle
+                            document.querySelectorAll('.subject-btn').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            
+                            // AI filtresini aktif et
+                            aiFilter.classList.add('active');
+                            aiFilter.click(); // Direkt olarak tıklama eventi tetikle
+                        }
+                    }, 1000);
+                });
+            }
+        });
+    }, 3000);
+});
