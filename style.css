@@ -845,35 +845,41 @@
             box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.4);
         }
 
-        .footer-links ul {
-    list-style: none; /* Liste işaretlerini kaldırır */
-    padding: 0; /* Varsayılan iç boşluğu kaldırır */
-    margin: 0; /* Varsayılan dış boşluğu kaldırır */
-    display: flex; /* Öğeleri yan yana dizer */
-    align-items: center; /* Öğeleri dikeyde ortalar */
-    justify-content: center; /* <<< YENİ: Öğeleri yatayda ortalar */
-    flex-wrap: wrap; /* <<< YENİ: Küçük ekranlarda alt satıra geçmesini sağlar */
+/* Footer iyileştirmeleri */
+footer h3 {
+    position: relative;
+    padding-bottom: 8px;
 }
 
-.footer-links li {
-    border-right: 1px solid #ccc; 
-    padding-right: 15px;
-    margin-right: 15px;
-    white-space: nowrap; 
-    font-size: 0.6em; /* <<< YENİ: Yazı boyutunu küçültür (orijinal boyutun %90'ı) */
+footer h3::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 30px;
+    height: 2px;
+    background: linear-gradient(90deg, #6C63FF, #C084FC);
+    border-radius: 1px;
 }
 
-.footer-links li:last-child {
-    border-right: none;
-    padding-right: 0;
-    margin-right: 0;
-}
-
-.footer-links a,
-.footer-links span { /* <<< YENİ: Hem linklere hem de span'a stil uygula */
+/* Footer hover efektleri */
+footer a:hover {
     text-decoration: none;
-    color: #ffffff; /* <<< YENİ: Yazı rengini değiştirir */
-    /* font-size burada da ayarlanabilir, ama 'li' üzerinde ayarlamak daha kapsayıcıdır */
+}
+
+/* Footer responsive iyileştirmeleri */
+@media (max-width: 768px) {
+    footer .grid {
+        text-align: center;
+    }
+    
+    footer .flex.items-start {
+        justify-content: center;
+    }
+    
+    footer .space-x-4 {
+        justify-content: center;
+    }
 }
 @media (max-width: 639px) {
     .nav-links .group .dropdown {

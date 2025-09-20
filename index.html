@@ -1184,24 +1184,123 @@
 </section>
 
 
-<footer class="bg-primary text-white py-8">
-    <div class="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
-        <div>
-            <h3 class="text-lg font-bold mb-4 translatable">Hızlı Linkler</h3>
-            <div class="flex flex-col space-y-2 text-xs sm:text-sm">
-                <a class="text-gray-300 hover:text-white translatable" href="#">Ürünler</a>
-                <a class="text-gray-300 hover:text-white translatable" href="#">Broşürler</a>
-                <a class="text-gray-300 hover:text-white translatable" href="#">İletişim</a>
+<footer class="bg-primary text-white py-12">
+    <div class="max-w-7xl mx-auto px-6">
+        <!-- Ana Footer İçeriği -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+            <!-- Şirket Bilgileri -->
+            <div class="lg:col-span-1">
+                <div class="flex items-center mb-4">
+                    <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="h-12 w-auto mr-3">
+                    <div>
+                        <h3 class="text-xl font-bold translatable">LibEdge</h3>
+                        <p class="text-sm text-gray-300 translatable">Eğitim ve Danışmanlık</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-300 mb-4 translatable">
+                    20 yıla yakın sektör deneyimi ile eğitim ve araştırma kurumlarına premium çözümler sunuyoruz.
+                </p>
+                <div class="flex space-x-4">
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                        <i class="fab fa-linkedin-in text-xl"></i>
+                    </a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200" href="https://twitter.com/" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+                        <i class="fab fa-x-twitter text-xl"></i>
+                    </a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200" href="https://facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                        <i class="fab fa-facebook-f text-xl"></i>
+                    </a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200" href="https://instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                        <i class="fab fa-instagram text-xl"></i>
+                    </a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200" href="https://youtube.com/" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
+                        <i class="fab fa-youtube text-xl"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Hızlı Linkler -->
+            <div>
+                <h3 class="text-lg font-bold mb-4 translatable">Hızlı Linkler</h3>
+                <div class="flex flex-col space-y-2 text-sm">
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products">Ürünler</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#services">Hizmetlerimiz</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#partners">İş Ortakları</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#brochures">Broşürler</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#contact">İletişim</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="Announcements.html">Duyurular</a>
+                </div>
+            </div>
+
+            <!-- Ürün Kategorileri -->
+            <div>
+                <h3 class="text-lg font-bold mb-4 translatable">Ürün Kategorileri</h3>
+                <div class="flex flex-col space-y-2 text-sm">
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="yapay-zeka">Yapay Zeka</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="saglik">Sağlık</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="muhendislik">Mühendislik</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="fen-matematik">Fen & Matematik</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="sosyal-bilimler">Sosyal Bilimler</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="sanat">Sanat</a>
+                </div>
+            </div>
+
+            <!-- İletişim Bilgileri -->
+            <div>
+                <h3 class="text-lg font-bold mb-4 translatable">İletişim</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-start">
+                        <i class="fas fa-map-marker-alt mr-3 text-gray-300 mt-1"></i>
+                        <div>
+                            <p class="text-gray-300 translatable">Daire: 2617, Adalet, Manas Blv.</p>
+                            <p class="text-gray-300 translatable">No: 47/B, 35530 Bayraklı/İzmir</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-envelope mr-3 text-gray-300"></i>
+                        <a href="mailto:info@libedge.com" class="text-gray-300 hover:text-white transition-colors duration-200">info@libedge.com</a>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-phone mr-3 text-gray-300"></i>
+                        <div class="flex flex-col">
+                            <span class="text-gray-300">+90 535 624 4016</span>
+                            <span class="text-gray-300">+90 530 353 3932</span>
+                        </div>
+                    </div>
+                    <button onclick="openMapModal()" class="flex items-center text-gray-300 hover:text-white transition-colors duration-200 cursor-pointer">
+                        <i class="fas fa-map mr-3"></i>
+                        <span class="translatable">Haritada Görüntüle</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alt Çizgi -->
+        <div class="border-t border-gray-600 pt-6">
+            <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <!-- Telif Hakkı -->
+                <div class="text-sm text-gray-300 text-center md:text-left">
+                    <span class="translatable">© 2025 LibEdge Eğitim ve Danışmanlık. Tüm hakları saklıdır.</span>
+                </div>
+                
+                <!-- Yasal Linkler -->
+                <div class="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">
+                    <a href="#" class="text-gray-300 hover:text-white transition-colors duration-200 translatable">Gizlilik Politikası</a>
+                    <a href="#" class="text-gray-300 hover:text-white transition-colors duration-200 translatable">Kullanım Şartları</a>
+                    <a href="#" class="text-gray-300 hover:text-white transition-colors duration-200 translatable">Çerez Politikası</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ek Bilgi -->
+        <div class="mt-6 pt-4 border-t border-gray-700">
+            <div class="text-center">
+                <p class="text-xs text-gray-400 translatable">
+                    Türkiye ve Orta Doğu bölgesinde eğitim teknolojileri ve akademik kaynaklarda güvenilir iş ortağınız
+                </p>
             </div>
         </div>
     </div>
-    <nav class="footer-links">
-        <ul>
-            <li><a href="#" class="translatable">GİZLİLİK POLİTİKASI</a></li>
-            <li><a href="#" class="translatable">KULLANIM ŞARTLARI</a></li>
-            <li><span class="translatable">© 2025 LIBEDGE TÜM HAKLARI SAKLIDIR</span></li>
-        </ul>
-    </nav>
 </footer>
 
     <button id="backToTop" class="fixed bottom-8 right-8 bg-primary text-white p-3 rounded-full shadow-lg opacity-0 invisible transition-all duration-300 hover:bg-opacity-90 z-50">
