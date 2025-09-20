@@ -691,7 +691,7 @@
         }
 
         [class$="flip-back"] {
-            background-size: cover;
+            background-size: contain;
             background-position: center;
             background-repeat: no-repeat;
         }
