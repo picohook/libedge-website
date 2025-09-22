@@ -672,6 +672,9 @@ document.addEventListener('keydown', (e) => {
         '✔ Daha hızlı yayımlanma için kontrol süresini azalt' : '✔ Reduce review time for faster publication',
         '✔  Bilimsel makalelerin kalitesini artır' : '✔ Enhance the quality of scientific articles',
         '✔ Kurumların itibarını koru' : '✔ Protect institutional reputation',
+        '✔ Yapay zeka destekli asistan çözümleri': '✔ AI-powered assistant solutions',
+        '✔ Kurumlar için verimlilik ve hız': '✔ Efficiency and speed for institutions',
+        '✔ Kullanıcı deneyimini geliştiren yenilikçi teknoloji': '✔ Innovative technology enhancing user experience',
         // Add more translations as needed
     };
 
