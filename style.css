@@ -732,6 +732,13 @@
     background-repeat: no-repeat;
 }
 
+#imachek .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/imachek.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
 #jove-education .flip-back {
     background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/educa.webp');
     background-size: cover;
