@@ -739,6 +739,13 @@
     background-repeat: no-repeat;
 }
 
+#assistin .flip-back {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/assistin.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 #jove-education .flip-back {
     background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/educa.webp');
     background-size: cover;
