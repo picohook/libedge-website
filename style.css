@@ -690,75 +690,110 @@
             list-style: none;
         }
 
-        [class$="flip-back"] {
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
-       
-        #primal-pictures .flip-back {
-            background: linear-gradient(to bottom, rgba(254, 242, 242, 0.3), transparent), url('assets/images/anatomy.png');
-        }
+#primal-pictures .flip-back {
+    background: linear-gradient(to bottom, rgba(254, 242, 242, 0.3), transparent), url('assets/images/anatomy.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #caz-koleksiyonu .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/jazz.webp');
-        }
+#caz-koleksiyonu .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/jazz.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #klasik-muzik .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/classic.webp');
-        }
+#klasik-muzik .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/classic.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #lecturio .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/lect_back.webp');
-        }
+#lecturio .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/lect_back.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #nejmhealer .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/nejm.webp');
-        }
+#nejmhealer .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/nejm.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #accessmedical .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/accmed.webp');
-        }
+#accessmedical .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/accmed.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #jove-education .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/educa.webp');
-        }
+#jove-education .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/educa.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #jove-business .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/business.webp');
-        }
+#jove-business .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/business.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #accessengineering .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/eng.webp');
-        }
+#accessengineering .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/eng.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #pangram .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/pangram.webp');
-        }
+#pangram .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/pangram.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #chatpdf .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/chat.webp');
-        }
+#chatpdf .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/chat.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #biorender .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/bio.webp');
-        }
+#biorender .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/bio.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #imachek .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/imachek0.webp');
-        }
+#wonders .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/wond.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #wonders .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/wond.webp');
-        }
+#piri-discovery .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/piri.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
-        #piri-discovery .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/piri.webp');
-        }
-
-        #transleyt .flip-back {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/transl.webp');
-        }
+#transleyt .flip-back {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/transl.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 
         .bg-video-container {
             position: relative;
