@@ -779,6 +779,7 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    color: #ffffff; /* Beyaz metin */   
 }
 
 #biorender .flip-back {
@@ -793,6 +794,7 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    color: #ffffff; /* Beyaz metin */
 }
 
 #piri-discovery .flip-back {
