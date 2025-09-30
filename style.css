@@ -725,12 +725,6 @@
     background-repeat: no-repeat;
 }
 
-#accessmedical .flip-back {
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/accmed.webp');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-}
 
 #imachek .flip-back {
     background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/imachek0.webp');
@@ -760,13 +754,6 @@
     background-repeat: no-repeat;
 }
 
-#accessengineering .flip-back {
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/eng.webp');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-}
-
 #pangram .flip-back {
     background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent), url('assets/images/pangram.webp');
     background-size: cover;
@@ -779,7 +766,7 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    color: #ffffff; /* Beyaz metin */   
+    color: #ffffff; /* Beyaz metin */       
 }
 
 #biorender .flip-back {
