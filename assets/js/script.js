@@ -581,7 +581,7 @@ document.addEventListener('keydown', (e) => {
         '© 2025 LibEdge Eğitim ve Danışmanlık. Tüm hakları saklıdır.': '© 2025 LibEdge Education and Consulting. All rights reserved.',
         'Eğitim ve Danışmanlık': 'Education and Consulting',     
         '20 yıla yakın sektör deneyimi ile eğitim ve araştırma kurumlarına premium çözümler sunuyoruz.': 'With nearly 20 years of industry experience, we provide premium solutions to educational and research institutions.',
-        'Türkiye ve Orta Doğu bölgesinde eğitim teknolojileri ve akademik kaynaklarda güvenilir iş ortağınız.': 'Your trusted partner in educational technologies and academic resources in Turkey and the Middle East region.',
+        'Türkiye ve Orta Doğu bölgesinde eğitim teknolojileri ve akademik kaynaklarda güvenilir iş ortağınız': 'Your trusted partner in educational technologies and academic resources in Turkey and the Middle East region',
         'Haritada Görüntüle': 'View on Map',
 
         // Modals
