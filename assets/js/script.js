@@ -558,7 +558,8 @@ document.addEventListener('keydown', (e) => {
         '"Hizmete sunduğu kaynakların yanı sıra yeni ürünlerle ilgili danışmanlık ve yenilikçi çözümler sunma anlayışında olması nedeniyle LibEdge firması ile çalışmak her zaman avantajlı."':'"Working with LibEdge is always advantageous due to their understanding of providing consulting on new products and innovative solutions alongside the resources they offer."' ,
         'Kütüphane Müdürü': 'Library Director',
         'Birim Sorumlusu': 'Unit Supervisor',
-        'Üniversitesi': 'University',
+        'İstanbul Okan Üniversitesi': 'Istanbul Okan University',
+        'Bursa Uludağ Üniversitesi': 'Bursa Uludag University',
         // Contact
         'Bize Ulaşın': 'Contact Us',
         'Sorularınız, iş birliği teklifleriniz veya geri bildirimleriniz için bize yazmaktan çekinmeyin. Ekibimiz en kısa sürede size geri dönecektir.': 
@@ -572,12 +573,16 @@ document.addEventListener('keydown', (e) => {
         'Bizi Takip Edin': 'Follow Us',
 
         // Footer
+        'Ürün Kategorileri': 'Product Categories',
         'Hızlı Linkler': 'Quick Links',
-        'GİZLİLİK POLİTİKASI': 'PRIVACY POLICY',
-        'KULLANIM ŞARTLARI': 'TERMS OF USE',
-        '© 2025 LIBEDGE TÜM HAKLARI SAKLIDIR': '© 2025 LIBEDGE ALL RIGHTS RESERVED',
-        'LibEdge ||| Daire: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/İzmir': 
-            'LibEdge ||| Suite: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/Izmir',
+        'Gizlilik Politikası': 'Privacy Policy',
+        'Kullanım Şartları': 'Terms of Use',
+        'Çerez Politikası': 'Cookie Policy',
+        '© 2025 LibEdge Eğitim ve Danışmanlık. Tüm hakları saklıdır.': '© 2025 LibEdge Education and Consulting. All rights reserved.',
+        'Eğitim ve Danışmanlık': 'Education and Consulting',     
+        '20 yıla yakın sektör deneyimi ile eğitim ve araştırma kurumlarına premium çözümler sunuyoruz.': 'With nearly 20 years of industry experience, we provide premium solutions to educational and research institutions.',
+        'Türkiye ve Orta Doğu bölgesinde eğitim teknolojileri ve akademik kaynaklarda güvenilir iş ortağınız.': 'Your trusted partner in educational technologies and academic resources in Turkey and the Middle East region.',
+        'Haritada Görüntüle': 'View on Map',
 
         // Modals
         'Deneme Erişimi İsteği': 'Request Trial Access',
