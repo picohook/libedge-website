@@ -724,7 +724,7 @@ document.addEventListener('keydown', (e) => {
     '4. Sorumluluk Reddi': '4. Disclaimer',
     'Web sitesi ve içerikleri "olduğu gibi" esasına göre sunulmaktadır. LibEdge, sitenin kesintisiz, hatasız veya güvenli olacağına dair herhangi bir garanti vermez. İçerikteki bilgilerin doğruluğu konusunda sorumluluk kabul edilmez.': 'The website and its content are provided on an "as is" basis. LibEdge makes no guarantee that the site will be uninterrupted, error-free, or secure. No responsibility is accepted for the accuracy of the information contained in the content.',
     '5. Uygulanacak Hukuk ve Yetkili Mahkeme': '5. Governing Law and Jurisdiction',
-    'Bu Şartların yorumlanmasında ve uygulanmasında Türk Hukuku esas alınacaktır. Doğabilecek her türlü uyuşmazlığın çözümünde Mahkemeleri ve İcra Daireleri yetkilidir.': 'Turkish Law will govern the interpretation and application of these Terms. The Courts and Enforcement Offices of [YOUR CITY] are authorized to resolve any disputes that may arise.',
+    'Bu Şartların yorumlanmasında ve uygulanmasında Türk Hukuku esas alınacaktır. Doğabilecek her türlü uyuşmazlığın çözümünde İzmir Mahkemeleri ve İcra Daireleri yetkilidir.': 'Turkish Law will govern the interpretation and application of these Terms. The Courts and Enforcement Offices of İzmir are authorized to resolve any disputes that may arise.',
 
     // 3. Çerez Politikası (cookies.html)
     '1. Çerez Nedir?': '1. What are Cookies?',
