@@ -1,76 +1,198 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gizlilik Politikası ve Aydınlatma Metni - LibEdge</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 20px; }
-        h1, h2, h3 { color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-    </style>
+    <meta name="description" content="LibEdge offers premium education and research solutions, including AI tools, databases, books and academic journals for institutions in Türkiye and the Middle East.">
+    <title>LibEdge Eğitim ve Danışmanlık</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">    
 </head>
-<body>
 
-    <h1>Gizlilik Politikası ve Kişisel Verilerin İşlenmesi Aydınlatma Metni</h1>
-    <p><strong>Son Güncelleme Tarihi:</strong> [Günün Tarihi]</p>
 
-    <h2>1. Veri Sorumlusu Kimliği</h2>
-    <p>6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) ve Genel Veri Koruma Yönetmeliği (GDPR) uyarınca, kişisel verileriniz aşağıda bilgileri bulunan <strong>LibEdge Eğitim ve Danışmanlık</strong> (Marka/Girişim) tarafından Veri Sorumlusu sıfatıyla işlenmektedir.</p>
-    <ul>
-        <li><strong>Unvan:</strong> LibEdge Eğitim ve Danışmanlık</li>
-        <li><strong>Web Sitesi:</strong> https://libedge-website.pages.dev/</li>
-        <li><strong>İletişim E-posta:</strong> [LÜTFEN E-POSTA ADRESİNİZİ GİRİN]</li>
-    </ul>
+<body class="bg-gray-50 min-h-screen" translatable>
+<header class="bg-primary text-white py-6 px-4">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center relative">
+        <div class="flex flex-wrap items-center space-x-4 mb-2 sm:mb-0">
+            <div class="flex items-center">
+                <i class="fas fa-envelope mr-2 text-purple-300" aria-hidden="true"></i>
+                <span class="text-xs sm:text-sm"><a href="mailto:info@libedge.com">info@libedge.com</a></span>
+            </div>
+            <div class="flex flex-col">
+                <div class="flex items-center">
+                    <i class="fas fa-mobile-alt mr-2 text-purple-300" aria-hidden="true"></i>
+                    <span class="text-xs sm:text-sm">+90 535 624 4016</span>
+                </div>
+                <div class="flex items-center mt-1">
+                    <i class="fas fa-mobile-alt mr-2 text-purple-300" aria-hidden="true"></i>
+                    <span class="text-xs sm:text-sm ">+90 530 353 3932</span>
+                </div>
+            </div>
+        </div>
 
-    <h2>2. Toplanan Kişisel Veriler ve İşleme Amaçları</h2>
-    <p>Kişisel verileriniz, web sitesi üzerinden yürütülen mevcut faaliyetler ve gelecekteki hizmetler göz önüne alınarak aşağıdaki amaçlar ve hukuki sebeplerle işlenmektedir:</p>
-    
-    <table>
-        <thead>
-            <tr>
-                <th>Veri Kategorisi</th>
-                <th>İşleme Amacı</th>
-                <th>Hukuki Sebep (KVKK/GDPR)</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>Kimlik ve İletişim</strong> (Ad, Soyad, E-posta, Tel No)</td>
-                <td>Bilgilendirme ve danışmanlık taleplerinin yanıtlanması; Hizmet öncesi iletişim faaliyetlerinin yürütülmesi.</td>
-                <td>Açık Rıza / Sözleşmenin İfası Öncesi Görüşme</td>
-            </tr>
-            <tr>
-                <td><strong>İşlem Güvenliği</strong> (IP Adresi, Log Kayıtları)</td>
-                <td>Siber güvenliğin sağlanması; Hukuki uyuşmazlıkların giderilmesi ve yasal yükümlülüklerin yerine getirilmesi.</td>
-                <td>Meşru Menfaat / Yasal Yükümlülük</td>
-            </tr>
-            <tr>
-                <td><strong>Pazarlama/Analiz</strong> (Çerez Verileri, Ziyaret Sıklığı)</td>
-                <td>Web sitesi performansının ölçülmesi ve geliştirilmesi; Pazarlama faaliyetlerinin yürütülmesi.</td>
-                <td>Açık Rıza (Zorunlu olmayan çerezler için)</td>
-            </tr>
-        </tbody>
-    </table>
+        <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="company-logo">
 
-    <h2>3. Kişisel Verilerin Aktarımı (Yurt İçi/Yurt Dışı)</h2>
-    <p>Kişisel verileriniz, web sitesinin barındırılması ve dağıtımı için kullanılan <strong>GitHub</strong> ve <strong>Cloudflare</strong> gibi altyapı hizmet sağlayıcılarının sunucularının yurt dışında bulunması nedeniyle yurt dışına aktarılmaktadır. Bu aktarım, veri güvenliğini sağlamak amacıyla gerekli teknik ve idari tedbirler alınarak gerçekleştirilmektedir.</p>
-    
-    <h2>4. Veri Sahibinin Hakları (KVKK Madde 11 & GDPR Hakları)</h2>
-    <p>KVKK Madde 11 uyarınca Veri Sorumlusu’na başvurarak;</p>
-    <ul>
-        <li>Kişisel verilerinizin işlenip işlenmediğini öğrenme,</li>
-        <li>İşlenme amacını ve amacına uygun kullanılıp kullanılmadığını bilme,</li>
-        <li>Eksik veya yanlış işlenmişse düzeltilmesini isteme,</li>
-        <li>İşlenmesini gerektiren sebepler ortadan kalkarsa silinmesini/yok edilmesini isteme (GDPR Unutulma Hakkı),</li>
-        <li>Kanuna aykırı işlenme nedeniyle zarara uğramanız halinde zararınızın giderilmesini talep etme haklarına sahipsiniz.</li>
-    </ul>
-    <p>Başvurularınızı yukarıda belirtilen e-posta adresine iletebilirsiniz.</p>
+        <div class="flex items-center space-x-4 ml-auto">
+            <a class="text-white hover:text-purple-300" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank">
+                <i class="fab fa-linkedin-in text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://twitter.com/" target="_blank">
+                <i class="fab fa-x-twitter text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://facebook.com/" target="_blank">
+                <i class="fab fa-facebook-f text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://instagram.com/" target="_blank">
+                <i class="fab fa-instagram text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://youtube.com/" target="_blank">
+                <i class="fab fa-youtube text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" onclick="openMapModal()" style="cursor:pointer">
+                <i class="fas fa-map-marker-alt text-lg"></i>
+            </a>
 
-    <h2>5. İleriye Dönük Planlar Hakkında Bilgilendirme</h2>
-    <p>İlerleyen dönemde kayıtlı kullanıcı altyapısı kurulması ve ödeme işlemleri eklenmesi durumunda; sözleşme ifası amacıyla kimlik, finansal veriler ve adres bilgileri toplanacak, bu kapsamda Gizlilik Politikası ayrıca güncellenecektir.</p>
+            <div class="ml-auto pl-8">
+                <a class="text-white hover:text-purple-300" href="#" aria-label="User Management">
+                    <i class="fas fa-user text-xl"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+    <nav class="bg-white shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <a class="text-2xl text-primary nav-logo" href="#">
+                <span class="lib-bold translatable">Lib</span><span class="translatable">Edge Eğitim ve Danışmanlık</span>
+            </a>
+            <button class="hamburger" aria-label="Menüyü aç/kapat" aria-expanded="false">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-links flex items-center space-x-2 sm:space-x-6 text-xs sm:text-sm font-medium text-gray-700">
+
+
+
+  
+                <button id="translateBtn" class="bg-primary text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-purple-300 text-sm font-semibold" aria-label="Change Language">
+    <span id="translateText">English</span>
+                </button>
+            </div>
+        </div>
+     </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto p-4 md:p-8 bg-white shadow-lg my-8 rounded-lg">
+  
+<h1>Gizlilik Politikası ve Aydınlatma Metni</h1>
+<p><strong>Son Güncelleme Tarihi:</strong> 9.10.2025</p>
+
+<h2>1. Veri Sorumlusu Kimliği (Data Controller)</h2>
+<p>Kişisel Verilerin Korunması Kanunu (KVKK) ve Genel Veri Koruma Yönetmeliği (GDPR) uyarınca Veri Sorumlusu:</p>
+<ul>
+    <li><strong>Unvan:</strong> LibEdge Eğitim ve Danışmanlık (Marka/Girişim)</li>
+    <li><strong>Web Sitesi:</strong> https://www.libedge.com/</li>
+    <li><strong>İletişim E-posta:</strong> info@libedge.com</li>
+</ul>
+
+<h2>2. Toplanan Veriler ve İşleme Amaçları</h2>
+<p>Verileriniz, temel olarak talep toplama ve site güvenliğini sağlama amaçlarıyla işlenir:</p>
+<table border="1" cellpadding="5" cellspacing="0">
+    <thead>
+        <tr><th>Veri Kategorisi</th><th>İşleme Amacı</th><th>Hukuki Sebep (KVKK/GDPR)</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Kimlik ve İletişim</strong> (Ad, E-posta, Tel No - Formlardan)</td>
+            <td>Bilgilendirme taleplerinizi yanıtlamak ve sizinle iletişim kurmak.</td>
+            <td>Açık Rıza / Sözleşme Öncesi Görüşmeler</td>
+        </tr>
+        <tr>
+            <td><strong>İşlem Güvenliği</strong> (IP Adresi, Log Kayıtları)</td>
+            <td>Siber güvenliği sağlamak, yasal yükümlülükleri yerine getirmek.</td>
+            <td>Meşru Menfaat / Yasal Yükümlülük</td>
+        </tr>
+        <tr>
+            <td><strong>Pazarlama/Analiz</strong> (Çerez Verileri)</td>
+            <td>Site performansını ölçmek ve iyileştirmek.</td>
+            <td>Açık Rıza (Çerez Politikasına Bakınız)</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>3. Veri Aktarımı</h2>
+<p>Verileriniz, web sitesinin barındırma ve dağıtım hizmetleri (<strong>GitHub</strong>, <strong>Cloudflare</strong>) yurt dışında bulunduğu için ve analitik hizmetler (kullanılıyorsa) nedeniyle yurt dışına aktarılmaktadır.</p>
+
+<h2>4. Veri Sahibi Hakları</h2>
+<p>KVKK Madde 11 ve GDPR kapsamında, kişisel verilerinizin işlenip işlenmediğini öğrenme, silinmesini veya düzeltilmesini talep etme hakkına sahipsiniz. Başvurularınızı yukarıdaki e-posta adresine iletebilirsiniz.</p>
+
+<h2>5. Gelecek Planları</h2>
+<p>İleride kayıtlı kullanıcı sistemi veya ödeme işlemleri eklendiğinde, bu politika güncellenecektir.</p>
+</main>
+
+
+<footer class="bg-primary text-white py-12">
+    <div class="max-w-7xl mx-auto px-6">
+        <!-- Ana Footer İçeriği -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+            <!-- Şirket Bilgileri -->
+            <div class="lg:col-span-1">
+                <div class="flex items-center mb-4">
+                    <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="h-12 w-auto mr-3">
+                    <div>
+                        <!-- <h3 class="text-xl font-bold translatable">LibEdge</h3> -->
+                        <p class="text-sm text-gray-300 translatable">Eğitim ve Danışmanlık</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-300 mb-4 translatable">
+                    20 yıla yakın sektör deneyimi ile eğitim ve araştırma kurumlarına premium çözümler sunuyoruz.
+                </p>
+            </div>
+
+
+        </div>
+
+        <!-- Alt Çizgi -->
+        <div class="border-t border-gray-600 pt-6">
+            <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <!-- Telif Hakkı -->
+                <div class="text-sm text-gray-300 text-center md:text-left">
+                    <span class="translatable">© 2025 LibEdge Eğitim ve Danışmanlık. Tüm hakları saklıdır.</span>
+                </div>
+                
+                <!-- Yasal Linkler -->
+                <div class="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">
+                <a href="/privacy.html" class="text-gray-300 hover:text-white transition-colors duration-200 translatable">Gizlilik Politikası</a>
+                <a href="/terms.html" class="text-gray-300 hover:text-white transition-colors duration-200 translatable">Kullanım Şartları</a>
+                <a href="/cookies.html" class="text-gray-300 hover:text-white transition-colors duration-200 translatable">Çerez Politikası</a>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Ek Bilgi -->
+        <div class="mt-6 pt-4 border-t border-gray-700">
+            <div class="text-center">
+                <p class="text-xs text-gray-400 translatable">Türkiye ve Orta Doğu bölgesinde eğitim teknolojileri ve akademik kaynaklarda güvenilir iş ortağınız</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <button id="backToTop" class="fixed bottom-8 right-8 bg-primary text-white p-3 rounded-full shadow-lg opacity-0 invisible transition-all duration-300 hover:bg-opacity-90 z-50">
+        <i class="fas fa-arrow-up"></i>
+        <span class="sr-only translatable">Back to top</span>
+    </button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Glide.js/3.6.0/glide.min.js"></script>
+<script src="assets/js/script.js"></script>
+
+
 
 </body>
+
+
 </html>
