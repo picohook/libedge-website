@@ -16,6 +16,220 @@
 
 
 <body class="bg-gray-50 min-h-screen" translatable>
+<header class="bg-primary text-white py-6 px-4">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center relative">
+        <div class="flex flex-wrap items-center space-x-4 mb-2 sm:mb-0">
+            <div class="flex items-center">
+                <i class="fas fa-envelope mr-2 text-purple-300" aria-hidden="true"></i>
+                <span class="text-xs sm:text-sm"><a href="mailto:info@libedge.com">info@libedge.com</a></span>
+            </div>
+            <div class="flex flex-col">
+                <div class="flex items-center">
+                    <i class="fas fa-mobile-alt mr-2 text-purple-300" aria-hidden="true"></i>
+                    <span class="text-xs sm:text-sm">+90 535 624 4016</span>
+                </div>
+                <div class="flex items-center mt-1">
+                    <i class="fas fa-mobile-alt mr-2 text-purple-300" aria-hidden="true"></i>
+                    <span class="text-xs sm:text-sm ">+90 530 353 3932</span>
+                </div>
+            </div>
+        </div>
+
+        <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="company-logo">
+
+        <div class="flex items-center space-x-4 ml-auto">
+            <a class="text-white hover:text-purple-300" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank">
+                <i class="fab fa-linkedin-in text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://twitter.com/" target="_blank">
+                <i class="fab fa-x-twitter text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://facebook.com/" target="_blank">
+                <i class="fab fa-facebook-f text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://instagram.com/" target="_blank">
+                <i class="fab fa-instagram text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://youtube.com/" target="_blank">
+                <i class="fab fa-youtube text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" onclick="openMapModal()" style="cursor:pointer">
+                <i class="fas fa-map-marker-alt text-lg"></i>
+            </a>
+
+            <div class="ml-auto pl-8">
+                <a class="text-white hover:text-purple-300" href="#" aria-label="User Management">
+                    <i class="fas fa-user text-xl"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+    <nav class="bg-white shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <a class="text-2xl text-primary nav-logo" href="#">
+                <span class="lib-bold translatable">Lib</span><span class="translatable">Edge Eğitim ve Danışmanlık</span>
+            </a>
+            <button class="hamburger" aria-label="Menüyü aç/kapat" aria-expanded="false">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-links flex items-center space-x-2 sm:space-x-6 text-xs sm:text-sm font-medium text-gray-700">
+
+
+<div class="relative group">
+    <a id="products-menu-toggle" onclick="toggleProductsMenu()" class="hover:text-primary font-semibold flex items-center cursor-pointer sm:cursor-default translatable">
+Ürünler
+      <i class="fas fa-chevron-down ml-1 text-xs"></i>
+    </a>
+  
+    <div class="dropdown absolute left-0 mt-2 bg-white shadow-lg rounded-lg z-20 p-4 space-y-4 w-[340px] hidden sm:block">
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Yapay Zeka</h4>
+        <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
+        <a href="#chatpdf" class="block px-2 py-1 text-sm hover:text-primary translatable">ChatPDF</a>
+        <a href="#wonders" class="block px-2 py-1 text-sm hover:text-primary translatable">Wonders</a>
+        <a href="#assistin" class="block px-2 py-1 text-sm hover:text-primary translatable">Assistin</a>
+        <a href="#piri-discovery" class="block px-2 py-1 text-sm hover:text-primary translatable">Piri Keşif</a>
+        <a href="#transleyt" class="block px-2 py-1 text-sm hover:text-primary translatable">Transleyt</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Sağlık</h4>
+        <a href="#primal-pictures" class="block px-2 py-1 text-sm hover:text-primary translatable">Primal Pictures</a>
+        <a href="#lecturio" class="block px-2 py-1 text-sm hover:text-primary translatable">Lecturio</a>
+        <a href="#nejmhealer" class="block px-2 py-1 text-sm hover:text-primary translatable">NEJMHealer</a>
+        <a href="#cochrane-library" class="block px-2 py-1 text-sm hover:text-primary translatable">Cochrane Library</a>
+        <a href="#imachek" class="block px-2 py-1 text-sm hover:text-primary translatable">ImaChek</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Mühendislik</h4>
+        <a href="#biorender" class="block px-2 py-1 text-sm hover:text-primary translatable">BioRender</a>
+        <a href="#wiley-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Dergiler</a>
+        <a href="#wiley-kitaplar" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Kitaplar</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Fen & Matematik</h4>
+        <a href="#jove-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Research</a>
+        <a href="#jove-education" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Education</a>
+        <a href="#wiley-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Dergiler</a>
+        <a href="#wiley-kitaplar" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Kitaplar</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Sosyal Bilimler</h4>
+        <a href="#jove-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Research</a>
+        <a href="#jove-education" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Education</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">İş & Hukuk</h4>
+        <a href="#jove-business" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Business</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Sanat</h4>
+        <a href="#klasik-muzik" class="block px-2 py-1 text-sm hover:text-primary translatable">Klasik Müzik Koleksiyonu</a>
+        <a href="#caz-koleksiyonu" class="block px-2 py-1 text-sm hover:text-primary translatable">Caz Koleksiyonu</a>
+      </div>
+    </div>
+  
+    <div id="mobile-products" class="space-y-2 mt-2 px-2 sm:hidden">
+
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">Yapay Zeka</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
+      <a href="#chatpdf" class="block text-gray-700 translatable">ChatPDF</a>
+      <a href="#wonders" class="block text-gray-700 translatable">Wonders</a>
+      <a href="#piri-discovery" class="block text-gray-700 translatable">Piri Keşif</a>
+      <a href="#transleyt" class="block text-gray-700 translatable">Transleyt</a>
+    </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+	<span class="translatable">Sağlık</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#primal-pictures" class="block text-gray-700 translatable">Primal Pictures</a>
+      <a href="#lecturio" class="block text-gray-700 translatable">Lecturio</a>
+      <a href="#nejmhealer" class="block text-gray-700 translatable">NEJMHealer</a>
+      <a href="#cochrane-library" class="block text-gray-700 translatable">Cochrane Library</a>
+      <a href="#imachek" class="block px-2 py-1 text-sm hover:text-primary translatable">ImaChek</a>
+        </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">Mühendislik</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#biorender" class="block text-gray-700 translatable">BioRender</a>
+      <a href="#wiley-dergiler" class="block text-gray-700 translatable">Wiley Dergiler</a>
+      <a href="#wiley-kitaplar" class="block text-gray-700 translatable">Wiley Kitaplar</a>
+    </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">Fen & Matematik</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#jove-dergiler" class="block text-gray-700 translatable">JoVE Research</a>
+      <a href="#jove-education" class="block text-gray-700 translatable">JoVE Education</a>
+      <a href="#wiley-dergiler" class="block text-gray-700 translatable">Wiley Dergiler</a>
+      <a href="#wiley-kitaplar" class="block text-gray-700 translatable">Wiley Kitaplar</a>
+    </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">Sosyal Bilimler</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#jove-dergiler" class="block text-gray-700 translatable">JoVE Research</a>
+      <a href="#jove-education" class="block text-gray-700 translatable">JoVE Education</a>
+    </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">İş & Hukuk</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#jove-business" class="block text-gray-700 translatable">JoVE Business</a>
+    </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">Sanat</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#klasik-muzik" class="block text-gray-700 translatable">Klasik Müzik Koleksiyonu</a>
+      <a href="#caz-koleksiyonu" class="block text-gray-700 translatable">Caz Koleksiyonu</a>
+    </div>
+  </div>
+  
+    </div>
+  </div>
+  
+                <a class="hover:text-primary translatable" href="#brochures">Broşürler</a>
+                <a class="hover:text-primary translatable" href="#contact">İletişim</a>
+                <a class="text-primary font-semibold translatable" href="Announcements.html">Duyurular</a>
+                <button id="translateBtn" class="bg-primary text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-purple-300 text-sm font-semibold" aria-label="Change Language">
+    <span id="translateText">English</span>
+                </button>
+            </div>
+        </div>
+     </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto p-4 md:p-8 bg-white shadow-lg my-8 rounded-lg">
+  
     <h1>Web Sitesi Kullanım Şartları</h1>
 <p><strong>Son Güncelleme Tarihi:</strong> 9.10.2025</p>
 
@@ -32,7 +246,185 @@
 <p>Web sitesi **"olduğu gibi"** sunulur ve LibEdge içeriğin kesintisiz veya hatasız olacağını garanti etmez. Bu Şartların ihlali durumunda LibEdge, Kullanıcı'nın siteye erişimini derhal sonlandırma hakkını saklı tutar.</p>
 
 <h2>5. Uygulanacak Hukuk</h2>
-<p>Bu Şartlarda **Türk Hukuku** uygulanır. Uyuşmazlıklarda **[LÜTFEN ŞİRKETİNİZİN BULUNDUĞU ŞEHİR] Mahkemeleri** yetkilidir.</p>
+<p>Bu Şartlarda **Türk Hukuku** uygulanır. Uyuşmazlıklarda İzmir Mahkemeleri yetkilidir.</p>
+</main>
+
+
+<footer class="bg-primary text-white py-12">
+    <div class="max-w-7xl mx-auto px-6">
+        <!-- Ana Footer İçeriği -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+            <!-- Şirket Bilgileri -->
+            <div class="lg:col-span-1">
+                <div class="flex items-center mb-4">
+                    <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="h-12 w-auto mr-3">
+                    <div>
+                        <!-- <h3 class="text-xl font-bold translatable">LibEdge</h3> -->
+                        <p class="text-sm text-gray-300 translatable">Eğitim ve Danışmanlık</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-300 mb-4 translatable">
+                    20 yıla yakın sektör deneyimi ile eğitim ve araştırma kurumlarına premium çözümler sunuyoruz.
+                </p>
+                <div class="flex space-x-4">
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                        <i class="fab fa-linkedin-in text-xl"></i>
+                    </a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200" href="https://twitter.com/" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+                        <i class="fab fa-x-twitter text-xl"></i>
+                    </a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200" href="https://facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                        <i class="fab fa-facebook-f text-xl"></i>
+                    </a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200" href="https://instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                        <i class="fab fa-instagram text-xl"></i>
+                    </a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200" href="https://youtube.com/" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
+                        <i class="fab fa-youtube text-xl"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Hızlı Linkler -->
+            <div>
+                <h3 class="text-lg font-bold mb-4 translatable">Hızlı Linkler</h3>
+                <div class="flex flex-col space-y-2 text-sm">
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products">Ürünler</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#services">Hizmetlerimiz</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#partners">İş Ortakları</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#brochures">Broşürler</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#contact">İletişim</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="Announcements.html">Duyurular</a>
+                </div>
+            </div>
+
+            <!-- Ürün Kategorileri -->
+            <div>
+                <h3 class="text-lg font-bold mb-4 translatable">Ürün Kategorileri</h3>
+                <div class="flex flex-col space-y-2 text-sm">
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="yapay-zeka">Yapay Zeka</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="saglik">Sağlık</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="muhendislik">Mühendislik</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="fen-matematik">Fen & Matematik</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="sosyal-bilimler">Sosyal Bilimler</a>
+                    <a class="text-gray-300 hover:text-white transition-colors duration-200 translatable" href="#products" data-filter="sanat">Sanat</a>
+                </div>
+            </div>
+
+            <!-- İletişim Bilgileri -->
+            <div>
+                <h3 class="text-lg font-bold mb-4 translatable">İletişim</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-start">
+                        <i class="fas fa-map-marker-alt mr-3 text-gray-300 mt-1"></i>
+                        <div>
+                            <p class="text-gray-300 translatable">Daire: 2617, Adalet, Manas Blv.</p>
+                            <p class="text-gray-300 translatable">No: 47/B, 35530 Bayraklı/İzmir</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-envelope mr-3 text-gray-300"></i>
+                        <a href="mailto:info@libedge.com" class="text-gray-300 hover:text-white transition-colors duration-200">info@libedge.com</a>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-phone mr-3 text-gray-300"></i>
+                        <div class="flex flex-col">
+                            <span class="text-gray-300">+90 535 624 4016</span>
+                            <span class="text-gray-300">+90 530 353 3932</span>
+                        </div>
+                    </div>
+                    <button onclick="openMapModal()" class="flex items-center text-gray-300 hover:text-white transition-colors duration-200 cursor-pointer">
+                        <i class="fas fa-map mr-3"></i>
+                        <span class="translatable">Haritada Görüntüle</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alt Çizgi -->
+        <div class="border-t border-gray-600 pt-6">
+            <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <!-- Telif Hakkı -->
+                <div class="text-sm text-gray-300 text-center md:text-left">
+                    <span class="translatable">© 2025 LibEdge Eğitim ve Danışmanlık. Tüm hakları saklıdır.</span>
+                </div>
+                
+                <!-- Yasal Linkler -->
+                <div class="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">
+                <a href="/privacy.html" class="text-gray-300 hover:text-white transition-colors duration-200 translatable">Gizlilik Politikası</a>
+                <a href="/terms.html" class="text-gray-300 hover:text-white transition-colors duration-200 translatable">Kullanım Şartları</a>
+                <a href="/cookies.html" class="text-gray-300 hover:text-white transition-colors duration-200 translatable">Çerez Politikası</a>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Ek Bilgi -->
+        <div class="mt-6 pt-4 border-t border-gray-700">
+            <div class="text-center">
+                <p class="text-xs text-gray-400 translatable">Türkiye ve Orta Doğu bölgesinde eğitim teknolojileri ve akademik kaynaklarda güvenilir iş ortağınız</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <button id="backToTop" class="fixed bottom-8 right-8 bg-primary text-white p-3 rounded-full shadow-lg opacity-0 invisible transition-all duration-300 hover:bg-opacity-90 z-50">
+        <i class="fas fa-arrow-up"></i>
+        <span class="sr-only translatable">Back to top</span>
+    </button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Glide.js/3.6.0/glide.min.js"></script>
+<script src="assets/js/script.js"></script>
+
+    
+    <div id="trialModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
+      <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+        <i class="fas fa-times"></i>
+      </button>
+      <h2 class="text-lg font-semibold mb-4 text-primary translatable">Deneme Erişimi Talep Formu</h2>
+<form id="trialForm" class="space-y-4">
+  <input type="text" placeholder="Ad Soyad" name="name" class="w-full border p-2 rounded" required>
+  <input type="email" placeholder="E-posta" name="email" class="w-full border p-2 rounded" required>
+  <input type="text" placeholder="Kurum Adı" name="company" class="w-full border p-2 rounded">
+  <textarea placeholder="Talep Detayınız" name="message" class="w-full border p-2 rounded h-24"></textarea>
+  <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 translatable">Gönder</button>
+</form>
+    </div>
+  </div>
+<div id="suggestionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 relative shadow-lg">
+    <button onclick="closeSuggestionModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+      <i class="fas fa-times"></i>
+    </button>
+    <h2 class="text-lg font-semibold mb-4 text-primary translatable">Ürün Öneri Formu</h2>
+    <form id="suggestionForm" class="space-y-4">
+      <input type="hidden" name="formType" value="suggest">
+      <input type="text" name="name" placeholder="Ad Soyad" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+      <input type="email" name="email" placeholder="E-posta" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+      <input type="text" name="company" placeholder="Kurum Adı" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      <textarea name="message" placeholder="Ürün Öneri Detayınız" class="w-full border border-gray-300 p-2 rounded h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+      <button type="submit" class="w-full bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 transition duration-200 translatable">Gönder</button>
+    </form>
+  </div>
+</div>
+  
+
+<div id="mapModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-lg p-4 w-full max-w-4xl h-[80vh] relative flex flex-col">
+    <button onclick="closeMapModal()" class="absolute top-2 right-2 text-gray-700 hover:text-primary z-10">
+      <i class="fas fa-times text-2xl"></i>
+    </button>
+    <div class="flex-grow w-full">
+<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d6248.890749726966!2d27.166892793579095!3d38.454277999999995!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14bbd7ff8a83562b%3A0xcabe31e138901273!2seOfis%20-%20%C4%B0zmir%20Folkart%20Towers!5e0!3m2!1str!2str!4v1757432797541!5m2!1str!2str" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    </div>
+    <div class="mt-2 text-center text-sm text-gray-600 translatable">
+      LibEdge ||| Daire: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/İzmir
+    </div>
+  </div>
+</div>
+
+
 </body>
 
 
