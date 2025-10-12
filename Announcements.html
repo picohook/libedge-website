@@ -712,6 +712,44 @@ document.addEventListener('keydown', (e) => {
         closeModal();
     }
 });
+
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const counterApi = "https://view-counter.agursel.workers.dev"; 
+  const pageKey = "announcements"; // DO'da benzersiz kimlik (sayfa adı)
+
+  const counterDisplay = document.querySelector("#view-count");
+  if (counterDisplay) counterDisplay.textContent = "…";
+
+  async function updateCount() {
+    try {
+      // 1️⃣ Sayaç artır
+      await fetch(counterApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: pageKey, action: "increment" })
+      });
+
+      // 2️⃣ Güncel değer al
+      const res = await fetch(counterApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: pageKey, action: "get" })
+      });
+
+      const data = await res.json();
+      if (counterDisplay && data.views !== undefined) {
+        counterDisplay.textContent = data.views.toLocaleString("en-US");
+      }
+    } catch (err) {
+      console.error("Sayaç isteği hatası:", err);
+    }
+  }
+
+  updateCount();
+});
+
+
 </script>
 </body>
 </html>

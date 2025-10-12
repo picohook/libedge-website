@@ -6,7 +6,7 @@ export default {
     const method = request.method.toUpperCase();
     const origin = request.headers.get('Origin');
 
-    // Güvenli CORS alanları
+    // --- Güvenli CORS Alanları ---
     const allowedOrigins = [
       'https://libedge-website.pages.dev',
       'http://localhost:3000',
@@ -22,12 +22,12 @@ export default {
       "Access-Control-Max-Age": "86400"
     };
 
-    // Preflight isteği
+    // --- Preflight (OPTIONS) ---
     if (method === "OPTIONS") {
-      return new Response(null, { status: 200, headers: corsHeaders });
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
-    // Sadece POST kabul edilir
+    // --- Sadece POST Kabul Edilir ---
     if (method !== "POST") {
       return new Response("Method not allowed", {
         status: 405,
@@ -36,20 +36,21 @@ export default {
     }
 
     try {
-      const { page, action } = await request.json();
+      const data = await request.json();
+      const { page, action } = data;
 
       if (!page || !["increment", "get"].includes(action)) {
-        return new Response(JSON.stringify({ success: false, error: "Invalid request format." }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid request format." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
-      // DO instance oluştur
+      // --- Data Object (DO) instance oluştur ---
       const counterId = env.COUNTER.idFromName(page);
       const counterObject = env.COUNTER.get(counterId);
 
-      // İstek, Counter DO’ya yönlendirilir.
+      // --- İstek DO'ya yönlendirilir ---
       const doRequest = new Request(request.url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,21 +59,22 @@ export default {
 
       const response = await counterObject.fetch(doRequest);
 
-      // DO yanıtını CORS ile birlikte döndür
+      // --- Yanıt DO'dan alınır ---
       const result = await response.text();
+
       return new Response(result, {
         status: response.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
 
     } catch (err) {
-      return new Response(JSON.stringify({ success: false, error: err.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+      return new Response(
+        JSON.stringify({ success: false, error: err.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
   }
 };
 
-// DO sınıfını dışa aktar
+// --- DO Sınıfını Dışa Aktar ---
 export { Counter } from './Counter.js';
