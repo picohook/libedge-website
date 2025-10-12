@@ -16,7 +16,6 @@
         body {
             font-family: 'Inter', sans-serif;
             color: #220f60;
-            /* Arka planı daha modern ve uyumlu hale getirir */
             background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
             min-height: 100vh;
         }
@@ -108,7 +107,6 @@
             transition: all 0.3s ease;
         }
 
-        /* Arama kutusu odaklandığında dış çizgi (ring) stilini düzeltme */
         .search-input:focus {
             outline: none;
             box-shadow: 0 0 0 3px rgba(34, 15, 96, 0.1);
@@ -204,9 +202,7 @@
             background-color: #2e1a7b;
         }
 
-        /* Mevcut CSS'e ekle */
-@media (max-width: 768px) {
-            /* Navigasyon */
+        @media (max-width: 768px) {
             nav .flex {
                 flex-direction: column;
                 gap: 1rem;
@@ -224,55 +220,51 @@
                 padding: 0.5rem 0.8rem;
             }
 
-            /* Başlık */
-    .compact-header {
-        padding: 1rem 0;
-    }
-    
-    .compact-header h1 {
-        font-size: 2rem !important;
-    }
-    
-    .compact-header p {
-        font-size: 0.9rem !important;
-        padding: 0 1rem;
-    }
-    
-            /* Arama ve filtreleme */
+            .compact-header {
+                padding: 1rem 0;
+            }
+            
+            .compact-header h1 {
+                font-size: 2rem !important;
+            }
+            
+            .compact-header p {
+                font-size: 0.9rem !important;
+                padding: 0 1rem;
+            }
+            
             .flex.gap-3 {
-        flex-direction: column;
+                flex-direction: column;
                 width: 100%;
-    }
-    
-    /* Arama ve filtreleme için mobil düzen */
-    .search-container {
-        width: 100%;
-    }
-    
-    #searchInput {
-        width: 100%;
-    }
+            }
+            
+            .search-container {
+                width: 100%;
+            }
+            
+            #searchInput {
+                width: 100%;
+            }
             
             #sortSelect {
                 width: 100%;
             }
-    
-    .flex-wrap.gap-3 {
-        justify-content: center;
-    }
-    
-    .filter-btn {
+            
+            .flex-wrap.gap-3 {
+                justify-content: center;
+            }
+            
+            .filter-btn {
                 padding: 0.6rem 1rem !important;
-        font-size: 0.8rem;
+                font-size: 0.8rem;
                 min-height: 44px;
-    }
-    
-            /* Grid düzeni */
-    #announcementsGrid {
+            }
+            
+            #announcements {
                 grid-template-columns: 1fr !important;
-        gap: 1rem;
-    }
-    
+                gap: 1rem;
+            }
+            
             .announcement-card {
                 margin: 0.5rem 0;
             }
@@ -281,62 +273,57 @@
                 transform: translateY(-4px) scale(1.01);
             }
 
-            /* Modal */
-    .modal-content {
-        margin: 1rem;
-        padding: 1.5rem;
-        max-height: 85vh;
-    }
-    
+            .modal-content {
+                margin: 1rem;
+                padding: 1.5rem;
+                max-height: 85vh;
+            }
+            
             .modal-content h1 {
                 font-size: 1.5rem !important;
-    }
-    
-            /* Newsletter */
-    .newsletter-section {
-        padding: 1.5rem;
-        margin: 1rem 0;
-    }
-    
-    .newsletter-section h2 {
-        font-size: 1.5rem;
-    }
-    
-            /* Pagination */
-    #paginationContainer {
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    
-    #paginationContainer button {
-        padding: 0.5rem 1rem;
-        font-size: 0.8rem;
-    }
+            }
+            
+            .newsletter-section {
+                padding: 1.5rem;
+                margin: 1rem 0;
+            }
+            
+            .newsletter-section h2 {
+                font-size: 1.5rem;
+            }
+            
+            #paginationContainer {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            
+            #paginationContainer button {
+                padding: 0.5rem 1rem;
+                font-size: 0.8rem;
+            }
 
-            /* Dokunmatik optimizasyon */
             .announcement-card {
                 -webkit-tap-highlight-color: transparent;
                 touch-action: manipulation;
             }
-}
+        }
 
-        /* Çok küçük ekranlar */
-@media (max-width: 480px) {
-    .max-w-7xl.mx-auto.px-4 {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-    
-    .bg-white\\/90.p-6 {
-        padding: 1rem;
-    }
-    
-    .floating-fab {
-        bottom: 1rem;
-        right: 1rem;
-        width: 3rem;
-        height: 3rem;
-    }
+        @media (max-width: 480px) {
+            .max-w-7xl.mx-auto.px-4 {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            .bg-white\\/90.p-6 {
+                padding: 1rem;
+            }
+            
+            .floating-fab {
+                bottom: 1rem;
+                right: 1rem;
+                width: 3rem;
+                height: 3rem;
+            }
 
             nav a, nav button {
                 font-size: 0.8rem;
@@ -344,7 +331,6 @@
             }
         }
 
-        /* Yatay mod için */
         @media (max-width: 768px) and (orientation: landscape) {
             .modal-content {
                 max-height: 70vh;
@@ -353,25 +339,24 @@
             .compact-header {
                 padding: 0.5rem 0;
             }
-}
+        }
     </style>
 </head>
 <body class="min-h-screen">
-    <!-- MOBİL UYUMLU NAVİGASYON -->
     <nav class="bg-white/90 backdrop-blur-md shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4">
             <div class="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
                 <a class="text-xl sm:text-2xl text-primary text-center sm:text-left" href="https://libedge-website.pages.dev/">
-                <span class="font-bold">Lib</span>Edge Eğitim ve Danışmanlık
-            </a>
+                    <span class="font-bold">Lib</span>Edge Eğitim ve Danışmanlık
+                </a>
                 <div class="flex flex-wrap justify-center items-center gap-2 sm:gap-4 sm:gap-6 text-xs sm:text-sm font-medium text-gray-700">
                     <a class="hover:text-primary transition-colors px-2 py-1" href="https://libedge-website.pages.dev/#Products">Ürünler</a>
                     <a class="hover:text-primary transition-colors px-2 py-1" href="https://libedge-website.pages.dev/#brochures">Broşürler</a>
                     <a class="hover:text-primary transition-colors px-2 py-1" href="https://libedge-website.pages.dev/#contact">İletişim</a>
                     <a class="text-primary font-semibold relative px-2 py-1" href="#">
-                    Duyurular
-                    <span class="notification-dot absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </a>
+                        Duyurular
+                        <span class="notification-dot absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </a>
                     <button class="bg-primary text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-opacity-90 transition-all text-xs sm:text-sm">English</button>
                 </div>
             </div>
@@ -388,7 +373,6 @@
             </p>
         </div>
 
-        <!-- MOBİL UYUMLU ARAMA VE FİLTRELEME -->
         <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-4 sm:p-6 mb-8 border border-white/20">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6">
                 <div class="flex flex-col sm:flex-row gap-3 w-full">
@@ -431,10 +415,8 @@
             </div>
         </div>
 
-        <div id="announcementsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-12">
-            <div class="skeleton-card rounded-2xl p-6 h-64"></div>
-            <div class="skeleton-card rounded-2xl p-6 h-64"></div>
-            <div class="skeleton-card rounded-2xl p-6 h-64"></div>
+        <div id="announcements" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-12">
+            <!-- Duyuru kartları dinamik olarak AnnouncementManager tarafından eklenecek -->
         </div>
         
         <div id="paginationContainer" class="flex justify-center items-center mt-8 space-x-2"></div>
@@ -460,14 +442,15 @@
         <i class="fas fa-arrow-up text-sm sm:text-base"></i>
     </button>
 
-<div id="announcementModal" class="modal fixed inset-0 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
-    <div class="modal-content bg-white rounded-2xl p-6 sm:p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto relative shadow-2xl">
-        <button onclick="closeModal()" class="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-500 hover:text-gray-700 text-lg sm:text-xl" aria-label="Modali kapat">
-            <i class="fas fa-times"></i>
-        </button>
+    <div id="announcementModal" class="modal fixed inset-0 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+        <div class="modal-content bg-white rounded-2xl p-6 sm:p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto relative shadow-2xl">
+            <button onclick="closeModal()" class="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-500 hover:text-gray-700 text-lg sm:text-xl" aria-label="Modali kapat">
+                <i class="fas fa-times"></i>
+            </button>
             <div id="modalContent" class="pr-6 sm:pr-8">
+                <span id="modalViews" class="block mt-2">Görüntüleme: 0</span>
                 <!-- Modal içeriği buraya gelecek -->
-                </div>
+            </div>
             <div class="flex justify-between items-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
                 <button onclick="shareAnnouncement()" class="flex items-center text-primary hover:text-indigo-600 transition-colors text-sm sm:text-base">
                     <i class="fas fa-share-alt mr-2"></i>Paylaş
@@ -482,10 +465,8 @@
     <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
 <script>
-    // Worker URL
     const WORKER_URL = 'https://view-counter.agursel.workers.dev/';
 
-    // SAYIYI ARTIRAN fonksiyon
     async function incrementViewCount(pageId) {
         try {
             const response = await fetch(WORKER_URL, {
@@ -501,7 +482,10 @@
 
             if (response.ok) {
                 const data = await response.json();
-                return data.views;
+                console.log(`incrementViewCount (${pageId}):`, data);
+                return data.views || 0;
+            } else {
+                console.error(`incrementViewCount (${pageId}) failed:`, response.status);
             }
         } catch (error) {
             console.error('Görüntüleme sayacı hatası:', error);
@@ -509,7 +493,6 @@
         return 0;
     }
 
-    // SADECE OKUYAN fonksiyon - POST kullan
     async function getViewCount(pageId) {
         try {
             const response = await fetch(WORKER_URL, {
@@ -525,12 +508,15 @@
 
             if (response.ok) {
                 const data = await response.json();
+                console.log(`getViewCount (${pageId}):`, data);
                 return data.views || 0;
+            } else {
+                console.error(`getViewCount (${pageId}) failed:`, response.status);
             }
         } catch (error) {
             console.error('Görüntüleme sayısı alınamadı:', error);
         }
-        return 0; // Hata durumunda sıfır döndür
+        return 0;
     }
 
     class AnnouncementManager {
@@ -621,7 +607,7 @@
         showFallbackData() {
             this.announcements = [
                 {
-                    id: 1,
+                    id: "announcement-1",
                     title: "Hoş Geldiniz",
                     category: "general",
                     date: new Date().toISOString(),
@@ -631,7 +617,7 @@
                     views: 0
                 },
                 {
-                    id: 2,
+                    id: "announcement-2",
                     title: "Yeni Özellikler Yakında",
                     category: "new-product",
                     date: new Date().toISOString(),
@@ -646,8 +632,8 @@
 
         async loadAllViewCounts() {
             const cache = JSON.parse(localStorage.getItem('viewCounts') || '{}');
-            const viewPromises = this.announcements.map(async (announcement, index) => {
-                const announcementId = `announcement-${announcement.id || index}`;
+            const viewPromises = this.announcements.map(async (announcement) => {
+                const announcementId = announcement.id;
                 if (cache[announcementId]) {
                     announcement.views = cache[announcementId];
                     return cache[announcementId];
@@ -655,6 +641,12 @@
                 const views = await getViewCount(announcementId);
                 announcement.views = views;
                 cache[announcementId] = views;
+                const viewElement = document.querySelector(`#views-${announcementId}`);
+                if (viewElement) {
+                    viewElement.textContent = views;
+                } else {
+                    console.warn(`View element not found for ${announcementId}`);
+                }
                 return views;
             });
 
@@ -744,7 +736,7 @@
         }
 
         renderAnnouncements() {
-            const container = document.getElementById('announcementsGrid');
+            const container = document.getElementById('announcements');
             const startIndex = (this.currentPage - 1) * this.itemsPerPage;
             const endIndex = startIndex + this.itemsPerPage;
             const currentAnnouncements = this.filteredAnnouncements.slice(startIndex, endIndex);
@@ -760,7 +752,7 @@
                 return;
             }
 
-            container.innerHTML = currentAnnouncements.map((announcement, index) => {
+            container.innerHTML = currentAnnouncements.map((announcement) => {
                 const categoryInfo = this.getCategoryInfo(announcement.category);
                 const date = new Date(announcement.date);
                 const formattedDate = date.toLocaleDateString('tr-TR', { 
@@ -770,7 +762,7 @@
                 });
 
                 const priorityClass = announcement.priority === 'high' ? 'priority-high' : '';
-                const announcementId = `announcement-${announcement.id || (startIndex + index)}`;
+                const announcementId = announcement.id;
                 const views = announcement.views || 0;
 
                 return `
@@ -875,19 +867,22 @@
             return categoryMap[category] || categoryMap.general;
         }
 
-        async openModal(title, announcementId = null) {
+        async openModal(title, announcementId) {
             const announcement = this.announcements.find(a => a.title === title);
             if (!announcement) return;
 
             const viewedKey = `viewed:${announcementId}`;
+            let updatedViews = announcement.views || 0;
             if (!sessionStorage.getItem(viewedKey)) {
-                const updatedViews = await incrementViewCount(announcementId);
+                updatedViews = await incrementViewCount(announcementId);
                 announcement.views = updatedViews;
                 sessionStorage.setItem(viewedKey, 'true');
 
                 const viewElement = document.getElementById(`views-${announcementId}`);
                 if (viewElement) {
                     viewElement.textContent = updatedViews;
+                } else {
+                    console.warn(`View element not found for ${announcementId}`);
                 }
 
                 const cache = JSON.parse(localStorage.getItem('viewCounts') || '{}');
@@ -906,6 +901,13 @@
 
             const contentHtml = DOMPurify.sanitize(marked.parse(announcement.full_content || announcement.summary));
 
+            const modalViews = document.getElementById('modalViews');
+            if (modalViews) {
+                modalViews.textContent = `Görüntüleme: ${updatedViews}`;
+            } else {
+                console.warn('Modal views element not found');
+            }
+
             document.getElementById('modalContent').innerHTML = `
                 <div class="mb-6">
                     <span class="inline-block ${categoryInfo.badgeClass} px-4 py-2 rounded-full text-sm font-medium mb-4">
@@ -919,7 +921,7 @@
                         <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
                     </span>
                     <span class="flex items-center">
-                        <i class="far fa-eye mr-2"></i>${announcement.views || 0} görüntüleme
+                        <i class="far fa-eye mr-2"></i><span id="modalViewsInner">${updatedViews}</span> görüntüleme
                     </span>
                     <span class="flex items-center">
                         <i class="far fa-clock mr-2"></i>${Math.ceil(announcement.full_content?.length / 200 || 1)} dk okuma
@@ -1002,7 +1004,7 @@
         }
 
         showErrorState() {
-            const container = document.getElementById('announcementsGrid');
+            const container = document.getElementById('announcements');
             container.innerHTML = `
                 <div class="col-span-full text-center py-16">
                     <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
