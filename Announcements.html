@@ -433,22 +433,28 @@ async function getViewCount(pageId) {
             }
 async loadAnnouncements() {
     try {
+        console.log('🔍 JSON yükleniyor...');
         const response = await fetch('/content/duyurular.json');
+        
         if (!response.ok) {
-            throw new Error('Duyurular yüklenemedi.');
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        
         const data = await response.json();
+        console.log('✅ JSON yüklendi:', data);
         
-        this.announcements = data.items;
-        
-        // Tüm görüntüleme sayılarını önce yükle
-        await this.loadAllViewCounts();
+        this.announcements = data.items || [];
+        console.log(`📝 ${this.announcements.length} duyuru atandı`);
         
         this.updateStats();
+        console.log('📊 İstatistikler güncellendi');
+        
         this.applyFilters();
+        console.log('🎛️  Filtreler uygulandı');
         
     } catch (error) {
-        this.showToast('Duyurular yüklenirken hata oluştu', 'error');
+        console.error('❌ Hata:', error);
+        this.showToast('Duyurular yüklenirken hata oluştu: ' + error.message, 'error');
         this.showErrorState();
     }
 }
