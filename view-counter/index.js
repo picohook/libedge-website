@@ -1,17 +1,17 @@
-// Worker'ın ana dosyası
+// index.js — Cloudflare Worker Ana Dosyası
+import { Counter } from './Counter.js';
 
 export default {
   async fetch(request, env, ctx) {
     const method = request.method.toUpperCase();
     const origin = request.headers.get('Origin');
-    
-    // CORS/Güvenlik ayarlarınızı orijinal index.js'ten kopyalayın
+
+    // Güvenli CORS alanları
     const allowedOrigins = [
       'https://libedge-website.pages.dev',
       'http://localhost:3000',
       'http://127.0.0.1:3000'
     ];
-    
     const isOriginAllowed = allowedOrigins.includes(origin);
     const corsOrigin = isOriginAllowed ? origin : allowedOrigins[0];
 
@@ -22,47 +22,57 @@ export default {
       "Access-Control-Max-Age": "86400"
     };
 
+    // Preflight isteği
     if (method === "OPTIONS") {
       return new Response(null, { status: 200, headers: corsHeaders });
     }
 
-    if (request.method === "POST") {
-      try {
-        const data = await request.json();
-        
-        const { page, action } = data;
-        
-        if (page && (action === 'increment' || action === 'get')) {
-            // Durable Object'e yönlendir:
-            // env.COUNTER, Cloudflare panosunda tanımlayacağınız binding ismidir.
-            const counterId = env.COUNTER.idFromName(page); 
-            const counterObject = env.COUNTER.get(counterId);
-            
-            // İstek, Counter.js içindeki DO'ya iletilir 
-            return await counterObject.fetch(request);
-        }
+    // Sadece POST kabul edilir
+    if (method !== "POST") {
+      return new Response("Method not allowed", {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "text/plain" }
+      });
+    }
 
-        // Sayaç isteği değilse, hata döndür
-        return new Response(JSON.stringify({ success: false, error: "Invalid request format. Only counter requests are supported." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-        
-      } catch (err) {
-        // Hata yakalama
-        return new Response(JSON.stringify({ success: false, error: err.message }), {
-          status: 500,
+    try {
+      const { page, action } = await request.json();
+
+      if (!page || !["increment", "get"].includes(action)) {
+        return new Response(JSON.stringify({ success: false, error: "Invalid request format." }), {
+          status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
-    }
 
-    return new Response("Method not allowed", {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "text/plain" }
-    });
+      // DO instance oluştur
+      const counterId = env.COUNTER.idFromName(page);
+      const counterObject = env.COUNTER.get(counterId);
+
+      // İstek, Counter DO’ya yönlendirilir.
+      const doRequest = new Request(request.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page, action })
+      });
+
+      const response = await counterObject.fetch(doRequest);
+
+      // DO yanıtını CORS ile birlikte döndür
+      const result = await response.text();
+      return new Response(result, {
+        status: response.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+
+    } catch (err) {
+      return new Response(JSON.stringify({ success: false, error: err.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
   }
 };
 
-// Bu, Worker'ın ana dosyası olduğu için, DO sınıfını da buradan dışa aktarmalıyız.
+// DO sınıfını dışa aktar
 export { Counter } from './Counter.js';
