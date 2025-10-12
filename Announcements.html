@@ -364,7 +364,7 @@ async function incrementViewCount(pageId) {
     return 0;
 }
 
-// SADECE OKUYAN fonksiyon
+// SADECE OKUYAN fonksiyon - POST kullan
 async function getViewCount(pageId) {
     try {
         const response = await fetch(WORKER_URL, {
@@ -374,7 +374,7 @@ async function getViewCount(pageId) {
             },
             body: JSON.stringify({
                 page: pageId,
-                action: 'get'  // Sadece oku
+                action: 'get'  // Açıkça 'get' belirt
             })
         });
 
