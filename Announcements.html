@@ -49,7 +49,10 @@
             border-left: 6px solid #2563eb;
             background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
         }
-        
+        .product-update {
+            border-left: 6px solid #7c3aed;
+            background: linear-gradient(135deg, #f3e8ff 0%, #ffffff 100%);
+        }
         .event {
             border-left: 6px solid #16a34a;
             background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
@@ -269,6 +272,9 @@
                 </button>
                 <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="new-product">
                     <i class="fas fa-cube mr-2"></i>Yeni Ürünler
+                </button>
+                <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="product-update">
+                    <i class="fas fa-sync-alt mr-2"></i>Ürün Güncellemeleri
                 </button>
                 <button class="filter-btn px-6 py-3 rounded-full border border-gray-300 text-sm font-medium" data-filter="event">
                     <i class="fas fa-calendar-alt mr-2"></i>Etkinlikler
@@ -662,6 +668,7 @@ async loadAllViewCounts() {
                 const categoryMap = {
                     urgent: { text: 'Acil Duyuru', badgeClass: 'bg-red-100 text-red-800', icon: '🚨' },
                     'new-product': { text: 'Yeni Ürün', badgeClass: 'bg-blue-100 text-blue-800', icon: '🎯' },
+                    'product-update': { text: 'Ürün Güncellemesi', badgeClass: 'bg-purple-100 text-purple-800', icon: '🔄' },
                     event: { text: 'Etkinlik', badgeClass: 'bg-green-100 text-green-800', icon: '📅' },
                     maintenance: { text: 'Bakım', badgeClass: 'bg-yellow-100 text-yellow-800', icon: '🔧' },
                     general: { text: 'Genel', badgeClass: 'bg-purple-100 text-purple-800', icon: '📢' }
