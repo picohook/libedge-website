@@ -594,7 +594,6 @@
                 this.announcements = data.items || data;
                 console.log('📋 Duyurular:', this.announcements.length + ' adet');
                 
-                await this.loadAllViewCounts();
                 this.applyFilters();
                 
             } catch (error) {
@@ -638,11 +637,13 @@
                     console.warn(`Announcement ID missing for:`, announcement);
                     return 0;
                 }
+                console.log(`🔍 Loading view count for ${announcementId}`);
                 if (cache[announcementId]) {
                     announcement.views = cache[announcementId];
                     const viewElement = document.querySelector(`#views-${announcementId}`);
                     if (viewElement) {
                         viewElement.textContent = cache[announcementId];
+                        console.log(`✅ Updated view count for ${announcementId}: ${cache[announcementId]}`);
                     } else {
                         console.warn(`View element not found for ${announcementId}`);
                     }
@@ -654,6 +655,7 @@
                 const viewElement = document.querySelector(`#views-${announcementId}`);
                 if (viewElement) {
                     viewElement.textContent = views;
+                    console.log(`✅ Updated view count for ${announcementId}: ${views}`);
                 } else {
                     console.warn(`View element not found for ${announcementId}`);
                 }
@@ -724,6 +726,7 @@
 
             this.filteredAnnouncements = filtered;
             this.renderAnnouncements();
+            this.loadAllViewCounts(); // Görünümleri, duyurular render edildikten sonra güncelle
             this.renderPagination();
         }
 
@@ -780,6 +783,8 @@
                     return '';
                 }
 
+                console.log(`Rendering announcement: ${announcementId}`);
+
                 return `
                     <div class="announcement-card ${announcement.category} ${priorityClass} rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300"
                          onclick="announcementManager.openModal('${announcement.title.replace(/'/g, "\\'")}', '${announcementId}')">
@@ -814,8 +819,7 @@
                 `;
             }).join('');
 
-            // Görünümleri güncelle
-            this.loadAllViewCounts();
+            console.log('✅ Announcements rendered');
         }
 
         renderPagination() {
@@ -870,6 +874,7 @@
             if (page < 1 || page > Math.ceil(this.filteredAnnouncements.length / this.itemsPerPage)) return;
             this.currentPage = page;
             this.renderAnnouncements();
+            this.loadAllViewCounts(); // Görünümleri sayfa değişiminde de güncelle
             this.renderPagination();
             this.scrollToTop();
         }
@@ -903,6 +908,7 @@
                 const viewElement = document.getElementById(`views-${announcementId}`);
                 if (viewElement) {
                     viewElement.textContent = updatedViews;
+                    console.log(`✅ Updated view count for ${announcementId}: ${updatedViews}`);
                 } else {
                     console.warn(`View element not found for ${announcementId}`);
                 }
@@ -923,14 +929,15 @@
 
             const contentHtml = DOMPurify.sanitize(marked.parse(announcement.full_content || announcement.summary));
 
-            const modalContent = document.getElementById('modalContent');
             const modalViews = document.getElementById('modalViews');
             if (modalViews) {
                 modalViews.textContent = `Görüntüleme: ${updatedViews}`;
+                console.log(`✅ Updated modal view count for ${announcementId}: ${updatedViews}`);
             } else {
                 console.warn('Modal views element not found');
             }
 
+            const modalContent = document.getElementById('modalContent');
             modalContent.innerHTML = `
                 <div class="mb-6">
                     <span class="inline-block ${categoryInfo.badgeClass} px-4 py-2 rounded-full text-sm font-medium mb-4">
@@ -953,8 +960,14 @@
                 <div class="prose max-w-none text-gray-700 leading-relaxed">
                     ${contentHtml}
                 </div>
-                <span id="modalViews" class="block mt-2 text-gray-600">Görüntüleme: ${updatedViews}</span>
             `;
+
+            // modalViews öğesini içeriğin sonuna ekle
+            const viewsContainer = document.createElement('span');
+            viewsContainer.id = 'modalViews';
+            viewsContainer.className = 'block mt-2 text-gray-600';
+            viewsContainer.textContent = `Görüntüleme: ${updatedViews}`;
+            modalContent.appendChild(viewsContainer);
 
             document.getElementById('announcementModal').classList.remove('hidden');
             document.body.style.overflow = 'hidden';
