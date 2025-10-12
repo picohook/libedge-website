@@ -448,7 +448,7 @@
                 <i class="fas fa-times"></i>
             </button>
             <div id="modalContent" class="pr-6 sm:pr-8">
-                <span id="modalViews" class="block mt-2">Görüntüleme: 0</span>
+                <span id="modalViews" class="block mt-2 text-gray-600">Görüntüleme: 0</span>
                 <!-- Modal içeriği buraya gelecek -->
             </div>
             <div class="flex justify-between items-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
@@ -634,8 +634,18 @@
             const cache = JSON.parse(localStorage.getItem('viewCounts') || '{}');
             const viewPromises = this.announcements.map(async (announcement) => {
                 const announcementId = announcement.id;
+                if (!announcementId) {
+                    console.warn(`Announcement ID missing for:`, announcement);
+                    return 0;
+                }
                 if (cache[announcementId]) {
                     announcement.views = cache[announcementId];
+                    const viewElement = document.querySelector(`#views-${announcementId}`);
+                    if (viewElement) {
+                        viewElement.textContent = cache[announcementId];
+                    } else {
+                        console.warn(`View element not found for ${announcementId}`);
+                    }
                     return cache[announcementId];
                 }
                 const views = await getViewCount(announcementId);
@@ -765,6 +775,11 @@
                 const announcementId = announcement.id;
                 const views = announcement.views || 0;
 
+                if (!announcementId) {
+                    console.warn(`Announcement ID missing for:`, announcement);
+                    return '';
+                }
+
                 return `
                     <div class="announcement-card ${announcement.category} ${priorityClass} rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300"
                          onclick="announcementManager.openModal('${announcement.title.replace(/'/g, "\\'")}', '${announcementId}')">
@@ -798,6 +813,9 @@
                     </div>
                 `;
             }).join('');
+
+            // Görünümleri güncelle
+            this.loadAllViewCounts();
         }
 
         renderPagination() {
@@ -819,7 +837,8 @@
                 </button>
             `;
 
-            const maxVisiblePages = 5;
+            const maxVisiblePages = 5 Otočit stranica
+
             let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
             let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
@@ -869,7 +888,10 @@
 
         async openModal(title, announcementId) {
             const announcement = this.announcements.find(a => a.title === title);
-            if (!announcement) return;
+            if (!announcement) {
+                console.error(`Announcement not found for title: ${title}`);
+                return;
+            }
 
             const viewedKey = `viewed:${announcementId}`;
             let updatedViews = announcement.views || 0;
@@ -901,6 +923,7 @@
 
             const contentHtml = DOMPurify.sanitize(marked.parse(announcement.full_content || announcement.summary));
 
+            const modalContent = document.getElementById('modalContent');
             const modalViews = document.getElementById('modalViews');
             if (modalViews) {
                 modalViews.textContent = `Görüntüleme: ${updatedViews}`;
@@ -908,7 +931,7 @@
                 console.warn('Modal views element not found');
             }
 
-            document.getElementById('modalContent').innerHTML = `
+            modalContent.innerHTML = `
                 <div class="mb-6">
                     <span class="inline-block ${categoryInfo.badgeClass} px-4 py-2 rounded-full text-sm font-medium mb-4">
                         ${categoryInfo.icon} ${categoryInfo.text}
@@ -930,6 +953,7 @@
                 <div class="prose max-w-none text-gray-700 leading-relaxed">
                     ${contentHtml}
                 </div>
+                <span id="modalViews" class="block mt-2 text-gray-600">Görüntüleme: ${updatedViews}</span>
             `;
 
             document.getElementById('announcementModal').classList.remove('hidden');
