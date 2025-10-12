@@ -332,29 +332,53 @@
         // Worker URL - kendi worker URL'nizi buraya ekleyin
         const WORKER_URL = 'https://view-counter.agursel.workers.dev/';
 
-        // Görüntüleme sayacı fonksiyonu
-        async function updateViewCount(pageId) {
-            try {
-                const response = await fetch(WORKER_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        page: pageId
-                    })
-                });
+// SAYIYI ARTIRAN fonksiyon
+async function incrementViewCount(pageId) {
+    try {
+        const response = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                page: pageId,
+                action: 'increment'  // Açıkça belirtelim
+            })
+        });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    return data.views;
-                }
-            } catch (error) {
-                console.error('Görüntüleme sayacı hatası:', error);
-            }
-            return 0;
+        if (response.ok) {
+            const data = await response.json();
+            return data.views;
         }
+    } catch (error) {
+        console.error('Görüntüleme sayacı hatası:', error);
+    }
+    return 0;
+}
 
+// SADECE OKUYAN fonksiyon
+async function getViewCount(pageId) {
+    try {
+        const response = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                page: pageId,
+                action: 'get'  // Sadece oku
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return data.views || 0;
+        }
+    } catch (error) {
+        console.error('Görüntüleme sayısı alınamadı:', error);
+    }
+    return 0;
+}
         // Görüntüleme sayısını getirme fonksiyonu (modal için)
         async function getViewCount(pageId) {
             try {
@@ -423,7 +447,7 @@ async loadAnnouncements() {
 
 async loadAllViewCounts() {
     const viewPromises = this.announcements.map(async (announcement, index) => {
-        const views = await updateViewCount(`announcement-${announcement.id || index}`);
+        const views = await getViewCount(`announcement-${announcement.id || index}`); // getViewCount kullan
         announcement.views = views;
         return views;
     });
@@ -645,16 +669,21 @@ async loadAllViewCounts() {
                 return categoryMap[category] || categoryMap.general;
             }
 
-            async openModal(title, announcementId = null) {
+async openModal(title, announcementId = null) {
     const announcement = this.announcements.find(a => a.title === title);
     if (!announcement) return;
 
-    // Modal açıldığında görüntüleme sayısını güncelle
+    // Modal açıldığında görüntüleme sayısını ARTIR
     if (announcementId) {
-        const updatedViews = await updateViewCount(announcementId);
+        const updatedViews = await incrementViewCount(announcementId); // incrementViewCount kullan
         announcement.views = updatedViews;
+        
+        // Karttaki görüntüleme sayısını da güncelle
+        const viewElement = document.getElementById(`views-${announcementId}`);
+        if (viewElement) {
+            viewElement.textContent = updatedViews;
+        }
     }
-
     const categoryInfo = this.getCategoryInfo(announcement.category);
     const date = new Date(announcement.date);
     const formattedDate = date.toLocaleDateString('tr-TR', { 
