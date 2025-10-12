@@ -567,8 +567,9 @@ async function getViewCount(pageId) {
                                // Ekran boyutu değişikliğini dinle
                 window.addEventListener('resize', () => {
                     this.itemsPerPage = this.calculateItemsPerPage();
-    this.applyFilters();
-                }
+                    this.applyFilters();
+        });
+    }
 
             setupEventListeners() {
                 document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -586,24 +587,78 @@ async function getViewCount(pageId) {
 async loadAnnouncements() {
     try {
         console.log('🔍 JSON yükleniyor...');
-        const response = await fetch('/content/duyurular.json');
-        const data = await response.json();
         
-        this.announcements = data.items;
-        console.log('✅ JSON yüklendi:', this.announcements.length + ' duyuru');
+        // Farklı yolları deneyelim
+        const possiblePaths = [
+            '/content/duyurular.json',
+            './content/duyurular.json',
+            'content/duyurular.json',
+            '/duyurular.json',
+            './duyurular.json'
+        ];
+        
+        let response;
+        let lastError;
+        
+        for (const path of possiblePaths) {
+            try {
+                console.log(`🔄 Deneniyor: ${path}`);
+                response = await fetch(path);
+                if (response.ok) break;
+            } catch (err) {
+                lastError = err;
+                console.log(`❌ Başarısız: ${path}`);
+            }
+        }
+        
+        if (!response || !response.ok) {
+            throw new Error(`JSON dosyası bulunamadı. Son hata: ${lastError}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ JSON yüklendi:', data);
+        
+        this.announcements = data.items || data;
+        console.log('📋 Duyurular:', this.announcements.length + ' adet');
         
         // Önce duyuruları göster
         this.applyFilters();
         
-        // Sonra görüntüleme sayılarını yükle ve render et
-        await this.loadAllViewCounts();
-        console.log('🔄 Görüntüleme sayıları yüklendi, render ediliyor...');
-        this.renderAnnouncements(); // BU SATIR EKLENDİ
-        
     } catch (error) {
         console.error('❌ Hata:', error);
         this.showErrorState();
+        
+        // Fallback: Örnek veri göster
+        this.showFallbackData();
     }
+}
+
+// Fallback veri fonksiyonu
+showFallbackData() {
+    this.announcements = [
+        {
+            id: 1,
+            title: "Hoş Geldiniz",
+            category: "general",
+            date: new Date().toISOString(),
+            summary: "LibEdge duyuru sistemine hoş geldiniz. Sistem şu anda test aşamasındadır.",
+            full_content: "## Hoş Geldiniz\n\nLibEdge duyuru sistemine hoş geldiniz. Bu bir test duyurusudur. JSON dosyası yüklenemedi.",
+            priority: "medium",
+            views: 0
+        },
+        {
+            id: 2,
+            title: "Yeni Özellikler Yakında",
+            category: "new-product",
+            date: new Date().toISOString(),
+            summary: "Yeni özellikler ve güncellemeler yakında sizlerle olacak.",
+            full_content: "## Yeni Özellikler\n\nSistemimiz yakında yeni özelliklerle güncellenecek.",
+            priority: "low",
+            views: 0
+        }
+    ];
+    
+    this.applyFilters();
 }
 
 async loadAllViewCounts() {
