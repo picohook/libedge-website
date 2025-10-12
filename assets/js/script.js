@@ -950,3 +950,55 @@ function closeMapModal() {
         document.body.classList.remove('no-scroll');
     }
 }
+
+// Footer kategori linklerine tıklama olayını ekle
+document.addEventListener('DOMContentLoaded', function() {
+    // ... mevcut kodlarınız ...
+    
+    // Footer kategori filtreleme
+    const footerCategoryLinks = document.querySelectorAll('footer a[data-filter]');
+    
+    footerCategoryLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const filterValue = this.getAttribute('data-filter');
+            
+            // Products bölümüne scroll yap
+            const productsSection = document.getElementById('products');
+            if (productsSection) {
+                window.scrollTo({
+                    top: productsSection.offsetTop - 100,
+                    behavior: 'smooth'
+                });
+            }
+            
+            // Filtreyi uygula (kısa bir gecikmeyle)
+            setTimeout(() => {
+                const filterButton = document.querySelector(`.subject-btn[data-subject="${filterValue}"]`);
+                if (filterButton) {
+                    // "Tümü" butonunu devre dışı bırak
+                    document.querySelector('.subject-btn[data-subject="all"]').classList.remove('active');
+                    document.querySelector('.subject-btn[data-subject="all"]').setAttribute('aria-pressed', 'false');
+                    
+                    // Tüm aktif butonları temizle
+                    document.querySelectorAll('.subject-btn.active').forEach(btn => {
+                        if (btn.dataset.subject !== filterValue) {
+                            btn.classList.remove('active');
+                            btn.setAttribute('aria-pressed', 'false');
+                        }
+                    });
+                    
+                    // Hedef butonu aktif et
+                    filterButton.classList.add('active');
+                    filterButton.setAttribute('aria-pressed', 'true');
+                    
+                    // Filtreyi güncelle
+                    if (typeof updateFilter === 'function') {
+                        updateFilter();
+                    }
+                }
+            }, 500);
+        });
+    });
+});
