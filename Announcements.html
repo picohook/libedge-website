@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.7/dist/purify.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -459,11 +460,11 @@
         <i class="fas fa-arrow-up text-sm sm:text-base"></i>
     </button>
 
-    <div id="announcementModal" class="modal fixed inset-0 flex items-center justify-center z-50 hidden">
-        <div class="modal-content bg-white rounded-2xl p-6 sm:p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto relative shadow-2xl">
-            <button onclick="closeModal()" class="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-500 hover:text-gray-700 text-lg sm:text-xl">
-                <i class="fas fa-times"></i>
-            </button>
+<div id="announcementModal" class="modal fixed inset-0 flex items-center justify-center z-50 hidden" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+    <div class="modal-content bg-white rounded-2xl p-6 sm:p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto relative shadow-2xl">
+        <button onclick="closeModal()" class="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-500 hover:text-gray-700 text-lg sm:text-xl" aria-label="Modali kapat">
+            <i class="fas fa-times"></i>
+        </button>
             <div id="modalContent" class="pr-6 sm:pr-8">
                 <!-- Modal içeriği buraya gelecek -->
                 </div>
@@ -480,593 +481,581 @@
 
     <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
-    <script>
-        // Worker URL - kendi worker URL'nizi buraya ekleyin
-        const WORKER_URL = 'https://view-counter.agursel.workers.dev/';
+<script>
+    // Worker URL
+    const WORKER_URL = 'https://view-counter.agursel.workers.dev/';
 
-// SAYIYI ARTIRAN fonksiyon
-async function incrementViewCount(pageId) {
-    try {
-        const response = await fetch(WORKER_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                page: pageId,
-                action: 'increment'  // Açıkça belirtelim
-            })
-        });
+    // SAYIYI ARTIRAN fonksiyon
+    async function incrementViewCount(pageId) {
+        try {
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    page: pageId,
+                    action: 'increment'
+                })
+            });
 
-        if (response.ok) {
-            const data = await response.json();
-            return data.views;
-        }
-    } catch (error) {
-        console.error('Görüntüleme sayacı hatası:', error);
-    }
-    return 0;
-}
-
-// SADECE OKUYAN fonksiyon - POST kullan
-async function getViewCount(pageId) {
-    try {
-        const response = await fetch(WORKER_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                page: pageId,
-                action: 'get'  // Açıkça 'get' belirt
-            })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            return data.views || 0;
-        }
-    } catch (error) {
-        console.error('Görüntüleme sayısı alınamadı:', error);
-    }
-    return 0;
-}
-        // Görüntüleme sayısını getirme fonksiyonu (modal için)
-        async function getViewCount(pageId) {
-            try {
-                const response = await fetch(`${WORKER_URL}?page=${pageId}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    return data.views || 0;
-                }
-            } catch (error) {
-                console.error('Görüntüleme sayısı alınamadı:', error);
+            if (response.ok) {
+                const data = await response.json();
+                return data.views;
             }
-            return Math.floor(Math.random() * 500) + 50; // Fallback
+        } catch (error) {
+            console.error('Görüntüleme sayacı hatası:', error);
+        }
+        return 0;
+    }
+
+    // SADECE OKUYAN fonksiyon - POST kullan
+    async function getViewCount(pageId) {
+        try {
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    page: pageId,
+                    action: 'get',
+                }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return data.views || 0;
+            }
+        } catch (error) {
+            console.error('Görüntüleme sayısı alınamadı:', error);
+        }
+        return 0; // Hata durumunda sıfır döndür
+    }
+
+    class AnnouncementManager {
+        constructor() {
+            this.announcements = [];
+            this.filteredAnnouncements = [];
+            this.currentPage = 1;
+            this.itemsPerPage = this.calculateItemsPerPage();
+            this.currentFilter = 'all';
+            this.currentSort = 'date-desc';
+            this.searchTerm = '';
+            this.init();
         }
 
-        class AnnouncementManager {
-            constructor() {
-                this.announcements = [];
-                this.filteredAnnouncements = [];
-                this.currentPage = 1;
+        calculateItemsPerPage() {
+            return window.innerWidth < 768 ? 4 : 6;
+        }
+
+        init() {
+            this.setupEventListeners();
+            this.loadAnnouncements();
+            window.addEventListener('resize', () => {
                 this.itemsPerPage = this.calculateItemsPerPage();
-                this.currentFilter = 'all';
-                this.currentSort = 'date-desc';
-                this.searchTerm = '';
-                this.init();
-            }
+                this.applyFilters();
+            });
+        }
 
-            calculateItemsPerPage() {
-                return window.innerWidth < 768 ? 4 : 6;
-            }
+        setupEventListeners() {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => this.handleFilter(e));
+            });
 
-            init() {
-                this.setupEventListeners();
-                this.loadAnnouncements();
-                               // Ekran boyutu değişikliğini dinle
-                window.addEventListener('resize', () => {
-                    this.itemsPerPage = this.calculateItemsPerPage();
-                    this.applyFilters();
-        });
-    }
+            const searchInput = document.getElementById('searchInput');
+            const clearSearch = document.getElementById('clearSearch');
+            
+            searchInput.addEventListener('input', (e) => this.handleSearch(e));
+            clearSearch.addEventListener('click', () => this.clearSearch());
 
-            setupEventListeners() {
-                document.querySelectorAll('.filter-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => this.handleFilter(e));
-                });
+            document.getElementById('sortSelect').addEventListener('change', (e) => this.handleSort(e));
+        }
 
-                const searchInput = document.getElementById('searchInput');
-                const clearSearch = document.getElementById('clearSearch');
-                
-                searchInput.addEventListener('input', (e) => this.handleSearch(e));
-                clearSearch.addEventListener('click', () => this.clearSearch());
-
-                document.getElementById('sortSelect').addEventListener('change', (e) => this.handleSort(e));
-            }
-async loadAnnouncements() {
-    try {
-        console.log('🔍 JSON yükleniyor...');
-        
-        // Farklı yolları deneyelim
-        const possiblePaths = [
-            '/content/duyurular.json',
-            './content/duyurular.json',
-            'content/duyurular.json',
-            '/duyurular.json',
-            './duyurular.json'
-        ];
-        
-        let response;
-        let lastError;
-        
-        for (const path of possiblePaths) {
+        async loadAnnouncements() {
             try {
-                console.log(`🔄 Deneniyor: ${path}`);
-                response = await fetch(path);
-                if (response.ok) break;
-            } catch (err) {
-                lastError = err;
-                console.log(`❌ Başarısız: ${path}`);
-            }
-        }
-        
-        if (!response || !response.ok) {
-            throw new Error(`JSON dosyası bulunamadı. Son hata: ${lastError}`);
-        }
-        
-        const data = await response.json();
-        console.log('✅ JSON yüklendi:', data);
-        
-        this.announcements = data.items || data;
-        console.log('📋 Duyurular:', this.announcements.length + ' adet');
-        
-        // Önce duyuruları göster
-        this.applyFilters();
-        
-    } catch (error) {
-        console.error('❌ Hata:', error);
-        this.showErrorState();
-        
-        // Fallback: Örnek veri göster
-        this.showFallbackData();
-    }
-}
-
-// Fallback veri fonksiyonu
-showFallbackData() {
-    this.announcements = [
-        {
-            id: 1,
-            title: "Hoş Geldiniz",
-            category: "general",
-            date: new Date().toISOString(),
-            summary: "LibEdge duyuru sistemine hoş geldiniz. Sistem şu anda test aşamasındadır.",
-            full_content: "## Hoş Geldiniz\n\nLibEdge duyuru sistemine hoş geldiniz. Bu bir test duyurusudur. JSON dosyası yüklenemedi.",
-            priority: "medium",
-            views: 0
-        },
-        {
-            id: 2,
-            title: "Yeni Özellikler Yakında",
-            category: "new-product",
-            date: new Date().toISOString(),
-            summary: "Yeni özellikler ve güncellemeler yakında sizlerle olacak.",
-            full_content: "## Yeni Özellikler\n\nSistemimiz yakında yeni özelliklerle güncellenecek.",
-            priority: "low",
-            views: 0
-        }
-    ];
-    
-    this.applyFilters();
-}
-
-async loadAllViewCounts() {
-    const viewPromises = this.announcements.map(async (announcement, index) => {
-        const views = await getViewCount(`announcement-${announcement.id || index}`); // getViewCount kullan
-        announcement.views = views;
-        return views;
-    });
-    
-    await Promise.all(viewPromises);
-}
-            updateStats() {
-//                document.getElementById('totalCount').textContent = this.announcements.length;
-  //              document.getElementById('urgentCount').textContent = this.announcements.filter(a => a.category === 'urgent').length;
-  //              document.getElementById('productCount').textContent = this.announcements.filter(a => a.category === 'new-product').length;
-    //            document.getElementById('eventCount').textContent = this.announcements.filter(a => a.category === 'event').length;
-       return;      
-    }
-
-            handleFilter(e) {
-                document.querySelectorAll('.filter-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                e.target.classList.add('active');
-
-                this.currentFilter = e.target.dataset.filter;
-                this.currentPage = 1;
-                this.applyFilters();
-            }
-
-            handleSearch(e) {
-                this.searchTerm = e.target.value.toLowerCase();
-                const clearBtn = document.getElementById('clearSearch');
+                console.log('🔍 JSON yükleniyor...');
                 
-                if (this.searchTerm) {
-                    clearBtn.classList.remove('hidden');
-                } else {
-                    clearBtn.classList.add('hidden');
-                }
-
-                this.currentPage = 1;
-                this.applyFilters();
-            }
-
-            clearSearch() {
-                document.getElementById('searchInput').value = '';
-                document.getElementById('clearSearch').classList.add('hidden');
-                this.searchTerm = '';
-                this.applyFilters();
-            }
-
-            handleSort(e) {
-                this.currentSort = e.target.value;
-                this.applyFilters();
-            }
-
-            applyFilters() {
-                let filtered = [...this.announcements];
-
-                if (this.currentFilter !== 'all') {
-                    filtered = filtered.filter(item => item.category === this.currentFilter);
-                }
-
-                if (this.searchTerm) {
-                    filtered = filtered.filter(item => 
-                        item.title.toLowerCase().includes(this.searchTerm) ||
-                        item.summary.toLowerCase().includes(this.searchTerm) ||
-                        (item.full_content && item.full_content.toLowerCase().includes(this.searchTerm))
-                    );
-                }
-
-                filtered = this.sortAnnouncements(filtered);
-
-                this.filteredAnnouncements = filtered;
-                this.renderAnnouncements();
-                this.renderPagination();
-            }
-
-            sortAnnouncements(announcements) {
-                return announcements.sort((a, b) => {
-                    switch (this.currentSort) {
-                        case 'date-desc':
-                            return new Date(b.date) - new Date(a.date);
-                        case 'date-asc':
-                            return new Date(a.date) - new Date(b.date);
-                        case 'priority':
-                            const priorityOrder = { high: 3, medium: 2, low: 1 };
-                            return priorityOrder[b.priority || 'low'] - priorityOrder[a.priority || 'low'];
-                        case 'title':
-                            return a.title.localeCompare(b.title, 'tr');
-                        default:
-                            return 0;
+                const possiblePaths = [
+                    '/content/duyurular.json',
+                    './content/duyurular.json',
+                    'content/duyurular.json',
+                    '/duyurular.json',
+                    './duyurular.json'
+                ];
+                
+                let response;
+                let lastError;
+                
+                for (const path of possiblePaths) {
+                    try {
+                        console.log(`🔄 Deneniyor: ${path}`);
+                        response = await fetch(path);
+                        if (response.ok) break;
+                    } catch (err) {
+                        lastError = err;
+                        console.log(`❌ Başarısız: ${path}`);
                     }
-                });
-            }
-
-            renderAnnouncements() {
-    const container = document.getElementById('announcementsGrid');
-    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-    const endIndex = startIndex + this.itemsPerPage;
-    const currentAnnouncements = this.filteredAnnouncements.slice(startIndex, endIndex);
-
-    if (currentAnnouncements.length === 0) {
-        container.innerHTML = `
-            <div class="col-span-full text-center py-16">
-                <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
-                <h3 class="text-xl font-semibold text-gray-600 mb-2">Duyuru bulunamadı</h3>
-                <p class="text-gray-500">Arama kriterlerinizi değiştirmeyi deneyin.</p>
-            </div>
-        `;
-        return;
-    }
-
-    container.innerHTML = currentAnnouncements.map((announcement, index) => {
-        const categoryInfo = this.getCategoryInfo(announcement.category);
-        const date = new Date(announcement.date);
-        const formattedDate = date.toLocaleDateString('tr-TR', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        });
-
-        const priorityClass = announcement.priority === 'high' ? 'priority-high' : '';
-        const announcementId = `announcement-${announcement.id || (startIndex + index)}`;
-        const views = announcement.views || 0;
-
-        return `
-            <div class="announcement-card ${announcement.category} ${priorityClass} rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300"
-                 onclick="announcementManager.openModal('${announcement.title.replace(/'/g, "\\'")}', '${announcementId}')">
-                <div class="p-6 relative">
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="category-badge ${categoryInfo.badgeClass} px-3 py-1 rounded-full text-xs font-medium">
-                            ${categoryInfo.icon} ${categoryInfo.text}
-                        </span>
-                        ${announcement.priority === 'high' ? '<span class="text-red-500 text-lg">🔥</span>' : ''}
-                    </div>
-                    
-                    <div class="flex items-center mb-3">
-                        <span class="inline-flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                            <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
-                        </span>
-                    </div>
-                    
-                    <h3 class="text-xl font-bold text-primary mb-3 line-clamp-2">${announcement.title}</h3>
-                    <p class="text-gray-600 mb-4 line-clamp-3">${announcement.summary}</p>
-                    
-                    <div class="flex justify-between items-center">
-                        <span class="text-primary font-semibold inline-flex items-center hover:text-indigo-600 transition-colors">
-                            Devamını oku <i class="fas fa-arrow-right ml-2 text-sm"></i>
-                        </span>
-                        <div class="flex items-center text-sm text-gray-500">
-                            <i class="far fa-eye mr-1"></i>
-                            <span class="view-count" id="views-${announcementId}">${views}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-            renderPagination() {
-                const container = document.getElementById('paginationContainer');
-                const totalPages = Math.ceil(this.filteredAnnouncements.length / this.itemsPerPage);
+                }
                 
-                if (totalPages <= 1) {
-                    container.innerHTML = '';
-                    return;
+                if (!response || !response.ok) {
+                    throw new Error(`JSON dosyası bulunamadı. Son hata: ${lastError}`);
                 }
-
-                let paginationHTML = '';
-
-                paginationHTML += `
-                    <button onclick="announcementManager.goToPage(${this.currentPage - 1})" 
-                            class="px-4 py-2 border rounded-lg transition-all ${this.currentPage === 1 ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-primary hover:text-white'}"
-                            ${this.currentPage === 1 ? 'disabled' : ''}>
-                        <i class="fas fa-chevron-left mr-1"></i> Önceki
-                    </button>
-                `;
-
-                const maxVisiblePages = 5;
-                let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
-                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-                if (endPage - startPage + 1 < maxVisiblePages) {
-                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                }
-
-                for (let i = startPage; i <= endPage; i++) {
-                    paginationHTML += `
-                        <button onclick="announcementManager.goToPage(${i})" 
-                                class="px-4 py-2 mx-1 border rounded-lg transition-all ${this.currentPage === i ? 'bg-primary text-white' : 'bg-white hover:bg-primary hover:text-white'}">
-                            ${i}
-                        </button>
-                    `;
-                }
-
-                paginationHTML += `
-                    <button onclick="announcementManager.goToPage(${this.currentPage + 1})" 
-                            class="px-4 py-2 border rounded-lg transition-all ${this.currentPage === totalPages ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-primary hover:text-white'}"
-                            ${this.currentPage === totalPages ? 'disabled' : ''}>
-                        Sonraki <i class="fas fa-chevron-right ml-1"></i>
-                    </button>
-                `;
-
-                container.innerHTML = paginationHTML;
+                
+                const data = await response.json();
+                console.log('✅ JSON yüklendi:', data);
+                
+                this.announcements = data.items || data;
+                console.log('📋 Duyurular:', this.announcements.length + ' adet');
+                
+                await this.loadAllViewCounts();
+                this.applyFilters();
+                
+            } catch (error) {
+                console.error('❌ Hata:', error);
+                this.showErrorState();
+                this.showFallbackData();
             }
-
-            goToPage(page) {
-                if (page < 1 || page > Math.ceil(this.filteredAnnouncements.length / this.itemsPerPage)) return;
-                this.currentPage = page;
-                this.renderAnnouncements();
-                this.renderPagination();
-                this.scrollToTop();
-            }
-
-            getCategoryInfo(category) {
-                const categoryMap = {
-                    urgent: { text: 'Acil Duyuru', badgeClass: 'bg-red-100 text-red-800', icon: '🚨' },
-                    'new-product': { text: 'Yeni Ürün', badgeClass: 'bg-blue-100 text-blue-800', icon: '🎯' },
-                    'product-update': { text: 'Ürün Güncellemesi', badgeClass: 'bg-purple-100 text-purple-800', icon: '🔄' },
-                    event: { text: 'Etkinlik', badgeClass: 'bg-green-100 text-green-800', icon: '📅' },
-                    maintenance: { text: 'Bakım', badgeClass: 'bg-yellow-100 text-yellow-800', icon: '🔧' },
-                    general: { text: 'Genel', badgeClass: 'bg-purple-100 text-purple-800', icon: '📢' }
-                };
-                return categoryMap[category] || categoryMap.general;
-            }
-
-async openModal(title, announcementId = null) {
-    const announcement = this.announcements.find(a => a.title === title);
-    if (!announcement) return;
-
-    // Modal açıldığında görüntüleme sayısını ARTIR
-    if (announcementId) {
-        const updatedViews = await incrementViewCount(announcementId); // incrementViewCount kullan
-        announcement.views = updatedViews;
-        
-        // Karttaki görüntüleme sayısını da güncelle
-        const viewElement = document.getElementById(`views-${announcementId}`);
-        if (viewElement) {
-            viewElement.textContent = updatedViews;
         }
-    }
-    const categoryInfo = this.getCategoryInfo(announcement.category);
-    const date = new Date(announcement.date);
-    const formattedDate = date.toLocaleDateString('tr-TR', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        weekday: 'long'
-    });
 
-    const contentHtml = marked.parse(announcement.full_content || announcement.summary);
-
-    document.getElementById('modalContent').innerHTML = `
-        <div class="mb-6">
-            <span class="inline-block ${categoryInfo.badgeClass} px-4 py-2 rounded-full text-sm font-medium mb-4">
-                ${categoryInfo.icon} ${categoryInfo.text}
-            </span>
-            ${announcement.priority === 'high' ? '<span class="ml-2 bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">🔥 Yüksek Öncelik</span>' : ''}
-        </div>
-        
-        <h1 class="text-3xl font-bold text-primary mb-4">${announcement.title}</h1>
-        
-        <div class="flex items-center text-gray-600 mb-6 space-x-4">
-            <span class="flex items-center">
-                <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
-            </span>
-            <span class="flex items-center">
-                <i class="far fa-eye mr-2"></i>${announcement.views || await getViewCount(announcementId)} görüntüleme
-            </span>
-            <span class="flex items-center">
-                <i class="far fa-clock mr-2"></i>${Math.ceil(announcement.full_content?.length / 200 || 1)} dk okuma
-            </span>
-        </div>
-        
-        <div class="prose max-w-none text-gray-700 leading-relaxed">
-            ${contentHtml}
-        </div>
-    `;
-
-    document.getElementById('announcementModal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-
-    this.currentAnnouncement = announcement;
-    this.currentAnnouncementId = announcementId;
-}
-
-            closeModal() {
-                document.getElementById('announcementModal').classList.add('hidden');
-                document.body.style.overflow = '';
-                this.currentAnnouncement = null;
-            }
-
-            shareAnnouncement() {
-                if (!this.currentAnnouncement) return;
-
-                if (navigator.share) {
-                    navigator.share({
-                        title: this.currentAnnouncement.title,
-                        text: this.currentAnnouncement.summary,
-                        url: window.location.href
-                    });
-                } else {
-                    navigator.clipboard.writeText(window.location.href).then(() => {
-                        this.showToast('Link panoya kopyalandı!', 'success');
-                    });
+        showFallbackData() {
+            this.announcements = [
+                {
+                    id: 1,
+                    title: "Hoş Geldiniz",
+                    category: "general",
+                    date: new Date().toISOString(),
+                    summary: "LibEdge duyuru sistemine hoş geldiniz. Sistem şu anda test aşamasındadır.",
+                    full_content: "## Hoş Geldiniz\n\nLibEdge duyuru sistemine hoş geldiniz. Bu bir test duyurusudur. JSON dosyası yüklenemedi.",
+                    priority: "medium",
+                    views: 0
+                },
+                {
+                    id: 2,
+                    title: "Yeni Özellikler Yakında",
+                    category: "new-product",
+                    date: new Date().toISOString(),
+                    summary: "Yeni özellikler ve güncellemeler yakında sizlerle olacak.",
+                    full_content: "## Yeni Özellikler\n\nSistemimiz yakında yeni özelliklerle güncellenecek.",
+                    priority: "low",
+                    views: 0
                 }
+            ];
+            this.applyFilters();
+        }
+
+        async loadAllViewCounts() {
+            const cache = JSON.parse(localStorage.getItem('viewCounts') || '{}');
+            const viewPromises = this.announcements.map(async (announcement, index) => {
+                const announcementId = `announcement-${announcement.id || index}`;
+                if (cache[announcementId]) {
+                    announcement.views = cache[announcementId];
+                    return cache[announcementId];
+                }
+                const views = await getViewCount(announcementId);
+                announcement.views = views;
+                cache[announcementId] = views;
+                return views;
+            });
+
+            await Promise.all(viewPromises);
+            localStorage.setItem('viewCounts', JSON.stringify(cache));
+        }
+
+        updateStats() {
+            return;
+        }
+
+        handleFilter(e) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            e.target.classList.add('active');
+
+            this.currentFilter = e.target.dataset.filter;
+            this.currentPage = 1;
+            this.applyFilters();
+        }
+
+        handleSearch(e) {
+            this.searchTerm = e.target.value.toLowerCase();
+            const clearBtn = document.getElementById('clearSearch');
+            
+            if (this.searchTerm) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
             }
 
-            scrollToTop() {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            this.currentPage = 1;
+            this.applyFilters();
+        }
+
+        clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearch').classList.add('hidden');
+            this.searchTerm = '';
+            this.applyFilters();
+        }
+
+        handleSort(e) {
+            this.currentSort = e.target.value;
+            this.applyFilters();
+        }
+
+        applyFilters() {
+            let filtered = [...this.announcements];
+
+            if (this.currentFilter !== 'all') {
+                filtered = filtered.filter(item => item.category === this.currentFilter);
             }
 
-            showToast(message, type = 'info') {
-                const toastContainer = document.getElementById('toastContainer');
-                const toast = document.createElement('div');
-                
-                const bgColor = {
-                    success: 'bg-green-500',
-                    error: 'bg-red-500',
-                    warning: 'bg-yellow-500',
-                    info: 'bg-blue-500'
-                }[type] || 'bg-blue-500';
-
-                const icon = {
-                    success: 'fas fa-check-circle',
-                    error: 'fas fa-exclamation-circle',
-                    warning: 'fas fa-exclamation-triangle',
-                    info: 'fas fa-info-circle'
-                }[type] || 'fas fa-info-circle';
-
-                toast.className = `${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center transform transition-all duration-300 translate-x-full`;
-                toast.innerHTML = `
-                    <i class="${icon} mr-3"></i>
-                    <span>${message}</span>
-                    <button onclick="this.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-
-                toastContainer.appendChild(toast);
-
-                setTimeout(() => {
-                    toast.classList.remove('translate-x-full');
-                }, 100);
-
-                setTimeout(() => {
-                    toast.classList.add('translate-x-full');
-                    setTimeout(() => toast.remove(), 300);
-                }, 5000);
+            if (this.searchTerm) {
+                filtered = filtered.filter(item => 
+                    item.title.toLowerCase().includes(this.searchTerm) ||
+                    item.summary.toLowerCase().includes(this.searchTerm) ||
+                    (item.full_content && item.full_content.toLowerCase().includes(this.searchTerm))
+                );
             }
 
-            showErrorState() {
-                const container = document.getElementById('announcementsGrid');
+            filtered = this.sortAnnouncements(filtered);
+
+            this.filteredAnnouncements = filtered;
+            this.renderAnnouncements();
+            this.renderPagination();
+        }
+
+        sortAnnouncements(announcements) {
+            return announcements.sort((a, b) => {
+                switch (this.currentSort) {
+                    case 'date-desc':
+                        return new Date(b.date) - new Date(a.date);
+                    case 'date-asc':
+                        return new Date(a.date) - new Date(b.date);
+                    case 'priority':
+                        const priorityOrder = { high: 3, medium: 2, low: 1 };
+                        return priorityOrder[b.priority || 'low'] - priorityOrder[a.priority || 'low'];
+                    case 'title':
+                        return a.title.localeCompare(b.title, 'tr');
+                    default:
+                        return 0;
+                }
+            });
+        }
+
+        renderAnnouncements() {
+            const container = document.getElementById('announcementsGrid');
+            const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+            const endIndex = startIndex + this.itemsPerPage;
+            const currentAnnouncements = this.filteredAnnouncements.slice(startIndex, endIndex);
+
+            if (currentAnnouncements.length === 0) {
                 container.innerHTML = `
                     <div class="col-span-full text-center py-16">
-                        <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
-                        <h3 class="text-xl font-semibold text-gray-600 mb-2">Bir hata oluştu</h3>
-                        <p class="text-gray-500 mb-4">Duyurular yüklenirken bir sorun yaşandı.</p>
-                        <button onclick="location.reload()" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
-                            <i class="fas fa-redo mr-2"></i>Tekrar Dene
-                        </button>
+                        <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
+                        <h3 class="text-xl font-semibold text-gray-600 mb-2">Duyuru bulunamadı</h3>
+                        <p class="text-gray-500">Arama kriterlerinizi değiştirmeyi deneyin.</p>
                     </div>
                 `;
+                return;
+            }
+
+            container.innerHTML = currentAnnouncements.map((announcement, index) => {
+                const categoryInfo = this.getCategoryInfo(announcement.category);
+                const date = new Date(announcement.date);
+                const formattedDate = date.toLocaleDateString('tr-TR', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+
+                const priorityClass = announcement.priority === 'high' ? 'priority-high' : '';
+                const announcementId = `announcement-${announcement.id || (startIndex + index)}`;
+                const views = announcement.views || 0;
+
+                return `
+                    <div class="announcement-card ${announcement.category} ${priorityClass} rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300"
+                         onclick="announcementManager.openModal('${announcement.title.replace(/'/g, "\\'")}', '${announcementId}')">
+                        <div class="p-6 relative">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="category-badge ${categoryInfo.badgeClass} px-3 py-1 rounded-full text-xs font-medium">
+                                    ${categoryInfo.icon} ${categoryInfo.text}
+                                </span>
+                                ${announcement.priority === 'high' ? '<span class="text-red-500 text-lg">🔥</span>' : ''}
+                            </div>
+                            
+                            <div class="flex items-center mb-3">
+                                <span class="inline-flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                                    <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
+                                </span>
+                            </div>
+                            
+                            <h3 class="text-xl font-bold text-primary mb-3 line-clamp-2">${announcement.title}</h3>
+                            <p class="text-gray-600 mb-4 line-clamp-3">${announcement.summary}</p>
+                            
+                            <div class="flex justify-between items-center">
+                                <span class="text-primary font-semibold inline-flex items-center hover:text-indigo-600 transition-colors">
+                                    Devamını oku <i class="fas fa-arrow-right ml-2 text-sm"></i>
+                                </span>
+                                <div class="flex items-center text-sm text-gray-500">
+                                    <i class="far fa-eye mr-1"></i>
+                                    <span class="view-count" id="views-${announcementId}">${views}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        renderPagination() {
+            const container = document.getElementById('paginationContainer');
+            const totalPages = Math.ceil(this.filteredAnnouncements.length / this.itemsPerPage);
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let paginationHTML = '';
+
+            paginationHTML += `
+                <button onclick="announcementManager.goToPage(${this.currentPage - 1})" 
+                        class="px-4 py-2 border rounded-lg transition-all ${this.currentPage === 1 ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-primary hover:text-white'}"
+                        ${this.currentPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left mr-1"></i> Önceki
+                </button>
+            `;
+
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `
+                    <button onclick="announcementManager.goToPage(${i})" 
+                            class="px-4 py-2 mx-1 border rounded-lg transition-all ${this.currentPage === i ? 'bg-primary text-white' : 'bg-white hover:bg-primary hover:text-white'}">
+                        ${i}
+                    </button>
+                `;
+            }
+
+            paginationHTML += `
+                <button onclick="announcementManager.goToPage(${this.currentPage + 1})" 
+                        class="px-4 py-2 border rounded-lg transition-all ${this.currentPage === totalPages ? 'cursor-not-allowed bg-gray-200 text-gray-400' : 'bg-white hover:bg-primary hover:text-white'}"
+                        ${this.currentPage === totalPages ? 'disabled' : ''}>
+                    Sonraki <i class="fas fa-chevron-right ml-1"></i>
+                </button>
+            `;
+
+            container.innerHTML = paginationHTML;
+        }
+
+        goToPage(page) {
+            if (page < 1 || page > Math.ceil(this.filteredAnnouncements.length / this.itemsPerPage)) return;
+            this.currentPage = page;
+            this.renderAnnouncements();
+            this.renderPagination();
+            this.scrollToTop();
+        }
+
+        getCategoryInfo(category) {
+            const categoryMap = {
+                urgent: { text: 'Acil Duyuru', badgeClass: 'bg-red-100 text-red-800', icon: '🚨' },
+                'new-product': { text: 'Yeni Ürün', badgeClass: 'bg-blue-100 text-blue-800', icon: '🎯' },
+                'product-update': { text: 'Ürün Güncellemesi', badgeClass: 'bg-purple-100 text-purple-800', icon: '🔄' },
+                event: { text: 'Etkinlik', badgeClass: 'bg-green-100 text-green-800', icon: '📅' },
+                maintenance: { text: 'Bakım', badgeClass: 'bg-yellow-100 text-yellow-800', icon: '🔧' },
+                general: { text: 'Genel', badgeClass: 'bg-purple-100 text-purple-800', icon: '📢' }
+            };
+            return categoryMap[category] || categoryMap.general;
+        }
+
+        async openModal(title, announcementId = null) {
+            const announcement = this.announcements.find(a => a.title === title);
+            if (!announcement) return;
+
+            const viewedKey = `viewed:${announcementId}`;
+            if (!sessionStorage.getItem(viewedKey)) {
+                const updatedViews = await incrementViewCount(announcementId);
+                announcement.views = updatedViews;
+                sessionStorage.setItem(viewedKey, 'true');
+
+                const viewElement = document.getElementById(`views-${announcementId}`);
+                if (viewElement) {
+                    viewElement.textContent = updatedViews;
+                }
+
+                const cache = JSON.parse(localStorage.getItem('viewCounts') || '{}');
+                cache[announcementId] = updatedViews;
+                localStorage.setItem('viewCounts', JSON.stringify(cache));
+            }
+
+            const categoryInfo = this.getCategoryInfo(announcement.category);
+            const date = new Date(announcement.date);
+            const formattedDate = date.toLocaleDateString('tr-TR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+
+            const contentHtml = DOMPurify.sanitize(marked.parse(announcement.full_content || announcement.summary));
+
+            document.getElementById('modalContent').innerHTML = `
+                <div class="mb-6">
+                    <span class="inline-block ${categoryInfo.badgeClass} px-4 py-2 rounded-full text-sm font-medium mb-4">
+                        ${categoryInfo.icon} ${categoryInfo.text}
+                    </span>
+                    ${announcement.priority === 'high' ? '<span class="ml-2 bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">🔥 Yüksek Öncelik</span>' : ''}
+                </div>
+                <h1 class="text-3xl font-bold text-primary mb-4">${announcement.title}</h1>
+                <div class="flex items-center text-gray-600 mb-6 space-x-4">
+                    <span class="flex items-center">
+                        <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
+                    </span>
+                    <span class="flex items-center">
+                        <i class="far fa-eye mr-2"></i>${announcement.views || 0} görüntüleme
+                    </span>
+                    <span class="flex items-center">
+                        <i class="far fa-clock mr-2"></i>${Math.ceil(announcement.full_content?.length / 200 || 1)} dk okuma
+                    </span>
+                </div>
+                <div class="prose max-w-none text-gray-700 leading-relaxed">
+                    ${contentHtml}
+                </div>
+            `;
+
+            document.getElementById('announcementModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            this.currentAnnouncement = announcement;
+            this.currentAnnouncementId = announcementId;
+        }
+
+        closeModal() {
+            document.getElementById('announcementModal').classList.add('hidden');
+            document.body.style.overflow = '';
+            this.currentAnnouncement = null;
+        }
+
+        shareAnnouncement() {
+            if (!this.currentAnnouncement) return;
+
+            if (navigator.share) {
+                navigator.share({
+                    title: this.currentAnnouncement.title,
+                    text: this.currentAnnouncement.summary,
+                    url: window.location.href
+                });
+            } else {
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    this.showToast('Link panoya kopyalandı!', 'success');
+                });
             }
         }
 
-        function subscribeNewsletter() {
-            const email = document.getElementById('newsletterEmail').value;
-            if (!email) {
-                announcementManager.showToast('Lütfen e-posta adresinizi girin', 'warning');
-                return;
-            }
+        scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
-            if (!email.includes('@')) {
-                announcementManager.showToast('Geçerli bir e-posta adresi girin', 'error');
-                return;
-            }
+        showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgColor = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            }[type] || 'bg-blue-500';
+
+            const icon = {
+                success: 'fas fa-check-circle',
+                error: 'fas fa-exclamation-circle',
+                warning: 'fas fa-exclamation-triangle',
+                info: 'fas fa-info-circle'
+            }[type] || 'fas fa-info-circle';
+
+            toast.className = `${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center transform transition-all duration-300 translate-x-full`;
+            toast.innerHTML = `
+                <i class="${icon} mr-3"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+
+            toastContainer.appendChild(toast);
 
             setTimeout(() => {
-                announcementManager.showToast('Bülten aboneliğiniz başarıyla oluşturuldu!', 'success');
-                document.getElementById('newsletterEmail').value = '';
-            }, 1000);
+                toast.classList.remove('translate-x-full');
+            }, 100);
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
         }
 
-        function closeModal() {
-            announcementManager.closeModal();
+        showErrorState() {
+            const container = document.getElementById('announcementsGrid');
+            container.innerHTML = `
+                <div class="col-span-full text-center py-16">
+                    <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-gray-600 mb-2">Bir hata oluştu</h3>
+                    <p class="text-gray-500 mb-4">Duyurular yüklenirken bir sorun yaşandı.</p>
+                    <button onclick="location.reload()" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                        <i class="fas fa-redo mr-2"></i>Tekrar Dene
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    function subscribeNewsletter() {
+        const email = document.getElementById('newsletterEmail').value;
+        if (!email) {
+            announcementManager.showToast('Lütfen e-posta adresinizi girin', 'warning');
+            return;
         }
 
-        function shareAnnouncement() {
-            announcementManager.shareAnnouncement();
+        if (!email.includes('@')) {
+            announcementManager.showToast('Geçerli bir e-posta adresi girin', 'error');
+            return;
         }
 
-        function scrollToTop() {
-            announcementManager.scrollToTop();
+        setTimeout(() => {
+            announcementManager.showToast('Bülten aboneliğiniz başarıyla oluşturuldu!', 'success');
+            document.getElementById('newsletterEmail').value = '';
+        }, 1000);
+    }
+
+    function closeModal() {
+        announcementManager.closeModal();
+    }
+
+    function shareAnnouncement() {
+        announcementManager.shareAnnouncement();
+    }
+
+    function scrollToTop() {
+        announcementManager.scrollToTop();
+    }
+
+    let announcementManager;
+    document.addEventListener('DOMContentLoaded', () => {
+        announcementManager = new AnnouncementManager();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
         }
-
-        let announcementManager;
-        document.addEventListener('DOMContentLoaded', () => {
-            announcementManager = new AnnouncementManager();
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-            }
-        });
-    </script>
+    });
+</script>
 </body>
 </html>
