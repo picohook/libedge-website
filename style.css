@@ -1357,3 +1357,27 @@ body.translating {
     border-color: #16a34a !important;
     box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1) !important;
 }
+
+/* Mobil Menü Overlay Stilleri */
+@media (max-width: 639px) {
+    .nav-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease;
+        z-index: 1001;
+    }
+
+    .nav-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    body.menu-open {
+        overflow: hidden;
+    }
+}
