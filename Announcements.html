@@ -2,7 +2,10 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="theme-color" content="#220f60">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>LibEdge - Duyurular</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -205,6 +208,115 @@
         .newsletter-button:hover {
             background-color: #2e1a7b;
         }
+
+        /* Mevcut CSS'e ekle */
+@media (max-width: 768px) {
+    .compact-header {
+        padding: 1rem 0;
+    }
+    
+    .compact-header h1 {
+        font-size: 2rem !important;
+    }
+    
+    .compact-header p {
+        font-size: 0.9rem !important;
+        padding: 0 1rem;
+    }
+    
+    /* Navigasyon menüsü için mobil uyumluluk */
+    nav .flex {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    nav .space-x-6 {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    /* Arama ve filtreleme için mobil düzen */
+    .search-container {
+        width: 100%;
+    }
+    
+    #searchInput {
+        width: 100%;
+    }
+    
+    .flex-wrap.gap-3 {
+        justify-content: center;
+    }
+    
+    .filter-btn {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.8rem;
+    }
+    
+    /* Grid düzeni mobil için */
+    #announcementsGrid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    /* Modal mobil uyumluluğu */
+    .modal-content {
+        margin: 1rem;
+        padding: 1.5rem;
+        max-height: 85vh;
+    }
+    
+    /* İstatistik kartları */
+    .stats-card {
+        font-size: 0.8rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    /* Newsletter bölümü */
+    .newsletter-section {
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    
+    .newsletter-section h2 {
+        font-size: 1.5rem;
+    }
+    
+    /* Pagination mobil uyumluluğu */
+    #paginationContainer {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    #paginationContainer button {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Çok küçük ekranlar için */
+@media (max-width: 480px) {
+    .max-w-7xl.mx-auto.px-4 {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .bg-white\\/90.p-6 {
+        padding: 1rem;
+    }
+    
+    .announcement-card {
+        margin: 0.5rem 0;
+    }
+    
+    .floating-fab {
+        bottom: 1rem;
+        right: 1rem;
+        width: 3rem;
+        height: 3rem;
+    }
+}
     </style>
 </head>
 <body class="min-h-screen">
