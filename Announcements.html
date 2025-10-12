@@ -329,6 +329,46 @@
     <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
     <script>
+        // Worker URL - kendi worker URL'nizi buraya ekleyin
+        const WORKER_URL = ''https://view-counter.agursel.workers.dev/';
+
+        // Görüntüleme sayacı fonksiyonu
+        async function updateViewCount(pageId) {
+            try {
+                const response = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        page: pageId
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.views;
+                }
+            } catch (error) {
+                console.error('Görüntüleme sayacı hatası:', error);
+            }
+            return 0;
+        }
+
+        // Görüntüleme sayısını getirme fonksiyonu (modal için)
+        async function getViewCount(pageId) {
+            try {
+                const response = await fetch(`${WORKER_URL}?page=${pageId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.views || 0;
+                }
+            } catch (error) {
+                console.error('Görüntüleme sayısı alınamadı:', error);
+            }
+            return Math.floor(Math.random() * 500) + 50; // Fallback
+        }
+
         class AnnouncementManager {
             constructor() {
                 this.announcements = [];
@@ -360,23 +400,29 @@
                 document.getElementById('sortSelect').addEventListener('change', (e) => this.handleSort(e));
             }
 
-            async loadAnnouncements() {
-                try {
-                    const response = await fetch('/content/duyurular.json');
-                    if (!response.ok) {
-                        throw new Error('Duyurular yüklenemedi.');
-                    }
-                    const data = await response.json();
-                    
-                    this.announcements = data.items;
-                    this.updateStats();
-                    this.applyFilters();
-                    
-                } catch (error) {
-                    this.showToast('Duyurular yüklenirken hata oluştu', 'error');
-                    this.showErrorState();
-                }
-            }
+async loadAnnouncements() {
+    try {
+        const response = await fetch('/content/duyurular.json');
+        if (!response.ok) {
+            throw new Error('Duyurular yüklenemedi.');
+        }
+        const data = await response.json();
+        
+        this.announcements = data.items;
+        this.updateStats();
+        this.applyFilters();
+        
+        // Her duyuru için görüntüleme sayısını güncelle
+        this.announcements.forEach(async (announcement, index) => {
+            const views = await updateViewCount(`announcement-${announcement.id || index}`);
+            announcement.views = views;
+        });
+        
+    } catch (error) {
+        this.showToast('Duyurular yüklenirken hata oluştu', 'error');
+        this.showErrorState();
+    }
+}
 
             updateStats() {
                 document.getElementById('totalCount').textContent = this.announcements.length;
@@ -463,67 +509,69 @@
             }
 
             renderAnnouncements() {
-                const container = document.getElementById('announcementsGrid');
-                const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-                const endIndex = startIndex + this.itemsPerPage;
-                const currentAnnouncements = this.filteredAnnouncements.slice(startIndex, endIndex);
+    const container = document.getElementById('announcementsGrid');
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    const currentAnnouncements = this.filteredAnnouncements.slice(startIndex, endIndex);
 
-                if (currentAnnouncements.length === 0) {
-                    container.innerHTML = `
-                        <div class="col-span-full text-center py-16">
-                            <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
-                            <h3 class="text-xl font-semibold text-gray-600 mb-2">Duyuru bulunamadı</h3>
-                            <p class="text-gray-500">Arama kriterlerinizi değiştirmeyi deneyin.</p>
+    if (currentAnnouncements.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-16">
+                <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-600 mb-2">Duyuru bulunamadı</h3>
+                <p class="text-gray-500">Arama kriterlerinizi değiştirmeyi deneyin.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = currentAnnouncements.map((announcement, index) => {
+        const categoryInfo = this.getCategoryInfo(announcement.category);
+        const date = new Date(announcement.date);
+        const formattedDate = date.toLocaleDateString('tr-TR', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+
+        const priorityClass = announcement.priority === 'high' ? 'priority-high' : '';
+        const announcementId = `announcement-${announcement.id || (startIndex + index)}`;
+        const views = announcement.views || Math.floor(Math.random() * 500) + 50;
+
+        return `
+            <div class="announcement-card ${announcement.category} ${priorityClass} rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300"
+                 onclick="announcementManager.openModal('${announcement.title.replace(/'/g, "\\'")}', '${announcementId}')">
+                <div class="p-6 relative">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="category-badge ${categoryInfo.badgeClass} px-3 py-1 rounded-full text-xs font-medium">
+                            ${categoryInfo.icon} ${categoryInfo.text}
+                        </span>
+                        ${announcement.priority === 'high' ? '<span class="text-red-500 text-lg">🔥</span>' : ''}
+                    </div>
+                    
+                    <div class="flex items-center mb-3">
+                        <span class="inline-flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                            <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
+                        </span>
+                    </div>
+                    
+                    <h3 class="text-xl font-bold text-primary mb-3 line-clamp-2">${announcement.title}</h3>
+                    <p class="text-gray-600 mb-4 line-clamp-3">${announcement.summary}</p>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-primary font-semibold inline-flex items-center hover:text-indigo-600 transition-colors">
+                            Devamını oku <i class="fas fa-arrow-right ml-2 text-sm"></i>
+                        </span>
+                        <div class="flex items-center text-sm text-gray-500">
+                            <i class="far fa-eye mr-1"></i>
+                            <span class="view-count" id="views-${announcementId}">${views}</span>
                         </div>
-                    `;
-                    return;
-                }
-
-                container.innerHTML = currentAnnouncements.map((announcement) => {
-                    const categoryInfo = this.getCategoryInfo(announcement.category);
-                    const date = new Date(announcement.date);
-                    const formattedDate = date.toLocaleDateString('tr-TR', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                    });
-
-                    const priorityClass = announcement.priority === 'high' ? 'priority-high' : '';
-
-                    return `
-                        <div class="announcement-card ${announcement.category} ${priorityClass} rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300"
-                             onclick="announcementManager.openModal('${announcement.title.replace(/'/g, "\\'")}')">
-                            <div class="p-6 relative">
-                                <div class="flex justify-between items-start mb-4">
-                                    <span class="category-badge ${categoryInfo.badgeClass} px-3 py-1 rounded-full text-xs font-medium">
-                                        ${categoryInfo.icon} ${categoryInfo.text}
-                                    </span>
-                                    ${announcement.priority === 'high' ? '<span class="text-red-500 text-lg">🔥</span>' : ''}
-                                </div>
-                                
-                                <div class="flex items-center mb-3">
-                                    <span class="inline-flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                                        <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
-                                    </span>
-                                </div>
-                                
-                                <h3 class="text-xl font-bold text-primary mb-3 line-clamp-2">${announcement.title}</h3>
-                                <p class="text-gray-600 mb-4 line-clamp-3">${announcement.summary}</p>
-                                
-                                <div class="flex justify-between items-center">
-                                    <span class="text-primary font-semibold inline-flex items-center hover:text-indigo-600 transition-colors">
-                                        Devamını oku <i class="fas fa-arrow-right ml-2 text-sm"></i>
-                                    </span>
-                                    <div class="flex items-center text-sm text-gray-500">
-                                        <i class="far fa-eye mr-1"></i>
-                                        <span>${Math.floor(Math.random() * 500) + 50}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
 
             renderPagination() {
                 const container = document.getElementById('paginationContainer');
@@ -591,53 +639,60 @@
                 return categoryMap[category] || categoryMap.general;
             }
 
-            openModal(title) {
-                const announcement = this.announcements.find(a => a.title === title);
-                if (!announcement) return;
+            async openModal(title, announcementId = null) {
+    const announcement = this.announcements.find(a => a.title === title);
+    if (!announcement) return;
 
-                const categoryInfo = this.getCategoryInfo(announcement.category);
-                const date = new Date(announcement.date);
-                const formattedDate = date.toLocaleDateString('tr-TR', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    weekday: 'long'
-                });
+    // Modal açıldığında görüntüleme sayısını güncelle
+    if (announcementId) {
+        const updatedViews = await updateViewCount(announcementId);
+        announcement.views = updatedViews;
+    }
 
-                const contentHtml = marked.parse(announcement.full_content || announcement.summary);
+    const categoryInfo = this.getCategoryInfo(announcement.category);
+    const date = new Date(announcement.date);
+    const formattedDate = date.toLocaleDateString('tr-TR', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        weekday: 'long'
+    });
 
-                document.getElementById('modalContent').innerHTML = `
-                    <div class="mb-6">
-                        <span class="inline-block ${categoryInfo.badgeClass} px-4 py-2 rounded-full text-sm font-medium mb-4">
-                            ${categoryInfo.icon} ${categoryInfo.text}
-                        </span>
-                        ${announcement.priority === 'high' ? '<span class="ml-2 bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">🔥 Yüksek Öncelik</span>' : ''}
-                    </div>
-                    
-                    <h1 class="text-3xl font-bold text-primary mb-4">${announcement.title}</h1>
-                    
-                    <div class="flex items-center text-gray-600 mb-6 space-x-4">
-                        <span class="flex items-center">
-                            <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
-                        </span>
-                        <span class="flex items-center">
-                            <i class="far fa-eye mr-2"></i>${Math.floor(Math.random() * 500) + 50} görüntüleme
-                        </span>
-                        <span class="flex items-center">
-                            <i class="far fa-clock mr-2"></i>${Math.ceil(announcement.full_content?.length / 200 || 1)} dk okuma
-                        </span>
-                    </div>
-                    
-                    <div class="prose max-w-none text-gray-700 leading-relaxed">
-                        ${contentHtml}
-                    </div>
-                `;
+    const contentHtml = marked.parse(announcement.full_content || announcement.summary);
 
-                document.getElementById('announcementModal').classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
+    document.getElementById('modalContent').innerHTML = `
+        <div class="mb-6">
+            <span class="inline-block ${categoryInfo.badgeClass} px-4 py-2 rounded-full text-sm font-medium mb-4">
+                ${categoryInfo.icon} ${categoryInfo.text}
+            </span>
+            ${announcement.priority === 'high' ? '<span class="ml-2 bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">🔥 Yüksek Öncelik</span>' : ''}
+        </div>
+        
+        <h1 class="text-3xl font-bold text-primary mb-4">${announcement.title}</h1>
+        
+        <div class="flex items-center text-gray-600 mb-6 space-x-4">
+            <span class="flex items-center">
+                <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
+            </span>
+            <span class="flex items-center">
+                <i class="far fa-eye mr-2"></i>${announcement.views || await getViewCount(announcementId)} görüntüleme
+            </span>
+            <span class="flex items-center">
+                <i class="far fa-clock mr-2"></i>${Math.ceil(announcement.full_content?.length / 200 || 1)} dk okuma
+            </span>
+        </div>
+        
+        <div class="prose max-w-none text-gray-700 leading-relaxed">
+            ${contentHtml}
+        </div>
+    `;
 
-                this.currentAnnouncement = announcement;
-            }
+    document.getElementById('announcementModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    this.currentAnnouncement = announcement;
+    this.currentAnnouncementId = announcementId;
+}
 
             closeModal() {
                 document.getElementById('announcementModal').classList.add('hidden');
