@@ -486,11 +486,12 @@
                 return data.views || 0;
             } else {
                 console.error(`incrementViewCount (${pageId}) failed:`, response.status);
+                return 0;
             }
         } catch (error) {
             console.error('Görüntüleme sayacı hatası:', error);
+            return 0;
         }
-        return 0;
     }
 
     async function getViewCount(pageId) {
@@ -512,11 +513,12 @@
                 return data.views || 0;
             } else {
                 console.error(`getViewCount (${pageId}) failed:`, response.status);
+                return 0;
             }
         } catch (error) {
             console.error('Görüntüleme sayısı alınamadı:', error);
+            return 0;
         }
-        return 0;
     }
 
     class AnnouncementManager {
@@ -638,18 +640,13 @@
                     return 0;
                 }
                 console.log(`🔍 Loading view count for ${announcementId}`);
-                if (cache[announcementId]) {
-                    announcement.views = cache[announcementId];
-                    const viewElement = document.querySelector(`#views-${announcementId}`);
-                    if (viewElement) {
-                        viewElement.textContent = cache[announcementId];
-                        console.log(`✅ Updated view count for ${announcementId}: ${cache[announcementId]}`);
-                    } else {
-                        console.warn(`View element not found for ${announcementId}`);
+                let views = cache[announcementId] || 0;
+                if (!cache[announcementId]) {
+                    views = await getViewCount(announcementId);
+                    if (views === 0 && cache[announcementId] > 0) {
+                        console.warn(`Server returned 0 views for ${announcementId}, but cache has ${cache[announcementId]}`);
                     }
-                    return cache[announcementId];
                 }
-                const views = await getViewCount(announcementId);
                 announcement.views = views;
                 cache[announcementId] = views;
                 const viewElement = document.querySelector(`#views-${announcementId}`);
@@ -664,6 +661,7 @@
 
             await Promise.all(viewPromises);
             localStorage.setItem('viewCounts', JSON.stringify(cache));
+            console.log('✅ All view counts updated');
         }
 
         updateStats() {
@@ -726,7 +724,7 @@
 
             this.filteredAnnouncements = filtered;
             this.renderAnnouncements();
-            this.loadAllViewCounts(); // Görünümleri, duyurular render edildikten sonra güncelle
+            this.loadAllViewCounts();
             this.renderPagination();
         }
 
@@ -874,7 +872,7 @@
             if (page < 1 || page > Math.ceil(this.filteredAnnouncements.length / this.itemsPerPage)) return;
             this.currentPage = page;
             this.renderAnnouncements();
-            this.loadAllViewCounts(); // Görünümleri sayfa değişiminde de güncelle
+            this.loadAllViewCounts();
             this.renderPagination();
             this.scrollToTop();
         }
@@ -897,6 +895,8 @@
                 console.error(`Announcement not found for title: ${title}`);
                 return;
             }
+
+            console.log(`Opening modal for ${announcementId}`);
 
             const viewedKey = `viewed:${announcementId}`;
             let updatedViews = announcement.views || 0;
@@ -929,14 +929,6 @@
 
             const contentHtml = DOMPurify.sanitize(marked.parse(announcement.full_content || announcement.summary));
 
-            const modalViews = document.getElementById('modalViews');
-            if (modalViews) {
-                modalViews.textContent = `Görüntüleme: ${updatedViews}`;
-                console.log(`✅ Updated modal view count for ${announcementId}: ${updatedViews}`);
-            } else {
-                console.warn('Modal views element not found');
-            }
-
             const modalContent = document.getElementById('modalContent');
             modalContent.innerHTML = `
                 <div class="mb-6">
@@ -962,12 +954,19 @@
                 </div>
             `;
 
-            // modalViews öğesini içeriğin sonuna ekle
-            const viewsContainer = document.createElement('span');
-            viewsContainer.id = 'modalViews';
-            viewsContainer.className = 'block mt-2 text-gray-600';
-            viewsContainer.textContent = `Görüntüleme: ${updatedViews}`;
-            modalContent.appendChild(viewsContainer);
+            const modalViews = document.getElementById('modalViews');
+            if (modalViews) {
+                modalViews.textContent = `Görüntüleme: ${updatedViews}`;
+                console.log(`✅ Updated modal view count for ${announcementId}: ${updatedViews}`);
+            } else {
+                console.warn('Modal views element not found');
+                const viewsContainer = document.createElement('span');
+                viewsContainer.id = 'modalViews';
+                viewsContainer.className = 'block mt-2 text-gray-600';
+                viewsContainer.textContent = `Görüntüleme: ${updatedViews}`;
+                modalContent.appendChild(viewsContainer);
+                console.log(`✅ Created and updated modal view count for ${announcementId}: ${updatedViews}`);
+            }
 
             document.getElementById('announcementModal').classList.remove('hidden');
             document.body.style.overflow = 'hidden';
