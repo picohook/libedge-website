@@ -469,11 +469,12 @@ async loadAllViewCounts() {
     await Promise.all(viewPromises);
 }
             updateStats() {
-                document.getElementById('totalCount').textContent = this.announcements.length;
-                document.getElementById('urgentCount').textContent = this.announcements.filter(a => a.category === 'urgent').length;
-                document.getElementById('productCount').textContent = this.announcements.filter(a => a.category === 'new-product').length;
-                document.getElementById('eventCount').textContent = this.announcements.filter(a => a.category === 'event').length;
-            }
+//                document.getElementById('totalCount').textContent = this.announcements.length;
+  //              document.getElementById('urgentCount').textContent = this.announcements.filter(a => a.category === 'urgent').length;
+  //              document.getElementById('productCount').textContent = this.announcements.filter(a => a.category === 'new-product').length;
+    //            document.getElementById('eventCount').textContent = this.announcements.filter(a => a.category === 'event').length;
+       return;      
+    }
 
             handleFilter(e) {
                 document.querySelectorAll('.filter-btn').forEach(btn => {
