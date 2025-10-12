@@ -264,58 +264,30 @@ handleFormSubmit("suggestionForm");
 
 
     // --- Mobile Hamburger Menu ---
-const hamburger = document.querySelector('.hamburger');
-const navLinks = document.querySelector('.nav-links');
-const dropdownGroups = document.querySelectorAll('.nav-links .group');
+    const hamburger = document.querySelector('.hamburger');
+    const navLinks = document.querySelector('.nav-links');
+    const dropdownGroups = document.querySelectorAll('.nav-links .group');
 
-// --- Mobil Menü Overlay ---
-if (hamburger && navLinks) {
-    // Overlay oluştur ve body'ye ekle
-    const overlay = document.createElement('div');
-    overlay.className = 'nav-overlay';
-    document.body.appendChild(overlay);
+    if (navLinks) {
+        navLinks.classList.remove('active'); // Ensure closed on load
+    }
 
-    // Hamburger tıklanınca menü + overlay aç/kapat
-    hamburger.addEventListener('click', function () {
-        navLinks.classList.toggle('active');
-        overlay.classList.toggle('active');
-        document.body.classList.toggle('menu-open');
-
-        const icon = hamburger.querySelector('i');
-        if (icon) {
-            icon.classList.toggle('fa-bars');
-            icon.classList.toggle('fa-times');
-        }
-    });
-
-    // Overlay'e tıklanınca menü kapanır
-    overlay.addEventListener('click', function () {
-        navLinks.classList.remove('active');
-        overlay.classList.remove('active');
-        document.body.classList.remove('menu-open');
-        hamburger.setAttribute('aria-expanded', 'false');
-        const icon = hamburger.querySelector('i');
-        if (icon) {
-            icon.classList.remove('fa-times');
-            icon.classList.add('fa-bars');
-        }
-    });
-
-    // Menü dışına tıklanınca kapansın
-    document.addEventListener('click', function (e) {
-        if (!e.target.closest('.nav-links') && !e.target.closest('.hamburger')) {
-            navLinks.classList.remove('active');
-            overlay.classList.remove('active');
-            document.body.classList.remove('menu-open');
-            hamburger.setAttribute('aria-expanded', 'false');
-            const icon = hamburger.querySelector('i');
+    if (hamburger && navLinks) {
+        hamburger.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent immediate closing
+            navLinks.classList.toggle('active');
+            const isActive = navLinks.classList.contains('active');
+            this.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+            const icon = this.querySelector('i');
             if (icon) {
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
+                icon.className = isActive ? 'fas fa-times' : 'fas fa-bars';
             }
-        }
-    });
-
+            if (!isActive) {
+                // Close all dropdowns when closing menu
+                dropdownGroups.forEach(group => group.classList.remove('active'));
+            }
+        });
+    }
 
     // Mobile Dropdown Toggles
     dropdownGroups.forEach(group => {
