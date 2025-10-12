@@ -1,7 +1,20 @@
 name = "view-counter"
-main = "index.js"
+main = "index.js" # Worker'ın ana dosyası (eski haliyle aynı)
 compatibility_date = "2025-10-12"
 
-[[kv_namespaces]]
-binding = "VIEW_COUNTS" # Worker kodunda kullanılacak isim (env.KV)
-id = "13f653d049d248cba1bdba46345302b4"
+# Eski, sorunlu KV binding'ini kaldırın veya yoruma alın
+# [[kv_namespaces]]
+# binding = "VIEW_COUNTS" 
+# id = "13f653d049d248cba1bdba46345302b4"
+
+# =======================================================
+# Durable Object (DO) Binding'i
+# =======================================================
+[[durable_objects]]
+binding = "COUNTER"      # index.js içinde kullanılacak isim (env.COUNTER)
+class_name = "Counter"   # Counter.js dosyasındaki sınıf adı
+
+# Migrations (Göçler) - DO'yu konuşlandırmak için zorunludur.
+[[migrations]]
+tag = "v1"
+new_classes = ["Counter"]
