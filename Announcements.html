@@ -435,26 +435,21 @@ async loadAnnouncements() {
     try {
         console.log('🔍 JSON yükleniyor...');
         const response = await fetch('/content/duyurular.json');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
         const data = await response.json();
-        console.log('✅ JSON yüklendi:', data);
         
-        this.announcements = data.items || [];
-        console.log(`📝 ${this.announcements.length} duyuru atandı`);
+        this.announcements = data.items;
+        console.log('✅ JSON yüklendi:', this.announcements.length + ' duyuru');
         
-        this.updateStats();
-        console.log('📊 İstatistikler güncellendi');
-        
+        // Önce duyuruları göster
         this.applyFilters();
-        console.log('🎛️  Filtreler uygulandı');
+        
+        // Sonra görüntüleme sayılarını yükle ve render et
+        await this.loadAllViewCounts();
+        console.log('🔄 Görüntüleme sayıları yüklendi, render ediliyor...');
+        this.renderAnnouncements(); // BU SATIR EKLENDİ
         
     } catch (error) {
         console.error('❌ Hata:', error);
-        this.showToast('Duyurular yüklenirken hata oluştu: ' + error.message, 'error');
         this.showErrorState();
     }
 }
