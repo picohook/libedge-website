@@ -1,7 +1,7 @@
 {
   "items": [
     {
-      "id": "test-announcement-2025",
+      "id": "announcement-1",
       "title": "Test Duyurusu",
       "date": "2025-09-12",
       "category": "general",
@@ -9,7 +9,7 @@
       "full_content": "Markdown destekli içerik buraya yazılır."
     },
     {
-      "id": "kesinti-2025",
+      "id": "announcement-2",
       "title": "Yazılım Güncellemesi - Erişim Kesintisi",
       "date": "2023-10-15T23:00:00.000Z",
       "category": "urgent",
@@ -17,7 +17,7 @@
       "full_content": "Sistemlerimizde daha iyi performans ve güvenlik sağlamak amacıyla, **15 Ekim 2023 Cumartesi gecesi 23:00** ile **16 Ekim 2023 Pazar sabahı 03:00** saatleri arasında planlı bir bakım çalışması yapılacaktır. \n\nBu süre zarfında tüm platforma erişim kesintisi yaşanacaktır. Anlayışınız için teşekkür ederiz.\n\n![Bakım Duyurusu](https://libedge-website.pages.dev/assets/images/uploads/Screenshot%202025-03-11%20185358.png)"
     },
     {
-      "id": "pangram-announcement-2025",
+      "id": "announcement-3",
       "title": "Pangram AI Artık Kütüphanenizde!",
       "date": "2025-09-11T12:00:00.000Z",
       "category": "new-product",
@@ -25,7 +25,7 @@
       "full_content": "Yapay zeka destekli içerik analiz platformumuz olan **Pangram AI** artık kütüphanenizde. Bu yeni araç sayesinde, dökümanlarınızdaki önemli bilgileri hızlı bir şekilde çıkarabilir, metin özetleri oluşturabilir ve anahtar kelime analizi yapabilirsiniz."
     },
     {
-      "id": "website-announcement-2025",
+      "id": "announcement-4",
       "title": "Yeni Websayfası Duyurusu",
       "date": "2025-09-13",
       "category": "general",
