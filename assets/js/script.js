@@ -519,6 +519,7 @@ document.addEventListener('keydown', (e) => {
         'İş & Hukuk': 'Business & Law',
         'Sanat': 'Arts',
         'Yapay Zeka': 'Artificial Intelligence',
+        'Akademik Dürüstlük': 'Academic Integrity',
         'Yetkili Bölge:': 'Authorized Region:',
         'Türkiye': 'Türkiye',
         'Orta Doğu': 'Middle East',
