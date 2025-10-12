@@ -399,7 +399,6 @@
 
                 document.getElementById('sortSelect').addEventListener('change', (e) => this.handleSort(e));
             }
-
 async loadAnnouncements() {
     try {
         const response = await fetch('/content/duyurular.json');
@@ -409,14 +408,12 @@ async loadAnnouncements() {
         const data = await response.json();
         
         this.announcements = data.items;
+        
+        // Tüm görüntüleme sayılarını önce yükle
+        await this.loadAllViewCounts();
+        
         this.updateStats();
         this.applyFilters();
-        
-        // Her duyuru için görüntüleme sayısını güncelle
-        this.announcements.forEach(async (announcement, index) => {
-            const views = await updateViewCount(`announcement-${announcement.id || index}`);
-            announcement.views = views;
-        });
         
     } catch (error) {
         this.showToast('Duyurular yüklenirken hata oluştu', 'error');
@@ -424,6 +421,15 @@ async loadAnnouncements() {
     }
 }
 
+async loadAllViewCounts() {
+    const viewPromises = this.announcements.map(async (announcement, index) => {
+        const views = await updateViewCount(`announcement-${announcement.id || index}`);
+        announcement.views = views;
+        return views;
+    });
+    
+    await Promise.all(viewPromises);
+}
             updateStats() {
                 document.getElementById('totalCount').textContent = this.announcements.length;
                 document.getElementById('urgentCount').textContent = this.announcements.filter(a => a.category === 'urgent').length;
@@ -536,7 +542,7 @@ async loadAnnouncements() {
 
         const priorityClass = announcement.priority === 'high' ? 'priority-high' : '';
         const announcementId = `announcement-${announcement.id || (startIndex + index)}`;
-        const views = announcement.views || Math.floor(Math.random() * 500) + 50;
+        const views = announcement.views || 0;
 
         return `
             <div class="announcement-card ${announcement.category} ${priorityClass} rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300"
