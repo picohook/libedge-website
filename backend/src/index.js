@@ -210,16 +210,16 @@ app.post('/api/auth/login', async (c) => {
     const { email, password } = await c.req.json();
     const db = c.env.DB;
 
-    // Password hash'i hesapla
+    // Password hash
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const password_hash = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0')).join('');
 
-    // Kullanıcıyı bul
+    // Kullanıcıyı bul (role'ü de al)
     const user = await db.prepare(`
-      SELECT id, email, full_name, institution, password_hash 
+      SELECT id, email, full_name, institution, password_hash, role 
       FROM users WHERE email = ?
     `).bind(email.toLowerCase().trim()).first();
 
@@ -227,21 +227,20 @@ app.post('/api/auth/login', async (c) => {
       return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
     }
 
-    // Şifre kontrolü
     if (user.password_hash !== password_hash) {
       return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
     }
 
-    // Token payload - Türkçe karakter sorununu çözmek için
+    // Token payload - role eklendi
     const tokenPayload = {
       user_id: user.id,
       email: user.email,
       full_name: user.full_name || "",
       institution: user.institution || "",
+      role: user.role || "user",  // ← BURASI ÇOK ÖNEMLİ
       exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
     };
     
-    // Base64 encoding - Türkçe karakterler için
     const jsonString = JSON.stringify(tokenPayload);
     const token = btoa(unescape(encodeURIComponent(jsonString)));
 
@@ -252,7 +251,8 @@ app.post('/api/auth/login', async (c) => {
         id: user.id,
         email: user.email,
         full_name: user.full_name,
-        institution: user.institution
+        institution: user.institution,
+        role: user.role
       }
     });
 
