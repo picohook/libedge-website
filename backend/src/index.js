@@ -134,6 +134,63 @@ app.post('/form', async (c) => {
   }
 });
 
+app.post('/api/auth/login', async (c) => {
+  try {
+    const { email, password } = await c.req.json();
+    const db = c.env.DB;
+
+    // Password hash'i hesapla
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const password_hash = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Kullanıcıyı bul
+    const user = await db.prepare(`
+      SELECT id, email, full_name, institution, password_hash 
+      FROM users WHERE email = ?
+    `).bind(email.toLowerCase().trim()).first();
+
+    if (!user) {
+      return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
+    }
+
+    // Şifre kontrolü
+    if (user.password_hash !== password_hash) {
+      return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
+    }
+
+    // Token payload - Türkçe karakter sorununu çözmek için
+    const tokenPayload = {
+      user_id: user.id,
+      email: user.email,
+      full_name: user.full_name || "",
+      institution: user.institution || "",
+      exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
+    };
+    
+    // Base64 encoding - Türkçe karakterler için
+    const jsonString = JSON.stringify(tokenPayload);
+    const token = btoa(unescape(encodeURIComponent(jsonString)));
+
+    return c.json({
+      success: true,
+      token: token,
+      user: {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        institution: user.institution
+      }
+    });
+
+  } catch (err) {
+    console.error("Login error:", err);
+    return c.json({ success: false, error: err.message || 'Giriş sırasında hata oluştu.' }, 500);
+  }
+});
+
 app.post('/api/auth/register', async (c) => {
   try {
     const { email, password, full_name, institution } = await c.req.json();
@@ -143,6 +200,7 @@ app.post('/api/auth/register', async (c) => {
       return c.json({ success: false, error: 'E-posta ve şifre zorunludur.' }, 400);
     }
 
+    // SHA-256 ile password hash
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -161,62 +219,6 @@ app.post('/api/auth/register', async (c) => {
       return c.json({ success: false, error: 'Bu e-posta adresi zaten kayıtlı.' }, 409);
     }
     return c.json({ success: false, error: 'Kayıt sırasında hata oluştu.' }, 500);
-  }
-});
-
-app.post('/api/auth/login', async (c) => {
-  try {
-    const { email, password } = await c.req.json();
-    const db = c.env.DB;
-
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const password_hash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
-
-    const user = await db.prepare(`
-      SELECT id, email, full_name, institution, role 
-      FROM users WHERE email = ?
-    `).bind(email.toLowerCase().trim()).first();
-
-    if (!user) {
-      return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
-    }
-
-    // Hash kontrolü için user'dan password_hash al
-    const userWithHash = await db.prepare(`
-      SELECT password_hash FROM users WHERE id = ?
-    `).bind(user.id).first();
-    
-    if (userWithHash.password_hash !== password_hash) {
-      return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
-    }
-
-    const tokenPayload = {
-      user_id: user.id,
-      email: user.email,
-      full_name: user.full_name,
-      institution: user.institution,
-      exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
-    };
-
-    const token = btoa(JSON.stringify(tokenPayload));
-
-    return c.json({
-      success: true,
-      token: token,
-      user: {
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        institution: user.institution
-      }
-    });
-
-  } catch (err) {
-    console.error("Login error:", err);
-    return c.json({ success: false, error: 'Giriş sırasında hata oluştu.' }, 500);
   }
 });
 
