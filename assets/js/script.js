@@ -1,4 +1,162 @@
+// ====================== AUTH GLOBAL FUNCTIONS ======================
+window.openLoginModal = function() {
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.classList.add('no-scroll');
+    }
+};
+
+window.closeLoginModal = function() {
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.classList.remove('no-scroll');
+    }
+};
+
+window.openRegisterModal = function() {
+    closeLoginModal();
+    const modal = document.getElementById('registerModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.classList.add('no-scroll');
+    }
+};
+
+window.closeRegisterModal = function() {
+    const modal = document.getElementById('registerModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.classList.remove('no-scroll');
+    }
+};
+
+// API Base URL
+const API_BASE = 'https://form-handler.agursel.workers.dev';
+let currentUser = null;
+let authToken = localStorage.getItem('authToken');
+
+window.login = async function(email, password) {
+    try {
+        const response = await fetch(`${API_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (data.success) {
+            authToken = data.token;
+            currentUser = data.user;
+            localStorage.setItem('authToken', authToken);
+            updateAuthUI(true);
+            closeLoginModal();
+            showNotification('Giriş başarılı!', 'success');
+            return true;
+        } else {
+            showNotification(data.error || 'Giriş başarısız', 'error');
+            return false;
+        }
+    } catch (err) {
+        showNotification('Bir hata oluştu', 'error');
+        return false;
+    }
+};
+
+window.register = async function(fullName, email, password, institution) {
+    try {
+        const response = await fetch(`${API_BASE}/api/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ full_name: fullName, email, password, institution })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeRegisterModal();
+            openLoginModal();
+            return true;
+        } else {
+            showNotification(data.error || 'Kayıt başarısız', 'error');
+            return false;
+        }
+    } catch (err) {
+        showNotification('Bir hata oluştu', 'error');
+        return false;
+    }
+};
+
+window.logout = function() {
+    authToken = null;
+    currentUser = null;
+    localStorage.removeItem('authToken');
+    updateAuthUI(false);
+    showNotification('Çıkış yapıldı', 'info');
+};
+
+function updateAuthUI(isLoggedIn) {
+    const userIcon = document.querySelector('a[aria-label="User Management"] i');
+    if (isLoggedIn && currentUser) {
+        if (userIcon) userIcon.className = 'fas fa-user-check text-xl';
+    } else {
+        if (userIcon) userIcon.className = 'fas fa-user text-xl';
+    }
+}
+
+async function checkAuth() {
+    if (!authToken) return false;
+    try {
+        const response = await fetch(`${API_BASE}/api/auth/verify`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        if (data.valid) {
+            currentUser = data.user;
+            updateAuthUI(true);
+            return true;
+        } else {
+            logout();
+            return false;
+        }
+    } catch (err) {
+        return false;
+    }
+}
+
+function showNotification(message, type) {
+    alert(message); // Basit çözüm, istersen toast ekleyebilirsin
+}
+
+// Sayfa yüklendiğinde auth kontrolü
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            await login(email, password);
+        });
+    }
+    
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('regFullName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const institution = document.getElementById('regInstitution').value;
+            await register(fullName, email, password, institution);
+        });
+    }
+});
+
 document.addEventListener('DOMContentLoaded', function() {
+    
     // --- Flip Card Interaction ---
 document.querySelectorAll('.flip-card').forEach(card => {
     card.addEventListener('click', function(e) {
@@ -998,271 +1156,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         updateFilter();
                     }
                 }
-            }, 500);// ====================== AUTHENTICATION SYSTEM ======================
-
-// API Base URL - Worker'ınızın URL'i
-const API_BASE = 'https://form-handler.agursel.workers.dev';
-
-// Global variables
-let currentUser = null;
-let authToken = localStorage.getItem('authToken');
-
-// Check authentication
-async function checkAuth() {
-    if (!authToken) return false;
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/auth/verify`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json'
-            }
+            }, 500);
         });
-        
-        const data = await response.json();
-        
-        if (data.valid) {
-            currentUser = data.user;
-            updateAuthUI(true);
-            return true;
-        } else {
-            logout();
-            return false;
-        }
-    } catch (err) {
-        console.error('Auth check error:', err);
-        return false;
-    }
-}
-
-// Login function
-async function login(email, password) {
-    try {
-        const response = await fetch(`${API_BASE}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            authToken = data.token;
-            currentUser = data.user;
-            localStorage.setItem('authToken', authToken);
-            updateAuthUI(true);
-            closeLoginModal();
-            showNotification('Giriş başarılı! Hoş geldiniz, ' + currentUser.full_name, 'success');
-            return true;
-        } else {
-            showNotification(data.error || 'Giriş başarısız', 'error');
-            return false;
-        }
-    } catch (err) {
-        console.error('Login error:', err);
-        showNotification('Bir hata oluştu. Lütfen tekrar deneyin.', 'error');
-        return false;
-    }
-}
-
-// Register function
-async function register(fullName, email, password, institution) {
-    try {
-        const response = await fetch(`${API_BASE}/api/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                full_name: fullName, 
-                email, 
-                password, 
-                institution 
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showNotification(data.message, 'success');
-            closeRegisterModal();
-            openLoginModal();
-            return true;
-        } else {
-            showNotification(data.error || 'Kayıt başarısız', 'error');
-            return false;
-        }
-    } catch (err) {
-        console.error('Register error:', err);
-        showNotification('Bir hata oluştu. Lütfen tekrar deneyin.', 'error');
-        return false;
-    }
-}
-
-// Logout function
-function logout() {
-    authToken = null;
-    currentUser = null;
-    localStorage.removeItem('authToken');
-    updateAuthUI(false);
-    showNotification('Çıkış yapıldı', 'info');
-}
-
-// Update UI based on auth state
-function updateAuthUI(isLoggedIn) {
-    const userIcon = document.querySelector('a[aria-label="User Management"] i');
-    const userBadge = document.getElementById('userBadge');
-    
-    if (isLoggedIn && currentUser) {
-        if (userIcon) {
-            userIcon.className = 'fas fa-user-check text-xl';
-        }
-        
-        if (userBadge) {
-            userBadge.innerHTML = `
-                <div class="p-3">
-                    <p class="font-semibold text-primary">${currentUser.full_name}</p>
-                    <p class="text-sm text-gray-600">${currentUser.email}</p>
-                    ${currentUser.institution ? `<p class="text-xs text-gray-500">${currentUser.institution}</p>` : ''}
-                    <hr class="my-2">
-                    <button onclick="logout()" class="text-sm text-red-600 hover:text-red-800 w-full text-left">
-                        <i class="fas fa-sign-out-alt mr-1"></i> Çıkış Yap
-                    </button>
-                </div>
-            `;
-            userBadge.style.display = 'block';
-        }
-    } else {
-        if (userIcon) {
-            userIcon.className = 'fas fa-user text-xl';
-        }
-        
-        if (userBadge) {
-            userBadge.style.display = 'none';
-        }
-    }
-}
-
-// Check product access
-async function checkProductAccess(productSlug) {
-    if (!authToken) {
-        showNotification('Bu ürüne erişmek için giriş yapmalısınız.', 'warning');
-        openLoginModal();
-        return false;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/subscription/check?product=${productSlug}`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.hasAccess) {
-            return true;
-        } else {
-            showNotification('Bu ürüne erişim izniniz yok. Deneme talep edebilirsiniz.', 'warning');
-            openTrialModal(productSlug);
-            return false;
-        }
-    } catch (err) {
-        console.error('Access check error:', err);
-        return false;
-    }
-}
-
-// Modal functions
-function openLoginModal() {
-    const modal = document.getElementById('loginModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        document.body.classList.add('no-scroll');
-    }
-}
-
-function closeLoginModal() {
-    const modal = document.getElementById('loginModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        document.body.classList.remove('no-scroll');
-    }
-}
-
-function openRegisterModal() {
-    closeLoginModal();
-    const modal = document.getElementById('registerModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        document.body.classList.add('no-scroll');
-    }
-}
-
-function closeRegisterModal() {
-    const modal = document.getElementById('registerModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        document.body.classList.remove('no-scroll');
-    }
-}
-
-function openTrialModal(productSlug) {
-    const modal = document.getElementById('trialModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        const productInput = document.getElementById('trialProduct');
-        if (productInput) productInput.value = productSlug;
-        document.body.classList.add('no-scroll');
-    }
-}
-
-// Notification helper
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg text-white ${
-        type === 'success' ? 'bg-green-500' : 
-        type === 'error' ? 'bg-red-500' : 
-        type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
-    }`;
-    notification.innerHTML = `
-        <div class="flex items-center">
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-2"></i>
-            <span>${message}</span>
-        </div>
-    `;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
-}
-
-// Initialize auth on page load
-document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
-    
-    // Login form submit
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            await login(email, password);
-        });
-    }
-    
-    // Register form submit
-    const registerForm = document.getElementById('registerForm');
-    if (registerForm) {
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fullName = document.getElementById('regFullName').value;
-            const email = document.getElementById('regEmail').value;
-            const password = document.getElementById('regPassword').value;
-            const institution = document.getElementById('regInstitution').value;
-            await register(fullName, email, password, institution);
-        });
-    }
+    });
 });
