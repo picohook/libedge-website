@@ -4,123 +4,65 @@ import { cors } from 'hono/cors';
 
 const app = new Hono();
 
-// ====================== CORS AYARLARI (BASİTLEŞTİRİLDİ) ======================
+// ====================== CORS AYARLARI ======================
 app.use('*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization']
 }));
 
-// ====================== ADMIN ENDPOINT'LERİ (ROL TABANLI) ======================
+// ====================== YARDIMCI FONKSİYONLAR (TEK BİR YERDE) ======================
 
-// Super Admin - Tüm kullanıcıları listele
-app.get('/api/admin/users', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const db = c.env.DB;
-  const users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at FROM users ORDER BY id DESC`).all();
-  return c.json(users.results);
-});
-
-// Super Admin - Kullanıcı ekle
-app.post('/api/admin/user', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const { email, password, full_name, institution, role } = await c.req.json();
-  const db = c.env.DB;
-  const encoder = new TextEncoder();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
-  const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
-  
-  // Sadece super admin admin rolü atayabilir
-  const finalRole = (role === 'admin' && !await isSuperAdmin(c)) ? 'user' : (role || 'user');
-  
-  await db.prepare(`INSERT INTO users (email, password_hash, full_name, institution, role) VALUES (?, ?, ?, ?, ?)`).bind(email, password_hash, full_name, institution, finalRole).run();
-  return c.json({ success: true });
-});
-
-// Admin/Super Admin - Kullanıcı güncelle
-app.put('/api/admin/user/:id', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const id = c.req.param('id');
-  const { email, password, full_name, institution, role } = await c.req.json();
-  const db = c.env.DB;
-  const isSuper = await isSuperAdmin(c);
-  
-  // Sadece super admin başkasının rolünü değiştirebilir veya admin atayabilir
-  const finalRole = (role && role !== 'user' && !isSuper) ? null : role;
-  
-  if (password) {
-    const encoder = new TextEncoder();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
-    const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
-    if (finalRole) {
-      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, password_hash, full_name, institution, finalRole, id).run();
-    } else {
-      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=? WHERE id=?`).bind(email, password_hash, full_name, institution, id).run();
-    }
-  } else {
-    if (finalRole) {
-      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, full_name, institution, finalRole, id).run();
-    } else {
-      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=? WHERE id=?`).bind(email, full_name, institution, id).run();
-    }
-  }
-  return c.json({ success: true });
-});
-
-// Admin/Super Admin - Kullanıcı sil (super admin kendini silemez)
-app.delete('/api/admin/user/:id', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const id = c.req.param('id');
+async function getUserRole(c) {
   const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.split(' ')[1];
-  const decoded = JSON.parse(atob(token));
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) return null;
+    return decoded.role || 'user';
+  } catch(e) { return null; }
+}
+
+async function getUserInstitution(c) {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) return null;
+    return decoded.institution || null;
+  } catch(e) { return null; }
+}
+
+async function isSuperAdmin(c) {
+  const role = await getUserRole(c);
+  return role === 'super_admin';
+}
+
+async function isAdmin(c) {
+  const role = await getUserRole(c);
+  return role === 'admin' || role === 'super_admin';
+}
+
+async function canAccessUser(c, targetUserId) {
+  const role = await getUserRole(c);
+  if (role === 'super_admin') return true;
   
-  // Super admin kendini silemez
-  if (decoded.user_id == id && await isSuperAdmin(c)) {
-    return c.json({ error: 'Super admin kendini silemez' }, 400);
-  }
+  const adminInstitution = await getUserInstitution(c);
+  if (!adminInstitution) return false;
   
   const db = c.env.DB;
-  await db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id).run();
-  await db.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
-  return c.json({ success: true });
-});
+  const targetUser = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(targetUserId).first();
+  return targetUser && targetUser.institution === adminInstitution;
+}
 
-// Super Admin - Admin yetkisi verme/ alma
-app.post('/api/admin/set-role/:id', async (c) => {
-  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
-  const id = c.req.param('id');
-  const { role } = await c.req.json();
-  const db = c.env.DB;
-  await db.prepare(`UPDATE users SET role = ? WHERE id = ?`).bind(role, id).run();
-  return c.json({ success: true });
-});
-
-// Abonelik endpoint'leri (admin ve super admin için)
-app.get('/api/admin/subscriptions', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const db = c.env.DB;
-  const subs = await db.prepare(`
-    SELECT s.*, u.full_name as user_name FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.id DESC
-  `).all();
-  return c.json(subs.results);
-});
-
-app.post('/api/admin/subscription', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const { user_id, product_slug, status, end_date } = await c.req.json();
-  const db = c.env.DB;
-  await db.prepare(`INSERT INTO subscriptions (user_id, product_slug, status, end_date) VALUES (?, ?, ?, ?)`).bind(user_id, product_slug, status, end_date || null).run();
-  return c.json({ success: true });
-});
-
-app.delete('/api/admin/subscription/:id', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const id = c.req.param('id');
-  const db = c.env.DB;
-  await db.prepare(`DELETE FROM subscriptions WHERE id=?`).bind(id).run();
-  return c.json({ success: true });
-});
+async function canListUsers(c) {
+  const role = await getUserRole(c);
+  if (role === 'super_admin') return true;
+  if (role === 'admin') return true;
+  return false;
+}
 
 // ====================== GET ENDPOINT'LERİ ======================
 app.get('/test', (c) => {
@@ -136,34 +78,25 @@ app.get('/api/auth/status', (c) => {
     timestamp: new Date().toISOString()
   });
 });
-// Token doğrulama endpoint'i
+
 app.post('/api/auth/verify', async (c) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ valid: false, error: 'Token gerekli' }, 401);
   }
-
   const token = authHeader.split(' ')[1];
-  
   try {
-    // Token'ı decode et
     const decoded = JSON.parse(atob(token));
-    
-    // Süre kontrolü
     if (decoded.exp < Date.now()) {
       return c.json({ valid: false, error: 'Token süresi dolmuş' }, 401);
     }
-    
-    // Kullanıcıyı veritabanından kontrol et (isteğe bağlı)
     const db = c.env.DB;
     const user = await db.prepare(`
       SELECT id, email, full_name, institution, role FROM users WHERE id = ?
     `).bind(decoded.user_id).first();
-    
     if (!user) {
       return c.json({ valid: false, error: 'Kullanıcı bulunamadı' }, 401);
     }
-    
     return c.json({
       valid: true,
       user: {
@@ -174,7 +107,6 @@ app.post('/api/auth/verify', async (c) => {
         role: user.role
       }
     });
-    
   } catch (err) {
     console.error("Verify error:", err);
     return c.json({ valid: false, error: 'Geçersiz token' }, 401);
@@ -186,7 +118,6 @@ app.get('/api/subscription/check', async (c) => {
   const authHeader = c.req.header('Authorization');
 
   if (!product) return c.json({ hasAccess: false, error: 'Product belirtilmedi.' }, 400);
-
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ hasAccess: false, message: 'Oturum açmanız gerekiyor.' }, 401);
   }
@@ -203,7 +134,6 @@ app.get('/api/subscription/check', async (c) => {
   }
 
   const db = c.env.DB;
-
   const sub = await db.prepare(`
     SELECT * FROM subscriptions 
     WHERE user_id = ? AND product_slug = ? 
@@ -211,12 +141,9 @@ app.get('/api/subscription/check', async (c) => {
       AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
   `).bind(userId, product).first();
 
-  return c.json({ 
-    hasAccess: !!sub,
-    status: sub ? sub.status : null 
-  });
+  return c.json({ hasAccess: !!sub, status: sub ? sub.status : null });
 });
-// Kullanıcının tüm aboneliklerini listele
+
 app.get('/api/subscription/list', async (c) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -237,13 +164,12 @@ app.get('/api/subscription/list', async (c) => {
   const db = c.env.DB;
   const subscriptions = await db.prepare(`
     SELECT id, product_slug, status, start_date, end_date, created_at
-    FROM subscriptions 
-    WHERE user_id = ?
-    ORDER BY created_at DESC
+    FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC
   `).bind(userId).all();
 
   return c.json({ subscriptions: subscriptions.results });
 });
+
 // ====================== POST ENDPOINT'LERİ ======================
 app.post('/form', async (c) => {
   try {
@@ -359,7 +285,6 @@ app.post('/api/auth/login', async (c) => {
         role: user.role
       }
     });
-
   } catch (err) {
     console.error("Login error:", err);
     return c.json({ success: false, error: err.message || 'Giriş sırasında hata oluştu.' }, 500);
@@ -375,7 +300,6 @@ app.post('/api/auth/register', async (c) => {
       return c.json({ success: false, error: 'E-posta ve şifre zorunludur.' }, 400);
     }
 
-    // SHA-256 ile password hash
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -383,12 +307,11 @@ app.post('/api/auth/register', async (c) => {
       .map(b => b.toString(16).padStart(2, '0')).join('');
 
     await db.prepare(`
-      INSERT INTO users (email, password_hash, full_name, institution)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO users (email, password_hash, full_name, institution, role)
+      VALUES (?, ?, ?, ?, 'user')
     `).bind(email.toLowerCase().trim(), password_hash, full_name || null, institution || null).run();
 
     return c.json({ success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.' });
-
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
       return c.json({ success: false, error: 'Bu e-posta adresi zaten kayıtlı.' }, 409);
@@ -397,16 +320,13 @@ app.post('/api/auth/register', async (c) => {
   }
 });
 
-// Kullanıcı profili bilgilerini getir
 app.get('/api/user/profile', async (c) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ error: 'Yetkilendirme gerekli' }, 401);
   }
-
   const token = authHeader.split(' ')[1];
   let userId;
-
   try {
     const decoded = JSON.parse(atob(token));
     if (decoded.exp < Date.now()) throw new Error('Token expired');
@@ -414,29 +334,23 @@ app.get('/api/user/profile', async (c) => {
   } catch (e) {
     return c.json({ error: 'Geçersiz token' }, 401);
   }
-
   const db = c.env.DB;
   const user = await db.prepare(`
     SELECT id, email, full_name, institution, created_at FROM users WHERE id = ?
   `).bind(userId).first();
-
   if (!user) {
     return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
   }
-
   return c.json(user);
 });
 
-// Kullanıcı bilgilerini güncelle
 app.post('/api/user/update', async (c) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ error: 'Yetkilendirme gerekli' }, 401);
   }
-
   const token = authHeader.split(' ')[1];
   let userId;
-
   try {
     const decoded = JSON.parse(atob(token));
     if (decoded.exp < Date.now()) throw new Error('Token expired');
@@ -444,7 +358,6 @@ app.post('/api/user/update', async (c) => {
   } catch (e) {
     return c.json({ error: 'Geçersiz token' }, 401);
   }
-
   const { full_name, institution, new_password } = await c.req.json();
   const db = c.env.DB;
 
@@ -454,7 +367,6 @@ app.post('/api/user/update', async (c) => {
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const password_hash = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0')).join('');
-    
     await db.prepare(`
       UPDATE users SET full_name = ?, institution = ?, password_hash = ? WHERE id = ?
     `).bind(full_name || null, institution || null, password_hash, userId).run();
@@ -463,20 +375,16 @@ app.post('/api/user/update', async (c) => {
       UPDATE users SET full_name = ?, institution = ? WHERE id = ?
     `).bind(full_name || null, institution || null, userId).run();
   }
-
   return c.json({ success: true });
 });
 
-// Kullanıcı hesabını sil
 app.delete('/api/user/delete', async (c) => {
   const authHeader = c.req.header('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ error: 'Yetkilendirme gerekli' }, 401);
   }
-
   const token = authHeader.split(' ')[1];
   let userId;
-
   try {
     const decoded = JSON.parse(atob(token));
     if (decoded.exp < Date.now()) throw new Error('Token expired');
@@ -484,50 +392,51 @@ app.delete('/api/user/delete', async (c) => {
   } catch (e) {
     return c.json({ error: 'Geçersiz token' }, 401);
   }
-
   const db = c.env.DB;
-  
-  // Önce abonelikleri sil
   await db.prepare(`DELETE FROM subscriptions WHERE user_id = ?`).bind(userId).run();
-  // Sonra kullanıcıyı sil
   await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
-
   return c.json({ success: true });
 });
 
-// ====================== ADMIN ENDPOINT'LERİ ======================
+// ====================== ADMIN ENDPOINT'LERİ (KURUM BAZLI) ======================
 
-// Admin kontrolü middleware
-async function isAdmin(c) {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = JSON.parse(atob(token));
-    if (decoded.exp < Date.now()) return false;
-    const db = c.env.DB;
-    const user = await db.prepare(`SELECT role FROM users WHERE id = ?`).bind(decoded.user_id).first();
-    return user && user.role === 'admin';
-  } catch(e) { return false; }
-}
-
-// Admin - Tüm kullanıcıları listele
 app.get('/api/admin/users', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!await canListUsers(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  const users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at FROM users ORDER BY id DESC`).all();
+  const role = await getUserRole(c);
+  const institution = await getUserInstitution(c);
+  
+  let users;
+  if (role === 'super_admin') {
+    users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at FROM users ORDER BY id DESC`).all();
+  } else {
+    users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at FROM users WHERE institution = ? ORDER BY id DESC`).bind(institution).all();
+  }
   return c.json(users.results);
 });
 
-// Admin - Kullanıcı ekle/güncelle
 app.post('/api/admin/user', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const { email, password, full_name, institution, role } = await c.req.json();
   const db = c.env.DB;
+  const adminRole = await getUserRole(c);
+  const adminInstitution = await getUserInstitution(c);
+  
+  let finalInstitution = institution;
+  if (adminRole === 'admin') {
+    if (institution && institution !== adminInstitution) {
+      return c.json({ error: 'Kendi kurumunuz dışında kullanıcı ekleyemezsiniz' }, 403);
+    }
+    finalInstitution = adminInstitution;
+  }
+  
+  const finalRole = (role === 'admin' && adminRole !== 'super_admin') ? 'user' : (role || 'user');
+  
   const encoder = new TextEncoder();
   const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
   const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
-  await db.prepare(`INSERT INTO users (email, password_hash, full_name, institution, role) VALUES (?, ?, ?, ?, ?)`).bind(email, password_hash, full_name, institution, role || 'user').run();
+  
+  await db.prepare(`INSERT INTO users (email, password_hash, full_name, institution, role) VALUES (?, ?, ?, ?, ?)`).bind(email, password_hash, full_name, finalInstitution, finalRole).run();
   return c.json({ success: true });
 });
 
@@ -536,13 +445,36 @@ app.put('/api/admin/user/:id', async (c) => {
   const id = c.req.param('id');
   const { email, password, full_name, institution, role } = await c.req.json();
   const db = c.env.DB;
+  const adminRole = await getUserRole(c);
+  const adminInstitution = await getUserInstitution(c);
+  
+  if (adminRole === 'admin' && !await canAccessUser(c, id)) {
+    return c.json({ error: 'Sadece kendi kurumunuzdaki kullanıcıları düzenleyebilirsiniz' }, 403);
+  }
+  
+  let finalInstitution = institution;
+  if (adminRole === 'admin') {
+    finalInstitution = adminInstitution;
+  }
+  
+  const isSuper = adminRole === 'super_admin';
+  const finalRole = (role && role !== 'user' && !isSuper) ? null : role;
+  
   if (password) {
     const encoder = new TextEncoder();
     const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
     const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
-    await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, password_hash, full_name, institution, role, id).run();
+    if (finalRole) {
+      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, password_hash, full_name, finalInstitution, finalRole, id).run();
+    } else {
+      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=? WHERE id=?`).bind(email, password_hash, full_name, finalInstitution, id).run();
+    }
   } else {
-    await db.prepare(`UPDATE users SET email=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, full_name, institution, role, id).run();
+    if (finalRole) {
+      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, full_name, finalInstitution, finalRole, id).run();
+    } else {
+      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=? WHERE id=?`).bind(email, full_name, finalInstitution, id).run();
+    }
   }
   return c.json({ success: true });
 });
@@ -550,27 +482,70 @@ app.put('/api/admin/user/:id', async (c) => {
 app.delete('/api/admin/user/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const id = c.req.param('id');
+  const authHeader = c.req.header('Authorization');
+  const token = authHeader.split(' ')[1];
+  const decoded = JSON.parse(atob(token));
+  const adminRole = await getUserRole(c);
+  
+  if (adminRole === 'admin' && !await canAccessUser(c, id)) {
+    return c.json({ error: 'Sadece kendi kurumunuzdaki kullanıcıları silebilirsiniz' }, 403);
+  }
+  
+  if (decoded.user_id == id && adminRole === 'super_admin') {
+    return c.json({ error: 'Super admin kendini silemez' }, 400);
+  }
+  
   const db = c.env.DB;
   await db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id).run();
   await db.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
   return c.json({ success: true });
 });
 
-// Admin - Tüm abonelikleri listele
+app.post('/api/admin/set-role/:id', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const id = c.req.param('id');
+  const { role } = await c.req.json();
+  const db = c.env.DB;
+  await db.prepare(`UPDATE users SET role = ? WHERE id = ?`).bind(role, id).run();
+  return c.json({ success: true });
+});
+
 app.get('/api/admin/subscriptions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  const subs = await db.prepare(`
-    SELECT s.*, u.full_name as user_name FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.id DESC
-  `).all();
+  const role = await getUserRole(c);
+  const institution = await getUserInstitution(c);
+  
+  let subs;
+  if (role === 'super_admin') {
+    subs = await db.prepare(`
+      SELECT s.*, u.full_name as user_name, u.institution as user_institution 
+      FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.id DESC
+    `).all();
+  } else {
+    subs = await db.prepare(`
+      SELECT s.*, u.full_name as user_name, u.institution as user_institution 
+      FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id 
+      WHERE u.institution = ? ORDER BY s.id DESC
+    `).bind(institution).all();
+  }
   return c.json(subs.results);
 });
 
-// Admin - Abonelik ekle
 app.post('/api/admin/subscription', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const { user_id, product_slug, status, end_date } = await c.req.json();
   const db = c.env.DB;
+  const role = await getUserRole(c);
+  const adminInstitution = await getUserInstitution(c);
+  
+  if (role === 'admin') {
+    const targetUser = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(user_id).first();
+    if (!targetUser || targetUser.institution !== adminInstitution) {
+      return c.json({ error: 'Sadece kendi kurumunuzdaki kullanıcılara abonelik ekleyebilirsiniz' }, 403);
+    }
+  }
+  
   await db.prepare(`INSERT INTO subscriptions (user_id, product_slug, status, end_date) VALUES (?, ?, ?, ?)`).bind(user_id, product_slug, status, end_date || null).run();
   return c.json({ success: true });
 });
@@ -579,42 +554,20 @@ app.delete('/api/admin/subscription/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const id = c.req.param('id');
   const db = c.env.DB;
+  const role = await getUserRole(c);
+  const adminInstitution = await getUserInstitution(c);
+  
+  if (role === 'admin') {
+    const sub = await db.prepare(`
+      SELECT u.institution FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id WHERE s.id = ?
+    `).bind(id).first();
+    if (!sub || sub.institution !== adminInstitution) {
+      return c.json({ error: 'Sadece kendi kurumunuzdaki abonelikleri silebilirsiniz' }, 403);
+    }
+  }
+  
   await db.prepare(`DELETE FROM subscriptions WHERE id=?`).bind(id).run();
   return c.json({ success: true });
 });
-
-// Rol kontrolü yardımcı fonksiyonları
-async function getUserRole(c) {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = JSON.parse(atob(token));
-    if (decoded.exp < Date.now()) return null;
-    return decoded.role || 'user';
-  } catch(e) { return null; }
-}
-
-async function isSuperAdmin(c) {
-  const role = await getUserRole(c);
-  return role === 'super_admin';
-}
-
-async function isAdmin(c) {
-  const role = await getUserRole(c);
-  return role === 'admin' || role === 'super_admin';
-}
-
-async function isAdminOrOwner(c, userId) {
-  const role = await getUserRole(c);
-  if (role === 'super_admin') return true;
-  if (role === 'admin') return true;
-  
-  // Kendi profilini düzenleme izni
-  const authHeader = c.req.header('Authorization');
-  const token = authHeader.split(' ')[1];
-  const decoded = JSON.parse(atob(token));
-  return decoded.user_id == userId;
-}
 
 export default app;
