@@ -25,6 +25,50 @@ app.get('/api/auth/status', (c) => {
     timestamp: new Date().toISOString()
   });
 });
+// Token doğrulama endpoint'i
+app.post('/api/auth/verify', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ valid: false, error: 'Token gerekli' }, 401);
+  }
+
+  const token = authHeader.split(' ')[1];
+  
+  try {
+    // Token'ı decode et
+    const decoded = JSON.parse(atob(token));
+    
+    // Süre kontrolü
+    if (decoded.exp < Date.now()) {
+      return c.json({ valid: false, error: 'Token süresi dolmuş' }, 401);
+    }
+    
+    // Kullanıcıyı veritabanından kontrol et (isteğe bağlı)
+    const db = c.env.DB;
+    const user = await db.prepare(`
+      SELECT id, email, full_name, institution, role FROM users WHERE id = ?
+    `).bind(decoded.user_id).first();
+    
+    if (!user) {
+      return c.json({ valid: false, error: 'Kullanıcı bulunamadı' }, 401);
+    }
+    
+    return c.json({
+      valid: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        institution: user.institution,
+        role: user.role
+      }
+    });
+    
+  } catch (err) {
+    console.error("Verify error:", err);
+    return c.json({ valid: false, error: 'Geçersiz token' }, 401);
+  }
+});
 
 app.get('/api/subscription/check', async (c) => {
   const product = c.req.query('product');
