@@ -391,4 +391,92 @@ app.delete('/api/user/delete', async (c) => {
   return c.json({ success: true });
 });
 
+// ====================== ADMIN ENDPOINT'LERİ ======================
+
+// Admin kontrolü middleware
+async function isAdmin(c) {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) return false;
+    const db = c.env.DB;
+    const user = await db.prepare(`SELECT role FROM users WHERE id = ?`).bind(decoded.user_id).first();
+    return user && user.role === 'admin';
+  } catch(e) { return false; }
+}
+
+// Admin - Tüm kullanıcıları listele
+app.get('/api/admin/users', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at FROM users ORDER BY id DESC`).all();
+  return c.json(users.results);
+});
+
+// Admin - Kullanıcı ekle/güncelle
+app.post('/api/admin/user', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const { email, password, full_name, institution, role } = await c.req.json();
+  const db = c.env.DB;
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
+  const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+  await db.prepare(`INSERT INTO users (email, password_hash, full_name, institution, role) VALUES (?, ?, ?, ?, ?)`).bind(email, password_hash, full_name, institution, role || 'user').run();
+  return c.json({ success: true });
+});
+
+app.put('/api/admin/user/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const id = c.req.param('id');
+  const { email, password, full_name, institution, role } = await c.req.json();
+  const db = c.env.DB;
+  if (password) {
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
+    const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+    await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, password_hash, full_name, institution, role, id).run();
+  } else {
+    await db.prepare(`UPDATE users SET email=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, full_name, institution, role, id).run();
+  }
+  return c.json({ success: true });
+});
+
+app.delete('/api/admin/user/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const id = c.req.param('id');
+  const db = c.env.DB;
+  await db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id).run();
+  await db.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
+  return c.json({ success: true });
+});
+
+// Admin - Tüm abonelikleri listele
+app.get('/api/admin/subscriptions', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const subs = await db.prepare(`
+    SELECT s.*, u.full_name as user_name FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.id DESC
+  `).all();
+  return c.json(subs.results);
+});
+
+// Admin - Abonelik ekle
+app.post('/api/admin/subscription', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const { user_id, product_slug, status, end_date } = await c.req.json();
+  const db = c.env.DB;
+  await db.prepare(`INSERT INTO subscriptions (user_id, product_slug, status, end_date) VALUES (?, ?, ?, ?)`).bind(user_id, product_slug, status, end_date || null).run();
+  return c.json({ success: true });
+});
+
+app.delete('/api/admin/subscription/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const id = c.req.param('id');
+  const db = c.env.DB;
+  await db.prepare(`DELETE FROM subscriptions WHERE id=?`).bind(id).run();
+  return c.json({ success: true });
+});
+
 export default app;
