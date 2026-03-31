@@ -11,6 +11,117 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization']
 }));
 
+// ====================== ADMIN ENDPOINT'LERİ (ROL TABANLI) ======================
+
+// Super Admin - Tüm kullanıcıları listele
+app.get('/api/admin/users', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at FROM users ORDER BY id DESC`).all();
+  return c.json(users.results);
+});
+
+// Super Admin - Kullanıcı ekle
+app.post('/api/admin/user', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const { email, password, full_name, institution, role } = await c.req.json();
+  const db = c.env.DB;
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
+  const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+  
+  // Sadece super admin admin rolü atayabilir
+  const finalRole = (role === 'admin' && !await isSuperAdmin(c)) ? 'user' : (role || 'user');
+  
+  await db.prepare(`INSERT INTO users (email, password_hash, full_name, institution, role) VALUES (?, ?, ?, ?, ?)`).bind(email, password_hash, full_name, institution, finalRole).run();
+  return c.json({ success: true });
+});
+
+// Admin/Super Admin - Kullanıcı güncelle
+app.put('/api/admin/user/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const id = c.req.param('id');
+  const { email, password, full_name, institution, role } = await c.req.json();
+  const db = c.env.DB;
+  const isSuper = await isSuperAdmin(c);
+  
+  // Sadece super admin başkasının rolünü değiştirebilir veya admin atayabilir
+  const finalRole = (role && role !== 'user' && !isSuper) ? null : role;
+  
+  if (password) {
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
+    const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+    if (finalRole) {
+      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, password_hash, full_name, institution, finalRole, id).run();
+    } else {
+      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=? WHERE id=?`).bind(email, password_hash, full_name, institution, id).run();
+    }
+  } else {
+    if (finalRole) {
+      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, full_name, institution, finalRole, id).run();
+    } else {
+      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=? WHERE id=?`).bind(email, full_name, institution, id).run();
+    }
+  }
+  return c.json({ success: true });
+});
+
+// Admin/Super Admin - Kullanıcı sil (super admin kendini silemez)
+app.delete('/api/admin/user/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const id = c.req.param('id');
+  const authHeader = c.req.header('Authorization');
+  const token = authHeader.split(' ')[1];
+  const decoded = JSON.parse(atob(token));
+  
+  // Super admin kendini silemez
+  if (decoded.user_id == id && await isSuperAdmin(c)) {
+    return c.json({ error: 'Super admin kendini silemez' }, 400);
+  }
+  
+  const db = c.env.DB;
+  await db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id).run();
+  await db.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
+  return c.json({ success: true });
+});
+
+// Super Admin - Admin yetkisi verme/ alma
+app.post('/api/admin/set-role/:id', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const id = c.req.param('id');
+  const { role } = await c.req.json();
+  const db = c.env.DB;
+  await db.prepare(`UPDATE users SET role = ? WHERE id = ?`).bind(role, id).run();
+  return c.json({ success: true });
+});
+
+// Abonelik endpoint'leri (admin ve super admin için)
+app.get('/api/admin/subscriptions', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const subs = await db.prepare(`
+    SELECT s.*, u.full_name as user_name FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.id DESC
+  `).all();
+  return c.json(subs.results);
+});
+
+app.post('/api/admin/subscription', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const { user_id, product_slug, status, end_date } = await c.req.json();
+  const db = c.env.DB;
+  await db.prepare(`INSERT INTO subscriptions (user_id, product_slug, status, end_date) VALUES (?, ?, ?, ?)`).bind(user_id, product_slug, status, end_date || null).run();
+  return c.json({ success: true });
+});
+
+app.delete('/api/admin/subscription/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const id = c.req.param('id');
+  const db = c.env.DB;
+  await db.prepare(`DELETE FROM subscriptions WHERE id=?`).bind(id).run();
+  return c.json({ success: true });
+});
+
 // ====================== GET ENDPOINT'LERİ ======================
 app.get('/test', (c) => {
   console.log("✅ Test endpoint called");
@@ -210,34 +321,27 @@ app.post('/api/auth/login', async (c) => {
     const { email, password } = await c.req.json();
     const db = c.env.DB;
 
-    // Password hash
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const password_hash = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0')).join('');
 
-    // Kullanıcıyı bul (role'ü de al)
     const user = await db.prepare(`
       SELECT id, email, full_name, institution, password_hash, role 
       FROM users WHERE email = ?
     `).bind(email.toLowerCase().trim()).first();
 
-    if (!user) {
+    if (!user || user.password_hash !== password_hash) {
       return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
     }
 
-    if (user.password_hash !== password_hash) {
-      return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
-    }
-
-    // Token payload - role eklendi
     const tokenPayload = {
       user_id: user.id,
       email: user.email,
       full_name: user.full_name || "",
       institution: user.institution || "",
-      role: user.role || "user",  // ← BURASI ÇOK ÖNEMLİ
+      role: user.role || "user",
       exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
     };
     
@@ -478,5 +582,39 @@ app.delete('/api/admin/subscription/:id', async (c) => {
   await db.prepare(`DELETE FROM subscriptions WHERE id=?`).bind(id).run();
   return c.json({ success: true });
 });
+
+// Rol kontrolü yardımcı fonksiyonları
+async function getUserRole(c) {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) return null;
+    return decoded.role || 'user';
+  } catch(e) { return null; }
+}
+
+async function isSuperAdmin(c) {
+  const role = await getUserRole(c);
+  return role === 'super_admin';
+}
+
+async function isAdmin(c) {
+  const role = await getUserRole(c);
+  return role === 'admin' || role === 'super_admin';
+}
+
+async function isAdminOrOwner(c, userId) {
+  const role = await getUserRole(c);
+  if (role === 'super_admin') return true;
+  if (role === 'admin') return true;
+  
+  // Kendi profilini düzenleme izni
+  const authHeader = c.req.header('Authorization');
+  const token = authHeader.split(' ')[1];
+  const decoded = JSON.parse(atob(token));
+  return decoded.user_id == userId;
+}
 
 export default app;
