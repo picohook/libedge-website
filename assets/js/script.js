@@ -1,9 +1,18 @@
-       
-
-            // ====================== AUTH GLOBAL FUNCTIONS ======================
+// ====================== AUTH GLOBAL FUNCTIONS ======================
 const API_BASE = 'https://form-handler.agursel.workers.dev';
 let currentUser = null;
 let authToken = localStorage.getItem('authToken');
+
+// Token decode helper (Türkçe karakterler için)
+function decodeToken(token) {
+    try {
+        const decoded = decodeURIComponent(escape(atob(token)));
+        return JSON.parse(decoded);
+    } catch (e) {
+        console.error("Token decode error:", e);
+        return null;
+    }
+}
 
 window.openLoginModal = function() {
     const modal = document.getElementById('loginModal');
@@ -38,6 +47,7 @@ window.closeRegisterModal = function() {
     }
 };
 
+// Login function - GÜNCELLENDİ (decodeToken ile)
 window.login = async function(email, password) {
     try {
         const response = await fetch(`${API_BASE}/api/auth/login`, {
@@ -48,22 +58,37 @@ window.login = async function(email, password) {
         const data = await response.json();
         if (data.success) {
             authToken = data.token;
-            currentUser = data.user;
             localStorage.setItem('authToken', authToken);
+            
+            // Token'ı decode et
+            const decoded = decodeToken(authToken);
+            if (decoded) {
+                currentUser = {
+                    id: decoded.user_id,
+                    email: decoded.email,
+                    full_name: decoded.full_name,
+                    institution: decoded.institution
+                };
+            } else {
+                currentUser = data.user;
+            }
+            
             updateAuthUI(true);
             closeLoginModal();
-            showNotification('Giriş başarılı! Hoş geldiniz, ' + currentUser.full_name, 'success');
+            showNotification('Giriş başarılı! Hoş geldiniz, ' + (currentUser.full_name || 'Kullanıcı'), 'success');
             return true;
         } else {
             showNotification(data.error || 'Giriş başarısız', 'error');
             return false;
         }
     } catch (err) {
+        console.error('Login error:', err);
         showNotification('Bir hata oluştu', 'error');
         return false;
     }
 };
 
+// Register function
 window.register = async function(fullName, email, password, institution) {
     try {
         const response = await fetch(`${API_BASE}/api/auth/register`, {
@@ -82,11 +107,13 @@ window.register = async function(fullName, email, password, institution) {
             return false;
         }
     } catch (err) {
+        console.error('Register error:', err);
         showNotification('Bir hata oluştu', 'error');
         return false;
     }
 };
 
+// Logout function
 window.logout = function() {
     authToken = null;
     currentUser = null;
@@ -95,25 +122,61 @@ window.logout = function() {
     showNotification('Çıkış yapıldı', 'info');
 };
 
+// Update UI based on auth state
 function updateAuthUI(isLoggedIn) {
     const userIcon = document.querySelector('a[aria-label="User Management"] i');
+    const userBadge = document.getElementById('userBadge');
+    
     if (isLoggedIn && currentUser) {
-        if (userIcon) userIcon.className = 'fas fa-user-check text-xl';
+        // İkonu değiştir
+        if (userIcon) {
+            userIcon.className = 'fas fa-user-check text-xl';
+        }
+        
+        // Badge'i doldur ve göster
+        if (userBadge) {
+            userBadge.innerHTML = `
+                <div class="p-3 min-w-[200px]">
+                    <p class="font-semibold text-primary">${currentUser.full_name || 'Kullanıcı'}</p>
+                    <p class="text-sm text-gray-600 break-all">${currentUser.email}</p>
+                    ${currentUser.institution ? `<p class="text-xs text-gray-500 mt-1">${currentUser.institution}</p>` : ''}
+                    <hr class="my-2">
+                    <a href="profile.html" class="block text-sm text-primary hover:text-purple-600 mb-1">
+                        <i class="fas fa-user mr-1"></i> Profilim
+                    </a>
+                    <button onclick="logout()" class="text-sm text-red-600 hover:text-red-800 w-full text-left">
+                        <i class="fas fa-sign-out-alt mr-1"></i> Çıkış Yap
+                    </button>
+                </div>
+            `;
+            userBadge.style.display = 'block';
+            console.log("✅ Badge updated with profile link");
+        } else {
+            console.error("userBadge element not found!");
+        }
     } else {
-        if (userIcon) userIcon.className = 'fas fa-user text-xl';
+        // Çıkış yapılmış durum
+        if (userIcon) {
+            userIcon.className = 'fas fa-user text-xl';
+        }
+        if (userBadge) {
+            userBadge.style.display = 'none';
+        }
     }
 }
 
+// Check authentication - GÜNCELLENDİ (decodeToken ile)
 async function checkAuth() {
     if (!authToken) return false;
     try {
-        const response = await fetch(`${API_BASE}/api/auth/verify`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        if (data.valid) {
-            currentUser = data.user;
+        const decoded = decodeToken(authToken);
+        if (decoded && decoded.exp > Date.now()) {
+            currentUser = {
+                id: decoded.user_id,
+                email: decoded.email,
+                full_name: decoded.full_name,
+                institution: decoded.institution
+            };
             updateAuthUI(true);
             return true;
         } else {
@@ -121,6 +184,7 @@ async function checkAuth() {
             return false;
         }
     } catch (err) {
+        console.error('Auth check error:', err);
         return false;
     }
 }
