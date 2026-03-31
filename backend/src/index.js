@@ -222,4 +222,102 @@ app.post('/api/auth/register', async (c) => {
   }
 });
 
+// Kullanıcı profili bilgilerini getir
+app.get('/api/user/profile', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Yetkilendirme gerekli' }, 401);
+  }
+
+  const token = authHeader.split(' ')[1];
+  let userId;
+
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) throw new Error('Token expired');
+    userId = decoded.user_id;
+  } catch (e) {
+    return c.json({ error: 'Geçersiz token' }, 401);
+  }
+
+  const db = c.env.DB;
+  const user = await db.prepare(`
+    SELECT id, email, full_name, institution, created_at FROM users WHERE id = ?
+  `).bind(userId).first();
+
+  if (!user) {
+    return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
+  }
+
+  return c.json(user);
+});
+
+// Kullanıcı bilgilerini güncelle
+app.post('/api/user/update', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Yetkilendirme gerekli' }, 401);
+  }
+
+  const token = authHeader.split(' ')[1];
+  let userId;
+
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) throw new Error('Token expired');
+    userId = decoded.user_id;
+  } catch (e) {
+    return c.json({ error: 'Geçersiz token' }, 401);
+  }
+
+  const { full_name, institution, new_password } = await c.req.json();
+  const db = c.env.DB;
+
+  if (new_password && new_password.length >= 6) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(new_password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const password_hash = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    await db.prepare(`
+      UPDATE users SET full_name = ?, institution = ?, password_hash = ? WHERE id = ?
+    `).bind(full_name || null, institution || null, password_hash, userId).run();
+  } else {
+    await db.prepare(`
+      UPDATE users SET full_name = ?, institution = ? WHERE id = ?
+    `).bind(full_name || null, institution || null, userId).run();
+  }
+
+  return c.json({ success: true });
+});
+
+// Kullanıcı hesabını sil
+app.delete('/api/user/delete', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Yetkilendirme gerekli' }, 401);
+  }
+
+  const token = authHeader.split(' ')[1];
+  let userId;
+
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) throw new Error('Token expired');
+    userId = decoded.user_id;
+  } catch (e) {
+    return c.json({ error: 'Geçersiz token' }, 401);
+  }
+
+  const db = c.env.DB;
+  
+  // Önce abonelikleri sil
+  await db.prepare(`DELETE FROM subscriptions WHERE user_id = ?`).bind(userId).run();
+  // Sonra kullanıcıyı sil
+  await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
+
+  return c.json({ success: true });
+});
+
 export default app;
