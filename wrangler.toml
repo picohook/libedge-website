@@ -1,3 +1,9 @@
 name = "form-handler"
 main = "backend/src/index.js"
-compatibility_date = "2024-09-01"
+compatibility_date = "2026-03-01"
+
+# D1 Binding - LibEdge Auth & Subscription
+[[d1_databases]]
+binding = "DB"
+database_name = "libedge-db"
+database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
