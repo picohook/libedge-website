@@ -61,7 +61,34 @@ app.get('/api/subscription/check', async (c) => {
     status: sub ? sub.status : null 
   });
 });
+// Kullanıcının tüm aboneliklerini listele
+app.get('/api/subscription/list', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Yetkilendirme gerekli' }, 401);
+  }
 
+  const token = authHeader.split(' ')[1];
+  let userId;
+
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) throw new Error('Token expired');
+    userId = decoded.user_id;
+  } catch (e) {
+    return c.json({ error: 'Geçersiz token' }, 401);
+  }
+
+  const db = c.env.DB;
+  const subscriptions = await db.prepare(`
+    SELECT id, product_slug, status, start_date, end_date, created_at
+    FROM subscriptions 
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+  `).bind(userId).all();
+
+  return c.json({ subscriptions: subscriptions.results });
+});
 // ====================== POST ENDPOINT'LERİ ======================
 app.post('/form', async (c) => {
   try {
