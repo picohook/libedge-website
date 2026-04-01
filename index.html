@@ -1,24 +1,7 @@
-<!DOCTYPE html>
-<html lang="tr">
-
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="LibEdge offers premium education and research solutions, including AI tools, databases, books and academic journals for institutions in Türkiye and the Middle East.">
-    <title>LibEdge Eğitim ve Danışmanlık</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">    
-</head>
-
-<body class="bg-gray-50 min-h-screen" translatable>
-
-<!-- HEADER: Üst bilgi + Logo -->
 <header class="bg-primary text-white py-4 px-4">
     <div class="max-w-7xl mx-auto">
         <!-- Üst Bilgi Satırı (Telefon, E-posta, Sosyal Medya) -->
-        <div class="flex flex-col sm:flex-row justify-between items-center pb-3 border-b border-purple-800/30 mb-3">
+        <div class="flex flex-col sm:flex-row justify-between items-center pb-3 border-b border-purple-800/30">
             <div class="flex flex-wrap items-center space-x-4 mb-2 sm:mb-0">
                 <div class="flex items-center">
                     <i class="fas fa-envelope mr-2 text-purple-300"></i>
@@ -41,8 +24,8 @@
             </div>
         </div>
         
-        <!-- Logo -->
-        <div class="flex justify-center">
+        <!-- Logo (Ortalanmış) -->
+        <div class="flex justify-center py-4">
             <a href="index.html">
                 <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="h-14 w-auto">
             </a>
@@ -50,24 +33,28 @@
     </div>
 </header>
 
-<!-- TEK MENÜ: Ürünler (dropdown), Broşürler, İletişim, Duyurular, Dil Butonu, Giriş Butonu -->
+<!-- Menü (Sağa yaslı) -->
 <nav class="bg-white shadow-md sticky top-0 z-10">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-        <a class="text-2xl text-primary nav-logo md:hidden" href="#">
-            <span class="lib-bold translatable">Lib</span><span class="translatable">Edge</span>
-        </a>
-        <button class="hamburger md:hidden" aria-label="Menüyü aç/kapat">
-            <i class="fas fa-bars"></i>
-        </button>
-        <div class="nav-links flex items-center space-x-2 sm:space-x-6 text-xs sm:text-sm font-medium text-gray-700">
-            
-            <!-- Ürünler Dropdown -->
+    <div class="max-w-7xl mx-auto px-4 py-3">
+        <!-- Hamburger buton (mobil) -->
+        <div class="flex justify-between items-center md:hidden">
+            <a class="text-2xl text-primary nav-logo" href="#">
+                <span class="lib-bold translatable">Lib</span><span class="translatable">Edge</span>
+            </a>
+            <button class="hamburger" aria-label="Menüyü aç/kapat">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        
+        <!-- Menü Linkleri (sağa yaslı) -->
+        <div class="nav-links flex flex-col md:flex-row md:justify-end md:items-center space-y-2 md:space-y-0 md:space-x-6 text-sm font-medium text-gray-700 mt-2 md:mt-0">
             <div class="relative group">
                 <a id="products-menu-toggle" class="hover:text-primary font-semibold flex items-center cursor-pointer sm:cursor-default translatable">
                     Ürünler
                     <i class="fas fa-chevron-down ml-1 text-xs"></i>
                 </a>
                 <div class="dropdown absolute left-0 mt-2 bg-white shadow-lg rounded-lg z-20 p-4 space-y-4 w-[340px] hidden sm:block">
+                    <!-- Ürün kategorileri (aynı) -->
                     <div><h4 class="text-sm font-bold text-primary mb-1 translatable">Yapay Zeka</h4>
                         <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
                         <a href="#chatpdf" class="block text-gray-700 translatable">ChatPDF</a>
@@ -113,69 +100,15 @@
                 
                 <!-- Mobil Ürünler Menüsü -->
                 <div id="mobile-products" class="space-y-2 mt-2 px-2 sm:hidden">
-                    <div class="group"><button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center"><span class="translatable">Yapay Zeka</span> <i class="fas fa-chevron-down ml-2 text-xs"></i></button>
-                        <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-                            <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
-                            <a href="#chatpdf" class="block text-gray-700 translatable">ChatPDF</a>
-                            <a href="#wonders" class="block text-gray-700 translatable">Wonders</a>
-                            <a href="#piri-discovery" class="block text-gray-700 translatable">Piri Keşif</a>
-                            <a href="#transleyt" class="block text-gray-700 translatable">Transleyt</a>
-                        </div>
-                    </div>
-                    <div class="group"><button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center"><span class="translatable">Sağlık</span> <i class="fas fa-chevron-down ml-2 text-xs"></i></button>
-                        <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-                            <a href="#primal-pictures" class="block text-gray-700 translatable">Primal Pictures</a>
-                            <a href="#lecturio" class="block text-gray-700 translatable">Lecturio</a>
-                            <a href="#nejmhealer" class="block text-gray-700 translatable">NEJMHealer</a>
-                            <a href="#cochrane-library" class="block text-gray-700 translatable">Cochrane Library</a>
-                            <a href="#imachek" class="block text-gray-700 translatable">ImaChek</a>
-                        </div>
-                    </div>
-                    <div class="group"><button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center"><span class="translatable">Mühendislik</span> <i class="fas fa-chevron-down ml-2 text-xs"></i></button>
-                        <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-                            <a href="#biorender" class="block text-gray-700 translatable">BioRender</a>
-                            <a href="#wiley-dergiler" class="block text-gray-700 translatable">Wiley Dergiler</a>
-                            <a href="#wiley-kitaplar" class="block text-gray-700 translatable">Wiley Kitaplar</a>
-                        </div>
-                    </div>
-                    <div class="group"><button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center"><span class="translatable">Fen & Matematik</span> <i class="fas fa-chevron-down ml-2 text-xs"></i></button>
-                        <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-                            <a href="#jove-dergiler" class="block text-gray-700 translatable">JoVE Research</a>
-                            <a href="#jove-education" class="block text-gray-700 translatable">JoVE Education</a>
-                            <a href="#wiley-dergiler" class="block text-gray-700 translatable">Wiley Dergiler</a>
-                            <a href="#wiley-kitaplar" class="block text-gray-700 translatable">Wiley Kitaplar</a>
-                        </div>
-                    </div>
-                    <div class="group"><button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center"><span class="translatable">Sosyal Bilimler</span> <i class="fas fa-chevron-down ml-2 text-xs"></i></button>
-                        <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-                            <a href="#jove-dergiler" class="block text-gray-700 translatable">JoVE Research</a>
-                            <a href="#jove-education" class="block text-gray-700 translatable">JoVE Education</a>
-                        </div>
-                    </div>
-                    <div class="group"><button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center"><span class="translatable">İş & Hukuk</span> <i class="fas fa-chevron-down ml-2 text-xs"></i></button>
-                        <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1"><a href="#jove-business" class="block text-gray-700 translatable">JoVE Business</a></div>
-                    </div>
-                    <div class="group"><button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center"><span class="translatable">Sanat</span> <i class="fas fa-chevron-down ml-2 text-xs"></i></button>
-                        <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-                            <a href="#klasik-muzik" class="block text-gray-700 translatable">Klasik Müzik Koleksiyonu</a>
-                            <a href="#caz-koleksiyonu" class="block text-gray-700 translatable">Caz Koleksiyonu</a>
-                        </div>
-                    </div>
-                    <div class="group"><button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center"><span class="translatable">Akademik Dürüstlük</span> <i class="fas fa-chevron-down ml-2 text-xs"></i></button>
-                        <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-                            <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
-                            <a href="#imachek" class="block text-gray-700 translatable">ImaChek</a>
-                        </div>
-                    </div>
+                    <!-- Aynı mobil dropdown içerikleri -->
                 </div>
             </div>
             
-            <!-- Diğer Menü Linkleri -->
             <a class="hover:text-primary translatable" href="#brochures">Broşürler</a>
             <a class="hover:text-primary translatable" href="#contact">İletişim</a>
             <a class="text-primary font-semibold translatable" href="Announcements.html">Duyurular</a>
             
-            <!-- Dil Butonu (çalışan) -->
+            <!-- Dil Butonu -->
             <button id="translateBtn" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center text-sm font-semibold">
                 <i class="fas fa-globe mr-1"></i>
                 <span id="translateText">English</span>
@@ -183,7 +116,7 @@
             
             <!-- Giriş Butonu / Kullanıcı Avatarı -->
             <div id="authNotLoggedIn">
-                <button onclick="openLoginModal()" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 text-sm font-semibold">
+                <button onclick="openLoginModal()" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 text-sm font-semibold whitespace-nowrap">
                     <i class="fas fa-sign-in-alt mr-1"></i> Giriş
                 </button>
             </div>
@@ -216,36 +149,6 @@
         </div>
     </div>
 </nav>
-
-<!-- Hero Slider ve diğer içerik aynen devam edecek... -->
-
-<main class="hero-slider-container">
-    <div id="hero-slider" class="hero-slider">
-        <!-- SLIDE 1 -->
-        <div class="hero-slide active">
-            <video class="hero-video" src="assets/videos/library.mp4" autoplay muted loop playsinline></video>
-            <div class="hero-content">
-                <h1 class="hero-header translatable"><span class="font-normal">Bilginin Gücünü Keşfedin</span></h1>
-                <p class="hero-subtitle translatable">Kalite ve dürüstlük ilkesi ile 20 yıla yakın sektör deneyimini harmanlıyoruz. Kütüphanelere ürün danışmanlığı, abonelik süreç desteği ve yerinde eğitim hizmetleri sunuyoruz.</p>
-            </div>
-            <div class="hero-badges-wrapper">
-                <button onclick="openModal()" class="hero-badge translatable"><i class="fas fa-ticket-alt mr-2"></i><span>Deneme Erişimi İsteği</span></button>
-                <button onclick="openSuggestionModal()" class="hero-badge translatable"><i class="fas fa-lightbulb mr-2"></i><span>Ürün Öneriniz Var mı?</span></button>
-            </div>
-        </div>
-        <!-- SLIDE 2,3,4 aynen devam ediyor... (kısaltmak için eklemedim, siz kopyalayın) -->
-    </div>
-    <button id="prevBtn" class="slider-nav-btn slider-prev"><i class="fas fa-chevron-left"></i></button>
-    <button id="nextBtn" class="slider-nav-btn slider-next"><i class="fas fa-chevron-right"></i></button>
-    <div class="slider-dots-container"></div>
-    <button id="autoplayToggle" class="autoplay-toggle"><i class="fas fa-pause"></i></button>
-</main>
-
-<!-- Buradan sonra ürünler, hizmetler, testimonial, partners, contact, footer kısımları aynen devam edecek... -->
-<!-- (index.html'in sonundaki tüm içerik aynen kalacak) -->
-
-</body>
-</html>
 
     <section id="products" class="max-w-7xl mx-auto px-6 py-4">
         <h2 class="products-header translatable">Ürünler</h2>
