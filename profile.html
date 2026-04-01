@@ -66,121 +66,83 @@
 <header class="bg-primary text-white py-4 px-4">
     <div class="max-w-7xl mx-auto">
         <!-- Üst Bilgi Satırı (Telefon, E-posta, Sosyal Medya) -->
-        <div class="flex flex-col sm:flex-row justify-between items-center pb-3 border-b border-purple-800/30 mb-3">
-            <div class="flex flex-wrap items-center space-x-4 mb-2 sm:mb-0">
+        <div class="flex flex-col sm:flex-row justify-between items-center pb-3 border-b border-purple-800/30 mb-4">
+            <div class="flex flex-wrap items-center justify-center sm:justify-start space-x-4 mb-2 sm:mb-0">
                 <div class="flex items-center">
-                    <i class="fas fa-envelope mr-2 text-purple-300" aria-hidden="true"></i>
+                    <i class="fas fa-envelope mr-2 text-purple-300"></i>
                     <span class="text-xs sm:text-sm"><a href="mailto:info@libedge.com">info@libedge.com</a></span>
                 </div>
-                <div class="flex flex-col">
-                    <div class="flex items-center">
-                        <i class="fas fa-mobile-alt mr-2 text-purple-300" aria-hidden="true"></i>
-                        <span class="text-xs sm:text-sm">+90 535 624 4016</span>
-                    </div>
-                    <div class="flex items-center mt-1">
-                        <i class="fas fa-mobile-alt mr-2 text-purple-300" aria-hidden="true"></i>
-                        <span class="text-xs sm:text-sm">+90 530 353 3932</span>
-                    </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-mobile-alt text-purple-300"></i>
+                    <span class="text-xs sm:text-sm">+90 535 624 4016</span>
+                    <span class="text-purple-300">|</span>
+                    <span class="text-xs sm:text-sm">+90 530 353 3932</span>
                 </div>
             </div>
             
-            <div class="flex items-center space-x-4">
-                <a class="text-white hover:text-purple-300" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank">
-                    <i class="fab fa-linkedin-in text-lg"></i>
-                </a>
-                <a class="text-white hover:text-purple-300" href="https://twitter.com/" target="_blank">
-                    <i class="fab fa-x-twitter text-lg"></i>
-                </a>
-                <a class="text-white hover:text-purple-300" href="https://facebook.com/" target="_blank">
-                    <i class="fab fa-facebook-f text-lg"></i>
-                </a>
-                <a class="text-white hover:text-purple-300" href="https://instagram.com/" target="_blank">
-                    <i class="fab fa-instagram text-lg"></i>
-                </a>
-                <a class="text-white hover:text-purple-300" href="https://youtube.com/" target="_blank">
-                    <i class="fab fa-youtube text-lg"></i>
-                </a>
-                <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openMapModal()">
-                    <i class="fas fa-map-marker-alt text-lg"></i>
-                </a>
+            <div class="flex items-center space-x-3">
+                <a class="text-white hover:text-purple-300" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank"><i class="fab fa-linkedin-in"></i></a>
+                <a class="text-white hover:text-purple-300" href="https://twitter.com/" target="_blank"><i class="fab fa-x-twitter"></i></a>
+                <a class="text-white hover:text-purple-300" href="https://facebook.com/" target="_blank"><i class="fab fa-facebook-f"></i></a>
+                <a class="text-white hover:text-purple-300" href="https://instagram.com/" target="_blank"><i class="fab fa-instagram"></i></a>
+                <a class="text-white hover:text-purple-300" href="https://youtube.com/" target="_blank"><i class="fab fa-youtube"></i></a>
+                <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openMapModal()"><i class="fas fa-map-marker-alt"></i></a>
             </div>
         </div>
         
-        <!-- Ana Navigasyon Satırı (Logo + Menü + Kullanıcı) -->
-        <div class="flex justify-between items-center">
+        <!-- Ana Navigasyon Satırı (Logo + Menü + Kullanıcı) - FLEX ROW DÜZELTİLDİ -->
+        <div class="flex flex-row justify-between items-center">
             <!-- Logo -->
-            <a href="index.html" class="flex items-center">
+            <a href="index.html" class="flex items-center shrink-0">
                 <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="h-12 w-auto">
             </a>
             
             <!-- Sağ Taraf (Dil + Kullanıcı) -->
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center gap-3">
                 <!-- Dil Butonu -->
                 <button id="translateBtn" class="text-white hover:text-purple-300 text-sm flex items-center gap-1">
                     <i class="fas fa-globe"></i>
                     <span id="translateText" class="hidden sm:inline">English</span>
                 </button>
                 
-                <!-- Kullanıcı Alanı (Giriş yapılmamış) -->
+                <!-- Giriş yapılmamış -->
                 <div id="authNotLoggedIn" class="flex items-center gap-2">
-                    <button onclick="openLoginModal()" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition">
-                        <i class="fas fa-sign-in-alt mr-1"></i> Giriş Yap
+                    <button onclick="openLoginModal()" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition whitespace-nowrap">
+                        <i class="fas fa-sign-in-alt mr-1"></i> Giriş
                     </button>
-                    <button onclick="openRegisterModal()" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-lg text-sm transition">
-                        Kayıt Ol
+                    <button onclick="openRegisterModal()" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-lg text-sm transition whitespace-nowrap">
+                        Kayıt
                     </button>
                 </div>
                 
-                <!-- Kullanıcı Alanı (Giriş yapılmış) - HOVER ile açılan -->
+                <!-- Giriş yapılmış - HOVER ile açılan (SADECE AVATAR) -->
                 <div id="authLoggedIn" class="relative hidden">
-                    <div id="userMenuButton" class="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-full px-3 py-1.5 transition cursor-pointer group">
+                    <div id="userMenuButton" class="flex items-center justify-center w-9 h-9 rounded-full bg-purple-600 hover:bg-purple-500 transition cursor-pointer group">
                         <div id="userAvatar" class="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white text-sm font-bold">
                             <!-- Dinamik -->
                         </div>
-                        <span id="userShortName" class="text-sm font-medium hidden sm:inline-block"></span>
-                        <i class="fas fa-chevron-down text-xs transition-transform group-hover:rotate-180"></i>
                     </div>
                     
                     <!-- Hover ile Açılan Dropdown -->
                     <div id="userDropdown" class="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl overflow-hidden opacity-0 invisible transition-all duration-200 transform -translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0" style="transform-origin: top right; z-index: 50;">
-                        <!-- Profil Kartı -->
                         <div class="bg-gradient-to-r from-[#220f60] to-purple-700 p-4 text-white">
                             <div class="flex items-center gap-3">
-                                <div id="dropdownAvatar" class="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-white text-xl font-bold backdrop-blur-sm">
-                                    <!-- Dinamik -->
-                                </div>
+                                <div id="dropdownAvatar" class="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-white text-xl font-bold backdrop-blur-sm"></div>
                                 <div class="flex-1 min-w-0">
                                     <p id="dropdownName" class="font-semibold text-white truncate"></p>
                                     <p id="dropdownEmail" class="text-sm text-purple-200 truncate"></p>
                                     <p id="dropdownInstitution" class="text-xs text-purple-300 truncate mt-1 hidden">
-                                        <i class="fas fa-building mr-1"></i>
-                                        <span></span>
+                                        <i class="fas fa-building mr-1"></i><span></span>
                                     </p>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Menü Linkleri -->
                         <div class="py-2">
-                            <a href="profile.html" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition group">
-                                <i class="fas fa-user-circle w-5 text-gray-400 group-hover:text-[#220f60]"></i>
-                                <span>Profilim</span>
-                            </a>
-                            <a href="#" id="userSubscriptionsLink" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition group">
-                                <i class="fas fa-ticket-alt w-5 text-gray-400 group-hover:text-[#220f60]"></i>
-                                <span>Aboneliklerim</span>
-                            </a>
-                            <div id="adminMenuLink" class="hidden">
-                                <a href="admin.html" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition group">
-                                    <i class="fas fa-shield-alt w-5 text-purple-500"></i>
-                                    <span>Admin Paneli</span>
-                                </a>
-                            </div>
+                            <a href="profile.html" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50"><i class="fas fa-user-circle w-5 text-gray-400"></i>Profilim</a>
+                            <a href="#" id="userSubscriptionsLink" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50"><i class="fas fa-ticket-alt w-5 text-gray-400"></i>Aboneliklerim</a>
+                            <div id="adminMenuLink" class="hidden"><a href="admin.html" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50"><i class="fas fa-shield-alt w-5 text-purple-500"></i>Admin Paneli</a></div>
                             <hr class="my-1 mx-4 border-gray-100">
-                            <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition group">
-                                <i class="fas fa-sign-out-alt w-5"></i>
-                                <span>Çıkış Yap</span>
-                            </button>
+                            <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt w-5"></i>Çıkış Yap</button>
                         </div>
                     </div>
                 </div>

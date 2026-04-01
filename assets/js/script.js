@@ -157,7 +157,6 @@ function updateAuthUI(isLoggedIn) {
     const authNotLoggedIn = document.getElementById('authNotLoggedIn');
     const authLoggedIn = document.getElementById('authLoggedIn');
     const userAvatar = document.getElementById('userAvatar');
-    const userShortName = document.getElementById('userShortName');
     const dropdownAvatar = document.getElementById('dropdownAvatar');
     const dropdownName = document.getElementById('dropdownName');
     const dropdownEmail = document.getElementById('dropdownEmail');
@@ -165,20 +164,17 @@ function updateAuthUI(isLoggedIn) {
     const adminMenuLink = document.getElementById('adminMenuLink');
     
     if (isLoggedIn && currentUser) {
-        // Giriş yapılmış - sağ üstteki alanı göster
         if (authNotLoggedIn) authNotLoggedIn.classList.add('hidden');
         if (authLoggedIn) authLoggedIn.classList.remove('hidden');
         
         const initials = getInitials(currentUser.full_name);
-        const shortName = getShortName(currentUser.full_name);
         const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
         
-        // Avatar ve isimleri güncelle
+        // Sadece avatar (isim yazısı yok)
         if (userAvatar) {
             userAvatar.textContent = initials;
             userAvatar.className = `w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${avatarColor}`;
         }
-        if (userShortName) userShortName.textContent = shortName;
         
         if (dropdownAvatar) {
             dropdownAvatar.textContent = initials;
@@ -187,18 +183,16 @@ function updateAuthUI(isLoggedIn) {
         if (dropdownName) dropdownName.textContent = currentUser.full_name || 'Kullanıcı';
         if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
         
-        // Kurum bilgisi
         if (dropdownInstitution) {
             const instSpan = dropdownInstitution.querySelector('span');
             if (currentUser.institution && instSpan) {
                 instSpan.textContent = currentUser.institution;
                 dropdownInstitution.classList.remove('hidden');
-            } else if (dropdownInstitution) {
+            } else {
                 dropdownInstitution.classList.add('hidden');
             }
         }
         
-        // Admin paneli linki (sadece admin/super admin)
         if (adminMenuLink) {
             if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
                 adminMenuLink.classList.remove('hidden');
@@ -207,12 +201,10 @@ function updateAuthUI(isLoggedIn) {
             }
         }
         
-        // Eskiden kullanılan userBadge'i gizle (varsa)
         const userBadge = document.getElementById('userBadge');
         if (userBadge) userBadge.style.display = 'none';
         
     } else {
-        // Giriş yapılmamış
         if (authNotLoggedIn) authNotLoggedIn.classList.remove('hidden');
         if (authLoggedIn) authLoggedIn.classList.add('hidden');
     }
