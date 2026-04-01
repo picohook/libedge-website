@@ -67,7 +67,7 @@
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <h3 class="text-lg font-semibold mb-4">Son Kayıt Olan Kullanıcılar</h3>
-                    <div class="overflow-x-auto"><table class="w-full"><thead><tr><th>Ad Soyad</th><th>E-posta</th><th>Kurum</th><th>Kayıt Tarihi</th></tr></thead><tbody id="recentUsers"><tr><td colspan="4" class="text-center py-4">Yükleniyor...</td></tr></tbody></table></div>
+                    <div class="overflow-x-auto"><table class="w-full"><thead> <th>Ad Soyad</th><th>E-posta</th><th>Kurum</th><th>Kayıt Tarihi</th> </thead><tbody id="recentUsers"> <td colspan="4" class="text-center py-4">Yükleniyor... </tbody> </div>
                 </div>
             </div>
 
@@ -75,7 +75,7 @@
             <div id="tab-users" class="tab-content hidden">
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Kullanıcılar</h3><button id="addUserBtn" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>Kullanıcı Ekle</button></div>
-                    <div class="overflow-x-auto"><table class="w-full"><thead><tr><th>ID</th><th>Ad Soyad</th><th>E-posta</th><th>Kurum</th><th>Rol</th><th>Kayıt Tarihi</th><th>İşlem</th></tr></thead><tbody id="usersList"><tr><td colspan="7" class="text-center py-4">Yükleniyor...</td></tr></tbody></table></div>
+                    <div class="overflow-x-auto"><table class="w-full"><thead> <th>ID</th><th>Ad Soyad</th><th>E-posta</th><th>Kurum</th><th>Rol</th><th>Kayıt Tarihi</th><th>İşlem</th> </thead><tbody id="usersList"> <td colspan="7" class="text-center py-4">Yükleniyor... </tbody> </div>
                 </div>
             </div>
 
@@ -83,7 +83,7 @@
             <div id="tab-subscriptions" class="tab-content hidden">
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Abonelikler</h3><button id="addSubscriptionBtn" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>Abonelik Ekle</button></div>
-                    <div class="overflow-x-auto"><table class="w-full"><thead><tr><th>ID</th><th>Kullanıcı</th><th>Ürün</th><th>Durum</th><th>Başlangıç</th><th>Bitiş</th><th>İşlem</th></tr></thead><tbody id="subscriptionsList"><tr><td colspan="7" class="text-center py-4">Yükleniyor...</td></tr></tbody></table></div>
+                    <div class="overflow-x-auto"><table class="w-full"><thead> <th>ID</th><th>Kullanıcı</th><th>Ürün</th><th>Durum</th><th>Başlangıç</th><th>Bitiş</th><th>İşlem</th> </thead><tbody id="subscriptionsList"> <td colspan="7" class="text-center py-4">Yükleniyor... </tbody> </div>
                 </div>
             </div>
 
@@ -91,13 +91,13 @@
             <div id="tab-products" class="tab-content hidden">
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <h3 class="text-lg font-semibold mb-4">Ürünler</h3>
-                    <div class="overflow-x-auto"><table class="w-full"><thead><tr><th>Slug</th><th>Ürün Adı</th><th>Kategori</th><th>Yetkili Bölge</th></tr></thead><tbody id="productsList"></tbody></table></div>
+                    <div class="overflow-x-auto"><table class="w-full"><thead> <th>Slug</th><th>Ürün Adı</th><th>Kategori</th><th>Yetkili Bölge</th> </thead><tbody id="productsList"></tbody> </div>
                 </div>
             </div>
 
             <!-- Requests Tab -->
             <div id="tab-requests" class="tab-content hidden">
-                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="text-lg font-semibold mb-4">Deneme ve İletişim Talepleri</h3><div class="overflow-x-auto"><table class="w-full"><thead><tr><th>Tarih</th><th>Tip</th><th>Ad Soyad</th><th>E-posta</th><th>Kurum</th><th>Mesaj</th></tr></thead><tbody id="requestsList"><tr><td colspan="6" class="text-center py-4">Yükleniyor...</td></tr></tbody></table></div></div>
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="text-lg font-semibold mb-4">Deneme ve İletişim Talepleri</h3><div class="overflow-x-auto"><table class="w-full"><thead> <th>Tarih</th><th>Tip</th><th>Ad Soyad</th><th>E-posta</th><th>Kurum</th><th>Mesaj</th> </thead><tbody id="requestsList"> <td colspan="6" class="text-center py-4">Yükleniyor... </tbody> </div></div>
             </div>
         </div>
     </div>
@@ -123,6 +123,17 @@
     let adminToken = localStorage.getItem('authToken');
     let currentAdmin = null;
 
+    // Token decode helper (Türkçe karakterler için)
+    function decodeToken(token) {
+        try {
+            const decoded = decodeURIComponent(escape(atob(token)));
+            return JSON.parse(decoded);
+        } catch (e) {
+            console.error("Token decode error:", e);
+            return null;
+        }
+    }
+
     // Ürün listesi
     const products = [
         { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
@@ -144,13 +155,13 @@
         { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' }
     ];
 
-    // Admin kontrolü
+    // Admin kontrolü (decodeToken ile)
     async function checkAdmin() {
         if (!adminToken) { window.location.href = 'index.html'; return; }
         try {
-            const decoded = JSON.parse(atob(adminToken));
+            const decoded = decodeToken(adminToken);
             console.log("Admin check - decoded:", decoded);
-            if (decoded.exp < Date.now()) throw new Error('Token expired');
+            if (!decoded || decoded.exp < Date.now()) throw new Error('Token expired');
             if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
                 console.log("Role not admin:", decoded.role);
                 window.location.href = 'index.html';
@@ -171,7 +182,7 @@
     // Ürünleri yükle
     function loadProducts() {
         document.getElementById('productsList').innerHTML = products.map(p => `
-            <tr><td class="px-4 py-2">${p.slug}</td><td class="px-4 py-2">${p.name}</td><td class="px-4 py-2">${p.category}</td><td class="px-4 py-2">${p.region}</td></tr>
+             <tr><td class="px-4 py-2">${p.slug}</td><td class="px-4 py-2">${p.name}</td><td class="px-4 py-2">${p.category}</td><td class="px-4 py-2">${p.region}</td></tr>
         `).join('');
     }
 
@@ -190,7 +201,7 @@
             document.getElementById('statInstitutions').textContent = institutions.length || 0;
             
             const recent = users.slice(-5).reverse();
-            document.getElementById('recentUsers').innerHTML = recent.map(u => `<tr><td class="px-4 py-2">${u.full_name || '-'}</td><td class="px-4 py-2">${u.email}</td><td class="px-4 py-2">${u.institution || '-'}</td><td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center py-4">Henüz kullanıcı yok</td></tr>';
+            document.getElementById('recentUsers').innerHTML = recent.map(u => `<tr><td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td><td class="px-4 py-2">${u.email}</td><td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td><td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center py-4">Henüz kullanıcı yok</td></tr>';
         } catch(e) { console.error(e); }
     }
 
@@ -203,13 +214,13 @@
         document.getElementById('usersList').innerHTML = users.map(u => `
             <tr>
                 <td class="px-4 py-2">${u.id}</td>
-                <td class="px-4 py-2">${u.full_name || '-'}</td>
+                <td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td>
                 <td class="px-4 py-2">${u.email}</td>
-                <td class="px-4 py-2">${u.institution || '-'}</td>
+                <td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td>
                 <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${u.role === 'super_admin' ? 'bg-red-100 text-red-800' : u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100'}">${u.role === 'super_admin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : 'Kullanıcı'}</span></td>
                 <td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td>
                 <td class="px-4 py-2">
-                    <button onclick="editUser(${u.id}, '${u.full_name || ''}', '${u.email}', '${u.institution || ''}', '${u.role}')" class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button>
+                    <button onclick="editUser(${u.id}, '${escapeHtml(u.full_name || '')}', '${u.email}', '${escapeHtml(u.institution || '')}', '${u.role}')" class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button>
                     ${isSuper && u.role !== 'super_admin' ? `<button onclick="setRole(${u.id}, '${u.role === 'admin' ? 'user' : 'admin'}')" class="text-green-600 mr-2" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}"><i class="fas fa-user-shield"></i></button>` : ''}
                     <button onclick="deleteUser(${u.id})" class="text-red-600"><i class="fas fa-trash"></i></button>
                 </td>
@@ -226,7 +237,7 @@
         document.getElementById('subscriptionsList').innerHTML = subs.map(s => `
             <tr>
                 <td class="px-4 py-2">${s.id}</td>
-                <td class="px-4 py-2">${s.user_name || s.user_id}</td>
+                <td class="px-4 py-2">${escapeHtml(s.user_name || s.user_id)}</td>
                 <td class="px-4 py-2">${getProductName(s.product_slug)}</td>
                 <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${s.status === 'active' ? 'bg-green-100 text-green-800' : s.status === 'trial' ? 'bg-yellow-100' : 'bg-red-100'}">${s.status === 'active' ? 'Aktif' : s.status === 'trial' ? 'Deneme' : 'Süresi Doldu'}</span></td>
                 <td class="px-4 py-2">${new Date(s.start_date).toLocaleDateString('tr-TR')}</td>
@@ -234,6 +245,14 @@
                 <td class="px-4 py-2"><button onclick="deleteSubscription(${s.id})" class="text-red-600"><i class="fas fa-trash"></i></button></td>
             </tr>
         `).join('');
+    }
+
+    // Escape HTML helper (XSS koruması ve Türkçe karakter sorunu için)
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // Rol değiştirme (sadece super admin)
@@ -275,7 +294,7 @@
     async function loadUserSelect() {
         const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
         const users = await res.json();
-        document.getElementById('subUserId').innerHTML = '<option value="">Kullanıcı Seçin</option>' + users.map(u => `<option value="${u.id}">${u.full_name || u.email}</option>`).join('');
+        document.getElementById('subUserId').innerHTML = '<option value="">Kullanıcı Seçin</option>' + users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name || u.email)}</option>`).join('');
     }
     async function deleteSubscription(id) {
         if (confirm('Aboneliği silmek istediğinize emin misiniz?')) {
