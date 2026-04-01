@@ -154,56 +154,82 @@ window.logout = function() {
 // Update UI based on auth state
 // Kullanıcı arayüzünü güncelle (Hover versiyon)
 function updateAuthUI(isLoggedIn) {
-    // Yeni nav'daki elementler
-    const authNotLoggedIn = document.getElementById('authNotLoggedInNav');
-    const authLoggedIn = document.getElementById('authLoggedInNav');
-    const userAvatar = document.getElementById('userAvatarNav');
-    const userName = document.getElementById('userNameNav');
-    const dropdownAvatar = document.getElementById('dropdownAvatarNav');
-    const dropdownName = document.getElementById('dropdownNameNav');
-    const dropdownEmail = document.getElementById('dropdownEmailNav');
-    const dropdownInstitution = document.getElementById('dropdownInstitutionNav');
-    const adminMenuLink = document.getElementById('adminMenuLinkNav');
+    // Admin panelinde bu elementler yok, kontrol ekleyelim
+    const authNotLoggedIn = document.getElementById('authNotLoggedIn');
+    const authLoggedIn = document.getElementById('authLoggedIn');
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const dropdownAvatar = document.getElementById('dropdownAvatar');
+    const dropdownName = document.getElementById('dropdownName');
+    const dropdownEmail = document.getElementById('dropdownEmail');
+    const dropdownInstitution = document.getElementById('dropdownInstitution');
+    const adminMenuLink = document.getElementById('adminMenuLink');
     
     if (isLoggedIn && currentUser) {
-        authNotLoggedIn.classList.add('hidden');
-        authLoggedIn.classList.remove('hidden');
+        // Giriş yapılmış - header'daki elementler varsa güncelle
+        if (authNotLoggedIn) authNotLoggedIn.classList.add('hidden');
+        if (authLoggedIn) authLoggedIn.classList.remove('hidden');
         
         const initials = getInitials(currentUser.full_name);
         const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
         const fullName = currentUser.full_name || 'Kullanıcı';
         
-        userAvatar.textContent = initials;
-        userAvatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor}`;
-        userName.textContent = fullName.length > 12 ? fullName.substring(0, 10) + '..' : fullName;
+        if (userAvatar) {
+            userAvatar.textContent = initials;
+            userAvatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor}`;
+        }
+        if (userName) userName.textContent = fullName.length > 12 ? fullName.substring(0, 10) + '..' : fullName;
         
-        dropdownAvatar.textContent = initials;
-        dropdownAvatar.className = `w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${avatarColor}`;
-        dropdownName.textContent = fullName;
-        dropdownEmail.textContent = currentUser.email;
+        if (dropdownAvatar) {
+            dropdownAvatar.textContent = initials;
+            dropdownAvatar.className = `w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${avatarColor}`;
+        }
+        if (dropdownName) dropdownName.textContent = fullName;
+        if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
         
-        if (currentUser.institution) {
-            dropdownInstitution.querySelector('span').textContent = currentUser.institution;
-            dropdownInstitution.classList.remove('hidden');
-        } else {
-            dropdownInstitution.classList.add('hidden');
+        if (dropdownInstitution) {
+            if (currentUser.institution) {
+                const instSpan = dropdownInstitution.querySelector('span');
+                if (instSpan) instSpan.textContent = currentUser.institution;
+                dropdownInstitution.classList.remove('hidden');
+            } else {
+                dropdownInstitution.classList.add('hidden');
+            }
         }
         
-        if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
-            adminMenuLink.classList.remove('hidden');
-        } else {
-            adminMenuLink.classList.add('hidden');
+        if (adminMenuLink) {
+            if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
+                adminMenuLink.classList.remove('hidden');
+            } else {
+                adminMenuLink.classList.add('hidden');
+            }
         }
         
         const userBadge = document.getElementById('userBadge');
         if (userBadge) userBadge.style.display = 'none';
         
+        // Dropdown tıklama olayı (sadece header'daki element varsa)
+        const userMenuBtn = document.getElementById('userMenuBtn');
+        const userDropdown = document.getElementById('userDropdown');
+        if (userMenuBtn && userDropdown && !userMenuBtn._listenerAdded) {
+            userMenuBtn._listenerAdded = true;
+            userMenuBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userDropdown.classList.toggle('hidden');
+            });
+            document.addEventListener('click', function(e) {
+                if (!userMenuBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+                    userDropdown.classList.add('hidden');
+                }
+            });
+        }
+        
     } else {
-        authNotLoggedIn.classList.remove('hidden');
-        authLoggedIn.classList.add('hidden');
+        // Giriş yapılmamış
+        if (authNotLoggedIn) authNotLoggedIn.classList.remove('hidden');
+        if (authLoggedIn) authLoggedIn.classList.add('hidden');
     }
 }
-
 // Dil butonu event'ini nav'daki butona bağla
 document.addEventListener('DOMContentLoaded', function() {
     const translateBtnMain = document.getElementById('translateBtn');
