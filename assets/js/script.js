@@ -290,7 +290,7 @@ async function checkAuth() {
                 email: decoded.email,
                 full_name: decoded.full_name,
                 institution: decoded.institution,
-                role: decoded.role
+                role: decoded.role,
             };
             updateAuthUI(true);
             return true;
