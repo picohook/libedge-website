@@ -153,11 +153,11 @@ window.logout = function() {
 
 // Update UI based on auth state
 // Kullanıcı arayüzünü güncelle (Hover versiyon)
+// Kullanıcı arayüzünü güncelle
 function updateAuthUI(isLoggedIn) {
     const authNotLoggedIn = document.getElementById('authNotLoggedIn');
     const authLoggedIn = document.getElementById('authLoggedIn');
     const userAvatar = document.getElementById('userAvatar');
-    const dropdownAvatar = document.getElementById('dropdownAvatar');
     const dropdownName = document.getElementById('dropdownName');
     const dropdownEmail = document.getElementById('dropdownEmail');
     const dropdownInstitution = document.getElementById('dropdownInstitution');
@@ -170,23 +170,17 @@ function updateAuthUI(isLoggedIn) {
         const initials = getInitials(currentUser.full_name);
         const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
         
-        // Sadece avatar (isim yazısı yok)
         if (userAvatar) {
             userAvatar.textContent = initials;
             userAvatar.className = `w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${avatarColor}`;
         }
         
-        if (dropdownAvatar) {
-            dropdownAvatar.textContent = initials;
-            dropdownAvatar.className = `w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold ${avatarColor}`;
-        }
         if (dropdownName) dropdownName.textContent = currentUser.full_name || 'Kullanıcı';
         if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
         
         if (dropdownInstitution) {
-            const instSpan = dropdownInstitution.querySelector('span');
-            if (currentUser.institution && instSpan) {
-                instSpan.textContent = currentUser.institution;
+            if (currentUser.institution) {
+                dropdownInstitution.textContent = currentUser.institution;
                 dropdownInstitution.classList.remove('hidden');
             } else {
                 dropdownInstitution.classList.add('hidden');
@@ -203,6 +197,27 @@ function updateAuthUI(isLoggedIn) {
         
         const userBadge = document.getElementById('userBadge');
         if (userBadge) userBadge.style.display = 'none';
+        
+        // Dropdown tıklama olayını ekle
+        const userMenuBtn = document.getElementById('userMenuBtn');
+        const userDropdown = document.getElementById('userDropdown');
+        if (userMenuBtn && userDropdown) {
+            // Eski event listener'ları temizle
+            const newBtn = userMenuBtn.cloneNode(true);
+            userMenuBtn.parentNode.replaceChild(newBtn, userMenuBtn);
+            
+            newBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userDropdown.classList.toggle('hidden');
+            });
+            
+            // Dışarı tıklanınca kapat
+            document.addEventListener('click', function(e) {
+                if (!newBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+                    userDropdown.classList.add('hidden');
+                }
+            });
+        }
         
     } else {
         if (authNotLoggedIn) authNotLoggedIn.classList.remove('hidden');

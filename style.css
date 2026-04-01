@@ -1358,3 +1358,39 @@ body.translating {
     box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1) !important;
 }
 
+/* ====================== KULLANICI MENÜSÜ HOVER DROPDOWN ====================== */
+#userMenuButton {
+    transition: all 0.2s ease;
+}
+
+#userMenuButton:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+#userDropdown {
+    transform-origin: top right;
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+}
+/* BU SATIRLARI SİLİN VEYA YORUM YAPIN 
+#authLoggedIn:hover #userDropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+*/
+/* Avatar renkleri */
+.avatar-purple { background: linear-gradient(135deg, #220f60, #4c3d8c); }
+.avatar-blue { background: linear-gradient(135deg, #1e40af, #3b82f6); }
+.avatar-green { background: linear-gradient(135deg, #065f46, #10b981); }
+.avatar-orange { background: linear-gradient(135deg, #c2410c, #f97316); }
+.avatar-pink { background: linear-gradient(135deg, #9d174d, #ec489a); }
+.avatar-cyan { background: linear-gradient(135deg, #0e7490, #06b6d4); }
+
+/* Dropdown içindeki link hover efektleri */
+#userDropdown a:hover i {
+    transform: translateX(2px);
+}
+
+#userDropdown a i {
+    transition: transform 0.2s ease;
+}
