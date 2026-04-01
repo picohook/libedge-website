@@ -52,6 +52,7 @@
                 <a href="#" class="sidebar-link active" data-tab="dashboard"><i class="fas fa-chart-line w-5"></i><span>Dashboard</span></a>
                 <a href="#" class="sidebar-link" data-tab="users"><i class="fas fa-users w-5"></i><span>Kullanıcılar</span></a>
                 <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-ticket-alt w-5"></i><span>Abonelikler</span></a>
+                <a href="#" class="sidebar-link" data-tab="files"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
                 <a href="#" class="sidebar-link" data-tab="products"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
                 <a href="#" class="sidebar-link" data-tab="requests"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
             </nav>
@@ -190,7 +191,65 @@
             </div>
         </div>
     </div>
+<!-- Kurum Dosyaları Tab (Super Admin için) -->
+<div id="tab-files" class="tab-content hidden">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h3 class="text-lg font-semibold">Kurum Dosyaları</h3>
+                <p class="text-sm text-gray-500">Tüm kurumların dosyalarını yönetin</p>
+            </div>
+            <div class="flex gap-2">
+                <select id="institutionFilter" class="border rounded px-3 py-2 text-sm bg-white">
+                    <option value="all">Tüm Kurumlar</option>
+                </select>
+                <button id="addFileBtnAdmin" class="btn btn-primary">
+                    <i class="fas fa-upload mr-1"></i> Dosya Yükle
+                </button>
+            </div>
+        </div>
+        
+        <!-- Dosyalar Listesi -->
+        <div id="adminFilesList" class="space-y-2">
+            <p class="text-gray-500 text-center py-8">Yükleniyor...</p>
+        </div>
+    </div>
+</div>
 
+<!-- Admin Dosya Yükleme Modal -->
+<div id="adminFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Dosya Yükle</h3>
+        <form id="adminFileForm">
+            <div class="mb-3">
+                <select id="adminFileInstitution" class="w-full border p-2 rounded" required>
+                    <option value="">Kurum Seçin</option>
+                </select>
+            </div>
+            <div class="mb-3"><input type="text" id="adminFileName" placeholder="Dosya Adı" class="w-full border p-2 rounded" required></div>
+            <div class="mb-3"><input type="url" id="adminFileUrl" placeholder="Dosya URL" class="w-full border p-2 rounded" required></div>
+            <div class="mb-3">
+                <select id="adminFileCategory" class="w-full border p-2 rounded">
+                    <option value="contract">Sözleşme</option>
+                    <option value="invoice">Fatura</option>
+                    <option value="license">Lisans</option>
+                    <option value="documentation">Dokümantasyon</option>
+                    <option value="other">Diğer</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <select id="adminFileVisibility" class="w-full border p-2 rounded">
+                    <option value="0">Kurum İçi (Sadece kurum personeli)</option>
+                    <option value="1">Herkese Açık</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary flex-1">Yükle</button>
+                <button type="button" onclick="closeAdminFileModal()" class="btn bg-gray-300 flex-1">İptal</button>
+            </div>
+        </form>
+    </div>
+</div>
     <!-- Products Tab -->
     <div id="tab-products" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
@@ -477,8 +536,7 @@
         loadDashboard();
     });
 
-    // Tab geçişleri
- // Tab geçişleri
+// Tab geçişleri
 document.querySelectorAll('.sidebar-link').forEach(link => {
     link.addEventListener('click', (e) => {
         e.preventDefault();
@@ -507,17 +565,225 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
             } else if (tab === 'dashboard') {
                 console.log("Dashboard yükleniyor...");
                 loadDashboard();
+            } else if (tab === 'files') {
+                console.log("Kurum dosyaları yükleniyor...");
+                loadAdminInstitutions();
+                loadAdminFiles();
             }
         }
     });
 });
-    // Buton işlemleri
-    document.getElementById('addUserBtn').addEventListener('click', () => { document.getElementById('userId').value = ''; document.getElementById('userModalTitle').textContent = 'Kullanıcı Ekle'; document.getElementById('userForm').reset(); openUserModal(); });
-    document.getElementById('addSubscriptionBtn').addEventListener('click', openSubscriptionModal);
-    document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem('authToken'); window.location.href = 'index.html'; });
+// ====================== ADMIN DOSYA YÖNETİMİ ======================
 
-    // Başlat
-    checkAdmin();
+let currentAdminInstitutionFilter = 'all';
+
+// Kurum listesini yükle
+async function loadAdminInstitutions() {
+    try {
+        const response = await fetch(`${API_BASE}/api/admin/institutions`, {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        const institutions = await response.json();
+        
+        const filter = document.getElementById('institutionFilter');
+        const adminSelect = document.getElementById('adminFileInstitution');
+        
+        const options = '<option value="all">Tüm Kurumlar</option>' + 
+            institutions.map(inst => `<option value="${inst.id}">${escapeHtml(inst.name)} (${inst.file_count || 0} dosya)</option>`).join('');
+        
+        if (filter) filter.innerHTML = options;
+        if (adminSelect) adminSelect.innerHTML = '<option value="">Kurum Seçin</option>' + 
+            institutions.map(inst => `<option value="${inst.id}">${escapeHtml(inst.name)}</option>`).join('');
+        
+    } catch (err) {
+        console.error('Error loading institutions:', err);
+    }
+}
+
+// Admin dosyalarını yükle
+async function loadAdminFiles() {
+    const filter = document.getElementById('institutionFilter');
+    currentAdminInstitutionFilter = filter?.value || 'all';
+    
+    let url;
+    if (currentAdminInstitutionFilter && currentAdminInstitutionFilter !== 'all') {
+        url = `${API_BASE}/api/institution/${currentAdminInstitutionFilter}/files`;
+    } else {
+        url = `${API_BASE}/api/admin/all-files`;
+    }
+    
+    try {
+        const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        const files = await response.json();
+        
+        const container = document.getElementById('adminFilesList');
+        if (files.length > 0) {
+            container.innerHTML = files.map(file => `
+                <div class="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
+                            <a href="${file.file_url}" target="_blank" class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">${escapeHtml(file.institution_name || file.institution_id)}</span>
+                            ${file.is_public ? 
+                                '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><i class="fas fa-globe mr-1"></i>Herkese Açık</span>' : 
+                                '<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"><i class="fas fa-lock mr-1"></i>Kurum İçi</span>'
+                            }
+                        </div>
+                        <div class="flex flex-wrap gap-4 mt-1 text-xs text-gray-500">
+                            <span><i class="fas fa-tag mr-1"></i>${getCategoryName(file.category)}</span>
+                            <span><i class="fas fa-user mr-1"></i>${escapeHtml(file.uploaded_by_name || '-')}</span>
+                            <span><i class="fas fa-calendar mr-1"></i>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})" class="text-blue-500 hover:text-blue-700 transition" title="${file.is_public ? 'Kurum içi yap' : 'Herkese açık yap'}">
+                            <i class="fas ${file.is_public ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                        </button>
+                        <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700 transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p class="text-gray-500 text-center py-8">Dosya bulunamadı.</p>';
+        }
+    } catch (err) {
+        console.error('Error loading files:', err);
+        document.getElementById('adminFilesList').innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenirken hata oluştu.</p>';
+    }
+}
+
+// Admin dosya görünürlüğü değiştir
+async function toggleAdminFilePublic(fileId, currentStatus) {
+    if (!confirm(`Bu dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ is_public: !currentStatus })
+        });
+        
+        if (response.ok) {
+            alert(`Dosya ${!currentStatus ? 'herkese açık' : 'kurum içi'} yapıldı.`);
+            loadAdminFiles();
+            loadAdminInstitutions(); // Kurum istatistiklerini güncelle
+        } else {
+            alert('Güncelleme başarısız.');
+        }
+    } catch (err) {
+        alert('Bir hata oluştu.');
+    }
+}
+
+// Admin dosya sil
+async function deleteAdminFile(fileId) {
+    if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        if (response.ok) {
+            alert('Dosya silindi.');
+            loadAdminFiles();
+            loadAdminInstitutions();
+        } else {
+            alert('Dosya silinirken hata oluştu.');
+        }
+    } catch (err) {
+        alert('Bir hata oluştu.');
+    }
+}
+
+// Admin dosya yükleme modal
+function openAdminFileModal() { 
+    document.getElementById('adminFileModal').classList.remove('hidden');
+}
+function closeAdminFileModal() { 
+    document.getElementById('adminFileModal').classList.add('hidden');
+    document.getElementById('adminFileForm').reset();
+}
+
+// Admin dosya yükleme form submit
+document.getElementById('adminFileForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const institutionId = document.getElementById('adminFileInstitution')?.value;
+    if (!institutionId) {
+        alert('Lütfen bir kurum seçin.');
+        return;
+    }
+    
+    const data = {
+        file_name: document.getElementById('adminFileName')?.value,
+        file_url: document.getElementById('adminFileUrl')?.value,
+        file_type: document.getElementById('adminFileUrl')?.value.split('.').pop(),
+        category: document.getElementById('adminFileCategory')?.value,
+        is_public: parseInt(document.getElementById('adminFileVisibility')?.value || '0')
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/institution/${institutionId}/file`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify(data)
+        });
+        if (response.ok) {
+            alert('Dosya başarıyla yüklendi.');
+            closeAdminFileModal();
+            loadAdminFiles();
+            loadAdminInstitutions();
+        } else {
+            alert('Dosya yüklenirken hata oluştu.');
+        }
+    } catch (err) {
+        alert('Bir hata oluştu.');
+    }
+});
+
+
+// Buton işlemleri
+document.getElementById('addFileBtnAdmin')?.addEventListener('click', openAdminFileModal);
+document.getElementById('institutionFilter')?.addEventListener('change', () => loadAdminFiles());
+
+// Dosya ikonu helper
+function getFileIcon(fileType) {
+    const icons = {
+        'pdf': 'fa-file-pdf',
+        'doc': 'fa-file-word',
+        'docx': 'fa-file-word',
+        'xls': 'fa-file-excel',
+        'xlsx': 'fa-file-excel',
+        'jpg': 'fa-file-image',
+        'jpeg': 'fa-file-image',
+        'png': 'fa-file-image',
+        'gif': 'fa-file-image',
+        'zip': 'fa-file-archive',
+        'rar': 'fa-file-archive',
+        'txt': 'fa-file-alt',
+        'mp4': 'fa-file-video',
+        'mp3': 'fa-file-audio'
+    };
+    return icons[fileType?.toLowerCase()] || 'fa-file';
+}
+
+// Kategori adı helper
+function getCategoryName(category) {
+    const names = {
+        'contract': 'Sözleşme',
+        'invoice': 'Fatura',
+        'license': 'Lisans',
+        'documentation': 'Dokümantasyon',
+        'other': 'Diğer'
+    };
+    return names[category] || category;
+}
+
 </script>
 </body>
 </html>
