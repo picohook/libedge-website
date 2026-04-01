@@ -60,30 +60,119 @@
     <!-- Dashboard Tab -->
     <div id="tab-dashboard" class="tab-content">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="stat-card"><div><p class="text-gray-500 text-sm">Toplam Kullanıcı</p><p id="statUsers" class="text-2xl font-bold">0</p></div><i class="fas fa-users text-3xl text-primary opacity-50"></i></div>
-            <div class="stat-card"><div><p class="text-gray-500 text-sm">Aktif Abonelik</p><p id="statSubscriptions" class="text-2xl font-bold">0</p></div><i class="fas fa-ticket-alt text-3xl text-green-500 opacity-50"></i></div>
-            <div class="stat-card"><div><p class="text-gray-500 text-sm">Deneme Talebi</p><p id="statTrials" class="text-2xl font-bold">0</p></div><i class="fas fa-flask text-3xl text-yellow-500 opacity-50"></i></div>
-            <div class="stat-card"><div><p class="text-gray-500 text-sm">Kurum Sayısı</p><p id="statInstitutions" class="text-2xl font-bold">0</p></div><i class="fas fa-building text-3xl text-blue-500 opacity-50"></i></div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Toplam Kullanıcı</p>
+                    <p id="statUsers" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-users text-3xl text-violet-600 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Aktif Abonelik</p>
+                    <p id="statSubscriptions" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-ticket-alt text-3xl text-green-500 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Deneme Talebi</p>
+                    <p id="statTrials" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-flask text-3xl text-yellow-500 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Kurum Sayısı</p>
+                    <p id="statInstitutions" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-building text-3xl text-blue-500 opacity-50"></i>
+            </div>
         </div>
+
         <div class="bg-white rounded-xl shadow-sm p-6">
             <h3 class="text-lg font-semibold mb-4">Son Kayıt Olan Kullanıcılar</h3>
-            <div class="overflow-x-auto"><table class="w-full"><thead> <th>Ad Soyad</th><th>E-posta</th><th>Kurum</th><th>Kayıt Tarihi</th> </thead><tbody id="recentUsers"> <td colspan="4" class="text-center py-4">Yükleniyor... </tbody> </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>Ad Soyad</th>
+                            <th>E-posta</th>
+                            <th>Kurum</th>
+                            <th>Kayıt Tarihi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentUsers">
+                        <tr>
+                            <td colspan="4" class="text-center py-4">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <!-- Users Tab -->
     <div id="tab-users" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Kullanıcılar</h3><button id="addUserBtn" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>Kullanıcı Ekle</button></div>
-            <div class="overflow-x-auto"><table class="w-full"><thead> <th>ID</th><th>Ad Soyad</th><th>E-posta</th><th>Kurum</th><th>Rol</th><th>Kayıt Tarihi</th><th>İşlem</th> </thead><tbody id="usersList"> <td colspan="7" class="text-center py-4">Yükleniyor... </tbody> </div>
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Kullanıcılar</h3>
+                <button id="addUserBtn" class="btn btn-primary">
+                    <i class="fas fa-plus mr-2"></i>Kullanıcı Ekle
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ad Soyad</th>
+                            <th>E-posta</th>
+                            <th>Kurum</th>
+                            <th>Rol</th>
+                            <th>Kayıt Tarihi</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersList">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <!-- Subscriptions Tab -->
     <div id="tab-subscriptions" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Abonelikler</h3><button id="addSubscriptionBtn" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>Abonelik Ekle</button></div>
-            <div class="overflow-x-auto"><table class="w-full"><thead> <th>ID</th><th>Kullanıcı</th><th>Ürün</th><th>Durum</th><th>Başlangıç</th><th>Bitiş</th><th>İşlem</th> </thead><tbody id="subscriptionsList"> <td colspan="7" class="text-center py-4">Yükleniyor... </tbody> </div>
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Abonelikler</h3>
+                <button id="addSubscriptionBtn" class="btn btn-primary">
+                    <i class="fas fa-plus mr-2"></i>Abonelik Ekle
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Kullanıcı</th>
+                            <th>Ürün</th>
+                            <th>Durum</th>
+                            <th>Başlangıç</th>
+                            <th>Bitiş</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subscriptionsList">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -91,13 +180,46 @@
     <div id="tab-products" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
             <h3 class="text-lg font-semibold mb-4">Ürünler</h3>
-            <div class="overflow-x-auto"><table class="w-full"><thead> <th>Slug</th><th>Ürün Adı</th><th>Kategori</th><th>Yetkili Bölge</th> </thead><tbody id="productsList"></tbody> </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>Slug</th>
+                            <th>Ürün Adı</th>
+                            <th>Kategori</th>
+                            <th>Yetkili Bölge</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsList"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <!-- Requests Tab -->
     <div id="tab-requests" class="tab-content hidden">
-        <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="text-lg font-semibold mb-4">Deneme ve İletişim Talepleri</h3><div class="overflow-x-auto"><table class="w-full"><thead> <th>Tarih</th><th>Tip</th><th>Ad Soyad</th><th>E-posta</th><th>Kurum</th><th>Mesaj</th> </thead><tbody id="requestsList"> <td colspan="6" class="text-center py-4">Yükleniyor... </tbody> </div></div>
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="text-lg font-semibold mb-4">Deneme ve İletişim Talepleri</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Tip</th>
+                            <th>Ad Soyad</th>
+                            <th>E-posta</th>
+                            <th>Kurum</th>
+                            <th>Mesaj</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requestsList">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
     </div>
