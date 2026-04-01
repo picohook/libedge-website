@@ -11,7 +11,7 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization']
 }));
 
-// ====================== YARDIMCI FONKSİYONLAR (TEK BİR YERDE) ======================
+// ====================== YARDIMCI FONKSİYONLAR ======================
 
 async function getUserRole(c) {
   const authHeader = c.req.header('Authorization');
@@ -25,6 +25,19 @@ async function getUserRole(c) {
 }
 
 async function getUserInstitution(c) {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) return null;
+    // DÜZELTİLDİ: Token'dan 'institution' alanını döndür (bu bir metin, ID değil)
+    return decoded.institution || null;
+  } catch(e) { return null; }
+}
+
+// DÜZELTİLDİ: Bu fonksiyon artık institution adını döndürüyor.
+async function getUserInstitutionId(c) {
   const authHeader = c.req.header('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.split(' ')[1];
@@ -54,6 +67,7 @@ async function canAccessUser(c, targetUserId) {
   
   const db = c.env.DB;
   const targetUser = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(targetUserId).first();
+  // DÜZELTİLDİ: Kullanıcıların institution alanı string, bu nedenle doğrudan karşılaştırılabilir.
   return targetUser && targetUser.institution === adminInstitution;
 }
 
@@ -79,6 +93,7 @@ app.get('/api/auth/status', (c) => {
   });
 });
 
+// DÜZELTİLDİ: Tek bir login endpoint'i bırakıldı.
 app.post('/api/auth/login', async (c) => {
   try {
     const { email, password } = await c.req.json();
@@ -91,7 +106,7 @@ app.post('/api/auth/login', async (c) => {
     const password_hash = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0')).join('');
 
-    // Kullanıcıyı bul - ROLE'Ü DE AL
+    // Kullanıcıyı bul
     const user = await db.prepare(`
       SELECT id, email, full_name, institution, password_hash, role 
       FROM users WHERE email = ?
@@ -101,13 +116,13 @@ app.post('/api/auth/login', async (c) => {
       return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
     }
 
-    // Token payload - ROLE EKLENDİ
+    // Token payload
     const tokenPayload = {
       user_id: user.id,
       email: user.email,
       full_name: user.full_name || "",
       institution: user.institution || "",
-      role: user.role || "user",  // ← BURASI ÇOK ÖNEMLİ
+      role: user.role || "user",
       exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
     };
     
@@ -122,7 +137,7 @@ app.post('/api/auth/login', async (c) => {
         email: user.email,
         full_name: user.full_name,
         institution: user.institution,
-        role: user.role  // ← ROL'Ü DE DÖNDÜR
+        role: user.role
       }
     });
 
@@ -132,6 +147,115 @@ app.post('/api/auth/login', async (c) => {
   }
 });
 
+app.post('/api/auth/register', async (c) => {
+  try {
+    const { email, password, full_name, institution } = await c.req.json();
+    const db = c.env.DB;
+
+    if (!email || !password) {
+      return c.json({ success: false, error: 'E-posta ve şifre zorunludur.' }, 400);
+    }
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const password_hash = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+
+    await db.prepare(`
+      INSERT INTO users (email, password_hash, full_name, institution, role)
+      VALUES (?, ?, ?, ?, 'user')
+    `).bind(email.toLowerCase().trim(), password_hash, full_name || null, institution || null).run();
+
+    return c.json({ success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.' });
+  } catch (err) {
+    if (err.message.includes('UNIQUE')) {
+      return c.json({ success: false, error: 'Bu e-posta adresi zaten kayıtlı.' }, 409);
+    }
+    return c.json({ success: false, error: 'Kayıt sırasında hata oluştu.' }, 500);
+  }
+});
+
+app.get('/api/user/profile', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Yetkilendirme gerekli' }, 401);
+  }
+  const token = authHeader.split(' ')[1];
+  let userId;
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) throw new Error('Token expired');
+    userId = decoded.user_id;
+  } catch (e) {
+    return c.json({ error: 'Geçersiz token' }, 401);
+  }
+  const db = c.env.DB;
+  // DÜZELTİLDİ: role alanı da eklendi.
+  const user = await db.prepare(`
+    SELECT id, email, full_name, institution, role, created_at FROM users WHERE id = ?
+  `).bind(userId).first();
+  if (!user) {
+    return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
+  }
+  return c.json(user);
+});
+
+app.post('/api/user/update', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Yetkilendirme gerekli' }, 401);
+  }
+  const token = authHeader.split(' ')[1];
+  let userId;
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) throw new Error('Token expired');
+    userId = decoded.user_id;
+  } catch (e) {
+    return c.json({ error: 'Geçersiz token' }, 401);
+  }
+  const { full_name, institution, new_password } = await c.req.json();
+  const db = c.env.DB;
+
+  if (new_password && new_password.length >= 6) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(new_password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const password_hash = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    await db.prepare(`
+      UPDATE users SET full_name = ?, institution = ?, password_hash = ? WHERE id = ?
+    `).bind(full_name || null, institution || null, password_hash, userId).run();
+  } else {
+    await db.prepare(`
+      UPDATE users SET full_name = ?, institution = ? WHERE id = ?
+    `).bind(full_name || null, institution || null, userId).run();
+  }
+  return c.json({ success: true });
+});
+
+app.delete('/api/user/delete', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Yetkilendirme gerekli' }, 401);
+  }
+  const token = authHeader.split(' ')[1];
+  let userId;
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (decoded.exp < Date.now()) throw new Error('Token expired');
+    userId = decoded.user_id;
+  } catch (e) {
+    return c.json({ error: 'Geçersiz token' }, 401);
+  }
+  const db = c.env.DB;
+  await db.prepare(`DELETE FROM subscriptions WHERE user_id = ?`).bind(userId).run();
+  await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
+  return c.json({ success: true });
+});
+
+// ====================== ABONELİK ENDPOINT'LERİ ======================
 app.get('/api/subscription/check', async (c) => {
   const product = c.req.query('product');
   const authHeader = c.req.header('Authorization');
@@ -259,162 +383,6 @@ app.post('/form', async (c) => {
   } catch (err) {
     return c.json({ success: false, error: err.message }, 500);
   }
-});
-
-app.post('/api/auth/login', async (c) => {
-  try {
-    const { email, password } = await c.req.json();
-    const db = c.env.DB;
-
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const password_hash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
-
-    const user = await db.prepare(`
-      SELECT id, email, full_name, institution, password_hash, role 
-      FROM users WHERE email = ?
-    `).bind(email.toLowerCase().trim()).first();
-
-    if (!user || user.password_hash !== password_hash) {
-      return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
-    }
-
-    const tokenPayload = {
-      user_id: user.id,
-      email: user.email,
-      full_name: user.full_name || "",
-      institution: user.institution || "",
-      role: user.role || "user",
-      exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
-    };
-    
-    const jsonString = JSON.stringify(tokenPayload);
-    const token = btoa(unescape(encodeURIComponent(jsonString)));
-
-    return c.json({
-      success: true,
-      token: token,
-      user: {
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        institution: user.institution,
-        role: user.role
-      }
-    });
-  } catch (err) {
-    console.error("Login error:", err);
-    return c.json({ success: false, error: err.message || 'Giriş sırasında hata oluştu.' }, 500);
-  }
-});
-
-app.post('/api/auth/register', async (c) => {
-  try {
-    const { email, password, full_name, institution } = await c.req.json();
-    const db = c.env.DB;
-
-    if (!email || !password) {
-      return c.json({ success: false, error: 'E-posta ve şifre zorunludur.' }, 400);
-    }
-
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const password_hash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
-
-    await db.prepare(`
-      INSERT INTO users (email, password_hash, full_name, institution, role)
-      VALUES (?, ?, ?, ?, 'user')
-    `).bind(email.toLowerCase().trim(), password_hash, full_name || null, institution || null).run();
-
-    return c.json({ success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.' });
-  } catch (err) {
-    if (err.message.includes('UNIQUE')) {
-      return c.json({ success: false, error: 'Bu e-posta adresi zaten kayıtlı.' }, 409);
-    }
-    return c.json({ success: false, error: 'Kayıt sırasında hata oluştu.' }, 500);
-  }
-});
-
-app.get('/api/user/profile', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ error: 'Yetkilendirme gerekli' }, 401);
-  }
-  const token = authHeader.split(' ')[1];
-  let userId;
-  try {
-    const decoded = JSON.parse(atob(token));
-    if (decoded.exp < Date.now()) throw new Error('Token expired');
-    userId = decoded.user_id;
-  } catch (e) {
-    return c.json({ error: 'Geçersiz token' }, 401);
-  }
-  const db = c.env.DB;
-  const user = await db.prepare(`
-    SELECT id, email, full_name, institution, created_at FROM users WHERE id = ?
-  `).bind(userId).first();
-  if (!user) {
-    return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
-  }
-  return c.json(user);
-});
-
-app.post('/api/user/update', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ error: 'Yetkilendirme gerekli' }, 401);
-  }
-  const token = authHeader.split(' ')[1];
-  let userId;
-  try {
-    const decoded = JSON.parse(atob(token));
-    if (decoded.exp < Date.now()) throw new Error('Token expired');
-    userId = decoded.user_id;
-  } catch (e) {
-    return c.json({ error: 'Geçersiz token' }, 401);
-  }
-  const { full_name, institution, new_password } = await c.req.json();
-  const db = c.env.DB;
-
-  if (new_password && new_password.length >= 6) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(new_password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const password_hash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
-    await db.prepare(`
-      UPDATE users SET full_name = ?, institution = ?, password_hash = ? WHERE id = ?
-    `).bind(full_name || null, institution || null, password_hash, userId).run();
-  } else {
-    await db.prepare(`
-      UPDATE users SET full_name = ?, institution = ? WHERE id = ?
-    `).bind(full_name || null, institution || null, userId).run();
-  }
-  return c.json({ success: true });
-});
-
-app.delete('/api/user/delete', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ error: 'Yetkilendirme gerekli' }, 401);
-  }
-  const token = authHeader.split(' ')[1];
-  let userId;
-  try {
-    const decoded = JSON.parse(atob(token));
-    if (decoded.exp < Date.now()) throw new Error('Token expired');
-    userId = decoded.user_id;
-  } catch (e) {
-    return c.json({ error: 'Geçersiz token' }, 401);
-  }
-  const db = c.env.DB;
-  await db.prepare(`DELETE FROM subscriptions WHERE user_id = ?`).bind(userId).run();
-  await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
-  return c.json({ success: true });
 });
 
 // ====================== ADMIN ENDPOINT'LERİ (KURUM BAZLI) ======================
@@ -589,164 +557,16 @@ app.delete('/api/admin/subscription/:id', async (c) => {
   return c.json({ success: true });
 });
 
-export default app;
-
-// ====================== KURUM KLASÖR YÖNETİMİ ======================
-
-// Klasörleri listele
-app.get('/api/institution/:id/folders', async (c) => {
-  const institutionId = c.req.param('id');
-  const parentId = c.req.query('parent') || null;
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitution(c);
-  
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != institutionId)) {
-    return c.json({ error: 'Yetkisiz' }, 403);
-  }
-  
-  const db = c.env.DB;
-  let folders;
-  if (parentId) {
-    folders = await db.prepare(`
-      SELECT f.*, COUNT(ff.id) as subfolder_count,
-        (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
-      FROM institution_folders f
-      LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
-      WHERE f.institution_id = ? AND f.parent_folder_id = ?
-      GROUP BY f.id
-      ORDER BY f.folder_name
-    `).bind(institutionId, parentId).all();
-  } else {
-    folders = await db.prepare(`
-      SELECT f.*, COUNT(ff.id) as subfolder_count,
-        (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
-      FROM institution_folders f
-      LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
-      WHERE f.institution_id = ? AND f.parent_folder_id IS NULL
-      GROUP BY f.id
-      ORDER BY f.folder_name
-    `).bind(institutionId).all();
-  }
-  
-  return c.json(folders.results);
-});
-
-// Klasör oluştur
-app.post('/api/institution/:id/folder', async (c) => {
-  const institutionId = c.req.param('id');
-  const { folder_name, parent_folder_id } = await c.req.json();
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitution(c);
-  const authHeader = c.req.header('Authorization');
-  const token = authHeader.split(' ')[1];
-  const decoded = JSON.parse(atob(token));
-  
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != institutionId)) {
-    return c.json({ error: 'Yetkisiz' }, 403);
-  }
-  
-  const db = c.env.DB;
-  
-  try {
-    await db.prepare(`
-      INSERT INTO institution_folders (institution_id, folder_name, parent_folder_id, created_by)
-      VALUES (?, ?, ?, ?)
-    `).bind(institutionId, folder_name, parent_folder_id || null, decoded.user_id).run();
-    return c.json({ success: true });
-  } catch (err) {
-    return c.json({ error: 'Aynı isimde klasör zaten var' }, 400);
-  }
-});
-
-// Klasör sil (içindeki dosyalar ve alt klasörler de silinir)
-app.delete('/api/institution/folder/:id', async (c) => {
-  const folderId = c.req.param('id');
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitution(c);
-  const db = c.env.DB;
-  
-  const folder = await db.prepare(`SELECT institution_id FROM institution_folders WHERE id = ?`).bind(folderId).first();
-  if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
-  
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != folder.institution_id)) {
-    return c.json({ error: 'Yetkisiz' }, 403);
-  }
-  
-  // Önce alt klasörleri ve dosyaları sil
-  await db.prepare(`DELETE FROM institution_files WHERE folder_id IN (SELECT id FROM institution_folders WHERE id = ? OR parent_folder_id = ?)`).bind(folderId, folderId).run();
-  await db.prepare(`DELETE FROM institution_folders WHERE id = ? OR parent_folder_id = ?`).bind(folderId, folderId).run();
-  
-  return c.json({ success: true });
-});
-
-// Dosya ekle (klasör ID ile)
-app.post('/api/institution/:id/file', async (c) => {
-  const institutionId = c.req.param('id');
-  const { file_name, file_url, file_type, file_size, category, folder_id } = await c.req.json();
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitution(c);
-  const authHeader = c.req.header('Authorization');
-  const token = authHeader.split(' ')[1];
-  const decoded = JSON.parse(atob(token));
-  
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != institutionId)) {
-    return c.json({ error: 'Yetkisiz' }, 403);
-  }
-  
-  const db = c.env.DB;
-  await db.prepare(`
-    INSERT INTO institution_files (institution_id, file_name, file_url, file_type, file_size, category, folder_id, uploaded_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(institutionId, file_name, file_url, file_type, file_size, category, folder_id || null, decoded.user_id).run();
-  
-  return c.json({ success: true });
-});
-
-// Klasördeki dosyaları listele
-app.get('/api/institution/folder/:id/files', async (c) => {
-  const folderId = c.req.param('id');
-  const role = await getUserRole(c);
-  const db = c.env.DB;
-  
-  const folder = await db.prepare(`SELECT institution_id FROM institution_folders WHERE id = ?`).bind(folderId).first();
-  if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
-  
-  const userInstitution = await getUserInstitution(c);
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != folder.institution_id)) {
-    return c.json({ error: 'Yetkisiz' }, 403);
-  }
-  
-  const files = await db.prepare(`
-    SELECT f.*, u.full_name as uploaded_by_name 
-    FROM institution_files f 
-    LEFT JOIN users u ON f.uploaded_by = u.id
-    WHERE f.folder_id = ? AND f.is_active = 1 
-    ORDER BY f.id DESC
-  `).bind(folderId).all();
-  
-  return c.json(files.results);
-});
-
 // ====================== KURUM DOSYA YÖNETİMİ ======================
-
-// Helper: Kullanıcının kurum ID'sini al
-async function getUserInstitutionId(c) {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = JSON.parse(atob(token));
-    return decoded.institution_id || null;
-  } catch(e) { return null; }
-}
 
 // Tüm kurumları listele (sadece super admin)
 app.get('/api/admin/institutions', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
+  // DÜZELTİLDİ: 'institution_id' kullanımı 'institution' olarak düzeltildi.
   const institutions = await db.prepare(`
     SELECT id, name, domain, created_at,
-      (SELECT COUNT(*) FROM users WHERE institution_id = id) as user_count,
+      (SELECT COUNT(*) FROM users WHERE institution = name) as user_count,
       (SELECT COUNT(*) FROM institution_files WHERE institution_id = id AND is_active = 1) as file_count
     FROM institutions ORDER BY name
   `).all();
@@ -934,7 +754,7 @@ app.delete('/api/institution/file/:id', async (c) => {
   return c.json({ success: true });
 });
 
-// Klasör sil
+// Klasör sil (super admin veya kurum admini)
 app.delete('/api/institution/folder/:id', async (c) => {
   const folderId = c.req.param('id');
   const role = await getUserRole(c);
@@ -948,13 +768,14 @@ app.delete('/api/institution/folder/:id', async (c) => {
     return c.json({ error: 'Yetkisiz' }, 403);
   }
   
+  // Önce alt klasörleri ve dosyaları sil
   await db.prepare(`DELETE FROM institution_files WHERE folder_id IN (SELECT id FROM institution_folders WHERE id = ? OR parent_folder_id = ?)`).bind(folderId, folderId).run();
   await db.prepare(`DELETE FROM institution_folders WHERE id = ? OR parent_folder_id = ?`).bind(folderId, folderId).run();
   
   return c.json({ success: true });
 });
 
-// Backend'e ekleyin (index.js)
+// Klasör detayını getir
 app.get('/api/institution/folder/:id', async (c) => {
     const folderId = c.req.param('id');
     const role = await getUserRole(c);
@@ -975,3 +796,6 @@ app.get('/api/institution/folder/:id', async (c) => {
     return c.json(folder);
 });
 
+// ====================== APP EXPORT ======================
+// DÜZELTİLDİ: export default app en sonda olmalı.
+export default app;
