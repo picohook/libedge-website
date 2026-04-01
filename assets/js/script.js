@@ -153,75 +153,53 @@ window.logout = function() {
 
 // Update UI based on auth state
 // Kullanıcı arayüzünü güncelle (Hover versiyon)
-// Kullanıcı arayüzünü güncelle
 function updateAuthUI(isLoggedIn) {
     const authNotLoggedIn = document.getElementById('authNotLoggedIn');
     const authLoggedIn = document.getElementById('authLoggedIn');
     const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const dropdownAvatar = document.getElementById('dropdownAvatar');
     const dropdownName = document.getElementById('dropdownName');
     const dropdownEmail = document.getElementById('dropdownEmail');
     const dropdownInstitution = document.getElementById('dropdownInstitution');
     const adminMenuLink = document.getElementById('adminMenuLink');
     
     if (isLoggedIn && currentUser) {
-        if (authNotLoggedIn) authNotLoggedIn.classList.add('hidden');
-        if (authLoggedIn) authLoggedIn.classList.remove('hidden');
+        authNotLoggedIn.classList.add('hidden');
+        authLoggedIn.classList.remove('hidden');
         
         const initials = getInitials(currentUser.full_name);
         const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
+        const fullName = currentUser.full_name || 'Kullanıcı';
         
-        if (userAvatar) {
-            userAvatar.textContent = initials;
-            userAvatar.className = `w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${avatarColor}`;
+        userAvatar.textContent = initials;
+        userAvatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor}`;
+        userName.textContent = fullName.length > 12 ? fullName.substring(0, 10) + '..' : fullName;
+        
+        dropdownAvatar.textContent = initials;
+        dropdownAvatar.className = `w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${avatarColor}`;
+        dropdownName.textContent = fullName;
+        dropdownEmail.textContent = currentUser.email;
+        
+        if (currentUser.institution) {
+            dropdownInstitution.querySelector('span').textContent = currentUser.institution;
+            dropdownInstitution.classList.remove('hidden');
+        } else {
+            dropdownInstitution.classList.add('hidden');
         }
         
-        if (dropdownName) dropdownName.textContent = currentUser.full_name || 'Kullanıcı';
-        if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
-        
-        if (dropdownInstitution) {
-            if (currentUser.institution) {
-                dropdownInstitution.textContent = currentUser.institution;
-                dropdownInstitution.classList.remove('hidden');
-            } else {
-                dropdownInstitution.classList.add('hidden');
-            }
-        }
-        
-        if (adminMenuLink) {
-            if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
-                adminMenuLink.classList.remove('hidden');
-            } else {
-                adminMenuLink.classList.add('hidden');
-            }
+        if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
+            adminMenuLink.classList.remove('hidden');
+        } else {
+            adminMenuLink.classList.add('hidden');
         }
         
         const userBadge = document.getElementById('userBadge');
         if (userBadge) userBadge.style.display = 'none';
         
-        // Dropdown tıklama olayını ekle
-        const userMenuBtn = document.getElementById('userMenuBtn');
-        const userDropdown = document.getElementById('userDropdown');
-        if (userMenuBtn && userDropdown) {
-            // Eski event listener'ları temizle
-            const newBtn = userMenuBtn.cloneNode(true);
-            userMenuBtn.parentNode.replaceChild(newBtn, userMenuBtn);
-            
-            newBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                userDropdown.classList.toggle('hidden');
-            });
-            
-            // Dışarı tıklanınca kapat
-            document.addEventListener('click', function(e) {
-                if (!newBtn.contains(e.target) && !userDropdown.contains(e.target)) {
-                    userDropdown.classList.add('hidden');
-                }
-            });
-        }
-        
     } else {
-        if (authNotLoggedIn) authNotLoggedIn.classList.remove('hidden');
-        if (authLoggedIn) authLoggedIn.classList.add('hidden');
+        authNotLoggedIn.classList.remove('hidden');
+        authLoggedIn.classList.add('hidden');
     }
 }
 
