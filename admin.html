@@ -341,20 +341,39 @@
     });
 
     // Tab geçişleri
-    document.querySelectorAll('.sidebar-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const tab = link.dataset.tab;
-            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+ // Tab geçişleri
+document.querySelectorAll('.sidebar-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const tab = link.dataset.tab;
+        
+        // Aktif linki güncelle
+        document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        
+        // Tüm tab içeriklerini gizle
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        
+        // Seçilen tab'ı göster
+        const targetTab = document.getElementById(`tab-${tab}`);
+        if (targetTab) {
+            targetTab.classList.remove('hidden');
             document.getElementById('pageTitle').textContent = link.querySelector('span').textContent;
-            if (tab === 'users') loadUsers();
-            if (tab === 'subscriptions') loadSubscriptions();
-        });
+            
+            // Tab'a göre verileri yükle
+            if (tab === 'users') {
+                console.log("Kullanıcılar yükleniyor...");
+                loadUsers();
+            } else if (tab === 'subscriptions') {
+                console.log("Abonelikler yükleniyor...");
+                loadSubscriptions();
+            } else if (tab === 'dashboard') {
+                console.log("Dashboard yükleniyor...");
+                loadDashboard();
+            }
+        }
     });
-
+});
     // Buton işlemleri
     document.getElementById('addUserBtn').addEventListener('click', () => { document.getElementById('userId').value = ''; document.getElementById('userModalTitle').textContent = 'Kullanıcı Ekle'; document.getElementById('userForm').reset(); openUserModal(); });
     document.getElementById('addSubscriptionBtn').addEventListener('click', openSubscriptionModal);
