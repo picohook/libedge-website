@@ -62,7 +62,7 @@
 </head>
 <body>
 
-<!-- Header (aynı ana sayfadaki gibi) -->
+<!-- ====================== HEADER (index.html ile aynı) ====================== -->
 <header class="bg-primary text-white py-6 px-4">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center relative">
         <!-- Sol: E-posta ve Telefon (alt alta) -->
@@ -84,29 +84,17 @@
         </div>
 
         <!-- Logo (tam ortada) -->
-        <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="company-logo">
+        <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="company-logo" style="height: 70px; width: auto;">
 
         <!-- Sağ: Sosyal Medya + Kullanıcı -->
         <div class="flex items-center space-x-4 ml-auto">
-            <a class="text-white hover:text-purple-300" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank">
-                <i class="fab fa-linkedin-in text-lg"></i>
-            </a>
-            <a class="text-white hover:text-purple-300" href="https://twitter.com/" target="_blank">
-                <i class="fab fa-x-twitter text-lg"></i>
-            </a>
-            <a class="text-white hover:text-purple-300" href="https://facebook.com/" target="_blank">
-                <i class="fab fa-facebook-f text-lg"></i>
-            </a>
-            <a class="text-white hover:text-purple-300" href="https://instagram.com/" target="_blank">
-                <i class="fab fa-instagram text-lg"></i>
-            </a>
-            <a class="text-white hover:text-purple-300" href="https://youtube.com/" target="_blank">
-                <i class="fab fa-youtube text-lg"></i>
-            </a>
-            <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openMapModal()">
-                <i class="fas fa-map-marker-alt text-lg"></i>
-            </a>
-
+            <a class="text-white hover:text-purple-300" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank"><i class="fab fa-linkedin-in text-lg"></i></a>
+            <a class="text-white hover:text-purple-300" href="https://twitter.com/" target="_blank"><i class="fab fa-x-twitter text-lg"></i></a>
+            <a class="text-white hover:text-purple-300" href="https://facebook.com/" target="_blank"><i class="fab fa-facebook-f text-lg"></i></a>
+            <a class="text-white hover:text-purple-300" href="https://instagram.com/" target="_blank"><i class="fab fa-instagram text-lg"></i></a>
+            <a class="text-white hover:text-purple-300" href="https://youtube.com/" target="_blank"><i class="fab fa-youtube text-lg"></i></a>
+            <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openMapModal()"><i class="fas fa-map-marker-alt text-lg"></i></a>
+            
             <!-- Kullanıcı Alanı -->
             <div class="ml-auto pl-8">
                 <div id="authNotLoggedIn">
@@ -145,183 +133,20 @@
     </div>
 </header>
 
-<!-- Menü: LibEdge Eğitim ve Danışmanlık yazısı + Ürünler dropdown + linkler -->
+<!-- ====================== NAV (index.html ile aynı) ====================== -->
 <nav class="bg-white shadow-md sticky top-0 z-10">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-        <a class="text-2xl text-primary nav-logo" href="#">
+        <a class="text-2xl text-primary nav-logo" href="index.html">
             <span class="lib-bold translatable">Lib</span><span class="translatable">Edge Eğitim ve Danışmanlık</span>
         </a>
         <button class="hamburger" aria-label="Menüyü aç/kapat" aria-expanded="false">
             <i class="fas fa-bars"></i>
         </button>
         <div class="nav-links flex items-center space-x-2 sm:space-x-6 text-xs sm:text-sm font-medium text-gray-700">
-            
-            <!-- Ürünler Dropdown -->
-<div class="relative group">
-    <a id="products-menu-toggle" onclick="toggleProductsMenu()" class="hover:text-primary font-semibold flex items-center cursor-pointer sm:cursor-default translatable">
-Ürünler
-      <i class="fas fa-chevron-down ml-1 text-xs"></i>
-    </a>
-  
-    <div class="dropdown absolute left-0 mt-2 bg-white shadow-lg rounded-lg z-20 p-4 space-y-4 w-[340px] hidden sm:block">
-
-    <div>
-        <h4 class="text-sm font-bold text-primary mb-1 translatable">Yapay Zeka</h4>
-        <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
-        <a href="#chatpdf" class="block px-2 py-1 text-sm hover:text-primary translatable">ChatPDF</a>
-        <a href="#wonders" class="block px-2 py-1 text-sm hover:text-primary translatable">Wonders</a>
-        <a href="#assistin" class="block px-2 py-1 text-sm hover:text-primary translatable">Assistin</a>
-        <a href="#piri-discovery" class="block px-2 py-1 text-sm hover:text-primary translatable">Piri Keşif</a>
-        <a href="#transleyt" class="block px-2 py-1 text-sm hover:text-primary translatable">Transleyt</a>
-      </div>
-  
-      <div>
-        <h4 class="text-sm font-bold text-primary mb-1 translatable">Sağlık</h4>
-        <a href="#primal-pictures" class="block px-2 py-1 text-sm hover:text-primary translatable">Primal Pictures</a>
-        <a href="#lecturio" class="block px-2 py-1 text-sm hover:text-primary translatable">Lecturio</a>
-        <a href="#nejmhealer" class="block px-2 py-1 text-sm hover:text-primary translatable">NEJMHealer</a>
-        <a href="#cochrane-library" class="block px-2 py-1 text-sm hover:text-primary translatable">Cochrane Library</a>
-        <a href="#imachek" class="block px-2 py-1 text-sm hover:text-primary translatable">ImaChek</a>
-      </div>
-  
-      <div>
-        <h4 class="text-sm font-bold text-primary mb-1 translatable">Mühendislik</h4>
-        <a href="#biorender" class="block px-2 py-1 text-sm hover:text-primary translatable">BioRender</a>
-        <a href="#wiley-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Dergiler</a>
-        <a href="#wiley-kitaplar" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Kitaplar</a>
-      </div>
-  
-      <div>
-        <h4 class="text-sm font-bold text-primary mb-1 translatable">Fen & Matematik</h4>
-        <a href="#jove-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Research</a>
-        <a href="#jove-education" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Education</a>
-        <a href="#wiley-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Dergiler</a>
-        <a href="#wiley-kitaplar" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Kitaplar</a>
-      </div>
-  
-      <div>
-        <h4 class="text-sm font-bold text-primary mb-1 translatable">Sosyal Bilimler</h4>
-        <a href="#jove-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Research</a>
-        <a href="#jove-education" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Education</a>
-      </div>
-  
-      <div>
-        <h4 class="text-sm font-bold text-primary mb-1 translatable">İş & Hukuk</h4>
-        <a href="#jove-business" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Business</a>
-      </div>
-  
-      <div>
-        <h4 class="text-sm font-bold text-primary mb-1 translatable">Sanat</h4>
-        <a href="#klasik-muzik" class="block px-2 py-1 text-sm hover:text-primary translatable">Klasik Müzik Koleksiyonu</a>
-        <a href="#caz-koleksiyonu" class="block px-2 py-1 text-sm hover:text-primary translatable">Caz Koleksiyonu</a>
-      </div>
-
-      <div>
-        <h4 class="text-sm font-bold text-primary mb-1 translatable">Akademik Dürüstlük</h4>
-        <a href="#pangram" class="block px-2 py-1 text-sm hover:text-primary translatable">Pangram</a>
-        <a href="#imachek" class="block px-2 py-1 text-sm hover:text-primary translatable">ImaChek</a>
-      </div>
-    </div>
-  
-    <div id="mobile-products" class="space-y-2 mt-2 px-2 sm:hidden">
-
-
-  <div class="group">
-    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
-      <span class="translatable">Yapay Zeka</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
-    </button>
-    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-      <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
-      <a href="#chatpdf" class="block text-gray-700 translatable">ChatPDF</a>
-      <a href="#wonders" class="block text-gray-700 translatable">Wonders</a>
-      <a href="#piri-discovery" class="block text-gray-700 translatable">Piri Keşif</a>
-      <a href="#transleyt" class="block text-gray-700 translatable">Transleyt</a>
-    </div>
-  </div>
-  
-  <div class="group">
-    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
-	<span class="translatable">Sağlık</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
-    </button>
-    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-      <a href="#primal-pictures" class="block text-gray-700 translatable">Primal Pictures</a>
-      <a href="#lecturio" class="block text-gray-700 translatable">Lecturio</a>
-      <a href="#nejmhealer" class="block text-gray-700 translatable">NEJMHealer</a>
-      <a href="#cochrane-library" class="block text-gray-700 translatable">Cochrane Library</a>
-      <a href="#imachek" class="block px-2 py-1 text-sm hover:text-primary translatable">ImaChek</a>
-        </div>
-  </div>
-  
-  <div class="group">
-    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
-      <span class="translatable">Mühendislik</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
-    </button>
-    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-      <a href="#biorender" class="block text-gray-700 translatable">BioRender</a>
-      <a href="#wiley-dergiler" class="block text-gray-700 translatable">Wiley Dergiler</a>
-      <a href="#wiley-kitaplar" class="block text-gray-700 translatable">Wiley Kitaplar</a>
-    </div>
-  </div>
-  
-  <div class="group">
-    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
-      <span class="translatable">Fen & Matematik</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
-    </button>
-    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-      <a href="#jove-dergiler" class="block text-gray-700 translatable">JoVE Research</a>
-      <a href="#jove-education" class="block text-gray-700 translatable">JoVE Education</a>
-      <a href="#wiley-dergiler" class="block text-gray-700 translatable">Wiley Dergiler</a>
-      <a href="#wiley-kitaplar" class="block text-gray-700 translatable">Wiley Kitaplar</a>
-    </div>
-  </div>
-  
-  <div class="group">
-    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
-      <span class="translatable">Sosyal Bilimler</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
-    </button>
-    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-      <a href="#jove-dergiler" class="block text-gray-700 translatable">JoVE Research</a>
-      <a href="#jove-education" class="block text-gray-700 translatable">JoVE Education</a>
-    </div>
-  </div>
-  
-  <div class="group">
-    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
-      <span class="translatable">İş & Hukuk</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
-    </button>
-    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-      <a href="#jove-business" class="block text-gray-700 translatable">JoVE Business</a>
-    </div>
-  </div>
-  
-  <div class="group">
-    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
-      <span class="translatable">Sanat</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
-    </button>
-    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-      <a href="#klasik-muzik" class="block text-gray-700 translatable">Klasik Müzik Koleksiyonu</a>
-      <a href="#caz-koleksiyonu" class="block text-gray-700 translatable">Caz Koleksiyonu</a>
-    </div>
-  </div>
-
-  <div class="group">
-  <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
-    <span class="translatable">Akademik Dürüstlük</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
-  </button>
-  <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
-    <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
-    <a href="#imachek" class="block text-gray-700 translatable">ImaChek</a>
-  </div>
-</div>
-  
-    </div>
-  </div>
-            
-            <a class="hover:text-primary translatable" href="#brochures">Broşürler</a>
-            <a class="hover:text-primary translatable" href="#contact">İletişim</a>
+            <a class="hover:text-primary translatable" href="index.html#products">Ürünler</a>
+            <a class="hover:text-primary translatable" href="index.html#brochures">Broşürler</a>
+            <a class="hover:text-primary translatable" href="index.html#contact">İletişim</a>
             <a class="text-primary font-semibold translatable" href="Announcements.html">Duyurular</a>
-            
-            <!-- Dil Butonu -->
             <button id="translateBtn" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center text-sm font-semibold">
                 <i class="fas fa-globe mr-1"></i>
                 <span id="translateText">English</span>
@@ -330,79 +155,7 @@
     </div>
 </nav>
 
-<!-- Alt Menü (Ürünler, Broşürler, İletişim, Duyurular, Dil Butonu, Giriş Butonu) -->
-<nav class="bg-white shadow-md sticky top-0 z-10">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-        <a class="text-2xl text-primary nav-logo md:hidden" href="#">
-            <span class="lib-bold translatable">Lib</span><span class="translatable">Edge</span>
-        </a>
-        <button class="hamburger md:hidden" aria-label="Menüyü aç/kapat">
-            <i class="fas fa-bars"></i>
-        </button>
-        <div class="nav-links flex items-center space-x-2 sm:space-x-6 text-xs sm:text-sm font-medium text-gray-700">
-            <!-- Ana Menü Linkleri -->
-            <a class="hover:text-primary translatable" href="#products">Ürünler</a>
-            <a class="hover:text-primary translatable" href="#brochures">Broşürler</a>
-            <a class="hover:text-primary translatable" href="#contact">İletişim</a>
-            <a class="text-primary font-semibold translatable" href="Announcements.html">Duyurular</a>
-            
-            <!-- Dil Butonu -->
-            <button id="translateBtn" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center text-sm font-semibold">
-                <i class="fas fa-globe mr-1"></i>
-                <span id="translateText">English</span>
-            </button>
-            
-            <!-- Giriş Butonu / Kullanıcı Avatarı -->
-            <div id="authNotLoggedIn">
-                <button onclick="openLoginModal()" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 text-sm font-semibold">
-                    <i class="fas fa-sign-in-alt mr-1"></i> Giriş
-                </button>
-            </div>
-            
-            <div id="authLoggedIn" class="relative hidden group">
-                <button id="userMenuBtn" class="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 rounded-full px-2 py-1 transition">
-                    <div id="userAvatar" class="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">AG</div>
-                    <span id="userName" class="text-sm font-medium text-gray-700 hidden sm:inline-block"></span>
-                    <i class="fas fa-chevron-down text-xs text-gray-500 transition-transform group-hover:rotate-180"></i>
-                </button>
-                
-                <!-- Hover ile Açılan Dropdown -->
-                <div id="userDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg overflow-hidden opacity-0 invisible transition-all duration-200 transform -translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0" style="transform-origin: top right; z-index: 50;">
-                    <div class="bg-gradient-to-r from-[#220f60] to-purple-700 p-4 text-white">
-                        <div class="flex items-center gap-3">
-                            <div id="dropdownAvatar" class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white text-lg font-bold">AG</div>
-                            <div class="flex-1 min-w-0">
-                                <p id="dropdownName" class="font-semibold text-white truncate"></p>
-                                <p id="dropdownEmail" class="text-xs text-purple-200 truncate"></p>
-                                <p id="dropdownInstitution" class="text-xs text-purple-300 truncate mt-1 hidden">
-                                    <i class="fas fa-building mr-1"></i><span></span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="py-2">
-                        <a href="profile.html" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50">
-                            <i class="fas fa-user-circle w-5 text-gray-400"></i>
-                            <span>Profilim</span>
-                        </a>
-                        <div id="adminMenuLink" class="hidden">
-                            <a href="admin.html" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50">
-                                <i class="fas fa-shield-alt w-5 text-purple-500"></i>
-                                <span>Admin Paneli</span>
-                            </a>
-                        </div>
-                        <hr class="my-1 mx-4 border-gray-100">
-                        <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50">
-                            <i class="fas fa-sign-out-alt w-5"></i>
-                            <span>Çıkış Yap</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</nav>
-
+<!-- ====================== PROFİL İÇERİĞİ ====================== -->
 <div class="max-w-7xl mx-auto px-4 py-8">
     <div class="flex flex-col lg:flex-row gap-8">
         
@@ -450,22 +203,10 @@
                             <i class="fas fa-user-circle text-2xl text-primary"></i>
                         </div>
                         <div class="space-y-3">
-                            <div>
-                                <p class="text-sm text-gray-500">Ad Soyad</p>
-                                <p id="infoFullName" class="font-medium">-</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">E-posta</p>
-                                <p id="infoEmail" class="font-medium">-</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Kurum</p>
-                                <p id="infoInstitution" class="font-medium">-</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Üyelik Tarihi</p>
-                                <p id="infoCreatedAt" class="font-medium">-</p>
-                            </div>
+                            <div><p class="text-sm text-gray-500">Ad Soyad</p><p id="infoFullName" class="font-medium">-</p></div>
+                            <div><p class="text-sm text-gray-500">E-posta</p><p id="infoEmail" class="font-medium">-</p></div>
+                            <div><p class="text-sm text-gray-500">Kurum</p><p id="infoInstitution" class="font-medium">-</p></div>
+                            <div><p class="text-sm text-gray-500">Üyelik Tarihi</p><p id="infoCreatedAt" class="font-medium">-</p></div>
                         </div>
                     </div>
 
@@ -474,9 +215,7 @@
                             <h3 class="text-lg font-semibold text-gray-800">Aktif Abonelikler</h3>
                             <i class="fas fa-check-circle text-2xl text-green-500"></i>
                         </div>
-                        <div id="activeSubscriptionsList" class="space-y-3">
-                            <p class="text-gray-500 text-sm">Yükleniyor...</p>
-                        </div>
+                        <div id="activeSubscriptionsList" class="space-y-3"><p class="text-gray-500 text-sm">Yükleniyor...</p></div>
                     </div>
                 </div>
             </div>
@@ -485,9 +224,7 @@
             <div id="tab-subscriptions" class="tab-content hidden">
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Aboneliklerim</h2>
-                    <div id="allSubscriptionsList" class="space-y-4">
-                        <p class="text-gray-500 text-center py-8">Yükleniyor...</p>
-                    </div>
+                    <div id="allSubscriptionsList" class="space-y-4"><p class="text-gray-500 text-center py-8">Yükleniyor...</p></div>
                 </div>
             </div>
 
@@ -495,38 +232,21 @@
             <div id="tab-settings" class="tab-content hidden">
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Hesap Ayarları</h2>
-                    
                     <form id="profileUpdateForm" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Ad Soyad</label>
-                            <input type="text" id="settingsFullName" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Kurum</label>
-                            <input type="text" id="settingsInstitution" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Yeni Şifre</label>
-                            <input type="password" id="newPassword" placeholder="Değiştirmek istemiyorsanız boş bırakın" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
-                        </div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Ad Soyad</label><input type="text" id="settingsFullName" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Kurum</label><input type="text" id="settingsInstitution" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Yeni Şifre</label><input type="password" id="newPassword" placeholder="Değiştirmek istemiyorsanız boş bırakın" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"></div>
                         <div id="passwordStrength" class="text-xs text-gray-500"></div>
-                        <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">
-                            Bilgileri Güncelle
-                        </button>
+                        <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">Bilgileri Güncelle</button>
                     </form>
-
                     <hr class="my-6">
-
                     <div class="bg-red-50 border border-red-200 rounded-lg p-4">
                         <h3 class="text-red-800 font-semibold mb-2">Hesabı Sil</h3>
                         <p class="text-sm text-red-600 mb-3">Bu işlem geri alınamaz. Hesabınız ve tüm verileriniz kalıcı olarak silinecektir.</p>
-                        <button id="deleteAccountBtn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm">
-                            Hesabımı Sil
-                        </button>
+                        <button id="deleteAccountBtn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm">Hesabımı Sil</button>
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
@@ -537,6 +257,7 @@
     </div>
 </footer>
 
+<script src="assets/js/script.js"></script>
 <script>
     let currentUser = null;
     let authToken = localStorage.getItem('authToken');
@@ -553,47 +274,43 @@
     }
 
     // Kullanıcı bilgilerini yükle
- async function loadUserProfile() {
-    if (!authToken) {
-        window.location.href = 'index.html';
-        return;
+    async function loadUserProfile() {
+        if (!authToken) {
+            window.location.href = 'index.html';
+            return;
+        }
+
+        const decoded = decodeToken(authToken);
+        if (decoded && decoded.exp > Date.now()) {
+            currentUser = {
+                id: decoded.user_id,
+                email: decoded.email,
+                full_name: decoded.full_name,
+                institution: decoded.institution
+            };
+            
+            document.getElementById('profileName').textContent = currentUser.full_name || 'Kullanıcı';
+            document.getElementById('profileEmail').textContent = currentUser.email;
+            document.getElementById('welcomeMessage').textContent = `Merhaba ${currentUser.full_name || 'Kullanıcı'}, LibEdge'e hoş geldiniz!`;
+            document.getElementById('infoFullName').textContent = currentUser.full_name || '-';
+            document.getElementById('infoEmail').textContent = currentUser.email;
+            document.getElementById('infoInstitution').textContent = currentUser.institution || 'Belirtilmemiş';
+            document.getElementById('infoCreatedAt').textContent = 'Kayıt tarihi yükleniyor...';
+            document.getElementById('settingsFullName').value = currentUser.full_name || '';
+            document.getElementById('settingsInstitution').value = currentUser.institution || '';
+            
+            // Auth UI'ı güncelle (header'daki dropdown için)
+            if (typeof updateAuthUI === 'function') {
+                updateAuthUI(true);
+            }
+            
+            await loadUserCreatedAt();
+            await loadSubscriptions();
+        } else {
+            logout();
+        }
     }
 
-    const decoded = decodeToken(authToken);
-    if (decoded && decoded.exp > Date.now()) {
-        currentUser = {
-            id: decoded.user_id,
-            email: decoded.email,
-            full_name: decoded.full_name,
-            institution: decoded.institution
-        };
-        
-        // Sayfa başlıklarını güncelle
-        document.getElementById('profileName').textContent = currentUser.full_name || 'Kullanıcı';
-        document.getElementById('profileEmail').textContent = currentUser.email;
-        document.getElementById('welcomeMessage').textContent = `Merhaba ${currentUser.full_name || 'Kullanıcı'}, LibEdge'e hoş geldiniz!`;
-        document.getElementById('infoFullName').textContent = currentUser.full_name || '-';
-        document.getElementById('infoEmail').textContent = currentUser.email;
-        document.getElementById('infoInstitution').textContent = currentUser.institution || 'Belirtilmemiş';
-        document.getElementById('infoCreatedAt').textContent = 'Kayıt tarihi yükleniyor...';
-        document.getElementById('settingsFullName').value = currentUser.full_name || '';
-        document.getElementById('settingsInstitution').value = currentUser.institution || '';
-        
-        // ========== BURAYA EKLEYİN ==========
-        // Auth UI'ı güncelle (header'daki dropdown için)
-        if (typeof updateAuthUI === 'function') {
-            updateAuthUI(true);
-        }
-        // ===================================
-        
-        // Kayıt tarihini al
-        await loadUserCreatedAt();
-        await loadSubscriptions();
-    } else {
-        logout();
-    }
-}
-    // Kullanıcı kayıt tarihini al
     async function loadUserCreatedAt() {
         try {
             const response = await fetch(`${API_BASE}/api/user/profile`, {
@@ -601,15 +318,13 @@
             });
             const data = await response.json();
             if (data.created_at) {
-                const date = new Date(data.created_at);
-                document.getElementById('infoCreatedAt').textContent = date.toLocaleDateString('tr-TR');
+                document.getElementById('infoCreatedAt').textContent = new Date(data.created_at).toLocaleDateString('tr-TR');
             }
         } catch (err) {
             console.error('Error loading user date:', err);
         }
     }
 
-    // Abonelikleri yükle
     async function loadSubscriptions() {
         try {
             const response = await fetch(`${API_BASE}/api/subscription/list`, {
@@ -618,26 +333,19 @@
             const data = await response.json();
             
             if (data.subscriptions && data.subscriptions.length > 0) {
-                // Aktif abonelikler
                 const activeSubs = data.subscriptions.filter(s => s.status === 'active' || s.status === 'trial');
                 const activeContainer = document.getElementById('activeSubscriptionsList');
                 if (activeSubs.length > 0) {
                     activeContainer.innerHTML = activeSubs.map(sub => `
                         <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <div>
-                                <p class="font-medium">${getProductName(sub.product_slug)}</p>
-                                <p class="text-xs text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
-                            </div>
-                            <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : 'badge-trial'}">
-                                ${sub.status === 'active' ? 'Aktif' : 'Deneme'}
-                            </span>
+                            <div><p class="font-medium">${getProductName(sub.product_slug)}</p><p class="text-xs text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p></div>
+                            <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : 'badge-trial'}">${sub.status === 'active' ? 'Aktif' : 'Deneme'}</span>
                         </div>
                     `).join('');
                 } else {
                     activeContainer.innerHTML = '<p class="text-gray-500 text-sm">Aktif aboneliğiniz bulunmamaktadır.</p>';
                 }
 
-                // Tüm abonelikler
                 const allContainer = document.getElementById('allSubscriptionsList');
                 allContainer.innerHTML = data.subscriptions.map(sub => `
                     <div class="flex justify-between items-center p-4 border border-gray-100 rounded-lg">
@@ -660,23 +368,15 @@
         }
     }
 
-    // Ürün adını döndür
     function getProductName(slug) {
         const products = {
-            'pangram': 'Pangram',
-            'chatpdf': 'ChatPDF',
-            'primal-pictures': 'Primal Pictures',
-            'lecturio': 'Lecturio',
-            'jove-research': 'JoVE Research',
-            'jove-education': 'JoVE Education',
-            'biorender': 'BioRender',
-            'wiley-journals': 'Wiley Dergiler',
-            'cochrane': 'Cochrane Library'
+            'pangram': 'Pangram', 'chatpdf': 'ChatPDF', 'primal-pictures': 'Primal Pictures',
+            'lecturio': 'Lecturio', 'jove-research': 'JoVE Research', 'jove-education': 'JoVE Education',
+            'biorender': 'BioRender', 'wiley-journals': 'Wiley Dergiler', 'cochrane': 'Cochrane Library'
         };
         return products[slug] || slug;
     }
 
-    // Profil güncelleme
     document.getElementById('profileUpdateForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const fullName = document.getElementById('settingsFullName').value;
@@ -686,10 +386,7 @@
         try {
             const response = await fetch(`${API_BASE}/api/user/update`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
                 body: JSON.stringify({ full_name: fullName, institution: institution, new_password: newPassword })
             });
             const data = await response.json();
@@ -704,7 +401,6 @@
         }
     });
 
-    // Hesap silme
     document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
         if (confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
             try {
@@ -725,60 +421,37 @@
         }
     });
 
-    // Çıkış yap
     function logout() {
         localStorage.removeItem('authToken');
         window.location.href = 'index.html';
     }
 
-    // Tab geçişleri
     document.querySelectorAll('.sidebar-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const tab = link.dataset.tab;
-            
             document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
-            
             document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
         });
     });
 
-    // Şifre gücü göstergesi
     document.getElementById('newPassword').addEventListener('input', (e) => {
         const password = e.target.value;
         const strengthDiv = document.getElementById('passwordStrength');
-        if (password.length === 0) {
-            strengthDiv.innerHTML = '';
-        } else if (password.length < 6) {
-            strengthDiv.innerHTML = '❌ Şifre en az 6 karakter olmalıdır.';
-            strengthDiv.style.color = '#ef4444';
-        } else if (password.length < 10) {
-            strengthDiv.innerHTML = '⚠️ Zayıf şifre. Daha uzun ve karmaşık olabilir.';
-            strengthDiv.style.color = '#f59e0b';
-        } else {
-            strengthDiv.innerHTML = '✅ Güçlü şifre!';
-            strengthDiv.style.color = '#10b981';
-        }
+        if (password.length === 0) strengthDiv.innerHTML = '';
+        else if (password.length < 6) { strengthDiv.innerHTML = '❌ Şifre en az 6 karakter olmalıdır.'; strengthDiv.style.color = '#ef4444'; }
+        else if (password.length < 10) { strengthDiv.innerHTML = '⚠️ Zayıf şifre. Daha uzun ve karmaşık olabilir.'; strengthDiv.style.color = '#f59e0b'; }
+        else { strengthDiv.innerHTML = '✅ Güçlü şifre!'; strengthDiv.style.color = '#10b981'; }
     });
 
-    // Çıkış butonu
-    document.getElementById('logoutBtn').addEventListener('click', (e) => {
-        e.preventDefault();
-        logout();
-    });
+    document.getElementById('logoutBtn')?.addEventListener('click', (e) => { e.preventDefault(); logout(); });
 
-    // Sayfa yüklendiğinde
     document.addEventListener('DOMContentLoaded', () => {
-        if (!authToken) {
-            window.location.href = 'index.html';
-            return;
-        }
+        if (!authToken) { window.location.href = 'index.html'; return; }
         loadUserProfile();
     });
 </script>
-
-<script src="assets/js/script.js"></script>
 </body>
 </html>
