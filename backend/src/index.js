@@ -571,3 +571,139 @@ app.delete('/api/admin/subscription/:id', async (c) => {
 });
 
 export default app;
+
+// ====================== KURUM KLASÖR YÖNETİMİ ======================
+
+// Klasörleri listele
+app.get('/api/institution/:id/folders', async (c) => {
+  const institutionId = c.req.param('id');
+  const parentId = c.req.query('parent') || null;
+  const role = await getUserRole(c);
+  const userInstitution = await getUserInstitution(c);
+  
+  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != institutionId)) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+  
+  const db = c.env.DB;
+  let folders;
+  if (parentId) {
+    folders = await db.prepare(`
+      SELECT f.*, COUNT(ff.id) as subfolder_count,
+        (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
+      FROM institution_folders f
+      LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
+      WHERE f.institution_id = ? AND f.parent_folder_id = ?
+      GROUP BY f.id
+      ORDER BY f.folder_name
+    `).bind(institutionId, parentId).all();
+  } else {
+    folders = await db.prepare(`
+      SELECT f.*, COUNT(ff.id) as subfolder_count,
+        (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
+      FROM institution_folders f
+      LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
+      WHERE f.institution_id = ? AND f.parent_folder_id IS NULL
+      GROUP BY f.id
+      ORDER BY f.folder_name
+    `).bind(institutionId).all();
+  }
+  
+  return c.json(folders.results);
+});
+
+// Klasör oluştur
+app.post('/api/institution/:id/folder', async (c) => {
+  const institutionId = c.req.param('id');
+  const { folder_name, parent_folder_id } = await c.req.json();
+  const role = await getUserRole(c);
+  const userInstitution = await getUserInstitution(c);
+  const authHeader = c.req.header('Authorization');
+  const token = authHeader.split(' ')[1];
+  const decoded = JSON.parse(atob(token));
+  
+  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != institutionId)) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+  
+  const db = c.env.DB;
+  
+  try {
+    await db.prepare(`
+      INSERT INTO institution_folders (institution_id, folder_name, parent_folder_id, created_by)
+      VALUES (?, ?, ?, ?)
+    `).bind(institutionId, folder_name, parent_folder_id || null, decoded.user_id).run();
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: 'Aynı isimde klasör zaten var' }, 400);
+  }
+});
+
+// Klasör sil (içindeki dosyalar ve alt klasörler de silinir)
+app.delete('/api/institution/folder/:id', async (c) => {
+  const folderId = c.req.param('id');
+  const role = await getUserRole(c);
+  const userInstitution = await getUserInstitution(c);
+  const db = c.env.DB;
+  
+  const folder = await db.prepare(`SELECT institution_id FROM institution_folders WHERE id = ?`).bind(folderId).first();
+  if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
+  
+  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != folder.institution_id)) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+  
+  // Önce alt klasörleri ve dosyaları sil
+  await db.prepare(`DELETE FROM institution_files WHERE folder_id IN (SELECT id FROM institution_folders WHERE id = ? OR parent_folder_id = ?)`).bind(folderId, folderId).run();
+  await db.prepare(`DELETE FROM institution_folders WHERE id = ? OR parent_folder_id = ?`).bind(folderId, folderId).run();
+  
+  return c.json({ success: true });
+});
+
+// Dosya ekle (klasör ID ile)
+app.post('/api/institution/:id/file', async (c) => {
+  const institutionId = c.req.param('id');
+  const { file_name, file_url, file_type, file_size, category, folder_id } = await c.req.json();
+  const role = await getUserRole(c);
+  const userInstitution = await getUserInstitution(c);
+  const authHeader = c.req.header('Authorization');
+  const token = authHeader.split(' ')[1];
+  const decoded = JSON.parse(atob(token));
+  
+  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != institutionId)) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+  
+  const db = c.env.DB;
+  await db.prepare(`
+    INSERT INTO institution_files (institution_id, file_name, file_url, file_type, file_size, category, folder_id, uploaded_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(institutionId, file_name, file_url, file_type, file_size, category, folder_id || null, decoded.user_id).run();
+  
+  return c.json({ success: true });
+});
+
+// Klasördeki dosyaları listele
+app.get('/api/institution/folder/:id/files', async (c) => {
+  const folderId = c.req.param('id');
+  const role = await getUserRole(c);
+  const db = c.env.DB;
+  
+  const folder = await db.prepare(`SELECT institution_id FROM institution_folders WHERE id = ?`).bind(folderId).first();
+  if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
+  
+  const userInstitution = await getUserInstitution(c);
+  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != folder.institution_id)) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+  
+  const files = await db.prepare(`
+    SELECT f.*, u.full_name as uploaded_by_name 
+    FROM institution_files f 
+    LEFT JOIN users u ON f.uploaded_by = u.id
+    WHERE f.folder_id = ? AND f.is_active = 1 
+    ORDER BY f.id DESC
+  `).bind(folderId).all();
+  
+  return c.json(files.results);
+});
