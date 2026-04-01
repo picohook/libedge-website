@@ -162,7 +162,7 @@ function updateAuthUI(isLoggedIn) {
     const dropdownName = document.getElementById('dropdownName');
     const dropdownEmail = document.getElementById('dropdownEmail');
     const dropdownInstitution = document.getElementById('dropdownInstitution');
-    const dropdownRole = document.getElementById('dropdownRole'); // Yeni
+    const dropdownRole = document.getElementById('dropdownRole');
     const adminMenuLink = document.getElementById('adminMenuLink');
     
     if (isLoggedIn && currentUser) {
@@ -173,25 +173,39 @@ function updateAuthUI(isLoggedIn) {
         const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
         const fullName = currentUser.full_name || 'Kullanıcı';
         
-        // Rol adını Türkçe göster
-// Rol adını Türkçe göster
-const roleName = {
-    'super_admin': 'Super Admin',
-    'admin': 'Kurum Yöneticisi',
-    'user': 'Kullanıcı'
-}[currentUser.role] || 'Kullanıcı';
-
-// Rol gösterimi
-if (dropdownRole) {
-    dropdownRole.textContent = roleName;
-    dropdownRole.className = `text-xs px-2 py-0.5 rounded-full ${
-        currentUser.role === 'super_admin' ? 'bg-red-100 text-red-800' :
-        currentUser.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-        'bg-gray-100 text-gray-600'
-    } inline-block mt-1`;
-    dropdownRole.classList.remove('hidden');
-}
+        // Avatar ve isim güncelleme
+        if (userAvatar) {
+            userAvatar.textContent = initials;
+            userAvatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor}`;
+        }
+        if (userName) userName.textContent = fullName.length > 12 ? fullName.substring(0, 10) + '..' : fullName;
         
+        // Dropdown bilgileri
+        if (dropdownAvatar) {
+            dropdownAvatar.textContent = initials;
+            dropdownAvatar.className = `w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${avatarColor}`;
+        }
+        if (dropdownName) dropdownName.textContent = fullName;
+        if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
+        
+        // Rol gösterimi
+        const roleName = {
+            'super_admin': 'Super Admin',
+            'admin': 'Kurum Yöneticisi',
+            'user': 'Kullanıcı'
+        }[currentUser.role] || 'Kullanıcı';
+        
+        if (dropdownRole) {
+            dropdownRole.textContent = roleName;
+            dropdownRole.className = `text-xs px-2 py-0.5 rounded-full ${
+                currentUser.role === 'super_admin' ? 'bg-red-100 text-red-800' :
+                currentUser.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                'bg-gray-100 text-gray-600'
+            } inline-block mt-1`;
+            dropdownRole.classList.remove('hidden');
+        }
+        
+        // Kurum bilgisi
         if (dropdownInstitution) {
             if (currentUser.institution) {
                 const instSpan = dropdownInstitution.querySelector('span');
@@ -202,6 +216,7 @@ if (dropdownRole) {
             }
         }
         
+        // Admin menü linki
         if (adminMenuLink) {
             if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
                 adminMenuLink.classList.remove('hidden');
