@@ -1,3 +1,32 @@
+// ====================== KULLANICI MENÜSÜ YARDIMCILARI ======================
+
+// Kullanıcı avatarı için renk üretme
+function getAvatarColor(name) {
+    const colors = ['avatar-purple', 'avatar-blue', 'avatar-green', 'avatar-orange', 'avatar-pink', 'avatar-cyan'];
+    if (!name) return colors[0];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = ((hash << 5) - hash) + name.charCodeAt(i);
+        hash |= 0;
+    }
+    return colors[Math.abs(hash) % colors.length];
+}
+
+// İsimden baş harfleri al (maks 2 harf)
+function getInitials(name) {
+    if (!name || name === 'Kullanıcı') return '👤';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+// Kısa isim (maksimum 15 karakter)
+function getShortName(name) {
+    if (!name || name === 'Kullanıcı') return 'Kullanıcı';
+    if (name.length > 15) return name.substring(0, 12) + '...';
+    return name;
+}
+
 // ====================== AUTH GLOBAL FUNCTIONS ======================
 const API_BASE = 'https://form-handler.agursel.workers.dev';
 let currentUser = null;
@@ -123,45 +152,69 @@ window.logout = function() {
 };
 
 // Update UI based on auth state
+// Kullanıcı arayüzünü güncelle (Hover versiyon)
 function updateAuthUI(isLoggedIn) {
-    const userIcon = document.querySelector('a[aria-label="User Management"] i');
-    const userBadge = document.getElementById('userBadge');
+    const authNotLoggedIn = document.getElementById('authNotLoggedIn');
+    const authLoggedIn = document.getElementById('authLoggedIn');
+    const userAvatar = document.getElementById('userAvatar');
+    const userShortName = document.getElementById('userShortName');
+    const dropdownAvatar = document.getElementById('dropdownAvatar');
+    const dropdownName = document.getElementById('dropdownName');
+    const dropdownEmail = document.getElementById('dropdownEmail');
+    const dropdownInstitution = document.getElementById('dropdownInstitution');
+    const adminMenuLink = document.getElementById('adminMenuLink');
     
     if (isLoggedIn && currentUser) {
-        // İkonu değiştir
-        if (userIcon) {
-            userIcon.className = 'fas fa-user-check text-xl';
+        // Giriş yapılmış - sağ üstteki alanı göster
+        if (authNotLoggedIn) authNotLoggedIn.classList.add('hidden');
+        if (authLoggedIn) authLoggedIn.classList.remove('hidden');
+        
+        const initials = getInitials(currentUser.full_name);
+        const shortName = getShortName(currentUser.full_name);
+        const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
+        
+        // Avatar ve isimleri güncelle
+        if (userAvatar) {
+            userAvatar.textContent = initials;
+            userAvatar.className = `w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${avatarColor}`;
+        }
+        if (userShortName) userShortName.textContent = shortName;
+        
+        if (dropdownAvatar) {
+            dropdownAvatar.textContent = initials;
+            dropdownAvatar.className = `w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold ${avatarColor}`;
+        }
+        if (dropdownName) dropdownName.textContent = currentUser.full_name || 'Kullanıcı';
+        if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
+        
+        // Kurum bilgisi
+        if (dropdownInstitution) {
+            const instSpan = dropdownInstitution.querySelector('span');
+            if (currentUser.institution && instSpan) {
+                instSpan.textContent = currentUser.institution;
+                dropdownInstitution.classList.remove('hidden');
+            } else if (dropdownInstitution) {
+                dropdownInstitution.classList.add('hidden');
+            }
         }
         
-        // Badge'i doldur ve göster
-        if (userBadge) {
-            userBadge.innerHTML = `
-                <div class="p-3 min-w-[200px]">
-                    <p class="font-semibold text-primary">${currentUser.full_name || 'Kullanıcı'}</p>
-                    <p class="text-sm text-gray-600 break-all">${currentUser.email}</p>
-                    ${currentUser.institution ? `<p class="text-xs text-gray-500 mt-1">${currentUser.institution}</p>` : ''}
-                    <hr class="my-2">
-                    <a href="profile.html" class="block text-sm text-primary hover:text-purple-600 mb-1">
-                        <i class="fas fa-user mr-1"></i> Profilim
-                    </a>
-                    <button onclick="logout()" class="text-sm text-red-600 hover:text-red-800 w-full text-left">
-                        <i class="fas fa-sign-out-alt mr-1"></i> Çıkış Yap
-                    </button>
-                </div>
-            `;
-            userBadge.style.display = 'block';
-            console.log("✅ Badge updated with profile link");
-        } else {
-            console.error("userBadge element not found!");
+        // Admin paneli linki (sadece admin/super admin)
+        if (adminMenuLink) {
+            if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
+                adminMenuLink.classList.remove('hidden');
+            } else {
+                adminMenuLink.classList.add('hidden');
+            }
         }
+        
+        // Eskiden kullanılan userBadge'i gizle (varsa)
+        const userBadge = document.getElementById('userBadge');
+        if (userBadge) userBadge.style.display = 'none';
+        
     } else {
-        // Çıkış yapılmış durum
-        if (userIcon) {
-            userIcon.className = 'fas fa-user text-xl';
-        }
-        if (userBadge) {
-            userBadge.style.display = 'none';
-        }
+        // Giriş yapılmamış
+        if (authNotLoggedIn) authNotLoggedIn.classList.remove('hidden');
+        if (authLoggedIn) authLoggedIn.classList.add('hidden');
     }
 }
 
@@ -930,3 +983,4 @@ function openMapModal() { const m = document.getElementById('mapModal'); if(m) {
 function closeMapModal() { const m = document.getElementById('mapModal'); if(m) { m.classList.add('hidden'); document.body.classList.remove('no-scroll'); } }
 function toggleDropdown(button) { const list = button.nextElementSibling; if(list) { list.classList.toggle('hidden'); button.querySelector('i')?.classList.toggle('fa-chevron-down'); } }
 function toggleProductsMenu() { const menu = document.getElementById('mobile-products'); if(menu) { menu.classList.toggle('hidden'); document.querySelector('#products-menu-toggle i')?.classList.toggle('fa-chevron-down'); } }
+
