@@ -154,7 +154,6 @@ window.logout = function() {
 // Update UI based on auth state
 // Kullanıcı arayüzünü güncelle (Hover versiyon)
 function updateAuthUI(isLoggedIn) {
-    // Admin panelinde bu elementler yok, kontrol ekleyelim
     const authNotLoggedIn = document.getElementById('authNotLoggedIn');
     const authLoggedIn = document.getElementById('authLoggedIn');
     const userAvatar = document.getElementById('userAvatar');
@@ -163,16 +162,23 @@ function updateAuthUI(isLoggedIn) {
     const dropdownName = document.getElementById('dropdownName');
     const dropdownEmail = document.getElementById('dropdownEmail');
     const dropdownInstitution = document.getElementById('dropdownInstitution');
+    const dropdownRole = document.getElementById('dropdownRole'); // Yeni
     const adminMenuLink = document.getElementById('adminMenuLink');
     
     if (isLoggedIn && currentUser) {
-        // Giriş yapılmış - header'daki elementler varsa güncelle
         if (authNotLoggedIn) authNotLoggedIn.classList.add('hidden');
         if (authLoggedIn) authLoggedIn.classList.remove('hidden');
         
         const initials = getInitials(currentUser.full_name);
         const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
         const fullName = currentUser.full_name || 'Kullanıcı';
+        
+        // Rol adını Türkçe göster
+        const roleName = {
+            'super_admin': 'Super Admin',
+            'admin': 'Kurum Yöneticisi',
+            'user': 'Kullanıcı'
+        }[currentUser.role] || 'Kullanıcı';
         
         if (userAvatar) {
             userAvatar.textContent = initials;
@@ -186,6 +192,17 @@ function updateAuthUI(isLoggedIn) {
         }
         if (dropdownName) dropdownName.textContent = fullName;
         if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
+        
+        // Rol gösterimi
+        if (dropdownRole) {
+            dropdownRole.textContent = roleName;
+            dropdownRole.className = `text-xs px-2 py-0.5 rounded-full ${
+                currentUser.role === 'super_admin' ? 'bg-red-100 text-red-800' :
+                currentUser.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                'bg-gray-100 text-gray-600'
+            } inline-block mt-1`;
+            dropdownRole.classList.remove('hidden');
+        }
         
         if (dropdownInstitution) {
             if (currentUser.institution) {
@@ -208,7 +225,7 @@ function updateAuthUI(isLoggedIn) {
         const userBadge = document.getElementById('userBadge');
         if (userBadge) userBadge.style.display = 'none';
         
-        // Dropdown tıklama olayı (sadece header'daki element varsa)
+        // Dropdown tıklama olayı
         const userMenuBtn = document.getElementById('userMenuBtn');
         const userDropdown = document.getElementById('userDropdown');
         if (userMenuBtn && userDropdown && !userMenuBtn._listenerAdded) {
@@ -225,7 +242,6 @@ function updateAuthUI(isLoggedIn) {
         }
         
     } else {
-        // Giriş yapılmamış
         if (authNotLoggedIn) authNotLoggedIn.classList.remove('hidden');
         if (authLoggedIn) authLoggedIn.classList.add('hidden');
     }
