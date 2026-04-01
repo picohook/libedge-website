@@ -280,6 +280,31 @@ document.addEventListener('DOMContentLoaded', function() {
 // Check authentication - GÜNCELLENDİ (decodeToken ile)
 async function checkAuth() {
     if (!authToken) return false;
+
+    try {
+        const decoded = decodeToken(authToken);
+        
+        if (decoded && decoded.exp > Date.now()) {
+            currentUser = {
+                id: decoded.user_id,
+                email: decoded.email,
+                full_name: decoded.full_name,
+                institution: decoded.institution,
+                role: decoded.role
+            };
+            updateAuthUI(true);
+            return true;
+        } else {
+            logout();
+            return false;
+        }
+    } catch (err) {
+        console.error('Auth check error:', err);
+        logout();           // Güvenlik için logout öneririm
+        return false;
+    }
+}
+    if (!authToken) return false;
     try {
         const decoded = decodeToken(authToken);
         if (decoded && decoded.exp > Date.now()) {
