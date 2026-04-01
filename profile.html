@@ -262,6 +262,11 @@
     let currentUser = null;
     let authToken = localStorage.getItem('authToken');
 
+    // API_BASE script.js'den geliyor, kontrol edelim
+    if (typeof API_BASE === 'undefined') {
+        var API_BASE = 'https://form-handler.agursel.workers.dev';
+    }
+
     // Token decode helper
     function decodeToken(token) {
         try {
@@ -275,12 +280,15 @@
 
     // Kullanıcı bilgilerini yükle
     async function loadUserProfile() {
+        console.log("loadUserProfile called");
         if (!authToken) {
             window.location.href = 'index.html';
             return;
         }
 
         const decoded = decodeToken(authToken);
+        console.log("Decoded token:", decoded);
+        
         if (decoded && decoded.exp > Date.now()) {
             currentUser = {
                 id: decoded.user_id,
@@ -289,21 +297,33 @@
                 institution: decoded.institution
             };
             
-            document.getElementById('profileName').textContent = currentUser.full_name || 'Kullanıcı';
-            document.getElementById('profileEmail').textContent = currentUser.email;
-            document.getElementById('welcomeMessage').textContent = `Merhaba ${currentUser.full_name || 'Kullanıcı'}, LibEdge'e hoş geldiniz!`;
-            document.getElementById('infoFullName').textContent = currentUser.full_name || '-';
-            document.getElementById('infoEmail').textContent = currentUser.email;
-            document.getElementById('infoInstitution').textContent = currentUser.institution || 'Belirtilmemiş';
-            document.getElementById('infoCreatedAt').textContent = 'Kayıt tarihi yükleniyor...';
-            document.getElementById('settingsFullName').value = currentUser.full_name || '';
-            document.getElementById('settingsInstitution').value = currentUser.institution || '';
+            // Sayfa başlıklarını güncelle
+            const profileName = document.getElementById('profileName');
+            const profileEmail = document.getElementById('profileEmail');
+            const welcomeMessage = document.getElementById('welcomeMessage');
+            const infoFullName = document.getElementById('infoFullName');
+            const infoEmail = document.getElementById('infoEmail');
+            const infoInstitution = document.getElementById('infoInstitution');
+            const infoCreatedAt = document.getElementById('infoCreatedAt');
+            const settingsFullName = document.getElementById('settingsFullName');
+            const settingsInstitution = document.getElementById('settingsInstitution');
+            
+            if (profileName) profileName.textContent = currentUser.full_name || 'Kullanıcı';
+            if (profileEmail) profileEmail.textContent = currentUser.email;
+            if (welcomeMessage) welcomeMessage.textContent = `Merhaba ${currentUser.full_name || 'Kullanıcı'}, LibEdge'e hoş geldiniz!`;
+            if (infoFullName) infoFullName.textContent = currentUser.full_name || '-';
+            if (infoEmail) infoEmail.textContent = currentUser.email;
+            if (infoInstitution) infoInstitution.textContent = currentUser.institution || 'Belirtilmemiş';
+            if (infoCreatedAt) infoCreatedAt.textContent = 'Kayıt tarihi yükleniyor...';
+            if (settingsFullName) settingsFullName.value = currentUser.full_name || '';
+            if (settingsInstitution) settingsInstitution.value = currentUser.institution || '';
             
             // Auth UI'ı güncelle (header'daki dropdown için)
             if (typeof updateAuthUI === 'function') {
                 updateAuthUI(true);
             }
             
+            // Kayıt tarihini al
             await loadUserCreatedAt();
             await loadSubscriptions();
         } else {
@@ -318,7 +338,10 @@
             });
             const data = await response.json();
             if (data.created_at) {
-                document.getElementById('infoCreatedAt').textContent = new Date(data.created_at).toLocaleDateString('tr-TR');
+                const infoCreatedAt = document.getElementById('infoCreatedAt');
+                if (infoCreatedAt) {
+                    infoCreatedAt.textContent = new Date(data.created_at).toLocaleDateString('tr-TR');
+                }
             }
         } catch (err) {
             console.error('Error loading user date:', err);
@@ -331,125 +354,198 @@
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
             const data = await response.json();
+            console.log("Subscriptions:", data);
+            
+            const activeContainer = document.getElementById('activeSubscriptionsList');
+            const allContainer = document.getElementById('allSubscriptionsList');
             
             if (data.subscriptions && data.subscriptions.length > 0) {
                 const activeSubs = data.subscriptions.filter(s => s.status === 'active' || s.status === 'trial');
-                const activeContainer = document.getElementById('activeSubscriptionsList');
-                if (activeSubs.length > 0) {
-                    activeContainer.innerHTML = activeSubs.map(sub => `
-                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <div><p class="font-medium">${getProductName(sub.product_slug)}</p><p class="text-xs text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p></div>
-                            <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : 'badge-trial'}">${sub.status === 'active' ? 'Aktif' : 'Deneme'}</span>
+                if (activeContainer) {
+                    if (activeSubs.length > 0) {
+                        activeContainer.innerHTML = activeSubs.map(sub => `
+                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="font-medium">${getProductName(sub.product_slug)}</p>
+                                    <p class="text-xs text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
+                                </div>
+                                <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : 'badge-trial'}">
+                                    ${sub.status === 'active' ? 'Aktif' : 'Deneme'}
+                                </span>
+                            </div>
+                        `).join('');
+                    } else {
+                        activeContainer.innerHTML = '<p class="text-gray-500 text-sm">Aktif aboneliğiniz bulunmamaktadır.</p>';
+                    }
+                }
+                
+                if (allContainer) {
+                    allContainer.innerHTML = data.subscriptions.map(sub => `
+                        <div class="flex justify-between items-center p-4 border border-gray-100 rounded-lg">
+                            <div>
+                                <p class="font-semibold">${getProductName(sub.product_slug)}</p>
+                                <p class="text-sm text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
+                                ${sub.end_date ? `<p class="text-sm text-gray-500">Bitiş: ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>` : ''}
+                            </div>
+                            <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : sub.status === 'trial' ? 'badge-trial' : 'badge-expired'}">
+                                ${sub.status === 'active' ? 'Aktif' : sub.status === 'trial' ? 'Deneme' : 'Süresi Doldu'}
+                            </span>
                         </div>
                     `).join('');
-                } else {
-                    activeContainer.innerHTML = '<p class="text-gray-500 text-sm">Aktif aboneliğiniz bulunmamaktadır.</p>';
                 }
-
-                const allContainer = document.getElementById('allSubscriptionsList');
-                allContainer.innerHTML = data.subscriptions.map(sub => `
-                    <div class="flex justify-between items-center p-4 border border-gray-100 rounded-lg">
-                        <div>
-                            <p class="font-semibold">${getProductName(sub.product_slug)}</p>
-                            <p class="text-sm text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
-                            ${sub.end_date ? `<p class="text-sm text-gray-500">Bitiş: ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>` : ''}
-                        </div>
-                        <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : sub.status === 'trial' ? 'badge-trial' : 'badge-expired'}">
-                            ${sub.status === 'active' ? 'Aktif' : sub.status === 'trial' ? 'Deneme' : 'Süresi Doldu'}
-                        </span>
-                    </div>
-                `).join('');
             } else {
-                document.getElementById('activeSubscriptionsList').innerHTML = '<p class="text-gray-500 text-sm">Aktif aboneliğiniz bulunmamaktadır.</p>';
-                document.getElementById('allSubscriptionsList').innerHTML = '<p class="text-gray-500 text-center py-8">Henüz aboneliğiniz bulunmamaktadır.</p>';
+                if (activeContainer) activeContainer.innerHTML = '<p class="text-gray-500 text-sm">Aktif aboneliğiniz bulunmamaktadır.</p>';
+                if (allContainer) allContainer.innerHTML = '<p class="text-gray-500 text-center py-8">Henüz aboneliğiniz bulunmamaktadır.</p>';
             }
         } catch (err) {
             console.error('Error loading subscriptions:', err);
+            const activeContainer = document.getElementById('activeSubscriptionsList');
+            if (activeContainer) activeContainer.innerHTML = '<p class="text-red-500 text-sm">Abonelikler yüklenirken hata oluştu.</p>';
         }
     }
 
     function getProductName(slug) {
         const products = {
-            'pangram': 'Pangram', 'chatpdf': 'ChatPDF', 'primal-pictures': 'Primal Pictures',
-            'lecturio': 'Lecturio', 'jove-research': 'JoVE Research', 'jove-education': 'JoVE Education',
-            'biorender': 'BioRender', 'wiley-journals': 'Wiley Dergiler', 'cochrane': 'Cochrane Library'
+            'pangram': 'Pangram',
+            'chatpdf': 'ChatPDF',
+            'primal-pictures': 'Primal Pictures',
+            'lecturio': 'Lecturio',
+            'nejmhealer': 'NEJMHealer',
+            'imachek': 'ImaChek',
+            'jove-research': 'JoVE Research',
+            'jove-education': 'JoVE Education',
+            'jove-business': 'JoVE Business',
+            'biorender': 'BioRender',
+            'wiley-journals': 'Wiley Dergiler',
+            'wiley-books': 'Wiley Kitaplar',
+            'cochrane-library': 'Cochrane Library',
+            'piri-discovery': 'Piri Keşif',
+            'transleyt': 'Transleyt',
+            'klasik-muzik': 'Klasik Müzik Koleksiyonu',
+            'caz-koleksiyonu': 'Caz Koleksiyonu'
         };
         return products[slug] || slug;
     }
 
-    document.getElementById('profileUpdateForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const fullName = document.getElementById('settingsFullName').value;
-        const institution = document.getElementById('settingsInstitution').value;
-        const newPassword = document.getElementById('newPassword').value;
+    // Profil güncelleme
+    const profileUpdateForm = document.getElementById('profileUpdateForm');
+    if (profileUpdateForm) {
+        profileUpdateForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('settingsFullName').value;
+            const institution = document.getElementById('settingsInstitution').value;
+            const newPassword = document.getElementById('newPassword').value;
 
-        try {
-            const response = await fetch(`${API_BASE}/api/user/update`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-                body: JSON.stringify({ full_name: fullName, institution: institution, new_password: newPassword })
-            });
-            const data = await response.json();
-            if (data.success) {
-                alert('Bilgileriniz güncellendi! Lütfen tekrar giriş yapın.');
-                logout();
-            } else {
-                alert(data.error || 'Güncelleme başarısız');
-            }
-        } catch (err) {
-            alert('Bir hata oluştu');
-        }
-    });
-
-    document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
-        if (confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
             try {
-                const response = await fetch(`${API_BASE}/api/user/delete`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${authToken}` }
+                const response = await fetch(`${API_BASE}/api/user/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ full_name: fullName, institution: institution, new_password: newPassword })
                 });
                 const data = await response.json();
                 if (data.success) {
-                    alert('Hesabınız silindi. Üzgünüz ki ayrılıyorsunuz.');
+                    alert('Bilgileriniz güncellendi! Lütfen tekrar giriş yapın.');
                     logout();
                 } else {
-                    alert(data.error || 'Silme başarısız');
+                    alert(data.error || 'Güncelleme başarısız');
                 }
             } catch (err) {
                 alert('Bir hata oluştu');
             }
-        }
-    });
+        });
+    }
 
+    // Hesap silme
+    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', async () => {
+            if (confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/user/delete`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        alert('Hesabınız silindi. Üzgünüz ki ayrılıyorsunuz.');
+                        logout();
+                    } else {
+                        alert(data.error || 'Silme başarısız');
+                    }
+                } catch (err) {
+                    alert('Bir hata oluştu');
+                }
+            }
+        });
+    }
+
+    // Çıkış yap
     function logout() {
         localStorage.removeItem('authToken');
         window.location.href = 'index.html';
     }
 
+    // Tab geçişleri
     document.querySelectorAll('.sidebar-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const tab = link.dataset.tab;
+            
             document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
+            
             document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            const targetTab = document.getElementById(`tab-${tab}`);
+            if (targetTab) {
+                targetTab.classList.remove('hidden');
+            } else {
+                console.error("Tab not found:", tab);
+            }
         });
     });
 
-    document.getElementById('newPassword').addEventListener('input', (e) => {
-        const password = e.target.value;
-        const strengthDiv = document.getElementById('passwordStrength');
-        if (password.length === 0) strengthDiv.innerHTML = '';
-        else if (password.length < 6) { strengthDiv.innerHTML = '❌ Şifre en az 6 karakter olmalıdır.'; strengthDiv.style.color = '#ef4444'; }
-        else if (password.length < 10) { strengthDiv.innerHTML = '⚠️ Zayıf şifre. Daha uzun ve karmaşık olabilir.'; strengthDiv.style.color = '#f59e0b'; }
-        else { strengthDiv.innerHTML = '✅ Güçlü şifre!'; strengthDiv.style.color = '#10b981'; }
-    });
+    // Şifre gücü göstergesi
+    const newPasswordInput = document.getElementById('newPassword');
+    if (newPasswordInput) {
+        newPasswordInput.addEventListener('input', (e) => {
+            const password = e.target.value;
+            const strengthDiv = document.getElementById('passwordStrength');
+            if (strengthDiv) {
+                if (password.length === 0) {
+                    strengthDiv.innerHTML = '';
+                } else if (password.length < 6) {
+                    strengthDiv.innerHTML = '❌ Şifre en az 6 karakter olmalıdır.';
+                    strengthDiv.style.color = '#ef4444';
+                } else if (password.length < 10) {
+                    strengthDiv.innerHTML = '⚠️ Zayıf şifre. Daha uzun ve karmaşık olabilir.';
+                    strengthDiv.style.color = '#f59e0b';
+                } else {
+                    strengthDiv.innerHTML = '✅ Güçlü şifre!';
+                    strengthDiv.style.color = '#10b981';
+                }
+            }
+        });
+    }
 
-    document.getElementById('logoutBtn')?.addEventListener('click', (e) => { e.preventDefault(); logout(); });
+    // Çıkış butonu (header'daki)
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
+        });
+    }
 
+    // Sayfa yüklendiğinde
     document.addEventListener('DOMContentLoaded', () => {
-        if (!authToken) { window.location.href = 'index.html'; return; }
+        console.log("Profile page DOM loaded");
+        if (!authToken) {
+            window.location.href = 'index.html';
+            return;
+        }
         loadUserProfile();
     });
 </script>
