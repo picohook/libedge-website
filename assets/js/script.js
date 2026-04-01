@@ -174,35 +174,23 @@ function updateAuthUI(isLoggedIn) {
         const fullName = currentUser.full_name || 'Kullanıcı';
         
         // Rol adını Türkçe göster
-        const roleName = {
-            'super_admin': 'Super Admin',
-            'admin': 'Kurum Yöneticisi',
-            'user': 'Kullanıcı'
-        }[currentUser.role] || 'Kullanıcı';
-        
-        if (userAvatar) {
-            userAvatar.textContent = initials;
-            userAvatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor}`;
-        }
-        if (userName) userName.textContent = fullName.length > 12 ? fullName.substring(0, 10) + '..' : fullName;
-        
-        if (dropdownAvatar) {
-            dropdownAvatar.textContent = initials;
-            dropdownAvatar.className = `w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${avatarColor}`;
-        }
-        if (dropdownName) dropdownName.textContent = fullName;
-        if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
-        
-        // Rol gösterimi
-        if (dropdownRole) {
-            dropdownRole.textContent = roleName;
-            dropdownRole.className = `text-xs px-2 py-0.5 rounded-full ${
-                currentUser.role === 'super_admin' ? 'bg-red-100 text-red-800' :
-                currentUser.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                'bg-gray-100 text-gray-600'
-            } inline-block mt-1`;
-            dropdownRole.classList.remove('hidden');
-        }
+// Rol adını Türkçe göster
+const roleName = {
+    'super_admin': 'Super Admin',
+    'admin': 'Kurum Yöneticisi',
+    'user': 'Kullanıcı'
+}[currentUser.role] || 'Kullanıcı';
+
+// Rol gösterimi
+if (dropdownRole) {
+    dropdownRole.textContent = roleName;
+    dropdownRole.className = `text-xs px-2 py-0.5 rounded-full ${
+        currentUser.role === 'super_admin' ? 'bg-red-100 text-red-800' :
+        currentUser.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+        'bg-gray-100 text-gray-600'
+    } inline-block mt-1`;
+    dropdownRole.classList.remove('hidden');
+}
         
         if (dropdownInstitution) {
             if (currentUser.institution) {
