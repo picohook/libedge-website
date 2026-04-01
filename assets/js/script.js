@@ -97,6 +97,7 @@ window.login = async function(email, password) {
                     email: decoded.email,
                     full_name: decoded.full_name,
                     institution: decoded.institution
+                    role: decoded.role
                 };
             } else {
                 currentUser = data.user;
