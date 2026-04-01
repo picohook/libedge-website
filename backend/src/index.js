@@ -954,3 +954,24 @@ app.delete('/api/institution/folder/:id', async (c) => {
   return c.json({ success: true });
 });
 
+// Backend'e ekleyin (index.js)
+app.get('/api/institution/folder/:id', async (c) => {
+    const folderId = c.req.param('id');
+    const role = await getUserRole(c);
+    const db = c.env.DB;
+    
+    const folder = await db.prepare(`
+        SELECT f.id, f.folder_name, f.parent_folder_id, f.institution_id
+        FROM institution_folders f WHERE f.id = ?
+    `).bind(folderId).first();
+    
+    if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
+    
+    const userInstitution = await getUserInstitutionId(c);
+    if (role !== 'super_admin' && (role !== 'admin' || userInstitution != folder.institution_id) && role !== 'user') {
+        return c.json({ error: 'Yetkisiz' }, 403);
+    }
+    
+    return c.json(folder);
+});
+

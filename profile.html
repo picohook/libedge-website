@@ -282,20 +282,25 @@
 <!-- Kurum Dosyaları Tab (Güncellenmiş) -->
 <div id="tab-files" class="tab-content hidden">
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-            <div>
-                <h2 class="text-xl font-bold text-gray-800">Kurum Dosyaları</h2>
-                <div id="breadcrumb" class="text-sm text-gray-500 mt-1"></div>
-            </div>
-            <div class="flex gap-2">
-                <button id="addFolderBtn" class="btn bg-yellow-600 text-white hidden">
-                    <i class="fas fa-folder-plus mr-1"></i> Klasör Ekle
-                </button>
-                <button id="addFileBtn" class="btn btn-primary hidden">
-                    <i class="fas fa-upload mr-1"></i> Dosya Yükle
-                </button>
-            </div>
-        </div>
+<div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="text-xl font-bold text-gray-800">Kurum Dosyaları</h2>
+        <div id="breadcrumb" class="text-sm text-gray-500 mt-1"></div>
+    </div>
+    <div class="flex gap-2">
+        <button id="backBtn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hidden" onclick="goBack()">
+            <i class="fas fa-arrow-left mr-1"></i> Geri
+        </button>
+        <button id="addFolderBtn" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hidden">
+            <i class="fas fa-folder-plus mr-1"></i> Klasör Ekle
+        </button>
+        <button id="addFileBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hidden">
+            <i class="fas fa-upload mr-1"></i> Dosya Yükle
+        </button>
+    </div>
+</div>
+
+        
         
         <!-- Klasörler Listesi -->
         <div id="foldersList" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
@@ -345,8 +350,44 @@
             <div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Yükle</button><button type="button" onclick="closeFileModal()" class="btn bg-gray-300 flex-1">İptal</button></div>
         </form>
     </div>
+<div class="mb-3">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Görünürlük</label>
+    <select id="fileVisibility" class="w-full border p-2 rounded">
+        <option value="0">Kurum İçi (Sadece kurum yöneticileri görebilir)</option>
+        <option value="1">Herkese Açık (Tüm kullanıcılar görebilir)</option>
+    </select>
+</div>
 </div>
 
+<!-- ====================== ALT KLASÖR EKLE MODAL ====================== -->
+<div id="addSubfolderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-1">Yeni Alt Klasör</h3>
+        <p id="parentFolderName" class="text-sm text-gray-500 mb-4"></p>
+        
+        <form id="addSubfolderForm">
+            <input type="hidden" id="parentFolderId">
+            
+            <div class="mb-5">
+                <input type="text" id="subfolderName" 
+                       placeholder="Alt Klasör Adı" 
+                       class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-violet-600 outline-none"
+                       required>
+            </div>
+            
+            <div class="flex gap-3">
+                <button type="submit" 
+                        class="flex-1 bg-violet-600 hover:bg-violet-700 text-white py-3 rounded-xl font-medium transition">
+                    Oluştur
+                </button>
+                <button type="button" onclick="closeSubfolderModal()" 
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 py-3 rounded-xl font-medium transition">
+                    İptal
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 <footer class="bg-primary text-white py-8 mt-12">
     <div class="max-w-7xl mx-auto px-4 text-center">
         <p class="text-sm">© 2025 LibEdge Eğitim ve Danışmanlık. Tüm hakları saklıdır.</p>
@@ -356,575 +397,20 @@
 <script src="assets/js/script.js"></script>
 <script>
 
-
-    // Token decode helper
-    function decodeToken(token) {
-        try {
-            const decoded = decodeURIComponent(escape(atob(token)));
-            return JSON.parse(decoded);
-        } catch (e) {
-            console.error("Token decode error:", e);
-            return null;
-        }
-    }
-
-    // Kullanıcı bilgilerini yükle
-    async function loadUserProfile() {
-        console.log("loadUserProfile called, authToken:", authToken ? "var" : "yok");
-        
-        if (!authToken) {
-            window.location.href = 'index.html';
-            return;
-        }
-
-        const decoded = decodeToken(authToken);
-        console.log("Decoded token:", decoded);
-        
-        if (decoded && decoded.exp > Date.now()) {
-            // script.js'deki currentUser'ı güncelle
-            window.currentUser = {
-                id: decoded.user_id,
-                email: decoded.email,
-                full_name: decoded.full_name,
-                institution: decoded.institution
-            };
-            
-            // Sayfa başlıklarını güncelle
-            const elements = {
-                profileName: currentUser.full_name || 'Kullanıcı',
-                profileEmail: currentUser.email,
-                welcomeMessage: `Merhaba ${currentUser.full_name || 'Kullanıcı'}, LibEdge'e hoş geldiniz!`,
-                infoFullName: currentUser.full_name || '-',
-                infoEmail: currentUser.email,
-                infoInstitution: currentUser.institution || 'Belirtilmemiş',
-                settingsFullName: currentUser.full_name || '',
-                settingsInstitution: currentUser.institution || ''
-            };
-            
-            for (const [id, value] of Object.entries(elements)) {
-                const el = document.getElementById(id);
-                if (el) el.textContent = value;
-                if (id === 'settingsFullName' || id === 'settingsInstitution') {
-                    if (el) el.value = value;
-                }
-            }
-            
-            // Auth UI'ı güncelle
-            if (typeof updateAuthUI === 'function') updateAuthUI(true);
-            
-            await loadUserCreatedAt();
-            await loadSubscriptions();
-        } else {
-            logout();
-        }
-    }
-
-    async function loadUserCreatedAt() {
-        try {
-            const response = await fetch(`${API_BASE}/api/user/profile`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            const data = await response.json();
-            if (data.created_at) {
-                const el = document.getElementById('infoCreatedAt');
-                if (el) el.textContent = new Date(data.created_at).toLocaleDateString('tr-TR');
-            }
-        } catch (err) {
-            console.error('Error loading user date:', err);
-        }
-    }
-
-    async function loadSubscriptions() {
-        try {
-            const response = await fetch(`${API_BASE}/api/subscription/list`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            const data = await response.json();
-            console.log("Subscriptions:", data);
-            
-            const activeContainer = document.getElementById('activeSubscriptionsList');
-            const allContainer = document.getElementById('allSubscriptionsList');
-            
-            if (data.subscriptions && data.subscriptions.length > 0) {
-                const activeSubs = data.subscriptions.filter(s => s.status === 'active' || s.status === 'trial');
-                if (activeContainer) {
-                    activeContainer.innerHTML = activeSubs.length > 0 ? 
-                        activeSubs.map(sub => `
-                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                <div><p class="font-medium">${getProductName(sub.product_slug)}</p><p class="text-xs text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p></div>
-                                <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : 'badge-trial'}">${sub.status === 'active' ? 'Aktif' : 'Deneme'}</span>
-                            </div>
-                        `).join('') : 
-                        '<p class="text-gray-500 text-sm">Aktif aboneliğiniz bulunmamaktadır.</p>';
-                }
-                
-                if (allContainer) {
-                    allContainer.innerHTML = data.subscriptions.map(sub => `
-                        <div class="flex justify-between items-center p-4 border border-gray-100 rounded-lg">
-                            <div><p class="font-semibold">${getProductName(sub.product_slug)}</p><p class="text-sm text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>${sub.end_date ? `<p class="text-sm text-gray-500">Bitiş: ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>` : ''}</div>
-                            <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : sub.status === 'trial' ? 'badge-trial' : 'badge-expired'}">${sub.status === 'active' ? 'Aktif' : sub.status === 'trial' ? 'Deneme' : 'Süresi Doldu'}</span>
-                        </div>
-                    `).join('');
-                }
-            } else {
-                if (activeContainer) activeContainer.innerHTML = '<p class="text-gray-500 text-sm">Aktif aboneliğiniz bulunmamaktadır.</p>';
-                if (allContainer) allContainer.innerHTML = '<p class="text-gray-500 text-center py-8">Henüz aboneliğiniz bulunmamaktadır.</p>';
-            }
-        } catch (err) {
-            console.error('Error loading subscriptions:', err);
-            const activeContainer = document.getElementById('activeSubscriptionsList');
-            if (activeContainer) activeContainer.innerHTML = '<p class="text-red-500 text-sm">Abonelikler yüklenirken hata oluştu.</p>';
-        }
-    }
-
-    function getProductName(slug) {
-        const products = {
-            'pangram': 'Pangram', 'chatpdf': 'ChatPDF', 'primal-pictures': 'Primal Pictures',
-            'lecturio': 'Lecturio', 'nejmhealer': 'NEJMHealer', 'imachek': 'ImaChek',
-            'jove-research': 'JoVE Research', 'jove-education': 'JoVE Education', 'jove-business': 'JoVE Business',
-            'biorender': 'BioRender', 'wiley-journals': 'Wiley Dergiler', 'wiley-books': 'Wiley Kitaplar',
-            'cochrane-library': 'Cochrane Library', 'piri-discovery': 'Piri Keşif', 'transleyt': 'Transleyt',
-            'klasik-muzik': 'Klasik Müzik Koleksiyonu', 'caz-koleksiyonu': 'Caz Koleksiyonu'
-        };
-        return products[slug] || slug;
-    }
-
-    // Profil güncelleme
-    const profileForm = document.getElementById('profileUpdateForm');
-    if (profileForm) {
-        profileForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fullName = document.getElementById('settingsFullName')?.value;
-            const institution = document.getElementById('settingsInstitution')?.value;
-            const newPassword = document.getElementById('newPassword')?.value;
-
-            try {
-                const response = await fetch(`${API_BASE}/api/user/update`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-                    body: JSON.stringify({ full_name: fullName, institution: institution, new_password: newPassword })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    alert('Bilgileriniz güncellendi! Lütfen tekrar giriş yapın.');
-                    logout();
-                } else {
-                    alert(data.error || 'Güncelleme başarısız');
-                }
-            } catch (err) {
-                alert('Bir hata oluştu');
-            }
-        });
-    }
-
-    // Hesap silme
-    const deleteBtn = document.getElementById('deleteAccountBtn');
-    if (deleteBtn) {
-        deleteBtn.addEventListener('click', async () => {
-            if (confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
-                try {
-                    const response = await fetch(`${API_BASE}/api/user/delete`, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': `Bearer ${authToken}` }
-                    });
-                    const data = await response.json();
-                    if (data.success) {
-                        alert('Hesabınız silindi.');
-                        logout();
-                    } else {
-                        alert(data.error || 'Silme başarısız');
-                    }
-                } catch (err) {
-                    alert('Bir hata oluştu');
-                }
-            }
-        });
-    }
-
-    function logout() {
-        localStorage.removeItem('authToken');
-        window.location.href = 'index.html';
-    }
-
-    // Tab geçişleri
-    document.querySelectorAll('.sidebar-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const tab = link.dataset.tab;
-            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-            const target = document.getElementById(`tab-${tab}`);
-            if (target) target.classList.remove('hidden');
-        });
-    });
-
-    // Şifre gücü
-    const pwdInput = document.getElementById('newPassword');
-    if (pwdInput) {
-        pwdInput.addEventListener('input', (e) => {
-            const pwd = e.target.value;
-            const strength = document.getElementById('passwordStrength');
-            if (strength) {
-                if (pwd.length === 0) strength.innerHTML = '';
-                else if (pwd.length < 6) strength.innerHTML = '❌ Şifre en az 6 karakter olmalıdır.';
-                else if (pwd.length < 10) strength.innerHTML = '⚠️ Zayıf şifre. Daha uzun ve karmaşık olabilir.';
-                else strength.innerHTML = '✅ Güçlü şifre!';
-            }
-        });
-    }
-
-    // Çıkış butonu
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) logoutBtn.addEventListener('click', (e) => { e.preventDefault(); logout(); });
-
-    // Sayfa yüklendiğinde
-    document.addEventListener('DOMContentLoaded', () => {
-        if (!authToken) { window.location.href = 'index.html'; return; }
-        loadUserProfile();
-    });
-
-    // ====================== KURUM DOSYALARI VE KLASÖR SİSTEMİ ======================
-
+// ====================== GLOBAL DEĞİŞKENLER ======================
+let authToken = localStorage.getItem('authToken');
+let currentUser = null;
 let currentFolderId = null;
 let folderStack = [];
 
-// Klasörleri yükle
-async function loadFolders(folderId = null) {
-    const institutionName = currentUser?.institution;
-    if (!institutionName) {
-        document.getElementById('foldersList').innerHTML = '<p class="text-gray-500 text-center col-span-full">Kurum bilgisi bulunamadı.</p>';
-        return;
-    }
-    
+// ====================== YARDIMCI FONKSİYONLAR ======================
+function decodeToken(token) {
     try {
-        let url = `${API_BASE}/api/institution/${encodeURIComponent(institutionName)}/folders`;
-        if (folderId) url += `?parent=${folderId}`;
-        
-        const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        const folders = await response.json();
-        
-        const container = document.getElementById('foldersList');
-        if (folders.length > 0) {
-            container.innerHTML = folders.map(folder => `
-                <div class="folder-item bg-gray-50 rounded-lg p-4 text-center hover:shadow-md transition">
-                    <div onclick="openFolder(${folder.id}, '${escapeHtml(folder.folder_name)}')" class="cursor-pointer">
-                        <i class="fas fa-folder text-4xl text-yellow-600 mb-2"></i>
-                        <p class="font-medium text-gray-800 truncate">${escapeHtml(folder.folder_name)}</p>
-                        <p class="text-xs text-gray-500 mt-1">${folder.subfolder_count || 0} klasör • ${folder.file_count || 0} dosya</p>
-                    </div>
-                    ${(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') ? `
-                        <button onclick="deleteFolder(${folder.id})" class="text-red-500 text-xs mt-2 hover:text-red-700">
-                            <i class="fas fa-trash"></i> Sil
-                        </button>
-                    ` : ''}
-                </div>
-            `).join('');
-        } else {
-            container.innerHTML = '<p class="text-gray-500 text-center col-span-full">Henüz klasör yok.</p>';
-        }
-        
-        await loadFiles(folderId);
-        
-        const emptyState = document.getElementById('emptyState');
-        if (folders.length === 0 && document.getElementById('filesList').children.length <= 1) {
-            emptyState.classList.remove('hidden');
-        } else {
-            emptyState.classList.add('hidden');
-        }
-        
-        const addFolderBtn = document.getElementById('addFolderBtn');
-        const addFileBtn = document.getElementById('addFileBtn');
-        if (currentUser?.role === 'admin' || currentUser?.role === 'super_admin') {
-            if (addFolderBtn) addFolderBtn.classList.remove('hidden');
-            if (addFileBtn) addFileBtn.classList.remove('hidden');
-        } else {
-            if (addFolderBtn) addFolderBtn.classList.add('hidden');
-            if (addFileBtn) addFileBtn.classList.add('hidden');
-        }
-        
-    } catch (err) {
-        console.error('Error loading folders:', err);
-        document.getElementById('foldersList').innerHTML = '<p class="text-red-500 text-center col-span-full">Klasörler yüklenirken hata oluştu.</p>';
+        return JSON.parse(decodeURIComponent(escape(atob(token))));
+    } catch (e) {
+        console.error("Token decode error:", e);
+        return null;
     }
-}
-
-// Dosyaları yükle (public/private desteği ile)
-async function loadFiles(folderId = null) {
-    const institutionName = currentUser?.institution;
-    if (!institutionName) return;
-    
-    try {
-        let url;
-        if (folderId) {
-            url = `${API_BASE}/api/institution/folder/${folderId}/files`;
-        } else {
-            url = `${API_BASE}/api/institution/${encodeURIComponent(institutionName)}/files`;
-        }
-        
-        const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        const files = await response.json();
-        
-        const container = document.getElementById('filesList');
-        if (files.length > 0) {
-            container.innerHTML = files.map(file => `
-                <div class="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
-                            <a href="${file.file_url}" target="_blank" class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
-                            ${file.is_public ? 
-                                '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><i class="fas fa-globe mr-1"></i>Herkese Açık</span>' : 
-                                '<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"><i class="fas fa-lock mr-1"></i>Kurum İçi</span>'
-                            }
-                        </div>
-                        <div class="flex flex-wrap gap-4 mt-1 text-xs text-gray-500">
-                            <span><i class="fas fa-tag mr-1"></i>${getCategoryName(file.category)}</span>
-                            <span><i class="fas fa-user mr-1"></i>${escapeHtml(file.uploaded_by_name || '-')}</span>
-                            <span><i class="fas fa-calendar mr-1"></i>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
-                            ${file.file_size ? `<span><i class="fas fa-database mr-1"></i>${formatFileSize(file.file_size)}</span>` : ''}
-                        </div>
-                    </div>
-                    ${(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') ? `
-                        <div class="flex items-center gap-2">
-                            <button onclick="toggleFilePublic(${file.id}, ${file.is_public})" 
-                                class="text-blue-500 hover:text-blue-700 transition" 
-                                title="${file.is_public ? 'Kurum içi yap' : 'Herkese açık yap'}">
-                                <i class="fas ${file.is_public ? 'fa-eye' : 'fa-eye-slash'}"></i>
-                            </button>
-                            <button onclick="deleteFile(${file.id})" class="text-red-500 hover:text-red-700 transition">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('');
-        } else {
-            container.innerHTML = '<p class="text-gray-500 text-center py-4">Bu klasörde dosya bulunmamaktadır.</p>';
-        }
-    } catch (err) {
-        console.error('Error loading files:', err);
-        document.getElementById('filesList').innerHTML = '<p class="text-red-500 text-center py-4">Dosyalar yüklenirken hata oluştu.</p>';
-    }
-}
-
-// Dosya görünürlüğünü değiştir
-async function toggleFilePublic(fileId, currentStatus) {
-    if (!confirm(`Bu dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
-            method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${authToken}` 
-            },
-            body: JSON.stringify({ is_public: !currentStatus })
-        });
-        
-        if (response.ok) {
-            alert(`Dosya ${!currentStatus ? 'herkese açık' : 'kurum içi'} yapıldı.`);
-            loadFiles(currentFolderId);
-        } else {
-            const data = await response.json();
-            alert(data.error || 'Güncelleme başarısız.');
-        }
-    } catch (err) {
-        console.error('Error toggling file:', err);
-        alert('Bir hata oluştu.');
-    }
-}    const institutionName = currentUser?.institution;
-    if (!institutionName) return;
-    
-    try {
-        let url;
-        if (folderId) {
-            url = `${API_BASE}/api/institution/folder/${folderId}/files`;
-        } else {
-            url = `${API_BASE}/api/institution/${encodeURIComponent(institutionName)}/files`;
-        }
-        
-        const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        const files = await response.json();
-        
-        const container = document.getElementById('filesList');
-        if (files.length > 0) {
-            container.innerHTML = files.map(file => `
-                <div class="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2">
-                            <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
-                            <a href="${file.file_url}" target="_blank" class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
-                        </div>
-                        <div class="flex flex-wrap gap-4 mt-1 text-xs text-gray-500">
-                            <span><i class="fas fa-tag mr-1"></i>${getCategoryName(file.category)}</span>
-                            <span><i class="fas fa-user mr-1"></i>${escapeHtml(file.uploaded_by_name || '-')}</span>
-                            <span><i class="fas fa-calendar mr-1"></i>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
-                            ${file.file_size ? `<span><i class="fas fa-database mr-1"></i>${formatFileSize(file.file_size)}</span>` : ''}
-                        </div>
-                    </div>
-                    ${(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') ? `
-                        <button onclick="deleteFile(${file.id})" class="text-red-500 hover:text-red-700 ml-2">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    ` : ''}
-                </div>
-            `).join('');
-        } else {
-            container.innerHTML = '<p class="text-gray-500 text-center py-4">Bu klasörde dosya bulunmamaktadır.</p>';
-        }
-    } catch (err) {
-        console.error('Error loading files:', err);
-    }
-}
-
-// Klasör aç
-function openFolder(folderId, folderName) {
-    folderStack.push({ id: currentFolderId, name: getCurrentFolderName() });
-    currentFolderId = folderId;
-    updateBreadcrumb();
-    loadFolders(folderId);
-}
-
-function getCurrentFolderName() {
-    const breadcrumb = document.getElementById('breadcrumb');
-    if (breadcrumb) {
-        const last = breadcrumb.innerText.split('/').pop();
-        return last === 'Ana Klasör' ? null : last;
-    }
-    return null;
-}
-
-// Breadcrumb güncelle
-function updateBreadcrumb() {
-    const breadcrumb = document.getElementById('breadcrumb');
-    if (!breadcrumb) return;
-    
-    if (currentFolderId === null) {
-        breadcrumb.innerHTML = '<span class="breadcrumb-item cursor-pointer" onclick="goToRoot()"><i class="fas fa-home"></i> Ana Klasör</span>';
-    } else {
-        let html = '<span class="breadcrumb-item cursor-pointer" onclick="goToRoot()"><i class="fas fa-home"></i> Ana Klasör</span>';
-        breadcrumb.innerHTML = html;
-    }
-}
-
-// Ana klasöre dön
-function goToRoot() {
-    currentFolderId = null;
-    folderStack = [];
-    updateBreadcrumb();
-    loadFolders(null);
-}
-
-// Klasör sil
-async function deleteFolder(folderId) {
-    if (confirm('Bu klasör ve içindeki tüm dosyalar silinecek. Devam etmek istediğinize emin misiniz?')) {
-        try {
-            const response = await fetch(`${API_BASE}/api/institution/folder/${folderId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            if (response.ok) {
-                alert('Klasör silindi.');
-                loadFolders(currentFolderId);
-            } else {
-                alert('Klasör silinirken hata oluştu.');
-            }
-        } catch (err) {
-            alert('Bir hata oluştu.');
-        }
-    }
-}
-
-// Dosya sil
-async function deleteFile(fileId) {
-    if (confirm('Bu dosyayı silmek istediğinize emin misiniz?')) {
-        try {
-            const response = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            if (response.ok) {
-                alert('Dosya silindi.');
-                loadFolders(currentFolderId);
-            } else {
-                alert('Dosya silinirken hata oluştu.');
-            }
-        } catch (err) {
-            alert('Bir hata oluştu.');
-        }
-    }
-}
-
-// Klasör oluşturma
-function openFolderModal() { 
-    const modal = document.getElementById('addFolderModal');
-    if (modal) modal.classList.remove('hidden');
-}
-function closeFolderModal() { 
-    const modal = document.getElementById('addFolderModal');
-    if (modal) modal.classList.add('hidden');
-    const form = document.getElementById('addFolderForm');
-    if (form) form.reset();
-}
-
-// Dosya yükleme modal
-function openFileModal() { 
-    const modal = document.getElementById('addFileModal');
-    if (modal) modal.classList.remove('hidden');
-}
-function closeFileModal() { 
-    const modal = document.getElementById('addFileModal');
-    if (modal) modal.classList.add('hidden');
-    const form = document.getElementById('addFileForm');
-    if (form) form.reset();
-}
-
-<div class="mb-3">
-    <label class="block text-sm font-medium text-gray-700 mb-1">Görünürlük</label>
-    <select id="fileVisibility" class="w-full border p-2 rounded">
-        <option value="0">Kurum İçi (Sadece kurum yöneticileri ve personel görebilir)</option>
-        <option value="1">Herkese Açık (Tüm kullanıcılar görebilir)</option>
-    </select>
-</div>
-
-// Helper fonksiyonlar
-function getFileIcon(fileType) {
-    const icons = {
-        'pdf': 'fa-file-pdf',
-        'doc': 'fa-file-word',
-        'docx': 'fa-file-word',
-        'xls': 'fa-file-excel',
-        'xlsx': 'fa-file-excel',
-        'jpg': 'fa-file-image',
-        'png': 'fa-file-image',
-        'zip': 'fa-file-archive'
-    };
-    return icons[fileType] || 'fa-file';
-}
-
-function getCategoryName(category) {
-    const names = {
-        'contract': 'Sözleşme',
-        'invoice': 'Fatura',
-        'license': 'Lisans',
-        'documentation': 'Dokümantasyon',
-        'other': 'Diğer'
-    };
-    return names[category] || category;
-}
-
-function formatFileSize(bytes) {
-    if (!bytes) return '';
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 function escapeHtml(text) {
@@ -934,102 +420,310 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Form submit işlemleri
-document.getElementById('addFolderForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const folderName = document.getElementById('folderName')?.value;
-    if (!folderName) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/institution/${currentUser.institution}/folder`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify({ folder_name: folderName, parent_folder_id: currentFolderId })
-        });
-        if (response.ok) {
-            alert('Klasör oluşturuldu.');
-            closeFolderModal();
-            loadFolders(currentFolderId);
-        } else {
-            const data = await response.json();
-            alert(data.error || 'Klasör oluşturulurken hata oluştu.');
-        }
-    } catch (err) {
-        alert('Bir hata oluştu.');
-    }
-});
-
-document.getElementById('addFileForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const data = {
-        file_name: document.getElementById('fileName')?.value,
-        file_url: document.getElementById('fileUrl')?.value,
-        file_type: document.getElementById('fileUrl')?.value.split('.').pop(),
-        category: document.getElementById('fileCategory')?.value,
-        folder_id: currentFolderId,
-        is_public: parseInt(document.getElementById('fileVisibility')?.value || '0')
+function getFileIcon(fileType) {
+    const icons = {
+        'pdf': 'fa-file-pdf', 'doc': 'fa-file-word', 'docx': 'fa-file-word',
+        'xls': 'fa-file-excel', 'xlsx': 'fa-file-excel',
+        'jpg': 'fa-file-image', 'png': 'fa-file-image',
+        'zip': 'fa-file-archive', 'rar': 'fa-file-archive'
     };
-    
-    if (!data.file_name || !data.file_url) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/institution/${currentUser.institution}/file`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify(data)
-        });
-        if (response.ok) {
-            alert('Dosya başarıyla yüklendi.');
-            closeFileModal();
-            loadFolders(currentFolderId);
-        } else {
-            alert('Dosya yüklenirken hata oluştu.');
-        }
-    } catch (err) {
-        alert('Bir hata oluştu.');
-    }
-});
-.preventDefault();
-    const data = {
-        file_name: document.getElementById('fileName')?.value,
-        file_url: document.getElementById('fileUrl')?.value,
-        file_type: document.getElementById('fileUrl')?.value.split('.').pop(),
-        category: document.getElementById('fileCategory')?.value,
-        folder_id: currentFolderId
+    return icons[fileType?.toLowerCase()] || 'fa-file';
+}
+
+function getCategoryName(category) {
+    const names = {
+        'contract': 'Sözleşme', 'invoice': 'Fatura',
+        'license': 'Lisans', 'documentation': 'Dokümantasyon', 'other': 'Diğer'
     };
-    
-    if (!data.file_name || !data.file_url) return;
-    
+    return names[category] || category;
+}
+
+function getProductName(slug) {
+    const products = {
+        'pangram': 'Pangram', 'chatpdf': 'ChatPDF', 'primal-pictures': 'Primal Pictures',
+        'lecturio': 'Lecturio', 'nejmhealer': 'NEJMHealer', 'biorender': 'BioRender',
+        'wiley-journals': 'Wiley Dergiler', 'cochrane-library': 'Cochrane Library'
+    };
+    return products[slug] || slug;
+}
+
+// ====================== PROFİL YÜKLEME ======================
+async function loadUserProfile() {
+    if (!authToken) return window.location.href = 'index.html';
+
+    const decoded = decodeToken(authToken);
+    if (!decoded || decoded.exp < Date.now()) return logout();
+
+    currentUser = {
+        id: decoded.user_id,
+        email: decoded.email,
+        full_name: decoded.full_name,
+        institution: decoded.institution,
+        role: decoded.role
+    };
+
+    document.getElementById('profileName').textContent = currentUser.full_name || 'Kullanıcı';
+    document.getElementById('profileEmail').textContent = currentUser.email;
+    document.getElementById('welcomeMessage').textContent = `Merhaba ${currentUser.full_name || 'Kullanıcı'}, hoş geldiniz!`;
+
+    document.getElementById('infoFullName').textContent = currentUser.full_name || '-';
+    document.getElementById('infoEmail').textContent = currentUser.email;
+    document.getElementById('infoInstitution').textContent = currentUser.institution || 'Belirtilmemiş';
+
+    document.getElementById('settingsFullName').value = currentUser.full_name || '';
+    document.getElementById('settingsInstitution').value = currentUser.institution || '';
+
+    if (typeof updateAuthUI === 'function') updateAuthUI(true);
+
+    await loadUserCreatedAt();
+    await loadSubscriptions();
+}
+
+async function loadUserCreatedAt() {
     try {
-        const response = await fetch(`${API_BASE}/api/institution/${currentUser.institution}/file`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify(data)
+        const res = await fetch(`${API_BASE}/api/user/profile`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        if (response.ok) {
-            alert('Dosya başarıyla yüklendi.');
-            closeFileModal();
-            loadFolders(currentFolderId);
+        const data = await res.json();
+        if (data.created_at) {
+            document.getElementById('infoCreatedAt').textContent = new Date(data.created_at).toLocaleDateString('tr-TR');
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function loadSubscriptions() {
+    try {
+        const res = await fetch(`${API_BASE}/api/subscription/list`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await res.json();
+
+        const activeEl = document.getElementById('activeSubscriptionsList');
+        const allEl = document.getElementById('allSubscriptionsList');
+
+        if (data.subscriptions?.length > 0) {
+            const activeSubs = data.subscriptions.filter(s => s.status === 'active' || s.status === 'trial');
+
+            activeEl.innerHTML = activeSubs.length ? activeSubs.map(sub => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-medium">${getProductName(sub.product_slug)}</p>
+                        <p class="text-xs text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
+                    </div>
+                    <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : 'badge-trial'}">
+                        ${sub.status === 'active' ? 'Aktif' : 'Deneme'}
+                    </span>
+                </div>
+            `).join('') : '<p class="text-gray-500 text-sm">Aktif aboneliğiniz yok.</p>';
+
+            allEl.innerHTML = data.subscriptions.map(sub => `
+                <div class="flex justify-between items-center p-4 border border-gray-100 rounded-lg">
+                    <div>
+                        <p class="font-semibold">${getProductName(sub.product_slug)}</p>
+                        <p class="text-sm text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
+                        ${sub.end_date ? `<p class="text-sm text-gray-500">Bitiş: ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>` : ''}
+                    </div>
+                    <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : sub.status === 'trial' ? 'badge-trial' : 'badge-expired'}">
+                        ${sub.status === 'active' ? 'Aktif' : sub.status === 'trial' ? 'Deneme' : 'Süresi Doldu'}
+                    </span>
+                </div>
+            `).join('');
         } else {
-            alert('Dosya yüklenirken hata oluştu.');
+            activeEl.innerHTML = '<p class="text-gray-500 text-sm">Aktif aboneliğiniz yok.</p>';
+            allEl.innerHTML = '<p class="text-gray-500 text-center py-8">Henüz aboneliğiniz bulunmuyor.</p>';
         }
     } catch (err) {
-        alert('Bir hata oluştu.');
+        console.error(err);
+        document.getElementById('activeSubscriptionsList').innerHTML = '<p class="text-red-500">Abonelikler yüklenemedi.</p>';
+    }
+}
+
+// ====================== KURUM DOSYALARI ======================
+async function loadFolders(parentId = null) {
+    if (!currentUser?.institution) {
+        document.getElementById('foldersList').innerHTML = '<p class="text-red-500 text-center col-span-full">Kurum bilgisi yok.</p>';
+        return;
+    }
+
+    try {
+        let url = `${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/folders`;
+        if (parentId) url += `?parent=${parentId}`;
+
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${authToken}` } });
+        const folders = await res.json();
+
+        const container = document.getElementById('foldersList');
+        container.innerHTML = folders.length ? folders.map(f => `
+            <div class="folder-item bg-gray-50 rounded-xl p-5 text-center hover:shadow transition cursor-pointer" onclick="openFolder(${f.id}, '${escapeHtml(f.folder_name)}')">
+                <i class="fas fa-folder text-5xl text-amber-500 mb-3"></i>
+                <p class="font-semibold truncate">${escapeHtml(f.folder_name)}</p>
+                <p class="text-xs text-gray-500 mt-2">${f.subfolder_count||0} alt klasör • ${f.file_count||0} dosya</p>
+                ${(currentUser.role === 'admin' || currentUser.role === 'super_admin') ? `
+                <div class="mt-4 flex justify-center gap-4 text-sm" onclick="event.stopImmediatePropagation()">
+                    <button onclick="openAddSubfolderModal(${f.id}, '${escapeHtml(f.folder_name)}')" class="text-emerald-600 hover:text-emerald-700">
+                        <i class="fas fa-folder-plus"></i> Alt Klasör
+                    </button>
+                    <button onclick="deleteFolder(${f.id}); event.stopImmediatePropagation()" class="text-red-600 hover:text-red-700">
+                        <i class="fas fa-trash"></i> Sil
+                    </button>
+                </div>` : ''}
+            </div>
+        `).join('') : '<p class="col-span-full text-center text-gray-500 py-12">Klasör bulunmuyor.</p>';
+
+        await loadFiles(parentId);
+        updateBreadcrumb();
+        updateBackButton();
+
+        const isAdmin = ['admin','super_admin'].includes(currentUser.role);
+        document.getElementById('addFolderBtn').classList.toggle('hidden', !isAdmin);
+        document.getElementById('addFileBtn').classList.toggle('hidden', !isAdmin);
+
+    } catch (err) {
+        console.error(err);
+        document.getElementById('foldersList').innerHTML = '<p class="text-red-500 text-center">Klasörler yüklenemedi.</p>';
+    }
+}
+
+async function loadFiles(folderId = null) {
+    if (!currentUser?.institution) return;
+
+    try {
+        let url = folderId 
+            ? `${API_BASE}/api/institution/folder/${folderId}/files`
+            : `${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/files`;
+
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${authToken}` } });
+        const files = await res.json();
+
+        const container = document.getElementById('filesList');
+        container.innerHTML = files.length ? files.map(file => `
+            <div class="p-4 border border-gray-100 rounded-xl hover:bg-gray-50 flex justify-between items-center">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3">
+                        <i class="fas ${getFileIcon(file.file_type)} text-2xl text-gray-400"></i>
+                        <a href="${file.file_url}" target="_blank" class="font-medium text-blue-600 hover:underline truncate">${escapeHtml(file.file_name)}</a>
+                        ${file.is_public ? `<span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Açık</span>` : `<span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">Kurum İçi</span>`}
+                    </div>
+                    <div class="text-xs text-gray-500 mt-2 flex gap-x-4">
+                        <span>${getCategoryName(file.category)}</span>
+                        <span>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
+                    </div>
+                </div>
+                ${(currentUser.role === 'admin' || currentUser.role === 'super_admin') ? `
+                <div class="flex gap-3">
+                    <button onclick="toggleFilePublic(${file.id}, ${file.is_public});event.stopImmediatePropagation()" class="text-blue-600">
+                        <i class="fas ${file.is_public ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                    </button>
+                    <button onclick="deleteFile(${file.id});event.stopImmediatePropagation()" class="text-red-600">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>` : ''}
+            </div>
+        `).join('') : '<p class="text-gray-500 text-center py-8">Bu klasörde dosya yok.</p>';
+    } catch (err) {
+        console.error(err);
+        document.getElementById('filesList').innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenemedi.</p>';
+    }
+}
+
+// ====================== KLASÖR NAVİGASYONU ======================
+function openFolder(folderId, folderName) {
+    if (currentFolderId !== null) folderStack.push({id: currentFolderId, name: folderName});
+    currentFolderId = folderId;
+    updateBreadcrumb();
+    loadFolders(folderId);
+}
+
+function goBack() {
+    if (folderStack.length > 0) {
+        const prev = folderStack.pop();
+        currentFolderId = prev.id;
+    } else {
+        currentFolderId = null;
+    }
+    updateBreadcrumb();
+    loadFolders(currentFolderId);
+}
+
+function goToRoot() {
+    currentFolderId = null;
+    folderStack = [];
+    updateBreadcrumb();
+    loadFolders(null);
+}
+
+function updateBreadcrumb() {
+    const bc = document.getElementById('breadcrumb');
+    if (!bc) return;
+
+    let html = `<span class="cursor-pointer hover:text-violet-600" onclick="goToRoot()"><i class="fas fa-home"></i> Ana Klasör</span>`;
+
+    folderStack.forEach((item, i) => {
+        html += ` / <span class="cursor-pointer hover:text-violet-600" onclick="goToSpecificFolder(${i})">${escapeHtml(item.name)}</span>`;
+    });
+
+    if (currentFolderId !== null) {
+        html += ` / <span class="font-medium">${escapeHtml(folderStack[folderStack.length-1]?.name || '')}</span>`;
+    }
+    bc.innerHTML = html;
+}
+
+function goToSpecificFolder(index) {
+    folderStack = folderStack.slice(0, index);
+    currentFolderId = folderStack.length ? folderStack[folderStack.length-1].id : null;
+    updateBreadcrumb();
+    loadFolders(currentFolderId);
+}
+
+// ====================== ALT KLASÖR MODAL ======================
+function openAddSubfolderModal(parentId, parentName) {
+    document.getElementById('parentFolderName').textContent = `Ana Klasör: ${parentName}`;
+    document.getElementById('parentFolderId').value = parentId;
+    document.getElementById('addSubfolderModal').classList.remove('hidden');
+}
+
+function closeSubfolderModal() {
+    document.getElementById('addSubfolderModal').classList.add('hidden');
+    document.getElementById('subfolderName').value = '';
+}
+
+// ====================== ALT KLASÖR OLUŞTURMA ======================
+document.getElementById('addSubfolderForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const parentId = document.getElementById('parentFolderId').value;
+    const name = document.getElementById('subfolderName').value.trim();
+
+    if (!name) return alert("Klasör adı boş olamaz!");
+
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/folder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ folder_name: name, parent_folder_id: parentId || null })
+        });
+
+        if (res.ok) {
+            alert('Alt klasör başarıyla oluşturuldu!');
+            closeSubfolderModal();
+            loadFolders(currentFolderId);
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Alt klasör oluşturulamadı.');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası oluştu.');
     }
 });
 
-// Buton işlemleri
-document.getElementById('addFolderBtn')?.addEventListener('click', openFolderModal);
-document.getElementById('addFileBtn')?.addEventListener('click', openFileModal);
-
-// Tab geçişine files ekleyin (mevcut tab geçişini güncelleyin)
-const originalTabHandler = document.querySelectorAll('.sidebar-link');
-originalTabHandler.forEach(link => {
+// ====================== TAB GEÇİŞLERİ ======================
+document.querySelectorAll('.sidebar-link').forEach(link => {
     link.addEventListener('click', (e) => {
         e.preventDefault();
         const tab = link.dataset.tab;
+
         document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
         link.classList.add('active');
+
         document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
         const target = document.getElementById(`tab-${tab}`);
         if (target) {
@@ -1037,12 +731,172 @@ originalTabHandler.forEach(link => {
             if (tab === 'files') {
                 currentFolderId = null;
                 folderStack = [];
-                updateBreadcrumb();
                 loadFolders(null);
             }
         }
     });
 });
+
+// ====================== BAŞLANGIÇ ======================
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!authToken) return window.location.href = 'index.html';
+    await loadUserProfile();
+
+    // İlk sekme
+    document.getElementById('tab-overview').classList.remove('hidden');
+});
+
+function logout() {
+    localStorage.removeItem('authToken');
+    window.location.href = 'index.html';
+}
+
+function updateBackButton() {
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) {
+        backBtn.classList.toggle('hidden', currentFolderId === null && folderStack.length === 0);
+    }
+}
+
+// Klasör oluşturma
+document.getElementById('addFolderForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const folderName = document.getElementById('folderName').value.trim();
+    if (!folderName) return alert("Klasör adı boş olamaz");
+
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/folder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ folder_name: folderName, parent_folder_id: currentFolderId })
+        });
+
+        if (res.ok) {
+            alert('Klasör oluşturuldu!');
+            closeFolderModal();
+            loadFolders(currentFolderId);
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Oluşturulamadı');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+});
+
+// Dosya yükleme
+document.getElementById('addFileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        file_name: document.getElementById('fileName').value,
+        file_url: document.getElementById('fileUrl').value,
+        file_type: document.getElementById('fileUrl').value.split('.').pop().toLowerCase(),
+        category: document.getElementById('fileCategory').value,
+        folder_id: currentFolderId,
+        is_public: parseInt(document.getElementById('fileVisibility')?.value || '0')
+    };
+
+    if (!data.file_name || !data.file_url) return alert("Dosya adı ve URL gerekli");
+
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/file`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            alert('Dosya yüklendi!');
+            closeFileModal();
+            loadFolders(currentFolderId);
+        } else {
+            const err = await res.json();
+            alert(err.error || 'Yükleme başarısız');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+});
+
+function openFolderModal() {
+    document.getElementById('addFolderModal').classList.remove('hidden');
+}
+
+function closeFolderModal() {
+    document.getElementById('addFolderModal').classList.add('hidden');
+    document.getElementById('addFolderForm').reset();
+}
+
+function openFileModal() {
+    document.getElementById('addFileModal').classList.remove('hidden');
+}
+
+function closeFileModal() {
+    document.getElementById('addFileModal').classList.add('hidden');
+    document.getElementById('addFileForm').reset();
+}
+
+async function toggleFilePublic(fileId, currentStatus) {
+    if (!confirm(`Dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ is_public: !currentStatus })
+        });
+        
+        if (res.ok) {
+            alert(`Dosya ${!currentStatus ? 'herkese açık' : 'kurum içi'} yapıldı.`);
+            loadFiles(currentFolderId);
+        } else {
+            alert('Güncelleme başarısız');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+}
+
+async function deleteFile(fileId) {
+    if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (res.ok) {
+            alert('Dosya silindi.');
+            loadFolders(currentFolderId);
+        } else {
+            alert('Silme başarısız');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+}
+
+async function deleteFolder(folderId) {
+    if (!confirm('Bu klasör ve içindeki her şey silinecek. Emin misiniz?')) return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/folder/${folderId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (res.ok) {
+            alert('Klasör silindi.');
+            loadFolders(currentFolderId);
+        } else {
+            alert('Silme başarısız');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+}
+
 </script>
 </body>
 </html>
