@@ -63,110 +63,269 @@
 <body>
 
 <!-- Header (aynı ana sayfadaki gibi) -->
-<header class="bg-primary text-white py-4 px-4">
-    <div class="max-w-7xl mx-auto">
-        <!-- Üst Bilgi Satırı (Telefon, E-posta, Sosyal Medya) -->
-        <div class="flex flex-col sm:flex-row justify-between items-center pb-3 border-b border-purple-800/30 mb-3">
-            <div class="flex flex-wrap items-center space-x-4 mb-2 sm:mb-0">
+<header class="bg-primary text-white py-6 px-4">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center relative">
+        <!-- Sol: E-posta ve Telefon (alt alta) -->
+        <div class="flex flex-wrap items-center space-x-4 mb-2 sm:mb-0">
+            <div class="flex items-center">
+                <i class="fas fa-envelope mr-2 text-purple-300" aria-hidden="true"></i>
+                <span class="text-xs sm:text-sm"><a href="mailto:info@libedge.com">info@libedge.com</a></span>
+            </div>
+            <div class="flex flex-col">
                 <div class="flex items-center">
-                    <i class="fas fa-envelope mr-2 text-purple-300"></i>
-                    <span class="text-xs sm:text-sm"><a href="mailto:info@libedge.com">info@libedge.com</a></span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-mobile-alt text-purple-300"></i>
+                    <i class="fas fa-mobile-alt mr-2 text-purple-300" aria-hidden="true"></i>
                     <span class="text-xs sm:text-sm">+90 535 624 4016</span>
-                    <span class="text-purple-300">|</span>
+                </div>
+                <div class="flex items-center mt-1">
+                    <i class="fas fa-mobile-alt mr-2 text-purple-300" aria-hidden="true"></i>
                     <span class="text-xs sm:text-sm">+90 530 353 3932</span>
                 </div>
             </div>
-            <div class="flex items-center space-x-3">
-                <a class="text-white hover:text-purple-300" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank"><i class="fab fa-linkedin-in"></i></a>
-                <a class="text-white hover:text-purple-300" href="https://twitter.com/" target="_blank"><i class="fab fa-x-twitter"></i></a>
-                <a class="text-white hover:text-purple-300" href="https://facebook.com/" target="_blank"><i class="fab fa-facebook-f"></i></a>
-                <a class="text-white hover:text-purple-300" href="https://instagram.com/" target="_blank"><i class="fab fa-instagram"></i></a>
-                <a class="text-white hover:text-purple-300" href="https://youtube.com/" target="_blank"><i class="fab fa-youtube"></i></a>
-                <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openMapModal()"><i class="fas fa-map-marker-alt"></i></a>
-            </div>
         </div>
-        
-        <!-- Logo -->
-        <div class="flex justify-center mb-3">
-            <a href="index.html">
-                <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="h-14 w-auto">
+
+        <!-- Logo (tam ortada) -->
+        <img src="assets/images/libedge_logo.webp" alt="LibEdge Logo" class="company-logo">
+
+        <!-- Sağ: Sosyal Medya + Kullanıcı -->
+        <div class="flex items-center space-x-4 ml-auto">
+            <a class="text-white hover:text-purple-300" href="https://www.linkedin.com/company/libedge-consultancy-services/" target="_blank">
+                <i class="fab fa-linkedin-in text-lg"></i>
             </a>
+            <a class="text-white hover:text-purple-300" href="https://twitter.com/" target="_blank">
+                <i class="fab fa-x-twitter text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://facebook.com/" target="_blank">
+                <i class="fab fa-facebook-f text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://instagram.com/" target="_blank">
+                <i class="fab fa-instagram text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300" href="https://youtube.com/" target="_blank">
+                <i class="fab fa-youtube text-lg"></i>
+            </a>
+            <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openMapModal()">
+                <i class="fas fa-map-marker-alt text-lg"></i>
+            </a>
+
+            <!-- Kullanıcı Alanı -->
+            <div class="ml-auto pl-8">
+                <div id="authNotLoggedIn">
+                    <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openLoginModal()" aria-label="User Management">
+                        <i class="fas fa-user text-xl"></i>
+                    </a>
+                </div>
+                <div id="authLoggedIn" class="relative hidden">
+                    <div class="group">
+                        <div id="userMenuBtn" class="flex items-center gap-2 cursor-pointer">
+                            <div id="userAvatar" class="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white text-sm font-bold">AG</div>
+                            <i class="fas fa-chevron-down text-xs transition-transform group-hover:rotate-180"></i>
+                        </div>
+                        <div id="userDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg overflow-hidden opacity-0 invisible transition-all duration-200 transform -translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0" style="transform-origin: top right; z-index: 50;">
+                            <div class="bg-gradient-to-r from-[#220f60] to-purple-700 p-4 text-white">
+                                <div class="flex items-center gap-3">
+                                    <div id="dropdownAvatar" class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white text-lg font-bold">AG</div>
+                                    <div class="flex-1 min-w-0">
+                                        <p id="dropdownName" class="font-semibold text-white truncate"></p>
+                                        <p id="dropdownEmail" class="text-xs text-purple-200 truncate"></p>
+                                        <p id="dropdownInstitution" class="text-xs text-purple-300 truncate mt-1 hidden"><i class="fas fa-building mr-1"></i><span></span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="py-2">
+                                <a href="profile.html" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50"><i class="fas fa-user-circle w-5 text-gray-400"></i>Profilim</a>
+                                <div id="adminMenuLink" class="hidden"><a href="admin.html" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50"><i class="fas fa-shield-alt w-5 text-purple-500"></i>Admin Paneli</a></div>
+                                <hr class="my-1 mx-4 border-gray-100">
+                                <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt w-5"></i>Çıkış Yap</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </header>
 
-<!-- Tek Menü (Ürünler, Broşürler, İletişim, Duyurular, Dil Butonu, Giriş Butonu) -->
+<!-- Menü: LibEdge Eğitim ve Danışmanlık yazısı + Ürünler dropdown + linkler -->
 <nav class="bg-white shadow-md sticky top-0 z-10">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-        <a class="text-2xl text-primary nav-logo md:hidden" href="#">
-            <span class="lib-bold translatable">Lib</span><span class="translatable">Edge</span>
+        <a class="text-2xl text-primary nav-logo" href="#">
+            <span class="lib-bold translatable">Lib</span><span class="translatable">Edge Eğitim ve Danışmanlık</span>
         </a>
-        <button class="hamburger md:hidden" aria-label="Menüyü aç/kapat">
+        <button class="hamburger" aria-label="Menüyü aç/kapat" aria-expanded="false">
             <i class="fas fa-bars"></i>
         </button>
         <div class="nav-links flex items-center space-x-2 sm:space-x-6 text-xs sm:text-sm font-medium text-gray-700">
-            <!-- Ana Menü Linkleri -->
-            <a class="hover:text-primary translatable" href="#products">Ürünler</a>
+            
+            <!-- Ürünler Dropdown -->
+<div class="relative group">
+    <a id="products-menu-toggle" onclick="toggleProductsMenu()" class="hover:text-primary font-semibold flex items-center cursor-pointer sm:cursor-default translatable">
+Ürünler
+      <i class="fas fa-chevron-down ml-1 text-xs"></i>
+    </a>
+  
+    <div class="dropdown absolute left-0 mt-2 bg-white shadow-lg rounded-lg z-20 p-4 space-y-4 w-[340px] hidden sm:block">
+
+    <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Yapay Zeka</h4>
+        <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
+        <a href="#chatpdf" class="block px-2 py-1 text-sm hover:text-primary translatable">ChatPDF</a>
+        <a href="#wonders" class="block px-2 py-1 text-sm hover:text-primary translatable">Wonders</a>
+        <a href="#assistin" class="block px-2 py-1 text-sm hover:text-primary translatable">Assistin</a>
+        <a href="#piri-discovery" class="block px-2 py-1 text-sm hover:text-primary translatable">Piri Keşif</a>
+        <a href="#transleyt" class="block px-2 py-1 text-sm hover:text-primary translatable">Transleyt</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Sağlık</h4>
+        <a href="#primal-pictures" class="block px-2 py-1 text-sm hover:text-primary translatable">Primal Pictures</a>
+        <a href="#lecturio" class="block px-2 py-1 text-sm hover:text-primary translatable">Lecturio</a>
+        <a href="#nejmhealer" class="block px-2 py-1 text-sm hover:text-primary translatable">NEJMHealer</a>
+        <a href="#cochrane-library" class="block px-2 py-1 text-sm hover:text-primary translatable">Cochrane Library</a>
+        <a href="#imachek" class="block px-2 py-1 text-sm hover:text-primary translatable">ImaChek</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Mühendislik</h4>
+        <a href="#biorender" class="block px-2 py-1 text-sm hover:text-primary translatable">BioRender</a>
+        <a href="#wiley-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Dergiler</a>
+        <a href="#wiley-kitaplar" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Kitaplar</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Fen & Matematik</h4>
+        <a href="#jove-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Research</a>
+        <a href="#jove-education" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Education</a>
+        <a href="#wiley-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Dergiler</a>
+        <a href="#wiley-kitaplar" class="block px-2 py-1 text-sm hover:text-primary translatable">Wiley Kitaplar</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Sosyal Bilimler</h4>
+        <a href="#jove-dergiler" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Research</a>
+        <a href="#jove-education" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Education</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">İş & Hukuk</h4>
+        <a href="#jove-business" class="block px-2 py-1 text-sm hover:text-primary translatable">JoVE Business</a>
+      </div>
+  
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Sanat</h4>
+        <a href="#klasik-muzik" class="block px-2 py-1 text-sm hover:text-primary translatable">Klasik Müzik Koleksiyonu</a>
+        <a href="#caz-koleksiyonu" class="block px-2 py-1 text-sm hover:text-primary translatable">Caz Koleksiyonu</a>
+      </div>
+
+      <div>
+        <h4 class="text-sm font-bold text-primary mb-1 translatable">Akademik Dürüstlük</h4>
+        <a href="#pangram" class="block px-2 py-1 text-sm hover:text-primary translatable">Pangram</a>
+        <a href="#imachek" class="block px-2 py-1 text-sm hover:text-primary translatable">ImaChek</a>
+      </div>
+    </div>
+  
+    <div id="mobile-products" class="space-y-2 mt-2 px-2 sm:hidden">
+
+
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">Yapay Zeka</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
+      <a href="#chatpdf" class="block text-gray-700 translatable">ChatPDF</a>
+      <a href="#wonders" class="block text-gray-700 translatable">Wonders</a>
+      <a href="#piri-discovery" class="block text-gray-700 translatable">Piri Keşif</a>
+      <a href="#transleyt" class="block text-gray-700 translatable">Transleyt</a>
+    </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+	<span class="translatable">Sağlık</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#primal-pictures" class="block text-gray-700 translatable">Primal Pictures</a>
+      <a href="#lecturio" class="block text-gray-700 translatable">Lecturio</a>
+      <a href="#nejmhealer" class="block text-gray-700 translatable">NEJMHealer</a>
+      <a href="#cochrane-library" class="block text-gray-700 translatable">Cochrane Library</a>
+      <a href="#imachek" class="block px-2 py-1 text-sm hover:text-primary translatable">ImaChek</a>
+        </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">Mühendislik</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#biorender" class="block text-gray-700 translatable">BioRender</a>
+      <a href="#wiley-dergiler" class="block text-gray-700 translatable">Wiley Dergiler</a>
+      <a href="#wiley-kitaplar" class="block text-gray-700 translatable">Wiley Kitaplar</a>
+    </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">Fen & Matematik</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#jove-dergiler" class="block text-gray-700 translatable">JoVE Research</a>
+      <a href="#jove-education" class="block text-gray-700 translatable">JoVE Education</a>
+      <a href="#wiley-dergiler" class="block text-gray-700 translatable">Wiley Dergiler</a>
+      <a href="#wiley-kitaplar" class="block text-gray-700 translatable">Wiley Kitaplar</a>
+    </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">Sosyal Bilimler</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#jove-dergiler" class="block text-gray-700 translatable">JoVE Research</a>
+      <a href="#jove-education" class="block text-gray-700 translatable">JoVE Education</a>
+    </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">İş & Hukuk</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#jove-business" class="block text-gray-700 translatable">JoVE Business</a>
+    </div>
+  </div>
+  
+  <div class="group">
+    <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+      <span class="translatable">Sanat</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+    </button>
+    <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+      <a href="#klasik-muzik" class="block text-gray-700 translatable">Klasik Müzik Koleksiyonu</a>
+      <a href="#caz-koleksiyonu" class="block text-gray-700 translatable">Caz Koleksiyonu</a>
+    </div>
+  </div>
+
+  <div class="group">
+  <button onclick="toggleDropdown(this)" class="w-full text-left text-primary font-semibold flex justify-between items-center">
+    <span class="translatable">Akademik Dürüstlük</span> <i class="fas fa-chevron-down ml-2 text-xs"></i>
+  </button>
+  <div class="dropdown-list hidden pl-4 pt-2 text-sm space-y-1">
+    <a href="#pangram" class="block text-gray-700 translatable">Pangram</a>
+    <a href="#imachek" class="block text-gray-700 translatable">ImaChek</a>
+  </div>
+</div>
+  
+    </div>
+  </div>
+            
             <a class="hover:text-primary translatable" href="#brochures">Broşürler</a>
             <a class="hover:text-primary translatable" href="#contact">İletişim</a>
             <a class="text-primary font-semibold translatable" href="Announcements.html">Duyurular</a>
             
-            <!-- Dil Butonu (çalışan) -->
-            <button id="translateBtnNav" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center text-sm font-semibold">
+            <!-- Dil Butonu -->
+            <button id="translateBtn" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center text-sm font-semibold">
                 <i class="fas fa-globe mr-1"></i>
-                <span id="translateTextNav">English</span>
+                <span id="translateText">English</span>
             </button>
-            
-            <!-- Giriş Butonu / Kullanıcı Avatarı -->
-            <div id="authNotLoggedInNav">
-                <button onclick="openLoginModal()" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 text-sm font-semibold">
-                    <i class="fas fa-sign-in-alt mr-1"></i> Giriş
-                </button>
-            </div>
-            
-            <div id="authLoggedInNav" class="relative hidden group">
-                <button id="userMenuBtn" class="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 rounded-full px-2 py-1 transition">
-                    <div id="userAvatarNav" class="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">AG</div>
-                    <span id="userNameNav" class="text-sm font-medium text-gray-700 hidden sm:inline-block"></span>
-                    <i class="fas fa-chevron-down text-xs text-gray-500 transition-transform group-hover:rotate-180"></i>
-                </button>
-                
-                <!-- Hover ile Açılan Dropdown -->
-                <div id="userDropdownNav" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg overflow-hidden opacity-0 invisible transition-all duration-200 transform -translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0" style="transform-origin: top right; z-index: 50;">
-                    <div class="bg-gradient-to-r from-[#220f60] to-purple-700 p-4 text-white">
-                        <div class="flex items-center gap-3">
-                            <div id="dropdownAvatarNav" class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white text-lg font-bold">AG</div>
-                            <div class="flex-1 min-w-0">
-                                <p id="dropdownNameNav" class="font-semibold text-white truncate"></p>
-                                <p id="dropdownEmailNav" class="text-xs text-purple-200 truncate"></p>
-                                <p id="dropdownInstitutionNav" class="text-xs text-purple-300 truncate mt-1 hidden">
-                                    <i class="fas fa-building mr-1"></i><span></span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="py-2">
-                        <a href="profile.html" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50">
-                            <i class="fas fa-user-circle w-5 text-gray-400"></i>
-                            <span>Profilim</span>
-                        </a>
-                        <div id="adminMenuLinkNav" class="hidden">
-                            <a href="admin.html" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50">
-                                <i class="fas fa-shield-alt w-5 text-purple-500"></i>
-                                <span>Admin Paneli</span>
-                            </a>
-                        </div>
-                        <hr class="my-1 mx-4 border-gray-100">
-                        <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50">
-                            <i class="fas fa-sign-out-alt w-5"></i>
-                            <span>Çıkış Yap</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </nav>
