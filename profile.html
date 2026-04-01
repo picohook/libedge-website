@@ -59,25 +59,24 @@
             color: white;
         }
 
-    .folder-item {
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-    .folder-item:hover {
-        background-color: #f3f4f6;
-        transform: translateY(-1px);
-    }
-    .breadcrumb-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .breadcrumb-item:not(:last-child):after {
-        content: '/';
-        margin-left: 0.5rem;
-        color: #9ca3af;
-    }
-
+        .folder-item {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .folder-item:hover {
+            background-color: #f3f4f6;
+            transform: translateY(-1px);
+        }
+        .breadcrumb-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .breadcrumb-item:not(:last-child):after {
+            content: '/';
+            margin-left: 0.5rem;
+            color: #9ca3af;
+        }
     </style>
 </head>
 <body>
@@ -135,7 +134,6 @@
                                     <div class="flex-1 min-w-0">
                                         <p id="dropdownName" class="font-semibold text-white truncate"></p>
                                         <p id="dropdownEmail" class="text-xs text-purple-200 truncate"></p>
-                                        <!-- ROL ALANI - YENİ -->
                                         <p id="dropdownRole" class="text-xs mt-1 hidden"></p>
                                         <p id="dropdownInstitution" class="text-xs text-purple-300 truncate mt-1 hidden">
                                             <i class="fas fa-building mr-1"></i><span></span>
@@ -193,24 +191,24 @@
                     <h3 id="profileName" class="text-lg font-semibold text-gray-800">Yükleniyor...</h3>
                     <p id="profileEmail" class="text-sm text-gray-500">-</p>
                 </div>
-<nav class="space-y-1">
-    <a href="#" class="sidebar-link active" data-tab="overview">
-        <i class="fas fa-chart-line w-5"></i>
-        <span>Genel Bakış</span>
-    </a>
-    <a href="#" class="sidebar-link" data-tab="subscriptions">
-        <i class="fas fa-ticket-alt w-5"></i>
-        <span>Aboneliklerim</span>
-    </a>
-    <a href="#" class="sidebar-link" data-tab="files">
-        <i class="fas fa-folder-open w-5"></i>
-        <span>Kurum Dosyaları</span>
-    </a>
-    <a href="#" class="sidebar-link" data-tab="settings">
-        <i class="fas fa-cog w-5"></i>
-        <span>Hesap Ayarları</span>
-    </a>
-</nav>
+                <nav class="space-y-1">
+                    <a href="#" class="sidebar-link active" data-tab="overview">
+                        <i class="fas fa-chart-line w-5"></i>
+                        <span>Genel Bakış</span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-tab="subscriptions">
+                        <i class="fas fa-ticket-alt w-5"></i>
+                        <span>Aboneliklerim</span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-tab="files">
+                        <i class="fas fa-folder-open w-5"></i>
+                        <span>Kurum Dosyaları</span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-tab="settings">
+                        <i class="fas fa-cog w-5"></i>
+                        <span>Hesap Ayarları</span>
+                    </a>
+                </nav>
             </div>
         </div>
 
@@ -282,25 +280,23 @@
 <!-- Kurum Dosyaları Tab (Güncellenmiş) -->
 <div id="tab-files" class="tab-content hidden">
     <div class="bg-white rounded-xl shadow-sm p-6">
-<div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-    <div>
-        <h2 class="text-xl font-bold text-gray-800">Kurum Dosyaları</h2>
-        <div id="breadcrumb" class="text-sm text-gray-500 mt-1"></div>
-    </div>
-    <div class="flex gap-2">
-        <button id="backBtn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hidden" onclick="goBack()">
-            <i class="fas fa-arrow-left mr-1"></i> Geri
-        </button>
-        <button id="addFolderBtn" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hidden">
-            <i class="fas fa-folder-plus mr-1"></i> Klasör Ekle
-        </button>
-        <button id="addFileBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hidden">
-            <i class="fas fa-upload mr-1"></i> Dosya Yükle
-        </button>
-    </div>
-</div>
-
-        
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">Kurum Dosyaları</h2>
+                <div id="breadcrumb" class="text-sm text-gray-500 mt-1"></div>
+            </div>
+            <div class="flex gap-2">
+                <button id="backBtn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hidden" onclick="goBack()">
+                    <i class="fas fa-arrow-left mr-1"></i> Geri
+                </button>
+                <button id="addFolderBtn" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hidden">
+                    <i class="fas fa-folder-plus mr-1"></i> Klasör Ekle
+                </button>
+                <button id="addFileBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hidden">
+                    <i class="fas fa-upload mr-1"></i> Dosya Yükle
+                </button>
+            </div>
+        </div>
         
         <!-- Klasörler Listesi -->
         <div id="foldersList" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
@@ -335,7 +331,7 @@
     </div>
 </div>
 
-<!-- Dosya Yükle Modal (DÜZELTİLMİŞ) -->
+<!-- Dosya Yükle Modal -->
 <div id="addFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-md">
         <h3 class="text-xl font-bold mb-4">Dosya Yükle</h3>
@@ -349,7 +345,6 @@
                 <option value="documentation">Dokümantasyon</option>
                 <option value="other">Diğer</option>
             </select></div>
-            <!-- GÖRÜNÜRLÜK SEÇENEĞİ - DOĞRU YERDE -->
             <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Görünürlük</label>
                 <select id="fileVisibility" class="w-full border p-2 rounded">
@@ -365,7 +360,7 @@
     </div>
 </div>
 
-<!-- ====================== ALT KLASÖR EKLE MODAL ====================== -->
+<!-- Alt Klasör Ekle Modal -->
 <div id="addSubfolderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-2xl p-6 w-full max-w-md">
         <h3 class="text-xl font-bold mb-1">Yeni Alt Klasör</h3>
@@ -394,17 +389,53 @@
         </form>
     </div>
 </div>
+
 <footer class="bg-primary text-white py-8 mt-12">
     <div class="max-w-7xl mx-auto px-4 text-center">
         <p class="text-sm">© 2025 LibEdge Eğitim ve Danışmanlık. Tüm hakları saklıdır.</p>
     </div>
 </footer>
 
+<!-- Modal'lar için gerekli fonksiyonlar -->
+<script>
+function openMapModal() {
+    const modal = document.getElementById('mapModal');
+    if (modal) modal.classList.remove('hidden');
+}
+function closeMapModal() {
+    const modal = document.getElementById('mapModal');
+    if (modal) modal.classList.add('hidden');
+}
+function openLoginModal() {
+    if (typeof window.openLoginModal === 'function') window.openLoginModal();
+}
+function openRegisterModal() {
+    if (typeof window.openRegisterModal === 'function') window.openRegisterModal();
+}
+function logout() {
+    if (typeof window.logout === 'function') window.logout();
+}
+</script>
+
+<!-- Map Modal -->
+<div id="mapModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-4 w-full max-w-4xl h-[80vh] relative flex flex-col">
+        <button onclick="closeMapModal()" class="absolute top-2 right-2 text-gray-700 hover:text-primary z-10">
+            <i class="fas fa-times text-2xl"></i>
+        </button>
+        <div class="flex-grow w-full">
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d6248.890749726966!2d27.166892793579095!3d38.454277999999995!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14bbd7ff8a83562b%3A0xcabe31e138901273!2seOfis%20-%20%C4%B0zmir%20Folkart%20Towers!5e0!3m2!1str!2str!4v1757432797541!5m2!1str!2str" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+        <div class="mt-2 text-center text-sm text-gray-600">
+            LibEdge ||| Daire: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/İzmir
+        </div>
+    </div>
+</div>
+
 <script src="assets/js/script.js"></script>
 <script>
-
-// ====================== GLOBAL DEĞİŞKENLER ======================
-let authToken = localStorage.getItem('authToken');
+// DÜZELTİLDİ: authToken'ı script.js'den al, yeniden tanımlama yapma
+// let authToken = localStorage.getItem('authToken'); // BU SATIR KALDIRILDI!
 let currentUser = null;
 let currentFolderId = null;
 let folderStack = [];
@@ -455,9 +486,11 @@ function getProductName(slug) {
 
 // ====================== PROFİL YÜKLEME ======================
 async function loadUserProfile() {
-    if (!authToken) return window.location.href = 'index.html';
+    // DÜZELTİLDİ: window.authToken veya doğrudan authToken (global)
+    const token = window.authToken || localStorage.getItem('authToken');
+    if (!token) return window.location.href = 'index.html';
 
-    const decoded = decodeToken(authToken);
+    const decoded = decodeToken(token);
     if (!decoded || decoded.exp < Date.now()) return logout();
 
     currentUser = {
@@ -487,8 +520,9 @@ async function loadUserProfile() {
 
 async function loadUserCreatedAt() {
     try {
+        const token = window.authToken || localStorage.getItem('authToken');
         const res = await fetch(`${API_BASE}/api/user/profile`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         if (data.created_at) {
@@ -499,8 +533,9 @@ async function loadUserCreatedAt() {
 
 async function loadSubscriptions() {
     try {
+        const token = window.authToken || localStorage.getItem('authToken');
         const res = await fetch(`${API_BASE}/api/subscription/list`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
 
@@ -552,10 +587,11 @@ async function loadFolders(parentId = null) {
     }
 
     try {
+        const token = window.authToken || localStorage.getItem('authToken');
         let url = `${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/folders`;
         if (parentId) url += `?parent=${parentId}`;
 
-        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${authToken}` } });
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
         const folders = await res.json();
 
         const container = document.getElementById('foldersList');
@@ -594,11 +630,12 @@ async function loadFiles(folderId = null) {
     if (!currentUser?.institution) return;
 
     try {
+        const token = window.authToken || localStorage.getItem('authToken');
         let url = folderId 
             ? `${API_BASE}/api/institution/folder/${folderId}/files`
             : `${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/files`;
 
-        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${authToken}` } });
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
         const files = await res.json();
 
         const container = document.getElementById('filesList');
@@ -681,7 +718,14 @@ function goToSpecificFolder(index) {
     loadFolders(currentFolderId);
 }
 
-// ====================== ALT KLASÖR MODAL ======================
+function updateBackButton() {
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) {
+        backBtn.classList.toggle('hidden', currentFolderId === null && folderStack.length === 0);
+    }
+}
+
+// ====================== MODAL FONKSİYONLARI ======================
 function openAddSubfolderModal(parentId, parentName) {
     document.getElementById('parentFolderName').textContent = `Ana Klasör: ${parentName}`;
     document.getElementById('parentFolderId').value = parentId;
@@ -693,18 +737,37 @@ function closeSubfolderModal() {
     document.getElementById('subfolderName').value = '';
 }
 
-// ====================== ALT KLASÖR OLUŞTURMA ======================
+function openFolderModal() {
+    document.getElementById('addFolderModal').classList.remove('hidden');
+}
+
+function closeFolderModal() {
+    document.getElementById('addFolderModal').classList.add('hidden');
+    document.getElementById('addFolderForm').reset();
+}
+
+function openFileModal() {
+    document.getElementById('addFileModal').classList.remove('hidden');
+}
+
+function closeFileModal() {
+    document.getElementById('addFileModal').classList.add('hidden');
+    document.getElementById('addFileForm').reset();
+}
+
+// ====================== CRUD İŞLEMLERİ ======================
 document.getElementById('addSubfolderForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const parentId = document.getElementById('parentFolderId').value;
     const name = document.getElementById('subfolderName').value.trim();
+    const token = window.authToken || localStorage.getItem('authToken');
 
     if (!name) return alert("Klasör adı boş olamaz!");
 
     try {
         const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/folder`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ folder_name: name, parent_folder_id: parentId || null })
         });
 
@@ -718,6 +781,187 @@ document.getElementById('addSubfolderForm').addEventListener('submit', async (e)
         }
     } catch (err) {
         alert('Bağlantı hatası oluştu.');
+    }
+});
+
+document.getElementById('addFolderForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const folderName = document.getElementById('folderName').value.trim();
+    const token = window.authToken || localStorage.getItem('authToken');
+    
+    if (!folderName) return alert("Klasör adı boş olamaz");
+
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/folder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ folder_name: folderName, parent_folder_id: currentFolderId })
+        });
+
+        if (res.ok) {
+            alert('Klasör oluşturuldu!');
+            closeFolderModal();
+            loadFolders(currentFolderId);
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Oluşturulamadı');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+});
+
+document.getElementById('addFileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const token = window.authToken || localStorage.getItem('authToken');
+    const data = {
+        file_name: document.getElementById('fileName').value,
+        file_url: document.getElementById('fileUrl').value,
+        file_type: document.getElementById('fileUrl').value.split('.').pop().toLowerCase(),
+        category: document.getElementById('fileCategory').value,
+        folder_id: currentFolderId,
+        is_public: parseInt(document.getElementById('fileVisibility')?.value || '0')
+    };
+
+    if (!data.file_name || !data.file_url) return alert("Dosya adı ve URL gerekli");
+
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/file`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            alert('Dosya yüklendi!');
+            closeFileModal();
+            loadFolders(currentFolderId);
+        } else {
+            const err = await res.json();
+            alert(err.error || 'Yükleme başarısız');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+});
+
+async function toggleFilePublic(fileId, currentStatus) {
+    if (!confirm(`Dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
+    const token = window.authToken || localStorage.getItem('authToken');
+    
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ is_public: !currentStatus })
+        });
+        
+        if (res.ok) {
+            alert(`Dosya ${!currentStatus ? 'herkese açık' : 'kurum içi'} yapıldı.`);
+            loadFiles(currentFolderId);
+        } else {
+            alert('Güncelleme başarısız');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+}
+
+async function deleteFile(fileId) {
+    if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
+    const token = window.authToken || localStorage.getItem('authToken');
+    
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (res.ok) {
+            alert('Dosya silindi.');
+            loadFolders(currentFolderId);
+        } else {
+            alert('Silme başarısız');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+}
+
+async function deleteFolder(folderId) {
+    if (!confirm('Bu klasör ve içindeki her şey silinecek. Emin misiniz?')) return;
+    const token = window.authToken || localStorage.getItem('authToken');
+    
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/folder/${folderId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (res.ok) {
+            alert('Klasör silindi.');
+            loadFolders(currentFolderId);
+        } else {
+            alert('Silme başarısız');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+}
+
+// Profil güncelleme
+document.getElementById('profileUpdateForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const token = window.authToken || localStorage.getItem('authToken');
+    const data = {
+        full_name: document.getElementById('settingsFullName').value,
+        institution: document.getElementById('settingsInstitution').value,
+        new_password: document.getElementById('newPassword').value
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/api/user/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(data)
+        });
+        
+        if (res.ok) {
+            alert('Profil bilgileriniz güncellendi. Değişikliklerin tam etkili olması için tekrar giriş yapmanız gerekebilir.');
+            if (data.new_password) {
+                localStorage.removeItem('authToken');
+                window.location.href = 'index.html';
+            } else {
+                location.reload();
+            }
+        } else {
+            alert('Güncelleme başarısız');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
+    }
+});
+
+// Hesap silme
+document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
+    if (!confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
+    const token = window.authToken || localStorage.getItem('authToken');
+    
+    try {
+        const res = await fetch(`${API_BASE}/api/user/delete`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (res.ok) {
+            alert('Hesabınız silindi.');
+            localStorage.removeItem('authToken');
+            window.location.href = 'index.html';
+        } else {
+            alert('Silme başarısız');
+        }
+    } catch (err) {
+        alert('Bağlantı hatası');
     }
 });
 
@@ -743,166 +987,17 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
     });
 });
 
+// Buton event listeners
+document.getElementById('addFolderBtn')?.addEventListener('click', openFolderModal);
+document.getElementById('addFileBtn')?.addEventListener('click', openFileModal);
+
 // ====================== BAŞLANGIÇ ======================
 document.addEventListener('DOMContentLoaded', async () => {
-    if (!authToken) return window.location.href = 'index.html';
+    const token = localStorage.getItem('authToken');
+    if (!token) return window.location.href = 'index.html';
     await loadUserProfile();
-
-    // İlk sekme
     document.getElementById('tab-overview').classList.remove('hidden');
 });
-
-function logout() {
-    localStorage.removeItem('authToken');
-    window.location.href = 'index.html';
-}
-
-function updateBackButton() {
-    const backBtn = document.getElementById('backBtn');
-    if (backBtn) {
-        backBtn.classList.toggle('hidden', currentFolderId === null && folderStack.length === 0);
-    }
-}
-
-// Klasör oluşturma
-document.getElementById('addFolderForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const folderName = document.getElementById('folderName').value.trim();
-    if (!folderName) return alert("Klasör adı boş olamaz");
-
-    try {
-        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/folder`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify({ folder_name: folderName, parent_folder_id: currentFolderId })
-        });
-
-        if (res.ok) {
-            alert('Klasör oluşturuldu!');
-            closeFolderModal();
-            loadFolders(currentFolderId);
-        } else {
-            const data = await res.json();
-            alert(data.error || 'Oluşturulamadı');
-        }
-    } catch (err) {
-        alert('Bağlantı hatası');
-    }
-});
-
-// Dosya yükleme
-document.getElementById('addFileForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const data = {
-        file_name: document.getElementById('fileName').value,
-        file_url: document.getElementById('fileUrl').value,
-        file_type: document.getElementById('fileUrl').value.split('.').pop().toLowerCase(),
-        category: document.getElementById('fileCategory').value,
-        folder_id: currentFolderId,
-        is_public: parseInt(document.getElementById('fileVisibility')?.value || '0')
-    };
-
-    if (!data.file_name || !data.file_url) return alert("Dosya adı ve URL gerekli");
-
-    try {
-        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/file`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify(data)
-        });
-
-        if (res.ok) {
-            alert('Dosya yüklendi!');
-            closeFileModal();
-            loadFolders(currentFolderId);
-        } else {
-            const err = await res.json();
-            alert(err.error || 'Yükleme başarısız');
-        }
-    } catch (err) {
-        alert('Bağlantı hatası');
-    }
-});
-
-function openFolderModal() {
-    document.getElementById('addFolderModal').classList.remove('hidden');
-}
-
-function closeFolderModal() {
-    document.getElementById('addFolderModal').classList.add('hidden');
-    document.getElementById('addFolderForm').reset();
-}
-
-function openFileModal() {
-    document.getElementById('addFileModal').classList.remove('hidden');
-}
-
-function closeFileModal() {
-    document.getElementById('addFileModal').classList.add('hidden');
-    document.getElementById('addFileForm').reset();
-}
-
-async function toggleFilePublic(fileId, currentStatus) {
-    if (!confirm(`Dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
-    
-    try {
-        const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify({ is_public: !currentStatus })
-        });
-        
-        if (res.ok) {
-            alert(`Dosya ${!currentStatus ? 'herkese açık' : 'kurum içi'} yapıldı.`);
-            loadFiles(currentFolderId);
-        } else {
-            alert('Güncelleme başarısız');
-        }
-    } catch (err) {
-        alert('Bağlantı hatası');
-    }
-}
-
-async function deleteFile(fileId) {
-    if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
-    
-    try {
-        const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        
-        if (res.ok) {
-            alert('Dosya silindi.');
-            loadFolders(currentFolderId);
-        } else {
-            alert('Silme başarısız');
-        }
-    } catch (err) {
-        alert('Bağlantı hatası');
-    }
-}
-
-async function deleteFolder(folderId) {
-    if (!confirm('Bu klasör ve içindeki her şey silinecek. Emin misiniz?')) return;
-    
-    try {
-        const res = await fetch(`${API_BASE}/api/institution/folder/${folderId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        
-        if (res.ok) {
-            alert('Klasör silindi.');
-            loadFolders(currentFolderId);
-        } else {
-            alert('Silme başarısız');
-        }
-    } catch (err) {
-        alert('Bağlantı hatası');
-    }
-}
-
 </script>
 </body>
 </html>
