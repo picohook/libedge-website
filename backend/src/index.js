@@ -79,37 +79,56 @@ app.get('/api/auth/status', (c) => {
   });
 });
 
-app.post('/api/auth/verify', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ valid: false, error: 'Token gerekli' }, 401);
-  }
-  const token = authHeader.split(' ')[1];
+app.post('/api/auth/login', async (c) => {
   try {
-    const decoded = JSON.parse(atob(token));
-    if (decoded.exp < Date.now()) {
-      return c.json({ valid: false, error: 'Token süresi dolmuş' }, 401);
-    }
+    const { email, password } = await c.req.json();
     const db = c.env.DB;
+
+    // Password hash
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const password_hash = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Kullanıcıyı bul - ROLE'Ü DE AL
     const user = await db.prepare(`
-      SELECT id, email, full_name, institution, role FROM users WHERE id = ?
-    `).bind(decoded.user_id).first();
-    if (!user) {
-      return c.json({ valid: false, error: 'Kullanıcı bulunamadı' }, 401);
+      SELECT id, email, full_name, institution, password_hash, role 
+      FROM users WHERE email = ?
+    `).bind(email.toLowerCase().trim()).first();
+
+    if (!user || user.password_hash !== password_hash) {
+      return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
     }
+
+    // Token payload - ROLE EKLENDİ
+    const tokenPayload = {
+      user_id: user.id,
+      email: user.email,
+      full_name: user.full_name || "",
+      institution: user.institution || "",
+      role: user.role || "user",  // ← BURASI ÇOK ÖNEMLİ
+      exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
+    };
+    
+    const jsonString = JSON.stringify(tokenPayload);
+    const token = btoa(unescape(encodeURIComponent(jsonString)));
+
     return c.json({
-      valid: true,
+      success: true,
+      token: token,
       user: {
         id: user.id,
         email: user.email,
         full_name: user.full_name,
         institution: user.institution,
-        role: user.role
+        role: user.role  // ← ROL'Ü DE DÖNDÜR
       }
     });
+
   } catch (err) {
-    console.error("Verify error:", err);
-    return c.json({ valid: false, error: 'Geçersiz token' }, 401);
+    console.error("Login error:", err);
+    return c.json({ success: false, error: err.message || 'Giriş sırasında hata oluştu.' }, 500);
   }
 });
 
