@@ -154,15 +154,16 @@ window.logout = function() {
 // Update UI based on auth state
 // Kullanıcı arayüzünü güncelle (Hover versiyon)
 function updateAuthUI(isLoggedIn) {
-    const authNotLoggedIn = document.getElementById('authNotLoggedIn');
-    const authLoggedIn = document.getElementById('authLoggedIn');
-    const userAvatar = document.getElementById('userAvatar');
-    const userName = document.getElementById('userName');
-    const dropdownAvatar = document.getElementById('dropdownAvatar');
-    const dropdownName = document.getElementById('dropdownName');
-    const dropdownEmail = document.getElementById('dropdownEmail');
-    const dropdownInstitution = document.getElementById('dropdownInstitution');
-    const adminMenuLink = document.getElementById('adminMenuLink');
+    // Yeni nav'daki elementler
+    const authNotLoggedIn = document.getElementById('authNotLoggedInNav');
+    const authLoggedIn = document.getElementById('authLoggedInNav');
+    const userAvatar = document.getElementById('userAvatarNav');
+    const userName = document.getElementById('userNameNav');
+    const dropdownAvatar = document.getElementById('dropdownAvatarNav');
+    const dropdownName = document.getElementById('dropdownNameNav');
+    const dropdownEmail = document.getElementById('dropdownEmailNav');
+    const dropdownInstitution = document.getElementById('dropdownInstitutionNav');
+    const adminMenuLink = document.getElementById('adminMenuLinkNav');
     
     if (isLoggedIn && currentUser) {
         authNotLoggedIn.classList.add('hidden');
@@ -202,6 +203,33 @@ function updateAuthUI(isLoggedIn) {
         authLoggedIn.classList.add('hidden');
     }
 }
+
+// Dil butonu event'ini nav'daki butona bağla
+document.addEventListener('DOMContentLoaded', function() {
+    const translateBtnMain = document.getElementById('translateBtn');
+    const translateBtnNav = document.getElementById('translateBtnNav');
+    const translateTextMain = document.getElementById('translateText');
+    const translateTextNav = document.getElementById('translateTextNav');
+    
+    // Ana dil butonu event'ini nav butonuna kopyala
+    if (translateBtnMain && translateBtnNav) {
+        translateBtnNav.addEventListener('click', function() {
+            translateBtnMain.click();
+        });
+    }
+    
+    // Çeviri metnini senkronize et
+    function syncTranslateText() {
+        if (translateTextMain && translateTextNav) {
+            translateTextNav.textContent = translateTextMain.textContent;
+        }
+    }
+    
+    // Her çeviri değiştiğinde senkronize et
+    const observer = new MutationObserver(syncTranslateText);
+    if (translateTextMain) observer.observe(translateTextMain, { childList: true, characterData: true, subtree: true });
+    syncTranslateText();
+});
 
 // Check authentication - GÜNCELLENDİ (decodeToken ile)
 async function checkAuth() {
