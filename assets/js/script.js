@@ -202,11 +202,16 @@ function updateAuthUI(isLoggedIn) {
         if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
         
         // Rol gösterimi
+// Rol gösterimi
 const roleName = {
     'super_admin': 'Super Admin',
     'admin': 'Kurum Yöneticisi',
     'user': 'Kullanıcı'
 };
+
+if (dropdownRole) {
+    dropdownRole.textContent = roleName[currentUser.role] || 'Kullanıcı';
+}
 
 async function logout() {
     try {
@@ -223,10 +228,13 @@ async function logout() {
     }
 
     localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
+
     authToken = null;
     currentUser = null;
 
     window.location.replace('index.html');
+}
 }
         }[currentUser.role] || 'Kullanıcı';
         
