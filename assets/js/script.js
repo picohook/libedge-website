@@ -202,10 +202,13 @@ function updateAuthUI(isLoggedIn) {
         if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
         
         // Rol gösterimi
-        const roleName = {
-            'super_admin': 'Super Admin',
-            'admin': 'Kurum Yöneticisi',
-            'user': 'Kullanıcı'async function logout() {
+const roleName = {
+    'super_admin': 'Super Admin',
+    'admin': 'Kurum Yöneticisi',
+    'user': 'Kullanıcı'
+};
+
+async function logout() {
     try {
         if (authToken) {
             await fetch(`${API_BASE}/api/auth/logout`, {
