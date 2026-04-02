@@ -431,12 +431,9 @@ function logout() {
         </div>
     </div>
 </div>
-
 <script src="assets/js/script.js"></script>
 <script>
 // DÜZELTİLDİ: Bu değişkenler script.js'de zaten tanımlı, tekrar tanımlama yapma!
-// let authToken = localStorage.getItem('authToken');  // KALDIRILDI
-// let currentUser = null;  // KALDIRILDI
 let currentFolderId = null;
 let folderStack = [];
 
@@ -486,7 +483,6 @@ function getProductName(slug) {
 
 // ====================== PROFİL YÜKLEME ======================
 async function loadUserProfile() {
-    // DÜZELTİLDİ: window.currentUser'ı kullan veya global değişkeni kontrol et
     const token = localStorage.getItem('authToken');
     if (!token) return window.location.href = 'index.html';
 
@@ -496,7 +492,6 @@ async function loadUserProfile() {
         return window.location.href = 'index.html';
     }
 
-    // DÜZELTİLDİ: global currentUser'ı güncelle (script.js'deki)
     window.currentUser = {
         id: decoded.user_id,
         email: decoded.email,
@@ -585,7 +580,6 @@ async function loadSubscriptions() {
 
 // ====================== KURUM DOSYALARI ======================
 async function loadFolders(parentId = null) {
-    // DÜZELTİLDİ: window.currentUser kullan
     if (!window.currentUser?.institution) {
         document.getElementById('foldersList').innerHTML = '<p class="text-red-500 text-center col-span-full">Kurum bilgisi yok.</p>';
         return;
@@ -596,43 +590,58 @@ async function loadFolders(parentId = null) {
         let url = `${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/folders`;
         if (parentId) url += `?parent=${parentId}`;
 
-        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(url, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+        
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error('API Error:', errorText);
+            throw new Error(`API returned ${res.status}: ${errorText}`);
+        }
+        
         const folders = await res.json();
-
+        const foldersArray = Array.isArray(folders) ? folders : (folders.results || []);
+        
         const container = document.getElementById('foldersList');
-        container.innerHTML = folders.length ? folders.map(f => `
-            <div class="folder-item bg-gray-50 rounded-xl p-5 text-center hover:shadow transition cursor-pointer" onclick="openFolder(${f.id}, '${escapeHtml(f.folder_name)}')">
-                <i class="fas fa-folder text-5xl text-amber-500 mb-3"></i>
-                <p class="font-semibold truncate">${escapeHtml(f.folder_name)}</p>
-                <p class="text-xs text-gray-500 mt-2">${f.subfolder_count||0} alt klasör • ${f.file_count||0} dosya</p>
-                ${(window.currentUser.role === 'admin' || window.currentUser.role === 'super_admin') ? `
-                <div class="mt-4 flex justify-center gap-4 text-sm" onclick="event.stopImmediatePropagation()">
-                    <button onclick="openAddSubfolderModal(${f.id}, '${escapeHtml(f.folder_name)}')" class="text-emerald-600 hover:text-emerald-700">
-                        <i class="fas fa-folder-plus"></i> Alt Klasör
-                    </button>
-                    <button onclick="deleteFolder(${f.id}); event.stopImmediatePropagation()" class="text-red-600 hover:text-red-700">
-                        <i class="fas fa-trash"></i> Sil
-                    </button>
-                </div>` : ''}
-            </div>
-        `).join('') : '<p class="col-span-full text-center text-gray-500 py-12">Klasör bulunmuyor.</p>';
+        if (foldersArray.length > 0) {
+            container.innerHTML = foldersArray.map(f => `
+                <div class="folder-item bg-gray-50 rounded-xl p-5 text-center hover:shadow transition cursor-pointer" onclick="openFolder(${f.id}, '${escapeHtml(f.folder_name)}')">
+                    <i class="fas fa-folder text-5xl text-amber-500 mb-3"></i>
+                    <p class="font-semibold truncate">${escapeHtml(f.folder_name)}</p>
+                    <p class="text-xs text-gray-500 mt-2">${f.subfolder_count || 0} alt klasör • ${f.file_count || 0} dosya</p>
+                    ${(window.currentUser.role === 'admin' || window.currentUser.role === 'super_admin') ? `
+                    <div class="mt-4 flex justify-center gap-4 text-sm" onclick="event.stopImmediatePropagation()">
+                        <button onclick="openAddSubfolderModal(${f.id}, '${escapeHtml(f.folder_name)}')" class="text-emerald-600 hover:text-emerald-700">
+                            <i class="fas fa-folder-plus"></i> Alt Klasör
+                        </button>
+                        <button onclick="deleteFolder(${f.id}); event.stopImmediatePropagation()" class="text-red-600 hover:text-red-700">
+                            <i class="fas fa-trash"></i> Sil
+                        </button>
+                    </div>` : ''}
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">Klasör bulunmuyor.</p>';
+        }
 
         await loadFiles(parentId);
         updateBreadcrumb();
         updateBackButton();
 
         const isAdmin = ['admin','super_admin'].includes(window.currentUser.role);
-        document.getElementById('addFolderBtn').classList.toggle('hidden', !isAdmin);
-        document.getElementById('addFileBtn').classList.toggle('hidden', !isAdmin);
+        const addFolderBtn = document.getElementById('addFolderBtn');
+        const addFileBtn = document.getElementById('addFileBtn');
+        if (addFolderBtn) addFolderBtn.classList.toggle('hidden', !isAdmin);
+        if (addFileBtn) addFileBtn.classList.toggle('hidden', !isAdmin);
 
     } catch (err) {
-        console.error(err);
-        document.getElementById('foldersList').innerHTML = '<p class="text-red-500 text-center">Klasörler yüklenemedi.</p>';
+        console.error('Error loading folders:', err);
+        document.getElementById('foldersList').innerHTML = `<p class="text-red-500 text-center col-span-full">Klasörler yüklenirken hata oluştu: ${err.message}</p>`;
     }
 }
 
 async function loadFiles(folderId = null) {
-    // DÜZELTİLDİ: window.currentUser kullan
     if (!window.currentUser?.institution) return;
 
     try {
@@ -642,33 +651,44 @@ async function loadFiles(folderId = null) {
             : `${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/files`;
 
         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        
+        if (!res.ok) {
+            console.error('Files API error:', res.status);
+            throw new Error(`API returned ${res.status}`);
+        }
+        
         const files = await res.json();
+        const filesArray = Array.isArray(files) ? files : (files.results || []);
 
         const container = document.getElementById('filesList');
-        container.innerHTML = files.length ? files.map(file => `
-            <div class="p-4 border border-gray-100 rounded-xl hover:bg-gray-50 flex justify-between items-center">
-                <div class="flex-1">
-                    <div class="flex items-center gap-3">
-                        <i class="fas ${getFileIcon(file.file_type)} text-2xl text-gray-400"></i>
-                        <a href="${file.file_url}" target="_blank" class="font-medium text-blue-600 hover:underline truncate">${escapeHtml(file.file_name)}</a>
-                        ${file.is_public ? `<span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Açık</span>` : `<span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">Kurum İçi</span>`}
+        if (filesArray.length > 0) {
+            container.innerHTML = filesArray.map(file => `
+                <div class="p-4 border border-gray-100 rounded-xl hover:bg-gray-50 flex justify-between items-center">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3">
+                            <i class="fas ${getFileIcon(file.file_type)} text-2xl text-gray-400"></i>
+                            <a href="${file.file_url}" target="_blank" class="font-medium text-blue-600 hover:underline truncate">${escapeHtml(file.file_name)}</a>
+                            ${file.is_public ? `<span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Açık</span>` : `<span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">Kurum İçi</span>`}
+                        </div>
+                        <div class="text-xs text-gray-500 mt-2 flex gap-x-4">
+                            <span>${getCategoryName(file.category)}</span>
+                            <span>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
+                        </div>
                     </div>
-                    <div class="text-xs text-gray-500 mt-2 flex gap-x-4">
-                        <span>${getCategoryName(file.category)}</span>
-                        <span>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
-                    </div>
+                    ${(window.currentUser.role === 'admin' || window.currentUser.role === 'super_admin') ? `
+                    <div class="flex gap-3">
+                        <button onclick="toggleFilePublic(${file.id}, ${file.is_public});event.stopImmediatePropagation()" class="text-blue-600">
+                            <i class="fas ${file.is_public ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                        </button>
+                        <button onclick="deleteFile(${file.id});event.stopImmediatePropagation()" class="text-red-600">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>` : ''}
                 </div>
-                ${(window.currentUser.role === 'admin' || window.currentUser.role === 'super_admin') ? `
-                <div class="flex gap-3">
-                    <button onclick="toggleFilePublic(${file.id}, ${file.is_public});event.stopImmediatePropagation()" class="text-blue-600">
-                        <i class="fas ${file.is_public ? 'fa-eye' : 'fa-eye-slash'}"></i>
-                    </button>
-                    <button onclick="deleteFile(${file.id});event.stopImmediatePropagation()" class="text-red-600">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>` : ''}
-            </div>
-        `).join('') : '<p class="text-gray-500 text-center py-8">Bu klasörde dosya yok.</p>';
+            `).join('');
+        } else {
+            container.innerHTML = '<p class="text-gray-500 text-center py-8">Bu klasörde dosya yok.</p>';
+        }
     } catch (err) {
         console.error(err);
         document.getElementById('filesList').innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenemedi.</p>';

@@ -626,174 +626,278 @@ app.get('/api/institution/:id/files', async (c) => {
   return c.json(files.results);
 });
 
-// Kurumun klasörlerini listele (rol bazlı)
+// ====================== KURUM DOSYA YÖNETİMİ - DÜZELTİLMİŞ ======================
+
+// Kurumun klasörlerini listele (rol bazlı) - DÜZELTİLDİ
 app.get('/api/institution/:id/folders', async (c) => {
-  const institutionId = c.req.param('id');
-  const parentId = c.req.query('parent') || null;
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitutionId(c);
-  
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != institutionId) && role !== 'user') {
-    return c.json({ error: 'Yetkisiz' }, 403);
-  }
-  
-  const db = c.env.DB;
-  
-  let folders;
-  const publicFilter = (role === 'user') ? 'AND is_public = 1' : '';
-  
-  if (parentId) {
-    folders = await db.prepare(`
-      SELECT f.*, COUNT(ff.id) as subfolder_count,
-        (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 ${publicFilter}) as file_count
-      FROM institution_folders f
-      LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
-      WHERE f.institution_id = ? AND f.parent_folder_id = ?
-      GROUP BY f.id
-      ORDER BY f.folder_name
-    `).bind(institutionId, parentId).all();
-  } else {
-    folders = await db.prepare(`
-      SELECT f.*, COUNT(ff.id) as subfolder_count,
-        (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 ${publicFilter}) as file_count
-      FROM institution_folders f
-      LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
-      WHERE f.institution_id = ? AND f.parent_folder_id IS NULL
-      GROUP BY f.id
-      ORDER BY f.folder_name
-    `).bind(institutionId).all();
-  }
-  
-  return c.json(folders.results);
-});
-
-// Dosya ekle (super admin veya kurum admini)
-app.post('/api/institution/:id/file', async (c) => {
-  const institutionId = c.req.param('id');
-  const { file_name, file_url, file_type, file_size, category, folder_id, is_public } = await c.req.json();
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitutionId(c);
-  const authHeader = c.req.header('Authorization');
-  const token = authHeader.split(' ')[1];
-  const decoded = JSON.parse(atob(token));
-  
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != institutionId)) {
-    return c.json({ error: 'Yetkisiz' }, 403);
-  }
-  
-  const db = c.env.DB;
-  await db.prepare(`
-    INSERT INTO institution_files (institution_id, file_name, file_url, file_type, file_size, category, folder_id, uploaded_by, is_public)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(institutionId, file_name, file_url, file_type, file_size, category, folder_id || null, decoded.user_id, is_public || 0).run();
-  
-  return c.json({ success: true });
-});
-
-// Dosya güncelle (public/private ayarı)
-app.put('/api/institution/file/:id', async (c) => {
-  const fileId = c.req.param('id');
-  const { is_public } = await c.req.json();
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitutionId(c);
-  const db = c.env.DB;
-  
-  const file = await db.prepare(`SELECT institution_id FROM institution_files WHERE id = ?`).bind(fileId).first();
-  if (!file) return c.json({ error: 'Dosya bulunamadı' }, 404);
-  
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != file.institution_id)) {
-    return c.json({ error: 'Yetkisiz' }, 403);
-  }
-  
-  await db.prepare(`UPDATE institution_files SET is_public = ? WHERE id = ?`).bind(is_public ? 1 : 0, fileId).run();
-  return c.json({ success: true });
-});
-
-// Klasör oluştur (super admin veya kurum admini)
-app.post('/api/institution/:id/folder', async (c) => {
-  const institutionId = c.req.param('id');
-  const { folder_name, parent_folder_id } = await c.req.json();
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitutionId(c);
-  const authHeader = c.req.header('Authorization');
-  const token = authHeader.split(' ')[1];
-  const decoded = JSON.parse(atob(token));
-  
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != institutionId)) {
-    return c.json({ error: 'Yetkisiz' }, 403);
-  }
-  
-  const db = c.env.DB;
-  
   try {
-    await db.prepare(`
-      INSERT INTO institution_folders (institution_id, folder_name, parent_folder_id, created_by)
-      VALUES (?, ?, ?, ?)
-    `).bind(institutionId, folder_name, parent_folder_id || null, decoded.user_id).run();
-    return c.json({ success: true });
-  } catch (err) {
-    return c.json({ error: 'Aynı isimde klasör zaten var' }, 400);
+    const institutionId = c.req.param('id');
+    const parentId = c.req.query('parent') || null;
+    const role = await getUserRole(c);
+    const userInstitution = await getUserInstitutionId(c);
+    
+    // Debug log
+    console.log('Folders request:', { institutionId, parentId, role, userInstitution });
+    
+    const db = c.env.DB;
+    
+    // Önce kurumun var olup olmadığını kontrol et
+    const institutionExists = await db.prepare(`
+      SELECT id, name FROM institutions WHERE name = ? OR id = ?
+    `).bind(institutionId, institutionId).first();
+    
+    if (!institutionExists) {
+      console.log('Institution not found:', institutionId);
+      return c.json({ error: 'Kurum bulunamadı' }, 404);
+    }
+    
+    // Yetki kontrolü - kullanıcı giriş yapmamışsa veya yetkisi yoksa sadece public dosyaları görebilir
+    if (!role) {
+      // Giriş yapmamış kullanıcı sadece public dosyaları görebilir
+      let folders;
+      const publicFilter = 'AND is_public = 1';
+      
+      if (parentId) {
+        folders = await db.prepare(`
+          SELECT f.*, COUNT(ff.id) as subfolder_count,
+            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 ${publicFilter}) as file_count
+          FROM institution_folders f
+          LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
+          WHERE f.institution_id = ? AND f.parent_folder_id = ? AND f.is_public = 1
+          GROUP BY f.id
+          ORDER BY f.folder_name
+        `).bind(institutionExists.id, parentId).all();
+      } else {
+        folders = await db.prepare(`
+          SELECT f.*, COUNT(ff.id) as subfolder_count,
+            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 ${publicFilter}) as file_count
+          FROM institution_folders f
+          LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
+          WHERE f.institution_id = ? AND f.parent_folder_id IS NULL AND f.is_public = 1
+          GROUP BY f.id
+          ORDER BY f.folder_name
+        `).bind(institutionExists.id).all();
+      }
+      
+      return c.json(folders.results || []);
+    }
+    
+    // Yetkili kullanıcılar için
+    if (role !== 'super_admin' && role !== 'admin' && role !== 'user') {
+      return c.json({ error: 'Yetkisiz' }, 403);
+    }
+    
+    let folders;
+    // Admin veya super admin ise tüm klasörleri görebilir
+    if (role === 'super_admin' || (role === 'admin' && userInstitution === institutionExists.name)) {
+      if (parentId) {
+        folders = await db.prepare(`
+          SELECT f.*, 
+            (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
+            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
+          FROM institution_folders f
+          WHERE f.institution_id = ? AND f.parent_folder_id = ?
+          ORDER BY f.folder_name
+        `).bind(institutionExists.id, parentId).all();
+      } else {
+        folders = await db.prepare(`
+          SELECT f.*, 
+            (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
+            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
+          FROM institution_folders f
+          WHERE f.institution_id = ? AND f.parent_folder_id IS NULL
+          ORDER BY f.folder_name
+        `).bind(institutionExists.id).all();
+      }
+    } else {
+      // Normal kullanıcı sadece public klasörleri görebilir
+      if (parentId) {
+        folders = await db.prepare(`
+          SELECT f.*, 
+            (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id AND is_public = 1) as subfolder_count,
+            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 AND is_public = 1) as file_count
+          FROM institution_folders f
+          WHERE f.institution_id = ? AND f.parent_folder_id = ? AND f.is_public = 1
+          ORDER BY f.folder_name
+        `).bind(institutionExists.id, parentId).all();
+      } else {
+        folders = await db.prepare(`
+          SELECT f.*, 
+            (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id AND is_public = 1) as subfolder_count,
+            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 AND is_public = 1) as file_count
+          FROM institution_folders f
+          WHERE f.institution_id = ? AND f.parent_folder_id IS NULL AND f.is_public = 1
+          ORDER BY f.folder_name
+        `).bind(institutionExists.id).all();
+      }
+    }
+    
+    // Sonuçları güvenli bir şekilde döndür
+    const result = (folders && folders.results) ? folders.results : (folders || []);
+    return c.json(result);
+    
+  } catch (error) {
+    console.error('Folders endpoint error:', error);
+    // Hata mesajını JSON formatında döndür
+    return c.json({ 
+      error: 'Klasörler yüklenirken bir hata oluştu', 
+      details: error.message 
+    }, 500);
   }
 });
 
-// Dosya sil (super admin veya kurum admini)
-app.delete('/api/institution/file/:id', async (c) => {
-  const fileId = c.req.param('id');
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitutionId(c);
-  const db = c.env.DB;
-  
-  const file = await db.prepare(`SELECT institution_id FROM institution_files WHERE id = ?`).bind(fileId).first();
-  if (!file) return c.json({ error: 'Dosya bulunamadı' }, 404);
-  
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != file.institution_id)) {
-    return c.json({ error: 'Yetkisiz' }, 403);
+// Kurumun dosyalarını listele (rol bazlı) - DÜZELTİLDİ
+app.get('/api/institution/:id/files', async (c) => {
+  try {
+    const institutionId = c.req.param('id');
+    const role = await getUserRole(c);
+    const userInstitution = await getUserInstitutionId(c);
+    
+    const db = c.env.DB;
+    
+    // Önce kurumun var olup olmadığını kontrol et
+    const institutionExists = await db.prepare(`
+      SELECT id, name FROM institutions WHERE name = ? OR id = ?
+    `).bind(institutionId, institutionId).first();
+    
+    if (!institutionExists) {
+      return c.json({ error: 'Kurum bulunamadı' }, 404);
+    }
+    
+    let files;
+    
+    if (role === 'super_admin') {
+      files = await db.prepare(`
+        SELECT f.*, u.full_name as uploaded_by_name 
+        FROM institution_files f 
+        LEFT JOIN users u ON f.uploaded_by = u.id
+        WHERE f.institution_id = ? AND f.is_active = 1 
+        ORDER BY f.id DESC
+      `).bind(institutionExists.id).all();
+    } else if (role === 'admin' && userInstitution === institutionExists.name) {
+      files = await db.prepare(`
+        SELECT f.*, u.full_name as uploaded_by_name 
+        FROM institution_files f 
+        LEFT JOIN users u ON f.uploaded_by = u.id
+        WHERE f.institution_id = ? AND f.is_active = 1 
+        ORDER BY f.id DESC
+      `).bind(institutionExists.id).all();
+    } else {
+      // Normal kullanıcı veya giriş yapmamış - sadece public dosyalar
+      files = await db.prepare(`
+        SELECT f.*, u.full_name as uploaded_by_name 
+        FROM institution_files f 
+        LEFT JOIN users u ON f.uploaded_by = u.id
+        WHERE f.institution_id = ? AND f.is_active = 1 AND f.is_public = 1
+        ORDER BY f.id DESC
+      `).bind(institutionExists.id).all();
+    }
+    
+    return c.json(files.results || []);
+    
+  } catch (error) {
+    console.error('Files endpoint error:', error);
+    return c.json({ 
+      error: 'Dosyalar yüklenirken bir hata oluştu', 
+      details: error.message 
+    }, 500);
   }
-  
-  await db.prepare(`UPDATE institution_files SET is_active = 0 WHERE id = ?`).bind(fileId).run();
-  return c.json({ success: true });
 });
 
-// Klasör sil (super admin veya kurum admini)
-app.delete('/api/institution/folder/:id', async (c) => {
-  const folderId = c.req.param('id');
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitutionId(c);
-  const db = c.env.DB;
-  
-  const folder = await db.prepare(`SELECT institution_id FROM institution_folders WHERE id = ?`).bind(folderId).first();
-  if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
-  
-  if (role !== 'super_admin' && (role !== 'admin' || userInstitution != folder.institution_id)) {
-    return c.json({ error: 'Yetkisiz' }, 403);
+// Klasördeki dosyaları listele - DÜZELTİLDİ
+app.get('/api/institution/folder/:id/files', async (c) => {
+  try {
+    const folderId = c.req.param('id');
+    const role = await getUserRole(c);
+    const db = c.env.DB;
+    
+    // Önce klasörün var olup olmadığını kontrol et
+    const folder = await db.prepare(`
+      SELECT f.*, i.name as institution_name 
+      FROM institution_folders f 
+      LEFT JOIN institutions i ON f.institution_id = i.id
+      WHERE f.id = ?
+    `).bind(folderId).first();
+    
+    if (!folder) {
+      return c.json({ error: 'Klasör bulunamadı' }, 404);
+    }
+    
+    const userInstitution = await getUserInstitutionId(c);
+    
+    // Yetki kontrolü
+    let files;
+    if (role === 'super_admin' || (role === 'admin' && userInstitution === folder.institution_name)) {
+      // Admin tam erişim
+      files = await db.prepare(`
+        SELECT f.*, u.full_name as uploaded_by_name 
+        FROM institution_files f 
+        LEFT JOIN users u ON f.uploaded_by = u.id
+        WHERE f.folder_id = ? AND f.is_active = 1 
+        ORDER BY f.id DESC
+      `).bind(folderId).all();
+    } else {
+      // Normal kullanıcı veya giriş yapmamış - sadece public dosyalar
+      files = await db.prepare(`
+        SELECT f.*, u.full_name as uploaded_by_name 
+        FROM institution_files f 
+        LEFT JOIN users u ON f.uploaded_by = u.id
+        WHERE f.folder_id = ? AND f.is_active = 1 AND f.is_public = 1
+        ORDER BY f.id DESC
+      `).bind(folderId).all();
+    }
+    
+    return c.json(files.results || []);
+    
+  } catch (error) {
+    console.error('Folder files endpoint error:', error);
+    return c.json({ 
+      error: 'Dosyalar yüklenirken bir hata oluştu', 
+      details: error.message 
+    }, 500);
   }
-  
-  // Önce alt klasörleri ve dosyaları sil
-  await db.prepare(`DELETE FROM institution_files WHERE folder_id IN (SELECT id FROM institution_folders WHERE id = ? OR parent_folder_id = ?)`).bind(folderId, folderId).run();
-  await db.prepare(`DELETE FROM institution_folders WHERE id = ? OR parent_folder_id = ?`).bind(folderId, folderId).run();
-  
-  return c.json({ success: true });
 });
 
-// Klasör detayını getir
+// Klasör detayını getir - DÜZELTİLDİ
 app.get('/api/institution/folder/:id', async (c) => {
+  try {
     const folderId = c.req.param('id');
     const role = await getUserRole(c);
     const db = c.env.DB;
     
     const folder = await db.prepare(`
-        SELECT f.id, f.folder_name, f.parent_folder_id, f.institution_id
-        FROM institution_folders f WHERE f.id = ?
+      SELECT f.id, f.folder_name, f.parent_folder_id, f.institution_id, f.is_public,
+        i.name as institution_name
+      FROM institution_folders f 
+      LEFT JOIN institutions i ON f.institution_id = i.id
+      WHERE f.id = ?
     `).bind(folderId).first();
     
-    if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
+    if (!folder) {
+      return c.json({ error: 'Klasör bulunamadı' }, 404);
+    }
     
     const userInstitution = await getUserInstitutionId(c);
-    if (role !== 'super_admin' && (role !== 'admin' || userInstitution != folder.institution_id) && role !== 'user') {
-        return c.json({ error: 'Yetkisiz' }, 403);
+    
+    // Yetki kontrolü
+    if (role !== 'super_admin' && role !== 'admin' && role !== 'user') {
+      return c.json({ error: 'Yetkisiz' }, 403);
+    }
+    
+    // Admin değilse sadece public klasörleri görebilir
+    if (role !== 'super_admin' && role !== 'admin' && folder.is_public !== 1) {
+      return c.json({ error: 'Bu klasöre erişim yetkiniz yok' }, 403);
     }
     
     return c.json(folder);
+    
+  } catch (error) {
+    console.error('Folder detail endpoint error:', error);
+    return c.json({ 
+      error: 'Klasör bilgisi yüklenirken bir hata oluştu', 
+      details: error.message 
+    }, 500);
+  }
 });
 
 // ====================== APP EXPORT ======================
