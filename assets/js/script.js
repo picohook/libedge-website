@@ -1211,3 +1211,23 @@ function startAutoLogout() {
         refreshAccessToken();
     }
 }
+
+
+let logoutTimer = null;
+
+function startAutoLogout() {
+    if (logoutTimer) {
+        clearTimeout(logoutTimer);
+    }
+
+    const decoded = decodeToken(authToken);
+    if (!decoded?.exp) return;
+
+    const expiresIn = decoded.exp * 1000 - Date.now();
+
+    if (expiresIn > 5000) {
+        logoutTimer = setTimeout(refreshAccessToken, expiresIn - 5000);
+    } else {
+        refreshAccessToken();
+    }
+}
