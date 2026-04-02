@@ -382,7 +382,7 @@ async function loadUserProfile() {
 
     const decoded = decodeToken(token);
     if (!decoded || decoded.exp < Date.now()) {
-        if (typeof window.logout === 'function') window.logout();
+        if (typeof logout === 'function') logout();
         return window.location.href = 'index.html';
     }
 
