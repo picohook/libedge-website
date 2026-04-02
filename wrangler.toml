@@ -7,3 +7,6 @@ compatibility_date = "2026-03-01"
 binding = "DB"
 database_name = "libedge-db"
 database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
+
+[vars]
+JWT_SECRET = "local-dev-secret-degistir"

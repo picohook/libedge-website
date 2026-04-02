@@ -34,13 +34,20 @@ let authToken = localStorage.getItem('authToken');
 
 // Token decode helper (Türkçe karakterler için)
 function decodeToken(token) {
-    try {
-        const decoded = decodeURIComponent(escape(atob(token)));
-        return JSON.parse(decoded);
-    } catch (e) {
-        console.error("Token decode error:", e);
-        return null;
-    }
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (payload.length % 4) payload += '=';
+
+    return JSON.parse(decodeURIComponent(
+      atob(payload).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+    ));
+  } catch (e) {
+    console.error('Token decode error:', e);
+    return null;
+  }
 }
 
 window.openLoginModal = function() {
