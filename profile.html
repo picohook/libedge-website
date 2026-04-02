@@ -381,11 +381,12 @@ async function loadUserProfile() {
     const token = localStorage.getItem('authToken');
     if (!token) return window.location.href = 'index.html';
 
-    const decoded = decodeToken(token);
-    if (!decoded || decoded.exp < Date.now()) {
-        if (typeof logout === 'function') logout();
-        return window.location.href = 'index.html';
-    }
+const decoded = decodeToken(token);
+if (!decoded || decoded.exp < Date.now()) {
+    localStorage.removeItem('authToken');  // eski token'ı temizle
+    alert('Oturumunuz sona erdi, lütfen tekrar giriş yapın.');
+    return window.location.href = 'index.html';
+}
 
     window.currentUser = {
         id: decoded.user_id,
