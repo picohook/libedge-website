@@ -1017,26 +1017,11 @@ function toggleProductsMenu() { const menu = document.getElementById('mobile-pro
 
 
 async function logout() {
-    try {
-        if (authToken) {
-            await fetch(`${API_BASE}/api/auth/logout`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-        }
-    } catch (e) {
-        console.warn('Logout error:', e);
-    }
-
+    // Backend'de logout endpoint'i yok, sadece local temizlik
     localStorage.removeItem('authToken');
     authToken = null;
     currentUser = null;
-
-    if (logoutTimer) {
-        clearTimeout(logoutTimer);
-        logoutTimer = null;
-    }
-
+    updateAuthUI(false);
     window.location.replace('index.html');
 }
 
