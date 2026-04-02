@@ -18,7 +18,7 @@ async function getUserRole(c) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = JSON.parse(atob(token));
+    const decoded = JSON.parse(atob(token.split('.')[1]));
     if (decoded.exp < Date.now()) return null;
     return decoded.role || 'user';
   } catch(e) { return null; }
@@ -29,7 +29,7 @@ async function getUserInstitution(c) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = JSON.parse(atob(token));
+    const decoded = JSON.parse(atob(token.split('.')[1]));
     if (decoded.exp < Date.now()) return null;
     // DÜZELTİLDİ: Token'dan 'institution' alanını döndür (bu bir metin, ID değil)
     return decoded.institution || null;
@@ -42,7 +42,7 @@ async function getUserInstitutionId(c) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = JSON.parse(atob(token));
+    const decoded = JSON.parse(atob(token.split('.')[1]));
     if (decoded.exp < Date.now()) return null;
     return decoded.institution || null;
   } catch(e) { return null; }
@@ -184,7 +184,7 @@ app.get('/api/user/profile', async (c) => {
   const token = authHeader.split(' ')[1];
   let userId;
   try {
-    const decoded = JSON.parse(atob(token));
+    const decoded = JSON.parse(atob(token.split('.')[1]));
     if (decoded.exp < Date.now()) throw new Error('Token expired');
     userId = decoded.user_id;
   } catch (e) {
@@ -209,7 +209,7 @@ app.post('/api/user/update', async (c) => {
   const token = authHeader.split(' ')[1];
   let userId;
   try {
-    const decoded = JSON.parse(atob(token));
+    const decoded = JSON.parse(atob(token.split('.')[1]));
     if (decoded.exp < Date.now()) throw new Error('Token expired');
     userId = decoded.user_id;
   } catch (e) {
@@ -243,7 +243,7 @@ app.delete('/api/user/delete', async (c) => {
   const token = authHeader.split(' ')[1];
   let userId;
   try {
-    const decoded = JSON.parse(atob(token));
+    const decoded = JSON.parse(atob(token.split('.')[1]));
     if (decoded.exp < Date.now()) throw new Error('Token expired');
     userId = decoded.user_id;
   } catch (e) {
@@ -269,7 +269,7 @@ app.get('/api/subscription/check', async (c) => {
   let userId;
 
   try {
-    const decoded = JSON.parse(atob(token));
+    const decoded = JSON.parse(atob(token.split('.')[1]));
     if (decoded.exp < Date.now()) throw new Error('Token expired');
     userId = decoded.user_id;
   } catch (e) {
@@ -297,7 +297,7 @@ app.get('/api/subscription/list', async (c) => {
   let userId;
 
   try {
-    const decoded = JSON.parse(atob(token));
+    const decoded = JSON.parse(atob(token.split('.')[1]));
     if (decoded.exp < Date.now()) throw new Error('Token expired');
     userId = decoded.user_id;
   } catch (e) {
@@ -471,7 +471,7 @@ app.delete('/api/admin/user/:id', async (c) => {
   const id = c.req.param('id');
   const authHeader = c.req.header('Authorization');
   const token = authHeader.split(' ')[1];
-  const decoded = JSON.parse(atob(token));
+  const decoded = JSON.parse(atob(token.split('.')[1]));  
   const adminRole = await getUserRole(c);
   
   if (adminRole === 'admin' && !await canAccessUser(c, id)) {
