@@ -434,9 +434,9 @@ function logout() {
 
 <script src="assets/js/script.js"></script>
 <script>
-// DÜZELTİLDİ: authToken'ı script.js'den al, yeniden tanımlama yapma
-// let authToken = localStorage.getItem('authToken'); // BU SATIR KALDIRILDI!
-let currentUser = null;
+// DÜZELTİLDİ: Bu değişkenler script.js'de zaten tanımlı, tekrar tanımlama yapma!
+// let authToken = localStorage.getItem('authToken');  // KALDIRILDI
+// let currentUser = null;  // KALDIRILDI
 let currentFolderId = null;
 let folderStack = [];
 
@@ -486,14 +486,18 @@ function getProductName(slug) {
 
 // ====================== PROFİL YÜKLEME ======================
 async function loadUserProfile() {
-    // DÜZELTİLDİ: window.authToken veya doğrudan authToken (global)
-    const token = window.authToken || localStorage.getItem('authToken');
+    // DÜZELTİLDİ: window.currentUser'ı kullan veya global değişkeni kontrol et
+    const token = localStorage.getItem('authToken');
     if (!token) return window.location.href = 'index.html';
 
     const decoded = decodeToken(token);
-    if (!decoded || decoded.exp < Date.now()) return logout();
+    if (!decoded || decoded.exp < Date.now()) {
+        if (typeof logout === 'function') logout();
+        return window.location.href = 'index.html';
+    }
 
-    currentUser = {
+    // DÜZELTİLDİ: global currentUser'ı güncelle (script.js'deki)
+    window.currentUser = {
         id: decoded.user_id,
         email: decoded.email,
         full_name: decoded.full_name,
@@ -501,16 +505,16 @@ async function loadUserProfile() {
         role: decoded.role
     };
 
-    document.getElementById('profileName').textContent = currentUser.full_name || 'Kullanıcı';
-    document.getElementById('profileEmail').textContent = currentUser.email;
-    document.getElementById('welcomeMessage').textContent = `Merhaba ${currentUser.full_name || 'Kullanıcı'}, hoş geldiniz!`;
+    document.getElementById('profileName').textContent = window.currentUser.full_name || 'Kullanıcı';
+    document.getElementById('profileEmail').textContent = window.currentUser.email;
+    document.getElementById('welcomeMessage').textContent = `Merhaba ${window.currentUser.full_name || 'Kullanıcı'}, hoş geldiniz!`;
 
-    document.getElementById('infoFullName').textContent = currentUser.full_name || '-';
-    document.getElementById('infoEmail').textContent = currentUser.email;
-    document.getElementById('infoInstitution').textContent = currentUser.institution || 'Belirtilmemiş';
+    document.getElementById('infoFullName').textContent = window.currentUser.full_name || '-';
+    document.getElementById('infoEmail').textContent = window.currentUser.email;
+    document.getElementById('infoInstitution').textContent = window.currentUser.institution || 'Belirtilmemiş';
 
-    document.getElementById('settingsFullName').value = currentUser.full_name || '';
-    document.getElementById('settingsInstitution').value = currentUser.institution || '';
+    document.getElementById('settingsFullName').value = window.currentUser.full_name || '';
+    document.getElementById('settingsInstitution').value = window.currentUser.institution || '';
 
     if (typeof updateAuthUI === 'function') updateAuthUI(true);
 
@@ -520,7 +524,7 @@ async function loadUserProfile() {
 
 async function loadUserCreatedAt() {
     try {
-        const token = window.authToken || localStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         const res = await fetch(`${API_BASE}/api/user/profile`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -533,7 +537,7 @@ async function loadUserCreatedAt() {
 
 async function loadSubscriptions() {
     try {
-        const token = window.authToken || localStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         const res = await fetch(`${API_BASE}/api/subscription/list`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -581,14 +585,15 @@ async function loadSubscriptions() {
 
 // ====================== KURUM DOSYALARI ======================
 async function loadFolders(parentId = null) {
-    if (!currentUser?.institution) {
+    // DÜZELTİLDİ: window.currentUser kullan
+    if (!window.currentUser?.institution) {
         document.getElementById('foldersList').innerHTML = '<p class="text-red-500 text-center col-span-full">Kurum bilgisi yok.</p>';
         return;
     }
 
     try {
-        const token = window.authToken || localStorage.getItem('authToken');
-        let url = `${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/folders`;
+        const token = localStorage.getItem('authToken');
+        let url = `${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/folders`;
         if (parentId) url += `?parent=${parentId}`;
 
         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -600,7 +605,7 @@ async function loadFolders(parentId = null) {
                 <i class="fas fa-folder text-5xl text-amber-500 mb-3"></i>
                 <p class="font-semibold truncate">${escapeHtml(f.folder_name)}</p>
                 <p class="text-xs text-gray-500 mt-2">${f.subfolder_count||0} alt klasör • ${f.file_count||0} dosya</p>
-                ${(currentUser.role === 'admin' || currentUser.role === 'super_admin') ? `
+                ${(window.currentUser.role === 'admin' || window.currentUser.role === 'super_admin') ? `
                 <div class="mt-4 flex justify-center gap-4 text-sm" onclick="event.stopImmediatePropagation()">
                     <button onclick="openAddSubfolderModal(${f.id}, '${escapeHtml(f.folder_name)}')" class="text-emerald-600 hover:text-emerald-700">
                         <i class="fas fa-folder-plus"></i> Alt Klasör
@@ -616,7 +621,7 @@ async function loadFolders(parentId = null) {
         updateBreadcrumb();
         updateBackButton();
 
-        const isAdmin = ['admin','super_admin'].includes(currentUser.role);
+        const isAdmin = ['admin','super_admin'].includes(window.currentUser.role);
         document.getElementById('addFolderBtn').classList.toggle('hidden', !isAdmin);
         document.getElementById('addFileBtn').classList.toggle('hidden', !isAdmin);
 
@@ -627,13 +632,14 @@ async function loadFolders(parentId = null) {
 }
 
 async function loadFiles(folderId = null) {
-    if (!currentUser?.institution) return;
+    // DÜZELTİLDİ: window.currentUser kullan
+    if (!window.currentUser?.institution) return;
 
     try {
-        const token = window.authToken || localStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         let url = folderId 
             ? `${API_BASE}/api/institution/folder/${folderId}/files`
-            : `${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/files`;
+            : `${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/files`;
 
         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
         const files = await res.json();
@@ -652,7 +658,7 @@ async function loadFiles(folderId = null) {
                         <span>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
                     </div>
                 </div>
-                ${(currentUser.role === 'admin' || currentUser.role === 'super_admin') ? `
+                ${(window.currentUser.role === 'admin' || window.currentUser.role === 'super_admin') ? `
                 <div class="flex gap-3">
                     <button onclick="toggleFilePublic(${file.id}, ${file.is_public});event.stopImmediatePropagation()" class="text-blue-600">
                         <i class="fas ${file.is_public ? 'fa-eye' : 'fa-eye-slash'}"></i>
@@ -756,16 +762,16 @@ function closeFileModal() {
 }
 
 // ====================== CRUD İŞLEMLERİ ======================
-document.getElementById('addSubfolderForm').addEventListener('submit', async (e) => {
+document.getElementById('addSubfolderForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const parentId = document.getElementById('parentFolderId').value;
     const name = document.getElementById('subfolderName').value.trim();
-    const token = window.authToken || localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
 
     if (!name) return alert("Klasör adı boş olamaz!");
 
     try {
-        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/folder`, {
+        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/folder`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ folder_name: name, parent_folder_id: parentId || null })
@@ -784,15 +790,15 @@ document.getElementById('addSubfolderForm').addEventListener('submit', async (e)
     }
 });
 
-document.getElementById('addFolderForm').addEventListener('submit', async (e) => {
+document.getElementById('addFolderForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const folderName = document.getElementById('folderName').value.trim();
-    const token = window.authToken || localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
     
     if (!folderName) return alert("Klasör adı boş olamaz");
 
     try {
-        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/folder`, {
+        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/folder`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ folder_name: folderName, parent_folder_id: currentFolderId })
@@ -811,9 +817,9 @@ document.getElementById('addFolderForm').addEventListener('submit', async (e) =>
     }
 });
 
-document.getElementById('addFileForm').addEventListener('submit', async (e) => {
+document.getElementById('addFileForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const token = window.authToken || localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
     const data = {
         file_name: document.getElementById('fileName').value,
         file_url: document.getElementById('fileUrl').value,
@@ -826,7 +832,7 @@ document.getElementById('addFileForm').addEventListener('submit', async (e) => {
     if (!data.file_name || !data.file_url) return alert("Dosya adı ve URL gerekli");
 
     try {
-        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(currentUser.institution)}/file`, {
+        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/file`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(data)
@@ -847,7 +853,7 @@ document.getElementById('addFileForm').addEventListener('submit', async (e) => {
 
 async function toggleFilePublic(fileId, currentStatus) {
     if (!confirm(`Dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
-    const token = window.authToken || localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
     
     try {
         const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
@@ -869,7 +875,7 @@ async function toggleFilePublic(fileId, currentStatus) {
 
 async function deleteFile(fileId) {
     if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
-    const token = window.authToken || localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
     
     try {
         const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
@@ -890,7 +896,7 @@ async function deleteFile(fileId) {
 
 async function deleteFolder(folderId) {
     if (!confirm('Bu klasör ve içindeki her şey silinecek. Emin misiniz?')) return;
-    const token = window.authToken || localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
     
     try {
         const res = await fetch(`${API_BASE}/api/institution/folder/${folderId}`, {
@@ -910,9 +916,9 @@ async function deleteFolder(folderId) {
 }
 
 // Profil güncelleme
-document.getElementById('profileUpdateForm').addEventListener('submit', async (e) => {
+document.getElementById('profileUpdateForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const token = window.authToken || localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
     const data = {
         full_name: document.getElementById('settingsFullName').value,
         institution: document.getElementById('settingsInstitution').value,
@@ -943,9 +949,9 @@ document.getElementById('profileUpdateForm').addEventListener('submit', async (e
 });
 
 // Hesap silme
-document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
+document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
     if (!confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
-    const token = window.authToken || localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
     
     try {
         const res = await fetch(`${API_BASE}/api/user/delete`, {
