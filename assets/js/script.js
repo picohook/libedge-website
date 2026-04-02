@@ -151,13 +151,18 @@ window.register = async function(fullName, email, password, institution) {
 };
 
 // Logout function
-window.logout = function() {
-    authToken = null;
-    currentUser = null;
-    localStorage.removeItem('authToken');
-    updateAuthUI(false);
-    showNotification('Çıkış yapıldı', 'info');
-};
+// Eğer admin panelindeysek logout yapma
+if (window.location.pathname.includes('admin-panel')) {
+    window.logout = function() {
+        localStorage.removeItem('authToken');
+        window.location.replace('index.html');
+    };
+} else {
+    // Normal site logout fonksiyonu
+    window.logout = function() {
+        // mevcut logout kodu
+    };
+}
 
 // Update UI based on auth state
 // Kullanıcı arayüzünü güncelle (Hover versiyon)
