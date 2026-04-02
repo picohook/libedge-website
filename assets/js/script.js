@@ -34,23 +34,36 @@ let authToken = localStorage.getItem('authToken');
 
 // Token decode helper (Türkçe karakterler için)
 function decodeToken(token) {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
 
-    let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    while (payload.length % 4) payload += '=';
+        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        while (payload.length % 4) payload += '=';
 
-    return JSON.parse(decodeURIComponent(
-      atob(payload).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
-    ));
-  } catch (e) {
-    console.error('Token decode error:', e);
-    return null;
-  }
+        return JSON.parse(
+            decodeURIComponent(
+                atob(payload)
+                    .split('')
+                    .map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
+                    .join('')
+            )
+        );
+    } catch (e) {
+        console.error('Token decode error:', e);
+        return null;
+    }
 }
 
-window.openLoginModal = function() {
+// Ortak token temizleme helper'ı
+function clearAuthState() {
+    localStorage.removeItem('authToken');
+    authToken = null;
+    currentUser = null;
+}
+
+// Login modal aç/kapat
+window.openLoginModal = function () {
     const modal = document.getElementById('loginModal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -58,7 +71,7 @@ window.openLoginModal = function() {
     }
 };
 
-window.closeLoginModal = function() {
+window.closeLoginModal = function () {
     const modal = document.getElementById('loginModal');
     if (modal) {
         modal.classList.add('hidden');
@@ -66,7 +79,7 @@ window.closeLoginModal = function() {
     }
 };
 
-window.openRegisterModal = function() {
+window.openRegisterModal = function () {
     closeLoginModal();
     const modal = document.getElementById('registerModal');
     if (modal) {
@@ -75,7 +88,7 @@ window.openRegisterModal = function() {
     }
 };
 
-window.closeRegisterModal = function() {
+window.closeRegisterModal = function () {
     const modal = document.getElementById('registerModal');
     if (modal) {
         modal.classList.add('hidden');
@@ -83,41 +96,45 @@ window.closeRegisterModal = function() {
     }
 };
 
-// Login function - GÜNCELLENDİ (decodeToken ile)
-window.login = async function(email, password) {
+// Login
+window.login = async function (email, password) {
     try {
         const response = await fetch(`${API_BASE}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
+
         const data = await response.json();
-        if (data.success) {
-            authToken = data.token;
-            localStorage.setItem('authToken', authToken);
-            
-            // Token'ı decode et
-            const decoded = decodeToken(authToken);
-            if (decoded) {
-                currentUser = {
-                    id: decoded.user_id,
-                    email: decoded.email,
-                    full_name: decoded.full_name,
-                    institution: decoded.institution,
-                    role: decoded.role
-                };
-            } else {
-                currentUser = data.user;
-            }
-            
-            updateAuthUI(true);
-            closeLoginModal();
-            showNotification('Giriş başarılı! Hoş geldiniz, ' + (currentUser.full_name || 'Kullanıcı'), 'success');
-            return true;
-        } else {
+
+        if (!response.ok || !data.success) {
             showNotification(data.error || 'Giriş başarısız', 'error');
             return false;
         }
+
+        authToken = data.token;
+        localStorage.setItem('authToken', authToken);
+
+        const decoded = decodeToken(authToken);
+        if (decoded) {
+            currentUser = {
+                id: decoded.user_id,
+                email: decoded.email,
+                full_name: decoded.full_name,
+                institution: decoded.institution,
+                role: decoded.role
+            };
+        } else {
+            currentUser = data.user || null;
+        }
+
+        updateAuthUI(true);
+        closeLoginModal();
+        showNotification(
+            'Giriş başarılı! Hoş geldiniz, ' + (currentUser?.full_name || 'Kullanıcı'),
+            'success'
+        );
+        return true;
     } catch (err) {
         console.error('Login error:', err);
         showNotification('Bir hata oluştu', 'error');
@@ -125,35 +142,41 @@ window.login = async function(email, password) {
     }
 };
 
-// Register function
-window.register = async function(fullName, email, password, institution) {
+// Register
+window.register = async function (fullName, email, password, institution) {
     try {
         const response = await fetch(`${API_BASE}/api/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ full_name: fullName, email, password, institution })
+            body: JSON.stringify({
+                full_name: fullName,
+                email,
+                password,
+                institution
+            })
         });
+
         const data = await response.json();
-        if (data.success) {
-            showNotification(data.message, 'success');
-            closeRegisterModal();
-            openLoginModal();
-            return true;
-        } else {
+
+        if (!response.ok || !data.success) {
             showNotification(data.error || 'Kayıt başarısız', 'error');
             return false;
         }
+
+        showNotification(data.message || 'Kayıt başarılı', 'success');
+        closeRegisterModal();
+        openLoginModal();
+        return true;
     } catch (err) {
         console.error('Register error:', err);
         showNotification('Bir hata oluştu', 'error');
         return false;
     }
 };
-// Logout function
-window.logout = function() {
-    localStorage.removeItem('authToken');
-    currentUser = null;
-    authToken = null;
+
+// Logout
+window.logout = function () {
+    clearAuthState();
 
     const userDropdown = document.getElementById('userDropdown');
     if (userDropdown) {
@@ -161,141 +184,22 @@ window.logout = function() {
     }
 
     updateAuthUI(false);
+
+    // Admin, profil veya ana sayfada olmasına bakmadan güvenli çıkış
     window.location.replace('index.html');
 };
 
-// Update UI based on auth state
-// Kullanıcı arayüzünü güncelle (Hover versiyon)
-function updateAuthUI(isLoggedIn) {
-    const authNotLoggedIn = document.getElementById('authNotLoggedIn');
-    const authLoggedIn = document.getElementById('authLoggedIn');
-    const userAvatar = document.getElementById('userAvatar');
-    const userName = document.getElementById('userName');
-    const dropdownAvatar = document.getElementById('dropdownAvatar');
-    const dropdownName = document.getElementById('dropdownName');
-    const dropdownEmail = document.getElementById('dropdownEmail');
-    const dropdownInstitution = document.getElementById('dropdownInstitution');
-    const dropdownRole = document.getElementById('dropdownRole');
-    const adminMenuLink = document.getElementById('adminMenuLink');
-    
-    if (isLoggedIn && currentUser) {
-        if (authNotLoggedIn) authNotLoggedIn.classList.add('hidden');
-        if (authLoggedIn) authLoggedIn.classList.remove('hidden');
-        
-        const initials = getInitials(currentUser.full_name);
-        const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
-        const fullName = currentUser.full_name || 'Kullanıcı';
-        
-        // Avatar ve isim güncelleme
-        if (userAvatar) {
-            userAvatar.textContent = initials;
-            userAvatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor}`;
-        }
-        if (userName) userName.textContent = fullName.length > 12 ? fullName.substring(0, 10) + '..' : fullName;
-        
-        // Dropdown bilgileri
-        if (dropdownAvatar) {
-            dropdownAvatar.textContent = initials;
-            dropdownAvatar.className = `w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${avatarColor}`;
-        }
-        if (dropdownName) dropdownName.textContent = fullName;
-        if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
-        
-        // Rol gösterimi
-        const roleName = {
-            'super_admin': 'Super Admin',
-            'admin': 'Kurum Yöneticisi',
-            'user': 'Kullanıcı'
-        }[currentUser.role] || 'Kullanıcı';
-        
-        if (dropdownRole) {
-            dropdownRole.textContent = roleName;
-            dropdownRole.className = `text-xs px-2 py-0.5 rounded-full ${
-                currentUser.role === 'super_admin' ? 'bg-red-100 text-red-800' :
-                currentUser.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                'bg-gray-100 text-gray-600'
-            } inline-block mt-1`;
-            dropdownRole.classList.remove('hidden');
-        }
-        
-        // Kurum bilgisi
-        if (dropdownInstitution) {
-            if (currentUser.institution) {
-                const instSpan = dropdownInstitution.querySelector('span');
-                if (instSpan) instSpan.textContent = currentUser.institution;
-                dropdownInstitution.classList.remove('hidden');
-            } else {
-                dropdownInstitution.classList.add('hidden');
-            }
-        }
-        
-        // Admin menü linki
-        if (adminMenuLink) {
-            if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
-                adminMenuLink.classList.remove('hidden');
-            } else {
-                adminMenuLink.classList.add('hidden');
-            }
-        }
-        
-        const userBadge = document.getElementById('userBadge');
-        if (userBadge) userBadge.style.display = 'none';
-        
-        // Dropdown tıklama olayı
-        const userMenuBtn = document.getElementById('userMenuBtn');
-        const userDropdown = document.getElementById('userDropdown');
-        if (userMenuBtn && userDropdown && !userMenuBtn._listenerAdded) {
-            userMenuBtn._listenerAdded = true;
-            userMenuBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                userDropdown.classList.toggle('hidden');
-            });
-            document.addEventListener('click', function(e) {
-                if (!userMenuBtn.contains(e.target) && !userDropdown.contains(e.target)) {
-                    userDropdown.classList.add('hidden');
-                }
-            });
-        }
-        
-    } else {
-        if (authNotLoggedIn) authNotLoggedIn.classList.remove('hidden');
-        if (authLoggedIn) authLoggedIn.classList.add('hidden');
-    }
-}
-// Dil butonu event'ini nav'daki butona bağla
-document.addEventListener('DOMContentLoaded', function() {
-    const translateBtnMain = document.getElementById('translateBtn');
-    const translateBtnNav = document.getElementById('translateBtnNav');
-    const translateTextMain = document.getElementById('translateText');
-    const translateTextNav = document.getElementById('translateTextNav');
-    
-    // Ana dil butonu event'ini nav butonuna kopyala
-    if (translateBtnMain && translateBtnNav) {
-        translateBtnNav.addEventListener('click', function() {
-            translateBtnMain.click();
-        });
-    }
-    
-    // Çeviri metnini senkronize et
-    function syncTranslateText() {
-        if (translateTextMain && translateTextNav) {
-            translateTextNav.textContent = translateTextMain.textContent;
-        }
-    }
-    
-    // Her çeviri değiştiğinde senkronize et
-    const observer = new MutationObserver(syncTranslateText);
-    if (translateTextMain) observer.observe(translateTextMain, { childList: true, characterData: true, subtree: true });
-    syncTranslateText();
-});
-
-
+// Auth kontrolü
 async function checkAuth() {
-    if (!authToken) return false;
+    if (!authToken) {
+        updateAuthUI(false);
+        return false;
+    }
 
     try {
         const decoded = decodeToken(authToken);
-        
+
+        // exp değeri ms cinsinden tutulmuş görünüyor
         if (decoded && decoded.exp > Date.now()) {
             currentUser = {
                 id: decoded.user_id,
@@ -306,17 +210,20 @@ async function checkAuth() {
             };
             updateAuthUI(true);
             return true;
-        } else {
-            logout();
-            return false;
         }
+
+        clearAuthState();
+        updateAuthUI(false);
+        return false;
     } catch (err) {
         console.error('Auth check error:', err);
-        logout();
+        clearAuthState();
+        updateAuthUI(false);
         return false;
     }
 }
 
+// Basit notification
 function showNotification(message, type) {
     alert(message);
 }
