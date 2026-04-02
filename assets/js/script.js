@@ -322,7 +322,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Auth kontrolü
     checkAuth();
-    
+    // Admin panelinden yönlendirme mesajı  ← BURAYA EKLE
+    const redirectMsg = sessionStorage.getItem('authRedirectMsg');
+    if (redirectMsg) {
+        sessionStorage.removeItem('authRedirectMsg');
+        setTimeout(() => showNotification(redirectMsg, 'error'), 500);
+    }    
     // Login form
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {

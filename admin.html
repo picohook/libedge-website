@@ -40,6 +40,18 @@
 </head>
 <body>
 
+<!-- Yükleniyor ekranı -->
+<div id="loadingScreen" class="fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
+  <div class="text-center">
+    <i class="fas fa-spinner fa-spin text-3xl text-purple-700 mb-3"></i>
+    <p class="text-gray-500 text-sm">Yetki kontrol ediliyor...</p>
+  </div>
+</div>
+
+<!-- Admin içeriği — auth onaylanana kadar gizli -->
+<div id="authGate" style="display:none">
+
+
 <div class="flex h-screen">
     <!-- Sidebar -->
     <div class="sidebar w-64 flex-shrink-0">
@@ -313,23 +325,64 @@
         <form id="subscriptionForm"><div class="mb-3"><select id="subUserId" class="w-full border p-2 rounded" required><option value="">Kullanıcı Seçin</option></select></div><div class="mb-3"><select id="subProduct" class="w-full border p-2 rounded" required><option value="">Ürün Seçin</option><option value="pangram">Pangram</option><option value="chatpdf">ChatPDF</option><option value="primal-pictures">Primal Pictures</option><option value="lecturio">Lecturio</option><option value="jove-research">JoVE Research</option><option value="biorender">BioRender</option><option value="wiley-journals">Wiley Dergiler</option></select></div><div class="mb-3"><select id="subStatus" class="w-full border p-2 rounded"><option value="active">Aktif</option><option value="trial">Deneme</option><option value="expired">Süresi Doldu</option></select></div><div class="mb-3"><input type="date" id="subEndDate" placeholder="Bitiş Tarihi" class="w-full border p-2 rounded"></div><div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeSubscriptionModal()" class="btn bg-gray-300 flex-1">İptal</button></div></form>
     </div>
 </div>
+</div> 
 
 <script src="assets/js/script.js"></script>
 <script>
-    let adminToken = localStorage.getItem('authToken');
-    let currentAdmin = null;
+// ====================== ADMIN AUTH GATE ======================
+const API_BASE   = 'https://form-handler.agursel.workers.dev';
+const adminToken = localStorage.getItem('authToken');
+let currentAdmin = null; 
 
-    // Token decode helper (Türkçe karakterler için)
-    function decodeToken(token) {
-        try {
-            const decoded = decodeURIComponent(escape(atob(token)));
-            return JSON.parse(decoded);
-        } catch (e) {
-            console.error("Token decode error:", e);
-            return null;
-        }
+async function checkAdminAuth() {
+  if (!adminToken) {
+    redirectToHome('Giriş yapmanız gerekiyor.');
+    return false;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/api/user/profile`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    });
+    if (!res.ok) {
+      redirectToHome('Oturumunuz sona erdi.');
+      return false;
     }
+    const user = await res.json();
+    currentAdmin = user;
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
+      redirectToHome('Bu sayfaya erişim yetkiniz yok.');
+      return false;
+    }
+    const adminNameEl = document.getElementById('adminName');
+    if (adminNameEl) adminNameEl.textContent = user.full_name || user.email;
+    if (user.role !== 'super_admin') {
+      document.querySelector('[data-tab="products"]')?.parentElement?.remove();
+    }
+    return true;
+  } catch (err) {
+    redirectToHome('Bağlantı hatası.');
+    return false;
+  }
+}
 
+function redirectToHome(msg) {
+  localStorage.removeItem('authToken');
+  sessionStorage.setItem('authRedirectMsg', msg);
+  window.location.replace('index.html');
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const ok = await checkAdminAuth();
+  document.getElementById('loadingScreen')?.remove();
+  if (ok) {
+    document.getElementById('authGate').style.display = 'block';
+    loadDashboard();
+    loadUsers();
+    loadProducts();
+  }
+});
+</script>
+<script> 
     // Ürün listesi
     const products = [
         { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
@@ -350,30 +403,6 @@
         { slug: 'klasik-muzik', name: 'Klasik Müzik Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' },
         { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' }
     ];
-
-    // Admin kontrolü (decodeToken ile)
-    async function checkAdmin() {
-        if (!adminToken) { window.location.href = 'index.html'; return; }
-        try {
-            const decoded = decodeToken(adminToken);
-            console.log("Admin check - decoded:", decoded);
-            if (!decoded || decoded.exp < Date.now()) throw new Error('Token expired');
-            if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
-                console.log("Role not admin:", decoded.role);
-                window.location.href = 'index.html';
-                return;
-            }
-            currentAdmin = decoded;
-            document.getElementById('adminName').textContent = currentAdmin.full_name || 'Admin';
-            if (currentAdmin.institution) document.getElementById('adminName').textContent += ` (${currentAdmin.institution})`;
-            loadDashboard();
-            loadUsers();
-            loadProducts();
-        } catch(e) {
-            console.error("Admin check error:", e);
-            window.location.href = 'index.html';
-        }
-    }
 
     // Ürünleri yükle
     function loadProducts() {
