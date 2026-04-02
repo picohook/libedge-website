@@ -240,12 +240,12 @@ if (!user || !(await verifyPassword(password, user.password_hash))) {
 
     // Token payload
     const tokenPayload = {
-      user_id: user.id,
-      email: user.email,
-      full_name: user.full_name || "",
-      institution: user.institution || "",
-      role: user.role || "user",
-      exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
+        user_id: user.id,
+        email: user.email,
+        full_name: user.full_name || "",
+        institution: user.institution || "",
+        role: user.role || "user",
+        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)   // ← SANİYE cinsinden, 7 gün
     };
     
       const secret = c.env.JWT_SECRET;

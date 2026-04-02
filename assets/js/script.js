@@ -286,21 +286,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 async function checkAuth() {
-    if (!authToken) return false;
+    if (!authToken) {
+        updateAuthUI(false);
+        return false;
+    }
 
     try {
         const decoded = decodeToken(authToken);
-        if (!decoded || !decoded.exp || decoded.exp < Date.now()) {
+        if (!decoded) {
+            console.warn("Token decode edilemedi");
             logout();
             return false;
         }
+
+        // exp saniye cinsinden olduğu için kontrolü buna göre yap
+        const nowInSeconds = Math.floor(Date.now() / 1000);
+        if (decoded.exp < nowInSeconds) {
+            console.warn("Token süresi dolmuş");
+            logout();
+            return false;
+        }
+
         currentUser = {
             id: decoded.user_id,
             email: decoded.email,
-            full_name: decoded.full_name || decoded.full_name,
-            institution: decoded.institution,
-            role: decoded.role
+            full_name: decoded.full_name || "",
+            institution: decoded.institution || "",
+            role: decoded.role || "user"
         };
+
         updateAuthUI(true);
         return true;
     } catch (err) {
