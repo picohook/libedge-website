@@ -11,48 +11,160 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization']
 }));
 
+
+// ====================== JWT YARDIMCILARI ======================
+
+function b64urlEncode(str) {
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function b64urlDecode(str) {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  return atob(str);
+}
+
+async function signToken(payload, secret) {
+  const header  = b64urlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const body    = b64urlEncode(unescape(encodeURIComponent(JSON.stringify(payload))));
+  const data    = `${header}.${body}`;
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sigBuffer = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
+  const sig = b64urlEncode(String.fromCharCode(...new Uint8Array(sigBuffer)));
+
+  return `${data}.${sig}`;
+}
+
+async function verifyToken(token, secret) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const [header, payload, signature] = parts;
+    const data   = `${header}.${payload}`;
+
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const sigBytes = Uint8Array.from(b64urlDecode(signature), c => c.charCodeAt(0));
+    const valid    = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(data));
+    if (!valid) return null;
+
+    const decoded = JSON.parse(decodeURIComponent(escape(b64urlDecode(payload))));
+    if (decoded.exp < Date.now()) return null; // token süresi dolmuş
+
+    return decoded;
+  } catch (e) {
+    console.error('verifyToken error:', e);
+    return null;
+  }
+}
+
+// ====================== ŞİFRE HASHLEME (PBKDF2) ======================
+
+async function hashPassword(password) {
+  const salt       = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+  const hashBuffer = await crypto.subtle.deriveBits(
+    {
+      name:       'PBKDF2',
+      salt:       salt,
+      iterations: 100_000,   // 100k iterasyon — brute-force'u yavaşlatır
+      hash:       'SHA-256'
+    },
+    keyMaterial,
+    256
+  );
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const saltArray = Array.from(salt);
+
+  // "salt:hash" formatında sakla (her kullanıcı farklı tuz)
+  const saltHex = saltArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${saltHex}:${hashHex}`;
+}
+
+async function verifyPassword(password, storedHash) {
+  // Eski format kontrolü: ":" içermiyorsa eski SHA-256 hash
+  if (!storedHash.includes(':')) {
+    // Geçici geriye dönük uyumluluk — eski kullanıcılar hâlâ giriş yapabilir
+    const encoder    = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
+    const hashHex    = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex === storedHash;
+  }
+
+  // Yeni PBKDF2 formatı
+  const [saltHex, existingHashHex] = storedHash.split(':');
+  const salt = new Uint8Array(saltHex.match(/.{2}/g).map(b => parseInt(b, 16)));
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+  const hashBuffer = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: 100_000, hash: 'SHA-256' },
+    keyMaterial,
+    256
+  );
+  const hashHex = Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+
+  // Timing-safe karşılaştırma
+  return timingSafeEqual(hashHex, existingHashHex);
+}
+
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 // ====================== YARDIMCI FONKSİYONLAR ======================
 
 // Kurum ve Rol yetkilerini okuyan yardımcı fonksiyonlar
-async function getUserRole(c) {
+// ✅ YENİ — tek bir merkezi decode yardımcısı
+async function getTokenPayload(c) {
   const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.split(' ')[1];
-  try {
-    // split('.') kullanmıyoruz, doğrudan çözüyoruz
-    const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
-    if (decoded.exp < Date.now()) return null;
-    return decoded.role || 'user';
-  } catch(e) { 
-    console.error("Role Decode Error:", e);
-    return null; 
-  }
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token  = authHeader.split(' ')[1];
+  const secret = c.env.JWT_SECRET;
+  return verifyToken(token, secret); // imzayı doğrular, null döner
+}
+
+async function getUserRole(c) {
+  const payload = await getTokenPayload(c);
+  return payload?.role || null;
 }
 
 async function getUserInstitution(c) {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
-    if (decoded.exp < Date.now()) return null;
-    return decoded.institution || null;
-  } catch(e) { 
-    console.error("Inst Decode Error:", e);
-    return null; 
-  }
-}
-
-// DÜZELTİLDİ: Bu fonksiyon artık institution adını döndürüyor.
-async function getUserInstitutionId(c) {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
-    if (decoded.exp < Date.now()) return null;
-    return decoded.institution || null;
-  } catch(e) { return null; }
+  const payload = await getTokenPayload(c);
+  return payload?.institution || null;
 }
 
 async function isSuperAdmin(c) {
@@ -106,22 +218,16 @@ app.post('/api/auth/login', async (c) => {
     const { email, password } = await c.req.json();
     const db = c.env.DB;
 
-    // Password hash
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const password_hash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
 
-    // Kullanıcıyı bul
-    const user = await db.prepare(`
-      SELECT id, email, full_name, institution, password_hash, role 
-      FROM users WHERE email = ?
-    `).bind(email.toLowerCase().trim()).first();
+// ✅ YENİ — önce kullanıcıyı bul, sonra şifreyi doğrula
+const user = await db.prepare(`
+  SELECT id, email, full_name, institution, password_hash, role 
+  FROM users WHERE email = ?
+`).bind(email.toLowerCase().trim()).first();
 
-    if (!user || user.password_hash !== password_hash) {
-      return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
-    }
+if (!user || !(await verifyPassword(password, user.password_hash))) {
+  return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
+}
 
     // Token payload
     const tokenPayload = {
@@ -133,8 +239,9 @@ app.post('/api/auth/login', async (c) => {
       exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
     };
     
-    const jsonString = JSON.stringify(tokenPayload);
-    const token = btoa(unescape(encodeURIComponent(jsonString)));
+      const secret = c.env.JWT_SECRET;
+      if (!secret) throw new Error('JWT_SECRET tanımlı değil');
+      const token = await signToken(tokenPayload, secret);
 
     return c.json({
       success: true,
@@ -163,11 +270,7 @@ app.post('/api/auth/register', async (c) => {
       return c.json({ success: false, error: 'E-posta ve şifre zorunludur.' }, 400);
     }
 
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const password_hash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
+const password_hash = await hashPassword(password);
 
     await db.prepare(`
       INSERT INTO users (email, password_hash, full_name, institution, role)
@@ -191,9 +294,9 @@ app.get('/api/user/profile', async (c) => {
   const token = authHeader.split(' ')[1];
   let userId;
   try {
-    const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
-    if (decoded.exp < Date.now()) throw new Error('Token expired');
-    userId = decoded.user_id;
+const payload = await verifyToken(token, c.env.JWT_SECRET);
+if (!payload) return c.json({ error: 'Geçersiz veya süresi dolmuş token' }, 401);
+userId = payload.user_id;
   } catch (e) {
     return c.json({ error: 'Geçersiz token' }, 401);
   }
@@ -216,21 +319,20 @@ app.post('/api/user/update', async (c) => {
   const token = authHeader.split(' ')[1];
   let userId;
   try {
-    const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
-    if (decoded.exp < Date.now()) throw new Error('Token expired');
-    userId = decoded.user_id;
+const payload = await verifyToken(token, c.env.JWT_SECRET);
+if (!payload) return c.json({ error: 'Geçersiz veya süresi dolmuş token' }, 401);
+userId = payload.user_id;
   } catch (e) {
     return c.json({ error: 'Geçersiz token' }, 401);
   }
   const { full_name, institution, new_password } = await c.req.json();
   const db = c.env.DB;
 
-  if (new_password && new_password.length >= 6) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(new_password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const password_hash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
+if (new_password) {
+  if (new_password.length < 6) {
+    return c.json({ error: 'Şifre en az 6 karakter olmalı' }, 400);
+  }
+  password_hash = await hashPassword(new_password);
     await db.prepare(`
       UPDATE users SET full_name = ?, institution = ?, password_hash = ? WHERE id = ?
     `).bind(full_name || null, institution || null, password_hash, userId).run();
@@ -250,9 +352,9 @@ app.delete('/api/user/delete', async (c) => {
   const token = authHeader.split(' ')[1];
   let userId;
   try {
-    const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
-    if (decoded.exp < Date.now()) throw new Error('Token expired');
-    userId = decoded.user_id;
+const payload = await verifyToken(token, c.env.JWT_SECRET);
+if (!payload) return c.json({ error: 'Geçersiz veya süresi dolmuş token' }, 401);
+userId = payload.user_id;
   } catch (e) {
     return c.json({ error: 'Geçersiz token' }, 401);
   }
@@ -276,9 +378,9 @@ app.get('/api/subscription/check', async (c) => {
   let userId;
 
   try {
-    const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
-    if (decoded.exp < Date.now()) throw new Error('Token expired');
-    userId = decoded.user_id;
+const payload = await verifyToken(token, c.env.JWT_SECRET);
+if (!payload) return c.json({ error: 'Geçersiz veya süresi dolmuş token' }, 401);
+userId = payload.user_id;
   } catch (e) {
     return c.json({ hasAccess: false, message: 'Geçersiz token.' }, 401);
   }
@@ -304,9 +406,9 @@ app.get('/api/subscription/list', async (c) => {
   let userId;
 
   try {
-    const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
-    if (decoded.exp < Date.now()) throw new Error('Token expired');
-    userId = decoded.user_id;
+const payload = await verifyToken(token, c.env.JWT_SECRET);
+if (!payload) return c.json({ error: 'Geçersiz veya süresi dolmuş token' }, 401);
+userId = payload.user_id;
   } catch (e) {
     return c.json({ error: 'Geçersiz token' }, 401);
   }
@@ -426,10 +528,7 @@ app.post('/api/admin/user', async (c) => {
   
   const finalRole = (role === 'admin' && adminRole !== 'super_admin') ? 'user' : (role || 'user');
   
-  const encoder = new TextEncoder();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
-  const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
-  
+const password_hash = await hashPassword(password);  
   await db.prepare(`INSERT INTO users (email, password_hash, full_name, institution, role) VALUES (?, ?, ?, ?, ?)`).bind(email, password_hash, full_name, finalInstitution, finalRole).run();
   return c.json({ success: true });
 });
@@ -454,9 +553,8 @@ app.put('/api/admin/user/:id', async (c) => {
   const isSuper = adminRole === 'super_admin';
   const finalRole = (role && role !== 'user' && !isSuper) ? null : role;
   
-  if (password) {
-    const encoder = new TextEncoder();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
+if (password) {
+  const password_hash = await hashPassword(password);
     const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
     if (finalRole) {
       await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, password_hash, full_name, finalInstitution, finalRole, id).run();
@@ -478,7 +576,9 @@ app.delete('/api/admin/user/:id', async (c) => {
   const id = c.req.param('id');
   const authHeader = c.req.header('Authorization');
   const token = authHeader.split(' ')[1];
-  const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));  
+const payload = await verifyToken(token, c.env.JWT_SECRET);
+if (!payload) return c.json({ error: 'Geçersiz veya süresi dolmuş token' }, 401);
+userId = payload.user_id;
   const adminRole = await getUserRole(c);
   
   if (adminRole === 'admin' && !await canAccessUser(c, id)) {
