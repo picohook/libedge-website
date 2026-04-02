@@ -149,20 +149,20 @@ window.register = async function(fullName, email, password, institution) {
         return false;
     }
 };
-
 // Logout function
-// Eğer admin panelindeysek logout yapma
-if (window.location.pathname.includes('admin-panel')) {
-    window.logout = function() {
-        localStorage.removeItem('authToken');
-        window.location.replace('index.html');
-    };
-} else {
-    // Normal site logout fonksiyonu
-    window.logout = function() {
-        // mevcut logout kodu
-    };
-}
+window.logout = function() {
+    localStorage.removeItem('authToken');
+    currentUser = null;
+    authToken = null;
+
+    const userDropdown = document.getElementById('userDropdown');
+    if (userDropdown) {
+        userDropdown.classList.add('hidden');
+    }
+
+    updateAuthUI(false);
+    window.location.replace('index.html');
+};
 
 // Update UI based on auth state
 // Kullanıcı arayüzünü güncelle (Hover versiyon)
