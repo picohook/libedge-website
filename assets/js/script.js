@@ -202,42 +202,14 @@ function updateAuthUI(isLoggedIn) {
         if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
         
         // Rol gösterimi
-// Rol gösterimi
-const roleName = {
-    'super_admin': 'Super Admin',
-    'admin': 'Kurum Yöneticisi',
-    'user': 'Kullanıcı'
-};
 
-if (dropdownRole) {
-    dropdownRole.textContent = roleName[currentUser.role] || 'Kullanıcı';
-}
+        const roleNameMap = {
+            'super_admin': 'Super Admin',
+            'admin': 'Kurum Yöneticisi',
+            'user': 'Kullanıcı'
+        };
+        const roleName = roleNameMap[currentUser.role] || 'Kullanıcı';
 
-async function logout() {
-    try {
-        if (authToken) {
-            await fetch(`${API_BASE}/api/auth/logout`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`
-                }
-            });
-        }
-    } catch (e) {
-        console.warn('Logout API hatası:', e);
-    }
-
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('refreshToken');
-
-    authToken = null;
-    currentUser = null;
-
-    window.location.replace('index.html');
-}
-}
-        }[currentUser.role] || 'Kullanıcı';
-        
         if (dropdownRole) {
             dropdownRole.textContent = roleName;
             dropdownRole.className = `text-xs px-2 py-0.5 rounded-full ${
@@ -247,6 +219,7 @@ async function logout() {
             } inline-block mt-1`;
             dropdownRole.classList.remove('hidden');
         }
+
         
         // Kurum bilgisi
         if (dropdownInstitution) {
@@ -1098,35 +1071,8 @@ function closeMapModal() { const m = document.getElementById('mapModal'); if(m) 
 function toggleDropdown(button) { const list = button.nextElementSibling; if(list) { list.classList.toggle('hidden'); button.querySelector('i')?.classList.toggle('fa-chevron-down'); } }
 function toggleProductsMenu() { const menu = document.getElementById('mobile-products'); if(menu) { menu.classList.toggle('hidden'); document.querySelector('#products-menu-toggle i')?.classList.toggle('fa-chevron-down'); } }
 
-async function login(email, password) {
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.accessToken) {
-
-            authToken = data.accessToken;
-            localStorage.setItem('authToken', data.accessToken);
-
-            if (data.refreshToken) {
-                localStorage.setItem('refreshToken', data.refreshToken);
-            }
-
-            startAutoLogout(); // 🔥 kritik
-
-console.error("Refresh failed");
-logout();
-
-    } catch (e) {
-        console.error(e);
-        logout();
-    }
-}
+// ====================== TOKEN REFRESH & OTOMATİK ÇIKIŞ ======================
+let logoutTimer = null;
 
 async function refreshAccessToken() {
     const refreshToken = localStorage.getItem('refreshToken');
@@ -1139,16 +1085,13 @@ async function refreshAccessToken() {
     try {
         const res = await fetch(`${API_BASE}/api/auth/refresh`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refreshToken })
         });
 
         const data = await res.json();
 
         if (res.ok && data.accessToken) {
-
             authToken = data.accessToken;
             localStorage.setItem('authToken', data.accessToken);
 
@@ -1156,26 +1099,29 @@ async function refreshAccessToken() {
                 localStorage.setItem('refreshToken', data.refreshToken);
             }
 
-            startAutoLogout(); // 🔥 timer reset
-
+            startAutoLogout();
         } else {
             logout();
         }
-
     } catch (e) {
-        console.error(e);
+        console.error('Refresh error:', e);
         logout();
     }
 }
 
 function startAutoLogout() {
+    if (logoutTimer) {
+        clearTimeout(logoutTimer);
+        logoutTimer = null;
+    }
+
     const decoded = decodeToken(authToken);
     if (!decoded?.exp) return;
 
     const expiresIn = decoded.exp * 1000 - Date.now();
 
     if (expiresIn > 5000) {
-        setTimeout(refreshAccessToken, expiresIn - 5000);
+        logoutTimer = setTimeout(refreshAccessToken, expiresIn - 5000);
     } else {
         refreshAccessToken();
     }
@@ -1183,62 +1129,81 @@ function startAutoLogout() {
 
 async function logout() {
     try {
-        await fetch(`${API_BASE}/api/auth/logout`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-    } catch (e) {}
+        if (authToken) {
+            await fetch(`${API_BASE}/api/auth/logout`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+        }
+    } catch (e) {
+        console.warn('Logout error:', e);
+    }
 
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
-
     authToken = null;
     currentUser = null;
+
+    if (logoutTimer) {
+        clearTimeout(logoutTimer);
+        logoutTimer = null;
+    }
 
     window.location.replace('index.html');
 }
 
+// Login fonksiyonu - DÜZELTİLMİŞ
+async function login(email, password) {
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.accessToken) {
+            authToken = data.accessToken;
+            localStorage.setItem('authToken', data.accessToken);
+
+            if (data.refreshToken) {
+                localStorage.setItem('refreshToken', data.refreshToken);
+            }
+
+            // Token'ı decode et
+            const decoded = decodeToken(authToken);
+            if (decoded) {
+                currentUser = {
+                    id: decoded.user_id,
+                    email: decoded.email,
+                    full_name: decoded.full_name,
+                    institution: decoded.institution,
+                    role: decoded.role
+                };
+            }
+
+            updateAuthUI(true);
+            startAutoLogout();
+            closeLoginModal();
+            showNotification('Giriş başarılı!', 'success');
+            return true;
+        } else {
+            showNotification(data.error || 'Giriş başarısız', 'error');
+            return false;
+        }
+    } catch (e) {
+        console.error('Login error:', e);
+        showNotification('Bir hata oluştu', 'error');
+        return false;
+    }
+}
+
+// window fonksiyonlarını güncelle
+window.login = login;
+window.logout = logout;
+
+// Token varsa otomatik çıkış mekanizmasını başlat
 if (authToken) {
     startAutoLogout();
-}
-
-let logoutTimer = null;
-
-function startAutoLogout() {
-    if (logoutTimer) {
-        clearTimeout(logoutTimer);
-    }
-
-    const decoded = decodeToken(authToken);
-    if (!decoded?.exp) return;
-
-    const expiresIn = decoded.exp * 1000 - Date.now();
-
-    if (expiresIn > 5000) {
-        logoutTimer = setTimeout(refreshAccessToken, expiresIn - 5000);
-    } else {
-        refreshAccessToken();
-    }
-}
-
-
-let logoutTimer = null;
-
-function startAutoLogout() {
-    if (logoutTimer) {
-        clearTimeout(logoutTimer);
-    }
-
-    const decoded = decodeToken(authToken);
-    if (!decoded?.exp) return;
-
-    const expiresIn = decoded.exp * 1000 - Date.now();
-
-    if (expiresIn > 5000) {
-        logoutTimer = setTimeout(refreshAccessToken, expiresIn - 5000);
-    } else {
-        refreshAccessToken();
-    }
 }
