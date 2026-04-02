@@ -555,7 +555,6 @@ app.put('/api/admin/user/:id', async (c) => {
   
 if (password) {
   const password_hash = await hashPassword(password);
-    const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
     if (finalRole) {
       await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, password_hash, full_name, finalInstitution, finalRole, id).run();
     } else {
