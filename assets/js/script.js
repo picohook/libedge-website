@@ -161,7 +161,7 @@ window.logout = function() {
     }
 
     updateAuthUI(false);
-    window.location.replace('index.html');
+    window.location.href = 'index.html';
 };
 
 // Update UI based on auth state
