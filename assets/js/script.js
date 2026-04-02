@@ -83,48 +83,6 @@ window.closeRegisterModal = function() {
     }
 };
 
-// Login function - GÜNCELLENDİ (decodeToken ile)
-window.login = async function(email, password) {
-    try {
-        const response = await fetch(`${API_BASE}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        const data = await response.json();
-        if (response.ok && data.success) {
-            authToken = data.token;
-            localStorage.setItem('authToken', authToken);
-            
-            // Token'ı decode et
-            const decoded = decodeToken(authToken);
-            if (decoded) {
-                currentUser = {
-                    id: decoded.user_id,
-                    email: decoded.email,
-                    full_name: decoded.full_name,
-                    institution: decoded.institution,
-                    role: decoded.role
-                };
-            } else {
-                currentUser = data.user;
-            }
-            
-            updateAuthUI(true);
-            closeLoginModal();
-            showNotification('Giriş başarılı! Hoş geldiniz, ' + (currentUser.full_name || 'Kullanıcı'), 'success');
-            return true;
-        } else {
-            showNotification(data.error || 'Giriş başarısız', 'error');
-            return false;
-        }
-    } catch (err) {
-        console.error('Login error:', err);
-        showNotification('Bir hata oluştu', 'error');
-        return false;
-    }
-};
-
 // Register function
 window.register = async function(fullName, email, password, institution) {
     try {
@@ -148,20 +106,6 @@ window.register = async function(fullName, email, password, institution) {
         showNotification('Bir hata oluştu', 'error');
         return false;
     }
-};
-// Logout function
-window.logout = function() {
-    localStorage.removeItem('authToken');
-    currentUser = null;
-    authToken = null;
-
-    const userDropdown = document.getElementById('userDropdown');
-    if (userDropdown) {
-        userDropdown.classList.add('hidden');
-    }
-
-    updateAuthUI(false);
-    window.location.href = 'index.html';
 };
 
 // Update UI based on auth state
@@ -1072,60 +1016,9 @@ function toggleDropdown(button) { const list = button.nextElementSibling; if(lis
 function toggleProductsMenu() { const menu = document.getElementById('mobile-products'); if(menu) { menu.classList.toggle('hidden'); document.querySelector('#products-menu-toggle i')?.classList.toggle('fa-chevron-down'); } }
 
 // ====================== TOKEN REFRESH & OTOMATİK ÇIKIŞ ======================
-let logoutTimer = null;
+// Bunu da silebilirsiniz:
+// let logoutTimer = null;
 
-async function refreshAccessToken() {
-    const refreshToken = localStorage.getItem('refreshToken');
-
-    if (!refreshToken) {
-        logout();
-        return;
-    }
-
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken })
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.accessToken) {
-            authToken = data.accessToken;
-            localStorage.setItem('authToken', data.accessToken);
-
-            if (data.refreshToken) {
-                localStorage.setItem('refreshToken', data.refreshToken);
-            }
-
-            startAutoLogout();
-        } else {
-            logout();
-        }
-    } catch (e) {
-        console.error('Refresh error:', e);
-        logout();
-    }
-}
-
-function startAutoLogout() {
-    if (logoutTimer) {
-        clearTimeout(logoutTimer);
-        logoutTimer = null;
-    }
-
-    const decoded = decodeToken(authToken);
-    if (!decoded?.exp) return;
-
-    const expiresIn = decoded.exp * 1000 - Date.now();
-
-    if (expiresIn > 5000) {
-        logoutTimer = setTimeout(refreshAccessToken, expiresIn - 5000);
-    } else {
-        refreshAccessToken();
-    }
-}
 
 async function logout() {
     try {
@@ -1140,7 +1033,6 @@ async function logout() {
     }
 
     localStorage.removeItem('authToken');
-    localStorage.removeItem('refreshToken');
     authToken = null;
     currentUser = null;
 
@@ -1163,15 +1055,10 @@ async function login(email, password) {
 
         const data = await res.json();
 
-        if (res.ok && data.accessToken) {
-            authToken = data.accessToken;
-            localStorage.setItem('authToken', data.accessToken);
+        if (res.ok && data.token) {  // ← accessToken kullanıyor
+            authToken = data.token;
+            localStorage.setItem('authToken', data.token);
 
-            if (data.refreshToken) {
-                localStorage.setItem('refreshToken', data.refreshToken);
-            }
-
-            // Token'ı decode et
             const decoded = decodeToken(authToken);
             if (decoded) {
                 currentUser = {
@@ -1181,10 +1068,11 @@ async function login(email, password) {
                     institution: decoded.institution,
                     role: decoded.role
                 };
+            } else if (data.user) {
+                currentUser = data.user;
             }
 
             updateAuthUI(true);
-            startAutoLogout();
             closeLoginModal();
             showNotification('Giriş başarılı!', 'success');
             return true;
@@ -1202,8 +1090,10 @@ async function login(email, password) {
 // window fonksiyonlarını güncelle
 window.login = login;
 window.logout = logout;
+window.register = register; // zaten var
 
-// Token varsa otomatik çıkış mekanizmasını başlat
-if (authToken) {
-    startAutoLogout();
-}
+// BUNLARI SİLİN:
+// if (authToken) {
+//     const decoded = decodeToken(authToken);
+//     ...
+// }
