@@ -1087,15 +1087,127 @@ function closeMapModal() { const m = document.getElementById('mapModal'); if(m) 
 function toggleDropdown(button) { const list = button.nextElementSibling; if(list) { list.classList.toggle('hidden'); button.querySelector('i')?.classList.toggle('fa-chevron-down'); } }
 function toggleProductsMenu() { const menu = document.getElementById('mobile-products'); if(menu) { menu.classList.toggle('hidden'); document.querySelector('#products-menu-toggle i')?.classList.toggle('fa-chevron-down'); } }
 
+async function login(email, password) {
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.accessToken) {
+
+            authToken = data.accessToken;
+            localStorage.setItem('authToken', data.accessToken);
+
+            if (data.refreshToken) {
+                localStorage.setItem('refreshToken', data.refreshToken);
+            }
+
+            startAutoLogout(); // 🔥 kritik
+
+console.error("Refresh failed");
+logout();
+
+    } catch (e) {
+        console.error(e);
+        logout();
+    }
+}
+
+async function refreshAccessToken() {
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    if (!refreshToken) {
+        logout();
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ refreshToken })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.accessToken) {
+
+            authToken = data.accessToken;
+            localStorage.setItem('authToken', data.accessToken);
+
+            if (data.refreshToken) {
+                localStorage.setItem('refreshToken', data.refreshToken);
+            }
+
+            startAutoLogout(); // 🔥 timer reset
+
+        } else {
+            logout();
+        }
+
+    } catch (e) {
+        console.error(e);
+        logout();
+    }
+}
+
 function startAutoLogout() {
     const decoded = decodeToken(authToken);
     if (!decoded?.exp) return;
 
     const expiresIn = decoded.exp * 1000 - Date.now();
 
-    if (expiresIn > 0) {
-        setTimeout(logout, expiresIn);
+    if (expiresIn > 5000) {
+        setTimeout(refreshAccessToken, expiresIn - 5000);
     } else {
-        logout();
+        refreshAccessToken();
+    }
+}
+
+async function logout() {
+    try {
+        await fetch(`${API_BASE}/api/auth/logout`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+    } catch (e) {}
+
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
+
+    authToken = null;
+    currentUser = null;
+
+    window.location.replace('index.html');
+}
+
+if (authToken) {
+    startAutoLogout();
+}
+
+let logoutTimer = null;
+
+function startAutoLogout() {
+    if (logoutTimer) {
+        clearTimeout(logoutTimer);
+    }
+
+    const decoded = decodeToken(authToken);
+    if (!decoded?.exp) return;
+
+    const expiresIn = decoded.exp * 1000 - Date.now();
+
+    if (expiresIn > 5000) {
+        logoutTimer = setTimeout(refreshAccessToken, expiresIn - 5000);
+    } else {
+        refreshAccessToken();
     }
 }
