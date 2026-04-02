@@ -205,7 +205,26 @@ function updateAuthUI(isLoggedIn) {
         const roleName = {
             'super_admin': 'Super Admin',
             'admin': 'Kurum Yöneticisi',
-            'user': 'Kullanıcı'
+            'user': 'Kullanıcı'async function logout() {
+    try {
+        if (authToken) {
+            await fetch(`${API_BASE}/api/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+        }
+    } catch (e) {
+        console.warn('Logout API hatası:', e);
+    }
+
+    localStorage.removeItem('authToken');
+    authToken = null;
+    currentUser = null;
+
+    window.location.replace('index.html');
+}
         }[currentUser.role] || 'Kullanıcı';
         
         if (dropdownRole) {
@@ -1068,3 +1087,15 @@ function closeMapModal() { const m = document.getElementById('mapModal'); if(m) 
 function toggleDropdown(button) { const list = button.nextElementSibling; if(list) { list.classList.toggle('hidden'); button.querySelector('i')?.classList.toggle('fa-chevron-down'); } }
 function toggleProductsMenu() { const menu = document.getElementById('mobile-products'); if(menu) { menu.classList.toggle('hidden'); document.querySelector('#products-menu-toggle i')?.classList.toggle('fa-chevron-down'); } }
 
+function startAutoLogout() {
+    const decoded = decodeToken(authToken);
+    if (!decoded?.exp) return;
+
+    const expiresIn = decoded.exp * 1000 - Date.now();
+
+    if (expiresIn > 0) {
+        setTimeout(logout, expiresIn);
+    } else {
+        logout();
+    }
+}
