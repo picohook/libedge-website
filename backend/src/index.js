@@ -5,20 +5,10 @@ import { cors } from 'hono/cors';
 const app = new Hono();
 
 // ====================== CORS AYARLARI ======================
-// ✅ YENİ
-const ALLOWED_ORIGINS = [
-  'https://libedge.com',
-  'https://www.libedge.com',
-  'https://libedge-website.pages.dev',  // Cloudflare Pages geliştirme
-];
-
 app.use('*', cors({
-  origin: (origin) => ALLOWED_ORIGINS.includes(origin) ? origin : null,
-  allowMethods:  ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders:  ['Content-Type', 'Authorization'],
-  exposeHeaders: ['Content-Length'],
-  maxAge:        600,       // preflight sonucunu 10 dk cache'le
-  credentials:  true,
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization']
 }));
 
 
@@ -565,6 +555,7 @@ app.put('/api/admin/user/:id', async (c) => {
   
 if (password) {
   const password_hash = await hashPassword(password);
+    const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
     if (finalRole) {
       await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, password_hash, full_name, finalInstitution, finalRole, id).run();
     } else {

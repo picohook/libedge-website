@@ -304,6 +304,27 @@
     </div>
 </footer>
 
+<!-- Modal'lar için gerekli fonksiyonlar -->
+<script>
+function openMapModal() {
+    const modal = document.getElementById('mapModal');
+    if (modal) modal.classList.remove('hidden');
+}
+function closeMapModal() {
+    const modal = document.getElementById('mapModal');
+    if (modal) modal.classList.add('hidden');
+}
+function openLoginModal() {
+    if (typeof window.openLoginModal === 'function') window.openLoginModal();
+}
+function openRegisterModal() {
+    if (typeof window.openRegisterModal === 'function') window.openRegisterModal();
+}
+function logout() {
+    if (typeof window.logout === 'function') window.logout();
+}
+</script>
+
 <!-- Map Modal -->
 <div id="mapModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-lg p-4 w-full max-w-4xl h-[80vh] relative flex flex-col">

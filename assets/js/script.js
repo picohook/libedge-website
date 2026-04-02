@@ -286,37 +286,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 async function checkAuth() {
-    if (!authToken) {
-        updateAuthUI(false);
-        return false;
-    }
+    if (!authToken) return false;
 
     try {
         const decoded = decodeToken(authToken);
-        if (!decoded) {
-            console.warn("Token decode edilemedi");
+        
+        if (decoded && decoded.exp > Date.now()) {
+            currentUser = {
+                id: decoded.user_id,
+                email: decoded.email,
+                full_name: decoded.full_name,
+                institution: decoded.institution,
+                role: decoded.role
+            };
+            updateAuthUI(true);
+            return true;
+        } else {
             logout();
             return false;
         }
-
-        // exp saniye cinsinden olduğu için kontrolü buna göre yap
-        const nowInSeconds = Math.floor(Date.now() / 1000);
-        if (decoded.exp < nowInSeconds) {
-            console.warn("Token süresi dolmuş");
-            logout();
-            return false;
-        }
-
-        currentUser = {
-            id: decoded.user_id,
-            email: decoded.email,
-            full_name: decoded.full_name || "",
-            institution: decoded.institution || "",
-            role: decoded.role || "user"
-        };
-
-        updateAuthUI(true);
-        return true;
     } catch (err) {
         console.error('Auth check error:', err);
         logout();
@@ -1065,4 +1053,3 @@ function openMapModal() { const m = document.getElementById('mapModal'); if(m) {
 function closeMapModal() { const m = document.getElementById('mapModal'); if(m) { m.classList.add('hidden'); document.body.classList.remove('no-scroll'); } }
 function toggleDropdown(button) { const list = button.nextElementSibling; if(list) { list.classList.toggle('hidden'); button.querySelector('i')?.classList.toggle('fa-chevron-down'); } }
 function toggleProductsMenu() { const menu = document.getElementById('mobile-products'); if(menu) { menu.classList.toggle('hidden'); document.querySelector('#products-menu-toggle i')?.classList.toggle('fa-chevron-down'); } }
-
