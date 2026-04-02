@@ -1053,3 +1053,4 @@ function openMapModal() { const m = document.getElementById('mapModal'); if(m) {
 function closeMapModal() { const m = document.getElementById('mapModal'); if(m) { m.classList.add('hidden'); document.body.classList.remove('no-scroll'); } }
 function toggleDropdown(button) { const list = button.nextElementSibling; if(list) { list.classList.toggle('hidden'); button.querySelector('i')?.classList.toggle('fa-chevron-down'); } }
 function toggleProductsMenu() { const menu = document.getElementById('mobile-products'); if(menu) { menu.classList.toggle('hidden'); document.querySelector('#products-menu-toggle i')?.classList.toggle('fa-chevron-down'); } }
+
