@@ -290,21 +290,19 @@ async function checkAuth() {
 
     try {
         const decoded = decodeToken(authToken);
-        
-        if (decoded && decoded.exp > Date.now()) {
-            currentUser = {
-                id: decoded.user_id,
-                email: decoded.email,
-                full_name: decoded.full_name,
-                institution: decoded.institution,
-                role: decoded.role
-            };
-            updateAuthUI(true);
-            return true;
-        } else {
+        if (!decoded || !decoded.exp || decoded.exp < Date.now()) {
             logout();
             return false;
         }
+        currentUser = {
+            id: decoded.user_id,
+            email: decoded.email,
+            full_name: decoded.full_name || decoded.full_name,
+            institution: decoded.institution,
+            role: decoded.role
+        };
+        updateAuthUI(true);
+        return true;
     } catch (err) {
         console.error('Auth check error:', err);
         logout();
