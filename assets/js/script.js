@@ -92,7 +92,7 @@ window.login = async function(email, password) {
             body: JSON.stringify({ email, password })
         });
         const data = await response.json();
-        if (data.success) {
+        if (response.ok && data.success) {
             authToken = data.token;
             localStorage.setItem('authToken', authToken);
             
@@ -291,11 +291,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 async function checkAuth() {
-    if (!authToken) return false;
+    if (!authToken) {
+        updateAuthUI(false);
+        return false;
+    }
 
     try {
         const decoded = decodeToken(authToken);
-        
+
         if (decoded && decoded.exp > Date.now()) {
             currentUser = {
                 id: decoded.user_id,
@@ -307,12 +310,18 @@ async function checkAuth() {
             updateAuthUI(true);
             return true;
         } else {
-            logout();
+            localStorage.removeItem('authToken');
+            authToken = null;
+            currentUser = null;
+            updateAuthUI(false);
             return false;
         }
     } catch (err) {
         console.error('Auth check error:', err);
-        logout();
+        localStorage.removeItem('authToken');
+        authToken = null;
+        currentUser = null;
+        updateAuthUI(false);
         return false;
     }
 }
