@@ -5,10 +5,19 @@ import { cors } from 'hono/cors';
 const app = new Hono();
 
 // ====================== CORS AYARLARI ======================
+const ALLOWED_ORIGINS = [
+  'https://libedge.com',
+  'https://www.libedge.com',
+  'https://libedge-website.pages.dev',  // Cloudflare Pages geliştirme
+];
+
 app.use('*', cors({
-  origin: '*',
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization']
+  origin: (origin) => ALLOWED_ORIGINS.includes(origin) ? origin : null,
+  allowMethods:  ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders:  ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Content-Length'],
+  maxAge:        600,       // preflight sonucunu 10 dk cache'le
+  credentials:  true,
 }));
 
 
