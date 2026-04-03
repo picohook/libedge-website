@@ -16,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/picohook/libedge-website/issues"
   },
-  "homepage": "https://github.com/picohook/libedge-website#readme"
+  "homepage": "https://github.com/picohook/libedge-website#readme",
+  "devDependencies": {
+    "hono": "^4.12.10",
+    "wrangler": "^4.80.0"
+  }
 }
