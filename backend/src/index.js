@@ -176,6 +176,11 @@ async function getUserInstitution(c) {
   return payload?.institution || null;
 }
 
+async function getUserInstitutionId(c) {
+  const payload = await getTokenPayload(c);
+  return payload?.org_id || payload?.institution || null;
+}
+
 async function isSuperAdmin(c) {
   const role = await getUserRole(c);
   return role === 'super_admin';
@@ -341,7 +346,7 @@ if (new_password) {
   if (new_password.length < 6) {
     return c.json({ error: 'Şifre en az 6 karakter olmalı' }, 400);
   }
-  password_hash = await hashPassword(new_password);
+  const password_hash = await hashPassword(new_password);
     await db.prepare(`
       UPDATE users SET full_name = ?, institution = ?, password_hash = ? WHERE id = ?
     `).bind(full_name || null, institution || null, password_hash, userId).run();
@@ -581,25 +586,31 @@ if (password) {
 
 app.delete('/api/admin/user/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  
   const id = c.req.param('id');
   const authHeader = c.req.header('Authorization');
   const token = authHeader.split(' ')[1];
-const payload = await verifyToken(token, c.env.JWT_SECRET);
-if (!payload) return c.json({ error: 'Geçersiz veya süresi dolmuş token' }, 401);
-userId = payload.user_id;
+  
+  // 🔥 DÜZELTİLDİ: payload değişkenini doğru kullan
+  const payload = await verifyToken(token, c.env.JWT_SECRET);
+  if (!payload) return c.json({ error: 'Geçersiz veya süresi dolmuş token' }, 401);
+  
+  const currentUserId = payload.user_id;  // 🔥 let/const ile tanımla
   const adminRole = await getUserRole(c);
   
   if (adminRole === 'admin' && !await canAccessUser(c, id)) {
     return c.json({ error: 'Sadece kendi kurumunuzdaki kullanıcıları silebilirsiniz' }, 403);
   }
   
-  if (decoded.user_id == id && adminRole === 'super_admin') {
+  // 🔥 DÜZELTİLDİ: payload.user_id kullan, decoded değil
+  if (currentUserId == id && adminRole === 'super_admin') {
     return c.json({ error: 'Super admin kendini silemez' }, 400);
   }
   
   const db = c.env.DB;
   await db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id).run();
   await db.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
+  
   return c.json({ success: true });
 });
 
@@ -856,64 +867,6 @@ app.get('/api/institution/:id/folders', async (c) => {
     // Hata mesajını JSON formatında döndür
     return c.json({ 
       error: 'Klasörler yüklenirken bir hata oluştu', 
-      details: error.message 
-    }, 500);
-  }
-});
-
-// Kurumun dosyalarını listele (rol bazlı) - DÜZELTİLDİ
-app.get('/api/institution/:id/files', async (c) => {
-  try {
-    const institutionId = c.req.param('id');
-    const role = await getUserRole(c);
-    const userInstitution = await getUserInstitutionId(c);
-    
-    const db = c.env.DB;
-    
-    // Önce kurumun var olup olmadığını kontrol et
-    const institutionExists = await db.prepare(`
-      SELECT id, name FROM institutions WHERE name = ? OR id = ?
-    `).bind(institutionId, institutionId).first();
-    
-    if (!institutionExists) {
-      return c.json({ error: 'Kurum bulunamadı' }, 404);
-    }
-    
-    let files;
-    
-    if (role === 'super_admin') {
-      files = await db.prepare(`
-        SELECT f.*, u.full_name as uploaded_by_name 
-        FROM institution_files f 
-        LEFT JOIN users u ON f.uploaded_by = u.id
-        WHERE f.institution_id = ? AND f.is_active = 1 
-        ORDER BY f.id DESC
-      `).bind(institutionExists.id).all();
-    } else if (role === 'admin' && userInstitution === institutionExists.name) {
-      files = await db.prepare(`
-        SELECT f.*, u.full_name as uploaded_by_name 
-        FROM institution_files f 
-        LEFT JOIN users u ON f.uploaded_by = u.id
-        WHERE f.institution_id = ? AND f.is_active = 1 
-        ORDER BY f.id DESC
-      `).bind(institutionExists.id).all();
-    } else {
-      // Normal kullanıcı veya giriş yapmamış - sadece public dosyalar
-      files = await db.prepare(`
-        SELECT f.*, u.full_name as uploaded_by_name 
-        FROM institution_files f 
-        LEFT JOIN users u ON f.uploaded_by = u.id
-        WHERE f.institution_id = ? AND f.is_active = 1 AND f.is_public = 1
-        ORDER BY f.id DESC
-      `).bind(institutionExists.id).all();
-    }
-    
-    return c.json(files.results || []);
-    
-  } catch (error) {
-    console.error('Files endpoint error:', error);
-    return c.json({ 
-      error: 'Dosyalar yüklenirken bir hata oluştu', 
       details: error.message 
     }, 500);
   }
