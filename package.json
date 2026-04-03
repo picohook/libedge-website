@@ -1,0 +1,20 @@
+{
+  "name": "libedge-website",
+  "version": "1.0.0",
+  "description": "",
+  "main": "control.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/picohook/libedge-website.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/picohook/libedge-website/issues"
+  },
+  "homepage": "https://github.com/picohook/libedge-website#readme"
+}
