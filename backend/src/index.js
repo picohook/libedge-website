@@ -591,23 +591,22 @@ app.delete('/api/admin/user/:id', async (c) => {
   const authHeader = c.req.header('Authorization');
   const token = authHeader.split(' ')[1];
   
-  // 🔥 DÜZELTİLDİ: payload değişkenini doğru kullan
   const payload = await verifyToken(token, c.env.JWT_SECRET);
   if (!payload) return c.json({ error: 'Geçersiz veya süresi dolmuş token' }, 401);
   
-  const currentUserId = payload.user_id;  // 🔥 let/const ile tanımla
+  const currentUserId = payload.user_id;
   const adminRole = await getUserRole(c);
   
   if (adminRole === 'admin' && !await canAccessUser(c, id)) {
     return c.json({ error: 'Sadece kendi kurumunuzdaki kullanıcıları silebilirsiniz' }, 403);
   }
   
-  // 🔥 DÜZELTİLDİ: payload.user_id kullan, decoded değil
   if (currentUserId == id && adminRole === 'super_admin') {
     return c.json({ error: 'Super admin kendini silemez' }, 400);
   }
   
-  const db = c.env.DB;
+  const db = c.env.DB;  // 🔥 BU SATIR EKSİKTI!
+  
   await db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id).run();
   await db.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
   
