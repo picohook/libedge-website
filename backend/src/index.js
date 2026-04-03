@@ -1,6 +1,6 @@
 console.log("HONO VERSION LOADED");
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
+import { cors } from 'hono/middleware/cors';
 
 const app = new Hono();
 
