@@ -1,27 +1,24 @@
 {
   "name": "libedge-website",
   "version": "1.0.0",
-  "description": "",
-  "main": "control.js",
+  "description": "LibEdge Website Backend",
+  "type": "module",
+  "main": "backend/src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "wrangler pages dev",
+    "dev": "wrangler dev",
     "build": "echo 'No build step required' && exit 0",
-    "deploy": "wrangler pages deploy"
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.12.10"
+  },
+  "devDependencies": {
+    "wrangler": "^4.80.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/picohook/libedge-website.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/picohook/libedge-website/issues"
-  },
-  "homepage": "https://github.com/picohook/libedge-website#readme",
-  "devDependencies": {
-    "hono": "^4.12.10",
-    "wrangler": "^4.80.0"
-  }
+  "license": "ISC"
 }
