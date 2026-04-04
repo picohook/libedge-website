@@ -1,0 +1,15 @@
+# Node.js
+node_modules/
+package-lock.json
+
+# Wrangler
+.wrangler/
+.wrangler/tmp/
+
+# Build outputs
+dist/
+build/
+
+# OS-specific
+.DS_Store
+Thumbs.dbgit
