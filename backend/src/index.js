@@ -13,14 +13,16 @@ const ALLOWED_ORIGINS = [
 ];
 
 app.use('*', cors({
-  origin: (origin) => ALLOWED_ORIGINS.includes(origin) ? origin : null,
+  origin: (origin) => {
+    if (!origin) return "https://staging.libedge-website.pages.dev"; 
+    return ALLOWED_ORIGINS.includes(origin) ? origin : "https://staging.libedge-website.pages.dev";
+  },
   allowMethods:  ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders:  ['Content-Type', 'Authorization'],
   exposeHeaders: ['Content-Length'],
-  maxAge:        600,       // preflight sonucunu 10 dk cache'le
-  credentials:  true,
+  maxAge:        600,
+  credentials:   true,
 }));
-
 
 // ====================== JWT YARDIMCILARI ======================
 
