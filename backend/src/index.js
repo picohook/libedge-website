@@ -9,6 +9,7 @@ const ALLOWED_ORIGINS = [
   'https://libedge.com',
   'https://www.libedge.com',
   'https://libedge-website.pages.dev',  // Cloudflare Pages geliştirme
+  'https://staging.libedge-website.pages.dev/', // Cloudflare Pages staging
 ];
 
 app.use('*', cors({
