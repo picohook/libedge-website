@@ -13,3 +13,9 @@ build/
 # OS-specific
 .DS_Store
 Thumbs.dbgit
+
+# Environment files
+.env
+
+.wrangler/cache/
+.wrangler/state/
