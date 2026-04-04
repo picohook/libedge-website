@@ -21,9 +21,8 @@
     "hono": "^4.12.10",
     "wrangler": "^4.80.0"
   }
-}
 
-{
+
   "test": "echo \"Error: no test specified\" && exit 1",
   "build": "wrangler pages build"
 }
