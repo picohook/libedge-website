@@ -28,7 +28,7 @@ function getShortName(name) {
 }
 
 // ====================== AUTH GLOBAL FUNCTIONS ======================
-const API_BASE = 'https://form-handler.agursel.workers.dev';
+const API_BASE = '';
 let currentUser = null;
 let refreshInterval = null;
 
