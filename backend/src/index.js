@@ -18,10 +18,10 @@ app.use('*', cors({
     return ALLOWED_ORIGINS.includes(origin) ? origin : "https://staging.libedge-website.pages.dev";
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  exposeHeaders: ['Content-Length', 'Set-Cookie'],  // ← Set-Cookie ekle
+  allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  exposeHeaders: ['Content-Length', 'Set-Cookie'],
   maxAge: 600,
-  credentials: true,
+  credentials: true,  // ✅ Bu çok önemli
 }));
 
 // ====================== JWT YARDIMCILARI ======================
@@ -283,12 +283,12 @@ app.post('/api/auth/login', async (c) => {
     const secret = c.env.JWT_SECRET;
     const token = await signToken(tokenPayload, secret);
 
-    // 🔥 HONO'NUN KENDİ COOKIE METHODUNU KULLAN
+    // 🔥 KRİTİK DEĞİŞİKLİK: Cross-origin için SameSite=None, Secure=true
     c.cookie('authToken', token, {
       httpOnly: true,
-      secure: false,  // Local'de false, production'da true yap
-      sameSite: 'Lax',
-      maxAge: 900,
+      secure: true,        // ✅ HTTPS için zorunlu
+      sameSite: 'None',    // ✅ Cross-origin için zorunlu!
+      maxAge: 900,         // 15 dakika
       path: '/'
     });
     
@@ -305,7 +305,7 @@ app.post('/api/auth/login', async (c) => {
 
   } catch (err) {
     console.error("Login error:", err);
-    return c.json({ success: false, error: err.message || 'Giriş sırasında hata oluştu.' }, 500);
+    return c.json({ success: false, error: err.message }, 500);
   }
 });
 
@@ -338,7 +338,6 @@ app.post('/api/auth/refresh', async (c) => {
   const oldPayload = auth.user;
   const db = c.env.DB;
   
-  // Kullanıcıyı tekrar doğrula (hesap hala aktif mi?)
   const user = await db.prepare(`
     SELECT id, email, full_name, institution, role FROM users WHERE id = ?
   `).bind(oldPayload.user_id).first();
@@ -347,22 +346,27 @@ app.post('/api/auth/refresh', async (c) => {
     return c.json({ error: 'Kullanıcı bulunamadı' }, 401);
   }
   
-  // Yeni token oluştur
   const newPayload = {
     user_id: user.id,
     email: user.email,
     full_name: user.full_name || "",
     institution: user.institution || "",
     role: user.role || "user",
-    iat: Date.now(),
-    exp: Date.now() + (15 * 60 * 1000)
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (15 * 60)
   };
   
   const secret = c.env.JWT_SECRET;
   const newToken = await signToken(newPayload, secret);
   
-  // Yeni cookie set et
-  c.header('Set-Cookie', `authToken=${newToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=900`);
+  // 🔥 AYNI COOKIE AYARLARI
+  c.cookie('authToken', newToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'None',
+    maxAge: 900,
+    path: '/'
+  });
   
   return c.json({ success: true, message: 'Token yenilendi' });
 });
