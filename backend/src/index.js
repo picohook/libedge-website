@@ -324,8 +324,8 @@ app.options('/api/auth/login', (c) => {
 
 // 🆕 LOGOUT ENDPOINT
 app.post('/api/auth/logout', async (c) => {
-  // Cookie'yi sil
-  c.header('Set-Cookie', 'authToken=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict');
+  c.header('Set-Cookie', 'authToken=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict');
+  c.header('Access-Control-Allow-Credentials', 'true');
   return c.json({ success: true, message: 'Başarıyla çıkış yapıldı' });
 });
 
