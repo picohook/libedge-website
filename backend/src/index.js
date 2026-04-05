@@ -301,6 +301,7 @@ app.post('/api/auth/login', async (c) => {
     
     return c.json({
       success: true,
+      token: token,  // ← BU SATIRI EKLE (geçici)
       user: {
         id: user.id,
         email: user.email,
