@@ -101,20 +101,37 @@
         </div>
     </div>
 
-    <!-- Mevcut auth butonlarının olduğu yere -->
-<div class="auth-container">
-    <!-- ✅ SADECE loading görünür başlangıçta -->
+<!-- Auth Container -->
+<div class="flex items-center space-x-4">
+    <!-- Loading State - SADECE loading görünür -->
     <div id="authLoading" class="flex items-center">
         <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
         <span class="ml-2 text-sm text-gray-500">Yükleniyor...</span>
     </div>
     
+    <!-- Logged Out State - BAŞLANGIÇTA GİZLİ -->
     <div id="authNotLoggedIn" class="hidden">
-        <button onclick="openLoginModal()" class="btn btn-outline">Giriş Yap</button>
+        <button onclick="openLoginModal()" class="text-gray-700 hover:text-blue-600">Giriş Yap</button>
     </div>
     
-    <div id="authLoggedIn" class="hidden">
-        <!-- Mevcut kullanıcı menün -->
+    <!-- Logged In State - BAŞLANGIÇTA GİZLİ -->
+    <div id="authLoggedIn" class="hidden relative">
+        <button id="userMenuBtn" class="flex items-center space-x-2">
+            <div id="userAvatar" class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white text-sm font-bold"></div>
+            <span id="userName" class="text-sm text-gray-700"></span>
+            <i class="fas fa-chevron-down text-xs"></i>
+        </button>
+        
+        <!-- Dropdown Menu -->
+        <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50">
+            <div class="p-3 border-b">
+                <p id="dropdownName" class="font-semibold"></p>
+                <p id="dropdownEmail" class="text-xs text-gray-500"></p>
+            </div>
+            <div class="p-2">
+                <button onclick="logout()" class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-100 rounded">Çıkış Yap</button>
+            </div>
+        </div>
     </div>
 </div>
 
