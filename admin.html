@@ -454,7 +454,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Dashboard verilerini yükle
     async function loadDashboard() {
         try {
-            const usersRes = await fetch(`${API_BASE}/api/admin/users`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+            const usersRes = await fetch('/api/admin/users', {
+    credentials: 'include'
+})
             const users = await usersRes.json();
             document.getElementById('statUsers').textContent = users.length || 0;
             
@@ -472,7 +474,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Kullanıcıları listele
     async function loadUsers() {
-        const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        const res = await fetch('/api/admin/users', {
+    credentials: 'include'
+})
         const users = await res.json();
         const isSuper = currentAdmin?.role === 'super_admin';
         
@@ -557,7 +561,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     function openSubscriptionModal() { loadUserSelect(); document.getElementById('subscriptionModal').classList.remove('hidden'); }
     function closeSubscriptionModal() { document.getElementById('subscriptionModal').classList.add('hidden'); document.getElementById('subscriptionForm').reset(); }
     async function loadUserSelect() {
-        const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        const res = await fetch('/api/admin/users', {
+    credentials: 'include'
+})
         const users = await res.json();
         document.getElementById('subUserId').innerHTML = '<option value="">Kullanıcı Seçin</option>' + users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name || u.email)}</option>`).join('');
     }
