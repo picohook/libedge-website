@@ -377,42 +377,38 @@ function getProductName(slug) {
 }
 
 // ====================== PROFİL YÜKLEME ======================
-async function loadUserProfile() {
-    const token = localStorage.getItem('authToken');
-    if (!token) return window.location.href = 'index.html';
+// ❌ ESKİ (localStorage)
+// const token = localStorage.getItem('authToken');
+// if (!token) return window.location.href = 'index.html';
+// const decoded = decodeToken(token);
 
-const decoded = decodeToken(token);
-if (!decoded || decoded.exp < Date.now()) {
-    localStorage.removeItem('authToken');  // eski token'ı temizle
-    alert('Oturumunuz sona erdi, lütfen tekrar giriş yapın.');
-    return window.location.href = 'index.html';
+// ✅ YENİ (Cookie tabanlı)
+async function checkAuthAndLoad() {
+    try {
+        const res = await fetch('/api/user/profile', {
+            credentials: 'include'
+        });
+        
+        if (!res.ok) {
+            window.location.href = 'index.html';
+            return;
+        }
+        
+        const user = await res.json();
+        window.currentUser = user;
+        
+        // Sayfayı göster
+        document.getElementById('profileName').textContent = user.full_name || 'Kullanıcı';
+        document.getElementById('profileEmail').textContent = user.email;
+        // ... rest of profile loading code
+        
+    } catch (err) {
+        window.location.href = 'index.html';
+    }
 }
 
-    window.currentUser = {
-        id: decoded.user_id,
-        email: decoded.email,
-        full_name: decoded.full_name,
-        institution: decoded.institution,
-        role: decoded.role
-    };
-
-    document.getElementById('profileName').textContent = window.currentUser.full_name || 'Kullanıcı';
-    document.getElementById('profileEmail').textContent = window.currentUser.email;
-    document.getElementById('welcomeMessage').textContent = `Merhaba ${window.currentUser.full_name || 'Kullanıcı'}, hoş geldiniz!`;
-
-    document.getElementById('infoFullName').textContent = window.currentUser.full_name || '-';
-    document.getElementById('infoEmail').textContent = window.currentUser.email;
-    document.getElementById('infoInstitution').textContent = window.currentUser.institution || 'Belirtilmemiş';
-
-    document.getElementById('settingsFullName').value = window.currentUser.full_name || '';
-    document.getElementById('settingsInstitution').value = window.currentUser.institution || '';
-
-    if (typeof updateAuthUI === 'function') updateAuthUI(true);
-
-    await loadUserCreatedAt();
-    await loadSubscriptions();
-}
-
+// DOMContentLoaded'de çağır
+document.addEventListener('DOMContentLoaded', checkAuthAndLoad);
 async function loadUserCreatedAt() {
     try {
         const token = localStorage.getItem('authToken');

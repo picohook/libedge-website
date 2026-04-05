@@ -332,7 +332,49 @@
 const adminToken = localStorage.getItem('authToken');
 let currentAdmin = null; 
 
+// ❌ ESKİ (localStorage)
+// const adminToken = localStorage.getItem('authToken');
+// headers: { 'Authorization': `Bearer ${adminToken}` }
+
+// ✅ YENİ (Cookie tabanlı)
 async function checkAdminAuth() {
+    try {
+        const res = await fetch('/api/user/profile', {
+            credentials: 'include'
+        });
+        
+        if (!res.ok) {
+            redirectToHome('Oturumunuz sona erdi.');
+            return false;
+        }
+        
+        const user = await res.json();
+        currentAdmin = user;
+        
+        if (user.role !== 'admin' && user.role !== 'super_admin') {
+            redirectToHome('Bu sayfaya erişim yetkiniz yok.');
+            return false;
+        }
+        
+        document.getElementById('adminName').textContent = user.full_name || user.email;
+        return true;
+    } catch (err) {
+        redirectToHome('Bağlantı hatası.');
+        return false;
+    }
+}
+
+// Tüm fetch isteklerinde credentials: 'include' kullan
+async function apiFetch(url, options = {}) {
+    return fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+}
   if (!adminToken) {
     redirectToHome('Giriş yapmanız gerekiyor.');
     return false;
