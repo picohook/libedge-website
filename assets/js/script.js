@@ -30,9 +30,9 @@ function getShortName(name) {
 // ====================== AUTH GLOBAL FUNCTIONS ======================
 const API_BASE = 'https://form-handler.agursel.workers.dev';
 let currentUser = null;
-let authToken = localStorage.getItem('authToken');
+let refreshInterval = null;
 
-// Token decode helper (Türkçe karakterler için)
+// ✅ YENİ: Token decode helper (ARTIK KULLANILMIYOR ama silmiyorum - eski kodlar için)
 function decodeToken(token) {
   try {
     const parts = token.split('.');
@@ -50,6 +50,48 @@ function decodeToken(token) {
   }
 }
 
+// ====================== AUTH LOADING & STATE MANAGEMENT ======================
+let isAuthChecking = true;
+let authCheckPromise = null;
+let authInitialized = false;
+
+// ====================== AUTH LOADING GÖSTERGESİ ======================
+function showAuthLoading(show) {
+    const loadingEl = document.getElementById('authLoading');
+    const notLoggedInEl = document.getElementById('authNotLoggedIn');
+    const loggedInEl = document.getElementById('authLoggedIn');
+    
+    if (!loadingEl) return;
+    
+    if (show) {
+        loadingEl.classList.remove('hidden');
+        if (notLoggedInEl) notLoggedInEl.classList.add('hidden');
+        if (loggedInEl) loggedInEl.classList.add('hidden');
+    } else {
+        loadingEl.classList.add('hidden');
+    }
+}
+
+// ====================== WAIT FOR AUTH (BEKLEME MEKANİZMASI) ======================
+async function waitForAuth(timeoutMs = 10000) {
+    if (authInitialized && !isAuthChecking) {
+        return currentUser;
+    }
+    
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Auth initialization timeout')), timeoutMs);
+    });
+    
+    try {
+        await Promise.race([checkAuth(), timeoutPromise]);
+        return currentUser;
+    } catch (err) {
+        console.error('waitForAuth error:', err);
+        return null;
+    }
+}
+
+// ====================== MODAL FONKSİYONLARI ======================
 window.openLoginModal = function() {
     const modal = document.getElementById('loginModal');
     if (modal) {
@@ -83,7 +125,7 @@ window.closeRegisterModal = function() {
     }
 };
 
-// Register function
+// ====================== REGISTER ======================
 window.register = async function(fullName, email, password, institution) {
     try {
         const response = await fetch(`${API_BASE}/api/auth/register`, {
@@ -108,9 +150,172 @@ window.register = async function(fullName, email, password, institution) {
     }
 };
 
-// Update UI based on auth state
-// Kullanıcı arayüzünü güncelle (Hover versiyon)
+// ====================== LOGIN (COOKIE TABANLI) ======================
+async function login(email, password) {
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',  // 🔥 ÇOK ÖNEMLİ - Cookie almak/göndermek için
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        // ✅ YENİ: Token artık response body'de YOK, cookie'ye otomatik gitti
+        if (res.ok && data.success) {
+            // ❌ ESKİ: authToken = data.token;
+            // ❌ ESKİ: localStorage.setItem('authToken', data.token);
+            
+            // ✅ YENİ: Kullanıcı bilgilerini response'dan al
+            if (data.user) {
+                currentUser = {
+                    id: data.user.id,
+                    email: data.user.email,
+                    full_name: data.user.full_name,
+                    institution: data.user.institution,
+                    role: data.user.role
+                };
+            }
+            
+            // Token refresh interval'ını başlat
+            startTokenRefresh();
+            
+            updateAuthUI(true);
+            closeLoginModal();
+            showNotification('Giriş başarılı!', 'success');
+            return true;
+        } else {
+            showNotification(data.error || 'Giriş başarısız', 'error');
+            return false;
+        }
+    } catch (e) {
+        console.error('Login error:', e);
+        showNotification('Bir hata oluştu', 'error');
+        return false;
+    }
+}
+
+// ====================== LOGOUT (COOKIE TABANLI) ======================
+async function logout() {
+    try {
+        await fetch(`${API_BASE}/api/auth/logout`, {
+            method: 'POST',
+            credentials: 'include'  // Cookie'yi silmek için
+        });
+    } catch (e) {
+        console.error('Logout error:', e);
+    }
+    
+    // Token refresh interval'ını durdur
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+    
+    currentUser = null;
+    updateAuthUI(false);
+    window.location.href = '/';
+}
+
+// ====================== TOKEN YENİLEME ======================
+async function refreshToken() {
+    if (!currentUser) return false;
+    
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        if (res.ok) {
+            console.log('Token yenilendi');
+            return true;
+        } else {
+            // Token yenilenemezse logout yap
+            console.log('Token yenileme başarısız, logout yapılıyor');
+            await logout();
+            return false;
+        }
+    } catch (e) {
+        console.error('Token refresh error:', e);
+        // Network hatasında da logout yap
+        await logout();
+        return false;
+    }
+}
+
+function startTokenRefresh() {
+    if (refreshInterval) clearInterval(refreshInterval);
+    
+    // 14 dakikada bir yenile (token 15 dk geçerli)
+    refreshInterval = setInterval(() => {
+        if (currentUser) {
+            refreshToken();
+        }
+    }, 14 * 60 * 1000);
+}
+
+// ====================== AUTH KONTROLÜ (COOKIE TABANLI) ======================
+async function checkAuth() {
+    // Zaten kontrol yapılıyorsa, aynı promise'i döndür
+    if (authCheckPromise) return authCheckPromise;
+    
+    // Loading state'i göster
+    showAuthLoading(true);
+    isAuthChecking = true;
+    
+    authCheckPromise = (async () => {
+        let isLoggedIn = false;
+        
+        try {
+            const res = await fetch(`${API_BASE}/api/user/profile`, {
+                credentials: 'include'
+            });
+            
+            if (res.ok) {
+                const user = await res.json();
+                currentUser = {
+                    id: user.id,
+                    email: user.email,
+                    full_name: user.full_name,
+                    institution: user.institution,
+                    role: user.role
+                };
+                isLoggedIn = true;
+                startTokenRefresh();
+            } else {
+                currentUser = null;
+                isLoggedIn = false;
+            }
+        } catch (err) {
+            console.error('Auth check error:', err);
+            currentUser = null;
+            isLoggedIn = false;
+        } finally {
+            // KRİTİK SIRA: Önce flag'leri güncelle
+            isAuthChecking = false;
+            authInitialized = true;
+            
+            // Loading spinner'ı kapat
+            showAuthLoading(false);
+            
+            // UI'ı son duruma göre güncelle
+            updateAuthUI(isLoggedIn);
+            
+            // Promise'i temizle
+            authCheckPromise = null;
+        }
+    })();
+    
+    return authCheckPromise;
+}
+
+// ====================== KULLANICI ARAYÜZ GÜNCELLEME ======================
 function updateAuthUI(isLoggedIn) {
+    // Eğer hala auth kontrolü devam ediyorsa ve ilk tamamlanmadıysa çık
+    if (isAuthChecking && !authInitialized) return;
+    
     const authNotLoggedIn = document.getElementById('authNotLoggedIn');
     const authLoggedIn = document.getElementById('authLoggedIn');
     const userAvatar = document.getElementById('userAvatar');
@@ -130,14 +335,12 @@ function updateAuthUI(isLoggedIn) {
         const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
         const fullName = currentUser.full_name || 'Kullanıcı';
         
-        // Avatar ve isim güncelleme
         if (userAvatar) {
             userAvatar.textContent = initials;
             userAvatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor}`;
         }
         if (userName) userName.textContent = fullName.length > 12 ? fullName.substring(0, 10) + '..' : fullName;
         
-        // Dropdown bilgileri
         if (dropdownAvatar) {
             dropdownAvatar.textContent = initials;
             dropdownAvatar.className = `w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${avatarColor}`;
@@ -145,15 +348,13 @@ function updateAuthUI(isLoggedIn) {
         if (dropdownName) dropdownName.textContent = fullName;
         if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
         
-        // Rol gösterimi
-
         const roleNameMap = {
             'super_admin': 'Super Admin',
             'admin': 'Kurum Yöneticisi',
             'user': 'Kullanıcı'
         };
         const roleName = roleNameMap[currentUser.role] || 'Kullanıcı';
-
+        
         if (dropdownRole) {
             dropdownRole.textContent = roleName;
             dropdownRole.className = `text-xs px-2 py-0.5 rounded-full ${
@@ -163,9 +364,7 @@ function updateAuthUI(isLoggedIn) {
             } inline-block mt-1`;
             dropdownRole.classList.remove('hidden');
         }
-
         
-        // Kurum bilgisi
         if (dropdownInstitution) {
             if (currentUser.institution) {
                 const instSpan = dropdownInstitution.querySelector('span');
@@ -176,7 +375,6 @@ function updateAuthUI(isLoggedIn) {
             }
         }
         
-        // Admin menü linki
         if (adminMenuLink) {
             if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
                 adminMenuLink.classList.remove('hidden');
@@ -188,7 +386,6 @@ function updateAuthUI(isLoggedIn) {
         const userBadge = document.getElementById('userBadge');
         if (userBadge) userBadge.style.display = 'none';
         
-        // Dropdown tıklama olayı
         const userMenuBtn = document.getElementById('userMenuBtn');
         const userDropdown = document.getElementById('userDropdown');
         if (userMenuBtn && userDropdown && !userMenuBtn._listenerAdded) {
@@ -209,81 +406,54 @@ function updateAuthUI(isLoggedIn) {
         if (authLoggedIn) authLoggedIn.classList.add('hidden');
     }
 }
-// Dil butonu event'ini nav'daki butona bağla
+
+function showNotification(message, type) {
+    alert(message);
+}
+
+// ====================== DİL BUTONU SENKRONİZASYONU ======================
 document.addEventListener('DOMContentLoaded', function() {
     const translateBtnMain = document.getElementById('translateBtn');
     const translateBtnNav = document.getElementById('translateBtnNav');
     const translateTextMain = document.getElementById('translateText');
     const translateTextNav = document.getElementById('translateTextNav');
     
-    // Ana dil butonu event'ini nav butonuna kopyala
     if (translateBtnMain && translateBtnNav) {
         translateBtnNav.addEventListener('click', function() {
             translateBtnMain.click();
         });
     }
     
-    // Çeviri metnini senkronize et
     function syncTranslateText() {
         if (translateTextMain && translateTextNav) {
             translateTextNav.textContent = translateTextMain.textContent;
         }
     }
     
-    // Her çeviri değiştiğinde senkronize et
     const observer = new MutationObserver(syncTranslateText);
     if (translateTextMain) observer.observe(translateTextMain, { childList: true, characterData: true, subtree: true });
     syncTranslateText();
 });
 
-
-async function checkAuth() {
-    if (!authToken) {
-        updateAuthUI(false);
-        return false;
-    }
-
-    try {
-        const decoded = decodeToken(authToken);
-
-        if (decoded && decoded.exp > Date.now()) {
-            currentUser = {
-                id: decoded.user_id,
-                email: decoded.email,
-                full_name: decoded.full_name,
-                institution: decoded.institution,
-                role: decoded.role
-            };
-            updateAuthUI(true);
-            return true;
-        } else {
-            localStorage.removeItem('authToken');
-            authToken = null;
-            currentUser = null;
-            updateAuthUI(false);
-            return false;
-        }
-    } catch (err) {
-        console.error('Auth check error:', err);
-        localStorage.removeItem('authToken');
-        authToken = null;
-        currentUser = null;
-        updateAuthUI(false);
-        return false;
-    }
-}
-
-function showNotification(message, type) {
-    alert(message);
-}
-
 // ====================== TEK DOMContentLoaded ======================
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM loaded - initializing site");
     
-    // Auth kontrolü
+    // Auth kontrolü (async)
     checkAuth();
     
+    // ✅ YENİ: Butonları başlangıçta disable et
+    document.querySelectorAll('.requires-auth').forEach(btn => {
+        btn.disabled = true;
+    });
+    
+    // ✅ YENİ: Auth tamamlandığında butonları aktif et
+    waitForAuth().then(user => {
+        document.querySelectorAll('.requires-auth').forEach(btn => {
+            btn.disabled = false;
+        });
+    });
+        
     // Login form
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
@@ -316,7 +486,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Reset cards on window resize
     window.addEventListener('resize', () => {
         document.querySelectorAll('.flip-inner').forEach(flipInner => {
             flipInner.classList.remove('flipped');
@@ -1005,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// --- Global Modal Functions ---
+// ====================== GLOBAL MODAL FUNCTIONS ======================
 function openModal() { const m = document.getElementById('trialModal'); if(m) { m.classList.remove('hidden'); document.body.classList.add('no-scroll'); } }
 function closeModal() { const m = document.getElementById('trialModal'); if(m) { m.classList.add('hidden'); document.body.classList.remove('no-scroll'); } }
 function openSuggestionModal() { const m = document.getElementById('suggestionModal'); if(m) { m.classList.remove('hidden'); document.body.classList.add('no-scroll'); } }
@@ -1015,66 +1184,7 @@ function closeMapModal() { const m = document.getElementById('mapModal'); if(m) 
 function toggleDropdown(button) { const list = button.nextElementSibling; if(list) { list.classList.toggle('hidden'); button.querySelector('i')?.classList.toggle('fa-chevron-down'); } }
 function toggleProductsMenu() { const menu = document.getElementById('mobile-products'); if(menu) { menu.classList.toggle('hidden'); document.querySelector('#products-menu-toggle i')?.classList.toggle('fa-chevron-down'); } }
 
-
-async function logout() {
-    // Backend'de logout endpoint'i yok, sadece local temizlik
-    localStorage.removeItem('authToken');
-    authToken = null;
-    currentUser = null;
-    updateAuthUI(false);
-    window.location.replace('index.html');
-}
-
-// Login fonksiyonu - DÜZELTİLMİŞ
-async function login(email, password) {
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.token) {  // ← accessToken kullanıyor
-            authToken = data.token;
-            localStorage.setItem('authToken', data.token);
-
-            const decoded = decodeToken(authToken);
-            if (decoded) {
-                currentUser = {
-                    id: decoded.user_id,
-                    email: decoded.email,
-                    full_name: decoded.full_name,
-                    institution: decoded.institution,
-                    role: decoded.role
-                };
-            } else if (data.user) {
-                currentUser = data.user;
-            }
-
-            updateAuthUI(true);
-            closeLoginModal();
-            showNotification('Giriş başarılı!', 'success');
-            return true;
-        } else {
-            showNotification(data.error || 'Giriş başarısız', 'error');
-            return false;
-        }
-    } catch (e) {
-        console.error('Login error:', e);
-        showNotification('Bir hata oluştu', 'error');
-        return false;
-    }
-}
-
-// window fonksiyonlarını güncelle
+// ====================== GLOBAL FONKSİYONLARI TANIMLA ======================
 window.login = login;
 window.logout = logout;
-window.register = register; // zaten var
-
-// BUNLARI SİLİN:
-// if (authToken) {
-//     const decoded = decodeToken(authToken);
-//     ...
-// }
+window.register = window.register;

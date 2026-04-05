@@ -75,7 +75,7 @@ async function verifyToken(token, secret) {
     if (!valid) return null;
 
     const decoded = JSON.parse(decodeURIComponent(escape(b64urlDecode(payload))));
-    if (decoded.exp < Date.now()) return null;
+    if (decoded.exp * 1000 < Date.now()) return null;
 
     return decoded;
   } catch (e) {
@@ -278,7 +278,7 @@ app.post('/api/auth/login', async (c) => {
       institution: user.institution || "",
       role: user.role || "user",
       iat: Date.now(),
-      exp: Date.now() + (15 * 60 * 1000)  // 15 dakika
+      exp: Math.floor(Date.now() / 1000) + (15 * 60)  // 15 dakika
     };
     
     const secret = c.env.JWT_SECRET;

@@ -1428,3 +1428,13 @@ body.translating {
 #userDropdown a i {
     transition: transform 0.2s ease;
 }
+
+.requires-auth:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+#authLoading, #authNotLoggedIn, #authLoggedIn {
+    transition: opacity 0.2s ease-in-out;
+}
