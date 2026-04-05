@@ -287,14 +287,17 @@ app.post('/api/auth/login', async (c) => {
     const secret = c.env.JWT_SECRET;
     const token = await signToken(tokenPayload, secret);
 
-    // 🔥 setCookie helper ile cookie set et
+    // 🔥 setCookie ile dene
     setCookie(c, 'authToken', token, {
       httpOnly: true,
       secure: true,
-      sameSite: 'None',  // Cross-origin için zorunlu
+      sameSite: 'None',
       maxAge: 900,
-      path: '/'
+      path: '/',
     });
+    
+    // 🔥 Double-check: Manuel olarak da ekle (garanti yöntem)
+    c.header('Set-Cookie', `authToken=${token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=900`, { append: true });
     
     return c.json({
       success: true,
