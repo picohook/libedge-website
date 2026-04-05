@@ -1,6 +1,8 @@
 console.log("HONO VERSION LOADED");
+
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { setCookie } from 'hono/cookie';
 
 const app = new Hono();
 
@@ -12,16 +14,18 @@ const ALLOWED_ORIGINS = [
   'https://staging.libedge-website.pages.dev',
 ];
 
+// 1. CORS Middleware (En üstte, her şeyden önce)
 app.use('*', cors({
   origin: (origin) => {
-    if (!origin) return "https://staging.libedge-website.pages.dev"; 
+    // Gelen origin izin verilenler listesinde varsa onu kullan, yoksa staging'i kullan
+    if (!origin) return "https://staging.libedge-website.pages.dev";
     return ALLOWED_ORIGINS.includes(origin) ? origin : "https://staging.libedge-website.pages.dev";
   },
-  allowMethods:  ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders:  ['Content-Type', 'Authorization'],
-  exposeHeaders: ['Content-Length', 'Set-Cookie'], // ✅ Set-Cookie buraya eklenmeli
-  maxAge:        600,
-  credentials:   true, 
+  credentials: true,
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Set-Cookie', 'Content-Length'],  // ← Set-Cookie expose et!
+  maxAge: 86400,
 }));
 
 // ====================== JWT YARDIMCILARI ======================
@@ -255,7 +259,7 @@ app.get('/api/auth/status', (c) => {
   });
 });
 
-// ====================== 🆕 LOGIN (Cookie tabanlı) ======================
+// ====================== LOGIN ENDPOINT ======================
 app.post('/api/auth/login', async (c) => {
   try {
     const { email, password } = await c.req.json();
@@ -283,14 +287,14 @@ app.post('/api/auth/login', async (c) => {
     const secret = c.env.JWT_SECRET;
     const token = await signToken(tokenPayload, secret);
 
-    // 🔥 KRİTİK DEĞİŞİKLİK: Cross-origin için SameSite=None, Secure=true
-c.cookie('authToken', token, {
-  httpOnly: true,
-  secure: true,      // ✅ HTTPS şart
-  sameSite: 'None',  // 🔴 ÇOK KRİTİK: Cross-site çalışması için 'None' olmalı
-  maxAge: 900,       // 15 dakika
-  path: '/',         // ✅ Tüm site genelinde geçerli olması için
-});
+    // 🔥 setCookie helper ile cookie set et
+    setCookie(c, 'authToken', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',  // Cross-origin için zorunlu
+      maxAge: 900,
+      path: '/'
+    });
     
     return c.json({
       success: true,
@@ -305,32 +309,24 @@ c.cookie('authToken', token, {
 
   } catch (err) {
     console.error("Login error:", err);
-    return c.json({ success: false, error: err.message }, 500);
+    return c.json({ success: false, error: err.message || 'Giriş sırasında hata oluştu.' }, 500);
   }
 });
 
-// ✅ OPTIONS isteğini POST'un DIŞINA çıkar
-app.options('/api/auth/login', (c) => {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': 'https://staging.libedge-website.pages.dev',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Max-Age': '86400'
-    }
-  });
-});
-
-// 🆕 LOGOUT ENDPOINT
+// ====================== LOGOUT ENDPOINT ======================
 app.post('/api/auth/logout', async (c) => {
-  c.header('Set-Cookie', 'authToken=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict');
-  c.header('Access-Control-Allow-Credentials', 'true');
+  setCookie(c, 'authToken', '', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'None',
+    maxAge: 0,
+    path: '/'
+  });
+  
   return c.json({ success: true, message: 'Başarıyla çıkış yapıldı' });
 });
 
-// 🆕 TOKEN YENİLEME ENDPOINT (15 dakikalık token için)
+// ====================== REFRESH ENDPOINT ======================
 app.post('/api/auth/refresh', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
@@ -359,14 +355,13 @@ app.post('/api/auth/refresh', async (c) => {
   const secret = c.env.JWT_SECRET;
   const newToken = await signToken(newPayload, secret);
   
-  // 🔥 AYNI COOKIE AYARLARI
-c.cookie('authToken', token, {
-  httpOnly: true,
-  secure: true,      // ✅ HTTPS şart
-  sameSite: 'None',  // 🔴 ÇOK KRİTİK: Cross-site çalışması için 'None' olmalı
-  maxAge: 900,       // 15 dakika
-  path: '/',         // ✅ Tüm site genelinde geçerli olması için
-});
+  setCookie(c, 'authToken', newToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'None',
+    maxAge: 900,
+    path: '/'
+  });
   
   return c.json({ success: true, message: 'Token yenilendi' });
 });
