@@ -91,35 +91,28 @@ async function verifyToken(token, secret) {
 // ====================== 🆕 AUTH MIDDLEWARE (Cookie tabanlı) ======================
 
 async function requireAuth(c) {
-  // Cookie header'ını al
-  const cookieHeader = c.req.header('Cookie');
-  if (!cookieHeader) {
-    return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
+  // Önce Authorization header'a bak (proxy'den gelir)
+  const authHeader = c.req.header('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const payload = await verifyToken(token, c.env.JWT_SECRET);
+    if (!payload) return { response: c.json({ error: 'Geçersiz token' }, 401) };
+    return { user: payload, token };
   }
 
-  // authToken cookie'sini bul
+  // Sonra Cookie'ye bak (direkt browser'dan gelir - main branch için)
+  const cookieHeader = c.req.header('Cookie');
+  if (!cookieHeader) return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
+
   const tokenMatch = cookieHeader.match(/authToken=([^;]+)/);
-  if (!tokenMatch) {
-    return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
-  }
+  if (!tokenMatch) return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
 
   const token = tokenMatch[1];
-  const secret = c.env.JWT_SECRET;
-  
-  try {
-    const payload = await verifyToken(token, secret);
-    if (!payload) {
-      return { response: c.json({ error: 'Geçersiz veya süresi dolmuş oturum' }, 401) };
-    }
-    
-    // Token'ı ve payload'ı döndür, response yok
-    return { user: payload, token };
-  } catch (err) {
-    console.error('requireAuth error:', err);
-    return { response: c.json({ error: 'Yetkilendirme hatası' }, 401) };
-  }
-}
+  const payload = await verifyToken(token, c.env.JWT_SECRET);
+  if (!payload) return { response: c.json({ error: 'Geçersiz veya süresi dolmuş oturum' }, 401) };
 
+  return { user: payload, token };
+}
 // 🆕 Yardımcı: Mevcut kullanıcıyı al (middleware sonrası kullanılır)
 async function getCurrentUser(c) {
   const auth = await requireAuth(c);
