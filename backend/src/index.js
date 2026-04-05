@@ -270,7 +270,6 @@ app.post('/api/auth/login', async (c) => {
       return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
     }
 
-    // Token payload - 15 dakika (saniye cinsinden)
     const tokenPayload = {
       user_id: user.id,
       email: user.email,
@@ -282,16 +281,10 @@ app.post('/api/auth/login', async (c) => {
     };
     
     const secret = c.env.JWT_SECRET;
-    if (!secret) throw new Error('JWT_SECRET tanımlı değil');
     const token = await signToken(tokenPayload, secret);
 
-    // 🔥 HONO'NUN KENDİ METHODUYLA COOKIE SET ET
-    c.header('Set-Cookie', `authToken=${token}; HttpOnly; Path=/; Max-Age=900; SameSite=Strict`, { append: true });
-    
-    // 🔥 Ayrıca Access-Control-Allow-Credentials header'ını ekle
-    c.header('Access-Control-Allow-Credentials', 'true');
-    
-    return c.json({
+    // 🔥 KRİTİK: Response'u manuel oluştur
+    const responseBody = JSON.stringify({
       success: true,
       user: {
         id: user.id,
@@ -299,6 +292,21 @@ app.post('/api/auth/login', async (c) => {
         full_name: user.full_name,
         institution: user.institution,
         role: user.role
+      }
+    });
+    
+    // 🔥 Cookie string'ini oluştur
+    const cookieString = `authToken=${token}; HttpOnly; Path=/; Max-Age=900; SameSite=Lax`;
+    
+    // 🔥 Response'u manuel header'larla döndür
+    return new Response(responseBody, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': cookieString,
+        'Access-Control-Allow-Origin': 'https://staging.libedge-website.pages.dev',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Expose-Headers': 'Set-Cookie'
       }
     });
 
