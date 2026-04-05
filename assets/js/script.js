@@ -698,22 +698,27 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // --- Navigation Dropdown Links ---
-    document.querySelectorAll('.nav-links .dropdown a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const targetId = this.getAttribute('href').substring(1);
-            const targetCard = document.getElementById(targetId);
-
-            if (targetCard) {
-                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                const flipInner = targetCard.querySelector('.flip-inner');
-                if (flipInner && !flipInner.classList.contains('flipped')) {
-                    flipInner.classList.add('flipped');
-                    setTimeout(() => flipInner.classList.remove('flipped'), 3000);
-                }
+// Navigation Dropdown Links - DÜZELTİLMİŞ VERSİYON
+document.querySelectorAll('.nav-links .dropdown a').forEach(link => {
+    link.addEventListener('click', function(e) {
+        const href = this.getAttribute('href');
+        
+        // Sayfa linkleri (/, /admin, /profile vb.) → engelleme
+        if (!href || !href.startsWith('#')) return;
+        
+        e.preventDefault();
+        const targetId = href.substring(1);
+        const targetCard = document.getElementById(targetId);
+        if (targetCard) {
+            targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const flipInner = targetCard.querySelector('.flip-inner');
+            if (flipInner && !flipInner.classList.contains('flipped')) {
+                flipInner.classList.add('flipped');
+                setTimeout(() => flipInner.classList.remove('flipped'), 3000);
             }
-        });
+        }
     });
+});
 
     // --- Form Handling ---
     function handleFormSubmit(formId) {

@@ -91,26 +91,33 @@ async function verifyToken(token, secret) {
 // ====================== 🆕 AUTH MIDDLEWARE (Cookie tabanlı) ======================
 
 async function requireAuth(c) {
-  // Önce Authorization header'a bak (proxy'den gelir)
+  // ✅ YENİ: Proxy'den gelen Authorization header'ı da kabul et
   const authHeader = c.req.header('Authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
-    const payload = await verifyToken(token, c.env.JWT_SECRET);
-    if (!payload) return { response: c.json({ error: 'Geçersiz token' }, 401) };
+    const secret = c.env.JWT_SECRET;
+    const payload = await verifyToken(token, secret);
+    if (!payload) {
+      return { response: c.json({ error: 'Geçersiz token' }, 401) };
+    }
     return { user: payload, token };
   }
 
-  // Sonra Cookie'ye bak (direkt browser'dan gelir - main branch için)
+  // Mevcut cookie kontrolü (main branch için - dokunma)
   const cookieHeader = c.req.header('Cookie');
-  if (!cookieHeader) return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
-
+  if (!cookieHeader) {
+    return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
+  }
   const tokenMatch = cookieHeader.match(/authToken=([^;]+)/);
-  if (!tokenMatch) return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
-
+  if (!tokenMatch) {
+    return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
+  }
   const token = tokenMatch[1];
-  const payload = await verifyToken(token, c.env.JWT_SECRET);
-  if (!payload) return { response: c.json({ error: 'Geçersiz veya süresi dolmuş oturum' }, 401) };
-
+  const secret = c.env.JWT_SECRET;
+  const payload = await verifyToken(token, secret);
+  if (!payload) {
+    return { response: c.json({ error: 'Geçersiz veya süresi dolmuş oturum' }, 401) };
+  }
   return { user: payload, token };
 }
 // 🆕 Yardımcı: Mevcut kullanıcıyı al (middleware sonrası kullanılır)
