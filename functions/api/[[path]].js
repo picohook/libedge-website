@@ -8,16 +8,24 @@ export async function onRequest(context) {
     body = await request.arrayBuffer();
   }
 
+  // Cookie'den authToken'ı al, Authorization header'a taşı
+  const cookieHeader = request.headers.get('Cookie') || '';
+  const tokenMatch = cookieHeader.match(/authToken=([^;]+)/);
+  
+  const proxiedHeaders = new Headers(request.headers);
+  if (tokenMatch) {
+    proxiedHeaders.set('Authorization', `Bearer ${tokenMatch[1]}`);
+  }
+
   const response = await fetch(new Request(targetUrl, {
     method: request.method,
-    headers: request.headers,
+    headers: proxiedHeaders,
     body,
   }));
 
   const newHeaders = new Headers(response.headers);
   newHeaders.delete('set-cookie');
 
-  // Login endpoint: token body'den alınıp cookie'ye taşınır
   if (url.pathname.includes('/auth/login')) {
     const data = await response.json();
     if (data.token) {
@@ -31,19 +39,12 @@ export async function onRequest(context) {
     });
   }
 
-  // Logout endpoint: cookie'yi sil
   if (url.pathname.includes('/auth/logout')) {
     newHeaders.set('Set-Cookie',
       `authToken=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`
     );
-    return new Response(response.body, {
-      status: response.status,
-      headers: newHeaders,
-    });
+    return new Response(response.body, { status: response.status, headers: newHeaders });
   }
 
-  return new Response(response.body, {
-    status: response.status,
-    headers: newHeaders,
-  });
+  return new Response(response.body, { status: response.status, headers: newHeaders });
 }
