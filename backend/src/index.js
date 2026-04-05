@@ -283,8 +283,16 @@ app.post('/api/auth/login', async (c) => {
     const secret = c.env.JWT_SECRET;
     const token = await signToken(tokenPayload, secret);
 
-    // 🔥 KRİTİK: Response'u manuel oluştur
-    const responseBody = JSON.stringify({
+    // 🔥 HONO'NUN KENDİ COOKIE METHODUNU KULLAN
+    c.cookie('authToken', token, {
+      httpOnly: true,
+      secure: false,  // Local'de false, production'da true yap
+      sameSite: 'Lax',
+      maxAge: 900,
+      path: '/'
+    });
+    
+    return c.json({
       success: true,
       user: {
         id: user.id,
@@ -292,21 +300,6 @@ app.post('/api/auth/login', async (c) => {
         full_name: user.full_name,
         institution: user.institution,
         role: user.role
-      }
-    });
-    
-    // 🔥 Cookie string'ini oluştur
-    const cookieString = `authToken=${token}; HttpOnly; Path=/; Max-Age=900; SameSite=Lax`;
-    
-    // 🔥 Response'u manuel header'larla döndür
-    return new Response(responseBody, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Set-Cookie': cookieString,
-        'Access-Control-Allow-Origin': 'https://staging.libedge-website.pages.dev',
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Expose-Headers': 'Set-Cookie'
       }
     });
 
