@@ -14,14 +14,14 @@ const ALLOWED_ORIGINS = [
 
 app.use('*', cors({
   origin: (origin) => {
-    if (!origin) return "https://staging.libedge-website.pages.dev";
+    if (!origin) return "https://staging.libedge-website.pages.dev"; 
     return ALLOWED_ORIGINS.includes(origin) ? origin : "https://staging.libedge-website.pages.dev";
   },
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  exposeHeaders: ['Content-Length', 'Set-Cookie'],
-  maxAge: 600,
-  credentials: true,  // ✅ Bu çok önemli
+  allowMethods:  ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders:  ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Content-Length', 'Set-Cookie'], // ✅ Set-Cookie buraya eklenmeli
+  maxAge:        600,
+  credentials:   true, 
 }));
 
 // ====================== JWT YARDIMCILARI ======================
@@ -284,13 +284,13 @@ app.post('/api/auth/login', async (c) => {
     const token = await signToken(tokenPayload, secret);
 
     // 🔥 KRİTİK DEĞİŞİKLİK: Cross-origin için SameSite=None, Secure=true
-    c.cookie('authToken', token, {
-      httpOnly: true,
-      secure: true,        // ✅ HTTPS için zorunlu
-      sameSite: 'None',    // ✅ Cross-origin için zorunlu!
-      maxAge: 900,         // 15 dakika
-      path: '/'
-    });
+c.cookie('authToken', token, {
+  httpOnly: true,
+  secure: true,      // ✅ HTTPS şart
+  sameSite: 'None',  // 🔴 ÇOK KRİTİK: Cross-site çalışması için 'None' olmalı
+  maxAge: 900,       // 15 dakika
+  path: '/',         // ✅ Tüm site genelinde geçerli olması için
+});
     
     return c.json({
       success: true,
@@ -360,13 +360,13 @@ app.post('/api/auth/refresh', async (c) => {
   const newToken = await signToken(newPayload, secret);
   
   // 🔥 AYNI COOKIE AYARLARI
-  c.cookie('authToken', newToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'None',
-    maxAge: 900,
-    path: '/'
-  });
+c.cookie('authToken', token, {
+  httpOnly: true,
+  secure: true,      // ✅ HTTPS şart
+  sameSite: 'None',  // 🔴 ÇOK KRİTİK: Cross-site çalışması için 'None' olmalı
+  maxAge: 900,       // 15 dakika
+  path: '/',         // ✅ Tüm site genelinde geçerli olması için
+});
   
   return c.json({ success: true, message: 'Token yenilendi' });
 });
