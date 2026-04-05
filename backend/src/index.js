@@ -270,25 +270,37 @@ app.post('/api/auth/login', async (c) => {
       return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
     }
 
-    // 🔥 Token payload - süre 15 dakika (güvenlik için)
+    // Token payload - 15 dakika (saniye cinsinden)
     const tokenPayload = {
       user_id: user.id,
       email: user.email,
       full_name: user.full_name || "",
       institution: user.institution || "",
       role: user.role || "user",
-      iat: Date.now(),
-      exp: Math.floor(Date.now() / 1000) + (15 * 60)  // 15 dakika
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (15 * 60)
     };
     
     const secret = c.env.JWT_SECRET;
     if (!secret) throw new Error('JWT_SECRET tanımlı değil');
     const token = await signToken(tokenPayload, secret);
 
-    // 🔥 Token'ı HTTP-only cookie olarak gönder
-    c.header('Set-Cookie', `authToken=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=900`, { append: true });
+    // 🔥 DÜZELTİLDİ: Cookie'yi doğru şekilde set et
+    const cookieOptions = [
+      `authToken=${token}`,
+      'HttpOnly',
+      'Path=/',
+      'Max-Age=900',
+      'SameSite=Lax'  // Strict yerine Lax dene
+    ];
+    
+    // Production'da Secure ekle
+    if (c.env.ENVIRONMENT === 'production') {
+      cookieOptions.push('Secure');
+    }
+    
+    c.header('Set-Cookie', cookieOptions.join('; '));
 
-    // Response body'de token YOK - sadece user bilgisi
     return c.json({
       success: true,
       user: {
