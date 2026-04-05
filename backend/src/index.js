@@ -14,14 +14,14 @@ const ALLOWED_ORIGINS = [
 
 app.use('*', cors({
   origin: (origin) => {
-    if (!origin) return "https://staging.libedge-website.pages.dev"; 
+    if (!origin) return "https://staging.libedge-website.pages.dev";
     return ALLOWED_ORIGINS.includes(origin) ? origin : "https://staging.libedge-website.pages.dev";
   },
-  allowMethods:  ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders:  ['Content-Type', 'Authorization'],
-  exposeHeaders: ['Content-Length'],
-  maxAge:        600,
-  credentials:   true,  // ✅ Cookie için gerekli
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Content-Length', 'Set-Cookie'],  // ← Set-Cookie ekle
+  maxAge: 600,
+  credentials: true,
 }));
 
 // ====================== JWT YARDIMCILARI ======================
@@ -312,6 +312,20 @@ app.post('/api/auth/login', async (c) => {
     console.error("Login error:", err);
     return c.json({ success: false, error: err.message || 'Giriş sırasında hata oluştu.' }, 500);
   }
+});
+
+// ✅ OPTIONS isteğini POST'un DIŞINA çıkar
+app.options('/api/auth/login', (c) => {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': 'https://staging.libedge-website.pages.dev',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
 });
 
 // 🆕 LOGOUT ENDPOINT
