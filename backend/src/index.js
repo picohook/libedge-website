@@ -285,23 +285,11 @@ app.post('/api/auth/login', async (c) => {
     if (!secret) throw new Error('JWT_SECRET tanımlı değil');
     const token = await signToken(tokenPayload, secret);
 
-    // 🔥 DÜZELTİLDİ: Cookie'yi doğru şekilde set et
-    const cookieOptions = [
-      `authToken=${token}`,
-      'HttpOnly',
-      'Path=/',
-      'Max-Age=900',
-      'SameSite=Lax'  // Strict yerine Lax dene
-    ];
+    // 🔥 CLOUDFLARE WORKERS İÇİN DOĞRU COOKIE FORMATI
+    const cookieString = `authToken=${token}; HttpOnly; Path=/; Max-Age=900; SameSite=Lax`;
     
-    // Production'da Secure ekle
-    if (c.env.ENVIRONMENT === 'production') {
-      cookieOptions.push('Secure');
-    }
-    
-    c.header('Set-Cookie', cookieOptions.join('; '));
-
-    return c.json({
+    // 🔥 KRİTİK: Response'u doğrudan döndür
+    return new Response(JSON.stringify({
       success: true,
       user: {
         id: user.id,
@@ -309,6 +297,14 @@ app.post('/api/auth/login', async (c) => {
         full_name: user.full_name,
         institution: user.institution,
         role: user.role
+      }
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': cookieString,
+        'Access-Control-Allow-Origin': 'https://staging.libedge-website.pages.dev',
+        'Access-Control-Allow-Credentials': 'true'
       }
     });
 
