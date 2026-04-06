@@ -995,50 +995,144 @@ app.get('/api/institution/folder/:id', async (c) => {
   }
 });
 
+export default app;
 // ====================== DOSYA UPLOAD (R2) ======================
 
 app.post('/api/upload', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
-
-  const role = auth.user.role;
-  if (role !== 'super_admin' && role !== 'admin') {
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
     return c.json({ error: 'Yetkisiz' }, 403);
   }
-
   const bucket = c.env.FILES_BUCKET;
   if (!bucket) return c.json({ error: 'R2 bucket bağlı değil' }, 500);
-
   const formData = await c.req.formData();
   const file = formData.get('file');
-
-  if (!file || typeof file === 'string') {
-    return c.json({ error: 'Dosya bulunamadı' }, 400);
-  }
-
+  if (!file || typeof file === 'string') return c.json({ error: 'Dosya bulunamadı' }, 400);
   const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
-  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const key = `uploads/${auth.user.user_id}/${safeName}`;
-
+  const key = `uploads/${auth.user.user_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   await bucket.put(key, file.stream(), {
     httpMetadata: { contentType: file.type || 'application/octet-stream' },
-    customMetadata: { originalName: file.name, uploadedBy: String(auth.user.user_id) }
   });
-
-  const publicUrl = c.env.R2_PUBLIC_URL
-    ? `${c.env.R2_PUBLIC_URL}/${key}`
-    : null;
-
+  const publicUrl = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : null;
   if (!publicUrl) return c.json({ error: 'R2_PUBLIC_URL ayarlanmamış' }, 500);
-
-  return c.json({
-    success: true,
-    url: publicUrl,
-    key,
-    name: file.name,
-    type: ext,
-    size: file.size
-  });
+  return c.json({ success: true, url: publicUrl, key, name: file.name, type: ext, size: file.size });
 });
 
-export default app;
+// ====================== KURUM KLASÖR CRUD ======================
+
+app.post('/api/institution/:id/folder', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const role = auth.user.role;
+  if (role !== 'super_admin' && role !== 'admin') return c.json({ error: 'Yetkisiz' }, 403);
+  const institutionId = c.req.param('id');
+  const db = c.env.DB;
+  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE name = ? OR id = ?`).bind(institutionId, institutionId).first();
+  if (!institution) return c.json({ error: 'Kurum bulunamadı' }, 404);
+  if (role === 'admin' && auth.user.institution !== institution.name) return c.json({ error: 'Sadece kendi kurumunuza klasör ekleyebilirsiniz' }, 403);
+  const { folder_name, parent_folder_id, is_public } = await c.req.json();
+  if (!folder_name?.trim()) return c.json({ error: 'Klasör adı boş olamaz' }, 400);
+  const result = await db.prepare(`INSERT INTO institution_folders (institution_id, folder_name, parent_folder_id, is_public) VALUES (?, ?, ?, ?)`)
+    .bind(institution.id, folder_name.trim(), parent_folder_id || null, is_public ? 1 : 0).run();
+  return c.json({ success: true, id: result.meta?.last_row_id });
+});
+
+app.delete('/api/institution/folder/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const role = auth.user.role;
+  if (role !== 'super_admin' && role !== 'admin') return c.json({ error: 'Yetkisiz' }, 403);
+  const folderId = c.req.param('id');
+  const db = c.env.DB;
+  const folder = await db.prepare(`SELECT f.*, i.name as institution_name FROM institution_folders f LEFT JOIN institutions i ON f.institution_id = i.id WHERE f.id = ?`).bind(folderId).first();
+  if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
+  if (role === 'admin' && auth.user.institution !== folder.institution_name) return c.json({ error: 'Yetkisiz' }, 403);
+  await db.prepare(`UPDATE institution_files SET is_active = 0 WHERE folder_id = ?`).bind(folderId).run();
+  await db.prepare(`DELETE FROM institution_folders WHERE id = ? OR parent_folder_id = ?`).bind(folderId, folderId).run();
+  return c.json({ success: true });
+});
+
+// ====================== KURUM DOSYA CRUD ======================
+
+app.post('/api/institution/:id/file', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const role = auth.user.role;
+  if (role !== 'super_admin' && role !== 'admin') return c.json({ error: 'Yetkisiz' }, 403);
+  const institutionId = c.req.param('id');
+  const db = c.env.DB;
+  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE name = ? OR id = ?`).bind(institutionId, institutionId).first();
+  if (!institution) return c.json({ error: 'Kurum bulunamadı' }, 404);
+  if (role === 'admin' && auth.user.institution !== institution.name) return c.json({ error: 'Yetkisiz' }, 403);
+  const { file_name, file_url, file_type, category, folder_id, is_public } = await c.req.json();
+  if (!file_name?.trim() || !file_url?.trim()) return c.json({ error: 'Dosya adı ve URL zorunludur' }, 400);
+  const result = await db.prepare(`INSERT INTO institution_files (institution_id, file_name, file_url, file_type, category, folder_id, is_public, is_active, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)`)
+    .bind(institution.id, file_name.trim(), file_url.trim(), file_type || 'other', category || 'other', folder_id || null, is_public ? 1 : 0, auth.user.user_id).run();
+  return c.json({ success: true, id: result.meta?.last_row_id });
+});
+
+app.put('/api/institution/file/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const role = auth.user.role;
+  if (role !== 'super_admin' && role !== 'admin') return c.json({ error: 'Yetkisiz' }, 403);
+  const fileId = c.req.param('id');
+  const db = c.env.DB;
+  const file = await db.prepare(`SELECT f.*, i.name as institution_name FROM institution_files f LEFT JOIN institutions i ON f.institution_id = i.id WHERE f.id = ? AND f.is_active = 1`).bind(fileId).first();
+  if (!file) return c.json({ error: 'Dosya bulunamadı' }, 404);
+  if (role === 'admin' && auth.user.institution !== file.institution_name) return c.json({ error: 'Yetkisiz' }, 403);
+  const { file_name, file_url, category, is_public, folder_id } = await c.req.json();
+  await db.prepare(`UPDATE institution_files SET file_name = COALESCE(?, file_name), file_url = COALESCE(?, file_url), category = COALESCE(?, category), is_public = COALESCE(?, is_public), folder_id = COALESCE(?, folder_id) WHERE id = ?`)
+    .bind(file_name || null, file_url || null, category || null, is_public !== undefined ? (is_public ? 1 : 0) : null, folder_id !== undefined ? folder_id : null, fileId).run();
+  return c.json({ success: true });
+});
+
+app.delete('/api/institution/file/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const role = auth.user.role;
+  if (role !== 'super_admin' && role !== 'admin') return c.json({ error: 'Yetkisiz' }, 403);
+  const fileId = c.req.param('id');
+  const db = c.env.DB;
+  const file = await db.prepare(`SELECT f.*, i.name as institution_name FROM institution_files f LEFT JOIN institutions i ON f.institution_id = i.id WHERE f.id = ? AND f.is_active = 1`).bind(fileId).first();
+  if (!file) return c.json({ error: 'Dosya bulunamadı' }, 404);
+  if (role === 'admin' && auth.user.institution !== file.institution_name) return c.json({ error: 'Yetkisiz' }, 403);
+  await db.prepare(`UPDATE institution_files SET is_active = 0 WHERE id = ?`).bind(fileId).run();
+  return c.json({ success: true });
+});
+
+// ====================== KURUM YÖNETİMİ ======================
+
+app.post('/api/admin/institution', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const { name, domain } = await c.req.json();
+  if (!name?.trim()) return c.json({ error: 'Kurum adı zorunludur' }, 400);
+  const db = c.env.DB;
+  try {
+    const result = await db.prepare(`INSERT INTO institutions (name, domain) VALUES (?, ?)`).bind(name.trim(), domain?.trim() || null).run();
+    return c.json({ success: true, id: result.meta?.last_row_id });
+  } catch (e) {
+    if (e.message?.includes('UNIQUE')) return c.json({ error: 'Bu kurum adı zaten var' }, 409);
+    throw e;
+  }
+});
+
+app.put('/api/admin/institution/:id', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const id = c.req.param('id');
+  const { name, domain } = await c.req.json();
+  const db = c.env.DB;
+  await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = COALESCE(?, domain) WHERE id = ?`).bind(name || null, domain || null, id).run();
+  return c.json({ success: true });
+});
+
+app.delete('/api/admin/institution/:id', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const id = c.req.param('id');
+  const db = c.env.DB;
+  await db.prepare(`UPDATE institution_files SET is_active = 0 WHERE institution_id = ?`).bind(id).run();
+  await db.prepare(`DELETE FROM institution_folders WHERE institution_id = ?`).bind(id).run();
+  await db.prepare(`DELETE FROM institutions WHERE id = ?`).bind(id).run();
+  return c.json({ success: true });
+});
