@@ -1282,7 +1282,7 @@ function previewFile(url, name, type) {
             <audio controls style="width:100%;max-width:20rem"><source src="${url}"></audio>
         </div>`;
     } else if (office.includes(ext)) {
-        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}&embedded=true`;
+        const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
         body.innerHTML = `<iframe src="${viewerUrl}" style="width:100%;height:calc(100vh - 52px);border:0" onload="this.style.opacity=1" style="opacity:0;transition:opacity 0.3s"></iframe>`;
     } else if (ext === 'gdrive') {
         const id = url.match(/\/d\/([^/]+)/)?.[1];
