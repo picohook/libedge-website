@@ -603,41 +603,42 @@
 </div>
 
 <!-- Bulk User Modal -->
+<!-- Bulk User Modal - DÜZELTİLMİŞ -->
 <div id="bulkUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-3xl">
-        <h3 class="text-xl font-bold mb-1">Toplu Kullanıcı Ekle</h3>
+    <div class="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <h3 class="text-xl font-bold mb-1 flex-shrink-0">Toplu Kullanıcı Ekle</h3>
 
         <!-- Adım 1: Yapıştır -->
-        <div id="bulkUserStep1">
-            <p class="text-sm text-gray-500 mb-3">Excel veya CSV'den kopyalayıp yapıştırın. Sütunlar: <span class="font-medium text-gray-700">Ad Soyad</span>, <span class="font-medium text-gray-700">E-posta</span>, <span class="font-medium text-gray-700">Kurum</span> (opsiyonel), <span class="font-medium text-gray-700">Rol</span> (opsiyonel, user/admin). Tab veya virgülle ayrılmış.</p>
+        <div id="bulkUserStep1" class="flex flex-col flex-1 min-h-0">
+            <p class="text-sm text-gray-500 mb-3 flex-shrink-0">Excel veya CSV'den kopyalayıp yapıştırın. Sütunlar: <span class="font-medium text-gray-700">Ad Soyad</span>, <span class="font-medium text-gray-700">E-posta</span>, <span class="font-medium text-gray-700">Kurum</span> (opsiyonel), <span class="font-medium text-gray-700">Rol</span> (opsiyonel, user/admin). Tab veya virgülle ayrılmış.</p>
             <textarea id="bulkUserPasteArea" rows="12"
                 placeholder="Ahmet Yılmaz&#9;ahmet@ankara.edu.tr&#9;Ankara Üniversitesi&#9;user&#10;Ayşe Kaya&#9;ayse@itu.edu.tr&#9;&#9;user"
-                class="w-full border rounded p-3 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"></textarea>
-            <div class="flex gap-2 pt-3 mt-3 border-t">
+                class="w-full border rounded p-3 text-sm font-mono flex-1 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 min-h-0"></textarea>
+            <div class="flex gap-2 pt-3 mt-3 border-t flex-shrink-0">
                 <button type="button" onclick="parseBulkUsers()" class="btn btn-primary flex-1">Önizle</button>
                 <button type="button" onclick="closeBulkUserModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
         </div>
 
-        <!-- Adım 2: Önizleme -->
-        <div id="bulkUserStep2" class="hidden">
-            <p class="text-sm text-gray-500 mb-3">Yanlış satırları silin, ardından <strong>Ekle</strong>'ye basın.</p>
-            <div class="border rounded bulk-preview-scroll">
+        <!-- Adım 2: Önizleme tablosu -->
+        <div id="bulkUserStep2" class="hidden flex-col flex-1 min-h-0">
+            <p class="text-sm text-gray-500 mb-3 flex-shrink-0">Yanlış satırları silin, ardından <strong>Ekle</strong>'ye basın.</p>
+            <div class="overflow-y-auto border rounded" style="flex: 1; min-height: 0; max-height: 50vh;">
                 <table class="w-full text-sm">
-                    <thead class="sticky top-0 bg-gray-50">
+                    <thead class="sticky top-0 bg-gray-50 z-10">
                         <tr>
-                            <th class="text-left px-3 py-2 font-medium text-gray-700">Ad Soyad</th>
-                            <th class="text-left px-3 py-2 font-medium text-gray-700">E-posta</th>
-                            <th class="text-left px-3 py-2 font-medium text-gray-700">Kurum</th>
-                            <th class="text-left px-3 py-2 font-medium text-gray-700">Rol</th>
-                            <th class="w-8"></th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Ad Soyad</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">E-posta</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Kurum</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Rol</th>
+                            <th class="w-8 sticky top-0 bg-gray-50"></th>
                         </tr>
                     </thead>
                     <tbody id="bulkUserPreviewRows"></tbody>
                 </table>
             </div>
-            <div id="bulkUserStatus" class="hidden mt-2 text-sm text-gray-600 whitespace-pre-wrap"></div>
-            <div class="flex gap-2 pt-3 mt-3 border-t">
+            <div id="bulkUserStatus" class="hidden mt-2 text-sm text-gray-600 whitespace-pre-wrap flex-shrink-0"></div>
+            <div class="flex gap-2 pt-3 mt-3 border-t flex-shrink-0">
                 <button type="button" onclick="showBulkUserStep1()" class="btn bg-gray-200 text-gray-700"><i class="fas fa-arrow-left mr-1"></i>Geri</button>
                 <button type="button" id="bulkUserSubmitBtn" onclick="submitBulkUsers()" class="btn btn-primary flex-1">Ekle</button>
                 <button type="button" onclick="closeBulkUserModal()" class="btn bg-gray-300">İptal</button>
