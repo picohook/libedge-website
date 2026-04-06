@@ -1849,47 +1849,39 @@ async function submitBulkUsers() {
     loadDashboard();
 }
 
-// ====================== KURUMUM ======================
-
-// ====================== KURUMUM ======================
+// ====================== KURUMUM - ANA FONKSİYON ======================
 
 async function loadMyInstitution() {
     const errEl = document.getElementById('myInstitutionError');
     const successEl = document.getElementById('myInstitutionSuccess');
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
+    
     try {
-        // Önce yeni endpoint'i dene, yoksa fallback
-        let inst = null;
-        const newRes = await fetch(`${API_BASE}/api/admin/my-institution`, { credentials: 'include' });
-        if (newRes.ok) {
-            inst = await newRes.json();
-        } else {
-            // Fallback: profile + users listesinden hesapla
-            const profileRes = await fetch(`${API_BASE}/api/user/profile`, { credentials: 'include' });
-            if (!profileRes.ok) throw new Error('Profil alınamadı');
-            const profile = await profileRes.json();
-            const instName = profile.institution;
-            if (!instName) throw new Error('Kullanıcıya atanmış kurum yok');
-
-            const usersRes = await fetch(`${API_BASE}/api/admin/users`, { credentials: 'include' });
-            const users = usersRes.ok ? await usersRes.json() : [];
-            const userCount = users.filter(u => u.institution === instName).length;
-
-            inst = { id: null, name: instName, domain: '', user_count: userCount, file_count: '-' };
+        const res = await fetch('/api/admin/my-institution', { 
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!res.ok) {
+            throw new Error('Kurum bilgileri alınamadı');
         }
-
-        document.getElementById('myInstitutionId').value = inst.id ?? '';
-        document.getElementById('myInstitutionName').value = inst.name;
+        
+        const inst = await res.json();
+        console.log('Kurum bilgileri:', inst);
+        
+        document.getElementById('myInstitutionId').value = inst.id || '';
+        document.getElementById('myInstitutionName').value = inst.name || '';
         document.getElementById('myInstitutionDomain').value = inst.domain || '';
         document.getElementById('myInstUserCount').textContent = inst.user_count ?? '-';
         document.getElementById('myInstFileCount').textContent = inst.file_count ?? '-';
+        
     } catch (e) {
-        errEl.textContent = 'Kurum bilgileri alınamadı: ' + e.message;
+        console.error('loadMyInstitution error:', e);
+        errEl.textContent = 'Kurum bilgileri yüklenemedi: ' + e.message;
         errEl.classList.remove('hidden');
     }
 }
-
 // ====================== KURUMUM - DOMAIN GÜNCELLEME (BAŞARI MESAJI DÜZELTİLMİŞ) ======================
 
 document.getElementById('myInstitutionForm').addEventListener('submit', async (e) => {
