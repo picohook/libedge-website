@@ -1,8 +1,7 @@
 export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
-  const targetUrl = `https://form-handler.agursel.workers.dev/api${url.pathname.replace('/api', '')}${url.search}`;
-
+  const targetUrl = `https://form-handler-staging.agursel.workers.dev/api${url.pathname.replace('/api', '')}${url.search}`;
   const headers = new Headers(request.headers);
 
   // Cookie'den token al, Authorization header'a taşı

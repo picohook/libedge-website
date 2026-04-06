@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Paneli - LibEdge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .sidebar { background: #220f60; }
+        .sidebar-link { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.5rem; color: #e0e7ff; transition: all 0.2s; }
+        .sidebar-link:hover { background-color: #3b2a7a; color: white; }
+        .sidebar-link.active { background-color: #4c3d8c; color: white; }
+        .stat-card { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background-color: #f9fafb; font-weight: 600; }
+        .btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background-color: #220f60; color: white; }
+        .btn-primary:hover { background-color: #3b2a7a; }
+        .btn-danger { background-color: #dc2626; color: white; }
+        .btn-danger:hover { background-color: #b91c1c; }
+
+        .sidebar-link-exit {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    color: #e0e7ff;
+    transition: all 0.2s;
+}
+.sidebar-link-exit:hover {
+    background-color: #3b2a7a;
+    color: white;
+}
+
+    </style>
+</head>
+<body>
+
+<!-- Yükleniyor ekranı -->
+<div id="loadingScreen" class="fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
+  <div class="text-center">
+    <i class="fas fa-spinner fa-spin text-3xl text-purple-700 mb-3"></i>
+    <p class="text-gray-500 text-sm">Yetki kontrol ediliyor...</p>
+  </div>
+</div>
+
+<!-- Admin içeriği — auth onaylanana kadar gizli -->
+<div id="authGate" style="display:none">
+
+
+<div class="flex h-screen">
+    <!-- Sidebar -->
+    <div class="sidebar w-64 flex-shrink-0">
+        <div class="p-6">
+            <div class="flex items-center gap-3 mb-8">
+                <img src="assets/images/libedge_logo.webp" alt="Logo" class="h-10 w-auto">
+                <span class="text-white font-bold text-lg">LibEdge</span>
+            </div>
+            <nav class="space-y-1">
+                <a href="#" class="sidebar-link active" data-tab="dashboard"><i class="fas fa-chart-line w-5"></i><span>Dashboard</span></a>
+                <a href="#" class="sidebar-link" data-tab="users"><i class="fas fa-users w-5"></i><span>Kullanıcılar</span></a>
+                <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-ticket-alt w-5"></i><span>Abonelikler</span></a>
+                <a href="#" class="sidebar-link" data-tab="files"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
+                <a href="#" class="sidebar-link" data-tab="products"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
+                <a href="#" class="sidebar-link" data-tab="requests"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
+            </nav>
+            <div class="absolute bottom-6 left-6">
+                <a href="index.html" class="sidebar-link-exit"><i class="fas fa-arrow-left w-5"></i><span>Siteye Dön</span></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 overflow-auto">
+        <div class="bg-white shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+            <h1 id="pageTitle" class="text-xl font-bold text-gray-800">Dashboard</h1>
+            <div class="flex items-center gap-4">
+                <span id="adminName" class="text-sm text-gray-600">Admin</span>
+                <button id="logoutBtn" class="text-red-600 hover:text-red-800 text-sm" onclick="logout()">Çıkış Yap</button>
+            </div>
+        </div>
+
+<div class="p-6">
+    <!-- Dashboard Tab -->
+    <div id="tab-dashboard" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Toplam Kullanıcı</p>
+                    <p id="statUsers" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-users text-3xl text-violet-600 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Aktif Abonelik</p>
+                    <p id="statSubscriptions" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-ticket-alt text-3xl text-green-500 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Deneme Talebi</p>
+                    <p id="statTrials" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-flask text-3xl text-yellow-500 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Kurum Sayısı</p>
+                    <p id="statInstitutions" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-building text-3xl text-blue-500 opacity-50"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="text-lg font-semibold mb-4">Son Kayıt Olan Kullanıcılar</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>Ad Soyad</th>
+                            <th>E-posta</th>
+                            <th>Kurum</th>
+                            <th>Kayıt Tarihi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentUsers">
+                        <tr>
+                            <td colspan="4" class="text-center py-4">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Tab -->
+    <div id="tab-users" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Kullanıcılar</h3>
+                <button id="addUserBtn" class="btn btn-primary">
+                    <i class="fas fa-plus mr-2"></i>Kullanıcı Ekle
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ad Soyad</th>
+                            <th>E-posta</th>
+                            <th>Kurum</th>
+                            <th>Rol</th>
+                            <th>Kayıt Tarihi</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersList">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscriptions Tab -->
+    <div id="tab-subscriptions" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Abonelikler</h3>
+                <button id="addSubscriptionBtn" class="btn btn-primary">
+                    <i class="fas fa-plus mr-2"></i>Abonelik Ekle
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Kullanıcı</th>
+                            <th>Ürün</th>
+                            <th>Durum</th>
+                            <th>Başlangıç</th>
+                            <th>Bitiş</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subscriptionsList">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<!-- Kurum Dosyaları Tab (Super Admin için) -->
+<div id="tab-files" class="tab-content hidden">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h3 class="text-lg font-semibold">Kurum Dosyaları</h3>
+                <p class="text-sm text-gray-500">Tüm kurumların dosyalarını yönetin</p>
+            </div>
+            <div class="flex gap-2">
+                <select id="institutionFilter" class="border rounded px-3 py-2 text-sm bg-white">
+                    <option value="all">Tüm Kurumlar</option>
+                </select>
+                <button id="addFileBtnAdmin" class="btn btn-primary">
+                    <i class="fas fa-upload mr-1"></i> Dosya Yükle
+                </button>
+            </div>
+        </div>
+        
+        <!-- Dosyalar Listesi -->
+        <div id="adminFilesList" class="space-y-2">
+            <p class="text-gray-500 text-center py-8">Yükleniyor...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Dosya Yükleme Modal -->
+<div id="adminFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Dosya Yükle</h3>
+        <form id="adminFileForm">
+            <div class="mb-3">
+                <select id="adminFileInstitution" class="w-full border p-2 rounded" required>
+                    <option value="">Kurum Seçin</option>
+                </select>
+            </div>
+            <div class="mb-3"><input type="text" id="adminFileName" placeholder="Dosya Adı" class="w-full border p-2 rounded" required></div>
+            <div class="mb-3"><input type="url" id="adminFileUrl" placeholder="Dosya URL" class="w-full border p-2 rounded" required></div>
+            <div class="mb-3">
+                <select id="adminFileCategory" class="w-full border p-2 rounded">
+                    <option value="contract">Sözleşme</option>
+                    <option value="invoice">Fatura</option>
+                    <option value="license">Lisans</option>
+                    <option value="documentation">Dokümantasyon</option>
+                    <option value="other">Diğer</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <select id="adminFileVisibility" class="w-full border p-2 rounded">
+                    <option value="0">Kurum İçi (Sadece kurum personeli)</option>
+                    <option value="1">Herkese Açık</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary flex-1">Yükle</button>
+                <button type="button" onclick="closeAdminFileModal()" class="btn bg-gray-300 flex-1">İptal</button>
+            </div>
+        </form>
+    </div>
+</div>
+    <!-- Products Tab -->
+    <div id="tab-products" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="text-lg font-semibold mb-4">Ürünler</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>Slug</th>
+                            <th>Ürün Adı</th>
+                            <th>Kategori</th>
+                            <th>Yetkili Bölge</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsList"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Requests Tab -->
+    <div id="tab-requests" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="text-lg font-semibold mb-4">Deneme ve İletişim Talepleri</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Tip</th>
+                            <th>Ad Soyad</th>
+                            <th>E-posta</th>
+                            <th>Kurum</th>
+                            <th>Mesaj</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requestsList">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 id="userModalTitle" class="text-xl font-bold mb-4">Kullanıcı Ekle</h3>
+        <form id="userForm"><input type="hidden" id="userId"><div class="mb-3"><input type="text" id="userFullName" placeholder="Ad Soyad" class="w-full border p-2 rounded" required></div><div class="mb-3"><input type="email" id="userEmail" placeholder="E-posta" class="w-full border p-2 rounded" required></div><div class="mb-3"><input type="password" id="userPassword" placeholder="Şifre (değiştirmek için doldurun)" class="w-full border p-2 rounded"></div><div class="mb-3"><input type="text" id="userInstitution" placeholder="Kurum" class="w-full border p-2 rounded"></div><div class="mb-3"><select id="userRole" class="w-full border p-2 rounded"><option value="user">Kullanıcı</option><option value="admin">Admin</option></select></div><div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeUserModal()" class="btn bg-gray-300 flex-1">İptal</button></div></form>
+    </div>
+</div>
+
+<div id="subscriptionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Abonelik Ekle</h3>
+        <form id="subscriptionForm"><div class="mb-3"><select id="subUserId" class="w-full border p-2 rounded" required><option value="">Kullanıcı Seçin</option></select></div><div class="mb-3"><select id="subProduct" class="w-full border p-2 rounded" required><option value="">Ürün Seçin</option><option value="pangram">Pangram</option><option value="chatpdf">ChatPDF</option><option value="primal-pictures">Primal Pictures</option><option value="lecturio">Lecturio</option><option value="jove-research">JoVE Research</option><option value="biorender">BioRender</option><option value="wiley-journals">Wiley Dergiler</option></select></div><div class="mb-3"><select id="subStatus" class="w-full border p-2 rounded"><option value="active">Aktif</option><option value="trial">Deneme</option><option value="expired">Süresi Doldu</option></select></div><div class="mb-3"><input type="date" id="subEndDate" placeholder="Bitiş Tarihi" class="w-full border p-2 rounded"></div><div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeSubscriptionModal()" class="btn bg-gray-300 flex-1">İptal</button></div></form>
+    </div>
+</div>
+
+<script src="assets/js/script.js"></script>
+<script>
+// ====================== ADMIN AUTH GATE ======================
+let currentAdmin = null; 
+
+async function checkAdminAuth() {
+    try {
+        const res = await fetch('/api/user/profile', {
+            credentials: 'include'
+        });
+        
+        if (!res.ok) {
+            redirectToHome('Oturumunuz sona erdi.');
+            return false;
+        }
+        
+        const user = await res.json();
+        currentAdmin = user;
+        
+        if (user.role !== 'admin' && user.role !== 'super_admin') {
+            redirectToHome('Bu sayfaya erişim yetkiniz yok.');
+            return false;
+        }
+        
+        const adminNameEl = document.getElementById('adminName');
+        if (adminNameEl) adminNameEl.textContent = user.full_name || user.email;
+        
+        if (user.role !== 'super_admin') {
+            const productsTab = document.querySelector('[data-tab="products"]');
+            if (productsTab) productsTab.parentElement?.remove();
+        }
+        return true;
+    } catch (err) {
+        redirectToHome('Bağlantı hatası.');
+        return false;
+    }
+}
+
+function redirectToHome(msg) {
+    localStorage.removeItem('authToken');
+    sessionStorage.setItem('authRedirectMsg', msg);
+    window.location.replace('index.html');
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const ok = await checkAdminAuth();
+    document.getElementById('loadingScreen')?.remove();
+    if (ok) {
+        document.getElementById('authGate').style.display = 'block';
+        loadDashboard();
+        loadUsers();
+        loadProducts();
+    }
+});
+</script>
+<script> 
+    // Ürün listesi
+    const products = [
+        { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+        { slug: 'chatpdf', name: 'ChatPDF', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+        { slug: 'wonders', name: 'Wonders', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+        { slug: 'assistin', name: 'Assistin', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+        { slug: 'primal-pictures', name: 'Primal Pictures', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
+        { slug: 'lecturio', name: 'Lecturio', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
+        { slug: 'nejmhealer', name: 'NEJMHealer', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
+        { slug: 'imachek', name: 'ImaChek', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
+        { slug: 'cochrane-library', name: 'Cochrane Library', category: 'Sağlık', region: 'Türkiye (EKUAL dışı)' },
+        { slug: 'jove-research', name: 'JoVE Research', category: 'Fen & Matematik', region: 'Türkiye' },
+        { slug: 'jove-education', name: 'JoVE Education', category: 'Fen & Matematik', region: 'Türkiye' },
+        { slug: 'jove-business', name: 'JoVE Business', category: 'İş & Hukuk', region: 'Türkiye' },
+        { slug: 'biorender', name: 'BioRender', category: 'Mühendislik', region: 'Türkiye' },
+        { slug: 'wiley-journals', name: 'Wiley Dergiler', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)' },
+        { slug: 'wiley-books', name: 'Wiley Kitaplar', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)' },
+        { slug: 'klasik-muzik', name: 'Klasik Müzik Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' },
+        { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' }
+    ];
+
+    // Ürünleri yükle
+    function loadProducts() {
+        document.getElementById('productsList').innerHTML = products.map(p => `
+             <tr><td class="px-4 py-2">${p.slug}</td><td class="px-4 py-2">${p.name}</td><td class="px-4 py-2">${p.category}</td><td class="px-4 py-2">${p.region}</td></tr>
+        `).join('');
+    }
+
+    // Dashboard verilerini yükle
+    async function loadDashboard() {
+        try {
+            const usersRes = await fetch('/api/admin/users', {
+    credentials: 'include'
+})
+            const users = await usersRes.json();
+            document.getElementById('statUsers').textContent = users.length || 0;
+            
+            const subsRes = await fetch(`${API_BASE}/api/admin/subscriptions`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+            const subs = await subsRes.json();
+            document.getElementById('statSubscriptions').textContent = subs.filter(s => s.status === 'active').length || 0;
+            
+            const institutions = [...new Set(users.map(u => u.institution).filter(i => i))];
+            document.getElementById('statInstitutions').textContent = institutions.length || 0;
+            
+            const recent = users.slice(-5).reverse();
+            document.getElementById('recentUsers').innerHTML = recent.map(u => `<tr><td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td><td class="px-4 py-2">${u.email}</td><td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td><td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center py-4">Henüz kullanıcı yok</td></tr>';
+        } catch(e) { console.error(e); }
+    }
+
+    // Kullanıcıları listele
+    async function loadUsers() {
+        const res = await fetch('/api/admin/users', {
+    credentials: 'include'
+})
+        const users = await res.json();
+        const isSuper = currentAdmin?.role === 'super_admin';
+        
+        document.getElementById('usersList').innerHTML = users.map(u => `
+            <tr>
+                <td class="px-4 py-2">${u.id}</td>
+                <td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td>
+                <td class="px-4 py-2">${u.email}</td>
+                <td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td>
+                <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${u.role === 'super_admin' ? 'bg-red-100 text-red-800' : u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100'}">${u.role === 'super_admin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : 'Kullanıcı'}</span></td>
+                <td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td>
+                <td class="px-4 py-2">
+                    <button onclick="editUser(${u.id}, '${escapeHtml(u.full_name || '')}', '${u.email}', '${escapeHtml(u.institution || '')}', '${u.role}')" class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button>
+                    ${isSuper && u.role !== 'super_admin' ? `<button onclick="setRole(${u.id}, '${u.role === 'admin' ? 'user' : 'admin'}')" class="text-green-600 mr-2" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}"><i class="fas fa-user-shield"></i></button>` : ''}
+                    <button onclick="deleteUser(${u.id})" class="text-red-600"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Abonelikleri listele
+    async function loadSubscriptions() {
+        const res = await fetch(`${API_BASE}/api/admin/subscriptions`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        const subs = await res.json();
+        const getProductName = (slug) => products.find(p => p.slug === slug)?.name || slug;
+        
+        document.getElementById('subscriptionsList').innerHTML = subs.map(s => `
+            <tr>
+                <td class="px-4 py-2">${s.id}</td>
+                <td class="px-4 py-2">${escapeHtml(s.user_name || s.user_id)}</td>
+                <td class="px-4 py-2">${getProductName(s.product_slug)}</td>
+                <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${s.status === 'active' ? 'bg-green-100 text-green-800' : s.status === 'trial' ? 'bg-yellow-100' : 'bg-red-100'}">${s.status === 'active' ? 'Aktif' : s.status === 'trial' ? 'Deneme' : 'Süresi Doldu'}</span></td>
+                <td class="px-4 py-2">${new Date(s.start_date).toLocaleDateString('tr-TR')}</td>
+                <td class="px-4 py-2">${s.end_date ? new Date(s.end_date).toLocaleDateString('tr-TR') : '-'}</td>
+                <td class="px-4 py-2"><button onclick="deleteSubscription(${s.id})" class="text-red-600"><i class="fas fa-trash"></i></button></td>
+            </tr>
+        `).join('');
+    }
+
+    // Escape HTML helper (XSS koruması ve Türkçe karakter sorunu için)
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Rol değiştirme (sadece super admin)
+    async function setRole(userId, newRole) {
+        if (confirm(`Kullanıcı rolünü ${newRole === 'admin' ? 'Admin' : 'Kullanıcı'} yapmak istediğinize emin misiniz?`)) {
+            await fetch(`${API_BASE}/api/admin/set-role/${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+                body: JSON.stringify({ role: newRole })
+            });
+            loadUsers();
+            loadDashboard();
+        }
+    }
+
+    // Kullanıcı modal işlemleri
+    function openUserModal() { document.getElementById('userModal').classList.remove('hidden'); }
+    function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); document.getElementById('userForm').reset(); document.getElementById('userId').value = ''; }
+    function editUser(id, name, email, institution, role) {
+        document.getElementById('userId').value = id;
+        document.getElementById('userFullName').value = name;
+        document.getElementById('userEmail').value = email;
+        document.getElementById('userInstitution').value = institution;
+        document.getElementById('userRole').value = role;
+        document.getElementById('userModalTitle').textContent = 'Kullanıcı Düzenle';
+        openUserModal();
+    }
+    async function deleteUser(id) {
+        if (confirm('Kullanıcıyı silmek istediğinize emin misiniz?')) {
+            await fetch(`${API_BASE}/api/admin/user/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${adminToken}` } });
+            loadUsers();
+            loadDashboard();
+        }
+    }
+
+    // Abonelik modal işlemleri
+    function openSubscriptionModal() { loadUserSelect(); document.getElementById('subscriptionModal').classList.remove('hidden'); }
+    function closeSubscriptionModal() { document.getElementById('subscriptionModal').classList.add('hidden'); document.getElementById('subscriptionForm').reset(); }
+    async function loadUserSelect() {
+        const res = await fetch('/api/admin/users', {
+    credentials: 'include'
+})
+        const users = await res.json();
+        document.getElementById('subUserId').innerHTML = '<option value="">Kullanıcı Seçin</option>' + users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name || u.email)}</option>`).join('');
+    }
+    async function deleteSubscription(id) {
+        if (confirm('Aboneliği silmek istediğinize emin misiniz?')) {
+            await fetch(`${API_BASE}/api/admin/subscription/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${adminToken}` } });
+            loadSubscriptions();
+            loadDashboard();
+        }
+    }
+
+    // Form submit işlemleri
+    document.getElementById('userForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('userId').value;
+        const data = {
+            full_name: document.getElementById('userFullName').value,
+            email: document.getElementById('userEmail').value,
+            institution: document.getElementById('userInstitution').value,
+            role: document.getElementById('userRole').value,
+            password: document.getElementById('userPassword').value
+        };
+        const url = id ? `${API_BASE}/api/admin/user/${id}` : `${API_BASE}/api/admin/user`;
+        const method = id ? 'PUT' : 'POST';
+        await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` }, body: JSON.stringify(data) });
+        closeUserModal();
+        loadUsers();
+        loadDashboard();
+    });
+
+    document.getElementById('subscriptionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await fetch(`${API_BASE}/api/admin/subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({
+                user_id: document.getElementById('subUserId').value,
+                product_slug: document.getElementById('subProduct').value,
+                status: document.getElementById('subStatus').value,
+                end_date: document.getElementById('subEndDate').value || null
+            })
+        });
+        closeSubscriptionModal();
+        loadSubscriptions();
+        loadDashboard();
+    });
+
+// Tab geçişleri
+document.querySelectorAll('.sidebar-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const tab = link.dataset.tab;
+        
+        // Aktif linki güncelle
+        document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        
+        // Tüm tab içeriklerini gizle
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        
+        // Seçilen tab'ı göster
+        const targetTab = document.getElementById(`tab-${tab}`);
+        if (targetTab) {
+            targetTab.classList.remove('hidden');
+            document.getElementById('pageTitle').textContent = link.querySelector('span').textContent;
+            
+            // Tab'a göre verileri yükle
+            if (tab === 'users') {
+                console.log("Kullanıcılar yükleniyor...");
+                loadUsers();
+            } else if (tab === 'subscriptions') {
+                console.log("Abonelikler yükleniyor...");
+                loadSubscriptions();
+            } else if (tab === 'dashboard') {
+                console.log("Dashboard yükleniyor...");
+                loadDashboard();
+            } else if (tab === 'files') {
+                console.log("Kurum dosyaları yükleniyor...");
+                loadAdminInstitutions();
+                loadAdminFiles();
+            }
+        }
+    });
+});
+// ====================== ADMIN DOSYA YÖNETİMİ ======================
+
+let currentAdminInstitutionFilter = 'all';
+
+// Kurum listesini yükle
+async function loadAdminInstitutions() {
+    try {
+        const response = await fetch(`${API_BASE}/api/admin/institutions`, {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        const institutions = await response.json();
+        
+        const filter = document.getElementById('institutionFilter');
+        const adminSelect = document.getElementById('adminFileInstitution');
+        
+        const options = '<option value="all">Tüm Kurumlar</option>' + 
+            institutions.map(inst => `<option value="${inst.id}">${escapeHtml(inst.name)} (${inst.file_count || 0} dosya)</option>`).join('');
+        
+        if (filter) filter.innerHTML = options;
+        if (adminSelect) adminSelect.innerHTML = '<option value="">Kurum Seçin</option>' + 
+            institutions.map(inst => `<option value="${inst.id}">${escapeHtml(inst.name)}</option>`).join('');
+        
+    } catch (err) {
+        console.error('Error loading institutions:', err);
+    }
+}
+
+// Admin dosyalarını yükle
+async function loadAdminFiles() {
+    const filter = document.getElementById('institutionFilter');
+    currentAdminInstitutionFilter = filter?.value || 'all';
+    
+    let url;
+    if (currentAdminInstitutionFilter && currentAdminInstitutionFilter !== 'all') {
+        url = `${API_BASE}/api/institution/${currentAdminInstitutionFilter}/files`;
+    } else {
+        url = `${API_BASE}/api/admin/all-files`;
+    }
+    
+    try {
+        const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        const files = await response.json();
+        
+        const container = document.getElementById('adminFilesList');
+        if (files.length > 0) {
+            container.innerHTML = files.map(file => `
+                <div class="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
+                            <a href="${file.file_url}" target="_blank" class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">${escapeHtml(file.institution_name || file.institution_id)}</span>
+                            ${file.is_public ? 
+                                '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><i class="fas fa-globe mr-1"></i>Herkese Açık</span>' : 
+                                '<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"><i class="fas fa-lock mr-1"></i>Kurum İçi</span>'
+                            }
+                        </div>
+                        <div class="flex flex-wrap gap-4 mt-1 text-xs text-gray-500">
+                            <span><i class="fas fa-tag mr-1"></i>${getCategoryName(file.category)}</span>
+                            <span><i class="fas fa-user mr-1"></i>${escapeHtml(file.uploaded_by_name || '-')}</span>
+                            <span><i class="fas fa-calendar mr-1"></i>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})" class="text-blue-500 hover:text-blue-700 transition" title="${file.is_public ? 'Kurum içi yap' : 'Herkese açık yap'}">
+                            <i class="fas ${file.is_public ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                        </button>
+                        <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700 transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p class="text-gray-500 text-center py-8">Dosya bulunamadı.</p>';
+        }
+    } catch (err) {
+        console.error('Error loading files:', err);
+        document.getElementById('adminFilesList').innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenirken hata oluştu.</p>';
+    }
+}
+
+// Admin dosya görünürlüğü değiştir
+async function toggleAdminFilePublic(fileId, currentStatus) {
+    if (!confirm(`Bu dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ is_public: !currentStatus })
+        });
+        
+        if (response.ok) {
+            alert(`Dosya ${!currentStatus ? 'herkese açık' : 'kurum içi'} yapıldı.`);
+            loadAdminFiles();
+            loadAdminInstitutions(); // Kurum istatistiklerini güncelle
+        } else {
+            alert('Güncelleme başarısız.');
+        }
+    } catch (err) {
+        alert('Bir hata oluştu.');
+    }
+}
+
+// Admin dosya sil
+async function deleteAdminFile(fileId) {
+    if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        if (response.ok) {
+            alert('Dosya silindi.');
+            loadAdminFiles();
+            loadAdminInstitutions();
+        } else {
+            alert('Dosya silinirken hata oluştu.');
+        }
+    } catch (err) {
+        alert('Bir hata oluştu.');
+    }
+}
+
+// Admin dosya yükleme modal
+function openAdminFileModal() { 
+    document.getElementById('adminFileModal').classList.remove('hidden');
+}
+function closeAdminFileModal() { 
+    document.getElementById('adminFileModal').classList.add('hidden');
+    document.getElementById('adminFileForm').reset();
+}
+
+// Admin dosya yükleme form submit
+document.getElementById('adminFileForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const institutionId = document.getElementById('adminFileInstitution')?.value;
+    if (!institutionId) {
+        alert('Lütfen bir kurum seçin.');
+        return;
+    }
+    
+    const data = {
+        file_name: document.getElementById('adminFileName')?.value,
+        file_url: document.getElementById('adminFileUrl')?.value,
+        file_type: document.getElementById('adminFileUrl')?.value.split('.').pop(),
+        category: document.getElementById('adminFileCategory')?.value,
+        is_public: parseInt(document.getElementById('adminFileVisibility')?.value || '0')
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/institution/${institutionId}/file`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify(data)
+        });
+        if (response.ok) {
+            alert('Dosya başarıyla yüklendi.');
+            closeAdminFileModal();
+            loadAdminFiles();
+            loadAdminInstitutions();
+        } else {
+            alert('Dosya yüklenirken hata oluştu.');
+        }
+    } catch (err) {
+        alert('Bir hata oluştu.');
+    }
+});
+
+
+// Buton işlemleri
+document.getElementById('addFileBtnAdmin')?.addEventListener('click', openAdminFileModal);
+document.getElementById('institutionFilter')?.addEventListener('change', () => loadAdminFiles());
+
+// Dosya ikonu helper
+function getFileIcon(fileType) {
+    const icons = {
+        'pdf': 'fa-file-pdf',
+        'doc': 'fa-file-word',
+        'docx': 'fa-file-word',
+        'xls': 'fa-file-excel',
+        'xlsx': 'fa-file-excel',
+        'jpg': 'fa-file-image',
+        'jpeg': 'fa-file-image',
+        'png': 'fa-file-image',
+        'gif': 'fa-file-image',
+        'zip': 'fa-file-archive',
+        'rar': 'fa-file-archive',
+        'txt': 'fa-file-alt',
+        'mp4': 'fa-file-video',
+        'mp3': 'fa-file-audio'
+    };
+    return icons[fileType?.toLowerCase()] || 'fa-file';
+}
+
+// Kategori adı helper
+function getCategoryName(category) {
+    const names = {
+        'contract': 'Sözleşme',
+        'invoice': 'Fatura',
+        'license': 'Lisans',
+        'documentation': 'Dokümantasyon',
+        'other': 'Diğer'
+    };
+    return names[category] || category;
+}
+
+</script>
+</body>
+</html>
