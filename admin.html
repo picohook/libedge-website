@@ -146,9 +146,14 @@
         <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Kullanıcılar</h3>
-                <button id="addUserBtn" class="btn btn-primary" onclick="openUserModal()">
-                    <i class="fas fa-plus mr-2"></i>Kullanıcı Ekle
-                </button>
+                <div class="flex gap-2">
+                    <button type="button" class="btn bg-gray-200 text-gray-700" onclick="openBulkUserModal()">
+                        <i class="fas fa-list mr-2"></i>Toplu Ekle
+                    </button>
+                    <button id="addUserBtn" class="btn btn-primary" onclick="openUserModal()">
+                        <i class="fas fa-plus mr-2"></i>Kullanıcı Ekle
+                    </button>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
@@ -583,7 +588,60 @@
 <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-md">
         <h3 id="userModalTitle" class="text-xl font-bold mb-4">Kullanıcı Ekle</h3>
-        <form id="userForm"><input type="hidden" id="userId"><div class="mb-3"><input type="text" id="userFullName" placeholder="Ad Soyad" class="w-full border p-2 rounded" required></div><div class="mb-3"><input type="email" id="userEmail" placeholder="E-posta" class="w-full border p-2 rounded" required></div><div class="mb-3"><input type="password" id="userPassword" placeholder="Şifre (değiştirmek için doldurun)" class="w-full border p-2 rounded"></div><div class="mb-3"><input type="text" id="userInstitution" placeholder="Kurum" class="w-full border p-2 rounded"></div><div class="mb-3"><select id="userRole" class="w-full border p-2 rounded"><option value="user">Kullanıcı</option><option value="admin">Admin</option></select></div><div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeUserModal()" class="btn bg-gray-300 flex-1">İptal</button></div></form>
+        <form id="userForm">
+            <input type="hidden" id="userId">
+            <div class="mb-3"><input type="text" id="userFullName" placeholder="Ad Soyad" class="w-full border p-2 rounded" required></div>
+            <div class="mb-3"><input type="email" id="userEmail" placeholder="E-posta" class="w-full border p-2 rounded" required></div>
+            <div class="mb-3"><input type="password" id="userPassword" placeholder="Şifre (değiştirmek için doldurun)" class="w-full border p-2 rounded"></div>
+            <div class="mb-3"><input type="text" id="userInstitution" placeholder="Kurum" class="w-full border p-2 rounded"></div>
+            <div class="mb-3"><select id="userRole" class="w-full border p-2 rounded"><option value="user">Kullanıcı</option><option value="admin">Admin</option></select></div>
+            <div id="userFormError" class="hidden mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2"></div>
+            <div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeUserModal()" class="btn bg-gray-300 flex-1">İptal</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk User Modal -->
+<div id="bulkUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <h3 class="text-xl font-bold mb-1">Toplu Kullanıcı Ekle</h3>
+
+        <!-- Adım 1: Yapıştır -->
+        <div id="bulkUserStep1" class="flex flex-col flex-1">
+            <p class="text-sm text-gray-500 mb-3">Excel veya CSV'den kopyalayıp yapıştırın. Sütunlar: <span class="font-medium text-gray-700">Ad Soyad</span>, <span class="font-medium text-gray-700">E-posta</span>, <span class="font-medium text-gray-700">Kurum</span> (opsiyonel), <span class="font-medium text-gray-700">Rol</span> (opsiyonel, user/admin). Tab veya virgülle ayrılmış.</p>
+            <textarea id="bulkUserPasteArea" rows="10"
+                placeholder="Ahmet Yılmaz&#9;ahmet@ankara.edu.tr&#9;Ankara Üniversitesi&#9;user&#10;Ayşe Kaya&#9;ayse@itu.edu.tr&#9;&#9;user"
+                class="w-full border rounded p-3 text-sm font-mono flex-1 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"></textarea>
+            <div class="flex gap-2 pt-3 mt-3 border-t">
+                <button type="button" onclick="parseBulkUsers()" class="btn btn-primary flex-1">Önizle</button>
+                <button type="button" onclick="closeBulkUserModal()" class="btn bg-gray-300 flex-1">İptal</button>
+            </div>
+        </div>
+
+        <!-- Adım 2: Önizleme -->
+        <div id="bulkUserStep2" class="hidden flex-col flex-1">
+            <p class="text-sm text-gray-500 mb-3">Yanlış satırları silin, ardından <strong>Ekle</strong>'ye basın.</p>
+            <div class="overflow-y-auto flex-1 border rounded">
+                <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-gray-50">
+                        <tr>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700">Ad Soyad</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700">E-posta</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700">Kurum</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700">Rol</th>
+                            <th class="w-8"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="bulkUserPreviewRows"></tbody>
+                </table>
+            </div>
+            <div id="bulkUserStatus" class="hidden mt-2 text-sm text-gray-600 whitespace-pre-wrap"></div>
+            <div class="flex gap-2 pt-3 mt-3 border-t">
+                <button type="button" onclick="showBulkUserStep1()" class="btn bg-gray-200 text-gray-700"><i class="fas fa-arrow-left mr-1"></i>Geri</button>
+                <button type="button" id="bulkUserSubmitBtn" onclick="submitBulkUsers()" class="btn btn-primary flex-1">Ekle</button>
+                <button type="button" onclick="closeBulkUserModal()" class="btn bg-gray-300">İptal</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -768,7 +826,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Kullanıcı modal işlemleri
     function openUserModal() { document.getElementById('userModal').classList.remove('hidden'); }
-    function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); document.getElementById('userForm').reset(); document.getElementById('userId').value = ''; }
+    function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); document.getElementById('userForm').reset(); document.getElementById('userId').value = ''; document.getElementById('userFormError').classList.add('hidden'); }
     function editUser(id, name, email, institution, role) {
         document.getElementById('userId').value = id;
         document.getElementById('userFullName').value = name;
@@ -807,6 +865,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Form submit işlemleri
     document.getElementById('userForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const errorEl = document.getElementById('userFormError');
+        errorEl.classList.add('hidden');
         const id = document.getElementById('userId').value;
         const data = {
             full_name: document.getElementById('userFullName').value,
@@ -817,8 +877,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         const url = id ? `${API_BASE}/api/admin/user/${id}` : `${API_BASE}/api/admin/user`;
         const method = id ? 'PUT' : 'POST';
-        await fetch(url, { method, headers: { 'Content-Type': 'application/json' },
+        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' },
                 credentials: 'include', body: JSON.stringify(data) });
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            errorEl.textContent = body.error || 'Bir hata oluştu.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
         closeUserModal();
         loadUsers();
         loadDashboard();
@@ -1337,6 +1403,124 @@ function getCategoryName(category) {
         'other': 'Diğer'
     };
     return names[category] || category;
+}
+
+// ====================== TOPLU KULLANICI EKLEME ======================
+
+function openBulkUserModal() {
+    document.getElementById('bulkUserPasteArea').value = '';
+    document.getElementById('bulkUserPreviewRows').innerHTML = '';
+    document.getElementById('bulkUserStatus').classList.add('hidden');
+    document.getElementById('bulkUserSubmitBtn').disabled = false;
+    showBulkUserStep1();
+    document.getElementById('bulkUserModal').classList.remove('hidden');
+}
+function closeBulkUserModal() {
+    document.getElementById('bulkUserModal').classList.add('hidden');
+}
+function showBulkUserStep1() {
+    document.getElementById('bulkUserStep1').classList.remove('hidden');
+    document.getElementById('bulkUserStep1').classList.add('flex');
+    document.getElementById('bulkUserStep2').classList.add('hidden');
+    document.getElementById('bulkUserStep2').classList.remove('flex');
+}
+function showBulkUserStep2() {
+    document.getElementById('bulkUserStep1').classList.add('hidden');
+    document.getElementById('bulkUserStep1').classList.remove('flex');
+    document.getElementById('bulkUserStep2').classList.remove('hidden');
+    document.getElementById('bulkUserStep2').classList.add('flex');
+}
+
+function parseBulkUsers() {
+    const raw = document.getElementById('bulkUserPasteArea').value;
+    const lines = raw.split('\n').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
+    if (!lines.length) return;
+
+    const isSuper = currentAdmin?.role === 'super_admin';
+    const adminInstitution = currentAdmin?.institution || '';
+    const validRoles = ['user', 'admin'];
+
+    const tbody = document.getElementById('bulkUserPreviewRows');
+    tbody.innerHTML = lines.map(line => {
+        const sep = line.includes('\t') ? '\t' : ',';
+        const parts = line.split(sep).map(s => s.trim());
+        const fullName = parts[0] || '';
+        const email    = parts[1] || '';
+        const inst     = isSuper ? (parts[2] || '') : adminInstitution;
+        const role     = validRoles.includes(parts[3]?.toLowerCase()) ? parts[3].toLowerCase() : 'user';
+
+        const instCell = isSuper
+            ? `<input type="text" value="${escapeHtml(inst)}" class="bulk-user-inst w-full border rounded px-2 py-0.5 text-xs">`
+            : `<span class="text-gray-500 text-xs">${escapeHtml(inst)}</span>`;
+
+        return `<tr class="border-t border-gray-100">
+            <td class="px-3 py-1">${escapeHtml(fullName)}</td>
+            <td class="px-3 py-1">${escapeHtml(email)}</td>
+            <td class="px-3 py-1">${instCell}</td>
+            <td class="px-3 py-1">
+                <select class="bulk-user-role border rounded px-1 py-0.5 text-xs">
+                    <option value="user"${role === 'user' ? ' selected' : ''}>Kullanıcı</option>
+                    <option value="admin"${role === 'admin' ? ' selected' : ''}>Admin</option>
+                </select>
+            </td>
+            <td class="px-2 py-1 text-center">
+                <button type="button" onclick="this.closest('tr').remove()" class="text-gray-300 hover:text-red-500 text-xs"><i class="fas fa-times"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('bulkUserStatus').classList.add('hidden');
+    showBulkUserStep2();
+}
+
+async function submitBulkUsers() {
+    const isSuper = currentAdmin?.role === 'super_admin';
+    const adminInstitution = currentAdmin?.institution || '';
+    const rows = [...document.querySelectorAll('#bulkUserPreviewRows tr')];
+    const entries = rows.map(tr => ({
+        full_name:   tr.querySelectorAll('td')[0]?.textContent.trim() || '',
+        email:       tr.querySelectorAll('td')[1]?.textContent.trim() || '',
+        institution: isSuper
+            ? (tr.querySelector('.bulk-user-inst')?.value.trim() || '')
+            : adminInstitution,
+        role:        tr.querySelector('.bulk-user-role')?.value || 'user',
+        password:    null
+    })).filter(e => e.email.length > 0);
+
+    if (!entries.length) return;
+
+    const statusEl = document.getElementById('bulkUserStatus');
+    const btn = document.getElementById('bulkUserSubmitBtn');
+    btn.disabled = true;
+    statusEl.textContent = `0 / ${entries.length} işleniyor...`;
+    statusEl.classList.remove('hidden');
+
+    let ok = 0;
+    const errors = [];
+    for (const entry of entries) {
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/user`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(entry)
+            });
+            if (res.ok) {
+                ok++;
+            } else {
+                const body = await res.json().catch(() => ({}));
+                errors.push(`${entry.email}: ${body.error || 'Hata'}`);
+            }
+        } catch { errors.push(`${entry.email}: Bağlantı hatası`); }
+        statusEl.textContent = `${ok + errors.length} / ${entries.length} işlendi...`;
+    }
+
+    let summary = `Tamamlandı: ${ok} eklendi.`;
+    if (errors.length) summary += `\n\nBaşarısız (${errors.length}):\n` + errors.join('\n');
+    statusEl.textContent = summary;
+    btn.disabled = false;
+    loadUsers();
+    loadDashboard();
 }
 
 // ====================== KURUMLAR YÖNETİMİ ======================
