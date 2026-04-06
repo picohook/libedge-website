@@ -1051,102 +1051,128 @@ let adminFolderStack = [];
 async function loadAdminInstitutions() {
     try {
         let institutions = [];
+        let userInstitutions = []; // Kullanıcının yetkili olduğu tüm kurumlar
         
-        // Önce kullanıcı profilini al
+        // Kullanıcı profilini al
         const profileRes = await fetch('/api/user/profile', { credentials: 'include' });
         if (!profileRes.ok) throw new Error('Profil alınamadı');
         const user = await profileRes.json();
         
-        console.log('Kullanıcı:', user);
         console.log('Kullanıcı rolü:', user.role);
-        console.log('Kullanıcının kurumu:', user.institution);
+        console.log('Kullanıcının kurumu (ana):', user.institution);
         
-        // Admin veya super_admin kontrolü
+        // Kullanıcının yetkili olduğu tüm kurumları al
+        // Backend'den kullanıcının admin olduğu kurumlar listesini çek
+        let adminInstitutions = [];
+        
         if (user.role === 'super_admin') {
-            // Super Admin: Tüm kurumları görebilir
+            // Super Admin: Tüm kurumlara yetkili
             const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
             if (res.ok) {
                 institutions = await res.json();
-            } else {
-                console.error('Kurumlar alınamadı:', res.status);
+                adminInstitutions = institutions.map(i => i.name);
             }
         } else if (user.role === 'admin') {
-            // Admin: Sadece kendi kurumunu görebilir
-            if (user.institution) {
-                institutions = [{ 
-                    id: user.institution, 
-                    name: user.institution,
-                    is_my_institution: true 
-                }];
-                console.log('Admin için kendi kurumu eklendi:', institutions);
-            } else {
-                console.error('Admin kullanıcının kurum bilgisi yok');
+            // Admin: Backend'den admin olduğu kurumları al
+            // YÖNTEM 1: Özel bir endpoint'ten (önerilen)
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/my-institutions`, { credentials: 'include' });
+                if (res.ok) {
+                    const data = await res.json();
+                    adminInstitutions = data.institutions || [];
+                    institutions = data.details || [];
+                }
+            } catch (e) {
+                console.log('Özel endpoint yok, alternatif yöntem kullanılıyor');
             }
-        } else {
-            // Normal kullanıcı: Hiçbir kurumu göremez (zaten admin paneline erişemez)
-            institutions = [];
+            
+            // YÖNTEM 2: Eğer özel endpoint yoksa, user.institution tek kurumsa
+            if (adminInstitutions.length === 0 && user.institution) {
+                // Tek kurum için
+                adminInstitutions = [user.institution];
+                institutions = [{ id: user.institution, name: user.institution }];
+            }
+            
+            // YÖNTEM 3: Birden fazla kurum bilgisi user objesinde geliyorsa
+            if (user.admin_institutions && Array.isArray(user.admin_institutions)) {
+                adminInstitutions = user.admin_institutions;
+                institutions = adminInstitutions.map(inst => ({ id: inst, name: inst }));
+            }
         }
         
-        // Kurum filtresini doldur
         const filterSelect = document.getElementById('institutionFilter');
-        if (filterSelect) {
-            if (institutions.length > 0) {
-                // Önce mevcut seçimi kaydet
-                const previousValue = filterSelect.value;
+        
+        if (!filterSelect) return;
+        
+        if (user.role === 'super_admin') {
+            // Super Admin: Tüm kurumlar + Tüm Kurumlar seçeneği
+            filterSelect.innerHTML = '<option value="all">📋 Tüm Kurumlar</option>' +
+                institutions.map(i => `<option value="${escapeHtml(i.name)}">🏢 ${escapeHtml(i.name)}</option>`).join('');
+            filterSelect.disabled = false;
+            
+        } else if (user.role === 'admin') {
+            // Admin: Sadece yetkili olduğu kurumlar
+            if (adminInstitutions.length > 1) {
+                // Birden fazla kurum yetkisi varsa - "Tüm Kurumlar" GÖSTER
+                filterSelect.innerHTML = '<option value="all">📋 Tüm Kurumlar</option>' +
+                    adminInstitutions.map(inst => `<option value="${escapeHtml(inst)}">🏢 ${escapeHtml(inst)}</option>`).join('');
+                filterSelect.disabled = false;
+                console.log(`${adminInstitutions.length} kurum yetkisi var, "Tüm Kurumlar" gösteriliyor`);
                 
-                // Dropdown'u doldur
-                filterSelect.innerHTML = '<option value="all">Tüm Kurumlar</option>' +
-                    institutions.map(i => `<option value="${escapeHtml(i.name)}">${escapeHtml(i.name)}</option>`).join('');
+            } else if (adminInstitutions.length === 1) {
+                // Tek kurum yetkisi varsa - "Tüm Kurumlar" GÖSTERME
+                filterSelect.innerHTML = `<option value="${escapeHtml(adminInstitutions[0])}">🏢 ${escapeHtml(adminInstitutions[0])}</option>`;
+                filterSelect.disabled = false;
+                console.log('Tek kurum yetkisi, "Tüm Kurumlar" gösterilmiyor');
                 
-                // Eğer admin ise ve kendi kurumu varsa, otomatik olarak onu seç
-                if (user.role === 'admin' && user.institution) {
-                    filterSelect.value = user.institution;
-                    console.log('Admin için otomatik kurum seçildi:', user.institution);
-                } else if (previousValue && previousValue !== 'all') {
-                    // Önceki seçimi koru
-                    if (Array.from(filterSelect.options).some(opt => opt.value === previousValue)) {
-                        filterSelect.value = previousValue;
-                    }
-                }
-                
-                // Change event'ini tetikle (dosyaları yüklemek için)
-                filterSelect.dispatchEvent(new Event('change'));
             } else {
-                filterSelect.innerHTML = '<option value="all">Tüm Kurumlar</option>';
-                console.warn('Hiç kurum bulunamadı');
+                // Hiç kurum yetkisi yok
+                filterSelect.innerHTML = '<option value="">❌ Kurum bulunamadı</option>';
+                filterSelect.disabled = true;
             }
         }
         
         // Diğer select'leri doldur (dosya ekleme modalı için)
-        const selectOpts = institutions.map(i => `<option value="${escapeHtml(i.name)}">${escapeHtml(i.name)}</option>`).join('');
+        const selectOpts = (user.role === 'admin' ? adminInstitutions : institutions.map(i => i.name))
+            .map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+        
         ['adminFileInstitution', 'adminFolderInstitution'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
-                el.innerHTML = '<option value="">Kurum Seçin</option>' + selectOpts;
-                // Admin ise kendi kurumunu otomatik seç
-                if (user.role === 'admin' && user.institution && el.id === 'adminFileInstitution') {
-                    setTimeout(() => {
-                        el.value = user.institution;
-                        // Klasör listesini güncelle
-                        loadAdminFileFolders(user.institution);
-                    }, 100);
+                if (user.role === 'admin' && adminInstitutions.length === 1) {
+                    // Tek kurum - disabled ve seçili
+                    el.innerHTML = `<option value="${escapeHtml(adminInstitutions[0])}">${escapeHtml(adminInstitutions[0])}</option>`;
+                    el.value = adminInstitutions[0];
+                    el.disabled = true;
+                } else {
+                    // Çoklu kurum veya super admin
+                    el.innerHTML = '<option value="">Kurum Seçin</option>' + selectOpts;
+                    el.disabled = false;
+                    
+                    // Varsayılan olarak mevcut filtredeki kurumu seç
+                    if (filterSelect.value && filterSelect.value !== 'all') {
+                        el.value = filterSelect.value;
+                    }
                 }
             }
         });
         
-        return institutions;
+        // Change event'ini tetikle
+        if (filterSelect.value) {
+            filterSelect.dispatchEvent(new Event('change'));
+        }
+        
+        return { institutions, adminInstitutions };
         
     } catch (err) { 
         console.error('loadAdminInstitutions error:', err);
-        // Hata durumunda boş dropdown göster
         const filterSelect = document.getElementById('institutionFilter');
         if (filterSelect) {
-            filterSelect.innerHTML = '<option value="all">Tüm Kurumlar</option>';
+            filterSelect.innerHTML = '<option value="">Hata oluştu</option>';
         }
         return [];
     }
 }
-
 // Klasörleri yükle - GÜNCELLENMİŞ VERSİYON
 async function loadAdminFolders(parentId = null) {
     const institutionId = document.getElementById('institutionFilter')?.value;
@@ -1380,13 +1406,101 @@ document.getElementById('adminFileInstitution')?.addEventListener('change', func
     loadAdminFileFolders(this.value);
 });
 
+// Kurum filtresi değiştiğinde
 document.getElementById('institutionFilter')?.addEventListener('change', () => {
-    adminCurrentFolderId = null; adminFolderStack = [];
-    document.getElementById('adminBackBtn')?.classList.add('hidden');
-    updateAdminBreadcrumb();
-    loadAdminFolders(null);
-    loadAdminFiles();
+    const selectedValue = document.getElementById('institutionFilter').value;
+    
+    if (selectedValue === 'all') {
+        // Tüm kurumlar seçili - sadece adminin yetkili olduğu kurumların dosyalarını göster
+        loadAllAdminFiles(); // Özel fonksiyon
+    } else {
+        // Tek bir kurum seçili
+        adminCurrentFolderId = null;
+        adminFolderStack = [];
+        document.getElementById('adminBackBtn')?.classList.add('hidden');
+        updateAdminBreadcrumb();
+        loadAdminFolders(null);
+        loadAdminFiles();
+    }
 });
+
+// Admin'in yetkili olduğu tüm kurumların dosyalarını yükle
+async function loadAllAdminFiles() {
+    const container = document.getElementById('adminFilesList');
+    container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin"></i> Tüm dosyalar yükleniyor...</div>';
+    
+    try {
+        const profileRes = await fetch('/api/user/profile', { credentials: 'include' });
+        const user = await profileRes.json();
+        
+        let adminInstitutions = [];
+        
+        if (user.role === 'super_admin') {
+            // Super Admin: Tüm kurumlar
+            const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
+            const insts = await res.json();
+            adminInstitutions = insts.map(i => i.name);
+        } else {
+            // Admin: Yetkili olduğu kurumlar
+            // Backend'den çek
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/my-institutions`, { credentials: 'include' });
+                if (res.ok) {
+                    const data = await res.json();
+                    adminInstitutions = data.institutions || [];
+                }
+            } catch (e) {}
+            
+            if (adminInstitutions.length === 0 && user.institution) {
+                adminInstitutions = [user.institution];
+            }
+        }
+        
+        let allFiles = [];
+        
+        for (const inst of adminInstitutions) {
+            try {
+                const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(inst)}/files`, {
+                    credentials: 'include'
+                });
+                if (res.ok) {
+                    const files = await res.json();
+                    allFiles.push(...files.map(f => ({ ...f, institution_name: inst })));
+                }
+            } catch (e) {
+                console.error(`${inst} dosyaları alınamadı:`, e);
+            }
+        }
+        
+        if (allFiles.length === 0) {
+            container.innerHTML = '<div class="text-center py-8 text-gray-400">📁 Hiç dosya bulunamadı</div>';
+            return;
+        }
+        
+        container.innerHTML = allFiles.map(file => `
+            <div class="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
+                        <a href="javascript:void(0)" onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type || ''}')" 
+                           class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
+                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">🏢 ${escapeHtml(file.institution_name)}</span>
+                        ${file.is_public ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">🌍 Herkese Açık</span>' : ''}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (err) {
+        console.error('loadAllAdminFiles error:', err);
+        container.innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenirken hata oluştu</p>';
+    }
+}
 
 
 // ====================== DOSYA UPLOAD - SEKME & KAYNAK YÖNETİMİ ======================
@@ -2319,11 +2433,13 @@ function closeFileViewer() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileViewer(); });
 </script>
 
+</div><!-- /authGate -->
+
 <div id="fileViewerOverlay" onclick="closeFileViewer()"></div>
 
 <div id="fileViewerPanel">
     <div style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem 1rem;border-bottom:1px solid #f3f4f6;flex-shrink:0">
-        <button onclick="closeFileViewer()" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:0.25rem;border-radius:0.375rem" onmouseover="this.style.color='#374151'" onmouseout="this.style.color='#9ca3af'">
+        <button onclick="closeFileViewer()" title="Kapat" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:0.25rem;border-radius:0.375rem" onmouseover="this.style.color='#374151'" onmouseout="this.style.color='#9ca3af'">
             <i class="fas fa-times" style="font-size:1.125rem"></i>
         </button>
         <h3 id="fileViewerTitle" style="font-weight:500;color:#1f2937;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.875rem;margin:0"></h3>
