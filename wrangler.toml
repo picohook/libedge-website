@@ -2,24 +2,31 @@ name = "form-handler"
 main = "backend/src/index.js"
 compatibility_date = "2026-03-01"
 
-# D1 Binding - LibEdge Auth & Subscription
+# D1 Binding
 [[d1_databases]]
 binding = "DB"
 database_name = "libedge-db"
 database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
 
-# Vars for local/dev
-[vars]
-JWT_SECRET = "local-dev-secret-degistir"
+# JWT_SECRET buraya yazma — terminalde şu komutla ekle:
+# npx wrangler secret put JWT_SECRET
+# npx wrangler secret put JWT_SECRET --env staging
+# npx wrangler secret put JWT_SECRET --env production
 
 # Staging environment
 [env.staging]
 name = "form-handler-staging"
-vars = { JWT_SECRET = "staging-secret" }
-route = "https://staging.libedge-website.pages.dev/*"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "libedge-db"
+database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
 
 # Production environment
 [env.production]
 name = "form-handler-prod"
-vars = { JWT_SECRET = "prod-secret" }
-route = "https://libedge-website.pages.dev/*"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "libedge-db"
+database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
