@@ -825,7 +825,9 @@ async function loadAdminFiles() {
                 <div class="flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
                         <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
-                        <span class="font-medium text-primary cursor-pointer hover:underline"
+                        <a href="${file.file_url}" 
+               onclick="event.preventDefault(); previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type||''}')"
+               class="font-medium text-primary hover:underline">
                         onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type||''}')">${escapeHtml(file.file_name)}</span>
                         ${file.institution_name ? `<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">${escapeHtml(file.institution_name)}</span>` : ''}
                         ${file.is_public
@@ -839,9 +841,12 @@ async function loadAdminFiles() {
                     </div>
                 </div>
                 <div class="flex items-center gap-2 ml-2">
-                    <button onclick="toggleAdminFilePublic(${file.id},${file.is_public})" class="text-blue-500 hover:text-blue-700" title="${file.is_public?'Kurum içi yap':'Herkese açık yap'}">
-                        <i class="fas ${file.is_public?'fa-eye-slash':'fa-eye'}"></i>
-                    </button>
+// Görünürlük butonu
+<button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})" 
+    class="text-blue-500 hover:text-blue-700 transition" 
+    title="${file.is_public ? 'Kurum içi yap' : 'Herkese açık yap'}">
+    <i class="fas ${file.is_public ? 'fa-eye-slash' : 'fa-eye'}"></i>
+</button>
                     <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
                         <i class="fas fa-trash"></i>
                     </button>
