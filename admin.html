@@ -779,7 +779,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function timeAgo(dateStr) {
         if (!dateStr) return '-';
-        const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+        const diff = Math.floor((Date.now() - new Date(dateStr + 'Z').getTime()) / 1000);
         if (diff < 60) return `${diff} sn önce`;
         if (diff < 3600) return `${Math.floor(diff / 60)} dk önce`;
         if (diff < 86400) return `${Math.floor(diff / 3600)} saat önce`;
