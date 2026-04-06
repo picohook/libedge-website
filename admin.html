@@ -506,27 +506,43 @@
 <!-- Bulk Institution Modal -->
 <div id="bulkInstitutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <h3 class="text-xl font-bold mb-4">Toplu Kurum Ekle</h3>
-        <div class="overflow-y-auto flex-1 mb-4">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr>
-                        <th class="text-left pb-2 font-medium text-gray-700 w-1/2">Kurum Adı</th>
-                        <th class="text-left pb-2 font-medium text-gray-700 w-1/2 pl-2">Domain(lar) <span class="font-normal text-gray-400">(opsiyonel)</span></th>
-                        <th class="w-8"></th>
-                    </tr>
-                </thead>
-                <tbody id="bulkInstitutionRows"></tbody>
-            </table>
-            <button type="button" onclick="addBulkInstitutionRow()" class="mt-3 text-sm text-purple-700 hover:text-purple-900 font-medium">
-                <i class="fas fa-plus mr-1"></i>Satır Ekle
-            </button>
+        <h3 class="text-xl font-bold mb-1">Toplu Kurum Ekle</h3>
+
+        <!-- Adım 1: Yapıştır -->
+        <div id="bulkStep1" class="flex flex-col flex-1">
+            <p class="text-sm text-gray-500 mb-3">Excel veya CSV'den kopyalayıp yapıştırın. İki sütun: <span class="font-medium text-gray-700">Kurum Adı</span> ve <span class="font-medium text-gray-700">Domain(lar)</span> (opsiyonel). Tab veya virgülle ayrılmış.</p>
+            <textarea id="bulkPasteArea" rows="10"
+                placeholder="Ankara Üniversitesi&#9;ankara.edu.tr&#10;İstanbul Teknik Üniversitesi&#9;itu.edu.tr&#10;Hacettepe Üniversitesi"
+                class="w-full border rounded p-3 text-sm font-mono flex-1 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"></textarea>
+            <div class="flex gap-2 pt-3 mt-3 border-t">
+                <button type="button" onclick="parseBulkPaste()" class="btn btn-primary flex-1">Önizle</button>
+                <button type="button" onclick="closeBulkInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
+            </div>
         </div>
-        <div id="bulkInstitutionStatus" class="hidden mb-3 text-sm text-gray-600"></div>
-        <div class="flex gap-2 pt-2 border-t">
-            <button type="button" id="bulkInstitutionSubmitBtn" onclick="submitBulkInstitutions()" class="btn btn-primary flex-1">Ekle</button>
-            <button type="button" onclick="closeBulkInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
+
+        <!-- Adım 2: Önizleme tablosu -->
+        <div id="bulkStep2" class="hidden flex-col flex-1">
+            <p class="text-sm text-gray-500 mb-3">Yanlış satırları silin, ardından <strong>Kaydet</strong>'e basın.</p>
+            <div class="overflow-y-auto flex-1 border rounded">
+                <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-gray-50">
+                        <tr>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700">Kurum Adı</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700">Domain(lar)</th>
+                            <th class="w-8"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="bulkPreviewRows"></tbody>
+                </table>
+            </div>
+            <div id="bulkInstitutionStatus" class="hidden mt-2 text-sm text-gray-600"></div>
+            <div class="flex gap-2 pt-3 mt-3 border-t">
+                <button type="button" onclick="showBulkStep1()" class="btn bg-gray-200 text-gray-700"><i class="fas fa-arrow-left mr-1"></i>Geri</button>
+                <button type="button" id="bulkInstitutionSubmitBtn" onclick="submitBulkInstitutions()" class="btn btn-primary flex-1">Kaydet</button>
+                <button type="button" onclick="closeBulkInstitutionModal()" class="btn bg-gray-300">İptal</button>
+            </div>
         </div>
+
     </div>
 </div>
 
@@ -1324,27 +1340,53 @@ function closeInstitutionModal() {
     document.getElementById('institutionModal').classList.add('hidden');
 }
 
-function addBulkInstitutionRow() {
-    const tbody = document.getElementById('bulkInstitutionRows');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-        <td class="py-1 pr-2"><input type="text" placeholder="Kurum adı" class="bulk-inst-name w-full border rounded px-2 py-1 text-sm"></td>
-        <td class="py-1 pl-2"><input type="text" placeholder="libedge.com, libedge.com.tr" class="bulk-inst-domain w-full border rounded px-2 py-1 text-sm"></td>
-        <td class="py-1 pl-1 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-gray-300 hover:text-red-500"><i class="fas fa-times"></i></button></td>
-    `;
-    tbody.appendChild(tr);
-}
-
 function openBulkInstitutionModal() {
-    const tbody = document.getElementById('bulkInstitutionRows');
-    tbody.innerHTML = '';
-    for (let i = 0; i < 3; i++) addBulkInstitutionRow();
+    document.getElementById('bulkPasteArea').value = '';
+    document.getElementById('bulkPreviewRows').innerHTML = '';
     document.getElementById('bulkInstitutionStatus').classList.add('hidden');
     document.getElementById('bulkInstitutionSubmitBtn').disabled = false;
+    showBulkStep1();
     document.getElementById('bulkInstitutionModal').classList.remove('hidden');
 }
 function closeBulkInstitutionModal() {
     document.getElementById('bulkInstitutionModal').classList.add('hidden');
+}
+function showBulkStep1() {
+    document.getElementById('bulkStep1').classList.remove('hidden');
+    document.getElementById('bulkStep1').classList.add('flex');
+    document.getElementById('bulkStep2').classList.add('hidden');
+    document.getElementById('bulkStep2').classList.remove('flex');
+}
+function showBulkStep2() {
+    document.getElementById('bulkStep1').classList.add('hidden');
+    document.getElementById('bulkStep1').classList.remove('flex');
+    document.getElementById('bulkStep2').classList.remove('hidden');
+    document.getElementById('bulkStep2').classList.add('flex');
+}
+
+function parseBulkPaste() {
+    const raw = document.getElementById('bulkPasteArea').value;
+    const lines = raw.split('\n').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
+    if (!lines.length) return;
+
+    const tbody = document.getElementById('bulkPreviewRows');
+    tbody.innerHTML = lines.map((line, idx) => {
+        // Tab önce, yoksa ilk virgül
+        const sep = line.includes('\t') ? '\t' : ',';
+        const firstSep = line.indexOf(sep);
+        const name = firstSep === -1 ? line.trim() : line.slice(0, firstSep).trim();
+        const domain = firstSep === -1 ? '' : line.slice(firstSep + 1).trim();
+        return `<tr class="border-t border-gray-100">
+            <td class="px-3 py-1">${escapeHtml(name)}</td>
+            <td class="px-3 py-1 text-gray-500">${escapeHtml(domain)}</td>
+            <td class="px-2 py-1 text-center">
+                <button type="button" onclick="this.closest('tr').remove()" class="text-gray-300 hover:text-red-500 text-xs"><i class="fas fa-times"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('bulkInstitutionStatus').classList.add('hidden');
+    showBulkStep2();
 }
 
 document.getElementById('institutionForm').addEventListener('submit', async (e) => {
@@ -1362,13 +1404,11 @@ document.getElementById('institutionForm').addEventListener('submit', async (e) 
 });
 
 async function submitBulkInstitutions() {
-    const rows = [...document.querySelectorAll('#bulkInstitutionRows tr')];
-    const entries = rows
-        .map(tr => ({
-            name: tr.querySelector('.bulk-inst-name')?.value.trim() || '',
-            domain: tr.querySelector('.bulk-inst-domain')?.value.trim() || ''
-        }))
-        .filter(e => e.name.length > 0);
+    const rows = [...document.querySelectorAll('#bulkPreviewRows tr')];
+    const entries = rows.map(tr => {
+        const cells = tr.querySelectorAll('td');
+        return { name: cells[0]?.textContent.trim() || '', domain: cells[1]?.textContent.trim() || '' };
+    }).filter(e => e.name.length > 0);
 
     if (!entries.length) return;
 
