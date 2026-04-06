@@ -1099,6 +1099,15 @@ app.delete('/api/institution/file/:id', async (c) => {
   const file = await db.prepare(`SELECT f.*, i.name as institution_name FROM institution_files f LEFT JOIN institutions i ON f.institution_id = i.id WHERE f.id = ? AND f.is_active = 1`).bind(fileId).first();
   if (!file) return c.json({ error: 'Dosya bulunamadı' }, 404);
   if (role === 'admin' && auth.user.institution !== file.institution_name) return c.json({ error: 'Yetkisiz' }, 403);
+
+  // R2'den sil (eğer /api/files/ URL'iyse)
+  const bucket = c.env.FILES_BUCKET;
+  if (bucket && file.file_url?.includes('/api/files/')) {
+    const key = file.file_url.replace(/^.*\/api\/files\//, '');
+    try { await bucket.delete(key); } catch (e) { console.error('R2 delete error:', e); }
+  }
+
+  // DB'den soft delete
   await db.prepare(`UPDATE institution_files SET is_active = 0 WHERE id = ?`).bind(fileId).run();
   return c.json({ success: true });
 });
