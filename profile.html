@@ -320,7 +320,8 @@
     </div>
 </div>
 <script>
-// DÜZELTİLDİ: Bu değişkenler script.js'de zaten tanımlı, tekrar tanımlama yapma!
+const API_BASE = ''; // Proxy üzerinden same-origin
+
 let currentFolderId = null;
 let folderStack = [];
 
@@ -411,9 +412,8 @@ async function checkAuthAndLoad() {
 document.addEventListener('DOMContentLoaded', checkAuthAndLoad);
 async function loadUserCreatedAt() {
     try {
-        const token = localStorage.getItem('authToken');
         const res = await fetch(`${API_BASE}/api/user/profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            credentials: 'include'
         });
         const data = await res.json();
         if (data.created_at) {
@@ -424,9 +424,8 @@ async function loadUserCreatedAt() {
 
 async function loadSubscriptions() {
     try {
-        const token = localStorage.getItem('authToken');
         const res = await fetch(`${API_BASE}/api/subscription/list`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            credentials: 'include'
         });
         const data = await res.json();
 
@@ -478,12 +477,11 @@ async function loadFolders(parentId = null) {
     }
 
     try {
-        const token = localStorage.getItem('authToken');
-        let url = `${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/folders`;
+            let url = `${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/folders`;
         if (parentId) url += `?parent=${parentId}`;
 
         const res = await fetch(url, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
+            credentials: 'include'
         });
         
         if (!res.ok) {
@@ -537,12 +535,11 @@ async function loadFiles(folderId = null) {
     if (!window.currentUser?.institution) return;
 
     try {
-        const token = localStorage.getItem('authToken');
-        let url = folderId 
+            let url = folderId 
             ? `${API_BASE}/api/institution/folder/${folderId}/files`
             : `${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/files`;
 
-        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(url, { credentials: 'include' });
         
         if (!res.ok) {
             console.error('Files API error:', res.status);
@@ -678,14 +675,14 @@ document.getElementById('addSubfolderForm')?.addEventListener('submit', async (e
     e.preventDefault();
     const parentId = document.getElementById('parentFolderId').value;
     const name = document.getElementById('subfolderName').value.trim();
-    const token = localStorage.getItem('authToken');
 
     if (!name) return alert("Klasör adı boş olamaz!");
 
     try {
         const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/folder`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ folder_name: name, parent_folder_id: parentId || null })
         });
 
@@ -705,14 +702,14 @@ document.getElementById('addSubfolderForm')?.addEventListener('submit', async (e
 document.getElementById('addFolderForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const folderName = document.getElementById('folderName').value.trim();
-    const token = localStorage.getItem('authToken');
     
     if (!folderName) return alert("Klasör adı boş olamaz");
 
     try {
         const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/folder`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ folder_name: folderName, parent_folder_id: currentFolderId })
         });
 
@@ -731,7 +728,6 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
 
 document.getElementById('addFileForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('authToken');
     const data = {
         file_name: document.getElementById('fileName').value,
         file_url: document.getElementById('fileUrl').value,
@@ -746,7 +742,8 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
     try {
         const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/file`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(data)
         });
 
@@ -765,12 +762,12 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
 
 async function toggleFilePublic(fileId, currentStatus) {
     if (!confirm(`Dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
-    const token = localStorage.getItem('authToken');
     
     try {
         const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ is_public: !currentStatus })
         });
         
@@ -787,12 +784,11 @@ async function toggleFilePublic(fileId, currentStatus) {
 
 async function deleteFile(fileId) {
     if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
-    const token = localStorage.getItem('authToken');
     
     try {
         const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+            credentials: 'include'
         });
         
         if (res.ok) {
@@ -808,12 +804,11 @@ async function deleteFile(fileId) {
 
 async function deleteFolder(folderId) {
     if (!confirm('Bu klasör ve içindeki her şey silinecek. Emin misiniz?')) return;
-    const token = localStorage.getItem('authToken');
     
     try {
         const res = await fetch(`${API_BASE}/api/institution/folder/${folderId}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+            credentials: 'include'
         });
         
         if (res.ok) {
@@ -830,7 +825,6 @@ async function deleteFolder(folderId) {
 // Profil güncelleme
 document.getElementById('profileUpdateForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('authToken');
     const data = {
         full_name: document.getElementById('settingsFullName').value,
         institution: document.getElementById('settingsInstitution').value,
@@ -840,14 +834,15 @@ document.getElementById('profileUpdateForm')?.addEventListener('submit', async (
     try {
         const res = await fetch(`${API_BASE}/api/user/update`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(data)
         });
         
         if (res.ok) {
             alert('Profil bilgileriniz güncellendi. Değişikliklerin tam etkili olması için tekrar giriş yapmanız gerekebilir.');
             if (data.new_password) {
-                localStorage.removeItem('authToken');
+                
                 window.location.href = 'index.html';
             } else {
                 location.reload();
@@ -863,17 +858,16 @@ document.getElementById('profileUpdateForm')?.addEventListener('submit', async (
 // Hesap silme
 document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
     if (!confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
-    const token = localStorage.getItem('authToken');
     
     try {
         const res = await fetch(`${API_BASE}/api/user/delete`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+            credentials: 'include'
         });
         
         if (res.ok) {
             alert('Hesabınız silindi.');
-            localStorage.removeItem('authToken');
+            
             window.location.href = 'index.html';
         } else {
             alert('Silme başarısız');
@@ -911,10 +905,7 @@ document.getElementById('addFileBtn')?.addEventListener('click', openFileModal);
 
 // ====================== BAŞLANGIÇ ======================
 document.addEventListener('DOMContentLoaded', async () => {
-    const token = localStorage.getItem('authToken');
-    if (!token) return window.location.href = 'index.html';
-    await loadUserProfile();
-    document.getElementById('tab-overview').classList.remove('hidden');
+    await checkAuthAndLoad();
 });
 </script>
 </body>

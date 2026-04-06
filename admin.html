@@ -329,6 +329,7 @@
 <script src="assets/js/script.js"></script>
 <script>
 // ====================== ADMIN AUTH GATE ======================
+const API_BASE = ''; // Proxy üzerinden same-origin
 let currentAdmin = null; 
 
 async function checkAdminAuth() {
@@ -365,8 +366,7 @@ async function checkAdminAuth() {
 }
 
 function redirectToHome(msg) {
-    localStorage.removeItem('authToken');
-    sessionStorage.setItem('authRedirectMsg', msg);
+        sessionStorage.setItem('authRedirectMsg', msg);
     window.location.replace('index.html');
 }
 
@@ -419,7 +419,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const users = await usersRes.json();
             document.getElementById('statUsers').textContent = users.length || 0;
             
-            const subsRes = await fetch(`${API_BASE}/api/admin/subscriptions`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+            const subsRes = await fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' });
             const subs = await subsRes.json();
             document.getElementById('statSubscriptions').textContent = subs.filter(s => s.status === 'active').length || 0;
             
@@ -458,7 +458,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Abonelikleri listele
     async function loadSubscriptions() {
-        const res = await fetch(`${API_BASE}/api/admin/subscriptions`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        const res = await fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' });
         const subs = await res.json();
         const getProductName = (slug) => products.find(p => p.slug === slug)?.name || slug;
         
@@ -488,7 +488,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (confirm(`Kullanıcı rolünü ${newRole === 'admin' ? 'Admin' : 'Kullanıcı'} yapmak istediğinize emin misiniz?`)) {
             await fetch(`${API_BASE}/api/admin/set-role/${userId}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ role: newRole })
             });
             loadUsers();
@@ -510,7 +511,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     async function deleteUser(id) {
         if (confirm('Kullanıcıyı silmek istediğinize emin misiniz?')) {
-            await fetch(`${API_BASE}/api/admin/user/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${adminToken}` } });
+            await fetch(`${API_BASE}/api/admin/user/${id}`, { method: 'DELETE', credentials: 'include' });
             loadUsers();
             loadDashboard();
         }
@@ -528,7 +529,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     async function deleteSubscription(id) {
         if (confirm('Aboneliği silmek istediğinize emin misiniz?')) {
-            await fetch(`${API_BASE}/api/admin/subscription/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${adminToken}` } });
+            await fetch(`${API_BASE}/api/admin/subscription/${id}`, { method: 'DELETE', credentials: 'include' });
             loadSubscriptions();
             loadDashboard();
         }
@@ -547,7 +548,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         const url = id ? `${API_BASE}/api/admin/user/${id}` : `${API_BASE}/api/admin/user`;
         const method = id ? 'PUT' : 'POST';
-        await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` }, body: JSON.stringify(data) });
+        await fetch(url, { method, headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', body: JSON.stringify(data) });
         closeUserModal();
         loadUsers();
         loadDashboard();
@@ -557,7 +559,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         await fetch(`${API_BASE}/api/admin/subscription`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
             body: JSON.stringify({
                 user_id: document.getElementById('subUserId').value,
                 product_slug: document.getElementById('subProduct').value,
@@ -615,7 +618,7 @@ let currentAdminInstitutionFilter = 'all';
 async function loadAdminInstitutions() {
     try {
         const response = await fetch(`${API_BASE}/api/admin/institutions`, {
-            headers: { 'Authorization': `Bearer ${adminToken}` }
+            credentials: 'include'
         });
         const institutions = await response.json();
         
@@ -648,7 +651,7 @@ async function loadAdminFiles() {
     
     try {
         const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${adminToken}` }
+            credentials: 'include'
         });
         const files = await response.json();
         
@@ -698,7 +701,8 @@ async function toggleAdminFilePublic(fileId, currentStatus) {
     try {
         const response = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
             body: JSON.stringify({ is_public: !currentStatus })
         });
         
@@ -721,7 +725,7 @@ async function deleteAdminFile(fileId) {
     try {
         const response = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${adminToken}` }
+            credentials: 'include'
         });
         if (response.ok) {
             alert('Dosya silindi.');
@@ -764,7 +768,8 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
     try {
         const response = await fetch(`${API_BASE}/api/institution/${institutionId}/file`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
             body: JSON.stringify(data)
         });
         if (response.ok) {
