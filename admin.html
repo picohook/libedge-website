@@ -825,12 +825,9 @@ async function loadAdminFiles() {
                 <div class="flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
                         <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
-                        <a href="${file.file_url}" 
-               onclick="event.preventDefault(); previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type||''}')"
-               class="font-medium text-primary hover:underline">
-                        onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type||''}')">${escapeHtml(file.file_name)}</span>
-                        ${file.institution_name ? `<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">${escapeHtml(file.institution_name)}</span>` : ''}
-                        ${file.is_public
+                        <a href="${file.file_url}" onclick="event.preventDefault(); previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type||''}')" class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
+${file.institution_name ? `<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">${escapeHtml(file.institution_name)}</span>` : ''}
+${file.is_public
                             ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><i class="fas fa-globe mr-1"></i>Herkese Açık</span>'
                             : '<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"><i class="fas fa-lock mr-1"></i>Kurum İçi</span>'}
                     </div>
@@ -1207,58 +1204,6 @@ function getCategoryName(category) {
 }
 
 </script>
-<script>
-function previewFile(url, name, type) {
-    const ext = (type || url.split('.').pop()?.split('?')[0] || '').toLowerCase();
-    const modal = document.getElementById('fileViewerModal');
-    document.getElementById('fileViewerTitle').textContent = name;
-    const dl = document.getElementById('fileViewerDownload');
-    dl.href = url; dl.download = name;
-    const body = document.getElementById('fileViewerBody');
-    body.innerHTML = '';
-    const images = ['jpg','jpeg','png','gif','webp','svg'];
-    const videos = ['mp4','webm','ogg','mov'];
-    const audio = ['mp3','wav','aac','flac'];
-    const office = ['doc','docx','xls','xlsx','ppt','pptx'];
-    if (ext === 'pdf') {
-        body.innerHTML = `<iframe src="${url}" class="w-full border-0" style="height:80vh"></iframe>`;
-    } else if (images.includes(ext)) {
-        body.innerHTML = `<div class="flex items-center justify-center p-4" style="min-height:70vh"><img src="${url}" class="max-w-full object-contain rounded-lg" style="max-height:75vh"></div>`;
-    } else if (videos.includes(ext)) {
-        body.innerHTML = `<div class="flex items-center justify-center p-4" style="min-height:70vh"><video controls class="max-w-full rounded-lg" style="max-height:75vh"><source src="${url}">Video oynatılamıyor.</video></div>`;
-    } else if (audio.includes(ext)) {
-        body.innerHTML = `<div class="flex items-center justify-center p-8 text-center" style="min-height:40vh"><div><i class="fas fa-music text-6xl text-purple-400 mb-4 block"></i><p class="mb-4 text-gray-600">${name}</p><audio controls class="w-full"><source src="${url}"></audio></div></div>`;
-    } else if (office.includes(ext)) {
-        body.innerHTML = `<iframe src="https://docs.google.com/viewer?url=${encodeURIComponent(location.origin+url)}&embedded=true" class="w-full border-0" style="height:80vh"></iframe>`;
-    } else if (ext === 'gdrive') {
-        const id = url.match(/\/d\/([^/]+)/)?.[1];
-        body.innerHTML = id
-            ? `<iframe src="https://drive.google.com/file/d/${id}/preview" class="w-full border-0" style="height:80vh" allow="autoplay"></iframe>`
-            : `<div class="flex items-center justify-center p-8 text-center" style="min-height:40vh"><div><i class="fab fa-google-drive text-6xl text-blue-400 mb-4 block"></i><a href="${url}" target="_blank" class="btn btn-primary">Drive'da Aç</a></div></div>`;
-    } else {
-        body.innerHTML = `<div class="flex items-center justify-center p-8 text-center" style="min-height:40vh"><div><i class="fas fa-file text-6xl text-gray-400 mb-4 block"></i><p class="text-gray-500 mb-4">${name}</p><a href="${url}" target="_blank" class="btn btn-primary">İndir / Aç</a></div></div>`;
-    }
-    modal.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-}
-function closeFileViewer() {
-    document.getElementById('fileViewerModal').classList.add('hidden');
-    document.getElementById('fileViewerBody').innerHTML = '';
-    document.body.classList.remove('overflow-hidden');
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileViewer(); });
-</script>
- 
-<div id="fileViewerModal" class="fixed inset-0 bg-black bg-opacity-80 flex flex-col z-50 hidden">
-    <div class="bg-white flex items-center justify-between px-4 py-3 shadow flex-shrink-0">
-        <h3 id="fileViewerTitle" class="font-semibold text-gray-800 truncate flex-1 mr-4"></h3>
-        <div class="flex items-center gap-3">
-            <a id="fileViewerDownload" href="#" download class="text-sm text-gray-600 hover:text-primary flex items-center gap-1"><i class="fas fa-download"></i> İndir</a>
-            <button onclick="closeFileViewer()" class="text-gray-500 hover:text-red-500 text-xl px-2"><i class="fas fa-times"></i></button>
-        </div>
-    </div>
-    <div id="fileViewerBody" class="flex-1 overflow-auto bg-gray-100"></div>
-</div>
  
 <style>
 #fileViewerPanel {
