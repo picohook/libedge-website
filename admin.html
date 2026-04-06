@@ -155,6 +155,19 @@
                     </button>
                 </div>
             </div>
+            <!-- Filtreler -->
+            <div class="flex flex-wrap gap-2 mb-4">
+                <input type="text" id="userSearchInput" placeholder="Ad, e-posta veya kurum ara..." class="border rounded px-3 py-1.5 text-sm flex-1 min-w-[200px]" oninput="filterUsers()">
+                <select id="userRoleFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterUsers()">
+                    <option value="">Tüm Roller</option>
+                    <option value="user">Kullanıcı</option>
+                    <option value="admin">Admin</option>
+                    <option value="super_admin">Super Admin</option>
+                </select>
+                <select id="userInstitutionFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterUsers()">
+                    <option value="">Tüm Kurumlar</option>
+                </select>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead>
@@ -165,12 +178,13 @@
                             <th>Kurum</th>
                             <th>Rol</th>
                             <th>Kayıt Tarihi</th>
+                            <th>Son Giriş</th>
                             <th>İşlem</th>
                         </tr>
                     </thead>
                     <tbody id="usersList">
                         <tr>
-                            <td colspan="7" class="text-center py-4">Yükleniyor...</td>
+                            <td colspan="8" class="text-center py-4">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -761,14 +775,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Kullanıcıları listele
-    async function loadUsers() {
-        const res = await fetch('/api/admin/users', {
-    credentials: 'include'
-})
-        const users = await res.json();
+    let allUsers = [];
+
+    function timeAgo(dateStr) {
+        if (!dateStr) return '-';
+        const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+        if (diff < 60) return `${diff} sn önce`;
+        if (diff < 3600) return `${Math.floor(diff / 60)} dk önce`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} saat önce`;
+        if (diff < 2592000) return `${Math.floor(diff / 86400)} gün önce`;
+        return new Date(dateStr).toLocaleDateString('tr-TR');
+    }
+
+    function renderUsers(users) {
         const isSuper = currentAdmin?.role === 'super_admin';
-        
-        document.getElementById('usersList').innerHTML = users.map(u => `
+        document.getElementById('usersList').innerHTML = users.length ? users.map(u => `
             <tr>
                 <td class="px-4 py-2">${u.id}</td>
                 <td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td>
@@ -776,13 +797,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td>
                 <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${u.role === 'super_admin' ? 'bg-red-100 text-red-800' : u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100'}">${u.role === 'super_admin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : 'Kullanıcı'}</span></td>
                 <td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td>
+                <td class="px-4 py-2 text-gray-500 text-sm">${timeAgo(u.last_login)}</td>
                 <td class="px-4 py-2">
                     <button onclick="editUser(${u.id}, '${escapeHtml(u.full_name || '')}', '${u.email}', '${escapeHtml(u.institution || '')}', '${u.role}')" class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button>
                     ${isSuper && u.role !== 'super_admin' ? `<button onclick="setRole(${u.id}, '${u.role === 'admin' ? 'user' : 'admin'}')" class="text-green-600 mr-2" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}"><i class="fas fa-user-shield"></i></button>` : ''}
                     <button onclick="deleteUser(${u.id})" class="text-red-600"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
-        `).join('');
+        `).join('') : '<tr><td colspan="8" class="text-center py-4 text-gray-400">Sonuç bulunamadı</td></tr>';
+    }
+
+    function filterUsers() {
+        const q = document.getElementById('userSearchInput').value.toLowerCase();
+        const role = document.getElementById('userRoleFilter').value;
+        const inst = document.getElementById('userInstitutionFilter').value;
+        const filtered = allUsers.filter(u => {
+            const matchQ = !q || (u.full_name || '').toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.institution || '').toLowerCase().includes(q);
+            const matchRole = !role || u.role === role;
+            const matchInst = !inst || u.institution === inst;
+            return matchQ && matchRole && matchInst;
+        });
+        renderUsers(filtered);
+    }
+
+    async function loadUsers() {
+        const res = await fetch('/api/admin/users', { credentials: 'include' });
+        allUsers = await res.json();
+
+        // Kurum dropdown'u doldur
+        const institutions = [...new Set(allUsers.map(u => u.institution).filter(Boolean))].sort();
+        const instFilter = document.getElementById('userInstitutionFilter');
+        const currentVal = instFilter.value;
+        instFilter.innerHTML = '<option value="">Tüm Kurumlar</option>' +
+            institutions.map(i => `<option value="${escapeHtml(i)}"${i === currentVal ? ' selected' : ''}>${escapeHtml(i)}</option>`).join('');
+
+        filterUsers();
     }
 
     // Abonelikleri listele

@@ -274,6 +274,8 @@ app.post('/api/auth/login', async (c) => {
       return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
     }
 
+    await db.prepare(`UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?`).bind(user.id).run();
+
     const tokenPayload = {
       user_id: user.id,
       email: user.email,
@@ -573,9 +575,9 @@ app.get('/api/admin/users', async (c) => {
   
   let users;
   if (role === 'super_admin') {
-    users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at FROM users ORDER BY id DESC`).all();
+    users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at, last_login FROM users ORDER BY id DESC`).all();
   } else {
-    users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at FROM users WHERE institution = ? ORDER BY id DESC`).bind(institution).all();
+    users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at, last_login FROM users WHERE institution = ? ORDER BY id DESC`).bind(institution).all();
   }
   return c.json(users.results);
 });
