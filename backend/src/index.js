@@ -1137,11 +1137,22 @@ app.post('/api/admin/institution', async (c) => {
 });
 
 app.put('/api/admin/institution/:id', async (c) => {
-  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  if (!await isAdmin(c)) return c.json({ error: 'Yetersiz yetki' }, 403);
+  const role = await getUserRole(c);
   const id = c.req.param('id');
   const { name, domain } = await c.req.json();
   const db = c.env.DB;
-  await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = COALESCE(?, domain) WHERE id = ?`).bind(name || null, domain || null, id).run();
+
+  if (role === 'super_admin') {
+    await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ? WHERE id = ?`).bind(name || null, domain ?? null, id).run();
+  } else {
+    // Admin sadece kendi kurumunun domain'ini güncelleyebilir
+    const adminInstitution = await getUserInstitution(c);
+    const target = await db.prepare(`SELECT name FROM institutions WHERE id = ?`).bind(id).first();
+    if (!target || target.name !== adminInstitution) return c.json({ error: 'Bu kurumu düzenleme yetkiniz yok' }, 403);
+    await db.prepare(`UPDATE institutions SET domain = ? WHERE id = ?`).bind(domain ?? null, id).run();
+  }
+
   return c.json({ success: true });
 });
 

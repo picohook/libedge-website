@@ -1369,6 +1369,37 @@ function closeInstitutionModal() {
     document.getElementById('institutionModal').classList.add('hidden');
 }
 
+function openEditInstitutionModal(id, name, domain) {
+    document.getElementById('editInstitutionId').value = id;
+    document.getElementById('editInstitutionName').value = name;
+    document.getElementById('editInstitutionDomain').value = domain;
+    const nameInput = document.getElementById('editInstitutionName');
+    const isSuper = currentAdmin?.role === 'super_admin';
+    nameInput.disabled = !isSuper;
+    nameInput.classList.toggle('text-gray-400', !isSuper);
+    document.getElementById('editInstitutionModal').classList.remove('hidden');
+}
+function closeEditInstitutionModal() {
+    document.getElementById('editInstitutionModal').classList.add('hidden');
+}
+
+document.getElementById('editInstitutionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('editInstitutionId').value;
+    const name = document.getElementById('editInstitutionName').value.trim();
+    const domain = document.getElementById('editInstitutionDomain').value.trim();
+    const isSuper = currentAdmin?.role === 'super_admin';
+    const body = isSuper ? { name, domain: domain || null } : { domain: domain || null };
+    await fetch(`${API_BASE}/api/admin/institution/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+    });
+    closeEditInstitutionModal();
+    loadInstitutions();
+});
+
 function openBulkInstitutionModal() {
     document.getElementById('bulkPasteArea').value = '';
     document.getElementById('bulkPreviewRows').innerHTML = '';
