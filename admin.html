@@ -442,6 +442,7 @@
                             <th>Kullanıcı Sayısı</th>
                             <th>Dosya Sayısı</th>
                             <th>İşlem</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody id="institutionsList">
@@ -498,6 +499,29 @@
             <div class="flex gap-2">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
                 <button type="button" onclick="closeInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Institution Modal -->
+<div id="editInstitutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Kurumu Düzenle</h3>
+        <form id="editInstitutionForm">
+            <input type="hidden" id="editInstitutionId">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı</label>
+                <input type="text" id="editInstitutionName" class="w-full border p-2 rounded bg-gray-50" required>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
+                <input type="text" id="editInstitutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
+                <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgülle ayırın</p>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
+                <button type="button" onclick="closeEditInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
         </form>
     </div>
@@ -590,7 +614,7 @@ async function checkAdminAuth() {
         
         if (user.role !== 'super_admin') {
             const productsTab = document.querySelector('[data-tab="products"]');
-            if (productsTab) productsTab.parentElement?.remove();
+            if (productsTab) productsTab.style.display = 'none';
             const institutionsTab = document.getElementById('institutionsTab');
             if (institutionsTab) institutionsTab.style.display = 'none';
         }
@@ -1310,25 +1334,30 @@ function getCategoryName(category) {
 
 async function loadInstitutions() {
     const tbody = document.getElementById('institutionsList');
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Yükleniyor...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Yükleniyor...</td></tr>';
     try {
         const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
         const institutions = await res.json();
         if (!institutions.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-400">Henüz kurum yok</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">Henüz kurum yok</td></tr>';
             return;
         }
-        tbody.innerHTML = institutions.map(i => `
-            <tr>
+        const isSuper = currentAdmin?.role === 'super_admin';
+        const adminInstitution = currentAdmin?.institution || '';
+        tbody.innerHTML = institutions.map(i => {
+            const canEdit = isSuper || i.name === adminInstitution;
+            const canDelete = isSuper;
+            return `<tr>
                 <td class="px-4 py-2">${escapeHtml(i.name)}</td>
                 <td class="px-4 py-2">${escapeHtml(i.domain || '-')}</td>
                 <td class="px-4 py-2">${i.user_count ?? '-'}</td>
                 <td class="px-4 py-2">${i.file_count ?? '-'}</td>
                 <td class="px-4 py-2">
-                    <button type="button" onclick="deleteInstitution(${i.id}, '${escapeHtml(i.name)}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                    ${canEdit ? `<button type="button" onclick="openEditInstitutionModal(${i.id}, '${escapeHtml(i.name)}', '${escapeHtml(i.domain || '')}')" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>` : ''}
+                    ${canDelete ? `<button type="button" onclick="deleteInstitution(${i.id}, '${escapeHtml(i.name)}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>` : ''}
                 </td>
-            </tr>
-        `).join('');
+            </tr>`;
+        }).join('');
     } catch (e) { console.error('loadInstitutions error:', e); }
 }
 
