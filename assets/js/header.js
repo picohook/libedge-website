@@ -97,10 +97,13 @@ const HEADER_HTML = `
 // Sayfaya enjekte et
 document.addEventListener('DOMContentLoaded', () => {
     const target = document.getElementById('site-header');
-    if (target) target.innerHTML = HEADER_HTML;
+    if (!target) return;
+    target.innerHTML = HEADER_HTML;
+
+    // Header DOM'a girdikten sonra auth durumunu uygula
+    // script.js checkAuth'u header'dan önce çalışmış olabilir
+    if (typeof updateAuthUI === 'function') {
+        const isLoggedIn = typeof currentUser !== 'undefined' && currentUser !== null;
+        updateAuthUI(isLoggedIn);
+    }
 });
-<div class="ml-auto pl-8">
-    <div id="authLoading" class="hidden">
-        <i class="fas fa-spinner fa-spin text-white text-xl"></i>
-    </div>
-    <div id="authNotLoggedIn"></div>

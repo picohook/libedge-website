@@ -320,6 +320,7 @@
     </div>
 </div>
 <script>
+const API_BASE = ''; // Proxy üzerinden same-origin
 
 let currentFolderId = null;
 let folderStack = [];
@@ -385,9 +386,7 @@ function getProductName(slug) {
 // ✅ YENİ (Cookie tabanlı)
 async function checkAuthAndLoad() {
     try {
-        const res = await fetch('/api/user/profile', {
-            credentials: 'include'
-        });
+        const res = await fetch('/api/user/profile', { credentials: 'include' });
         
         if (!res.ok) {
             window.location.href = 'index.html';
@@ -396,13 +395,36 @@ async function checkAuthAndLoad() {
         
         const user = await res.json();
         window.currentUser = user;
-        
-        // Sayfayı göster
-        document.getElementById('profileName').textContent = user.full_name || 'Kullanıcı';
-        document.getElementById('profileEmail').textContent = user.email;
-        // ... rest of profile loading code
-        
+
+        // Sidebar
+        const el = (id) => document.getElementById(id);
+        if (el('profileName')) el('profileName').textContent = user.full_name || 'Kullanıcı';
+        if (el('profileEmail')) el('profileEmail').textContent = user.email;
+
+        // Genel Bakış
+        if (el('infoFullName')) el('infoFullName').textContent = user.full_name || '-';
+        if (el('infoEmail')) el('infoEmail').textContent = user.email || '-';
+        if (el('infoInstitution')) el('infoInstitution').textContent = user.institution || '-';
+        if (el('infoCreatedAt')) el('infoCreatedAt').textContent = user.created_at
+            ? new Date(user.created_at).toLocaleDateString('tr-TR') : '-';
+        if (el('welcomeMessage')) el('welcomeMessage').textContent =
+            `Hoş geldiniz, ${user.full_name || 'Kullanıcı'}! Hesap bilgilerinizi ve aboneliklerinizi buradan yönetebilirsiniz.`;
+
+        // Ayarlar formu
+        if (el('settingsFullName')) el('settingsFullName').value = user.full_name || '';
+        if (el('settingsInstitution')) el('settingsInstitution').value = user.institution || '';
+
+        // Admin butonları
+        if (user.role === 'admin' || user.role === 'super_admin') {
+            if (el('addFolderBtn')) el('addFolderBtn').classList.remove('hidden');
+            if (el('addFileBtn')) el('addFileBtn').classList.remove('hidden');
+        }
+
+        // Abonelikleri yükle
+        await loadSubscriptions();
+
     } catch (err) {
+        console.error('checkAuthAndLoad error:', err);
         window.location.href = 'index.html';
     }
 }
