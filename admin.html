@@ -68,6 +68,7 @@
                 <a href="#" class="sidebar-link" data-tab="products"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
                 <a href="#" class="sidebar-link" data-tab="requests"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
                 <a href="#" class="sidebar-link" data-tab="institutions" id="institutionsTab"><i class="fas fa-building w-5"></i><span>Kurumlar</span></a>
+                <a href="#" class="sidebar-link" data-tab="my-institution" id="myInstitutionTab" style="display:none"><i class="fas fa-university w-5"></i><span>Kurumum</span></a>
             </nav>
             <div class="absolute bottom-6 left-6">
                 <a href="index.html" class="sidebar-link-exit"><i class="fas fa-arrow-left w-5"></i><span>Siteye Dön</span></a>
@@ -473,6 +474,38 @@
     </div>
 
     <!-- Requests Tab -->
+    <!-- My Institution Tab -->
+    <div id="tab-my-institution" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-sm p-6 max-w-lg">
+            <h3 class="text-lg font-semibold mb-6">Kurum Ayarları</h3>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="stat-card text-center">
+                    <p class="text-gray-500 text-sm mb-1">Kullanıcı Sayısı</p>
+                    <p id="myInstUserCount" class="text-2xl font-bold">-</p>
+                </div>
+                <div class="stat-card text-center">
+                    <p class="text-gray-500 text-sm mb-1">Dosya Sayısı</p>
+                    <p id="myInstFileCount" class="text-2xl font-bold">-</p>
+                </div>
+            </div>
+            <form id="myInstitutionForm">
+                <input type="hidden" id="myInstitutionId">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı</label>
+                    <input type="text" id="myInstitutionName" class="w-full border p-2 rounded bg-gray-50 text-gray-500" disabled>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
+                    <input type="text" id="myInstitutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
+                    <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgülle ayırın</p>
+                </div>
+                <div id="myInstitutionError" class="hidden mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2"></div>
+                <div id="myInstitutionSuccess" class="hidden mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">Kaydedildi.</div>
+                <button type="submit" class="btn btn-primary">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
     <div id="tab-requests" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
             <h3 class="text-lg font-semibold mb-4">Deneme ve İletişim Talepleri</h3>
@@ -700,6 +733,10 @@ async function checkAdminAuth() {
             if (productsTab) productsTab.style.display = 'none';
             const institutionsTab = document.getElementById('institutionsTab');
             if (institutionsTab) institutionsTab.style.display = 'none';
+        }
+        if (user.role === 'admin') {
+            const myInstTab = document.getElementById('myInstitutionTab');
+            if (myInstTab) myInstTab.style.display = '';
         }
         return true;
     } catch (err) {
@@ -996,6 +1033,8 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 loadAdminFiles();
             } else if (tab === 'institutions') {
                 loadInstitutions();
+            } else if (tab === 'my-institution') {
+                loadMyInstitution();
             }
         }
     });
@@ -1573,6 +1612,55 @@ async function submitBulkUsers() {
     loadUsers();
     loadDashboard();
 }
+
+// ====================== KURUMUM ======================
+
+async function loadMyInstitution() {
+    const errEl = document.getElementById('myInstitutionError');
+    const successEl = document.getElementById('myInstitutionSuccess');
+    errEl.classList.add('hidden');
+    successEl.classList.add('hidden');
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
+        const institutions = await res.json();
+        const adminInst = currentAdmin?.institution || '';
+        const inst = institutions.find(i => i.name === adminInst);
+        if (!inst) return;
+
+        document.getElementById('myInstitutionId').value = inst.id;
+        document.getElementById('myInstitutionName').value = inst.name;
+        document.getElementById('myInstitutionDomain').value = inst.domain || '';
+        document.getElementById('myInstUserCount').textContent = inst.user_count ?? '-';
+        document.getElementById('myInstFileCount').textContent = inst.file_count ?? '-';
+    } catch (e) { console.error('loadMyInstitution error:', e); }
+}
+
+document.getElementById('myInstitutionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('myInstitutionError');
+    const successEl = document.getElementById('myInstitutionSuccess');
+    errEl.classList.add('hidden');
+    successEl.classList.add('hidden');
+
+    const id = document.getElementById('myInstitutionId').value;
+    const domain = document.getElementById('myInstitutionDomain').value.trim();
+
+    const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ domain: domain || null })
+    });
+
+    if (res.ok) {
+        successEl.classList.remove('hidden');
+    } else {
+        const body = await res.json().catch(() => ({}));
+        errEl.textContent = body.error || 'Bir hata oluştu.';
+        errEl.classList.remove('hidden');
+    }
+});
 
 // ====================== KURUMLAR YÖNETİMİ ======================
 
