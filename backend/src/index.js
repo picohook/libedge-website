@@ -1104,7 +1104,15 @@ app.delete('/api/institution/file/:id', async (c) => {
   const bucket = c.env.FILES_BUCKET;
   if (bucket && file.file_url?.includes('/api/files/')) {
     const key = file.file_url.replace(/^.*\/api\/files\//, '');
-    try { await bucket.delete(key); } catch (e) { console.error('R2 delete error:', e); }
+    console.log('R2 delete attempt - file_url:', file.file_url, 'key:', key);
+    try {
+      await bucket.delete(key);
+      console.log('R2 delete success:', key);
+    } catch (e) {
+      console.error('R2 delete error:', e);
+    }
+  } else {
+    console.log('R2 skip - file_url:', file.file_url);
   }
 
   // DB'den soft delete
