@@ -99,3 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const target = document.getElementById('site-header');
     if (target) target.innerHTML = HEADER_HTML;
 });
+<div class="ml-auto pl-8">
+    <div id="authLoading" class="hidden">
+        <i class="fas fa-spinner fa-spin text-white text-xl"></i>
+    </div>
+    <div id="authNotLoggedIn"></div>

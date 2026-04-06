@@ -325,19 +325,14 @@ function updateAuthUI(isLoggedIn) {
     const authNotLoggedIn = document.getElementById('authNotLoggedIn');
     const authLoggedIn = document.getElementById('authLoggedIn');
     
-    // Elementleri kontrol et
-    if (!authLoading || !authNotLoggedIn || !authLoggedIn) {
-    return; // Bu sayfa auth UI elementleri içermiyor (admin, profile vb.)
+    // ✅ Sadece authNotLoggedIn ve authLoggedIn zorunlu
+    // authLoading opsiyonel (header.js ile yüklenen sayfalarda olmayabilir)
+    if (!authNotLoggedIn || !authLoggedIn) {
+        return;
     }
+
+    if (authLoading) authLoading.classList.add('hidden'); // ✅ null check ile
     
-    if (isLoggedIn && currentUser) {
-        // ✅ Kullanıcı GİRİŞ YAPMIŞ
-        console.log('✅ Kullanıcı giriş yapmış, menü gösteriliyor');
-        
-        authLoading.classList.add('hidden');
-        authNotLoggedIn.classList.add('hidden');
-        authLoggedIn.classList.remove('hidden');
-        
         // Avatar ve isim güncelleme
         const initials = getInitials(currentUser.full_name);
         const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
