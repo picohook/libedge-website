@@ -1255,5 +1255,95 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileVie
     <div id="fileViewerBody" class="flex-1 overflow-auto bg-gray-100"></div>
 </div>
  
+<style>
+#fileViewerPanel {
+    position: fixed;
+    top: 0;
+    right: -45%;
+    width: 45%;
+    height: 100vh;
+    background: white;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    transition: right 0.3s ease;
+}
+#fileViewerPanel.open { right: 0; }
+#fileViewerOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 99;
+    display: none;
+    backdrop-filter: blur(2px);
+}
+#fileViewerOverlay.open { display: block; }
+@media (max-width: 768px) {
+    #fileViewerPanel { right: -100%; width: 100%; }
+}
+</style>
+ 
+<script>
+function previewFile(url, name, type) {
+    const ext = (type || url.split('.').pop()?.split('?')[0] || '').toLowerCase();
+    document.getElementById('fileViewerTitle').textContent = name;
+    const dl = document.getElementById('fileViewerDownload');
+    dl.href = url; dl.download = name;
+    document.getElementById('fileViewerOpenNew').href = url;
+    const body = document.getElementById('fileViewerBody');
+    body.innerHTML = '<div class="flex items-center justify-center h-full"><i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i></div>';
+    const images = ['jpg','jpeg','png','gif','webp','svg'];
+    const videos = ['mp4','webm','ogg','mov'];
+    const audio  = ['mp3','wav','aac','flac'];
+    const office = ['doc','docx','xls','xlsx','ppt','pptx'];
+    if (ext === 'pdf') {
+        body.innerHTML = `<iframe src="${url}#toolbar=1" class="w-full h-full border-0"></iframe>`;
+    } else if (images.includes(ext)) {
+        body.innerHTML = `<div class="flex items-center justify-center h-full p-4 bg-gray-50"><img src="${url}" alt="${name}" class="max-w-full max-h-full object-contain rounded-lg shadow"></div>`;
+    } else if (videos.includes(ext)) {
+        body.innerHTML = `<div class="flex items-center justify-center h-full p-4 bg-black"><video controls autoplay class="max-w-full max-h-full rounded"><source src="${url}">Video oynatılamıyor.</video></div>`;
+    } else if (audio.includes(ext)) {
+        body.innerHTML = `<div class="flex flex-col items-center justify-center h-full p-8 text-center bg-gradient-to-b from-purple-50 to-white"><div class="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mb-6"><i class="fas fa-music text-4xl text-purple-500"></i></div><p class="font-medium text-gray-800 mb-2 text-lg">${name}</p><audio controls class="w-full mt-4 max-w-xs"><source src="${url}"></audio></div>`;
+    } else if (office.includes(ext)) {
+        body.innerHTML = `<iframe src="https://docs.google.com/viewer?url=${encodeURIComponent(location.origin+url)}&embedded=true" class="w-full h-full border-0"></iframe>`;
+    } else if (ext === 'gdrive') {
+        const id = url.match(/\/d\/([^/]+)/)?.[1];
+        body.innerHTML = id
+            ? `<iframe src="https://drive.google.com/file/d/${id}/preview" class="w-full h-full border-0" allow="autoplay"></iframe>`
+            : `<div class="flex flex-col items-center justify-center h-full p-8 text-center"><i class="fab fa-google-drive text-6xl text-blue-400 mb-4"></i><a href="${url}" target="_blank" class="btn btn-primary">Drive'da Aç</a></div>`;
+    } else {
+        body.innerHTML = `<div class="flex flex-col items-center justify-center h-full p-8 text-center"><div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4"><i class="fas fa-file text-4xl text-gray-400"></i></div><p class="font-medium text-gray-700 mb-1">${name}</p><p class="text-sm text-gray-400 mb-6">Bu dosya türü önizlenemiyor</p><a href="${url}" target="_blank" class="btn btn-primary"><i class="fas fa-external-link-alt mr-2"></i>Aç / İndir</a></div>`;
+    }
+    document.getElementById('fileViewerPanel').classList.add('open');
+    document.getElementById('fileViewerOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeFileViewer() {
+    document.getElementById('fileViewerPanel').classList.remove('open');
+    document.getElementById('fileViewerOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+    setTimeout(() => { document.getElementById('fileViewerBody').innerHTML = ''; }, 300);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileViewer(); });
+</script>
+ 
+<div id="fileViewerOverlay" onclick="closeFileViewer()"></div>
+ 
+<div id="fileViewerPanel">
+    <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-100 flex-shrink-0">
+        <button onclick="closeFileViewer()" class="text-gray-400 hover:text-gray-700 transition p-1 rounded hover:bg-gray-100">
+            <i class="fas fa-times text-lg"></i>
+        </button>
+        <h3 id="fileViewerTitle" class="font-medium text-gray-800 truncate flex-1 text-sm"></h3>
+        <a id="fileViewerDownload" href="#" download class="text-gray-400 hover:text-primary transition p-1 rounded hover:bg-gray-100" title="İndir">
+            <i class="fas fa-download"></i>
+        </a>
+        <a id="fileViewerOpenNew" href="#" target="_blank" class="text-gray-400 hover:text-primary transition p-1 rounded hover:bg-gray-100" title="Yeni sekmede aç">
+            <i class="fas fa-external-link-alt"></i>
+        </a>
+    </div>
+    <div id="fileViewerBody" class="flex-1 overflow-auto"></div>
+</div>
 </body>
 </html>
