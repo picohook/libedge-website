@@ -1622,11 +1622,9 @@ async function loadMyInstitution() {
     successEl.classList.add('hidden');
 
     try {
-        const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
-        const institutions = await res.json();
-        const adminInst = currentAdmin?.institution || '';
-        const inst = institutions.find(i => i.name === adminInst);
-        if (!inst) return;
+        const res = await fetch(`${API_BASE}/api/admin/my-institution`, { credentials: 'include' });
+        if (!res.ok) return;
+        const inst = await res.json();
 
         document.getElementById('myInstitutionId').value = inst.id;
         document.getElementById('myInstitutionName').value = inst.name;
