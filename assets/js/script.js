@@ -327,8 +327,7 @@ function updateAuthUI(isLoggedIn) {
     
     // Elementleri kontrol et
     if (!authLoading || !authNotLoggedIn || !authLoggedIn) {
-        console.error('❌ Auth elementleri bulunamadı!', { authLoading, authNotLoggedIn, authLoggedIn });
-        return;
+    return; // Bu sayfa auth UI elementleri içermiyor (admin, profile vb.)
     }
     
     if (isLoggedIn && currentUser) {
