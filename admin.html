@@ -1389,9 +1389,10 @@ async function loadInstitutions() {
             return;
         }
         const isSuper = currentAdmin?.role === 'super_admin';
+        const isAdmin = currentAdmin?.role === 'admin';
         const adminInstitution = currentAdmin?.institution || '';
         tbody.innerHTML = institutions.map(i => {
-            const canEdit = isSuper || i.name === adminInstitution;
+            const canEdit = isSuper || (isAdmin && i.name === adminInstitution);
             const canDelete = isSuper;
             return `<tr>
                 <td class="px-4 py-2">${escapeHtml(i.name)}</td>

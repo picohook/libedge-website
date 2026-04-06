@@ -593,11 +593,23 @@ app.post('/api/admin/user', async (c) => {
       return c.json({ error: 'Kendi kurumunuz dışında kullanıcı ekleyemezsiniz' }, 403);
     }
     finalInstitution = adminInstitution;
+
+    // Email domain kontrolü
+    const emailDomain = email?.split('@')[1]?.toLowerCase();
+    if (emailDomain && finalInstitution) {
+      const inst = await db.prepare(`SELECT domain FROM institutions WHERE name = ?`).bind(finalInstitution).first();
+      if (inst?.domain) {
+        const allowedDomains = inst.domain.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+        if (allowedDomains.length && !allowedDomains.includes(emailDomain)) {
+          return c.json({ error: "Bu e-posta adresi kurumunuzun domain'iyle eşleşmiyor" }, 400);
+        }
+      }
+    }
   }
-  
+
   const finalRole = (role === 'admin' && adminRole !== 'super_admin') ? 'user' : (role || 'user');
-  
-  const password_hash = await hashPassword(password);  
+
+  const password_hash = await hashPassword(password);
   await db.prepare(`INSERT INTO users (email, password_hash, full_name, institution, role) VALUES (?, ?, ?, ?, ?)`).bind(email, password_hash, full_name, finalInstitution, finalRole).run();
   return c.json({ success: true });
 });
