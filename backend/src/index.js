@@ -750,6 +750,24 @@ app.delete('/api/admin/subscription/:id', async (c) => {
 
 // ====================== KURUM DOSYA YÖNETİMİ ======================
 
+app.get('/api/admin/my-institution', async (c) => {
+  const payload = await getTokenPayloadFromCookie(c);
+  if (!payload) return c.json({ error: 'Yetkisiz' }, 403);
+  if (payload.role !== 'admin' && payload.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  // DB'den taze kurum bilgisi al — token stale olabilir
+  const me = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(payload.user_id).first();
+  if (!me?.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
+  const inst = await db.prepare(`
+    SELECT id, name, domain, category,
+      (SELECT COUNT(*) FROM users WHERE institution = name) as user_count,
+      (SELECT COUNT(*) FROM institution_files WHERE institution_id = id AND is_active = 1) as file_count
+    FROM institutions WHERE name = ?
+  `).bind(me.institution).first();
+  if (!inst) return c.json({ error: 'Kurum bulunamadı' }, 404);
+  return c.json(inst);
+});
+
 app.get('/api/admin/institutions', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
@@ -1164,10 +1182,11 @@ app.put('/api/admin/institution/:id', async (c) => {
     const cat = validCategories.includes(category) ? category : null;
     await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ?, category = COALESCE(?, category) WHERE id = ?`).bind(name || null, domain ?? null, cat, id).run();
   } else {
-    // Admin sadece kendi kurumunun domain'ini güncelleyebilir
-    const adminInstitution = await getUserInstitution(c);
+    // Admin sadece kendi kurumunun domain'ini güncelleyebilir — DB'den taze çek
+    const payload = await getTokenPayloadFromCookie(c);
+    const me = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(payload.user_id).first();
     const target = await db.prepare(`SELECT name FROM institutions WHERE id = ?`).bind(id).first();
-    if (!target || target.name !== adminInstitution) return c.json({ error: 'Bu kurumu düzenleme yetkiniz yok' }, 403);
+    if (!target || !me?.institution || target.name !== me.institution) return c.json({ error: 'Bu kurumu düzenleme yetkiniz yok' }, 403);
     await db.prepare(`UPDATE institutions SET domain = ? WHERE id = ?`).bind(domain ?? null, id).run();
   }
 
