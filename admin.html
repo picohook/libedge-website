@@ -1859,21 +1859,33 @@ async function loadMyInstitution() {
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
     try {
-        const res = await fetch(`${API_BASE}/api/admin/my-institution`, { credentials: 'include' });
-        if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            errEl.textContent = body.error || 'Kurum bilgileri alınamadı.';
-            errEl.classList.remove('hidden');
-            return;
+        // Önce yeni endpoint'i dene, yoksa fallback
+        let inst = null;
+        const newRes = await fetch(`${API_BASE}/api/admin/my-institution`, { credentials: 'include' });
+        if (newRes.ok) {
+            inst = await newRes.json();
+        } else {
+            // Fallback: profile + users listesinden hesapla
+            const profileRes = await fetch(`${API_BASE}/api/user/profile`, { credentials: 'include' });
+            if (!profileRes.ok) throw new Error('Profil alınamadı');
+            const profile = await profileRes.json();
+            const instName = profile.institution;
+            if (!instName) throw new Error('Kullanıcıya atanmış kurum yok');
+
+            const usersRes = await fetch(`${API_BASE}/api/admin/users`, { credentials: 'include' });
+            const users = usersRes.ok ? await usersRes.json() : [];
+            const userCount = users.filter(u => u.institution === instName).length;
+
+            inst = { id: null, name: instName, domain: '', user_count: userCount, file_count: '-' };
         }
-        const inst = await res.json();
-        document.getElementById('myInstitutionId').value = inst.id;
+
+        document.getElementById('myInstitutionId').value = inst.id ?? '';
         document.getElementById('myInstitutionName').value = inst.name;
         document.getElementById('myInstitutionDomain').value = inst.domain || '';
         document.getElementById('myInstUserCount').textContent = inst.user_count ?? '-';
         document.getElementById('myInstFileCount').textContent = inst.file_count ?? '-';
     } catch (e) {
-        errEl.textContent = 'Bağlantı hatası: ' + e.message;
+        errEl.textContent = 'Kurum bilgileri alınamadı: ' + e.message;
         errEl.classList.remove('hidden');
     }
 }
@@ -1885,8 +1897,19 @@ document.getElementById('myInstitutionForm').addEventListener('submit', async (e
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
 
-    const id = document.getElementById('myInstitutionId').value;
+    let id = document.getElementById('myInstitutionId').value;
     const domain = document.getElementById('myInstitutionDomain').value.trim() || null;
+
+    // id yoksa (fallback modunda) önce my-institution'dan al
+    if (!id) {
+        const r = await fetch(`${API_BASE}/api/admin/my-institution`, { credentials: 'include' });
+        if (r.ok) { const d = await r.json(); id = d.id; }
+    }
+    if (!id) {
+        errEl.textContent = 'Kurum ID bulunamadı. Lütfen sayfayı yenileyin.';
+        errEl.classList.remove('hidden');
+        return;
+    }
 
     const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
         method: 'PUT',
