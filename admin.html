@@ -491,8 +491,9 @@
                 <input type="text" id="institutionName" placeholder="Örn: Ankara Üniversitesi" class="w-full border p-2 rounded" required>
             </div>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Domain</label>
-                <input type="text" id="institutionDomain" placeholder="Örn: ankara.edu.tr" class="w-full border p-2 rounded">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
+                <input type="text" id="institutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
+                <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgülle ayırın</p>
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
@@ -504,14 +505,25 @@
 
 <!-- Bulk Institution Modal -->
 <div id="bulkInstitutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-bold mb-2">Toplu Kurum Ekle</h3>
-        <p class="text-sm text-gray-500 mb-4">Her satıra bir kurum adı yazın. Domain opsiyonel: <code class="bg-gray-100 px-1 rounded">Ad | domain.com</code></p>
-        <div class="mb-4">
-            <textarea id="bulkInstitutionText" rows="8" placeholder="Ankara Üniversitesi&#10;İstanbul Teknik Üniversitesi | itu.edu.tr&#10;Hacettepe Üniversitesi" class="w-full border p-2 rounded text-sm font-mono"></textarea>
+    <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <h3 class="text-xl font-bold mb-4">Toplu Kurum Ekle</h3>
+        <div class="overflow-y-auto flex-1 mb-4">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr>
+                        <th class="text-left pb-2 font-medium text-gray-700 w-1/2">Kurum Adı</th>
+                        <th class="text-left pb-2 font-medium text-gray-700 w-1/2 pl-2">Domain(lar) <span class="font-normal text-gray-400">(opsiyonel)</span></th>
+                        <th class="w-8"></th>
+                    </tr>
+                </thead>
+                <tbody id="bulkInstitutionRows"></tbody>
+            </table>
+            <button type="button" onclick="addBulkInstitutionRow()" class="mt-3 text-sm text-purple-700 hover:text-purple-900 font-medium">
+                <i class="fas fa-plus mr-1"></i>Satır Ekle
+            </button>
         </div>
         <div id="bulkInstitutionStatus" class="hidden mb-3 text-sm text-gray-600"></div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 pt-2 border-t">
             <button type="button" id="bulkInstitutionSubmitBtn" onclick="submitBulkInstitutions()" class="btn btn-primary flex-1">Ekle</button>
             <button type="button" onclick="closeBulkInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
         </div>
@@ -1312,8 +1324,21 @@ function closeInstitutionModal() {
     document.getElementById('institutionModal').classList.add('hidden');
 }
 
+function addBulkInstitutionRow() {
+    const tbody = document.getElementById('bulkInstitutionRows');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td class="py-1 pr-2"><input type="text" placeholder="Kurum adı" class="bulk-inst-name w-full border rounded px-2 py-1 text-sm"></td>
+        <td class="py-1 pl-2"><input type="text" placeholder="libedge.com, libedge.com.tr" class="bulk-inst-domain w-full border rounded px-2 py-1 text-sm"></td>
+        <td class="py-1 pl-1 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-gray-300 hover:text-red-500"><i class="fas fa-times"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
 function openBulkInstitutionModal() {
-    document.getElementById('bulkInstitutionText').value = '';
+    const tbody = document.getElementById('bulkInstitutionRows');
+    tbody.innerHTML = '';
+    for (let i = 0; i < 3; i++) addBulkInstitutionRow();
     document.getElementById('bulkInstitutionStatus').classList.add('hidden');
     document.getElementById('bulkInstitutionSubmitBtn').disabled = false;
     document.getElementById('bulkInstitutionModal').classList.remove('hidden');
@@ -1337,31 +1362,34 @@ document.getElementById('institutionForm').addEventListener('submit', async (e) 
 });
 
 async function submitBulkInstitutions() {
-    const lines = document.getElementById('bulkInstitutionText').value
-        .split('\n')
-        .map(l => l.trim())
-        .filter(l => l.length > 0);
-    if (!lines.length) return;
+    const rows = [...document.querySelectorAll('#bulkInstitutionRows tr')];
+    const entries = rows
+        .map(tr => ({
+            name: tr.querySelector('.bulk-inst-name')?.value.trim() || '',
+            domain: tr.querySelector('.bulk-inst-domain')?.value.trim() || ''
+        }))
+        .filter(e => e.name.length > 0);
+
+    if (!entries.length) return;
 
     const statusEl = document.getElementById('bulkInstitutionStatus');
     const btn = document.getElementById('bulkInstitutionSubmitBtn');
     btn.disabled = true;
-    statusEl.textContent = `0 / ${lines.length} ekleniyor...`;
+    statusEl.textContent = `0 / ${entries.length} ekleniyor...`;
     statusEl.classList.remove('hidden');
 
     let ok = 0, fail = 0;
-    for (const line of lines) {
-        const [namePart, domainPart] = line.split('|').map(s => s.trim());
+    for (const entry of entries) {
         try {
             const res = await fetch(`${API_BASE}/api/admin/institution`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ name: namePart, domain: domainPart || null })
+                body: JSON.stringify({ name: entry.name, domain: entry.domain || null })
             });
             res.ok ? ok++ : fail++;
         } catch { fail++; }
-        statusEl.textContent = `${ok + fail} / ${lines.length} işlendi...`;
+        statusEl.textContent = `${ok + fail} / ${entries.length} işlendi...`;
     }
 
     statusEl.textContent = `Tamamlandı: ${ok} eklendi${fail ? `, ${fail} hata` : ''}.`;
