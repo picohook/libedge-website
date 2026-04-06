@@ -1884,21 +1884,27 @@ async function loadMyInstitution() {
 }
 // ====================== KURUMUM - DOMAIN GÜNCELLEME (BAŞARI MESAJI DÜZELTİLMİŞ) ======================
 
-document.getElementById('myInstitutionForm').addEventListener('submit', async (e) => {
+// ====================== KURUMUM - DOMAIN GÜNCELLEME (ÇALIŞAN VERSİYON) ======================
+
+const form = document.getElementById('myInstitutionForm');
+const submitBtn = form.querySelector('button[type="submit"]');
+
+// Eski event'leri temizle
+submitBtn.onclick = null;
+form.onsubmit = null;
+
+// Yeni event - butona direkt click
+submitBtn.addEventListener('click', async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     
     const errEl = document.getElementById('myInstitutionError');
     const successEl = document.getElementById('myInstitutionSuccess');
-    
-    // Önce tüm mesajları gizle
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
     
     const id = document.getElementById('myInstitutionId').value;
     let domain = document.getElementById('myInstitutionDomain').value.trim();
-    
-    console.log('Güncellenecek ID:', id);
-    console.log('Güncellenecek domain:', domain);
     
     if (!id) {
         errEl.textContent = 'Kurum ID bulunamadı';
@@ -1906,19 +1912,15 @@ document.getElementById('myInstitutionForm').addEventListener('submit', async (e
         return;
     }
     
-    // Domain formatını düzelt
     if (domain) {
         domain = domain.split(',').map(d => d.trim()).filter(d => d).join(',');
     } else {
         domain = null;
     }
     
-    // Butonu disabled yap (çift tıklamayı engelle)
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Kaydediliyor...';
-    }
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Kaydediliyor...';
     
     try {
         const res = await fetch(`/api/admin/institution/${id}`, {
@@ -1928,37 +1930,36 @@ document.getElementById('myInstitutionForm').addEventListener('submit', async (e
             body: JSON.stringify({ domain })
         });
         
-        const result = await res.json().catch(() => ({}));
-        console.log('Sunucu yanıtı:', result);
-        
         if (res.ok) {
-            // BAŞARI MESAJINI GÖSTER
             successEl.textContent = '✅ Domain bilgileri başarıyla kaydedildi!';
             successEl.classList.remove('hidden');
             
-            // 3 saniye sonra mesajı gizle
+            await loadMyInstitution();
+            
+            // loadMyInstitution mesajı gizlediği için tekrar göster
+            successEl.classList.remove('hidden');
             setTimeout(() => {
                 successEl.classList.add('hidden');
             }, 3000);
-            
-            // Verileri yeniden yükle (domain'i güncel göster)
-            await loadMyInstitution();
-            
         } else {
-            errEl.textContent = result.error || result.message || `Hata kodu: ${res.status}`;
+            const result = await res.json().catch(() => ({}));
+            errEl.textContent = result.error || `Hata: ${res.status}`;
             errEl.classList.remove('hidden');
         }
     } catch (error) {
-        console.error('Güncelleme hatası:', error);
         errEl.textContent = 'Bağlantı hatası: ' + error.message;
         errEl.classList.remove('hidden');
     } finally {
-        // Butonu tekrar aktif et
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Kaydet';
-        }
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
     }
+});
+
+// Form submit'i engelle
+form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
 });
 
 // ====================== KURUMLAR YÖNETİMİ ======================
