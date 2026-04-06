@@ -1014,8 +1014,9 @@ app.post('/api/upload', async (c) => {
   await bucket.put(key, file.stream(), {
     httpMetadata: { contentType: file.type || 'application/octet-stream' },
   });
-  const publicUrl = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : null;
-  if (!publicUrl) return c.json({ error: 'R2_PUBLIC_URL ayarlanmamış' }, 500);
+  const publicUrl = c.env.R2_PUBLIC_URL
+    ? `${c.env.R2_PUBLIC_URL}/${key}`
+    : `/api/files/${key}`;
   return c.json({ success: true, url: publicUrl, key, name: file.name, type: ext, size: file.size });
 });
 
@@ -1135,4 +1136,28 @@ app.delete('/api/admin/institution/:id', async (c) => {
   await db.prepare(`DELETE FROM institution_folders WHERE institution_id = ?`).bind(id).run();
   await db.prepare(`DELETE FROM institutions WHERE id = ?`).bind(id).run();
   return c.json({ success: true });
+});
+
+
+// ====================== R2 DOSYA SERVE ======================
+
+app.get('/api/files/*', async (c) => {
+  const bucket = c.env.FILES_BUCKET;
+  if (!bucket) return c.json({ error: 'R2 bucket bağlı değil' }, 500);
+
+  // /api/files/uploads/2/... → uploads/2/...
+  const key = c.req.path.replace('/api/files/', '');
+  if (!key) return c.json({ error: 'Dosya bulunamadı' }, 404);
+
+  const object = await bucket.get(key);
+  if (!object) return c.json({ error: 'Dosya bulunamadı' }, 404);
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('etag', object.httpEtag);
+  headers.set('cache-control', 'public, max-age=31536000');
+  // İndir yerine tarayıcıda aç
+  headers.delete('content-disposition');
+
+  return new Response(object.body, { headers });
 });
