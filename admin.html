@@ -35,7 +35,7 @@
     background-color: #3b2a7a;
     color: white;
 }
-
+        .bulk-preview-scroll { max-height: calc(90vh - 220px); overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -603,15 +603,15 @@
 
 <!-- Bulk User Modal -->
 <div id="bulkUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-3xl">
         <h3 class="text-xl font-bold mb-1">Toplu Kullanıcı Ekle</h3>
 
         <!-- Adım 1: Yapıştır -->
-        <div id="bulkUserStep1" class="flex flex-col flex-1 min-h-0">
+        <div id="bulkUserStep1">
             <p class="text-sm text-gray-500 mb-3">Excel veya CSV'den kopyalayıp yapıştırın. Sütunlar: <span class="font-medium text-gray-700">Ad Soyad</span>, <span class="font-medium text-gray-700">E-posta</span>, <span class="font-medium text-gray-700">Kurum</span> (opsiyonel), <span class="font-medium text-gray-700">Rol</span> (opsiyonel, user/admin). Tab veya virgülle ayrılmış.</p>
-            <textarea id="bulkUserPasteArea" rows="10"
+            <textarea id="bulkUserPasteArea" rows="12"
                 placeholder="Ahmet Yılmaz&#9;ahmet@ankara.edu.tr&#9;Ankara Üniversitesi&#9;user&#10;Ayşe Kaya&#9;ayse@itu.edu.tr&#9;&#9;user"
-                class="w-full border rounded p-3 text-sm font-mono flex-1 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"></textarea>
+                class="w-full border rounded p-3 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"></textarea>
             <div class="flex gap-2 pt-3 mt-3 border-t">
                 <button type="button" onclick="parseBulkUsers()" class="btn btn-primary flex-1">Önizle</button>
                 <button type="button" onclick="closeBulkUserModal()" class="btn bg-gray-300 flex-1">İptal</button>
@@ -619,9 +619,9 @@
         </div>
 
         <!-- Adım 2: Önizleme -->
-        <div id="bulkUserStep2" class="hidden flex-col flex-1 min-h-0">
+        <div id="bulkUserStep2" class="hidden">
             <p class="text-sm text-gray-500 mb-3">Yanlış satırları silin, ardından <strong>Ekle</strong>'ye basın.</p>
-            <div class="overflow-y-auto flex-1 min-h-0 border rounded">
+            <div class="border rounded bulk-preview-scroll">
                 <table class="w-full text-sm">
                     <thead class="sticky top-0 bg-gray-50">
                         <tr>
