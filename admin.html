@@ -1890,45 +1890,84 @@ async function loadMyInstitution() {
     }
 }
 
+// ====================== KURUMUM - DOMAIN GÜNCELLEME (BAŞARI MESAJI DÜZELTİLMİŞ) ======================
+
 document.getElementById('myInstitutionForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
     const errEl = document.getElementById('myInstitutionError');
     const successEl = document.getElementById('myInstitutionSuccess');
+    
+    // Önceki mesajları temizle
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
-
-    let id = document.getElementById('myInstitutionId').value;
-    const domain = document.getElementById('myInstitutionDomain').value.trim() || null;
-
-    // id yoksa (fallback modunda) önce my-institution'dan al
+    
+    const id = document.getElementById('myInstitutionId').value;
+    let domain = document.getElementById('myInstitutionDomain').value.trim();
+    
+    console.log('Güncellenecek ID:', id);
+    console.log('Güncellenecek domain:', domain);
+    
     if (!id) {
-        const r = await fetch(`${API_BASE}/api/admin/my-institution`, { credentials: 'include' });
-        if (r.ok) { const d = await r.json(); id = d.id; }
-    }
-    if (!id) {
-        errEl.textContent = 'Kurum ID bulunamadı. Lütfen sayfayı yenileyin.';
+        errEl.textContent = 'Kurum ID bulunamadı';
         errEl.classList.remove('hidden');
         return;
     }
-
-    const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ domain })
-    });
-
-    if (res.ok) {
-        successEl.classList.remove('hidden');
-        setTimeout(() => successEl.classList.add('hidden'), 3000);
-        loadMyInstitution();
+    
+    // Domain formatını düzelt
+    if (domain) {
+        domain = domain.split(',').map(d => d.trim()).filter(d => d).join(',');
     } else {
-        const body = await res.json().catch(() => ({}));
-        errEl.textContent = body.error || 'Bir hata oluştu.';
+        domain = null;
+    }
+    
+    // Butonu disabled yap (çift tıklamayı engelle)
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Kaydediliyor...';
+    }
+    
+    try {
+        const res = await fetch(`/api/admin/institution/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ domain })
+        });
+        
+        const result = await res.json().catch(() => ({}));
+        console.log('Sunucu yanıtı:', result);
+        
+        if (res.ok) {
+            // BAŞARI MESAJINI GÖSTER
+            successEl.textContent = '✅ Domain bilgileri başarıyla kaydedildi!';
+            successEl.classList.remove('hidden');
+            
+            // 3 saniye sonra mesajı gizle
+            setTimeout(() => {
+                successEl.classList.add('hidden');
+            }, 3000);
+            
+            // Verileri yeniden yükle (domain'i güncel göster)
+            await loadMyInstitution();
+            
+        } else {
+            errEl.textContent = result.error || result.message || `Hata kodu: ${res.status}`;
+            errEl.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Güncelleme hatası:', error);
+        errEl.textContent = 'Bağlantı hatası: ' + error.message;
         errEl.classList.remove('hidden');
+    } finally {
+        // Butonu tekrar aktif et
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Kaydet';
+        }
     }
 });
-
 
 // ====================== KURUMLAR YÖNETİMİ ======================
 
