@@ -1615,6 +1615,8 @@ async function submitBulkUsers() {
 
 // ====================== KURUMUM ======================
 
+// ====================== KURUMUM - DÜZELTİLMİŞ VERSİYON ======================
+
 async function loadMyInstitution() {
     const errEl = document.getElementById('myInstitutionError');
     const successEl = document.getElementById('myInstitutionSuccess');
@@ -1622,40 +1624,145 @@ async function loadMyInstitution() {
     successEl.classList.add('hidden');
 
     try {
-        const res = await fetch(`${API_BASE}/api/admin/my-institution`, { credentials: 'include' });
-        if (!res.ok) return;
+        const res = await fetch(`${API_BASE}/api/admin/my-institution`, { 
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error('Kurum yükleme hatası:', res.status, errorText);
+            errEl.textContent = `Kurum bilgileri yüklenemedi (${res.status})`;
+            errEl.classList.remove('hidden');
+            return;
+        }
+        
         const inst = await res.json();
+        console.log('Kurum verisi:', inst); // Debug için
 
-        document.getElementById('myInstitutionId').value = inst.id;
-        document.getElementById('myInstitutionName').value = inst.name;
-        document.getElementById('myInstitutionDomain').value = inst.domain || '';
-        document.getElementById('myInstUserCount').textContent = inst.user_count ?? '-';
-        document.getElementById('myInstFileCount').textContent = inst.file_count ?? '-';
-    } catch (e) { console.error('loadMyInstitution error:', e); }
+        // ID'yi set et
+        const idField = document.getElementById('myInstitutionId');
+        if (idField) idField.value = inst.id || '';
+        
+        // Kurum adı (disabled, sadece gösterim)
+        const nameField = document.getElementById('myInstitutionName');
+        if (nameField) nameField.value = inst.name || '';
+        
+        // Domain alanı - DÜZELTİLDİ: backend'den gelen domain'i doğru göster
+        const domainField = document.getElementById('myInstitutionDomain');
+        if (domainField) {
+            // Eğer domain bir dizi ise virgülle birleştir, string ise olduğu gibi göster
+            let domainValue = inst.domain || '';
+            if (Array.isArray(inst.domain)) {
+                domainValue = inst.domain.join(', ');
+            }
+            domainField.value = domainValue;
+        }
+        
+        // Kullanıcı sayısı - backend'den gelmiyorsa ayrı bir API'den al
+        const userCountEl = document.getElementById('myInstUserCount');
+        const fileCountEl = document.getElementById('myInstFileCount');
+        
+        if (inst.user_count !== undefined) {
+            userCountEl.textContent = inst.user_count;
+        } else {
+            // Backend'den gelmediyse ayrıca kullanıcıları çekip say
+            await fetchUserCountForMyInstitution(inst.name);
+        }
+        
+        if (inst.file_count !== undefined) {
+            fileCountEl.textContent = inst.file_count;
+        } else {
+            // Backend'den gelmediyse ayrıca dosyaları çekip say
+            await fetchFileCountForMyInstitution(inst.name);
+        }
+        
+    } catch (e) { 
+        console.error('loadMyInstitution error:', e);
+        const errEl = document.getElementById('myInstitutionError');
+        errEl.textContent = 'Bağlantı hatası: ' + e.message;
+        errEl.classList.remove('hidden');
+    }
 }
 
+// Kullanıcı sayısını ayrıca çek (backenden gelmezse)
+async function fetchUserCountForMyInstitution(instName) {
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/users`, { credentials: 'include' });
+        const users = await res.json();
+        const count = users.filter(u => u.institution === instName).length;
+        document.getElementById('myInstUserCount').textContent = count;
+    } catch (e) {
+        console.error('Kullanıcı sayısı alınamadı:', e);
+        document.getElementById('myInstUserCount').textContent = '?';
+    }
+}
+
+// Dosya sayısını ayrıca çek (backenden gelmezse)
+async function fetchFileCountForMyInstitution(instName) {
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(instName)}/files`, { 
+            credentials: 'include' 
+        });
+        const files = await res.json();
+        const count = files.length;
+        document.getElementById('myInstFileCount').textContent = count;
+    } catch (e) {
+        console.error('Dosya sayısı alınamadı:', e);
+        document.getElementById('myInstFileCount').textContent = '?';
+    }
+}
+
+// DÜZELTİLMİŞ FORM SUBMIT - Domain güncelleme
 document.getElementById('myInstitutionForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
     const errEl = document.getElementById('myInstitutionError');
     const successEl = document.getElementById('myInstitutionSuccess');
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
 
     const id = document.getElementById('myInstitutionId').value;
-    const domain = document.getElementById('myInstitutionDomain').value.trim();
-
-    const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ domain: domain || null })
-    });
-
-    if (res.ok) {
-        successEl.classList.remove('hidden');
+    let domain = document.getElementById('myInstitutionDomain').value.trim();
+    
+    // Domain formatını düzelt - boşlukları temizle
+    if (domain) {
+        // Virgülle ayrılmış domainleri temizle
+        domain = domain.split(',').map(d => d.trim()).filter(d => d).join(',');
     } else {
-        const body = await res.json().catch(() => ({}));
-        errEl.textContent = body.error || 'Bir hata oluştu.';
+        domain = null;
+    }
+    
+    console.log('Gönderilen veri:', { id, domain }); // Debug için
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ 
+                domain: domain  // Sadece domain gönder, name gönderme
+            })
+        });
+
+        const responseData = await res.json().catch(() => ({}));
+        console.log('Sunucu yanıtı:', res.status, responseData);
+
+        if (res.ok) {
+            successEl.classList.remove('hidden');
+            // 3 saniye sonra başarı mesajını gizle
+            setTimeout(() => {
+                successEl.classList.add('hidden');
+            }, 3000);
+            // Verileri yeniden yükle
+            loadMyInstitution();
+        } else {
+            errEl.textContent = responseData.error || `Hata kodu: ${res.status} - Domain güncellenemedi`;
+            errEl.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Güncelleme hatası:', error);
+        errEl.textContent = 'Bağlantı hatası: ' + error.message;
         errEl.classList.remove('hidden');
     }
 });
