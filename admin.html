@@ -67,6 +67,7 @@
                 <a href="#" class="sidebar-link" data-tab="files"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
                 <a href="#" class="sidebar-link" data-tab="products"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
                 <a href="#" class="sidebar-link" data-tab="requests"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
+                <a href="#" class="sidebar-link" data-tab="institutions" id="institutionsTab"><i class="fas fa-building w-5"></i><span>Kurumlar</span></a>
             </nav>
             <div class="absolute bottom-6 left-6">
                 <a href="index.html" class="sidebar-link-exit"><i class="fas fa-arrow-left w-5"></i><span>Siteye Dön</span></a>
@@ -418,6 +419,39 @@
         </div>
     </div>
 
+    <!-- Institutions Tab -->
+    <div id="tab-institutions" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <h3 class="text-lg font-semibold">Kurumlar</h3>
+                <div class="flex gap-2">
+                    <button type="button" onclick="openBulkInstitutionModal()" class="btn bg-gray-200 text-gray-700">
+                        <i class="fas fa-list mr-2"></i>Toplu Ekle
+                    </button>
+                    <button type="button" onclick="openInstitutionModal()" class="btn btn-primary">
+                        <i class="fas fa-plus mr-2"></i>Kurum Ekle
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>Kurum Adı</th>
+                            <th>Domain</th>
+                            <th>Kullanıcı Sayısı</th>
+                            <th>Dosya Sayısı</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="institutionsList">
+                        <tr><td colspan="5" class="text-center py-4">Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Requests Tab -->
     <div id="tab-requests" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
@@ -444,6 +478,43 @@
         </div>
     </div>
 </div>
+    </div>
+</div>
+
+<!-- Institution Modal -->
+<div id="institutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Kurum Ekle</h3>
+        <form id="institutionForm">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı</label>
+                <input type="text" id="institutionName" placeholder="Örn: Ankara Üniversitesi" class="w-full border p-2 rounded" required>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Domain</label>
+                <input type="text" id="institutionDomain" placeholder="Örn: ankara.edu.tr" class="w-full border p-2 rounded">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
+                <button type="button" onclick="closeInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Institution Modal -->
+<div id="bulkInstitutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-2">Toplu Kurum Ekle</h3>
+        <p class="text-sm text-gray-500 mb-4">Her satıra bir kurum adı yazın. Domain opsiyonel: <code class="bg-gray-100 px-1 rounded">Ad | domain.com</code></p>
+        <div class="mb-4">
+            <textarea id="bulkInstitutionText" rows="8" placeholder="Ankara Üniversitesi&#10;İstanbul Teknik Üniversitesi | itu.edu.tr&#10;Hacettepe Üniversitesi" class="w-full border p-2 rounded text-sm font-mono"></textarea>
+        </div>
+        <div id="bulkInstitutionStatus" class="hidden mb-3 text-sm text-gray-600"></div>
+        <div class="flex gap-2">
+            <button type="button" id="bulkInstitutionSubmitBtn" onclick="submitBulkInstitutions()" class="btn btn-primary flex-1">Ekle</button>
+            <button type="button" onclick="closeBulkInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
+        </div>
     </div>
 </div>
 
@@ -492,6 +563,8 @@ async function checkAdminAuth() {
         if (user.role !== 'super_admin') {
             const productsTab = document.querySelector('[data-tab="products"]');
             if (productsTab) productsTab.parentElement?.remove();
+            const institutionsTab = document.getElementById('institutionsTab');
+            if (institutionsTab) institutionsTab.style.display = 'none';
         }
         return true;
     } catch (err) {
@@ -743,6 +816,8 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 adminFolderStack = [];
                 document.getElementById('adminBackBtn')?.classList.add('hidden');
                 loadAdminFiles();
+            } else if (tab === 'institutions') {
+                loadInstitutions();
             }
         }
     });
@@ -1201,6 +1276,103 @@ function getCategoryName(category) {
         'other': 'Diğer'
     };
     return names[category] || category;
+}
+
+// ====================== KURUMLAR YÖNETİMİ ======================
+
+async function loadInstitutions() {
+    const tbody = document.getElementById('institutionsList');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Yükleniyor...</td></tr>';
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
+        const institutions = await res.json();
+        if (!institutions.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-400">Henüz kurum yok</td></tr>';
+            return;
+        }
+        tbody.innerHTML = institutions.map(i => `
+            <tr>
+                <td class="px-4 py-2">${escapeHtml(i.name)}</td>
+                <td class="px-4 py-2">${escapeHtml(i.domain || '-')}</td>
+                <td class="px-4 py-2">${i.user_count ?? '-'}</td>
+                <td class="px-4 py-2">${i.file_count ?? '-'}</td>
+                <td class="px-4 py-2">
+                    <button type="button" onclick="deleteInstitution(${i.id}, '${escapeHtml(i.name)}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) { console.error('loadInstitutions error:', e); }
+}
+
+function openInstitutionModal() {
+    document.getElementById('institutionForm').reset();
+    document.getElementById('institutionModal').classList.remove('hidden');
+}
+function closeInstitutionModal() {
+    document.getElementById('institutionModal').classList.add('hidden');
+}
+
+function openBulkInstitutionModal() {
+    document.getElementById('bulkInstitutionText').value = '';
+    document.getElementById('bulkInstitutionStatus').classList.add('hidden');
+    document.getElementById('bulkInstitutionSubmitBtn').disabled = false;
+    document.getElementById('bulkInstitutionModal').classList.remove('hidden');
+}
+function closeBulkInstitutionModal() {
+    document.getElementById('bulkInstitutionModal').classList.add('hidden');
+}
+
+document.getElementById('institutionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('institutionName').value.trim();
+    const domain = document.getElementById('institutionDomain').value.trim();
+    await fetch(`${API_BASE}/api/admin/institution`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name, domain: domain || null })
+    });
+    closeInstitutionModal();
+    loadInstitutions();
+});
+
+async function submitBulkInstitutions() {
+    const lines = document.getElementById('bulkInstitutionText').value
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+    if (!lines.length) return;
+
+    const statusEl = document.getElementById('bulkInstitutionStatus');
+    const btn = document.getElementById('bulkInstitutionSubmitBtn');
+    btn.disabled = true;
+    statusEl.textContent = `0 / ${lines.length} ekleniyor...`;
+    statusEl.classList.remove('hidden');
+
+    let ok = 0, fail = 0;
+    for (const line of lines) {
+        const [namePart, domainPart] = line.split('|').map(s => s.trim());
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/institution`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ name: namePart, domain: domainPart || null })
+            });
+            res.ok ? ok++ : fail++;
+        } catch { fail++; }
+        statusEl.textContent = `${ok + fail} / ${lines.length} işlendi...`;
+    }
+
+    statusEl.textContent = `Tamamlandı: ${ok} eklendi${fail ? `, ${fail} hata` : ''}.`;
+    btn.disabled = false;
+    loadInstitutions();
+}
+
+async function deleteInstitution(id, name) {
+    if (!confirm(`"${name}" kurumunu silmek istediğinize emin misiniz?`)) return;
+    await fetch(`${API_BASE}/api/admin/institution/${id}`, { method: 'DELETE', credentials: 'include' });
+    loadInstitutions();
 }
 
 </script>
