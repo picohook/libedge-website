@@ -2,36 +2,42 @@ name = "form-handler"
 main = "backend/src/index.js"
 compatibility_date = "2026-03-01"
 
-# D1 Binding - LibEdge Auth & Subscription
+# D1 Binding (default env)
 [[d1_databases]]
 binding = "DB"
 database_name = "libedge-db"
 database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
 
-# Vars for local/dev
-[vars]
-JWT_SECRET = "local-dev-secret-degistir"
-
-# Staging environment
-[env.staging]
-name = "form-handler-staging"
-vars = { JWT_SECRET = "staging-secret" }
-route = "https://staging.libedge-website.pages.dev/*"
-
-# Production environment
-[env.production]
-name = "form-handler-prod"
-vars = { JWT_SECRET = "prod-secret" }
-route = "https://libedge-website.pages.dev/*"
-# R2 Bucket - Dosya depolama
+# R2 Binding (default env)
 [[r2_buckets]]
 binding = "FILES_BUCKET"
 bucket_name = "libedge-files"
 
-[env.staging.r2_buckets]
+# JWT_SECRET: npx wrangler secret put JWT_SECRET
+# R2_PUBLIC_URL: npx wrangler secret put R2_PUBLIC_URL
+
+# Staging environment
+[env.staging]
+name = "form-handler-staging"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "libedge-db"
+database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
+
+[[env.staging.r2_buckets]]
 binding = "FILES_BUCKET"
 bucket_name = "libedge-files-staging"
 
-[env.production.r2_buckets]
+# Production environment
+[env.production]
+name = "form-handler-prod"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "libedge-db"
+database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
+
+[[env.production.r2_buckets]]
 binding = "FILES_BUCKET"
 bucket_name = "libedge-files"
