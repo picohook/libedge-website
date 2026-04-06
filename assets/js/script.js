@@ -231,16 +231,16 @@ async function refreshToken() {
         if (res.ok) {
             console.log('Token yenilendi');
             return true;
-        } else {
-            // Token yenilenemezse logout yap
-            console.log('Token yenileme başarısız, logout yapılıyor');
+        } else if (res.status === 401) {
+            console.log('Token geçersiz (401), logout yapılıyor');
             await logout();
+            return false;
+        } else {
+            console.warn('Token yenileme başarısız, HTTP', res.status);
             return false;
         }
     } catch (e) {
-        console.error('Token refresh error:', e);
-        // Network hatasında da logout yap
-        await logout();
+        console.error('Token refresh network hatası:', e);
         return false;
     }
 }
