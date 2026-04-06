@@ -900,12 +900,7 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
 document.getElementById('addFolderBtn')?.addEventListener('click', openFolderModal);
 document.getElementById('addFileBtn')?.addEventListener('click', openFileModal);
 
-// ====================== BAŞLANGIÇ ======================
-document.addEventListener('DOMContentLoaded', async () => {
-    if (!token) return window.location.href = 'index.html';
-    await loadUserProfile();
-    document.getElementById('tab-overview').classList.remove('hidden');
-});
+
 </script>
 </body>
 </html>
