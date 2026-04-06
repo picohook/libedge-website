@@ -33,6 +33,9 @@ const HEADER_HTML = `
             <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openMapModal()"><i class="fas fa-map-marker-alt text-lg"></i></a>
 
             <div class="ml-auto pl-8">
+                <div id="authLoading" class="hidden">
+                    <i class="fas fa-spinner fa-spin text-white text-xl"></i>
+                </div>
                 <div id="authNotLoggedIn">
                     <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openLoginModal()" aria-label="User Management">
                         <i class="fas fa-user text-xl"></i>
@@ -100,8 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!target) return;
     target.innerHTML = HEADER_HTML;
 
-    // Header DOM'a girdikten sonra auth durumunu uygula
-    // script.js checkAuth'u header'dan önce çalışmış olabilir
+    // Header DOM'a girdikten sonra, script.js checkAuth zaten bitmişse UI'ı güncelle
     if (typeof updateAuthUI === 'function') {
         const isLoggedIn = typeof currentUser !== 'undefined' && currentUser !== null;
         updateAuthUI(isLoggedIn);
