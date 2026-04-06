@@ -1851,240 +1851,57 @@ async function submitBulkUsers() {
 
 // ====================== KURUMUM ======================
 
-// ====================== KURUMUM - DÜZELTİLMİŞ VERSİYON ======================
-
-// ====================== KURUMUM - ADMIN ROLÜ İÇİN DÜZELTİLMİŞ VERSİYON ======================
+// ====================== KURUMUM ======================
 
 async function loadMyInstitution() {
     const errEl = document.getElementById('myInstitutionError');
     const successEl = document.getElementById('myInstitutionSuccess');
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
-
     try {
-        // 1. Önce kullanıcı profilini al
-        const profileRes = await fetch('/api/user/profile', { 
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        if (!profileRes.ok) {
-            throw new Error('Kullanıcı bilgileri alınamadı');
-        }
-        
-        const user = await profileRes.json();
-        const userInstitution = user.institution;
-        
-        console.log('Kullanıcı:', user);
-        console.log('Kullanıcının kurumu:', userInstitution);
-        
-        if (!userInstitution) {
-            errEl.textContent = 'Kurum bilginiz bulunamadı. Lütfen yönetici ile iletişime geçin.';
+        const res = await fetch(`${API_BASE}/api/admin/my-institution`, { credentials: 'include' });
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            errEl.textContent = body.error || 'Kurum bilgileri alınamadı.';
             errEl.classList.remove('hidden');
             return;
         }
-        
-        // 2. Admin kullanıcılar için kurum bilgilerini almanın farklı yolları
-        let myInstitution = null;
-        
-        // Yöntem 1: /api/institution/{name} endpoint'ini dene
-        try {
-            const instRes = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(userInstitution)}`, { 
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (instRes.ok) {
-                myInstitution = await instRes.json();
-                console.log('Kurum bilgisi (Yöntem 1):', myInstitution);
-            }
-        } catch (e) {
-            console.log('Yöntem 1 başarısız:', e.message);
-        }
-        
-        // Yöntem 2: Kullanıcı listesinden kurum bilgilerini çıkar
-        if (!myInstitution) {
-            try {
-                const usersRes = await fetch(`${API_BASE}/api/admin/users`, { 
-                    credentials: 'include' 
-                });
-                const users = await usersRes.json();
-                
-                // Bu kuruma ait kullanıcıları bul
-                const institutionUsers = users.filter(u => u.institution === userInstitution);
-                
-                if (institutionUsers.length > 0) {
-                    myInstitution = {
-                        id: userInstitution, // ID yoksa kurum adını ID olarak kullan
-                        name: userInstitution,
-                        domain: '', // Domain bilgisi buradan gelmez
-                        category: 'university',
-                        user_count: institutionUsers.length
-                    };
-                    console.log('Kurum bilgisi (Yöntem 2 - kullanıcılardan):', myInstitution);
-                }
-            } catch (e) {
-                console.log('Yöntem 2 başarısız:', e.message);
-            }
-        }
-        
-        // Yöntem 3: Basit bir obje oluştur
-        if (!myInstitution) {
-            myInstitution = {
-                id: userInstitution,
-                name: userInstitution,
-                domain: '',
-                category: 'university',
-                user_count: 0
-            };
-            console.log('Kurum bilgisi (Yöntem 3 - varsayılan):', myInstitution);
-        }
-        
-        // 3. Form alanlarını doldur
-        const idField = document.getElementById('myInstitutionId');
-        if (idField) idField.value = myInstitution.id || myInstitution.name;
-        
-        const nameField = document.getElementById('myInstitutionName');
-        if (nameField) nameField.value = myInstitution.name || userInstitution;
-        
-        const domainField = document.getElementById('myInstitutionDomain');
-        if (domainField) {
-            let domainValue = myInstitution.domain || '';
-            if (Array.isArray(myInstitution.domain)) {
-                domainValue = myInstitution.domain.join(', ');
-            }
-            domainField.value = domainValue;
-        }
-        
-        // 4. Kullanıcı sayısını göster
-        if (myInstitution.user_count !== undefined) {
-            document.getElementById('myInstUserCount').textContent = myInstitution.user_count;
-        } else {
-            await fetchUserCountForMyInstitution(userInstitution);
-        }
-        
-        // 5. Dosya sayısını göster
-        await fetchFileCountForMyInstitution(userInstitution);
-        
-    } catch (e) { 
-        console.error('loadMyInstitution error:', e);
-        const errEl = document.getElementById('myInstitutionError');
-        errEl.textContent = 'Kurum bilgileri yüklenemedi: ' + e.message;
+        const inst = await res.json();
+        document.getElementById('myInstitutionId').value = inst.id;
+        document.getElementById('myInstitutionName').value = inst.name;
+        document.getElementById('myInstitutionDomain').value = inst.domain || '';
+        document.getElementById('myInstUserCount').textContent = inst.user_count ?? '-';
+        document.getElementById('myInstFileCount').textContent = inst.file_count ?? '-';
+    } catch (e) {
+        errEl.textContent = 'Bağlantı hatası: ' + e.message;
         errEl.classList.remove('hidden');
     }
 }
 
-// Kullanıcı sayısını hesapla
-async function fetchUserCountForMyInstitution(instName) {
-    try {
-        const res = await fetch(`${API_BASE}/api/admin/users`, { credentials: 'include' });
-        if (!res.ok) throw new Error('Kullanıcılar alınamadı');
-        const users = await res.json();
-        const count = users.filter(u => u.institution === instName).length;
-        document.getElementById('myInstUserCount').textContent = count;
-    } catch (e) {
-        console.error('Kullanıcı sayısı alınamadı:', e);
-        document.getElementById('myInstUserCount').textContent = '?';
-    }
-}
-
-// Dosya sayısını hesapla
-async function fetchFileCountForMyInstitution(instName) {
-    try {
-        // Önce klasörleri al
-        const foldersRes = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(instName)}/folders`, { 
-            credentials: 'include' 
-        });
-        
-        if (!foldersRes.ok) {
-            throw new Error('Klasörler alınamadı');
-        }
-        
-        const folders = await foldersRes.json();
-        
-        // Tüm klasörlerdeki dosyaları topla
-        let totalFiles = 0;
-        for (const folder of folders) {
-            const filesRes = await fetch(`${API_BASE}/api/institution/folder/${folder.id}/files`, {
-                credentials: 'include'
-            });
-            if (filesRes.ok) {
-                const files = await filesRes.json();
-                totalFiles += files.length;
-            }
-        }
-        
-        // Ana dizindeki dosyaları da al
-        const rootFilesRes = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(instName)}/files`, {
-            credentials: 'include'
-        });
-        if (rootFilesRes.ok) {
-            const rootFiles = await rootFilesRes.json();
-            totalFiles += rootFiles.length;
-        }
-        
-        document.getElementById('myInstFileCount').textContent = totalFiles;
-    } catch (e) {
-        console.error('Dosya sayısı alınamadı:', e);
-        document.getElementById('myInstFileCount').textContent = '?';
-    }
-}
-
-// Domain güncelleme - Admin için özel endpoint
 document.getElementById('myInstitutionForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
     const errEl = document.getElementById('myInstitutionError');
     const successEl = document.getElementById('myInstitutionSuccess');
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
 
-    const instName = document.getElementById('myInstitutionName').value;
-    let domain = document.getElementById('myInstitutionDomain').value.trim();
-    
-    if (!instName) {
-        errEl.textContent = 'Kurum bilgisi bulunamadı';
-        errEl.classList.remove('hidden');
-        return;
-    }
-    
-    // Domain formatını düzelt
-    if (domain) {
-        domain = domain.split(',').map(d => d.trim()).filter(d => d).join(',');
+    const id = document.getElementById('myInstitutionId').value;
+    const domain = document.getElementById('myInstitutionDomain').value.trim() || null;
+
+    const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ domain })
+    });
+
+    if (res.ok) {
+        successEl.classList.remove('hidden');
+        setTimeout(() => successEl.classList.add('hidden'), 3000);
+        loadMyInstitution();
     } else {
-        domain = null;
-    }
-    
-    console.log('Güncellenecek kurum:', instName, 'Domain:', domain);
-
-    try {
-        // Admin için özel domain güncelleme endpoint'i
-        // NOT: Backend'de bu endpoint'i oluşturmanız gerekebilir
-        const res = await fetch(`${API_BASE}/api/admin/institution/domain`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ 
-                institution_name: instName,
-                domain: domain 
-            })
-        });
-
-        if (res.ok) {
-            successEl.classList.remove('hidden');
-            setTimeout(() => {
-                successEl.classList.add('hidden');
-            }, 3000);
-            // Verileri yeniden yükle
-            loadMyInstitution();
-        } else {
-            const error = await res.json().catch(() => ({}));
-            errEl.textContent = error.error || error.message || `Hata kodu: ${res.status} - Domain güncellenemedi. Bu özellik için backend desteği gerekli.`;
-            errEl.classList.remove('hidden');
-        }
-    } catch (error) {
-        console.error('Güncelleme hatası:', error);
-        errEl.textContent = 'Domain güncelleme özelliği için backend\'e /api/admin/institution/domain endpoint\'i eklenmelidir. Şu anda sadece görüntüleme modunda.';
+        const body = await res.json().catch(() => ({}));
+        errEl.textContent = body.error || 'Bir hata oluştu.';
         errEl.classList.remove('hidden');
     }
 });
