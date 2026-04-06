@@ -320,8 +320,7 @@
     </div>
 </div>
 <script>
-const API_BASE = ''; // Proxy üzerinden same-origin
-
+// DÜZELTİLDİ: Bu değişkenler script.js'de zaten tanımlı, tekrar tanımlama yapma!
 let currentFolderId = null;
 let folderStack = [];
 
@@ -378,30 +377,17 @@ function getProductName(slug) {
 }
 
 // ====================== PROFİL YÜKLEME ======================
-// ❌ ESKİ (localStorage)
-// const token = localStorage.getItem('authToken');
-// if (!token) return window.location.href = 'index.html';
-// const decoded = decodeToken(token);
-
-// ✅ YENİ (Cookie tabanlı)
 async function checkAuthAndLoad() {
     try {
         const res = await fetch('/api/user/profile', { credentials: 'include' });
-        
-        if (!res.ok) {
-            window.location.href = 'index.html';
-            return;
-        }
+        if (!res.ok) { window.location.href = 'index.html'; return; }
         
         const user = await res.json();
         window.currentUser = user;
 
-        // Sidebar
         const el = (id) => document.getElementById(id);
         if (el('profileName')) el('profileName').textContent = user.full_name || 'Kullanıcı';
         if (el('profileEmail')) el('profileEmail').textContent = user.email;
-
-        // Genel Bakış
         if (el('infoFullName')) el('infoFullName').textContent = user.full_name || '-';
         if (el('infoEmail')) el('infoEmail').textContent = user.email || '-';
         if (el('infoInstitution')) el('infoInstitution').textContent = user.institution || '-';
@@ -409,31 +395,23 @@ async function checkAuthAndLoad() {
             ? new Date(user.created_at).toLocaleDateString('tr-TR') : '-';
         if (el('welcomeMessage')) el('welcomeMessage').textContent =
             `Hoş geldiniz, ${user.full_name || 'Kullanıcı'}! Hesap bilgilerinizi ve aboneliklerinizi buradan yönetebilirsiniz.`;
-
-        // Ayarlar formu
         if (el('settingsFullName')) el('settingsFullName').value = user.full_name || '';
         if (el('settingsInstitution')) el('settingsInstitution').value = user.institution || '';
-
-        // Admin butonları
         if (user.role === 'admin' || user.role === 'super_admin') {
             if (el('addFolderBtn')) el('addFolderBtn').classList.remove('hidden');
             if (el('addFileBtn')) el('addFileBtn').classList.remove('hidden');
         }
-
-        // Abonelikleri yükle
         await loadSubscriptions();
-
     } catch (err) {
         console.error('checkAuthAndLoad error:', err);
         window.location.href = 'index.html';
     }
 }
 
-// DOMContentLoaded'de çağır
 document.addEventListener('DOMContentLoaded', checkAuthAndLoad);
 async function loadUserCreatedAt() {
     try {
-        const res = await fetch(`${API_BASE}/api/user/profile`, {
+            const res = await fetch(`${API_BASE}/api/user/profile`, {
             credentials: 'include'
         });
         const data = await res.json();
@@ -445,7 +423,7 @@ async function loadUserCreatedAt() {
 
 async function loadSubscriptions() {
     try {
-        const res = await fetch(`${API_BASE}/api/subscription/list`, {
+            const res = await fetch(`${API_BASE}/api/subscription/list`, {
             credentials: 'include'
         });
         const data = await res.json();
@@ -502,7 +480,7 @@ async function loadFolders(parentId = null) {
         if (parentId) url += `?parent=${parentId}`;
 
         const res = await fetch(url, { 
-            credentials: 'include'
+            credentials: 'include' 
         });
         
         if (!res.ok) {
@@ -863,7 +841,6 @@ document.getElementById('profileUpdateForm')?.addEventListener('submit', async (
         if (res.ok) {
             alert('Profil bilgileriniz güncellendi. Değişikliklerin tam etkili olması için tekrar giriş yapmanız gerekebilir.');
             if (data.new_password) {
-                
                 window.location.href = 'index.html';
             } else {
                 location.reload();
@@ -888,7 +865,6 @@ document.getElementById('deleteAccountBtn')?.addEventListener('click', async () 
         
         if (res.ok) {
             alert('Hesabınız silindi.');
-            
             window.location.href = 'index.html';
         } else {
             alert('Silme başarısız');
@@ -926,7 +902,9 @@ document.getElementById('addFileBtn')?.addEventListener('click', openFileModal);
 
 // ====================== BAŞLANGIÇ ======================
 document.addEventListener('DOMContentLoaded', async () => {
-    await checkAuthAndLoad();
+    if (!token) return window.location.href = 'index.html';
+    await loadUserProfile();
+    document.getElementById('tab-overview').classList.remove('hidden');
 });
 </script>
 </body>
