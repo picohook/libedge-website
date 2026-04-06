@@ -1124,11 +1124,13 @@ app.delete('/api/institution/file/:id', async (c) => {
 
 app.post('/api/admin/institution', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
-  const { name, domain } = await c.req.json();
+  const { name, domain, category } = await c.req.json();
   if (!name?.trim()) return c.json({ error: 'Kurum adı zorunludur' }, 400);
+  const validCategories = ['university','corporate','government','publisher','sub_distributor','k12'];
+  const cat = validCategories.includes(category) ? category : 'university';
   const db = c.env.DB;
   try {
-    const result = await db.prepare(`INSERT INTO institutions (name, domain) VALUES (?, ?)`).bind(name.trim(), domain?.trim() || null).run();
+    const result = await db.prepare(`INSERT INTO institutions (name, domain, category) VALUES (?, ?, ?)`).bind(name.trim(), domain?.trim() || null, cat).run();
     return c.json({ success: true, id: result.meta?.last_row_id });
   } catch (e) {
     if (e.message?.includes('UNIQUE')) return c.json({ error: 'Bu kurum adı zaten var' }, 409);
@@ -1140,11 +1142,13 @@ app.put('/api/admin/institution/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetersiz yetki' }, 403);
   const role = await getUserRole(c);
   const id = c.req.param('id');
-  const { name, domain } = await c.req.json();
+  const { name, domain, category } = await c.req.json();
+  const validCategories = ['university','corporate','government','publisher','sub_distributor','k12'];
   const db = c.env.DB;
 
   if (role === 'super_admin') {
-    await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ? WHERE id = ?`).bind(name || null, domain ?? null, id).run();
+    const cat = validCategories.includes(category) ? category : null;
+    await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ?, category = COALESCE(?, category) WHERE id = ?`).bind(name || null, domain ?? null, cat, id).run();
   } else {
     // Admin sadece kendi kurumunun domain'ini güncelleyebilir
     const adminInstitution = await getUserInstitution(c);

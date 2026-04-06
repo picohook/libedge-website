@@ -438,11 +438,11 @@
                     <thead>
                         <tr>
                             <th>Kurum Adı</th>
+                            <th>Kategori</th>
                             <th>Domain</th>
                             <th>Kullanıcı Sayısı</th>
                             <th>Dosya Sayısı</th>
                             <th>İşlem</th>
-                            <th></th>
                         </tr>
                     </thead>
                     <tbody id="institutionsList">
@@ -491,6 +491,10 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı</label>
                 <input type="text" id="institutionName" placeholder="Örn: Ankara Üniversitesi" class="w-full border p-2 rounded" required>
             </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                <select id="institutionCategory" class="w-full border p-2 rounded"></select>
+            </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
                 <input type="text" id="institutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
@@ -514,6 +518,10 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı</label>
                 <input type="text" id="editInstitutionName" class="w-full border p-2 rounded bg-gray-50" required>
             </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                <select id="editInstitutionCategory" class="w-full border p-2 rounded"></select>
+            </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
                 <input type="text" id="editInstitutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
@@ -534,7 +542,7 @@
 
         <!-- Adım 1: Yapıştır -->
         <div id="bulkStep1" class="flex flex-col flex-1">
-            <p class="text-sm text-gray-500 mb-3">Excel veya CSV'den kopyalayıp yapıştırın. İki sütun: <span class="font-medium text-gray-700">Kurum Adı</span> ve <span class="font-medium text-gray-700">Domain(lar)</span> (opsiyonel). Tab veya virgülle ayrılmış.</p>
+            <p class="text-sm text-gray-500 mb-3">Excel veya CSV'den kopyalayıp yapıştırın. Üç sütun: <span class="font-medium text-gray-700">Kurum Adı</span>, <span class="font-medium text-gray-700">Domain(lar)</span> (opsiyonel), <span class="font-medium text-gray-700">Kategori</span> (opsiyonel). Tab veya virgülle ayrılmış.</p>
             <textarea id="bulkPasteArea" rows="10"
                 placeholder="Ankara Üniversitesi&#9;ankara.edu.tr&#10;İstanbul Teknik Üniversitesi&#9;itu.edu.tr&#10;Hacettepe Üniversitesi"
                 class="w-full border rounded p-3 text-sm font-mono flex-1 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"></textarea>
@@ -553,6 +561,7 @@
                         <tr>
                             <th class="text-left px-3 py-2 font-medium text-gray-700">Kurum Adı</th>
                             <th class="text-left px-3 py-2 font-medium text-gray-700">Domain(lar)</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700">Kategori</th>
                             <th class="w-8"></th>
                         </tr>
                     </thead>
@@ -1332,6 +1341,29 @@ function getCategoryName(category) {
 
 // ====================== KURUMLAR YÖNETİMİ ======================
 
+const INSTITUTION_CATEGORIES = [
+    { value: 'university',      label: 'University' },
+    { value: 'corporate',       label: 'Corporate' },
+    { value: 'government',      label: 'Government' },
+    { value: 'publisher',       label: 'Publisher' },
+    { value: 'sub_distributor', label: 'Sub-distributor' },
+    { value: 'k12',             label: 'K-12' },
+];
+
+function categoryLabel(value) {
+    return INSTITUTION_CATEGORIES.find(c => c.value === value)?.label || value || '-';
+}
+
+function categoryOptionsHtml(selected = 'university') {
+    return INSTITUTION_CATEGORIES.map(c =>
+        `<option value="${c.value}"${c.value === selected ? ' selected' : ''}>${c.label}</option>`
+    ).join('');
+}
+
+// Kategori select'lerini doldur
+document.getElementById('institutionCategory').innerHTML = categoryOptionsHtml();
+document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml();
+
 async function loadInstitutions() {
     const tbody = document.getElementById('institutionsList');
     tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Yükleniyor...</td></tr>';
@@ -1349,11 +1381,12 @@ async function loadInstitutions() {
             const canDelete = isSuper;
             return `<tr>
                 <td class="px-4 py-2">${escapeHtml(i.name)}</td>
+                <td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700">${categoryLabel(i.category)}</span></td>
                 <td class="px-4 py-2">${escapeHtml(i.domain || '-')}</td>
                 <td class="px-4 py-2">${i.user_count ?? '-'}</td>
                 <td class="px-4 py-2">${i.file_count ?? '-'}</td>
                 <td class="px-4 py-2">
-                    ${canEdit ? `<button type="button" onclick="openEditInstitutionModal(${i.id}, '${escapeHtml(i.name)}', '${escapeHtml(i.domain || '')}')" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>` : ''}
+                    ${canEdit ? `<button type="button" onclick="openEditInstitutionModal(${i.id}, '${escapeHtml(i.name)}', '${escapeHtml(i.domain || '')}', '${escapeHtml(i.category || 'university')}')" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>` : ''}
                     ${canDelete ? `<button type="button" onclick="deleteInstitution(${i.id}, '${escapeHtml(i.name)}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>` : ''}
                 </td>
             </tr>`;
@@ -1363,20 +1396,23 @@ async function loadInstitutions() {
 
 function openInstitutionModal() {
     document.getElementById('institutionForm').reset();
+    document.getElementById('institutionCategory').innerHTML = categoryOptionsHtml('university');
     document.getElementById('institutionModal').classList.remove('hidden');
 }
 function closeInstitutionModal() {
     document.getElementById('institutionModal').classList.add('hidden');
 }
 
-function openEditInstitutionModal(id, name, domain) {
+function openEditInstitutionModal(id, name, domain, category) {
     document.getElementById('editInstitutionId').value = id;
     document.getElementById('editInstitutionName').value = name;
     document.getElementById('editInstitutionDomain').value = domain;
+    document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml(category || 'university');
     const nameInput = document.getElementById('editInstitutionName');
     const isSuper = currentAdmin?.role === 'super_admin';
     nameInput.disabled = !isSuper;
     nameInput.classList.toggle('text-gray-400', !isSuper);
+    document.getElementById('editInstitutionCategory').disabled = !isSuper;
     document.getElementById('editInstitutionModal').classList.remove('hidden');
 }
 function closeEditInstitutionModal() {
@@ -1388,8 +1424,9 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
     const id = document.getElementById('editInstitutionId').value;
     const name = document.getElementById('editInstitutionName').value.trim();
     const domain = document.getElementById('editInstitutionDomain').value.trim();
+    const category = document.getElementById('editInstitutionCategory').value;
     const isSuper = currentAdmin?.role === 'super_admin';
-    const body = isSuper ? { name, domain: domain || null } : { domain: domain || null };
+    const body = isSuper ? { name, domain: domain || null, category } : { domain: domain || null };
     await fetch(`${API_BASE}/api/admin/institution/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1429,16 +1466,21 @@ function parseBulkPaste() {
     const lines = raw.split('\n').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
     if (!lines.length) return;
 
+    const validCategories = INSTITUTION_CATEGORIES.map(c => c.value);
     const tbody = document.getElementById('bulkPreviewRows');
-    tbody.innerHTML = lines.map((line, idx) => {
-        // Tab önce, yoksa ilk virgül
+    tbody.innerHTML = lines.map(line => {
         const sep = line.includes('\t') ? '\t' : ',';
-        const firstSep = line.indexOf(sep);
-        const name = firstSep === -1 ? line.trim() : line.slice(0, firstSep).trim();
-        const domain = firstSep === -1 ? '' : line.slice(firstSep + 1).trim();
+        const parts = line.split(sep).map(s => s.trim());
+        const name = parts[0] || '';
+        const domain = parts[1] || '';
+        const rawCat = parts[2] || '';
+        const category = validCategories.includes(rawCat) ? rawCat : 'university';
         return `<tr class="border-t border-gray-100">
             <td class="px-3 py-1">${escapeHtml(name)}</td>
             <td class="px-3 py-1 text-gray-500">${escapeHtml(domain)}</td>
+            <td class="px-3 py-1">
+                <select class="bulk-cat-select border rounded px-1 py-0.5 text-xs">${categoryOptionsHtml(category)}</select>
+            </td>
             <td class="px-2 py-1 text-center">
                 <button type="button" onclick="this.closest('tr').remove()" class="text-gray-300 hover:text-red-500 text-xs"><i class="fas fa-times"></i></button>
             </td>
@@ -1453,11 +1495,12 @@ document.getElementById('institutionForm').addEventListener('submit', async (e) 
     e.preventDefault();
     const name = document.getElementById('institutionName').value.trim();
     const domain = document.getElementById('institutionDomain').value.trim();
+    const category = document.getElementById('institutionCategory').value;
     await fetch(`${API_BASE}/api/admin/institution`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name, domain: domain || null })
+        body: JSON.stringify({ name, domain: domain || null, category })
     });
     closeInstitutionModal();
     loadInstitutions();
@@ -1467,7 +1510,11 @@ async function submitBulkInstitutions() {
     const rows = [...document.querySelectorAll('#bulkPreviewRows tr')];
     const entries = rows.map(tr => {
         const cells = tr.querySelectorAll('td');
-        return { name: cells[0]?.textContent.trim() || '', domain: cells[1]?.textContent.trim() || '' };
+        return {
+            name: cells[0]?.textContent.trim() || '',
+            domain: cells[1]?.textContent.trim() || '',
+            category: cells[2]?.querySelector('select')?.value || 'university'
+        };
     }).filter(e => e.name.length > 0);
 
     if (!entries.length) return;
@@ -1485,7 +1532,7 @@ async function submitBulkInstitutions() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ name: entry.name, domain: entry.domain || null })
+                body: JSON.stringify({ name: entry.name, domain: entry.domain || null, category: entry.category })
             });
             res.ok ? ok++ : fail++;
         } catch { fail++; }
