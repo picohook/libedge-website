@@ -938,23 +938,14 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
     const isPublic = parseInt(document.getElementById('adminFolderVisibility').value);
     if (!institutionId) { alert('Kurum seçin.'); return; }
     if (!folderName) { alert('Klasör adı boş olamaz.'); return; }
-
     const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(institutionId)}/folder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ folder_name: folderName, parent_folder_id: adminCurrentFolderId, is_public: isPublic })
     });
-
-    // ✅ JSON parse güvenli
-    const text = await res.text();
-    let data = {};
-    try { data = JSON.parse(text); } catch {}
-
-    res.ok
-        ? (closeAdminFolderModal(), loadAdminFolders(adminCurrentFolderId))
-        : alert(data.error || `Hata: ${res.status}`);
+    const data = await res.json();
+    res.ok ? (closeAdminFolderModal(), loadAdminFolders(adminCurrentFolderId)) : alert(data.error || 'Klasör oluşturulamadı.');
 });
+
 // Klasör filtresi
 async function loadAdminFileFolders(institutionId) {
     const select = document.getElementById('adminFileFolderSelect');
@@ -1126,24 +1117,19 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
             const fd = new FormData();
             fd.append('file', selectedFile);
             document.getElementById('uploadProgress').classList.remove('hidden');
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/api/upload');
-            await new Promise((resolve, reject) => {
-                xhr.upload.onprogress = (ev) => {
-                    if (ev.lengthComputable) {
-                        const p = Math.round(ev.loaded/ev.total*100);
-                        document.getElementById('uploadPercent').textContent = p + '%';
-                        document.getElementById('uploadProgressBar').style.width = p + '%';
-                    }
-                };
-                xhr.onload = () => {
-                    const d = JSON.parse(xhr.responseText);
-                    if (xhr.status === 200) { fileUrl = d.url; fileType = selectedFile.name.split('.').pop()?.toLowerCase()||'other'; resolve(); }
-                    else reject(new Error(d.error || 'Upload başarısız'));
-                };
-                xhr.onerror = () => reject(new Error('Ağ hatası'));
-                xhr.send(fd);
+            document.getElementById('uploadPercent').textContent = 'Yükleniyor...';
+            document.getElementById('uploadProgressBar').style.width = '60%';
+
+            const uploadRes = await fetch('/api/upload', {
+                method: 'POST',
+                credentials: 'include',
+                body: fd
             });
+            const uploadData = await uploadRes.json();
+            if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload başarısız');
+            fileUrl = uploadData.url;
+            fileType = selectedFile.name.split('.').pop()?.toLowerCase() || 'other';
+            document.getElementById('uploadProgressBar').style.width = '100%';
         } else if (currentUploadTab === 'gdrive') {
             if (!selectedDriveFile) { alert('Google Drive dosyası seçin.'); return; }
             fileUrl = selectedDriveFile.url; fileType = 'gdrive';
