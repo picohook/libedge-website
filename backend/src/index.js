@@ -1162,9 +1162,31 @@ app.get('/api/files/*', async (c) => {
   const bucket = c.env.FILES_BUCKET;
   if (!bucket) return c.json({ error: 'R2 bucket bağlı değil' }, 500);
 
-  // /api/files/uploads/2/... → uploads/2/...
   const key = c.req.path.replace('/api/files/', '');
   if (!key) return c.json({ error: 'Dosya bulunamadı' }, 404);
+
+  // Erişim kontrolü: admin/super_admin her dosyaya erişebilir
+  // Normal kullanıcı ve misafir sadece is_public=1 dosyalara erişebilir
+  const db = c.env.DB;
+  const fileRecord = await db.prepare(
+    `SELECT is_public, institution_id FROM institution_files 
+     WHERE file_url = ? AND is_active = 1`
+  ).bind(`/api/files/${key}`).first();
+
+  if (fileRecord) {
+    if (!fileRecord.is_public) {
+      // Giriş yapmış ve yetkili mi?
+      const auth = await requireAuth(c);
+      if (auth.response) {
+        return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
+      }
+      const role = auth.user.role;
+      if (role !== 'super_admin' && role !== 'admin') {
+        return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
+      }
+    }
+  }
+  // DB'de kayıt yoksa (eski dosyalar vb.) izin ver
 
   const object = await bucket.get(key);
   if (!object) return c.json({ error: 'Dosya bulunamadı' }, 404);
@@ -1172,9 +1194,11 @@ app.get('/api/files/*', async (c) => {
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set('etag', object.httpEtag);
-  headers.set('cache-control', 'public, max-age=31536000');
-  // İndir yerine tarayıcıda aç
-  headers.delete('content-disposition');
+  headers.set('cache-control', 'public, max-age=3600');
+  headers.set('content-disposition', 'inline');
+  headers.delete('x-frame-options');
+  // Google Docs Viewer ve iframe erişimi için CORS
+  headers.set('access-control-allow-origin', '*');
 
   return new Response(object.body, { headers });
 });
