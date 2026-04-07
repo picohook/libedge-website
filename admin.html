@@ -815,8 +815,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const subs = await subsRes.json();
             document.getElementById('statSubscriptions').textContent = subs.filter(s => s.status === 'active').length || 0;
             
-            const institutions = [...new Set(users.map(u => u.institution).filter(i => i))];
-            document.getElementById('statInstitutions').textContent = institutions.length || 0;
+            const institutionsRes = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
+            const allInstitutions = institutionsRes.ok ? await institutionsRes.json() : [];
+            document.getElementById('statInstitutions').textContent = allInstitutions.length || 0;
             
             const recent = users.slice(-5).reverse();
             document.getElementById('recentUsers').innerHTML = recent.map(u => `<tr><td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td><td class="px-4 py-2">${u.email}</td><td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td><td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center py-4">Henüz kullanıcı yok</td></tr>';

@@ -777,10 +777,10 @@ app.get('/api/admin/institutions', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
   const institutions = await db.prepare(`
-    SELECT id, name, domain, category, created_at,
-      (SELECT COUNT(*) FROM users WHERE institution = name) as user_count,
-      (SELECT COUNT(*) FROM institution_files WHERE institution_id = id AND is_active = 1) as file_count
-    FROM institutions ORDER BY name
+    SELECT inst.id, inst.name, inst.domain, inst.category, inst.created_at,
+      (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
+      (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
+    FROM institutions inst ORDER BY inst.name
   `).all();
   return c.json(institutions.results);
 });
