@@ -288,6 +288,18 @@
         </form>
     </div>
 </div>
+<!-- Klasör Yeniden Adlandır Modal -->
+<div id="adminFolderRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-sm">
+        <h3 class="text-lg font-bold mb-4">Klasörü Yeniden Adlandır</h3>
+        <input type="text" id="adminFolderRenameInput" placeholder="Yeni klasör adı" class="w-full border p-2 rounded mb-4">
+        <div class="flex gap-2">
+            <button onclick="submitRenameFolder()" class="btn btn-primary flex-1">Kaydet</button>
+            <button onclick="closeAdminFolderRenameModal()" class="btn bg-gray-300 flex-1">İptal</button>
+        </div>
+    </div>
+</div>
+
 <div id="adminFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-screen overflow-y-auto">
         <h3 class="text-xl font-bold mb-4">Dosya Ekle</h3>
@@ -1213,10 +1225,16 @@ async function loadAdminFolders(parentId = null) {
                 ${f.is_public
                     ? '<span class="text-xs text-green-600"><i class="fas fa-globe mr-1"></i>Açık</span>'
                     : '<span class="text-xs text-gray-400"><i class="fas fa-lock mr-1"></i>İçi</span>'}
-                <button onclick="event.stopPropagation();deleteAdminFolder(${f.id})"
-                    class="absolute top-1 right-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition">
-                    <i class="fas fa-trash text-xs"></i>
-                </button>
+                <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <button onclick="event.stopPropagation();renameAdminFolder(${f.id}, '${escapeHtml(f.folder_name)}')"
+                        class="text-gray-300 hover:text-blue-500 transition" title="Yeniden Adlandır">
+                        <i class="fas fa-pencil-alt text-xs"></i>
+                    </button>
+                    <button onclick="event.stopPropagation();deleteAdminFolder(${f.id})"
+                        class="text-gray-300 hover:text-red-500 transition" title="Sil">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
+                </div>
             </div>
         `).join('') : '<div class="col-span-full text-center text-gray-400 py-4">Henüz klasör yok</div>';
     } catch (err) { 
@@ -1367,6 +1385,34 @@ async function deleteAdminFolder(folderId) {
     const res = await fetch(`${API_BASE}/api/institution/folder/${folderId}`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadAdminFolders(adminCurrentFolderId); loadAdminFiles(); }
     else showToast('İşlem başarısız oldu!', 'error');
+}
+
+// Klasör yeniden adlandırma
+let _renameFolderId = null;
+function renameAdminFolder(folderId, currentName) {
+    _renameFolderId = folderId;
+    document.getElementById('adminFolderRenameInput').value = currentName;
+    document.getElementById('adminFolderRenameModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('adminFolderRenameInput').select(), 50);
+}
+function closeAdminFolderRenameModal() {
+    document.getElementById('adminFolderRenameModal').classList.add('hidden');
+    _renameFolderId = null;
+}
+async function submitRenameFolder() {
+    const newName = document.getElementById('adminFolderRenameInput').value.trim();
+    if (!newName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
+    const res = await fetch(`${API_BASE}/api/institution/folder/${_renameFolderId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ folder_name: newName })
+    });
+    if (res.ok) {
+        showToast('Klasör adı başarıyla güncellendi!', 'success');
+        closeAdminFolderRenameModal();
+        loadAdminFolders(adminCurrentFolderId);
+    } else {
+        showToast('İşlem başarısız oldu!', 'error');
+    }
 }
 
 // Klasör modal

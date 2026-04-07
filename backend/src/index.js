@@ -1091,6 +1091,22 @@ app.delete('/api/institution/folder/:id', async (c) => {
   return c.json({ success: true });
 });
 
+app.put('/api/institution/folder/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const role = auth.user.role;
+  if (role !== 'super_admin' && role !== 'admin') return c.json({ error: 'Yetkisiz' }, 403);
+  const folderId = c.req.param('id');
+  const db = c.env.DB;
+  const { folder_name } = await c.req.json();
+  if (!folder_name?.trim()) return c.json({ error: 'Klasör adı boş olamaz' }, 400);
+  const folder = await db.prepare(`SELECT f.*, i.name as institution_name FROM institution_folders f LEFT JOIN institutions i ON f.institution_id = i.id WHERE f.id = ?`).bind(folderId).first();
+  if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
+  if (role === 'admin' && auth.user.institution !== folder.institution_name) return c.json({ error: 'Yetkisiz' }, 403);
+  await db.prepare(`UPDATE institution_folders SET folder_name = ? WHERE id = ?`).bind(folder_name.trim(), folderId).run();
+  return c.json({ success: true });
+});
+
 // ====================== KURUM DOSYA CRUD ======================
 
 app.post('/api/institution/:id/file', async (c) => {
