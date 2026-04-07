@@ -1483,65 +1483,25 @@ document.getElementById('institutionFilter')?.addEventListener('change', () => {
 // Admin'in yetkili olduğu tüm kurumların dosyalarını yükle
 async function loadAllAdminFiles() {
     const container = document.getElementById('adminFilesList');
-    container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin"></i> Tüm dosyalar yükleniyor...</div>';
-    
+    container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>';
+
     try {
-        const profileRes = await fetch('/api/user/profile', { credentials: 'include' });
-        const user = await profileRes.json();
-        
-        let adminInstitutions = [];
-        
-        if (user.role === 'super_admin') {
-            // Super Admin: Tüm kurumlar
-            const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
-            const insts = await res.json();
-            adminInstitutions = insts.map(i => i.name);
-        } else {
-            // Admin: Yetkili olduğu kurumlar
-            // Backend'den çek
-            try {
-                const res = await fetch(`${API_BASE}/api/admin/my-institutions`, { credentials: 'include' });
-                if (res.ok) {
-                    const data = await res.json();
-                    adminInstitutions = data.institutions || [];
-                }
-            } catch (e) {}
-            
-            if (adminInstitutions.length === 0 && user.institution) {
-                adminInstitutions = [user.institution];
-            }
-        }
-        
-        let allFiles = [];
-        
-        for (const inst of adminInstitutions) {
-            try {
-                const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(inst)}/files`, {
-                    credentials: 'include'
-                });
-                if (res.ok) {
-                    const files = await res.json();
-                    allFiles.push(...files.map(f => ({ ...f, institution_name: inst })));
-                }
-            } catch (e) {
-                console.error(`${inst} dosyaları alınamadı:`, e);
-            }
-        }
-        
-        if (allFiles.length === 0) {
+        const res = await fetch('/api/admin/all-files', { credentials: 'include' });
+        const files = await res.json();
+
+        if (!files || files.length === 0) {
             container.innerHTML = '<div class="text-center py-8 text-gray-400">📁 Hiç dosya bulunamadı</div>';
             return;
         }
-        
-        container.innerHTML = allFiles.map(file => `
+
+        container.innerHTML = files.map(file => `
             <div class="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
                 <div class="flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
                         <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
-                        <a href="javascript:void(0)" onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type || ''}')" 
+                        <a href="javascript:void(0)" onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type || ''}')"
                            class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
                         <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">🏢 ${escapeHtml(file.institution_name)}</span>
-                        ${file.is_public ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">🌍 Herkese Açık</span>' : ''}
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -1551,7 +1511,7 @@ async function loadAllAdminFiles() {
                 </div>
             </div>
         `).join('');
-        
+
     } catch (err) {
         console.error('loadAllAdminFiles error:', err);
         container.innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenirken hata oluştu</p>';
