@@ -760,12 +760,17 @@ app.get('/api/admin/my-institution', async (c) => {
   if (!me?.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
   const inst = await db.prepare(`
     SELECT id, name, domain, category,
-      (SELECT COUNT(*) FROM users WHERE institution = name) as user_count,
-      (SELECT COUNT(*) FROM institution_files WHERE institution_id = id AND is_active = 1) as file_count
+      (SELECT COUNT(*) FROM users WHERE institution = name) as user_count
     FROM institutions WHERE name = ?
   `).bind(me.institution).first();
   if (!inst) return c.json({ error: 'Kurum bulunamadı' }, 404);
-  return c.json(inst);
+
+  const fileRow = await db.prepare(`
+    SELECT COUNT(*) as cnt FROM institution_files
+    WHERE institution_id = ? AND is_active = 1
+  `).bind(inst.id).first();
+
+  return c.json({ ...inst, file_count: fileRow?.cnt ?? 0 });
 });
 
 app.get('/api/admin/institutions', async (c) => {
