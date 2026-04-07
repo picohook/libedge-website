@@ -926,7 +926,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     async function deleteUser(id) {
         if (confirm('Kullanıcıyı silmek istediğinize emin misiniz?')) {
-            await fetch(`${API_BASE}/api/admin/user/${id}`, { method: 'DELETE', credentials: 'include' });
+            const res = await fetch(`${API_BASE}/api/admin/user/${id}`, { method: 'DELETE', credentials: 'include' });
+            if (res.ok) showToast('Kullanıcı başarıyla silindi!', 'success');
+            else showToast('İşlem başarısız oldu!', 'error');
             loadUsers();
             loadDashboard();
         }
@@ -944,7 +946,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     async function deleteSubscription(id) {
         if (confirm('Aboneliği silmek istediğinize emin misiniz?')) {
-            await fetch(`${API_BASE}/api/admin/subscription/${id}`, { method: 'DELETE', credentials: 'include' });
+            const res = await fetch(`${API_BASE}/api/admin/subscription/${id}`, { method: 'DELETE', credentials: 'include' });
+            if (res.ok) showToast('Abonelik başarıyla silindi!', 'success');
+            else showToast('İşlem başarısız oldu!', 'error');
             loadSubscriptions();
             loadDashboard();
         }
@@ -973,6 +977,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             errorEl.classList.remove('hidden');
             return;
         }
+        showToast(id ? 'Kullanıcı başarıyla güncellendi!' : 'Kullanıcı başarıyla eklendi!', 'success');
         closeUserModal();
         loadUsers();
         loadDashboard();
@@ -980,7 +985,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('subscriptionForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        await fetch(`${API_BASE}/api/admin/subscription`, {
+        const res = await fetch(`${API_BASE}/api/admin/subscription`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -991,6 +996,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 end_date: document.getElementById('subEndDate').value || null
             })
         });
+        if (res.ok) showToast('Abonelik başarıyla eklendi!', 'success');
+        else showToast('İşlem başarısız oldu!', 'error');
         closeSubscriptionModal();
         loadSubscriptions();
         loadDashboard();
@@ -1344,20 +1351,22 @@ async function toggleAdminFilePublic(fileId, currentStatus) {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         credentials: 'include', body: JSON.stringify({ is_public: !currentStatus })
     });
-    res.ok ? loadAdminFiles() : showToast('Güncelleme işlemi başarısız oldu.', 'error');
+    if (res.ok) { showToast('Görünürlük başarıyla güncellendi!', 'success'); loadAdminFiles(); }
+    else showToast('İşlem başarısız oldu!', 'error');
 }
 
 async function deleteAdminFile(fileId) {
     if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
     const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, { method: 'DELETE', credentials: 'include' });
-    res.ok ? loadAdminFiles() : showToast('Silme işlemi başarısız oldu.', 'error');
+    if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); }
+    else showToast('İşlem başarısız oldu!', 'error');
 }
 
 async function deleteAdminFolder(folderId) {
     if (!confirm('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?')) return;
     const res = await fetch(`${API_BASE}/api/institution/folder/${folderId}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { loadAdminFolders(adminCurrentFolderId); loadAdminFiles(); }
-    else showToast('Silme işlemi başarısız oldu.', 'error');
+    if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadAdminFolders(adminCurrentFolderId); loadAdminFiles(); }
+    else showToast('İşlem başarısız oldu!', 'error');
 }
 
 // Klasör modal
@@ -1386,7 +1395,8 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
         body: JSON.stringify({ folder_name: folderName, parent_folder_id: adminCurrentFolderId, is_public: isPublic })
     });
     const data = await res.json();
-    res.ok ? (closeAdminFolderModal(), loadAdminFolders(adminCurrentFolderId)) : showToast(data.error || 'Klasör oluşturulamadı.', 'error');
+    if (res.ok) { showToast('Klasör başarıyla oluşturuldu!', 'success'); closeAdminFolderModal(); loadAdminFolders(adminCurrentFolderId); }
+    else showToast(data.error || 'İşlem başarısız oldu!', 'error');
 });
 
 // Klasör filtresi
@@ -1684,8 +1694,8 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
             })
         });
         const result = await res.json();
-        if (res.ok) { closeAdminFileModal(); loadAdminFiles(); loadAdminInstitutions(); }
-        else showToast(result.error || 'Kayıt işlemi başarısız oldu.', 'error');
+        if (res.ok) { showToast('Dosya başarıyla yüklendi!', 'success'); closeAdminFileModal(); loadAdminFiles(); loadAdminInstitutions(); }
+        else showToast(result.error || 'İşlem başarısız oldu!', 'error');
     } catch(err) {
         showToast(err.message || 'Bir hata oluştu.', 'error');
     } finally {
