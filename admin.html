@@ -1858,7 +1858,6 @@ async function loadMyInstitution() {
     successEl.classList.add('hidden');
     
     try {
-        // 1. Kurum bilgilerini al
         const res = await fetch('/api/admin/my-institution', { 
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' }
@@ -1871,58 +1870,11 @@ async function loadMyInstitution() {
         const inst = await res.json();
         console.log('Kurum bilgileri:', inst);
         
-        // 2. Form alanlarını doldur
         document.getElementById('myInstitutionId').value = inst.id || '';
         document.getElementById('myInstitutionName').value = inst.name || '';
         document.getElementById('myInstitutionDomain').value = inst.domain || '';
         document.getElementById('myInstUserCount').textContent = inst.user_count ?? '-';
-        
-        // 3. DOSYA SAYISINI MANUEL HESAPLA (backend hatalı olduğu için)
-        const instName = inst.name;
-        if (instName) {
-            let totalFiles = 0;
-            
-            try {
-                // Ana dizindeki dosyaları al
-                const rootRes = await fetch(`/api/institution/${encodeURIComponent(instName)}/files`, {
-                    credentials: 'include'
-                });
-                if (rootRes.ok) {
-                    const rootFiles = await rootRes.json();
-                    totalFiles += rootFiles.length;
-                    console.log('Ana dizindeki dosyalar:', rootFiles.length);
-                }
-                
-                // Klasörleri al ve içindeki dosyaları say
-                const foldersRes = await fetch(`/api/institution/${encodeURIComponent(instName)}/folders`, {
-                    credentials: 'include'
-                });
-                if (foldersRes.ok) {
-                    const folders = await foldersRes.json();
-                    console.log('Klasörler:', folders.length);
-                    
-                    for (const folder of folders) {
-                        const folderFilesRes = await fetch(`/api/institution/folder/${folder.id}/files`, {
-                            credentials: 'include'
-                        });
-                        if (folderFilesRes.ok) {
-                            const folderFiles = await folderFilesRes.json();
-                            totalFiles += folderFiles.length;
-                            console.log(`"${folder.folder_name}" klasöründe:`, folderFiles.length, 'dosya');
-                        }
-                    }
-                }
-                
-                console.log('TOPLAM DOSYA SAYISI:', totalFiles);
-                document.getElementById('myInstFileCount').textContent = totalFiles;
-                
-            } catch (e) {
-                console.error('Dosya sayısı hesaplanamadı:', e);
-                document.getElementById('myInstFileCount').textContent = '?';
-            }
-        } else {
-            document.getElementById('myInstFileCount').textContent = inst.file_count ?? '-';
-        }
+        document.getElementById('myInstFileCount').textContent = inst.file_count ?? '-';
         
     } catch (e) {
         console.error('loadMyInstitution error:', e);
@@ -1930,7 +1882,6 @@ async function loadMyInstitution() {
         errEl.classList.remove('hidden');
     }
 }
-
 
 // ====================== KURUMUM - DOMAIN GÜNCELLEME (BAŞARI MESAJI DÜZELTİLMİŞ) ======================
 
