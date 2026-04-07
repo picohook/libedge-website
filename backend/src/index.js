@@ -146,7 +146,7 @@ async function getUserInstitution(c) {
 
 async function getUserInstitutionId(c) {
   const payload = await getTokenPayloadFromCookie(c);
-  return payload?.org_id || payload?.institution || null;
+  return payload?.institution_id || null;
 }
 
 async function isSuperAdmin(c) {
@@ -162,13 +162,16 @@ async function isAdmin(c) {
 async function canAccessUser(c, targetUserId) {
   const role = await getUserRole(c);
   if (role === 'super_admin') return true;
-  
-  const adminInstitution = await getUserInstitution(c);
-  if (!adminInstitution) return false;
-  
+
   const db = c.env.DB;
-  const targetUser = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(targetUserId).first();
-  return targetUser && targetUser.institution === adminInstitution;
+  const adminInstitutionId = await getUserInstitutionId(c);
+  const adminInstitution = await getUserInstitution(c);
+  const targetUser = await db.prepare(`SELECT institution, institution_id FROM users WHERE id = ?`).bind(targetUserId).first();
+  if (!targetUser) return false;
+  if (adminInstitutionId && targetUser.institution_id) {
+    return targetUser.institution_id === adminInstitutionId;
+  }
+  return targetUser.institution === adminInstitution;
 }
 
 async function canListUsers(c) {
@@ -266,7 +269,7 @@ app.post('/api/auth/login', async (c) => {
     const db = c.env.DB;
 
     const user = await db.prepare(`
-      SELECT id, email, full_name, institution, password_hash, role 
+      SELECT id, email, full_name, institution, institution_id, password_hash, role
       FROM users WHERE email = ?
     `).bind(email.toLowerCase().trim()).first();
 
@@ -281,6 +284,7 @@ app.post('/api/auth/login', async (c) => {
       email: user.email,
       full_name: user.full_name || "",
       institution: user.institution || "",
+      institution_id: user.institution_id || null,
       role: user.role || "user",
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + (15 * 60)
@@ -341,18 +345,19 @@ app.post('/api/auth/refresh', async (c) => {
   const db = c.env.DB;
   
   const user = await db.prepare(`
-    SELECT id, email, full_name, institution, role FROM users WHERE id = ?
+    SELECT id, email, full_name, institution, institution_id, role FROM users WHERE id = ?
   `).bind(oldPayload.user_id).first();
-  
+
   if (!user) {
     return c.json({ error: 'Kullanıcı bulunamadı' }, 401);
   }
-  
+
   const newPayload = {
     user_id: user.id,
     email: user.email,
     full_name: user.full_name || "",
     institution: user.institution || "",
+    institution_id: user.institution_id || null,
     role: user.role || "user",
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + (15 * 60)
@@ -571,29 +576,66 @@ app.get('/api/admin/users', async (c) => {
   if (!await canListUsers(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   const role = await getUserRole(c);
-  const institution = await getUserInstitution(c);
-  
+
   let users;
   if (role === 'super_admin') {
-    users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at, last_login FROM users ORDER BY id DESC`).all();
+    users = await db.prepare(`
+      SELECT u.id, u.email, u.full_name, u.institution, u.institution_id, u.role, u.created_at, u.last_login,
+             COALESCE(i.name, u.institution) as institution_name
+      FROM users u
+      LEFT JOIN institutions i ON u.institution_id = i.id
+      ORDER BY u.id DESC
+    `).all();
   } else {
-    users = await db.prepare(`SELECT id, email, full_name, institution, role, created_at, last_login FROM users WHERE institution = ? ORDER BY id DESC`).bind(institution).all();
+    const adminInstitutionId = await getUserInstitutionId(c);
+    const adminInstitution = await getUserInstitution(c);
+    if (adminInstitutionId) {
+      users = await db.prepare(`
+        SELECT u.id, u.email, u.full_name, u.institution, u.institution_id, u.role, u.created_at, u.last_login,
+               COALESCE(i.name, u.institution) as institution_name
+        FROM users u
+        LEFT JOIN institutions i ON u.institution_id = i.id
+        WHERE u.institution_id = ?
+        ORDER BY u.id DESC
+      `).bind(adminInstitutionId).all();
+    } else {
+      users = await db.prepare(`
+        SELECT u.id, u.email, u.full_name, u.institution, u.institution_id, u.role, u.created_at, u.last_login,
+               COALESCE(i.name, u.institution) as institution_name
+        FROM users u
+        LEFT JOIN institutions i ON u.institution_id = i.id
+        WHERE u.institution = ?
+        ORDER BY u.id DESC
+      `).bind(adminInstitution).all();
+    }
   }
   return c.json(users.results);
 });
 
 app.post('/api/admin/user', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const { email, password, full_name, institution, role } = await c.req.json();
+  const { email, password, full_name, institution, institution_id, role } = await c.req.json();
   const db = c.env.DB;
   const adminRole = await getUserRole(c);
+  const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
-  
-  let finalInstitution = institution;
+
+  // institution_id veya institution string'inden her iki değeri de resolve et
+  let finalInstitutionId = institution_id ? parseInt(institution_id) : null;
+  let finalInstitution = institution || null;
+  if (finalInstitutionId && !finalInstitution) {
+    const inst = await db.prepare(`SELECT name FROM institutions WHERE id = ?`).bind(finalInstitutionId).first();
+    finalInstitution = inst?.name || null;
+  } else if (finalInstitution && !finalInstitutionId) {
+    const inst = await db.prepare(`SELECT id FROM institutions WHERE name = ?`).bind(finalInstitution).first();
+    finalInstitutionId = inst?.id || null;
+  }
+
   if (adminRole === 'admin') {
-    if (institution && institution !== adminInstitution) {
+    if (adminInstitutionId && finalInstitutionId && finalInstitutionId !== adminInstitutionId) {
       return c.json({ error: 'Kendi kurumunuz dışında kullanıcı ekleyemezsiniz' }, 403);
     }
+    finalInstitutionId = adminInstitutionId;
     finalInstitution = adminInstitution;
 
     // Email domain kontrolü
@@ -610,44 +652,60 @@ app.post('/api/admin/user', async (c) => {
   }
 
   const finalRole = (role === 'admin' && adminRole !== 'super_admin') ? 'user' : (role || 'user');
-
   const password_hash = await hashPassword(password);
-  await db.prepare(`INSERT INTO users (email, password_hash, full_name, institution, role) VALUES (?, ?, ?, ?, ?)`).bind(email, password_hash, full_name, finalInstitution, finalRole).run();
+  await db.prepare(`INSERT INTO users (email, password_hash, full_name, institution, institution_id, role) VALUES (?, ?, ?, ?, ?, ?)`)
+    .bind(email, password_hash, full_name, finalInstitution, finalInstitutionId, finalRole).run();
   return c.json({ success: true });
 });
 
 app.put('/api/admin/user/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const id = c.req.param('id');
-  const { email, password, full_name, institution, role } = await c.req.json();
+  const { email, password, full_name, institution, institution_id, role } = await c.req.json();
   const db = c.env.DB;
   const adminRole = await getUserRole(c);
+  const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
-  
+
   if (adminRole === 'admin' && !await canAccessUser(c, id)) {
     return c.json({ error: 'Sadece kendi kurumunuzdaki kullanıcıları düzenleyebilirsiniz' }, 403);
   }
-  
-  let finalInstitution = institution;
+
+  // institution_id veya institution string'inden her iki değeri de resolve et
+  let finalInstitutionId = institution_id ? parseInt(institution_id) : null;
+  let finalInstitution = institution || null;
+  if (finalInstitutionId && !finalInstitution) {
+    const inst = await db.prepare(`SELECT name FROM institutions WHERE id = ?`).bind(finalInstitutionId).first();
+    finalInstitution = inst?.name || null;
+  } else if (finalInstitution && !finalInstitutionId) {
+    const inst = await db.prepare(`SELECT id FROM institutions WHERE name = ?`).bind(finalInstitution).first();
+    finalInstitutionId = inst?.id || null;
+  }
+
   if (adminRole === 'admin') {
+    finalInstitutionId = adminInstitutionId;
     finalInstitution = adminInstitution;
   }
-  
+
   const isSuper = adminRole === 'super_admin';
   const finalRole = (role && role !== 'user' && !isSuper) ? null : role;
-  
+
   if (password) {
     const password_hash = await hashPassword(password);
     if (finalRole) {
-      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, password_hash, full_name, finalInstitution, finalRole, id).run();
+      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, institution_id=?, role=? WHERE id=?`)
+        .bind(email, password_hash, full_name, finalInstitution, finalInstitutionId, finalRole, id).run();
     } else {
-      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=? WHERE id=?`).bind(email, password_hash, full_name, finalInstitution, id).run();
+      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, institution_id=? WHERE id=?`)
+        .bind(email, password_hash, full_name, finalInstitution, finalInstitutionId, id).run();
     }
   } else {
     if (finalRole) {
-      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=?, role=? WHERE id=?`).bind(email, full_name, finalInstitution, finalRole, id).run();
+      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=?, institution_id=?, role=? WHERE id=?`)
+        .bind(email, full_name, finalInstitution, finalInstitutionId, finalRole, id).run();
     } else {
-      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=? WHERE id=?`).bind(email, full_name, finalInstitution, id).run();
+      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=?, institution_id=? WHERE id=?`)
+        .bind(email, full_name, finalInstitution, finalInstitutionId, id).run();
     }
   }
   return c.json({ success: true });
@@ -802,15 +860,21 @@ app.get('/api/admin/all-files', async (c) => {
       ORDER BY f.id DESC
     `).all();
   } else {
-    const me = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(auth.user.user_id).first();
+    const adminInstId = auth.user.institution_id;
+    const adminInstName = auth.user.institution;
+    let instId = adminInstId;
+    if (!instId && adminInstName) {
+      const instRow = await db.prepare(`SELECT id FROM institutions WHERE name = ?`).bind(adminInstName).first();
+      instId = instRow?.id;
+    }
     files = await db.prepare(`
       SELECT f.*, u.full_name as uploaded_by_name, i.name as institution_name
       FROM institution_files f
       LEFT JOIN users u ON f.uploaded_by = u.id
       LEFT JOIN institutions i ON f.institution_id = i.id
-      WHERE f.is_active = 1 AND i.name = ?
+      WHERE f.is_active = 1 AND f.institution_id = ?
       ORDER BY f.id DESC
-    `).bind(me?.institution).all();
+    `).bind(instId).all();
   }
   return c.json(files.results);
 });

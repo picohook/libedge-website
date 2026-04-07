@@ -653,7 +653,11 @@
             <div class="mb-3"><input type="text" id="userFullName" placeholder="Ad Soyad" class="w-full border p-2 rounded" required></div>
             <div class="mb-3"><input type="email" id="userEmail" placeholder="E-posta" class="w-full border p-2 rounded" required></div>
             <div class="mb-3"><input type="password" id="userPassword" placeholder="Şifre (değiştirmek için doldurun)" class="w-full border p-2 rounded"></div>
-            <div class="mb-3"><input type="text" id="userInstitution" placeholder="Kurum" class="w-full border p-2 rounded"></div>
+            <div class="mb-3">
+                <select id="userInstitutionId" class="w-full border p-2 rounded">
+                    <option value="">Kurum Seçin</option>
+                </select>
+            </div>
             <div class="mb-3"><select id="userRole" class="w-full border p-2 rounded"><option value="user">Kullanıcı</option><option value="admin">Admin</option></select></div>
             <div id="userFormError" class="hidden mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2"></div>
             <div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeUserModal()" class="btn bg-gray-300 flex-1">İptal</button></div>
@@ -844,12 +848,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="px-4 py-2">${u.id}</td>
                 <td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td>
                 <td class="px-4 py-2">${u.email}</td>
-                <td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td>
+                <td class="px-4 py-2">${escapeHtml(u.institution_name || u.institution || '-')}</td>
                 <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${u.role === 'super_admin' ? 'bg-red-100 text-red-800' : u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100'}">${u.role === 'super_admin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : 'Kullanıcı'}</span></td>
                 <td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td>
                 <td class="px-4 py-2 text-gray-500 text-sm">${timeAgo(u.last_login)}</td>
                 <td class="px-4 py-2">
-                    <button onclick="editUser(${u.id}, '${escapeHtml(u.full_name || '')}', '${u.email}', '${escapeHtml(u.institution || '')}', '${u.role}')" class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button>
+                    <button onclick="editUser(${u.id}, '${escapeHtml(u.full_name || '')}', '${u.email}', '${u.institution_id || ''}', '${u.role}')" class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button>
                     ${isSuper && u.role !== 'super_admin' ? `<button onclick="setRole(${u.id}, '${u.role === 'admin' ? 'user' : 'admin'}')" class="text-green-600 mr-2" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}"><i class="fas fa-user-shield"></i></button>` : ''}
                     <button onclick="deleteUser(${u.id})" class="text-red-600"><i class="fas fa-trash"></i></button>
                 </td>
@@ -862,9 +866,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const role = document.getElementById('userRoleFilter').value;
         const inst = document.getElementById('userInstitutionFilter').value;
         const filtered = allUsers.filter(u => {
-            const matchQ = !q || (u.full_name || '').toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.institution || '').toLowerCase().includes(q);
+            const instName = u.institution_name || u.institution || '';
+            const matchQ = !q || (u.full_name || '').toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || instName.toLowerCase().includes(q);
             const matchRole = !role || u.role === role;
-            const matchInst = !inst || u.institution === inst;
+            const matchInst = !inst || instName === inst;
             return matchQ && matchRole && matchInst;
         });
         renderUsers(filtered);
@@ -874,8 +879,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const res = await fetch('/api/admin/users', { credentials: 'include' });
         allUsers = await res.json();
 
-        // Kurum dropdown'u doldur
-        const institutions = [...new Set(allUsers.map(u => u.institution).filter(Boolean))].sort();
+        // Kurum dropdown'u doldur (institution_name'i tercih et)
+        const institutions = [...new Set(allUsers.map(u => u.institution_name || u.institution).filter(Boolean))].sort();
         const instFilter = document.getElementById('userInstitutionFilter');
         const currentVal = instFilter.value;
         instFilter.innerHTML = '<option value="">Tüm Kurumlar</option>' +
@@ -926,16 +931,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Kullanıcı modal işlemleri
-    function openUserModal() { document.getElementById('userModal').classList.remove('hidden'); }
+    async function loadInstitutionsForUserModal(selectedId) {
+        const sel = document.getElementById('userInstitutionId');
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
+            if (res.ok) {
+                const insts = await res.json();
+                sel.innerHTML = '<option value="">Kurum Seçin</option>' +
+                    insts.map(i => `<option value="${i.id}"${i.id == selectedId ? ' selected' : ''}>${escapeHtml(i.name)}</option>`).join('');
+            }
+        } catch (e) { console.error('Kurumlar yüklenemedi', e); }
+    }
+    function openUserModal() {
+        loadInstitutionsForUserModal(null);
+        document.getElementById('userModal').classList.remove('hidden');
+    }
     function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); document.getElementById('userForm').reset(); document.getElementById('userId').value = ''; document.getElementById('userFormError').classList.add('hidden'); }
-    function editUser(id, name, email, institution, role) {
+    function editUser(id, name, email, institutionId, role) {
         document.getElementById('userId').value = id;
         document.getElementById('userFullName').value = name;
         document.getElementById('userEmail').value = email;
-        document.getElementById('userInstitution').value = institution;
         document.getElementById('userRole').value = role;
         document.getElementById('userModalTitle').textContent = 'Kullanıcı Düzenle';
-        openUserModal();
+        loadInstitutionsForUserModal(institutionId);
+        document.getElementById('userModal').classList.remove('hidden');
     }
     async function deleteUser(id) {
         if (confirm('Kullanıcıyı silmek istediğinize emin misiniz?')) {
@@ -973,10 +992,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const errorEl = document.getElementById('userFormError');
         errorEl.classList.add('hidden');
         const id = document.getElementById('userId').value;
+        const instIdVal = document.getElementById('userInstitutionId').value;
         const data = {
             full_name: document.getElementById('userFullName').value,
             email: document.getElementById('userEmail').value,
-            institution: document.getElementById('userInstitution').value,
+            institution_id: instIdVal ? parseInt(instIdVal) : null,
             role: document.getElementById('userRole').value,
             password: document.getElementById('userPassword').value
         };
