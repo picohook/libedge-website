@@ -1733,31 +1733,35 @@ function getCategoryName(category) {
 
 // ====================== TOAST BİLDİRİM SİSTEMİ ======================
 
+// showToast fonksiyonunu tek ikonlu versiyonla güncelle
 window.showToast = function(message, type = 'info') {
     const existingToast = document.querySelector('.toast-notification');
     if (existingToast) existingToast.remove();
-
+    
     const toast = document.createElement('div');
     toast.className = 'toast-notification fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 transform translate-x-full flex items-center gap-2 border-l-4';
-
+    
     const borderColors = {
         success: 'border-green-500 bg-white text-green-700',
-        error:   'border-red-500 bg-white text-red-700',
+        error: 'border-red-500 bg-white text-red-700',
         warning: 'border-yellow-500 bg-white text-yellow-700',
-        info:    'border-blue-500 bg-white text-blue-700'
+        info: 'border-blue-500 bg-white text-blue-700'
     };
-
+    
     const icons = {
         success: '✅',
-        error:   '❌',
+        error: '❌',
         warning: '⚠️',
-        info:    'ℹ️'
+        info: 'ℹ️'
     };
-
-    toast.className = toast.className + ' ' + (borderColors[type] || borderColors.info);
+    
+    const styleClass = borderColors[type] || borderColors.info;
+    toast.className = toast.className + ' ' + styleClass;
+    
+    // SADECE BİR İKON (emoji)
     toast.innerHTML = `${icons[type] || '📢'} ${message}`;
     document.body.appendChild(toast);
-
+    
     setTimeout(() => toast.classList.remove('translate-x-full'), 10);
     setTimeout(() => {
         toast.classList.add('translate-x-full');
@@ -1765,6 +1769,7 @@ window.showToast = function(message, type = 'info') {
     }, 3000);
 };
 
+console.log('✅ Toast düzeltildi - tek ikonlu');
 // ====================== TOPLU KULLANICI EKLEME ======================
 
 function openBulkUserModal() {
