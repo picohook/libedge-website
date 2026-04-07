@@ -786,16 +786,32 @@ app.get('/api/admin/institutions', async (c) => {
 });
 
 app.get('/api/admin/all-files', async (c) => {
-  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const role = auth.user.role;
+  if (role !== 'super_admin' && role !== 'admin') return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  const files = await db.prepare(`
-    SELECT f.*, u.full_name as uploaded_by_name, i.name as institution_name
-    FROM institution_files f
-    LEFT JOIN users u ON f.uploaded_by = u.id
-    LEFT JOIN institutions i ON f.institution_id = i.id
-    WHERE f.is_active = 1
-    ORDER BY f.id DESC
-  `).all();
+  let files;
+  if (role === 'super_admin') {
+    files = await db.prepare(`
+      SELECT f.*, u.full_name as uploaded_by_name, i.name as institution_name
+      FROM institution_files f
+      LEFT JOIN users u ON f.uploaded_by = u.id
+      LEFT JOIN institutions i ON f.institution_id = i.id
+      WHERE f.is_active = 1
+      ORDER BY f.id DESC
+    `).all();
+  } else {
+    const me = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(auth.user.user_id).first();
+    files = await db.prepare(`
+      SELECT f.*, u.full_name as uploaded_by_name, i.name as institution_name
+      FROM institution_files f
+      LEFT JOIN users u ON f.uploaded_by = u.id
+      LEFT JOIN institutions i ON f.institution_id = i.id
+      WHERE f.is_active = 1 AND i.name = ?
+      ORDER BY f.id DESC
+    `).bind(me?.institution).all();
+  }
   return c.json(files.results);
 });
 
