@@ -1344,20 +1344,20 @@ async function toggleAdminFilePublic(fileId, currentStatus) {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         credentials: 'include', body: JSON.stringify({ is_public: !currentStatus })
     });
-    res.ok ? loadAdminFiles() : alert('Güncelleme başarısız.');
+    res.ok ? loadAdminFiles() : showToast('Güncelleme işlemi başarısız oldu.', 'error');
 }
 
 async function deleteAdminFile(fileId) {
     if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
     const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, { method: 'DELETE', credentials: 'include' });
-    res.ok ? loadAdminFiles() : alert('Silme başarısız.');
+    res.ok ? loadAdminFiles() : showToast('Silme işlemi başarısız oldu.', 'error');
 }
 
 async function deleteAdminFolder(folderId) {
     if (!confirm('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?')) return;
     const res = await fetch(`${API_BASE}/api/institution/folder/${folderId}`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { loadAdminFolders(adminCurrentFolderId); loadAdminFiles(); }
-    else alert('Silme başarısız.');
+    else showToast('Silme işlemi başarısız oldu.', 'error');
 }
 
 // Klasör modal
@@ -1379,14 +1379,14 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
     const institutionId = document.getElementById('adminFolderInstitution').value;
     const folderName = document.getElementById('adminFolderName').value.trim();
     const isPublic = parseInt(document.getElementById('adminFolderVisibility').value);
-    if (!institutionId) { alert('Kurum seçin.'); return; }
-    if (!folderName) { alert('Klasör adı boş olamaz.'); return; }
+    if (!institutionId) { showToast('Lütfen bir kurum seçin.', 'warning'); return; }
+    if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
     const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(institutionId)}/folder`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ folder_name: folderName, parent_folder_id: adminCurrentFolderId, is_public: isPublic })
     });
     const data = await res.json();
-    res.ok ? (closeAdminFolderModal(), loadAdminFolders(adminCurrentFolderId)) : alert(data.error || 'Klasör oluşturulamadı.');
+    res.ok ? (closeAdminFolderModal(), loadAdminFolders(adminCurrentFolderId)) : showToast(data.error || 'Klasör oluşturulamadı.', 'error');
 });
 
 // Klasör filtresi
@@ -1526,7 +1526,7 @@ function handleFileDrop(event) {
 
 function handleFileSelect(file) {
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) { alert('Dosya 50MB sınırını aşıyor.'); return; }
+    if (file.size > 50 * 1024 * 1024) { showToast('Dosya 50MB sınırını aşıyor.', 'error'); return; }
     selectedFile = file;
     const icons = { pdf:'fa-file-pdf', doc:'fa-file-word', docx:'fa-file-word',
         xls:'fa-file-excel', xlsx:'fa-file-excel', jpg:'fa-file-image',
@@ -1570,7 +1570,7 @@ function openGooglePicker() {
     const apiKey = window.GOOGLE_API_KEY;
     const clientId = window.GOOGLE_CLIENT_ID;
     if (!apiKey || !clientId) {
-        alert('Google Drive için API anahtarı tanımlı değil.\nURL sekmesinden Google Drive paylaşım linkini yapıştırabilirsiniz.');
+        showToast('Google Drive API anahtarı tanımlı değil. URL sekmesini kullanın.', 'warning');
         switchUploadTab('url');
         return;
     }
@@ -1634,7 +1634,7 @@ function closeAdminFileModal() {
 document.getElementById('adminFileForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const institutionId = document.getElementById('adminFileInstitution').value;
-    if (!institutionId) { alert('Kurum seçin.'); return; }
+    if (!institutionId) { showToast('Lütfen bir kurum seçin.', 'warning'); return; }
 
     const btn = document.getElementById('adminFileSubmitBtn');
     btn.disabled = true; btn.textContent = 'Kaydediliyor...';
@@ -1644,7 +1644,7 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
 
     try {
         if (currentUploadTab === 'computer') {
-            if (!selectedFile) { alert('Dosya seçin.'); return; }
+            if (!selectedFile) { showToast('Lütfen bir dosya seçin.', 'warning'); return; }
             const fd = new FormData();
             fd.append('file', selectedFile);
             document.getElementById('uploadProgress').classList.remove('hidden');
@@ -1662,12 +1662,12 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
             fileType = selectedFile.name.split('.').pop()?.toLowerCase() || 'other';
             document.getElementById('uploadProgressBar').style.width = '100%';
         } else if (currentUploadTab === 'gdrive') {
-            if (!selectedDriveFile) { alert('Google Drive dosyası seçin.'); return; }
+            if (!selectedDriveFile) { showToast('Lütfen bir Google Drive dosyası seçin.', 'warning'); return; }
             fileUrl = selectedDriveFile.url; fileType = 'gdrive';
             if (!fileName) fileName = selectedDriveFile.name;
         } else {
             fileUrl = document.getElementById('adminFileUrl').value.trim();
-            if (!fileUrl) { alert('URL girin.'); return; }
+            if (!fileUrl) { showToast('Lütfen bir URL girin.', 'warning'); return; }
             fileType = fileUrl.split('.').pop()?.split('?')[0].toLowerCase() || 'other';
         }
         if (!fileName) fileName = fileUrl.split('/').pop()?.split('?')[0] || 'Dosya';
@@ -1685,9 +1685,9 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
         });
         const result = await res.json();
         if (res.ok) { closeAdminFileModal(); loadAdminFiles(); loadAdminInstitutions(); }
-        else alert(result.error || 'Kayıt başarısız.');
+        else showToast(result.error || 'Kayıt işlemi başarısız oldu.', 'error');
     } catch(err) {
-        alert(err.message || 'Bir hata oluştu.');
+        showToast(err.message || 'Bir hata oluştu.', 'error');
     } finally {
         btn.disabled = false; btn.textContent = 'Kaydet';
         document.getElementById('uploadProgress')?.classList.add('hidden');
@@ -1730,6 +1730,40 @@ function getCategoryName(category) {
     };
     return names[category] || category;
 }
+
+// ====================== TOAST BİLDİRİM SİSTEMİ ======================
+
+window.showToast = function(message, type = 'info') {
+    const existingToast = document.querySelector('.toast-notification');
+    if (existingToast) existingToast.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 transform translate-x-full flex items-center gap-2 border-l-4';
+
+    const borderColors = {
+        success: 'border-green-500 bg-white text-green-700',
+        error:   'border-red-500 bg-white text-red-700',
+        warning: 'border-yellow-500 bg-white text-yellow-700',
+        info:    'border-blue-500 bg-white text-blue-700'
+    };
+
+    const icons = {
+        success: '✅',
+        error:   '❌',
+        warning: '⚠️',
+        info:    'ℹ️'
+    };
+
+    toast.className = toast.className + ' ' + (borderColors[type] || borderColors.info);
+    toast.innerHTML = `${icons[type] || '📢'} ${message}`;
+    document.body.appendChild(toast);
+
+    setTimeout(() => toast.classList.remove('translate-x-full'), 10);
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+};
 
 // ====================== TOPLU KULLANICI EKLEME ======================
 
