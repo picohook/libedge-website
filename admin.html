@@ -196,18 +196,24 @@
     <!-- Subscriptions Tab -->
     <div id="tab-subscriptions" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <h3 class="text-lg font-semibold">Abonelikler</h3>
-                <button id="addSubscriptionBtn" class="btn btn-primary" onclick="openSubscriptionModal()">
-                    <i class="fas fa-plus mr-2"></i>Abonelik Ekle
-                </button>
+                <div class="flex gap-2">
+                    <button id="addInstSubscriptionBtn" class="btn btn-primary" onclick="openInstSubscriptionModal()" style="display:none">
+                        <i class="fas fa-building mr-2"></i>Kurum Aboneliği Ekle
+                    </button>
+                    <button id="addSubscriptionBtn" class="btn btn-primary" onclick="openSubscriptionModal()">
+                        <i class="fas fa-plus mr-2"></i>Bireysel Abonelik Ekle
+                    </button>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Kullanıcı</th>
+                            <th>Tip</th>
+                            <th>Kullanıcı / Kurum</th>
                             <th>Ürün</th>
                             <th>Durum</th>
                             <th>Başlangıç</th>
@@ -217,7 +223,7 @@
                     </thead>
                     <tbody id="subscriptionsList">
                         <tr>
-                            <td colspan="7" class="text-center py-4">Yükleniyor...</td>
+                            <td colspan="8" class="text-center py-4">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -712,8 +718,63 @@
 
 <div id="subscriptionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-bold mb-4">Abonelik Ekle</h3>
-        <form id="subscriptionForm"><div class="mb-3"><select id="subUserId" class="w-full border p-2 rounded" required><option value="">Kullanıcı Seçin</option></select></div><div class="mb-3"><select id="subProduct" class="w-full border p-2 rounded" required><option value="">Ürün Seçin</option><option value="pangram">Pangram</option><option value="chatpdf">ChatPDF</option><option value="primal-pictures">Primal Pictures</option><option value="lecturio">Lecturio</option><option value="jove-research">JoVE Research</option><option value="biorender">BioRender</option><option value="wiley-journals">Wiley Dergiler</option></select></div><div class="mb-3"><select id="subStatus" class="w-full border p-2 rounded"><option value="active">Aktif</option><option value="trial">Deneme</option><option value="expired">Süresi Doldu</option></select></div><div class="mb-3"><input type="date" id="subEndDate" placeholder="Bitiş Tarihi" class="w-full border p-2 rounded"></div><div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeSubscriptionModal()" class="btn bg-gray-300 flex-1">İptal</button></div></form>
+        <h3 class="text-xl font-bold mb-4">Bireysel Abonelik Ekle</h3>
+        <form id="subscriptionForm">
+            <div class="mb-3"><select id="subUserId" class="w-full border p-2 rounded" required><option value="">Kullanıcı Seçin</option></select></div>
+            <div class="mb-3"><select id="subProduct" class="w-full border p-2 rounded" required><option value="">Ürün Seçin</option><option value="pangram">Pangram</option><option value="chatpdf">ChatPDF</option><option value="primal-pictures">Primal Pictures</option><option value="lecturio">Lecturio</option><option value="jove-research">JoVE Research</option><option value="biorender">BioRender</option><option value="wiley-journals">Wiley Dergiler</option></select></div>
+            <div class="mb-3"><select id="subStatus" class="w-full border p-2 rounded"><option value="active">Aktif</option><option value="trial">Deneme</option><option value="expired">Süresi Doldu</option></select></div>
+            <div class="mb-3"><input type="date" id="subEndDate" class="w-full border p-2 rounded"></div>
+            <div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeSubscriptionModal()" class="btn bg-gray-300 flex-1">İptal</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- Kurum Aboneliği Modal -->
+<div id="instSubscriptionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4">Kurum Aboneliği Ekle</h3>
+        <form id="instSubscriptionForm">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum</label>
+                <select id="instSubInstitutionId" class="w-full border p-2 rounded" required>
+                    <option value="">Kurum Seçin</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Ürün</label>
+                <select id="instSubProduct" class="w-full border p-2 rounded" required>
+                    <option value="">Ürün Seçin</option>
+                    <option value="pangram">Pangram</option>
+                    <option value="chatpdf">ChatPDF</option>
+                    <option value="primal-pictures">Primal Pictures</option>
+                    <option value="lecturio">Lecturio</option>
+                    <option value="jove-research">JoVE Research</option>
+                    <option value="biorender">BioRender</option>
+                    <option value="wiley-journals">Wiley Dergiler</option>
+                    <option value="wonders">Wonders</option>
+                    <option value="assistin">Assistin</option>
+                    <option value="cochrane-library">Cochrane Library</option>
+                    <option value="jove-education">JoVE Education</option>
+                    <option value="jove-business">JoVE Business</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Durum</label>
+                <select id="instSubStatus" class="w-full border p-2 rounded">
+                    <option value="active">Aktif</option>
+                    <option value="trial">Deneme</option>
+                    <option value="expired">Süresi Doldu</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bitiş Tarihi</label>
+                <input type="date" id="instSubEndDate" class="w-full border p-2 rounded">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
+                <button type="button" onclick="closeInstSubscriptionModal()" class="btn bg-gray-300 flex-1">İptal</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -749,6 +810,10 @@ async function checkAdminAuth() {
             if (productsTab) productsTab.style.display = 'none';
             const institutionsTab = document.getElementById('institutionsTab');
             if (institutionsTab) institutionsTab.style.display = 'none';
+        }
+        if (user.role === 'super_admin') {
+            const instSubBtn = document.getElementById('addInstSubscriptionBtn');
+            if (instSubBtn) instSubBtn.style.display = '';
         }
         if (user.role === 'admin') {
             const myInstTab = document.getElementById('myInstitutionTab');
@@ -894,18 +959,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         const res = await fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' });
         const subs = await res.json();
         const getProductName = (slug) => products.find(p => p.slug === slug)?.name || slug;
-        
-        document.getElementById('subscriptionsList').innerHTML = subs.map(s => `
+        const statusLabel = s => s.status === 'active' ? 'Aktif' : s.status === 'trial' ? 'Deneme' : 'Süresi Doldu';
+        const statusClass = s => s.status === 'active' ? 'bg-green-100 text-green-800' : s.status === 'trial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+
+        document.getElementById('subscriptionsList').innerHTML = subs.length ? subs.map(s => `
             <tr>
                 <td class="px-4 py-2">${s.id}</td>
-                <td class="px-4 py-2">${escapeHtml(s.user_name || s.user_id)}</td>
+                <td class="px-4 py-2">
+                    ${s.type === 'institution'
+                        ? '<span class="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800"><i class="fas fa-building mr-1"></i>Kurum</span>'
+                        : '<span class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700"><i class="fas fa-user mr-1"></i>Bireysel</span>'}
+                </td>
+                <td class="px-4 py-2">${escapeHtml(s.subject_name || s.institution_name || '-')}</td>
                 <td class="px-4 py-2">${getProductName(s.product_slug)}</td>
-                <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${s.status === 'active' ? 'bg-green-100 text-green-800' : s.status === 'trial' ? 'bg-yellow-100' : 'bg-red-100'}">${s.status === 'active' ? 'Aktif' : s.status === 'trial' ? 'Deneme' : 'Süresi Doldu'}</span></td>
+                <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${statusClass(s)}">${statusLabel(s)}</span></td>
                 <td class="px-4 py-2">${new Date(s.start_date).toLocaleDateString('tr-TR')}</td>
                 <td class="px-4 py-2">${s.end_date ? new Date(s.end_date).toLocaleDateString('tr-TR') : '-'}</td>
-                <td class="px-4 py-2"><button onclick="deleteSubscription(${s.id})" class="text-red-600"><i class="fas fa-trash"></i></button></td>
+                <td class="px-4 py-2">
+                    <button onclick="deleteSubscription(${s.id}, '${s.type}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                </td>
             </tr>
-        `).join('');
+        `).join('') : '<tr><td colspan="8" class="text-center py-4 text-gray-400">Henüz abonelik yok</td></tr>';
     }
 
     // Escape HTML helper (XSS koruması ve Türkçe karakter sorunu için)
@@ -969,6 +1043,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Abonelik modal işlemleri
     function openSubscriptionModal() { loadUserSelect(); document.getElementById('subscriptionModal').classList.remove('hidden'); }
     function closeSubscriptionModal() { document.getElementById('subscriptionModal').classList.add('hidden'); document.getElementById('subscriptionForm').reset(); }
+    async function openInstSubscriptionModal() {
+        const sel = document.getElementById('instSubInstitutionId');
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
+            if (res.ok) {
+                const insts = await res.json();
+                sel.innerHTML = '<option value="">Kurum Seçin</option>' +
+                    insts.map(i => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('');
+            }
+        } catch (e) { console.error(e); }
+        document.getElementById('instSubscriptionModal').classList.remove('hidden');
+    }
+    function closeInstSubscriptionModal() {
+        document.getElementById('instSubscriptionModal').classList.add('hidden');
+        document.getElementById('instSubscriptionForm').reset();
+    }
     async function loadUserSelect() {
         const res = await fetch('/api/admin/users', {
     credentials: 'include'
@@ -976,9 +1066,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const users = await res.json();
         document.getElementById('subUserId').innerHTML = '<option value="">Kullanıcı Seçin</option>' + users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name || u.email)}</option>`).join('');
     }
-    async function deleteSubscription(id) {
+    async function deleteSubscription(id, type) {
         if (confirm('Aboneliği silmek istediğinize emin misiniz?')) {
-            const res = await fetch(`${API_BASE}/api/admin/subscription/${id}`, { method: 'DELETE', credentials: 'include' });
+            const url = type === 'institution'
+                ? `${API_BASE}/api/admin/institution-subscription/${id}`
+                : `${API_BASE}/api/admin/subscription/${id}`;
+            const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
             if (res.ok) showToast('Abonelik başarıyla silindi!', 'success');
             else showToast('İşlem başarısız oldu!', 'error');
             loadSubscriptions();
@@ -1032,6 +1125,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (res.ok) showToast('Abonelik başarıyla eklendi!', 'success');
         else showToast('İşlem başarısız oldu!', 'error');
         closeSubscriptionModal();
+        loadSubscriptions();
+        loadDashboard();
+    });
+
+    document.getElementById('instSubscriptionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const res = await fetch(`${API_BASE}/api/admin/institution-subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                institution_id: parseInt(document.getElementById('instSubInstitutionId').value),
+                product_slug: document.getElementById('instSubProduct').value,
+                status: document.getElementById('instSubStatus').value,
+                end_date: document.getElementById('instSubEndDate').value || null
+            })
+        });
+        if (res.ok) showToast('Kurum aboneliği başarıyla eklendi!', 'success');
+        else {
+            const body = await res.json().catch(() => ({}));
+            showToast(body.error || 'İşlem başarısız oldu!', 'error');
+        }
+        closeInstSubscriptionModal();
         loadSubscriptions();
         loadDashboard();
     });

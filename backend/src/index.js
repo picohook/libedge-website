@@ -460,16 +460,67 @@ app.get('/api/subscription/check', async (c) => {
 app.get('/api/subscription/list', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
-  
+
   const userId = auth.user.user_id;
+  const institutionId = auth.user.institution_id;
   const db = c.env.DB;
-  
-  const subscriptions = await db.prepare(`
-    SELECT id, product_slug, status, start_date, end_date, created_at
+
+  const individual = await db.prepare(`
+    SELECT id, product_slug, status, start_date, end_date, created_at, 'individual' as source
     FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC
   `).bind(userId).all();
 
-  return c.json({ subscriptions: subscriptions.results });
+  let instSubs = [];
+  if (institutionId) {
+    const instRes = await db.prepare(`
+      SELECT id, product_slug, status, start_date, end_date, created_at, 'institution' as source
+      FROM institution_subscriptions
+      WHERE institution_id = ? AND status IN ('active','trial')
+        AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
+    `).bind(institutionId).all();
+    instSubs = instRes.results || [];
+  }
+
+  // Kurum öncelikli — aynı product_slug varsa kurum aboneliği kazanır
+  const bySlug = {};
+  for (const s of (individual.results || [])) bySlug[s.product_slug] = s;
+  for (const s of instSubs) bySlug[s.product_slug] = s;
+
+  return c.json({ subscriptions: Object.values(bySlug) });
+});
+
+// GET /api/user/subscriptions — birleşik kullanıcı abonelikleri (yeni endpoint)
+app.get('/api/user/subscriptions', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+
+  const userId = auth.user.user_id;
+  const institutionId = auth.user.institution_id;
+  const db = c.env.DB;
+
+  const individual = await db.prepare(`
+    SELECT id, product_slug, status, start_date, end_date, 'individual' as source
+    FROM subscriptions
+    WHERE user_id = ? AND status IN ('active','trial')
+      AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
+  `).bind(userId).all();
+
+  let instSubs = [];
+  if (institutionId) {
+    const instRes = await db.prepare(`
+      SELECT id, product_slug, status, start_date, end_date, 'institution' as source
+      FROM institution_subscriptions
+      WHERE institution_id = ? AND status IN ('active','trial')
+        AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
+    `).bind(institutionId).all();
+    instSubs = instRes.results || [];
+  }
+
+  const bySlug = {};
+  for (const s of (individual.results || [])) bySlug[s.product_slug] = s;
+  for (const s of instSubs) bySlug[s.product_slug] = s;
+
+  return c.json(Object.values(bySlug));
 });
 
 // ====================== REGISTER (değişmedi) ======================
@@ -750,22 +801,46 @@ app.get('/api/admin/subscriptions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   const role = await getUserRole(c);
-  const institution = await getUserInstitution(c);
-  
-  let subs;
+  const adminInstitutionId = await getUserInstitutionId(c);
+  const adminInstitution = await getUserInstitution(c);
+
+  let individual, institutional;
   if (role === 'super_admin') {
-    subs = await db.prepare(`
-      SELECT s.*, u.full_name as user_name, u.institution as user_institution 
+    individual = await db.prepare(`
+      SELECT s.id, 'individual' as type, s.product_slug, s.status, s.start_date, s.end_date,
+             u.full_name as subject_name, u.institution as institution_name, s.user_id
       FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.id DESC
     `).all();
+    institutional = await db.prepare(`
+      SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
+             i.name as subject_name, i.name as institution_name, NULL as user_id
+      FROM institution_subscriptions is2 LEFT JOIN institutions i ON is2.institution_id = i.id ORDER BY is2.id DESC
+    `).all();
   } else {
-    subs = await db.prepare(`
-      SELECT s.*, u.full_name as user_name, u.institution as user_institution 
-      FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id 
-      WHERE u.institution = ? ORDER BY s.id DESC
-    `).bind(institution).all();
+    if (adminInstitutionId) {
+      individual = await db.prepare(`
+        SELECT s.id, 'individual' as type, s.product_slug, s.status, s.start_date, s.end_date,
+               u.full_name as subject_name, u.institution as institution_name, s.user_id
+        FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
+        WHERE u.institution_id = ? ORDER BY s.id DESC
+      `).bind(adminInstitutionId).all();
+    } else {
+      individual = await db.prepare(`
+        SELECT s.id, 'individual' as type, s.product_slug, s.status, s.start_date, s.end_date,
+               u.full_name as subject_name, u.institution as institution_name, s.user_id
+        FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
+        WHERE u.institution = ? ORDER BY s.id DESC
+      `).bind(adminInstitution).all();
+    }
+    institutional = await db.prepare(`
+      SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
+             i.name as subject_name, i.name as institution_name, NULL as user_id
+      FROM institution_subscriptions is2 LEFT JOIN institutions i ON is2.institution_id = i.id
+      WHERE is2.institution_id = ? ORDER BY is2.id DESC
+    `).bind(adminInstitutionId).all();
   }
-  return c.json(subs.results);
+  const result = [...(institutional.results || []), ...(individual.results || [])];
+  return c.json(result);
 });
 
 app.post('/api/admin/subscription', async (c) => {
@@ -803,6 +878,49 @@ app.delete('/api/admin/subscription/:id', async (c) => {
   }
   
   await db.prepare(`DELETE FROM subscriptions WHERE id=?`).bind(id).run();
+  return c.json({ success: true });
+});
+
+// ====================== KURUM ABONELİK YÖNETİMİ ======================
+
+app.post('/api/admin/institution-subscription', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const auth = await requireAuth(c);
+  const { institution_id, product_slug, status, end_date } = await c.req.json();
+  if (!institution_id || !product_slug) return c.json({ error: 'institution_id ve product_slug zorunlu' }, 400);
+  const db = c.env.DB;
+  await db.prepare(`
+    INSERT INTO institution_subscriptions (institution_id, product_slug, status, end_date, created_by)
+    VALUES (?, ?, ?, ?, ?)
+  `).bind(parseInt(institution_id), product_slug, status || 'active', end_date || null, auth.user.user_id).run();
+  return c.json({ success: true });
+});
+
+app.get('/api/admin/institution/:id/subscriptions', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const role = await getUserRole(c);
+  const institutionId = parseInt(c.req.param('id'));
+  if (role === 'admin') {
+    const adminInstId = await getUserInstitutionId(c);
+    if (adminInstId !== institutionId) return c.json({ error: 'Sadece kendi kurumunuzu görebilirsiniz' }, 403);
+  }
+  const db = c.env.DB;
+  const subs = await db.prepare(`
+    SELECT is2.*, i.name as institution_name
+    FROM institution_subscriptions is2
+    LEFT JOIN institutions i ON is2.institution_id = i.id
+    WHERE is2.institution_id = ? ORDER BY is2.id DESC
+  `).bind(institutionId).all();
+  return c.json(subs.results);
+});
+
+app.delete('/api/admin/institution-subscription/:id', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const id = c.req.param('id');
+  const db = c.env.DB;
+  const sub = await db.prepare(`SELECT id FROM institution_subscriptions WHERE id = ?`).bind(id).first();
+  if (!sub) return c.json({ error: 'Abonelik bulunamadı' }, 404);
+  await db.prepare(`DELETE FROM institution_subscriptions WHERE id = ?`).bind(id).run();
   return c.json({ success: true });
 });
 
