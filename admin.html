@@ -1469,9 +1469,13 @@ async function loadAdminFiles() {
 
     let url;
     if (adminCurrentFolderId) {
+        // Klasör içindeki dosyalar
         url = `${API_BASE}/api/institution/folder/${adminCurrentFolderId}/files`;
+        console.log('📁 Klasör içi dosyalar yükleniyor:', url);
     } else {
+        // ANA DİZİN (ROOT) dosyaları - BURASI DÜZELTİLDİ
         url = `${API_BASE}/api/institution/${encodeURIComponent(institutionId)}/files`;
+        console.log('📂 Ana dizin dosyaları yükleniyor:', url);
     }
 
     try {
@@ -1483,15 +1487,13 @@ async function loadAdminFiles() {
                 <div class="text-center py-8">
                     <i class="fas fa-exclamation-circle text-red-500 text-3xl mb-2"></i>
                     <p class="text-red-500">Dosyalar yüklenirken hata oluştu (${res.status})</p>
-                    <p class="text-xs text-gray-400 mt-1">Lütfen sayfayı yenile veya daha sonra tekrar dene</p>
                 </div>
             `;
             return;
         }
         
         const files = await res.json();
-        console.log('Dosyalar:', files);
-        console.log('Kurum ID:', institutionId, 'Klasör ID:', adminCurrentFolderId, 'Dosya sayısı:', files?.length || 0);
+        console.log(`✅ ${files.length} dosya bulundu (${adminCurrentFolderId ? 'klasör içi' : 'ana dizin'})`);
         
         if (files.length === 0) {
             container.innerHTML = `
@@ -1504,12 +1506,15 @@ async function loadAdminFiles() {
             return;
         }
         
+        // Dosyaları listele
         container.innerHTML = files.map(file => `
             <div class="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
                 <div class="flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
                         <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
-                        <a href="javascript:void(0)" onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${escapeHtml(file.file_type || '')}')" class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
+                        <a href="javascript:void(0)" 
+                           onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${escapeHtml(file.file_type || '')}')" 
+                           class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
                         ${file.is_public
                             ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><i class="fas fa-globe mr-1"></i>Herkese Açık</span>'
                             : '<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"><i class="fas fa-lock mr-1"></i>Kurum İçi</span>'}
@@ -1532,6 +1537,7 @@ async function loadAdminFiles() {
                 </div>
             </div>
         `).join('');
+        
     } catch (err) {
         console.error('loadAdminFiles error:', err);
         container.innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenirken hata oluştu</p>';
@@ -1679,20 +1685,20 @@ document.getElementById('adminFileInstitution')?.addEventListener('change', func
 });
 
 // Kurum filtresi değiştiğinde
+// Kurum filtresi değiştiğinde - Bu kısım da düzeltilmeli
 document.getElementById('institutionFilter')?.addEventListener('change', function() {
     const selectedValue = this.value;
     
     if (selectedValue === 'all') {
-        // Tüm kurumlar seçili - sadece adminin yetkili olduğu kurumların dosyalarını göster
-        loadAllAdminFiles(); // Özel fonksiyon
+        loadAllAdminFiles();
     } else {
-        // Tek bir kurum seçili
+        // KRİTİK: adminCurrentFolderId'yi sıfırla!
         adminCurrentFolderId = null;
         adminFolderStack = [];
         document.getElementById('adminBackBtn')?.classList.add('hidden');
         updateAdminBreadcrumb();
         loadAdminFolders(null);
-        loadAdminFiles();
+        loadAdminFiles();  // Bu çağrı şimdi root dosyalarını gösterecek
     }
 });
 
