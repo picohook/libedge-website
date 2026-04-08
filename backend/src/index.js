@@ -1050,7 +1050,7 @@ app.get('/api/institution/:id/files', async (c) => {
       SELECT f.*, u.full_name as uploaded_by_name 
       FROM institution_files f 
       LEFT JOIN users u ON f.uploaded_by = u.id
-      WHERE f.institution_id = ? AND f.is_active = 1 
+      WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 
       ORDER BY f.id DESC
     `).bind(institutionId).all();
   } else if (role === 'admin' && userInstitution == institutionId) {
@@ -1058,7 +1058,7 @@ app.get('/api/institution/:id/files', async (c) => {
       SELECT f.*, u.full_name as uploaded_by_name 
       FROM institution_files f 
       LEFT JOIN users u ON f.uploaded_by = u.id
-      WHERE f.institution_id = ? AND f.is_active = 1 
+      WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 
       ORDER BY f.id DESC
     `).bind(institutionId).all();
   } else {
@@ -1066,7 +1066,7 @@ app.get('/api/institution/:id/files', async (c) => {
       SELECT f.*, u.full_name as uploaded_by_name 
       FROM institution_files f 
       LEFT JOIN users u ON f.uploaded_by = u.id
-      WHERE f.institution_id = ? AND f.is_active = 1 AND f.is_public = 1
+      WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 AND f.is_public = 1
       ORDER BY f.id DESC
     `).bind(institutionId).all();
   }
