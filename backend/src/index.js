@@ -1078,8 +1078,8 @@ app.get('/api/institution/:id/files', async (c) => {
         FROM institution_files f
         LEFT JOIN users u ON f.uploaded_by = u.id
         LEFT JOIN institutions i ON f.institution_id = i.id
-        WHERE f.institution_id = ? 
-        AND f.is_active = 1 
+        WHERE CAST(f.institution_id AS INTEGER) = ?
+        AND f.is_active = 1
         AND (f.folder_id IS NULL OR f.folder_id = 0)
         ORDER BY f.id DESC
     `;
@@ -1132,10 +1132,10 @@ app.get('/api/institution/:id/folders', async (c) => {
         // 2. Klasörleri getir
         let query, params;
         if (parentId && parentId !== 'null') {
-            query = `SELECT * FROM institution_folders WHERE institution_id = ? AND parent_folder_id = ? ORDER BY folder_name`;
+            query = `SELECT * FROM institution_folders WHERE CAST(institution_id AS INTEGER) = ? AND parent_folder_id = ? ORDER BY folder_name`;
             params = [institutionId, parseInt(parentId)];
         } else {
-            query = `SELECT * FROM institution_folders WHERE institution_id = ? AND (parent_folder_id IS NULL OR parent_folder_id = 0) ORDER BY folder_name`;
+            query = `SELECT * FROM institution_folders WHERE CAST(institution_id AS INTEGER) = ? AND (parent_folder_id IS NULL OR parent_folder_id = 0) ORDER BY folder_name`;
             params = [institutionId];
         }
         
