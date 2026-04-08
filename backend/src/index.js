@@ -1112,9 +1112,10 @@ app.get('/api/institution/:id/folders', async (c) => {
     
     const db = c.env.DB;
     
+    const parsedId = /^\d+$/.test(institutionId) ? parseInt(institutionId) : null;
     const institutionExists = await db.prepare(`
       SELECT id, name FROM institutions WHERE name = ? OR id = ?
-    `).bind(institutionId, institutionId).first();
+    `).bind(institutionId, parsedId).first();
     
     if (!institutionExists) {
       console.log('Institution not found:', institutionId);
