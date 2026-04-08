@@ -159,6 +159,34 @@ async function isAdmin(c) {
   return role === 'admin' || role === 'super_admin';
 }
 
+// ====================== RATE LIMITER (In-Memory) ======================
+const rateLimitStore = new Map();
+
+function getRateLimitKey(endpoint, identifier) {
+  return `${endpoint}:${identifier}`;
+}
+
+function checkRateLimit(endpoint, identifier, maxRequests = 10, windowSeconds = 300) {
+  const key = getRateLimitKey(endpoint, identifier);
+  const now = Date.now();
+  const record = rateLimitStore.get(key) || { count: 0, resetTime: now + windowSeconds * 1000 };
+  
+  if (now > record.resetTime) {
+    // Window expired, reset
+    record.count = 1;
+    record.resetTime = now + windowSeconds * 1000;
+  } else {
+    record.count++;
+  }
+  
+  rateLimitStore.set(key, record);
+  
+  const remaining = Math.max(0, maxRequests - record.count);
+  const isLimited = record.count > maxRequests;
+  
+  return { isLimited, remaining, resetTime: record.resetTime };
+}
+
 async function canAccessUser(c, targetUserId) {
   const role = await getUserRole(c);
   if (role === 'super_admin') return true;
@@ -279,22 +307,33 @@ app.post('/api/auth/login', async (c) => {
 
     await db.prepare(`UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?`).bind(user.id).run();
 
-    const tokenPayload = {
+    // Access Token: 15 dakika
+    const accessTokenPayload = {
       user_id: user.id,
       email: user.email,
       full_name: user.full_name || "",
       institution: user.institution || "",
       institution_id: user.institution_id || null,
       role: user.role || "user",
+      type: 'access',
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + (15 * 60)
     };
     
+    // Refresh Token: 7 gün
+    const refreshTokenPayload = {
+      user_id: user.id,
+      type: 'refresh',
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
+    };
+    
     const secret = c.env.JWT_SECRET;
-    const token = await signToken(tokenPayload, secret);
+    const accessToken = await signToken(accessTokenPayload, secret);
+    const refreshToken = await signToken(refreshTokenPayload, secret);
 
-    // 🔥 setCookie ile dene
-    setCookie(c, 'authToken', token, {
+    // Access Token: Cookie ile (httpOnly)
+    setCookie(c, 'authToken', accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'None',
@@ -302,12 +341,18 @@ app.post('/api/auth/login', async (c) => {
       path: '/',
     });
     
-    // 🔥 Double-check: Manuel olarak da ekle (garanti yöntem)
-    c.header('Set-Cookie', `authToken=${token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=900`, { append: true });
+    // Refresh Token: Ayrı cookie ile (httpOnly)
+    setCookie(c, 'refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/',
+    });
     
     return c.json({
       success: true,
-      token: token,  // ← BU SATIRI EKLE (geçici)
+      token: accessToken,  // Eski client'lar için compatibility
       user: {
         id: user.id,
         email: user.email,
@@ -333,40 +378,84 @@ app.post('/api/auth/logout', async (c) => {
     path: '/'
   });
   
+  setCookie(c, 'refreshToken', '', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'None',
+    maxAge: 0,
+    path: '/'
+  });
+  
   return c.json({ success: true, message: 'Başarıyla çıkış yapıldı' });
 });
 
 // ====================== REFRESH ENDPOINT ======================
 app.post('/api/auth/refresh', async (c) => {
-  const auth = await requireAuth(c);
-  if (auth.response) return auth.response;
+  // Rate limiting: 10 requests per 5 minutes
+  const identifier = c.req.header('x-forwarded-for') || c.req.header('cf-connecting-ip') || 'unknown';
+  const rateLimitCheck = checkRateLimit('refresh', identifier, 10, 300);
   
-  const oldPayload = auth.user;
+  if (rateLimitCheck.isLimited) {
+    c.header('Retry-After', Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000).toString());
+    return c.json({ 
+      error: 'Çok fazla refresh isteği. Lütfen bir süre sonra tekrar deneyin.',
+      retryAfter: rateLimitCheck.resetTime
+    }, 429);
+  }
+  
+  // Refresh Token'ı cookie'den al
+  const cookieHeader = c.req.header('Cookie');
+  if (!cookieHeader) {
+    return c.json({ error: 'Refresh token bulunamadı' }, 401);
+  }
+  const refreshTokenMatch = cookieHeader.match(/refreshToken=([^;]+)/);
+  if (!refreshTokenMatch) {
+    return c.json({ error: 'Refresh token bulunamadı' }, 401);
+  }
+  
+  const refreshToken = refreshTokenMatch[1];
+  const secret = c.env.JWT_SECRET;
+  const refreshPayload = await verifyToken(refreshToken, secret);
+  
+  if (!refreshPayload || refreshPayload.type !== 'refresh') {
+    return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
+  }
+  
   const db = c.env.DB;
   
   const user = await db.prepare(`
     SELECT id, email, full_name, institution, institution_id, role FROM users WHERE id = ?
-  `).bind(oldPayload.user_id).first();
+  `).bind(refreshPayload.user_id).first();
 
   if (!user) {
     return c.json({ error: 'Kullanıcı bulunamadı' }, 401);
   }
 
-  const newPayload = {
+  // Yeni Access Token
+  const newAccessPayload = {
     user_id: user.id,
     email: user.email,
     full_name: user.full_name || "",
     institution: user.institution || "",
     institution_id: user.institution_id || null,
     role: user.role || "user",
+    type: 'access',
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + (15 * 60)
   };
   
-  const secret = c.env.JWT_SECRET;
-  const newToken = await signToken(newPayload, secret);
+  // Yeni Refresh Token (7 gün)
+  const newRefreshPayload = {
+    user_id: user.id,
+    type: 'refresh',
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
+  };
   
-  setCookie(c, 'authToken', newToken, {
+  const newAccessToken = await signToken(newAccessPayload, secret);
+  const newRefreshToken = await signToken(newRefreshPayload, secret);
+  
+  setCookie(c, 'authToken', newAccessToken, {
     httpOnly: true,
     secure: true,
     sameSite: 'None',
@@ -374,7 +463,19 @@ app.post('/api/auth/refresh', async (c) => {
     path: '/'
   });
   
-  return c.json({ success: true, message: 'Token yenilendi' });
+  setCookie(c, 'refreshToken', newRefreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'None',
+    maxAge: 7 * 24 * 60 * 60,
+    path: '/'
+  });
+  
+  return c.json({ 
+    success: true, 
+    message: 'Token yenilendi',
+    remaining: rateLimitCheck.remaining
+  });
 });
 
 // ====================== 🆕 PROTECTED ENDPOINT'LER (Cookie ile) ======================
@@ -951,14 +1052,13 @@ app.get('/api/admin/my-institution', async (c) => {
   if (!payload) return c.json({ error: 'Yetkisiz' }, 403);
   if (payload.role !== 'admin' && payload.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  // DB'den taze kurum bilgisi al — token stale olabilir
-  const me = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(payload.user_id).first();
-  if (!me?.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
+  // JWT payload'undan doğrudan al
+  if (!payload.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
   const inst = await db.prepare(`
     SELECT id, name, domain, category,
       (SELECT COUNT(*) FROM users WHERE institution = name) as user_count
     FROM institutions WHERE name = ?
-  `).bind(me.institution).first();
+  `).bind(payload.institution).first();
   if (!inst) return c.json({ error: 'Kurum bulunamadı' }, 404);
 
   const fileRow = await db.prepare(`
@@ -1414,11 +1514,10 @@ app.put('/api/admin/institution/:id', async (c) => {
     const cat = validCategories.includes(category) ? category : null;
     await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ?, category = COALESCE(?, category) WHERE id = ?`).bind(name || null, domain ?? null, cat, id).run();
   } else {
-    // Admin sadece kendi kurumunun domain'ini güncelleyebilir — DB'den taze çek
+    // Admin sadece kendi kurumunun domain'ini güncelleyebilir — JWT payload'undan al
     const payload = await getTokenPayloadFromCookie(c);
-    const me = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(payload.user_id).first();
     const target = await db.prepare(`SELECT name FROM institutions WHERE id = ?`).bind(id).first();
-    if (!target || !me?.institution || target.name !== me.institution) return c.json({ error: 'Bu kurumu düzenleme yetkiniz yok' }, 403);
+    if (!target || !payload?.institution || target.name !== payload.institution) return c.json({ error: 'Bu kurumu düzenleme yetkiniz yok' }, 403);
     await db.prepare(`UPDATE institutions SET domain = ? WHERE id = ?`).bind(domain ?? null, id).run();
   }
 
