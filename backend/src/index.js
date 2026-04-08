@@ -1053,7 +1053,10 @@ app.get('/api/institution/:id/files', async (c) => {
     return c.json({ error: 'Kurum bulunamadı' }, 404);
   }
   
+  console.log('Institution found:', institutionExists);
+  
   let files;
+  const instId = String(institutionExists.id); // String'e çevir
   if (role === 'super_admin') {
     files = await db.prepare(`
       SELECT f.*, u.full_name as uploaded_by_name 
@@ -1061,7 +1064,7 @@ app.get('/api/institution/:id/files', async (c) => {
       LEFT JOIN users u ON f.uploaded_by = u.id
       WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 
       ORDER BY f.id DESC
-    `).bind(institutionExists.id).all();
+    `).bind(instId).all();
   } else if (role === 'admin') {
     files = await db.prepare(`
       SELECT f.*, u.full_name as uploaded_by_name 
@@ -1069,7 +1072,7 @@ app.get('/api/institution/:id/files', async (c) => {
       LEFT JOIN users u ON f.uploaded_by = u.id
       WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 
       ORDER BY f.id DESC
-    `).bind(institutionExists.id).all();
+    `).bind(instId).all();
   } else {
     files = await db.prepare(`
       SELECT f.*, u.full_name as uploaded_by_name 
@@ -1077,10 +1080,12 @@ app.get('/api/institution/:id/files', async (c) => {
       LEFT JOIN users u ON f.uploaded_by = u.id
       WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 AND f.is_public = 1
       ORDER BY f.id DESC
-    `).bind(institutionExists.id).all();
+    `).bind(instId).all();
   }
   
-  return c.json(files.results);
+  console.log('Files query result:', files);
+  
+  return c.json(files.results || []);
 });
 
 app.get('/api/institution/:id/folders', async (c) => {
