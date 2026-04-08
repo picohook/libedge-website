@@ -1375,7 +1375,7 @@ async function loadAdminInstitutions() {
                 
                 if (isEmpty && filterSelect.value && filterSelect.value !== 'all') {
                     console.log('Fallback: Manuel yükleme başlıyor...');
-                    loadAdminFileFolders(filterSelect.value);
+                    loadAdminFolders(filterSelect.value);
                     loadAdminFiles();
                 }
             }, 100);
@@ -1404,7 +1404,8 @@ async function loadAdminFolders(parentId = null) {
 
     try {
         let url = `${API_BASE}/api/institution/${encodeURIComponent(institutionId)}/folders`;
-        if (parentId) url += `?parent=${parentId}`;
+        // parentId ise klasör içindeki alt klasörleri yükle
+        if (parentId && parentId !== institutionId) url += `?parent=${parentId}`;
         const res = await fetch(url, { credentials: 'include' });
         
         if (!res.ok) {
@@ -1678,8 +1679,8 @@ document.getElementById('adminFileInstitution')?.addEventListener('change', func
 });
 
 // Kurum filtresi değiştiğinde
-document.getElementById('institutionFilter')?.addEventListener('change', () => {
-    const selectedValue = document.getElementById('institutionFilter').value;
+document.getElementById('institutionFilter')?.addEventListener('change', function() {
+    const selectedValue = this.value;
     
     if (selectedValue === 'all') {
         // Tüm kurumlar seçili - sadece adminin yetkili olduğu kurumların dosyalarını göster
@@ -1690,7 +1691,7 @@ document.getElementById('institutionFilter')?.addEventListener('change', () => {
         adminFolderStack = [];
         document.getElementById('adminBackBtn')?.classList.add('hidden');
         updateAdminBreadcrumb();
-        loadAdminFileFolders(this.value);
+        loadAdminFolders(null);
         loadAdminFiles();
     }
 });
