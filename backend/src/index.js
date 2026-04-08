@@ -1101,115 +1101,58 @@ app.get('/api/institution/:id/files', async (c) => {
     }
 });
 
+// ====================== KURUM KLASÖRLERİNİ GETİR (DÜZELTİLMİŞ) ======================
 app.get('/api/institution/:id/folders', async (c) => {
-  try {
-    const institutionId = c.req.param('id');
+    const identifier = c.req.param('id');
     const parentId = c.req.query('parent') || null;
-    const role = await getUserRole(c);
-    const userInstitution = await getUserInstitutionId(c);
-    
-    console.log('Folders request:', { institutionId, parentId, role, userInstitution });
-    
     const db = c.env.DB;
     
-    const parsedId = /^\d+$/.test(institutionId) ? parseInt(institutionId) : null;
-    const institutionExists = await db.prepare(`
-      SELECT id, name FROM institutions WHERE name = ? OR id = ?
-    `).bind(institutionId, parsedId).first();
+    console.log('🔍 [FOLDERS] Request for:', identifier, 'parent:', parentId);
     
-    if (!institutionExists) {
-      console.log('Institution not found:', institutionId);
-      return c.json({ error: 'Kurum bulunamadı' }, 404);
+    try {
+        // 1. Kurum ID'sini bul
+        let institutionId = null;
+        
+        // Önce institutions tablosunda ara (hem ID hem isim olabilir)
+        if (!isNaN(parseInt(identifier))) {
+            const inst = await db.prepare(`SELECT id FROM institutions WHERE id = ?`).bind(parseInt(identifier)).first();
+            if (inst) institutionId = inst.id;
+        } else {
+            const inst = await db.prepare(`SELECT id FROM institutions WHERE name = ?`).bind(identifier).first();
+            if (inst) institutionId = inst.id;
+        }
+        
+        if (!institutionId) {
+            console.log('❌ Kurum bulunamadı:', identifier);
+            return c.json([]);
+        }
+        
+        console.log('🏢 Kurum ID:', institutionId);
+        
+        // 2. Klasörleri getir
+        let query, params;
+        if (parentId && parentId !== 'null') {
+            query = `SELECT * FROM institution_folders WHERE institution_id = ? AND parent_folder_id = ? ORDER BY folder_name`;
+            params = [institutionId, parseInt(parentId)];
+        } else {
+            query = `SELECT * FROM institution_folders WHERE institution_id = ? AND (parent_folder_id IS NULL OR parent_folder_id = 0) ORDER BY folder_name`;
+            params = [institutionId];
+        }
+        
+        const result = await db.prepare(query).bind(...params).all();
+        const folders = result.results || [];
+        
+        console.log(`✅ ${folders.length} klasör bulundu`);
+        if (folders.length > 0) {
+            folders.forEach(f => console.log(`   📁 ${f.folder_name} (ID: ${f.id})`));
+        }
+        
+        return c.json(folders);
+        
+    } catch (err) {
+        console.error('❌ Klasör sorgu hatası:', err);
+        return c.json({ error: err.message }, 500);
     }
-    
-    if (!role) {
-      let folders;
-      const publicFilter = 'AND is_public = 1';
-      
-      if (parentId) {
-        folders = await db.prepare(`
-          SELECT f.*, COUNT(ff.id) as subfolder_count,
-            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 ${publicFilter}) as file_count
-          FROM institution_folders f
-          LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
-          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id = ? AND f.is_public = 1
-          GROUP BY f.id
-          ORDER BY f.folder_name
-        `).bind(String(institutionExists.id).trim(), parentId).all();
-      } else {
-        folders = await db.prepare(`
-          SELECT f.*, COUNT(ff.id) as subfolder_count,
-            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 ${publicFilter}) as file_count
-          FROM institution_folders f
-          LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
-          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id IS NULL AND f.is_public = 1
-          GROUP BY f.id
-          ORDER BY f.folder_name
-        `).bind(String(institutionExists.id).trim()).all();
-      }
-      
-      return c.json(folders.results || []);
-    }
-    
-    if (role !== 'super_admin' && role !== 'admin' && role !== 'user') {
-      return c.json({ error: 'Yetkisiz' }, 403);
-    }
-    
-    let folders;
-    const instIdValue = String(institutionExists.id).trim(); // String olarak tut
-    if (role === 'super_admin' || role === 'admin') {
-      if (parentId) {
-        folders = await db.prepare(`
-          SELECT f.*, 
-            (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
-            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
-          FROM institution_folders f
-          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id = ?
-          ORDER BY f.folder_name
-        `).bind(instIdValue, parentId).all();
-      } else {
-        folders = await db.prepare(`
-          SELECT f.*, 
-            (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
-            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
-          FROM institution_folders f
-          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id IS NULL
-          ORDER BY f.folder_name
-        `).bind(instIdValue).all();
-      }
-    } else {
-      const instIdValue = String(institutionExists.id).trim(); // String olarak tut
-      if (parentId) {
-        folders = await db.prepare(`
-          SELECT f.*, 
-            (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id AND is_public = 1) as subfolder_count,
-            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 AND is_public = 1) as file_count
-          FROM institution_folders f
-          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id = ? AND f.is_public = 1
-          ORDER BY f.folder_name
-        `).bind(instIdValue, parentId).all();
-      } else {
-        folders = await db.prepare(`
-          SELECT f.*, 
-            (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id AND is_public = 1) as subfolder_count,
-            (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 AND is_public = 1) as file_count
-          FROM institution_folders f
-          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id IS NULL AND f.is_public = 1
-          ORDER BY f.folder_name
-        `).bind(instIdValue).all();
-      }
-    }
-    
-    const result = (folders && folders.results) ? folders.results : (folders || []);
-    return c.json(result);
-    
-  } catch (error) {
-    console.error('Folders endpoint error:', error);
-    return c.json({ 
-      error: 'Klasörler yüklenirken bir hata oluştu', 
-      details: error.message 
-    }, 500);
-  }
 });
 
 app.get('/api/institution/folder/:id/files', async (c) => {
