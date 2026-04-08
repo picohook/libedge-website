@@ -804,43 +804,59 @@ app.get('/api/admin/subscriptions', async (c) => {
   const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
 
-  let individual, institutional;
-  if (role === 'super_admin') {
-    individual = await db.prepare(`
-      SELECT s.id, 'individual' as type, s.product_slug, s.status, s.start_date, s.end_date,
-             u.full_name as subject_name, u.institution as institution_name, s.user_id
-      FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.id DESC
-    `).all();
-    institutional = await db.prepare(`
-      SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
-             i.name as subject_name, i.name as institution_name, NULL as user_id
-      FROM institution_subscriptions is2 LEFT JOIN institutions i ON is2.institution_id = i.id ORDER BY is2.id DESC
-    `).all();
-  } else {
-    if (adminInstitutionId) {
-      individual = await db.prepare(`
+  let individualResults = [], institutionalResults = [];
+
+  try {
+    if (role === 'super_admin') {
+      const individual = await db.prepare(`
         SELECT s.id, 'individual' as type, s.product_slug, s.status, s.start_date, s.end_date,
                u.full_name as subject_name, u.institution as institution_name, s.user_id
-        FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
-        WHERE u.institution_id = ? ORDER BY s.id DESC
-      `).bind(adminInstitutionId).all();
+        FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.id DESC
+      `).all();
+      individualResults = individual.results || [];
     } else {
-      individual = await db.prepare(`
-        SELECT s.id, 'individual' as type, s.product_slug, s.status, s.start_date, s.end_date,
-               u.full_name as subject_name, u.institution as institution_name, s.user_id
-        FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
-        WHERE u.institution = ? ORDER BY s.id DESC
-      `).bind(adminInstitution).all();
+      const individual = adminInstitutionId
+        ? await db.prepare(`
+            SELECT s.id, 'individual' as type, s.product_slug, s.status, s.start_date, s.end_date,
+                   u.full_name as subject_name, u.institution as institution_name, s.user_id
+            FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
+            WHERE u.institution_id = ? ORDER BY s.id DESC
+          `).bind(adminInstitutionId).all()
+        : await db.prepare(`
+            SELECT s.id, 'individual' as type, s.product_slug, s.status, s.start_date, s.end_date,
+                   u.full_name as subject_name, u.institution as institution_name, s.user_id
+            FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id
+            WHERE u.institution = ? ORDER BY s.id DESC
+          `).bind(adminInstitution).all();
+      individualResults = individual.results || [];
     }
-    institutional = await db.prepare(`
-      SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
-             i.name as subject_name, i.name as institution_name, NULL as user_id
-      FROM institution_subscriptions is2 LEFT JOIN institutions i ON is2.institution_id = i.id
-      WHERE is2.institution_id = ? ORDER BY is2.id DESC
-    `).bind(adminInstitutionId).all();
+  } catch (e) {
+    console.error('subscriptions individual query error:', e.message);
   }
-  const result = [...(institutional.results || []), ...(individual.results || [])];
-  return c.json(result);
+
+  try {
+    if (role === 'super_admin') {
+      const institutional = await db.prepare(`
+        SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
+               i.name as subject_name, i.name as institution_name, NULL as user_id
+        FROM institution_subscriptions is2 LEFT JOIN institutions i ON is2.institution_id = i.id ORDER BY is2.id DESC
+      `).all();
+      institutionalResults = institutional.results || [];
+    } else if (adminInstitutionId) {
+      const institutional = await db.prepare(`
+        SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
+               i.name as subject_name, i.name as institution_name, NULL as user_id
+        FROM institution_subscriptions is2 LEFT JOIN institutions i ON is2.institution_id = i.id
+        WHERE is2.institution_id = ? ORDER BY is2.id DESC
+      `).bind(adminInstitutionId).all();
+      institutionalResults = institutional.results || [];
+    }
+  } catch (e) {
+    // Tablo henüz oluşturulmamış olabilir (migration bekliyor)
+    console.error('institution_subscriptions query error:', e.message);
+  }
+
+  return c.json([...institutionalResults, ...individualResults]);
 });
 
 app.post('/api/admin/subscription', async (c) => {
