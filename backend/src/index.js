@@ -1056,31 +1056,31 @@ app.get('/api/institution/:id/files', async (c) => {
   console.log('Institution found:', institutionExists);
   
   let files;
-  const instId = parseInt(institutionExists.id, 10); // Integer'a çevir
+  const instIdValue = String(institutionExists.id).trim(); // String olarak tut
   if (role === 'super_admin') {
     files = await db.prepare(`
       SELECT f.*, u.full_name as uploaded_by_name 
       FROM institution_files f 
       LEFT JOIN users u ON f.uploaded_by = u.id
-      WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 
+      WHERE CAST(f.institution_id AS TEXT) = ? AND f.folder_id IS NULL AND f.is_active = 1 
       ORDER BY f.id DESC
-    `).bind(instId).all();
+    `).bind(instIdValue).all();
   } else if (role === 'admin') {
     files = await db.prepare(`
       SELECT f.*, u.full_name as uploaded_by_name 
       FROM institution_files f 
       LEFT JOIN users u ON f.uploaded_by = u.id
-      WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 
+      WHERE CAST(f.institution_id AS TEXT) = ? AND f.folder_id IS NULL AND f.is_active = 1 
       ORDER BY f.id DESC
-    `).bind(instId).all();
+    `).bind(instIdValue).all();
   } else {
     files = await db.prepare(`
       SELECT f.*, u.full_name as uploaded_by_name 
       FROM institution_files f 
       LEFT JOIN users u ON f.uploaded_by = u.id
-      WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 AND f.is_public = 1
+      WHERE CAST(f.institution_id AS TEXT) = ? AND f.folder_id IS NULL AND f.is_active = 1 AND f.is_public = 1
       ORDER BY f.id DESC
-    `).bind(instId).all();
+    `).bind(instIdValue).all();
   }
   
   console.log('Files query result:', files);
@@ -1118,20 +1118,20 @@ app.get('/api/institution/:id/folders', async (c) => {
             (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 ${publicFilter}) as file_count
           FROM institution_folders f
           LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
-          WHERE f.institution_id = ? AND f.parent_folder_id = ? AND f.is_public = 1
+          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id = ? AND f.is_public = 1
           GROUP BY f.id
           ORDER BY f.folder_name
-        `).bind(parseInt(institutionExists.id, 10), parentId).all();
+        `).bind(String(institutionExists.id).trim(), parentId).all();
       } else {
         folders = await db.prepare(`
           SELECT f.*, COUNT(ff.id) as subfolder_count,
             (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 ${publicFilter}) as file_count
           FROM institution_folders f
           LEFT JOIN institution_folders ff ON ff.parent_folder_id = f.id
-          WHERE f.institution_id = ? AND f.parent_folder_id IS NULL AND f.is_public = 1
+          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id IS NULL AND f.is_public = 1
           GROUP BY f.id
           ORDER BY f.folder_name
-        `).bind(parseInt(institutionExists.id, 10)).all();
+        `).bind(String(institutionExists.id).trim()).all();
       }
       
       return c.json(folders.results || []);
@@ -1142,7 +1142,7 @@ app.get('/api/institution/:id/folders', async (c) => {
     }
     
     let folders;
-    const instId = parseInt(institutionExists.id, 10); // Integer'a çevir
+    const instIdValue = String(institutionExists.id).trim(); // String olarak tut
     if (role === 'super_admin' || role === 'admin') {
       if (parentId) {
         folders = await db.prepare(`
@@ -1150,39 +1150,39 @@ app.get('/api/institution/:id/folders', async (c) => {
             (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
             (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
           FROM institution_folders f
-          WHERE f.institution_id = ? AND f.parent_folder_id = ?
+          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id = ?
           ORDER BY f.folder_name
-        `).bind(instId, parentId).all();
+        `).bind(instIdValue, parentId).all();
       } else {
         folders = await db.prepare(`
           SELECT f.*, 
             (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
             (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
           FROM institution_folders f
-          WHERE f.institution_id = ? AND f.parent_folder_id IS NULL
+          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id IS NULL
           ORDER BY f.folder_name
-        `).bind(instId).all();
+        `).bind(instIdValue).all();
       }
     } else {
-      const instId = parseInt(institutionExists.id, 10); // Integer'a çevir
+      const instIdValue = String(institutionExists.id).trim(); // String olarak tut
       if (parentId) {
         folders = await db.prepare(`
           SELECT f.*, 
             (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id AND is_public = 1) as subfolder_count,
             (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 AND is_public = 1) as file_count
           FROM institution_folders f
-          WHERE f.institution_id = ? AND f.parent_folder_id = ? AND f.is_public = 1
+          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id = ? AND f.is_public = 1
           ORDER BY f.folder_name
-        `).bind(instId, parentId).all();
+        `).bind(instIdValue, parentId).all();
       } else {
         folders = await db.prepare(`
           SELECT f.*, 
             (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id AND is_public = 1) as subfolder_count,
             (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1 AND is_public = 1) as file_count
           FROM institution_folders f
-          WHERE f.institution_id = ? AND f.parent_folder_id IS NULL AND f.is_public = 1
+          WHERE CAST(f.institution_id AS TEXT) = ? AND f.parent_folder_id IS NULL AND f.is_public = 1
           ORDER BY f.folder_name
-        `).bind(instId).all();
+        `).bind(instIdValue).all();
       }
     }
     
