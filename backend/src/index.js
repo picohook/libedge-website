@@ -1037,64 +1037,64 @@ app.get('/api/admin/all-files', async (c) => {
   return c.json(files.results);
 });
 
+// ====================== KURUM ROOT DOSYALARINI GETİR ======================
 app.get('/api/institution/:id/files', async (c) => {
-  try {
-    const institutionId = c.req.param('id');
-    const role = await getUserRole(c);
+    const identifier = c.req.param('id');
     const db = c.env.DB;
     
-    // Institution'ı bul (ID veya name ile)
-    let institution;
-    const numId = parseInt(institutionId, 10);
+    console.log('🔍 [ROOT-FILES] Request for:', identifier);
     
-    if (!isNaN(numId)) {
-      // Integer ise direkt ID ile ara
-      institution = await db.prepare(`
-        SELECT id, name FROM institutions WHERE id = ?
-      `).bind(numId).first();
-    }
+    // 1. Önce kurum ID'sini bul (gelen değer isim veya ID olabilir)
+    let institutionId = null;
     
-    // ID yoksa ya da NaN ise name ile ara
-    if (!institution) {
-      institution = await db.prepare(`
-        SELECT id, name FROM institutions WHERE name = ?
-      `).bind(institutionId).first();
-    }
-    
-    if (!institution) {
-      return c.json({ error: 'Kurum bulunamadı' }, 404);
-    }
-    
-    const userInstitution = await getUserInstitutionId(c);
-    
-    let files;
-    if (role === 'super_admin' || (role === 'admin' && userInstitution === institution.name)) {
-      files = await db.prepare(`
-        SELECT f.*, u.full_name as uploaded_by_name 
-        FROM institution_files f 
-        LEFT JOIN users u ON f.uploaded_by = u.id
-        WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 
-        ORDER BY f.id DESC
-      `).bind(institution.id).all();
+    // Eğer gelen değer sayı ise direkt ID olarak kullan
+    if (/^\d+$/.test(identifier)) {
+        institutionId = parseInt(identifier);
+        console.log('   → ID olarak kullanılıyor:', institutionId);
     } else {
-      files = await db.prepare(`
-        SELECT f.*, u.full_name as uploaded_by_name 
-        FROM institution_files f 
-        LEFT JOIN users u ON f.uploaded_by = u.id
-        WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 AND f.is_public = 1
-        ORDER BY f.id DESC
-      `).bind(institution.id).all();
+        // Değilse institutions tablosundan isim ile ara
+        const inst = await db.prepare(`SELECT id FROM institutions WHERE name = ?`).bind(identifier).first();
+        if (inst) {
+            institutionId = inst.id;
+            console.log('   → İsimden bulundu:', institutionId, '(', identifier, ')');
+        }
     }
     
-    return c.json(files.results || []);
+    if (!institutionId) {
+        console.log('❌ Kurum bulunamadı:', identifier);
+        return c.json([]);
+    }
     
-  } catch (error) {
-    console.error('Institution files endpoint error:', error);
-    return c.json({ 
-      error: 'Dosyalar yüklenirken bir hata oluştu', 
-      details: error.message 
-    }, 500);
-  }
+    // 2. Root dosyalarını getir (folder_id IS NULL)
+    const query = `
+        SELECT 
+            f.*, 
+            u.full_name as uploaded_by_name,
+            COALESCE(i.name, '') as institution_name
+        FROM institution_files f
+        LEFT JOIN users u ON f.uploaded_by = u.id
+        LEFT JOIN institutions i ON f.institution_id = i.id
+        WHERE f.institution_id = ? 
+        AND f.is_active = 1 
+        AND (f.folder_id IS NULL OR f.folder_id = 0)
+        ORDER BY f.id DESC
+    `;
+    
+    try {
+        const result = await db.prepare(query).bind(institutionId).all();
+        const files = result.results || [];
+        console.log(`✅ ${files.length} root dosyası bulundu (institution_id: ${institutionId})`);
+        
+        // Debug: Dosya isimlerini logla
+        if (files.length > 0) {
+            files.forEach(f => console.log(`   📄 ${f.file_name}`));
+        }
+        
+        return c.json(files);
+    } catch (err) {
+        console.error('❌ Root dosyaları sorgu hatası:', err);
+        return c.json({ error: 'Dosyalar alınamadı' }, 500);
+    }
 });
 
 app.get('/api/institution/:id/folders', async (c) => {
