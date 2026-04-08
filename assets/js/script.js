@@ -65,7 +65,9 @@ function decodeToken(token) {
       atob(payload).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
     ));
   } catch (e) {
-    console.error('Token decode error:', e);
+    queueMicrotask(() => {
+      console.error('Token decode error:', e.toString());
+    });
     return null;
   }
 }
@@ -106,7 +108,9 @@ async function waitForAuth(timeoutMs = 10000) {
         await Promise.race([checkAuth(), timeoutPromise]);
         return currentUser;
     } catch (err) {
-        console.error('waitForAuth error:', err);
+        queueMicrotask(() => {
+            console.error('waitForAuth error:', err.toString());
+        });
         return null;
     }
 }
@@ -164,7 +168,9 @@ window.register = async function(fullName, email, password, institution) {
             return false;
         }
     } catch (err) {
-        console.error('Register error:', err);
+        queueMicrotask(() => {
+            console.error('Register error:', err.toString());
+        });
         showNotification('Bir hata oluştu', 'error');
         return false;
     }
@@ -210,7 +216,9 @@ async function login(email, password) {
             return false;
         }
     } catch (e) {
-        console.error('Login error:', e);
+        queueMicrotask(() => {
+            console.error('Login error:', e.toString());
+        });
         showNotification('Bir hata oluştu', 'error');
         return false;
     }
@@ -224,7 +232,9 @@ async function logout() {
             credentials: 'include'  // Cookie'yi silmek için
         });
     } catch (e) {
-        console.error('Logout error:', e);
+        queueMicrotask(() => {
+            console.error('Logout error:', e.toString());
+        });
     }
     
     // Token refresh interval'ını durdur
@@ -260,7 +270,9 @@ async function refreshToken() {
             return false;
         }
     } catch (e) {
-        console.error('Token refresh network hatası:', e);
+        queueMicrotask(() => {
+            console.error('Token refresh network hatası:', e.toString());
+        });
         return false;
     }
 }
@@ -309,7 +321,9 @@ async function checkAuth() {
                 isLoggedIn = false;
             }
         } catch (err) {
-            console.error('Auth check error:', err);
+            queueMicrotask(() => {
+                console.error('Auth check error:', err.toString());
+            });
             currentUser = null;
             isLoggedIn = false;
         } finally {
@@ -767,7 +781,9 @@ document.querySelectorAll('.nav-links .dropdown a').forEach(link => {
                 if (formId === 'trialForm') closeModal();
                 if (formId === 'suggestionForm') closeSuggestionModal();
             } catch (err) {
-                console.error("Form hatası:", err);
+                queueMicrotask(() => {
+                    console.error("Form hatası:", err.toString());
+                });
                 alert("Form gönderiminde hata oluştu ❌");
             } finally {
                 submitBtn.disabled = false;
