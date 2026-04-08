@@ -950,15 +950,39 @@ app.get('/api/admin/my-institution', async (c) => {
 });
 
 app.get('/api/admin/institutions', async (c) => {
-  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  const institutions = await db.prepare(`
-    SELECT inst.id, inst.name, inst.domain, inst.category, inst.created_at,
-      (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
-      (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
-    FROM institutions inst ORDER BY inst.name
-  `).all();
-  return c.json(institutions.results);
+  const role = await getUserRole(c);
+
+  if (role === 'super_admin') {
+    const institutions = await db.prepare(`
+      SELECT inst.id, inst.name, inst.domain, inst.category, inst.created_at,
+        (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
+        (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
+      FROM institutions inst ORDER BY inst.name
+    `).all();
+    return c.json(institutions.results);
+  } else {
+    const adminInstitutionId = await getUserInstitutionId(c);
+    const adminInstitution = await getUserInstitution(c);
+    let inst;
+    if (adminInstitutionId) {
+      inst = await db.prepare(`
+        SELECT inst.id, inst.name, inst.domain, inst.category, inst.created_at,
+          (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
+          (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
+        FROM institutions inst WHERE inst.id = ?
+      `).bind(adminInstitutionId).first();
+    } else if (adminInstitution) {
+      inst = await db.prepare(`
+        SELECT inst.id, inst.name, inst.domain, inst.category, inst.created_at,
+          (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
+          (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
+        FROM institutions inst WHERE inst.name = ?
+      `).bind(adminInstitution).first();
+    }
+    return c.json(inst ? [inst] : []);
+  }
 });
 
 app.get('/api/admin/all-files', async (c) => {
