@@ -1038,54 +1038,63 @@ app.get('/api/admin/all-files', async (c) => {
 });
 
 app.get('/api/institution/:id/files', async (c) => {
-  const institutionId = c.req.param('id');
-  const role = await getUserRole(c);
-  const userInstitution = await getUserInstitutionId(c);
-  
-  const db = c.env.DB;
-  
-  // Kurum ID'sini bul (name veya id ile arama yap)
-  const institutionExists = await db.prepare(`
-    SELECT id, name FROM institutions WHERE name = ? OR id = ?
-  `).bind(institutionId, institutionId).first();
-  
-  if (!institutionExists) {
-    return c.json({ error: 'Kurum bulunamadı' }, 404);
+  try {
+    const institutionId = c.req.param('id');
+    const role = await getUserRole(c);
+    const db = c.env.DB;
+    
+    // Institution'ı bul (ID veya name ile)
+    let institution;
+    const numId = parseInt(institutionId, 10);
+    
+    if (!isNaN(numId)) {
+      // Integer ise direkt ID ile ara
+      institution = await db.prepare(`
+        SELECT id, name FROM institutions WHERE id = ?
+      `).bind(numId).first();
+    }
+    
+    // ID yoksa ya da NaN ise name ile ara
+    if (!institution) {
+      institution = await db.prepare(`
+        SELECT id, name FROM institutions WHERE name = ?
+      `).bind(institutionId).first();
+    }
+    
+    if (!institution) {
+      return c.json({ error: 'Kurum bulunamadı' }, 404);
+    }
+    
+    const userInstitution = await getUserInstitutionId(c);
+    
+    let files;
+    if (role === 'super_admin' || (role === 'admin' && userInstitution === institution.name)) {
+      files = await db.prepare(`
+        SELECT f.*, u.full_name as uploaded_by_name 
+        FROM institution_files f 
+        LEFT JOIN users u ON f.uploaded_by = u.id
+        WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 
+        ORDER BY f.id DESC
+      `).bind(institution.id).all();
+    } else {
+      files = await db.prepare(`
+        SELECT f.*, u.full_name as uploaded_by_name 
+        FROM institution_files f 
+        LEFT JOIN users u ON f.uploaded_by = u.id
+        WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 AND f.is_public = 1
+        ORDER BY f.id DESC
+      `).bind(institution.id).all();
+    }
+    
+    return c.json(files.results || []);
+    
+  } catch (error) {
+    console.error('Institution files endpoint error:', error);
+    return c.json({ 
+      error: 'Dosyalar yüklenirken bir hata oluştu', 
+      details: error.message 
+    }, 500);
   }
-  
-  console.log('Institution found:', institutionExists);
-  
-  let files;
-  const instIdValue = String(institutionExists.id).trim(); // String olarak tut
-  if (role === 'super_admin') {
-    files = await db.prepare(`
-      SELECT f.*, u.full_name as uploaded_by_name 
-      FROM institution_files f 
-      LEFT JOIN users u ON f.uploaded_by = u.id
-      WHERE CAST(f.institution_id AS TEXT) = ? AND f.folder_id IS NULL AND f.is_active = 1 
-      ORDER BY f.id DESC
-    `).bind(instIdValue).all();
-  } else if (role === 'admin') {
-    files = await db.prepare(`
-      SELECT f.*, u.full_name as uploaded_by_name 
-      FROM institution_files f 
-      LEFT JOIN users u ON f.uploaded_by = u.id
-      WHERE CAST(f.institution_id AS TEXT) = ? AND f.folder_id IS NULL AND f.is_active = 1 
-      ORDER BY f.id DESC
-    `).bind(instIdValue).all();
-  } else {
-    files = await db.prepare(`
-      SELECT f.*, u.full_name as uploaded_by_name 
-      FROM institution_files f 
-      LEFT JOIN users u ON f.uploaded_by = u.id
-      WHERE CAST(f.institution_id AS TEXT) = ? AND f.folder_id IS NULL AND f.is_active = 1 AND f.is_public = 1
-      ORDER BY f.id DESC
-    `).bind(instIdValue).all();
-  }
-  
-  console.log('Files query result:', files);
-  
-  return c.json(files.results || []);
 });
 
 app.get('/api/institution/:id/folders', async (c) => {
