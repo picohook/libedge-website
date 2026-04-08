@@ -1362,7 +1362,23 @@ async function loadAdminInstitutions() {
         
         // Change event'ini tetikle
         if (filterSelect.value) {
+            // Event trigger + manuel yükleme (failsafe)
             filterSelect.dispatchEvent(new Event('change'));
+            
+            // 100ms sonra fallback: eğer files boşsa yükle
+            setTimeout(() => {
+                const adminFilesList = document.getElementById('adminFilesList');
+                if (!adminFilesList) return;
+                
+                const isEmpty = adminFilesList.textContent.includes('kurum seçin') || 
+                               adminFilesList.textContent.includes('Lütfen');
+                
+                if (isEmpty && filterSelect.value && filterSelect.value !== 'all') {
+                    console.log('Fallback: Manuel yükleme başlıyor...');
+                    loadAdminFolders(null);
+                    loadAdminFiles();
+                }
+            }, 100);
         }
         
         return { institutions, adminInstitutions };
@@ -1442,6 +1458,14 @@ async function loadAdminFiles() {
         return; 
     }
 
+    // Loading state göster
+    container.innerHTML = `
+        <div class="text-center py-8">
+            <i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
+            <p class="text-gray-400 text-sm mt-2">Dosyalar yükleniyor...</p>
+        </div>
+    `;
+
     let url;
     if (adminCurrentFolderId) {
         url = `${API_BASE}/api/institution/folder/${adminCurrentFolderId}/files`;
@@ -1453,13 +1477,20 @@ async function loadAdminFiles() {
         const res = await fetch(url, { credentials: 'include' });
         
         if (!res.ok) {
-            console.error('Dosyalar alınamadı:', res.status);
-            container.innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenirken hata oluştu</p>';
+            console.error('Dosyalar alınamadı:', res.status, res.statusText);
+            container.innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-circle text-red-500 text-3xl mb-2"></i>
+                    <p class="text-red-500">Dosyalar yüklenirken hata oluştu (${res.status})</p>
+                    <p class="text-xs text-gray-400 mt-1">Lütfen sayfayı yenile veya daha sonra tekrar dene</p>
+                </div>
+            `;
             return;
         }
         
         const files = await res.json();
         console.log('Dosyalar:', files);
+        console.log('Kurum ID:', institutionId, 'Klasör ID:', adminCurrentFolderId, 'Dosya sayısı:', files?.length || 0);
         
         if (files.length === 0) {
             container.innerHTML = `
