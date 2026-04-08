@@ -1,3 +1,18 @@
+// ====================== XSS KORUMA ======================
+window.escapeHtml = function(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+};
+
+// String prototype'a da ekleyelim (opsiyonel, daha kolay kullanım için)
+if (!String.prototype.escapeHtml) {
+    String.prototype.escapeHtml = function() {
+        return window.escapeHtml(this);
+    };
+}
+
 // ====================== KULLANICI MENÜSÜ YARDIMCILARI ======================
 
 // Kullanıcı avatarı için renk üretme
