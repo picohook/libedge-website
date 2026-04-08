@@ -26,11 +26,6 @@ export async function onRequest(context) {
 
   const newHeaders = new Headers(response.headers);
   newHeaders.delete('set-cookie');
-  
-  // Add Content-Security-Policy header
-  newHeaders.set('Content-Security-Policy', 
-    "default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://; frame-src 'self';"
-  );
 
   // Login: token'ı body'den al, cookie'ye taşı
   if (url.pathname.includes('/auth/login')) {

@@ -841,32 +841,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadProducts();
     }
 });
-
-// Event delegation for data-driven user action buttons
-document.addEventListener('click', function(e) {
-    // Edit user button
-    if (e.target.closest('.edit-user-btn')) {
-        const btn = e.target.closest('.edit-user-btn');
-        const userData = btn.dataset.userJson;
-        if (userData) editUserByData(userData);
-    }
-    
-    // Set role button
-    if (e.target.closest('.set-role-btn')) {
-        const btn = e.target.closest('.set-role-btn');
-        const userId = parseInt(btn.dataset.userId);
-        const newRole = btn.dataset.newRole;
-        if (userId && newRole) setRole(userId, newRole);
-    }
-    
-    // Delete user button
-    if (e.target.closest('.delete-user-btn')) {
-        const btn = e.target.closest('.delete-user-btn');
-        const userId = parseInt(btn.dataset.userId);
-        if (userId) deleteUser(userId);
-    }
-});
-
 </script>
 <script> 
     // Ürün listesi
@@ -915,7 +889,7 @@ document.addEventListener('click', function(e) {
             document.getElementById('statInstitutions').textContent = allInstitutions.length || 0;
             
             const recent = users.slice(-5).reverse();
-            document.getElementById('recentUsers').innerHTML = recent.map(u => `<tr><td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td><td class="px-4 py-2">${escapeHtml(u.email)}</td><td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td><td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center py-4">Henüz kullanıcı yok</td></tr>';
+            document.getElementById('recentUsers').innerHTML = recent.map(u => `<tr><td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td><td class="px-4 py-2">${u.email}</td><td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td><td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center py-4">Henüz kullanıcı yok</td></tr>';
         } catch(e) { console.error(e); }
     }
 
@@ -952,9 +926,9 @@ document.addEventListener('click', function(e) {
                 <td class="px-4 py-2">${u.created_at ? new Date(u.created_at).toLocaleDateString('tr-TR') : '-'}</td>
                 <td class="px-4 py-2 text-gray-500 text-sm">${timeAgo(u.last_login)}</td>
                 <td class="px-4 py-2">
-                    <button class="text-blue-600 mr-2 edit-user-btn" data-user-json="${userData}"><i class="fas fa-edit"></i></button>
-                    ${isSuper && u.role !== 'super_admin' ? `<button class="text-green-600 mr-2 set-role-btn" data-user-id="${u.id}" data-new-role="${escapeHtml(u.role === 'admin' ? 'user' : 'admin')}" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}"><i class="fas fa-user-shield"></i></button>` : ''}
-                    <button class="text-red-600 delete-user-btn" data-user-id="${u.id}"><i class="fas fa-trash"></i></button>
+                    <button onclick="editUserByData('${userData}')" class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button>
+                    ${isSuper && u.role !== 'super_admin' ? `<button onclick="setRole(${u.id}, '${escapeHtml(u.role === 'admin' ? 'user' : 'admin')}')" class="text-green-600 mr-2" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}"><i class="fas fa-user-shield"></i></button>` : ''}
+                    <button onclick="deleteUser(${u.id})" class="text-red-600"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
         }).join('') : '<tr><td colspan="8" class="text-center py-4 text-gray-400">Sonuç bulunamadı</td></tr>';
@@ -1477,7 +1451,7 @@ async function loadAdminFiles() {
                 <div class="flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
                         <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
-                        <a href="javascript:void(0)" onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${escapeHtml(file.file_type || '')}')" class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
+                        <a href="javascript:void(0)" onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type || ''}')" class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
                         ${file.is_public
                             ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><i class="fas fa-globe mr-1"></i>Herkese Açık</span>'
                             : '<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"><i class="fas fa-lock mr-1"></i>Kurum İçi</span>'}
@@ -1529,7 +1503,7 @@ function updateAdminBreadcrumb() {
     const bc = document.getElementById('adminBreadcrumb');
     if (!bc) return;
     const instId = document.getElementById('institutionFilter')?.value;
-    const instName = instId && instId !== 'all' ? escapeHtml(instId) : 'Tüm Kurumlar';
+    const instName = instId && instId !== 'all' ? instId : 'Tüm Kurumlar';
     let html = `<span class="cursor-pointer hover:text-primary" onclick="adminGoRoot()">${instName}</span>`;
     adminFolderStack.filter(f => f.id !== null).forEach(f => {
         html += ` / <span>${escapeHtml(f.name)}</span>`;
