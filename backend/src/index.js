@@ -1044,6 +1044,15 @@ app.get('/api/institution/:id/files', async (c) => {
   
   const db = c.env.DB;
   
+  // Kurum ID'sini bul (name veya id ile arama yap)
+  const institutionExists = await db.prepare(`
+    SELECT id, name FROM institutions WHERE name = ? OR id = ?
+  `).bind(institutionId, institutionId).first();
+  
+  if (!institutionExists) {
+    return c.json({ error: 'Kurum bulunamadı' }, 404);
+  }
+  
   let files;
   if (role === 'super_admin') {
     files = await db.prepare(`
@@ -1052,15 +1061,15 @@ app.get('/api/institution/:id/files', async (c) => {
       LEFT JOIN users u ON f.uploaded_by = u.id
       WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 
       ORDER BY f.id DESC
-    `).bind(institutionId).all();
-  } else if (role === 'admin' && userInstitution == institutionId) {
+    `).bind(institutionExists.id).all();
+  } else if (role === 'admin') {
     files = await db.prepare(`
       SELECT f.*, u.full_name as uploaded_by_name 
       FROM institution_files f 
       LEFT JOIN users u ON f.uploaded_by = u.id
       WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 
       ORDER BY f.id DESC
-    `).bind(institutionId).all();
+    `).bind(institutionExists.id).all();
   } else {
     files = await db.prepare(`
       SELECT f.*, u.full_name as uploaded_by_name 
@@ -1068,7 +1077,7 @@ app.get('/api/institution/:id/files', async (c) => {
       LEFT JOIN users u ON f.uploaded_by = u.id
       WHERE f.institution_id = ? AND f.folder_id IS NULL AND f.is_active = 1 AND f.is_public = 1
       ORDER BY f.id DESC
-    `).bind(institutionId).all();
+    `).bind(institutionExists.id).all();
   }
   
   return c.json(files.results);
@@ -1128,7 +1137,7 @@ app.get('/api/institution/:id/folders', async (c) => {
     }
     
     let folders;
-    if (role === 'super_admin' || (role === 'admin' && userInstitution === institutionExists.name)) {
+    if (role === 'super_admin' || role === 'admin') {
       if (parentId) {
         folders = await db.prepare(`
           SELECT f.*, 
