@@ -1056,7 +1056,7 @@ app.get('/api/institution/:id/files', async (c) => {
   console.log('Institution found:', institutionExists);
   
   let files;
-  const instId = String(institutionExists.id); // String'e çevir
+  const instId = parseInt(institutionExists.id, 10); // Integer'a çevir
   if (role === 'super_admin') {
     files = await db.prepare(`
       SELECT f.*, u.full_name as uploaded_by_name 
@@ -1121,7 +1121,7 @@ app.get('/api/institution/:id/folders', async (c) => {
           WHERE f.institution_id = ? AND f.parent_folder_id = ? AND f.is_public = 1
           GROUP BY f.id
           ORDER BY f.folder_name
-        `).bind(institutionExists.id, parentId).all();
+        `).bind(parseInt(institutionExists.id, 10), parentId).all();
       } else {
         folders = await db.prepare(`
           SELECT f.*, COUNT(ff.id) as subfolder_count,
@@ -1131,7 +1131,7 @@ app.get('/api/institution/:id/folders', async (c) => {
           WHERE f.institution_id = ? AND f.parent_folder_id IS NULL AND f.is_public = 1
           GROUP BY f.id
           ORDER BY f.folder_name
-        `).bind(institutionExists.id).all();
+        `).bind(parseInt(institutionExists.id, 10)).all();
       }
       
       return c.json(folders.results || []);
@@ -1142,6 +1142,7 @@ app.get('/api/institution/:id/folders', async (c) => {
     }
     
     let folders;
+    const instId = parseInt(institutionExists.id, 10); // Integer'a çevir
     if (role === 'super_admin' || role === 'admin') {
       if (parentId) {
         folders = await db.prepare(`
@@ -1151,7 +1152,7 @@ app.get('/api/institution/:id/folders', async (c) => {
           FROM institution_folders f
           WHERE f.institution_id = ? AND f.parent_folder_id = ?
           ORDER BY f.folder_name
-        `).bind(institutionExists.id, parentId).all();
+        `).bind(instId, parentId).all();
       } else {
         folders = await db.prepare(`
           SELECT f.*, 
@@ -1160,9 +1161,10 @@ app.get('/api/institution/:id/folders', async (c) => {
           FROM institution_folders f
           WHERE f.institution_id = ? AND f.parent_folder_id IS NULL
           ORDER BY f.folder_name
-        `).bind(institutionExists.id).all();
+        `).bind(instId).all();
       }
     } else {
+      const instId = parseInt(institutionExists.id, 10); // Integer'a çevir
       if (parentId) {
         folders = await db.prepare(`
           SELECT f.*, 
@@ -1171,7 +1173,7 @@ app.get('/api/institution/:id/folders', async (c) => {
           FROM institution_folders f
           WHERE f.institution_id = ? AND f.parent_folder_id = ? AND f.is_public = 1
           ORDER BY f.folder_name
-        `).bind(institutionExists.id, parentId).all();
+        `).bind(instId, parentId).all();
       } else {
         folders = await db.prepare(`
           SELECT f.*, 
@@ -1180,7 +1182,7 @@ app.get('/api/institution/:id/folders', async (c) => {
           FROM institution_folders f
           WHERE f.institution_id = ? AND f.parent_folder_id IS NULL AND f.is_public = 1
           ORDER BY f.folder_name
-        `).bind(institutionExists.id).all();
+        `).bind(instId).all();
       }
     }
     
