@@ -442,7 +442,7 @@ async function checkAuthAndLoad() {
         if (el('profileEmail')) el('profileEmail').textContent = user.email;
         if (el('infoFullName')) el('infoFullName').textContent = user.full_name || '-';
         if (el('infoEmail')) el('infoEmail').textContent = user.email || '-';
-        if (el('infoInstitution')) el('infoInstitution').textContent = user.institution || '-';
+        if (el('infoInstitution')) el('infoInstitution').textContent = user.institution_name || user.institution || '-';
         if (el('infoCreatedAt')) el('infoCreatedAt').textContent = user.created_at
             ? new Date(user.created_at).toLocaleDateString('tr-TR') : '-';
         if (el('welcomeMessage')) el('welcomeMessage').textContent =
@@ -507,12 +507,12 @@ async function loadSubscriptions() {
 
 // ====================== KURUM DOSYALARI ======================
 async function loadFolders(parentId = null) {
-    const inst = window.currentUser?.institution;
+    const instKey = window.currentUser?.institution_id || window.currentUser?.institution;
     const container = document.getElementById('foldersList');
-    if (!inst) { container.innerHTML = '<p class="text-gray-400 text-center col-span-full py-4">Kurum bilgisi bulunamadı.</p>'; return; }
+    if (!instKey) { container.innerHTML = '<p class="text-gray-400 text-center col-span-full py-4">Kurum bilgisi bulunamadı.</p>'; return; }
 
     try {
-        let url = `${API_BASE}/api/institution/${encodeURIComponent(inst)}/folders`;
+        let url = `${API_BASE}/api/institution/${encodeURIComponent(instKey)}/folders`;
         if (parentId) url += `?parent=${parentId}`;
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) throw new Error(`${res.status}`);
@@ -551,15 +551,15 @@ async function loadFolders(parentId = null) {
 }
 
 async function loadFiles(folderId = null) {
-    const inst = window.currentUser?.institution;
-    if (!inst) return;
+    const instKey = window.currentUser?.institution_id || window.currentUser?.institution;
+    if (!instKey) return;
     const container = document.getElementById('filesList');
     const isAdmin = ['admin','super_admin'].includes(window.currentUser?.role);
 
     try {
         const url = folderId
             ? `${API_BASE}/api/institution/folder/${folderId}/files`
-            : `${API_BASE}/api/institution/${encodeURIComponent(inst)}/files`;
+            : `${API_BASE}/api/institution/${encodeURIComponent(instKey)}/files`;
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) throw new Error(`${res.status}`);
         const files = await res.json();
@@ -721,7 +721,8 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
     const folderName = document.getElementById('folderName').value.trim();
     const isPublic = parseInt(document.getElementById('folderVisibility').value);
     if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
-    const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(window.currentUser.institution)}/folder`, {
+    const instKey = window.currentUser?.institution_id || window.currentUser?.institution;
+    const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(instKey)}/folder`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ folder_name: folderName, parent_folder_id: currentFolderId, is_public: isPublic })
     });
@@ -731,7 +732,7 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
 
 document.getElementById('addFileForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const inst = window.currentUser?.institution;
+    const inst = window.currentUser?.institution_id || window.currentUser?.institution;
     if (!inst) { showToast('Kurum bilgisi bulunamadı.', 'error'); return; }
     const btn = document.getElementById('profileFileSubmitBtn');
     btn.disabled = true; btn.textContent = 'Kaydediliyor...';
