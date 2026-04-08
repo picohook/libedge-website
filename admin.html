@@ -283,8 +283,8 @@
             <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Görünürlük</label>
                 <select id="adminFolderVisibility" class="w-full border p-2 rounded">
-                    <option value="0">Kurum İçi</option>
-                    <option value="1">Herkese Açık</option>
+                    <option value="0">Yönetici</option>
+                    <option value="1">Herkes</option>
                 </select>
             </div>
             <div class="flex gap-2">
@@ -426,8 +426,8 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Görünürlük</label>
                 <select id="adminFileVisibility" class="w-full border p-2 rounded">
-                    <option value="0">Kurum İçi</option>
-                    <option value="1">Herkese Açık</option>
+                    <option value="0">Yönetici</option>
+                    <option value="1">Herkes</option>
                 </select>
             </div>
             <div class="flex gap-2">
@@ -1424,8 +1424,8 @@ async function loadAdminFolders(parentId = null) {
                 <p class="text-xs font-medium truncate">${escapeHtml(f.folder_name)}</p>
                 <p class="text-xs text-gray-400">${f.subfolder_count || 0} klasör, ${f.file_count || 0} dosya</p>
                 ${f.is_public
-                    ? '<span class="text-xs text-green-600"><i class="fas fa-globe mr-1"></i>Açık</span>'
-                    : '<span class="text-xs text-gray-400"><i class="fas fa-lock mr-1"></i>İçi</span>'}
+                    ? '<span class="text-xs text-green-600"><i class="fas fa-globe mr-1"></i>Herkes</span>'
+                    : '<span class="text-xs text-purple-600"><i class="fas fa-user-shield mr-1"></i>Yönetici</span>'}
                 <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
                     <button onclick="event.stopPropagation();renameAdminFolder(${f.id}, '${escapeHtml(f.folder_name)}')"
                         class="text-gray-300 hover:text-blue-500 transition" title="Yeniden Adlandır">
@@ -1516,8 +1516,8 @@ async function loadAdminFiles() {
                            onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${escapeHtml(file.file_type || '')}')" 
                            class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
                         ${file.is_public
-                            ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><i class="fas fa-globe mr-1"></i>Herkese Açık</span>'
-                            : '<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"><i class="fas fa-lock mr-1"></i>Kurum İçi</span>'}
+                            ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><i class="fas fa-globe mr-1"></i>Herkes</span>'
+                            : '<span class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full"><i class="fas fa-user-shield mr-1"></i>Yönetici</span>'}
                     </div>
                     <div class="flex flex-wrap gap-4 mt-1 text-xs text-gray-500">
                         <span><i class="fas fa-tag mr-1"></i>${getCategoryName(file.category)}</span>
@@ -1528,7 +1528,7 @@ async function loadAdminFiles() {
                 <div class="flex items-center gap-2 ml-2">
                     <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})" 
                         class="text-blue-500 hover:text-blue-700 transition" 
-                        title="${file.is_public ? 'Kurum içi yap' : 'Herkese açık yap'}">
+                        title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
                         <i class="fas ${file.is_public ? 'fa-eye-slash' : 'fa-eye'}"></i>
                     </button>
                     <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
