@@ -1375,7 +1375,7 @@ async function loadAdminInstitutions() {
                 
                 if (isEmpty && filterSelect.value && filterSelect.value !== 'all') {
                     console.log('Fallback: Manuel yükleme başlıyor...');
-                    loadAdminFolders(null);
+                    loadAdminFileFolders(filterSelect.value);
                     loadAdminFiles();
                 }
             }, 100);
@@ -1690,7 +1690,7 @@ document.getElementById('institutionFilter')?.addEventListener('change', () => {
         adminFolderStack = [];
         document.getElementById('adminBackBtn')?.classList.add('hidden');
         updateAdminBreadcrumb();
-        loadAdminFolders(null);
+        loadAdminFileFolders(this.value);
         loadAdminFiles();
     }
 });
