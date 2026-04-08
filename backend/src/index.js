@@ -1232,10 +1232,22 @@ app.get('/api/institution/:id/folders', async (c) => {
         // 2. Klasörleri getir
         let query, params;
         if (parentId && parentId !== 'null') {
-            query = `SELECT * FROM institution_folders WHERE CAST(institution_id AS INTEGER) = ? AND parent_folder_id = ? ORDER BY folder_name`;
+            query = `
+                SELECT f.*,
+                    (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
+                    (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
+                FROM institution_folders f
+                WHERE CAST(f.institution_id AS INTEGER) = ? AND f.parent_folder_id = ?
+                ORDER BY f.folder_name`;
             params = [institutionId, parseInt(parentId)];
         } else {
-            query = `SELECT * FROM institution_folders WHERE CAST(institution_id AS INTEGER) = ? AND (parent_folder_id IS NULL OR parent_folder_id = 0) ORDER BY folder_name`;
+            query = `
+                SELECT f.*,
+                    (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
+                    (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
+                FROM institution_folders f
+                WHERE CAST(f.institution_id AS INTEGER) = ? AND (f.parent_folder_id IS NULL OR f.parent_folder_id = 0)
+                ORDER BY f.folder_name`;
             params = [institutionId];
         }
         
