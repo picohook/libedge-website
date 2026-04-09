@@ -2,10 +2,9 @@ name = "view-counter"
 main = "index.js"
 compatibility_date = "2025-10-12"
 
-[durable_objects]
-bindings = [
-  { binding = "COUNTER", class_name = "MyDurableObject" }
-]
+[[durable_objects.bindings]]
+name = "COUNTER"
+class_name = "MyDurableObject"
 
 [[migrations]]
 tag = "v1"
