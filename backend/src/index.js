@@ -1596,53 +1596,97 @@ app.get('/api/files/*', async (c) => {
 
 // ====================== DUYURU YÖNETİMİ ======================
 
-// Public: sadece aktif duyurular
+// Public: sadece yayında olanlar
 app.get('/api/announcements', async (c) => {
   const db = c.env.DB;
-  const rows = await db.prepare(
-    `SELECT id, title, category, priority, content, created_at FROM announcements WHERE is_active = 1 ORDER BY created_at DESC`
-  ).all();
-  return c.json({ announcements: rows.results });
+  try {
+    const rows = await db.prepare(`
+      SELECT id, title, summary, full_content, category, priority, published_at
+      FROM announcements
+      WHERE is_published = 1
+      ORDER BY published_at DESC
+    `).all();
+    const announcements = (rows.results || []).map(row => ({
+      id: row.id,
+      title: row.title,
+      summary: row.summary,
+      full_content: row.full_content,
+      category: row.category,
+      priority: row.priority,
+      date: row.published_at,
+      published_at: row.published_at
+    }));
+    return c.json(announcements);
+  } catch (err) {
+    console.error('Get announcements error:', err);
+    return c.json({ error: err.message }, 500);
+  }
 });
 
 app.get('/api/admin/announcements', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  const rows = await db.prepare(
-    `SELECT * FROM announcements ORDER BY created_at DESC`
-  ).all();
-  return c.json({ announcements: rows.results });
+  try {
+    const rows = await db.prepare(`
+      SELECT a.*, u.full_name as author_name
+      FROM announcements a
+      LEFT JOIN users u ON a.created_by = u.id
+      ORDER BY a.published_at DESC
+    `).all();
+    return c.json(rows.results || []);
+  } catch (err) {
+    console.error('Get admin announcements error:', err);
+    return c.json({ error: err.message }, 500);
+  }
 });
 
 app.post('/api/admin/announcements', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const auth = await requireAuth(c);
   const db = c.env.DB;
-  const { title, category, priority, content, is_active } = await c.req.json();
+  const { title, summary, full_content, category, priority, is_published } = await c.req.json();
   if (!title?.trim()) return c.json({ error: 'Başlık zorunludur' }, 400);
-  await db.prepare(
-    `INSERT INTO announcements (title, category, priority, content, is_active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-  ).bind(title.trim(), category || 'general', priority || 'medium', content || '', is_active ?? 1).run();
-  return c.json({ success: true });
+  try {
+    const result = await db.prepare(`
+      INSERT INTO announcements (title, summary, full_content, category, priority, is_published, published_at, updated_at, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
+    `).bind(title.trim(), summary || '', full_content || '', category || 'general', priority || 'medium', is_published ? 1 : 0, auth.user.user_id).run();
+    return c.json({ success: true, id: result.meta?.last_row_id });
+  } catch (err) {
+    console.error('Create announcement error:', err);
+    return c.json({ error: err.message }, 500);
+  }
 });
 
 app.put('/api/admin/announcements/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  const id = parseInt(c.req.param('id'));
-  const { title, category, priority, content, is_active } = await c.req.json();
+  const id = c.req.param('id');
+  const { title, summary, full_content, category, priority, is_published } = await c.req.json();
   if (!title?.trim()) return c.json({ error: 'Başlık zorunludur' }, 400);
-  const result = await db.prepare(
-    `UPDATE announcements SET title=?, category=?, priority=?, content=?, is_active=?, updated_at=datetime('now') WHERE id=?`
-  ).bind(title.trim(), category || 'general', priority || 'medium', content || '', is_active ?? 1, id).run();
-  if (!result.meta?.changes) return c.json({ error: 'Duyuru bulunamadı' }, 404);
-  return c.json({ success: true });
+  try {
+    const result = await db.prepare(`
+      UPDATE announcements
+      SET title = ?, summary = ?, full_content = ?, category = ?, priority = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(title.trim(), summary || '', full_content || '', category || 'general', priority || 'medium', is_published ? 1 : 0, id).run();
+    if (result.meta?.changes === 0) return c.json({ error: 'Duyuru bulunamadı' }, 404);
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('Update announcement error:', err);
+    return c.json({ error: err.message }, 500);
+  }
 });
 
 app.delete('/api/admin/announcements/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  const id = parseInt(c.req.param('id'));
-  await db.prepare(`DELETE FROM announcements WHERE id=?`).bind(id).run();
-  return c.json({ success: true });
+  const id = c.req.param('id');
+  try {
+    await db.prepare(`DELETE FROM announcements WHERE id = ?`).bind(id).run();
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('Delete announcement error:', err);
+    return c.json({ error: err.message }, 500);
+  }
 });

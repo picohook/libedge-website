@@ -600,12 +600,16 @@
                 </div>
             </div>
             <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Özet</label>
+                <textarea id="announcementSummary" rows="2" placeholder="Kısa özet (liste görünümünde gösterilir)" class="w-full border p-2 rounded text-sm resize-y"></textarea>
+            </div>
+            <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">İçerik</label>
-                <textarea id="announcementContent" rows="6" placeholder="Duyuru içeriği (Markdown destekli)" class="w-full border p-2 rounded font-mono text-sm resize-y"></textarea>
+                <textarea id="announcementFullContent" rows="6" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-2 rounded font-mono text-sm resize-y"></textarea>
             </div>
             <div class="mb-4 flex items-center gap-2">
-                <input type="checkbox" id="announcementActive" checked class="rounded">
-                <label for="announcementActive" class="text-sm text-gray-700">Yayında (aktif)</label>
+                <input type="checkbox" id="announcementPublished" checked class="rounded">
+                <label for="announcementPublished" class="text-sm text-gray-700">Yayında</label>
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
@@ -2699,19 +2703,19 @@ async function loadAnnouncements() {
             return;
         }
         container.innerHTML = list.map(a => `
-            <div class="border rounded-lg p-4 mb-3 ${a.is_active ? '' : 'opacity-50'}">
+            <div class="border rounded-lg p-4 mb-3 ${a.is_published ? '' : 'opacity-50'}">
                 <div class="flex items-start justify-between gap-4">
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap mb-1">
                             <span class="text-sm font-semibold text-gray-800">${escapeHtml(a.title)}</span>
                             <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${categoryMap[a.category] || a.category}</span>
                             <span class="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">${priorityMap[a.priority] || a.priority}</span>
-                            ${a.is_active
+                            ${a.is_published
                                 ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Yayında</span>'
-                                : '<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Pasif</span>'}
+                                : '<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Taslak</span>'}
                         </div>
-                        <p class="text-sm text-gray-500 truncate">${escapeHtml((a.content || '').substring(0, 120))}${(a.content || '').length > 120 ? '…' : ''}</p>
-                        <p class="text-xs text-gray-400 mt-1">${new Date(a.created_at).toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric' })}</p>
+                        <p class="text-sm text-gray-500 truncate">${escapeHtml((a.summary || '').substring(0, 120))}${(a.summary || '').length > 120 ? '…' : ''}</p>
+                        <p class="text-xs text-gray-400 mt-1">${new Date(a.published_at).toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric' })}</p>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <button onclick="editAnnouncement(${a.id})" class="text-blue-500 hover:text-blue-700" title="Düzenle">
@@ -2736,8 +2740,9 @@ function openAnnouncementModal() {
     document.getElementById('announcementTitle').value = '';
     document.getElementById('announcementCategory').value = 'general';
     document.getElementById('announcementPriority').value = 'medium';
-    document.getElementById('announcementContent').value = '';
-    document.getElementById('announcementActive').checked = true;
+    document.getElementById('announcementSummary').value = '';
+    document.getElementById('announcementFullContent').value = '';
+    document.getElementById('announcementPublished').checked = true;
     document.getElementById('announcementModal').classList.remove('hidden');
 }
 
@@ -2745,7 +2750,7 @@ async function editAnnouncement(id) {
     try {
         const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
         const data = await res.json();
-        const list = data.announcements || data || [];
+        const list = Array.isArray(data) ? data : (data.announcements || []);
         const a = list.find(x => x.id === id);
         if (!a) { showToast('Duyuru bulunamadı', 'error'); return; }
         document.getElementById('announcementModalTitle').textContent = 'Duyuruyu Düzenle';
@@ -2753,8 +2758,9 @@ async function editAnnouncement(id) {
         document.getElementById('announcementTitle').value = a.title || '';
         document.getElementById('announcementCategory').value = a.category || 'general';
         document.getElementById('announcementPriority').value = a.priority || 'medium';
-        document.getElementById('announcementContent').value = a.content || '';
-        document.getElementById('announcementActive').checked = !!a.is_active;
+        document.getElementById('announcementSummary').value = a.summary || '';
+        document.getElementById('announcementFullContent').value = a.full_content || '';
+        document.getElementById('announcementPublished').checked = !!a.is_published;
         document.getElementById('announcementModal').classList.remove('hidden');
     } catch (err) {
         showToast('Duyuru bilgileri alınamadı', 'error');
@@ -2779,8 +2785,9 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
         title: document.getElementById('announcementTitle').value.trim(),
         category: document.getElementById('announcementCategory').value,
         priority: document.getElementById('announcementPriority').value,
-        content: document.getElementById('announcementContent').value.trim(),
-        is_active: document.getElementById('announcementActive').checked ? 1 : 0
+        summary: document.getElementById('announcementSummary').value.trim(),
+        full_content: document.getElementById('announcementFullContent').value.trim(),
+        is_published: document.getElementById('announcementPublished').checked ? 1 : 0
     };
     const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
     const method = id ? 'PUT' : 'POST';
