@@ -1713,7 +1713,7 @@ async function findOrCreateAccount(env, accountName, ip) {
     const fields = {
         "Account Name": accountName,
         "Region": "Türkiye",
-        "Industry": "Education",
+        "Industry": "University",
         "IP Range": ip || ""
     };
 
@@ -1757,7 +1757,7 @@ async function findOrCreateContact(env, contactData, accountId) {
         "First Name": firstName,
         "Last Name": lastName,
         "Email": contactData.email || '',
-        "Title": contactData.title || "Kütüphane Yetkilisi"
+        "Title": contactData.title || "Director"
     };
 
     if (accountId) {
