@@ -2433,9 +2433,9 @@ function renderInstitutions(institutions) {
             <td class="px-4 py-2">${inst.user_count ?? '-'}</td>
             <td class="px-4 py-2">${inst.file_count ?? '-'}</td>
             <td class="px-4 py-2">
-                ${inst.editable ? 
-                    `<button onclick="editInstitution(${inst.id})" class="text-blue-600"><i class="fas fa-edit"></i></button>` : 
-                    '<span class="text-gray-400 text-xs">(Airtable)</span>'}
+                ${inst.source === 'airtable' ? 
+                    `<button onclick="editAirtableAccount('${inst.id}', '${escapeHtml(inst.displayName)}', '${escapeHtml(inst.category || inst.industry || '')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>` : 
+                    `<button onclick="editInstitution(${inst.id})" class="text-blue-600"><i class="fas fa-edit"></i></button>`}
              </td>
          </tr>
     `).join('');
@@ -2484,20 +2484,47 @@ function closeEditInstitutionModal() {
 
 document.getElementById('editInstitutionForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = document.getElementById('editInstitutionId').value;
+    
     const name = document.getElementById('editInstitutionName').value.trim();
-    const domain = document.getElementById('editInstitutionDomain').value.trim();
     const category = document.getElementById('editInstitutionCategory').value;
-    const isSuper = currentAdmin?.role === 'super_admin';
-    const body = isSuper ? { name, domain: domain || null, category } : { domain: domain || null };
-    await fetch(`${API_BASE}/api/admin/institution/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body)
-    });
-    closeEditInstitutionModal();
-    loadInstitutions();
+    
+    if (currentAirtableId) {
+        const res = await fetch(`/api/admin/airtable/accounts/${currentAirtableId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name, industry: category })
+        });
+        
+        if (res.ok) {
+            showToast('Airtable kurumu güncellendi!', 'success');
+            closeEditInstitutionModal();
+            loadInstitutions();
+        } else {
+            showToast('Güncelleme başarısız!', 'error');
+        }
+    } else {
+        // Mevcut D1 güncelleme kodu buraya gelecek
+        const id = document.getElementById('editInstitutionId').value;
+        const domain = document.getElementById('editInstitutionDomain').value.trim();
+        const isSuper = currentAdmin?.role === 'super_admin';
+        const body = isSuper ? { name, domain: domain || null, category } : { domain: domain || null };
+        
+        const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body)
+        });
+        
+        if (res.ok) {
+            showToast('Kurum güncellendi!', 'success');
+            closeEditInstitutionModal();
+            loadInstitutions();
+        } else {
+            showToast('Güncelleme başarısız!', 'error');
+        }
+    }
 });
 
 function openBulkInstitutionModal() {
@@ -2897,6 +2924,24 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
         showToast(data.error || 'İşlem başarısız oldu', 'error');
     }
 });
+
+let currentAirtableId = null;
+
+function editAirtableAccount(id, name, category) {
+    currentAirtableId = id;
+    document.getElementById('editInstitutionId').value = '';
+    document.getElementById('editInstitutionName').value = name;
+    document.getElementById('editInstitutionDomain').value = '';
+    document.getElementById('editInstitutionCategory').value = category || 'university';
+    document.getElementById('editInstitutionModal').classList.remove('hidden');
+}
+
+// closeEditInstitutionModal zaten varsa güncelle, yoksa ekle
+function closeEditInstitutionModal() {
+    document.getElementById('editInstitutionModal').classList.add('hidden');
+    currentAirtableId = null;
+}
+
 </script>
 
 </body>
