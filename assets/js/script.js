@@ -77,11 +77,20 @@ let isAuthChecking = true;
 let authCheckPromise = null;
 let authInitialized = false;
 
+function getAuthRoot() {
+    return document.getElementById('headerAuthRoot');
+}
+
+function getAuthElement(id) {
+    const authRoot = getAuthRoot();
+    return authRoot?.querySelector(`#${id}`) || document.getElementById(id);
+}
+
 // ====================== AUTH LOADING GÖSTERGESİ ======================
 function showAuthLoading(show) {
-    const loadingEl = document.getElementById('authLoading');
-    const notLoggedInEl = document.getElementById('authNotLoggedIn');
-    const loggedInEl = document.getElementById('authLoggedIn');
+    const loadingEl = getAuthElement('authLoading');
+    const notLoggedInEl = getAuthElement('authNotLoggedIn');
+    const loggedInEl = getAuthElement('authLoggedIn');
     
     if (!loadingEl) return;
     
@@ -355,9 +364,9 @@ function updateAuthUI(isLoggedIn) {
         authInitialized 
     });
     
-    const authLoading = document.getElementById('authLoading');
-    const authNotLoggedIn = document.getElementById('authNotLoggedIn');
-    const authLoggedIn = document.getElementById('authLoggedIn');
+    const authLoading = getAuthElement('authLoading');
+    const authNotLoggedIn = getAuthElement('authNotLoggedIn');
+    const authLoggedIn = getAuthElement('authLoggedIn');
     
     // authNotLoggedIn ve authLoggedIn zorunlu, authLoading opsiyonel
     if (!authNotLoggedIn || !authLoggedIn) {
@@ -379,14 +388,14 @@ function updateAuthUI(isLoggedIn) {
         const avatarColor = getAvatarColor(currentUser.full_name || currentUser.email);
         const fullName = currentUser.full_name || 'Kullanıcı';
         
-        const userAvatar = document.getElementById('userAvatar');
-        const userName = document.getElementById('userName');
-        const dropdownAvatar = document.getElementById('dropdownAvatar');
-        const dropdownName = document.getElementById('dropdownName');
-        const dropdownEmail = document.getElementById('dropdownEmail');
-        const dropdownInstitution = document.getElementById('dropdownInstitution');
-        const dropdownRole = document.getElementById('dropdownRole');
-        const adminMenuLink = document.getElementById('adminMenuLink');
+        const userAvatar = getAuthElement('userAvatar');
+        const userName = getAuthElement('userName');
+        const dropdownAvatar = getAuthElement('dropdownAvatar');
+        const dropdownName = getAuthElement('dropdownName');
+        const dropdownEmail = getAuthElement('dropdownEmail');
+        const dropdownInstitution = getAuthElement('dropdownInstitution');
+        const dropdownRole = getAuthElement('dropdownRole');
+        const adminMenuLink = getAuthElement('adminMenuLink');
         
         if (userAvatar) {
             userAvatar.textContent = initials;
@@ -439,8 +448,8 @@ function updateAuthUI(isLoggedIn) {
         const userBadge = document.getElementById('userBadge');
         if (userBadge) userBadge.style.display = 'none';
         
-        const userMenuBtn = document.getElementById('userMenuBtn');
-        const userDropdown = document.getElementById('userDropdown');
+        const userMenuBtn = getAuthElement('userMenuBtn');
+        const userDropdown = getAuthElement('userDropdown');
         if (userMenuBtn && userDropdown && !userMenuBtn._listenerAdded) {
             userMenuBtn._listenerAdded = true;
             userMenuBtn.addEventListener('click', function(e) {
