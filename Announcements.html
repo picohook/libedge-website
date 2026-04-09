@@ -355,21 +355,38 @@ class AnnouncementManager {
         document.getElementById('sortSelect').addEventListener('change', (e) => this.handleSort(e));
     }
 
-    async loadAnnouncements() {
-        try {
-            const response = await fetch('/api/announcements');
-            if (!response.ok) throw new Error('API error');
-            const data = await response.json();
-            this.announcements = data.announcements || data;
-            this.announcements.forEach(announcement => {
-                announcement.views = viewCountCache[announcement.id] || 0;
-            });
-            this.applyFilters();
-        } catch (error) {
-            console.error('Error loading announcements:', error);
-            this.showErrorState();
+async loadAnnouncements() {
+    try {
+        const response = await fetch('/api/announcements');
+        if (!response.ok) throw new Error('API error');
+        const data = await response.json();
+        const announcements = data.announcements || data;
+        
+        // HER duyuru için worker'dan gerçek görüntülenme sayısını al
+        for (let i = 0; i < announcements.length; i++) {
+            const a = announcements[i];
+            try {
+                const res = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ page: String(a.id), action: 'get' })
+                });
+                const workerData = await res.json();
+                a.views = workerData.views || 0;
+                viewCountCache[a.id] = a.views;
+            } catch (e) {
+                console.error(`Worker get error for ${a.id}:`, e);
+                a.views = viewCountCache[a.id] || 0;
+            }
         }
+        
+        this.announcements = announcements;
+        this.applyFilters();
+    } catch (error) {
+        console.error('Error loading announcements:', error);
+        this.showErrorState();
     }
+}
 
     handleFilter(e) {
         document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -541,13 +558,19 @@ class AnnouncementManager {
         if (!announcement) return;
         
         const viewedKey = `viewed:${announcementId}`;
-        let updatedViews = announcement.views || 0;
+        let updatedViews = announcement.views;
         if (!sessionStorage.getItem(viewedKey)) {
             updatedViews = await incrementViewCount(announcementId);
             announcement.views = updatedViews;
+            viewCountCache[announcementId] = updatedViews;
             sessionStorage.setItem(viewedKey, 'true');
+            
+            // Karttaki sayıyı güncelle
             const viewElements = document.querySelectorAll(`[data-announcement-id="${announcementId}"]`);
             viewElements.forEach(el => el.textContent = updatedViews);
+        } else {
+            // Cache'den al
+            updatedViews = viewCountCache[announcementId] || announcement.views;
         }
         
         const categoryInfo = this.getCategoryInfo(announcement.category);
