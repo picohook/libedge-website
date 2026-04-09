@@ -4,8 +4,8 @@ compatibility_date = "2025-10-12"
 
 [[durable_objects.bindings]]
 name = "COUNTER"
-class_name = "MyDurableObject"
+class_name = "Counter"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["MyDurableObject"]
+new_classes = ["Counter"]
