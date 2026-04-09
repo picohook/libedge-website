@@ -525,7 +525,7 @@ class AnnouncementManager {
         return categoryMap[category] || categoryMap.general;
     }
 
-    async openModal(announcementId) {async openModal(announcementId) {
+    async openModal(announcementId) {
     const announcement = this.announcements.find(a => a.id == announcementId);
     if (!announcement) return;
     
