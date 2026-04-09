@@ -1,7 +1,0 @@
-name = "view-counter"
-main = "index.js"
-compatibility_date = "2025-10-12"
-
-[[kv_namespaces]]
-binding = "VIEW_COUNTS" # Worker kodunda kullanılacak isim (env.KV)
-id = "13f653d049d248cba1bdba46345302b4"
