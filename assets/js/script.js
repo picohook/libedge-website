@@ -83,7 +83,7 @@ function getAuthRoot() {
 
 function getAuthElement(id) {
     const authRoot = getAuthRoot();
-    return authRoot?.querySelector(`#${id}`) || document.getElementById(id);
+    return authRoot?.querySelector(`#${id}`) || null;
 }
 
 // ====================== AUTH LOADING GÖSTERGESİ ======================
@@ -91,15 +91,19 @@ function showAuthLoading(show) {
     const loadingEl = getAuthElement('authLoading');
     const notLoggedInEl = getAuthElement('authNotLoggedIn');
     const loggedInEl = getAuthElement('authLoggedIn');
-    
-    if (!loadingEl) return;
-    
+
     if (show) {
-        loadingEl.classList.remove('hidden');
+        if (loadingEl) {
+            loadingEl.classList.remove('hidden');
+            loadingEl.classList.add('flex');
+        }
         if (notLoggedInEl) notLoggedInEl.classList.add('hidden');
         if (loggedInEl) loggedInEl.classList.add('hidden');
     } else {
-        loadingEl.classList.add('hidden');
+        if (loadingEl) {
+            loadingEl.classList.add('hidden');
+            loadingEl.classList.remove('flex');
+        }
     }
 }
 
