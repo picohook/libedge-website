@@ -177,14 +177,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- "Brochures" Link Flips All Cards ---
+    let _flipIgnoreNextOutside = false;
+
     function bindBrochuresFlip() {
         const pg = document.getElementById('products-grid');
         if (!pg) return;
+        // Sadece nav / footer'daki Broşürler linkleri — kart arkasındaki "Broşür" butonları hariç
         document.querySelectorAll('a[href="#brochures"], a[href*="brochures"]').forEach(link => {
             if (link._brochuresFlipBound) return;
+            if (link.closest('.flip-back')) return; // kart arkasındaki butonları atla
             link._brochuresFlipBound = true;
             link.addEventListener('click', function(e) {
                 e.preventDefault();
+                _flipIgnoreNextOutside = true; // click-outside'ın bu tıklamayı iptal etmesini engelle
                 pg.classList.add('flip-all-cards');
                 const productsSection = document.getElementById('products');
                 if (productsSection) productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -197,8 +202,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Click Outside / Filter Click Removes Global Flip ---
     document.addEventListener('click', function(e) {
+        if (_flipIgnoreNextOutside) { _flipIgnoreNextOutside = false; return; }
         if (productsGrid && !e.target.closest('.flip-card') &&
-            !e.target.closest('a[href="#brochures"]') &&
             !e.target.closest('.subject-btn')) {
             productsGrid.classList.remove('flip-all-cards');
         }
