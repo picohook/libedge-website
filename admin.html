@@ -459,18 +459,6 @@
     </div>
 
     <!-- Institutions Tab -->
-
-    <!-- Filtreler -->
-<div class="flex flex-wrap gap-2 mb-4">
-    <input type="text" id="institutionSearchInput" placeholder="Kurum ara..." 
-           class="border rounded px-3 py-1.5 text-sm flex-1 min-w-[200px]" oninput="filterInstitutions()">
-    <select id="institutionSourceFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterInstitutions()">
-        <option value="all">Tüm Kaynaklar</option>
-        <option value="d1">Yerel (D1)</option>
-        <option value="airtable">Airtable</option>
-    </select>
-</div>
-
     <div id="tab-institutions" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
@@ -483,6 +471,16 @@
                         <i class="fas fa-plus mr-2"></i>Kurum Ekle
                     </button>
                 </div>
+            </div>
+            <!-- Filtreler -->
+            <div class="flex flex-wrap gap-2 mb-4">
+                <input type="text" id="institutionSearchInput" placeholder="Kurum ara..."
+                       class="border rounded px-3 py-1.5 text-sm flex-1 min-w-[200px]" oninput="filterInstitutions()">
+                <select id="institutionSourceFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterInstitutions()">
+                    <option value="all">Tüm Kaynaklar</option>
+                    <option value="d1">Yerel (D1)</option>
+                    <option value="airtable">Airtable</option>
+                </select>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
