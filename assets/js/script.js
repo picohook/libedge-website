@@ -177,15 +177,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- "Brochures" Link Flips All Cards ---
-    const brochuresLink = document.querySelector('a[href="#brochures"]');
-    if (brochuresLink && productsGrid) {
-        brochuresLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            productsGrid.classList.add('flip-all-cards');
-            const productsSection = document.getElementById('products');
-            if (productsSection) window.scrollTo({ top: productsSection.offsetTop - 80, behavior: 'smooth' });
+    function bindBrochuresFlip() {
+        const pg = document.getElementById('products-grid');
+        if (!pg) return;
+        document.querySelectorAll('a[href="#brochures"], a[href*="brochures"]').forEach(link => {
+            if (link._brochuresFlipBound) return;
+            link._brochuresFlipBound = true;
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                pg.classList.add('flip-all-cards');
+                const productsSection = document.getElementById('products');
+                if (productsSection) productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                setTimeout(() => pg.classList.remove('flip-all-cards'), 4000);
+            });
         });
     }
+    bindBrochuresFlip();
+    document.addEventListener('header:ready', bindBrochuresFlip);
 
     // --- Click Outside / Filter Click Removes Global Flip ---
     document.addEventListener('click', function(e) {
