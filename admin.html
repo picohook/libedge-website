@@ -2323,21 +2323,21 @@ form.addEventListener('submit', (e) => {
 // ====================== KURUMLAR YÖNETİMİ ======================
 
 const INSTITUTION_CATEGORIES = [
-    { value: 'university',      label: 'University' },
-    { value: 'corporate',       label: 'Corporate' },
-    { value: 'government',      label: 'Government' },
-    { value: 'publisher',       label: 'Publisher' },
-    { value: 'sub_distributor', label: 'Sub-distributor' },
-    { value: 'k12',             label: 'K-12' },
+    { value: 'University',      label: 'University' },
+    { value: 'Corporate',       label: 'Corporate' },
+    { value: 'Government',      label: 'Government' },
+    { value: 'Publisher',       label: 'Publisher' },
+    { value: 'Sub-distributor', label: 'Sub-distributor' },
+    { value: 'K-12',            label: 'K-12' },
 ];
 
 const CATEGORY_BADGE = {
-    university:      'bg-blue-100 text-blue-800',
-    corporate:       'bg-purple-100 text-purple-800',
-    government:      'bg-yellow-100 text-yellow-800',
-    publisher:       'bg-green-100 text-green-800',
-    sub_distributor: 'bg-orange-100 text-orange-800',
-    k12:             'bg-pink-100 text-pink-800',
+    'University':      'bg-blue-100 text-blue-800',
+    'Corporate':       'bg-purple-100 text-purple-800',
+    'Government':      'bg-yellow-100 text-yellow-800',
+    'Publisher':       'bg-green-100 text-green-800',
+    'Sub-distributor': 'bg-orange-100 text-orange-800',
+    'K-12':            'bg-pink-100 text-pink-800',
 };
 
 function categoryLabel(value) {
@@ -2349,7 +2349,7 @@ function categoryBadgeHtml(value) {
     return `<span class="px-2 py-0.5 rounded text-xs font-medium ${cls}">${categoryLabel(value)}</span>`;
 }
 
-function categoryOptionsHtml(selected = 'university') {
+function categoryOptionsHtml(selected = 'University') {
     return INSTITUTION_CATEGORIES.map(c =>
         `<option value="${c.value}"${c.value === selected ? ' selected' : ''}>${c.label}</option>`
     ).join('');
@@ -2457,7 +2457,7 @@ function filterInstitutions() {
 }
 function openInstitutionModal() {
     document.getElementById('institutionForm').reset();
-    document.getElementById('institutionCategory').innerHTML = categoryOptionsHtml('university');
+    document.getElementById('institutionCategory').innerHTML = categoryOptionsHtml('University');
     document.getElementById('institutionModal').classList.remove('hidden');
 }
 function closeInstitutionModal() {
@@ -2468,7 +2468,7 @@ function openEditInstitutionModal(id, name, domain, category) {
     document.getElementById('editInstitutionId').value = id;
     document.getElementById('editInstitutionName').value = name;
     document.getElementById('editInstitutionDomain').value = domain;
-    document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml(category || 'university');
+    document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml(category || 'University');
     const nameInput = document.getElementById('editInstitutionName');
     const isSuper = currentAdmin?.role === 'super_admin';
     nameInput.disabled = !isSuper;
@@ -2562,7 +2562,7 @@ function parseBulkPaste() {
         const name = parts[0] || '';
         const domain = parts[1] || '';
         const rawCat = parts[2] || '';
-        const category = validCategories.includes(rawCat) ? rawCat : 'university';
+        const category = validCategories.includes(rawCat) ? rawCat : 'University';
         return `<tr class="border-t border-gray-100">
             <td class="px-3 py-1">${escapeHtml(name)}</td>
             <td class="px-3 py-1 text-gray-500">${escapeHtml(domain)}</td>
@@ -2601,7 +2601,7 @@ async function submitBulkInstitutions() {
         return {
             name: cells[0]?.textContent.trim() || '',
             domain: cells[1]?.textContent.trim() || '',
-            category: cells[2]?.querySelector('select')?.value || 'university'
+            category: cells[2]?.querySelector('select')?.value || 'University'
         };
     }).filter(e => e.name.length > 0);
 
@@ -2930,7 +2930,7 @@ function editAirtableAccount(id, name, category) {
     document.getElementById('editInstitutionId').value = '';
     document.getElementById('editInstitutionName').value = name;
     document.getElementById('editInstitutionDomain').value = '';
-    document.getElementById('editInstitutionCategory').value = category || 'university';
+    document.getElementById('editInstitutionCategory').value = category || 'University';
     document.getElementById('editInstitutionModal').classList.remove('hidden');
 }
 
