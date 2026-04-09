@@ -1923,7 +1923,7 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
             } else {
                 // İsim çakışması var mı?
                 const nameConflict = await db.prepare(
-                    `SELECT id FROM institutions WHERE name = ? AND airtable_id IS NULL`
+                    `SELECT id FROM institutions WHERE name = ?`
                 ).bind(name).first();
 
                 if (nameConflict) {
