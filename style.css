@@ -3,7 +3,6 @@
             font-family: 'Inter', sans-serif;
             color: #220f60;
             overflow-x: hidden;
-            overflow-y: auto;  /* ← BU SATIR EKLENECEK */
         }
 
         .bg-primary {
