@@ -2340,13 +2340,20 @@ const CATEGORY_BADGE = {
     'K-12':            'bg-pink-100 text-pink-800',
 };
 
+function normalizeCategory(value) {
+    if (!value) return '';
+    return INSTITUTION_CATEGORIES.find(c => c.value.toLowerCase() === value.toLowerCase())?.value || value;
+}
+
 function categoryLabel(value) {
-    return INSTITUTION_CATEGORIES.find(c => c.value === value)?.label || value || '-';
+    const normalized = normalizeCategory(value);
+    return INSTITUTION_CATEGORIES.find(c => c.value === normalized)?.label || normalized || '-';
 }
 
 function categoryBadgeHtml(value) {
-    const cls = CATEGORY_BADGE[value] || 'bg-gray-100 text-gray-700';
-    return `<span class="px-2 py-0.5 rounded text-xs font-medium ${cls}">${categoryLabel(value)}</span>`;
+    const normalized = normalizeCategory(value);
+    const cls = CATEGORY_BADGE[normalized] || 'bg-gray-100 text-gray-700';
+    return `<span class="px-2 py-0.5 rounded text-xs font-medium ${cls}">${categoryLabel(normalized)}</span>`;
 }
 
 function categoryOptionsHtml(selected = 'University') {
@@ -2426,14 +2433,14 @@ function renderInstitutions(institutions) {
                 ${escapeHtml(inst.displayName || inst.name)} 
                 ${inst.source === 'airtable' ? '<span class="text-xs text-blue-500 ml-1">(Airtable)</span>' : ''}
             </td>
-            <td class="px-4 py-2">${escapeHtml(inst.category || inst.industry || '-')}</td>
+            <td class="px-4 py-2">${escapeHtml(categoryLabel(inst.category || inst.industry || ''))}</td>
             <td class="px-4 py-2">${escapeHtml(inst.domain || '-')}</td>
             <td class="px-4 py-2">${inst.user_count ?? '-'}</td>
             <td class="px-4 py-2">${inst.file_count ?? '-'}</td>
             <td class="px-4 py-2">
                 ${inst.source === 'airtable' ? 
                     `<button onclick="editAirtableAccount('${inst.id}', '${escapeHtml(inst.displayName)}', '${escapeHtml(inst.category || inst.industry || '')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>` : 
-                    `<button onclick="openEditInstitutionModal(${inst.id}, '${escapeHtml(inst.name)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(inst.category || '')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>`}
+                    `<button onclick="openEditInstitutionModal(${inst.id}, '${escapeHtml(inst.name)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(normalizeCategory(inst.category || ''))}')" class="text-blue-600"><i class="fas fa-edit"></i></button>`}
              </td>
          </tr>
     `).join('');
