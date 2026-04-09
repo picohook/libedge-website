@@ -231,7 +231,8 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.innerHTML = 'Gönderiliyor...';
 
             try {
-                const response = await fetch("https://form-handler.agursel.workers.dev/", {
+                const apiBase = window.API_BASE || '';
+                const response = await fetch(`${apiBase}/api/contact`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(formDataObj)

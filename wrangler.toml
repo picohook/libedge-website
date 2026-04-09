@@ -15,6 +15,8 @@ bucket_name = "libedge-files"
 
 # JWT_SECRET: npx wrangler secret put JWT_SECRET
 # R2_PUBLIC_URL: npx wrangler secret put R2_PUBLIC_URL
+# AIRTABLE_PAT: npx wrangler secret put AIRTABLE_PAT
+# AIRTABLE_BASE_ID: npx wrangler secret put AIRTABLE_BASE_ID
 
 # Staging environment
 [env.staging]

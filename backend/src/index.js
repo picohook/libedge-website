@@ -1695,19 +1695,20 @@ app.delete('/api/admin/announcements/:id', async (c) => {
 // Account bul veya oluştur
 async function findOrCreateAccount(env, accountName, ip) {
     if (!accountName) return null;
-    
+
     const url = `https://api.airtable.com/v0/${env.AIRTABLE_BASE_ID}/Accounts`;
-    
-    // Önce var mı kontrol et
-    const searchRes = await fetch(`${url}?filterByFormula={Account Name}="${encodeURIComponent(accountName)}"`, {
+
+    // Önce var mı kontrol et (formül tümünü encode et)
+    const searchFormula = `{Account Name}="${accountName}"`;
+    const searchRes = await fetch(`${url}?filterByFormula=${encodeURIComponent(searchFormula)}`, {
         headers: { 'Authorization': `Bearer ${env.AIRTABLE_PAT}` }
     });
     const searchData = await searchRes.json();
-    
+
     if (searchData.records && searchData.records.length > 0) {
         return searchData.records[0].id;
     }
-    
+
     // Yoksa oluştur
     const fields = {
         "Account Name": accountName,
@@ -1715,7 +1716,7 @@ async function findOrCreateAccount(env, accountName, ip) {
         "Industry": "Education",
         "IP Range": ip || ""
     };
-    
+
     const createRes = await fetch(url, {
         method: 'POST',
         headers: {
@@ -1725,31 +1726,33 @@ async function findOrCreateAccount(env, accountName, ip) {
         body: JSON.stringify({ fields })
     });
     const createData = await createRes.json();
-    return createData.records?.[0]?.id || null;
+    // Tek kayıt POST'u { id, fields, createdTime } döner (records[] değil)
+    return createData.id || null;
 }
 
 // Contact bul veya oluştur
 async function findOrCreateContact(env, contactData, accountId) {
     const url = `https://api.airtable.com/v0/${env.AIRTABLE_BASE_ID}/Contacts`;
-    
+
     // Email ile var mı kontrol et
     if (contactData.email) {
-        const searchRes = await fetch(`${url}?filterByFormula={Email}="${encodeURIComponent(contactData.email)}"`, {
+        const searchFormula = `{Email}="${contactData.email}"`;
+        const searchRes = await fetch(`${url}?filterByFormula=${encodeURIComponent(searchFormula)}`, {
             headers: { 'Authorization': `Bearer ${env.AIRTABLE_PAT}` }
         });
         const searchData = await searchRes.json();
-        
+
         if (searchData.records && searchData.records.length > 0) {
             return searchData.records[0].id;
         }
     }
-    
+
     // Ad soyad ayır
     const fullName = contactData.name || '';
     const spaceIndex = fullName.indexOf(' ');
     const firstName = spaceIndex > 0 ? fullName.substring(0, spaceIndex) : fullName;
     const lastName = spaceIndex > 0 ? fullName.substring(spaceIndex + 1) : '';
-    
+
     const fields = {
         "Contact Name": fullName,
         "First Name": firstName,
@@ -1757,11 +1760,11 @@ async function findOrCreateContact(env, contactData, accountId) {
         "Email": contactData.email || '',
         "Title": contactData.title || "Kütüphane Yetkilisi"
     };
-    
+
     if (accountId) {
         fields["Account"] = [accountId];
     }
-    
+
     const createRes = await fetch(url, {
         method: 'POST',
         headers: {
@@ -1771,24 +1774,23 @@ async function findOrCreateContact(env, contactData, accountId) {
         body: JSON.stringify({ fields })
     });
     const createData = await createRes.json();
-    return createData.records?.[0]?.id || null;
+    // Tek kayıt POST'u { id, fields, createdTime } döner
+    return createData.id || null;
 }
 
 // Ana fonksiyon - form verilerini Airtable'a gönder
 async function sendToAirtable(env, formData, formType, ip) {
     try {
-        // 1. Account'u bul veya oluştur
         const accountName = formData.institution || formData.company || '';
         const accountId = await findOrCreateAccount(env, accountName, ip);
-        
-        // 2. Contact'u bul veya oluştur
+
         const contactData = {
             name: formData.name,
             email: formData.email,
             title: formData.title || "Kütüphane Yetkilisi"
         };
         await findOrCreateContact(env, contactData, accountId);
-        
+
         console.log(`✅ Airtable: ${formType} talebi işlendi - Kurum: ${accountName}`);
         return true;
     } catch (err) {
@@ -1796,5 +1798,31 @@ async function sendToAirtable(env, formData, formType, ip) {
         return false;
     }
 }
+
+// ====================== CONTACT FORM ENDPOINT ======================
+
+app.post('/api/contact', async (c) => {
+    try {
+        const body = await c.req.json();
+        const { name, email, formType } = body;
+
+        if (!name || !email) {
+            return c.json({ error: 'Ad ve e-posta zorunludur.' }, 400);
+        }
+
+        const ip = c.req.header('CF-Connecting-IP') || '';
+        const type = formType || 'contact';
+
+        // Airtable'a gönder (hata olsa bile kullanıcıya başarı dön)
+        sendToAirtable(c.env, body, type, ip).catch(err =>
+            console.error('Airtable background error:', err)
+        );
+
+        return c.json({ success: true });
+    } catch (err) {
+        console.error('Contact endpoint error:', err);
+        return c.json({ error: err.message }, 500);
+    }
+});
 
 export default app;
