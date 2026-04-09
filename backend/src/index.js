@@ -1045,6 +1045,46 @@ app.delete('/api/admin/institution-subscription/:id', async (c) => {
   return c.json({ success: true });
 });
 
+
+// GET /api/admin/airtable/accounts
+app.get('/api/admin/airtable/accounts', async (c) => {
+    const auth = await requireAuth(c);
+    if (auth.response) return auth.response;
+    if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') {
+        return c.json({ error: 'Yetkisiz' }, 403);
+    }
+    
+    const baseId = c.env.AIRTABLE_BASE_ID;
+    const pat = c.env.AIRTABLE_PAT;
+    
+    if (!baseId || !pat) {
+        return c.json({ error: 'Airtable ayarları eksik' }, 500);
+    }
+    
+    const url = `https://api.airtable.com/v0/${baseId}/Accounts`;
+    
+    try {
+        const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${pat}` }
+        });
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Airtable error:', data.error);
+            return c.json({ error: data.error.message }, 500);
+        }
+        
+        return c.json({
+            success: true,
+            records: data.records || [],
+            total: data.records?.length || 0
+        });
+    } catch (err) {
+        console.error('Airtable fetch error:', err);
+        return c.json({ error: err.message }, 500);
+    }
+});
+
 // ====================== KURUM DOSYA YÖNETİMİ ======================
 
 app.get('/api/admin/my-institution', async (c) => {
@@ -1822,6 +1862,51 @@ app.post('/api/contact', async (c) => {
         return c.json({ success: true });
     } catch (err) {
         console.error('Contact endpoint error:', err);
+        return c.json({ error: err.message }, 500);
+    }
+});
+
+
+// PUT /api/admin/airtable/accounts/:id
+app.put('/api/admin/airtable/accounts/:id', async (c) => {
+    const auth = await requireAuth(c);
+    if (auth.response) return auth.response;
+    if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') {
+        return c.json({ error: 'Yetkisiz' }, 403);
+    }
+    
+    const recordId = c.req.param('id');
+    const { name, region, industry } = await c.req.json();
+    
+    const baseId = c.env.AIRTABLE_BASE_ID;
+    const pat = c.env.AIRTABLE_PAT;
+    
+    const url = `https://api.airtable.com/v0/${baseId}/Accounts/${recordId}`;
+    
+    const fields = {};
+    if (name) fields['Account Name'] = name;
+    if (region) fields['Region'] = region;
+    if (industry) fields['Industry'] = industry;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${pat}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ fields })
+        });
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Airtable update error:', data.error);
+            return c.json({ error: data.error.message }, 500);
+        }
+        
+        return c.json({ success: true, record: data });
+    } catch (err) {
+        console.error('Airtable fetch error:', err);
         return c.json({ error: err.message }, 500);
     }
 });
