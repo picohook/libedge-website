@@ -464,6 +464,9 @@
             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <h3 class="text-lg font-semibold">Kurumlar</h3>
                 <div class="flex gap-2">
+                    <button type="button" id="syncAirtableBtn" onclick="syncAirtableToD1()" class="btn bg-green-600 text-white hover:bg-green-700">
+                        <i class="fas fa-sync mr-2"></i>Airtable'dan Senkronize Et
+                    </button>
                     <button type="button" onclick="openBulkInstitutionModal()" class="btn bg-gray-200 text-gray-700">
                         <i class="fas fa-list mr-2"></i>Toplu Ekle
                     </button>
@@ -2462,6 +2465,30 @@ function filterInstitutions() {
     
     renderInstitutions(filtered);
 }
+async function syncAirtableToD1() {
+    const btn = document.getElementById('syncAirtableBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Senkronize ediliyor...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/sync/airtable-to-d1`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Sync hatası');
+
+        showToast(`Sync tamamlandı: ${data.created} eklendi, ${data.updated} güncellendi, ${data.skipped} atlandı`, 'success');
+        loadInstitutions();
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sync mr-2"></i>Airtable\'dan Senkronize Et';
+    }
+}
+
 function openInstitutionModal() {
     document.getElementById('institutionForm').reset();
     document.getElementById('institutionCategory').innerHTML = categoryOptionsHtml('University');
