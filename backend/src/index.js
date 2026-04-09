@@ -1726,7 +1726,7 @@ async function findOrCreateAccount(env, accountName, ip) {
         body: JSON.stringify({ fields })
     });
     const createData = await createRes.json();
-    // Tek kayıt POST'u { id, fields, createdTime } döner (records[] değil)
+    if (!createRes.ok) console.error('Airtable Account create error:', JSON.stringify(createData));
     return createData.id || null;
 }
 
@@ -1774,7 +1774,7 @@ async function findOrCreateContact(env, contactData, accountId) {
         body: JSON.stringify({ fields })
     });
     const createData = await createRes.json();
-    // Tek kayıt POST'u { id, fields, createdTime } döner
+    if (!createRes.ok) console.error('Airtable Contact create error:', JSON.stringify(createData));
     return createData.id || null;
 }
 
