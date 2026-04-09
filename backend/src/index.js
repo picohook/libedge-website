@@ -1355,7 +1355,6 @@ app.get('/api/institution/folder/:id', async (c) => {
   }
 });
 
-export default app;
 // ====================== DOSYA UPLOAD (R2) ======================
 
 app.post('/api/upload', async (c) => {
@@ -1797,3 +1796,5 @@ async function sendToAirtable(env, formData, formType, ip) {
         return false;
     }
 }
+
+export default app;
