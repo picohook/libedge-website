@@ -9,6 +9,7 @@ export default {
     // --- Güvenli CORS Alanları ---
     const allowedOrigins = [
       'https://libedge-website.pages.dev',
+      'https://staging.libedge-website.pages.dev',  // ← STAGING EKLENDİ
       'http://localhost:3000',
       'http://127.0.0.1:3000'
     ];
