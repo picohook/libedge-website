@@ -2402,9 +2402,9 @@ async function loadInstitutions() {
                 source: 'airtable',
                 displayName: a.fields['Account Name'],
                 category: a.fields['Industry'] || '-',
-                domain: '-',
-                user_count: '-',
-                file_count: '-',
+                domain: a.fields['Domain'] || '',
+                user_count: '',
+                file_count: '',
                 id: a.id,
                 editable: false,
                 createdTime: a.createdTime
