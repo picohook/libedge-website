@@ -459,6 +459,18 @@
     </div>
 
     <!-- Institutions Tab -->
+
+    <!-- Filtreler -->
+<div class="flex flex-wrap gap-2 mb-4">
+    <input type="text" id="institutionSearchInput" placeholder="Kurum ara..." 
+           class="border rounded px-3 py-1.5 text-sm flex-1 min-w-[200px]" oninput="filterInstitutions()">
+    <select id="institutionSourceFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterInstitutions()">
+        <option value="all">Tüm Kaynaklar</option>
+        <option value="d1">Yerel (D1)</option>
+        <option value="airtable">Airtable</option>
+    </select>
+</div>
+
     <div id="tab-institutions" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
@@ -2349,37 +2361,102 @@ function categoryOptionsHtml(selected = 'university') {
 document.getElementById('institutionCategory').innerHTML = categoryOptionsHtml();
 document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml();
 
+let allInstitutions = [];
+
 async function loadInstitutions() {
     const tbody = document.getElementById('institutionsList');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Yükleniyor...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Yükleniyor...</td</tr>';
+    
     try {
-        const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
-        const institutions = await res.json();
-        if (!institutions.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">Henüz kurum yok</td></tr>';
-            return;
-        }
-        const isSuper = currentAdmin?.role === 'super_admin';
-        const isAdmin = currentAdmin?.role === 'admin';
-        const adminInstitution = currentAdmin?.institution || '';
-        tbody.innerHTML = institutions.map(i => {
-            const canEdit = isSuper || (isAdmin && i.name === adminInstitution);
-            const canDelete = isSuper;
-            return `<tr>
-                <td class="px-4 py-2">${escapeHtml(i.name)}</td>
-                <td class="px-4 py-2">${categoryBadgeHtml(i.category)}</td>
-                <td class="px-4 py-2">${escapeHtml(i.domain || '-')}</td>
-                <td class="px-4 py-2">${i.user_count ?? '-'}</td>
-                <td class="px-4 py-2">${i.file_count ?? '-'}</td>
-                <td class="px-4 py-2">
-                    ${canEdit ? `<button type="button" onclick="openEditInstitutionModal(${i.id}, '${escapeHtml(i.name)}', '${escapeHtml(i.domain || '')}', '${escapeHtml(i.category || 'university')}')" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>` : ''}
-                    ${canDelete ? `<button type="button" onclick="deleteInstitution(${i.id}, '${escapeHtml(i.name)}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>` : ''}
-                </td>
-            </tr>`;
-        }).join('');
-    } catch (e) { console.error('loadInstitutions error:', e); }
+        // D1'den kurumları al
+        const d1Res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
+        const d1Institutions = await d1Res.json();
+        
+        // Airtable'dan Accounts al
+        const airtableRes = await fetch('/api/admin/airtable/accounts', { credentials: 'include' });
+        const airtableData = await airtableRes.json();
+        const airtableAccounts = airtableData.records || [];
+        
+        // Birleştir
+        allInstitutions = [
+            ...d1Institutions.map(i => ({ 
+                ...i, 
+                source: 'd1',
+                displayName: i.name,
+                category: i.category,
+                domain: i.domain,
+                user_count: i.user_count,
+                file_count: i.file_count,
+                id: i.id,
+                editable: true
+            })),
+            ...airtableAccounts.map(a => ({ 
+                name: a.fields['Account Name'],
+                region: a.fields['Region'],
+                industry: a.fields['Industry'],
+                source: 'airtable',
+                displayName: a.fields['Account Name'],
+                category: a.fields['Industry'] || '-',
+                domain: '-',
+                user_count: '-',
+                file_count: '-',
+                id: a.id,
+                editable: false,
+                createdTime: a.createdTime
+            }))
+        ];
+        
+        renderInstitutions(allInstitutions);
+        
+    } catch (err) {
+        console.error('loadInstitutions error:', err);
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-4">Yüklenirken hata oluştu</td</tr>';
+    }
 }
 
+function renderInstitutions(institutions) {
+    const tbody = document.getElementById('institutionsList');
+    
+    if (institutions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">Kurum bulunamadı</td</tr>';
+        return;
+    }
+    
+    tbody.innerHTML = institutions.map(inst => `
+        <tr>
+            <td class="px-4 py-2">
+                ${escapeHtml(inst.displayName || inst.name)} 
+                ${inst.source === 'airtable' ? '<span class="text-xs text-blue-500 ml-1">(Airtable)</span>' : ''}
+            </td>
+            <td class="px-4 py-2">${escapeHtml(inst.category || inst.industry || '-')}</td>
+            <td class="px-4 py-2">${escapeHtml(inst.domain || '-')}</td>
+            <td class="px-4 py-2">${inst.user_count ?? '-'}</td>
+            <td class="px-4 py-2">${inst.file_count ?? '-'}</td>
+            <td class="px-4 py-2">
+                ${inst.editable ? 
+                    `<button onclick="editInstitution(${inst.id})" class="text-blue-600"><i class="fas fa-edit"></i></button>` : 
+                    '<span class="text-gray-400 text-xs">(Airtable)</span>'}
+             </td>
+         </tr>
+    `).join('');
+}
+
+function filterInstitutions() {
+    const searchTerm = document.getElementById('institutionSearchInput').value.toLowerCase();
+    const sourceFilter = document.getElementById('institutionSourceFilter').value;
+    
+    const filtered = allInstitutions.filter(inst => {
+        const matchSearch = !searchTerm || 
+            (inst.displayName || inst.name || '').toLowerCase().includes(searchTerm) ||
+            (inst.category || inst.industry || '').toLowerCase().includes(searchTerm);
+        
+        const matchSource = sourceFilter === 'all' || inst.source === sourceFilter;
+        
+        return matchSearch && matchSource;
+    });
+    
+    renderInstitutions(filtered);
+}
 function openInstitutionModal() {
     document.getElementById('institutionForm').reset();
     document.getElementById('institutionCategory').innerHTML = categoryOptionsHtml('university');
