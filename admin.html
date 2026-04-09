@@ -69,6 +69,7 @@
                 <a href="#" class="sidebar-link" data-tab="requests"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
                 <a href="#" class="sidebar-link" data-tab="institutions" id="institutionsTab"><i class="fas fa-building w-5"></i><span>Kurumlar</span></a>
                 <a href="#" class="sidebar-link" data-tab="my-institution" id="myInstitutionTab" style="display:none"><i class="fas fa-university w-5"></i><span>Kurumum</span></a>
+                <a href="#" class="sidebar-link" data-tab="announcements"><i class="fas fa-bullhorn w-5"></i><span>Duyurular</span></a>
             </nav>
             <div class="absolute bottom-6 left-6">
                 <a href="index.html" class="sidebar-link-exit"><i class="fas fa-arrow-left w-5"></i><span>Siteye Dön</span></a>
@@ -549,6 +550,68 @@
         </div>
     </div>
 </div>
+    </div>
+
+    <!-- Announcements Tab -->
+    <div id="tab-announcements" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold">Duyurular</h3>
+                <button onclick="openAnnouncementModal()" class="btn btn-primary text-sm">
+                    <i class="fas fa-plus mr-1"></i>Yeni Duyuru
+                </button>
+            </div>
+            <div id="announcementsList">
+                <p class="text-center text-gray-400 py-8">Yükleniyor...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Announcement Modal -->
+<div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <h3 id="announcementModalTitle" class="text-xl font-bold mb-4">Yeni Duyuru</h3>
+        <form id="announcementForm">
+            <input type="hidden" id="announcementId">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Başlık</label>
+                <input type="text" id="announcementTitle" placeholder="Duyuru başlığı" class="w-full border p-2 rounded" required>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                    <select id="announcementCategory" class="w-full border p-2 rounded">
+                        <option value="general">📢 Genel</option>
+                        <option value="urgent">🚨 Acil</option>
+                        <option value="new-product">🎯 Yeni Ürün</option>
+                        <option value="product-update">🔄 Güncelleme</option>
+                        <option value="event">📅 Etkinlik</option>
+                        <option value="maintenance">🔧 Bakım</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Öncelik</label>
+                    <select id="announcementPriority" class="w-full border p-2 rounded">
+                        <option value="medium">🟡 Orta</option>
+                        <option value="high">🔥 Yüksek</option>
+                        <option value="low">🟢 Düşük</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">İçerik</label>
+                <textarea id="announcementContent" rows="6" placeholder="Duyuru içeriği (Markdown destekli)" class="w-full border p-2 rounded font-mono text-sm resize-y"></textarea>
+            </div>
+            <div class="mb-4 flex items-center gap-2">
+                <input type="checkbox" id="announcementActive" checked class="rounded">
+                <label for="announcementActive" class="text-sm text-gray-700">Yayında (aktif)</label>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
+                <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 flex-1">İptal</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -1239,6 +1302,8 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 loadInstitutions();
             } else if (tab === 'my-institution') {
                 loadMyInstitution();
+            } else if (tab === 'announcements') {
+                loadAnnouncements();
             }
         }
     });
@@ -2603,7 +2668,137 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileVie
     </div>
     <div id="fileViewerBody" style="flex:1;overflow:auto;min-height:0"></div>
 </div>
- 
+
+<script>
+// ====================== DUYURU YÖNETİMİ ======================
+
+const categoryMap = {
+    'urgent': '🚨 Acil',
+    'new-product': '🎯 Yeni Ürün',
+    'product-update': '🔄 Güncelleme',
+    'event': '📅 Etkinlik',
+    'maintenance': '🔧 Bakım',
+    'general': '📢 Genel'
+};
+
+const priorityMap = {
+    'high': '🔥 Yüksek',
+    'medium': '🟡 Orta',
+    'low': '🟢 Düşük'
+};
+
+async function loadAnnouncements() {
+    const container = document.getElementById('announcementsList');
+    container.innerHTML = '<p class="text-center text-gray-400 py-8">Yükleniyor...</p>';
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
+        const data = await res.json();
+        const list = data.announcements || data || [];
+        if (!list.length) {
+            container.innerHTML = '<p class="text-center text-gray-400 py-8">Henüz duyuru yok</p>';
+            return;
+        }
+        container.innerHTML = list.map(a => `
+            <div class="border rounded-lg p-4 mb-3 ${a.is_active ? '' : 'opacity-50'}">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                            <span class="text-sm font-semibold text-gray-800">${escapeHtml(a.title)}</span>
+                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${categoryMap[a.category] || a.category}</span>
+                            <span class="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">${priorityMap[a.priority] || a.priority}</span>
+                            ${a.is_active
+                                ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Yayında</span>'
+                                : '<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Pasif</span>'}
+                        </div>
+                        <p class="text-sm text-gray-500 truncate">${escapeHtml((a.content || '').substring(0, 120))}${(a.content || '').length > 120 ? '…' : ''}</p>
+                        <p class="text-xs text-gray-400 mt-1">${new Date(a.created_at).toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric' })}</p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="editAnnouncement(${a.id})" class="text-blue-500 hover:text-blue-700" title="Düzenle">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteAnnouncement(${a.id})" class="text-red-500 hover:text-red-700" title="Sil">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('loadAnnouncements error:', err);
+        container.innerHTML = '<p class="text-center text-red-500 py-8">Duyurular yüklenirken hata oluştu</p>';
+    }
+}
+
+function openAnnouncementModal() {
+    document.getElementById('announcementModalTitle').textContent = 'Yeni Duyuru';
+    document.getElementById('announcementId').value = '';
+    document.getElementById('announcementTitle').value = '';
+    document.getElementById('announcementCategory').value = 'general';
+    document.getElementById('announcementPriority').value = 'medium';
+    document.getElementById('announcementContent').value = '';
+    document.getElementById('announcementActive').checked = true;
+    document.getElementById('announcementModal').classList.remove('hidden');
+}
+
+async function editAnnouncement(id) {
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
+        const data = await res.json();
+        const list = data.announcements || data || [];
+        const a = list.find(x => x.id === id);
+        if (!a) { showToast('Duyuru bulunamadı', 'error'); return; }
+        document.getElementById('announcementModalTitle').textContent = 'Duyuruyu Düzenle';
+        document.getElementById('announcementId').value = a.id;
+        document.getElementById('announcementTitle').value = a.title || '';
+        document.getElementById('announcementCategory').value = a.category || 'general';
+        document.getElementById('announcementPriority').value = a.priority || 'medium';
+        document.getElementById('announcementContent').value = a.content || '';
+        document.getElementById('announcementActive').checked = !!a.is_active;
+        document.getElementById('announcementModal').classList.remove('hidden');
+    } catch (err) {
+        showToast('Duyuru bilgileri alınamadı', 'error');
+    }
+}
+
+function closeAnnouncementModal() {
+    document.getElementById('announcementModal').classList.add('hidden');
+}
+
+async function deleteAnnouncement(id) {
+    if (!confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
+    const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, { method: 'DELETE', credentials: 'include' });
+    if (res.ok) { showToast('Duyuru silindi', 'success'); loadAnnouncements(); }
+    else showToast('İşlem başarısız oldu', 'error');
+}
+
+document.getElementById('announcementForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('announcementId').value;
+    const payload = {
+        title: document.getElementById('announcementTitle').value.trim(),
+        category: document.getElementById('announcementCategory').value,
+        priority: document.getElementById('announcementPriority').value,
+        content: document.getElementById('announcementContent').value.trim(),
+        is_active: document.getElementById('announcementActive').checked ? 1 : 0
+    };
+    const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+        method, credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+        showToast(id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu', 'success');
+        closeAnnouncementModal();
+        loadAnnouncements();
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'İşlem başarısız oldu', 'error');
+    }
+});
+</script>
 
 </body>
 </html>

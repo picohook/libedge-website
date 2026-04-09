@@ -1593,3 +1593,56 @@ app.get('/api/files/*', async (c) => {
 
   return new Response(object.body, { headers });
 });
+
+// ====================== DUYURU YÖNETİMİ ======================
+
+// Public: sadece aktif duyurular
+app.get('/api/announcements', async (c) => {
+  const db = c.env.DB;
+  const rows = await db.prepare(
+    `SELECT id, title, category, priority, content, created_at FROM announcements WHERE is_active = 1 ORDER BY created_at DESC`
+  ).all();
+  return c.json({ announcements: rows.results });
+});
+
+app.get('/api/admin/announcements', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const rows = await db.prepare(
+    `SELECT * FROM announcements ORDER BY created_at DESC`
+  ).all();
+  return c.json({ announcements: rows.results });
+});
+
+app.post('/api/admin/announcements', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const { title, category, priority, content, is_active } = await c.req.json();
+  if (!title?.trim()) return c.json({ error: 'Başlık zorunludur' }, 400);
+  await db.prepare(
+    `INSERT INTO announcements (title, category, priority, content, is_active, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+  ).bind(title.trim(), category || 'general', priority || 'medium', content || '', is_active ?? 1).run();
+  return c.json({ success: true });
+});
+
+app.put('/api/admin/announcements/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const id = parseInt(c.req.param('id'));
+  const { title, category, priority, content, is_active } = await c.req.json();
+  if (!title?.trim()) return c.json({ error: 'Başlık zorunludur' }, 400);
+  const result = await db.prepare(
+    `UPDATE announcements SET title=?, category=?, priority=?, content=?, is_active=?, updated_at=datetime('now') WHERE id=?`
+  ).bind(title.trim(), category || 'general', priority || 'medium', content || '', is_active ?? 1, id).run();
+  if (!result.meta?.changes) return c.json({ error: 'Duyuru bulunamadı' }, 404);
+  return c.json({ success: true });
+});
+
+app.delete('/api/admin/announcements/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const id = parseInt(c.req.param('id'));
+  await db.prepare(`DELETE FROM announcements WHERE id=?`).bind(id).run();
+  return c.json({ success: true });
+});
