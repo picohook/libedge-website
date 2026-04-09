@@ -1786,7 +1786,7 @@ async function sendToAirtable(env, formData, formType, ip) {
         const contactData = {
             name: formData.name,
             email: formData.email,
-            title: formData.title || "Kütüphane Yetkilisi"
+            title: formData.title || "Director"
         };
         await findOrCreateContact(env, contactData, accountId);
 
