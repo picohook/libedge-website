@@ -1712,7 +1712,7 @@ async function findOrCreateAccount(env, accountName, ip) {
     // Yoksa oluştur
     const fields = {
         "Account Name": accountName,
-        "Region": "Turkey",
+        "Region": "Türkiye",
         "Industry": "Education",
         "IP Range": ip || ""
     };
@@ -1754,7 +1754,6 @@ async function findOrCreateContact(env, contactData, accountId) {
     const lastName = spaceIndex > 0 ? fullName.substring(spaceIndex + 1) : '';
 
     const fields = {
-        "Contact Name": fullName,
         "First Name": firstName,
         "Last Name": lastName,
         "Email": contactData.email || '',
