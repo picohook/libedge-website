@@ -1813,9 +1813,11 @@ app.post('/api/contact', async (c) => {
         const ip = c.req.header('CF-Connecting-IP') || '';
         const type = formType || 'contact';
 
-        // Airtable'a gönder (hata olsa bile kullanıcıya başarı dön)
-        sendToAirtable(c.env, body, type, ip).catch(err =>
-            console.error('Airtable background error:', err)
+        // waitUntil: response döndükten sonra da Airtable fetch'leri tamamlanır
+        c.executionCtx.waitUntil(
+            sendToAirtable(c.env, body, type, ip).catch(err =>
+                console.error('Airtable background error:', err)
+            )
         );
 
         return c.json({ success: true });
