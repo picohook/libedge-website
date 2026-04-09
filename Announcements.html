@@ -525,56 +525,61 @@ class AnnouncementManager {
         return categoryMap[category] || categoryMap.general;
     }
 
-    async openModal(announcementId) {
-        const announcement = this.announcements.find(a => a.id === announcementId);
-        if (!announcement) return;
-        const viewedKey = `viewed:${announcementId}`;
-        let updatedViews = announcement.views || 0;
-        if (!sessionStorage.getItem(viewedKey)) {
-            updatedViews = await incrementViewCount(announcementId);
-            announcement.views = updatedViews;
-            sessionStorage.setItem(viewedKey, 'true');
-            const viewElements = document.querySelectorAll(`[data-announcement-id="${announcementId}"]`);
-            viewElements.forEach(el => el.textContent = updatedViews);
-        }
-        const categoryInfo = this.getCategoryInfo(announcement.category);
-        const date = new Date(announcement.date);
-        const formattedDate = date.toLocaleDateString('tr-TR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            weekday: 'long'
-        });
-        const contentHtml = DOMPurify.sanitize(marked.parse(announcement.full_content || announcement.summary));
-        const modalContent = document.getElementById('modalContent');
-        modalContent.innerHTML = `
-            <div class="mb-6">
-                <span class="inline-block ${categoryInfo.badgeClass} px-4 py-2 rounded-full text-sm font-medium mb-4">
-                    ${categoryInfo.icon} ${categoryInfo.text}
-                </span>
-                ${announcement.priority === 'high' ? '<span class="ml-2 bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">🔥 Yüksek Öncelik</span>' : ''}
-            </div>
-            <h1 class="text-3xl font-bold text-primary mb-4">${announcement.title}</h1>
-            <div class="flex items-center text-gray-600 mb-6 space-x-4">
-                <span class="flex items-center">
-                    <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
-                </span>
-                <span class="flex items-center">
-                    <i class="far fa-eye mr-2"></i>${updatedViews} görüntüleme
-                </span>
-                <span class="flex items-center">
-                    <i class="far fa-clock mr-2"></i>${Math.ceil((announcement.full_content?.length || 0) / 200) || 1} dk okuma
-                </span>
-            </div>
-            <div class="prose max-w-none text-gray-700 leading-relaxed">
-                ${contentHtml}
-            </div>
-        `;
-        document.getElementById('announcementModal').classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        this.currentAnnouncement = announcement;
+    async openModal(announcementId) {async openModal(announcementId) {
+    const announcement = this.announcements.find(a => a.id == announcementId);
+    if (!announcement) return;
+    
+    const viewedKey = `viewed:${announcementId}`;
+    let updatedViews = announcement.views || 0;
+    if (!sessionStorage.getItem(viewedKey)) {
+        updatedViews = await incrementViewCount(announcementId);
+        announcement.views = updatedViews;
+        sessionStorage.setItem(viewedKey, 'true');
+        const viewElements = document.querySelectorAll(`[data-announcement-id="${announcementId}"]`);
+        viewElements.forEach(el => el.textContent = updatedViews);
     }
-
+    
+    const categoryInfo = this.getCategoryInfo(announcement.category);
+    // 🔧 DÜZELTİLEN SATIR:
+    const date = new Date(announcement.published_at || announcement.date);
+    const formattedDate = date.toLocaleDateString('tr-TR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+    });
+    
+    const contentHtml = DOMPurify.sanitize(marked.parse(announcement.full_content || announcement.summary));
+    const modalContent = document.getElementById('modalContent');
+    
+    modalContent.innerHTML = `
+        <div class="mb-6">
+            <span class="inline-block ${categoryInfo.badgeClass} px-4 py-2 rounded-full text-sm font-medium mb-4">
+                ${categoryInfo.icon} ${categoryInfo.text}
+            </span>
+            ${announcement.priority === 'high' ? '<span class="ml-2 bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">🔥 Yüksek Öncelik</span>' : ''}
+        </div>
+        <h1 class="text-3xl font-bold text-primary mb-4">${escapeHtml(announcement.title)}</h1>
+        <div class="flex items-center text-gray-600 mb-6 space-x-4">
+            <span class="flex items-center">
+                <i class="far fa-calendar-alt mr-2"></i>${formattedDate}
+            </span>
+            <span class="flex items-center">
+                <i class="far fa-eye mr-2"></i>${updatedViews} görüntüleme
+            </span>
+            <span class="flex items-center">
+                <i class="far fa-clock mr-2"></i>${Math.ceil((announcement.full_content?.length || 0) / 200) || 1} dk okuma
+            </span>
+        </div>
+        <div class="prose max-w-none text-gray-700 leading-relaxed">
+            ${contentHtml}
+        </div>
+    `;
+    
+    document.getElementById('announcementModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    this.currentAnnouncement = announcement;
+}
     closeModal() {
         document.getElementById('announcementModal').classList.add('hidden');
         document.body.style.overflow = '';
