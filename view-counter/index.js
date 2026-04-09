@@ -9,16 +9,17 @@ export default {
     // --- Güvenli CORS Alanları ---
     const allowedOrigins = [
       'https://libedge-website.pages.dev',
-      'https://staging.libedge-website.pages.dev',  // ← STAGING EKLENDİ
+      'https://staging.libedge-website.pages.dev',
       'http://localhost:3000',
       'http://127.0.0.1:3000'
     ];
-    const isOriginAllowed = allowedOrigins.includes(origin);
-    const corsOrigin = isOriginAllowed ? origin : allowedOrigins[0];
+    
+    // İzin verilen origin varsa onu kullan, yoksa ilkini kullan
+    const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
 
     const corsHeaders = {
       "Access-Control-Allow-Origin": corsOrigin,
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Access-Control-Max-Age": "86400"
     };
