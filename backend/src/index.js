@@ -1883,10 +1883,13 @@ app.put('/api/admin/airtable/accounts/:id', async (c) => {
     
     const url = `https://api.airtable.com/v0/${baseId}/Accounts/${recordId}`;
     
+    const { name, region, industry, domain } = await c.req.json(); // domain eklendi
+
     const fields = {};
     if (name) fields['Account Name'] = name;
     if (region) fields['Region'] = region;
     if (industry) fields['Industry'] = industry;
+    if (domain) fields['Domain'] = domain;  // ← YENİ
     
     try {
         const response = await fetch(url, {

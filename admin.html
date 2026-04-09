@@ -2936,6 +2936,7 @@ function editAirtableAccount(id, name, category) {
     currentAirtableId = id;
     document.getElementById('editInstitutionId').value = '';
     document.getElementById('editInstitutionName').value = name;
+    document.getElementById('editInstitutionDomain').value = domain || '';  // ← domain
     document.getElementById('editInstitutionDomain').value = '';
     document.getElementById('editInstitutionCategory').value = category || 'University';
     document.getElementById('editInstitutionModal').classList.remove('hidden');
