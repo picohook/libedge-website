@@ -444,9 +444,9 @@ async loadAnnouncements() {
         return announcements.sort((a, b) => {
             switch (this.currentSort) {
                 case 'date-desc':
-                    return new Date(b.date) - new Date(a.date);
+                    return new Date(b.published_at || b.date) - new Date(a.published_at || a.date);
                 case 'date-asc':
-                    return new Date(a.date) - new Date(b.date);
+                    return new Date(a.published_at || a.date) - new Date(b.published_at || b.date);
                 case 'priority':
                     const priorityOrder = { high: 3, medium: 2, low: 1 };
                     return priorityOrder[b.priority || 'low'] - priorityOrder[a.priority || 'low'];
@@ -475,7 +475,7 @@ async loadAnnouncements() {
         }
         container.innerHTML = currentAnnouncements.map((announcement) => {
             const categoryInfo = this.getCategoryInfo(announcement.category);
-            const date = new Date(announcement.date);
+            const date = new Date(announcement.published_at || announcement.date);
             const formattedDate = date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
             const priorityClass = announcement.priority === 'high' ? 'priority-high' : '';
             const views = announcement.views || 0;
