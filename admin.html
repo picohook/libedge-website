@@ -2498,7 +2498,7 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ name, industry: category })
+            body: JSON.stringify({ name, industry: category, domain: document.getElementById('editInstitutionDomain').value.trim() })
         });
         
         if (res.ok) {

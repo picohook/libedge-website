@@ -1876,14 +1876,12 @@ app.put('/api/admin/airtable/accounts/:id', async (c) => {
     }
     
     const recordId = c.req.param('id');
-    const { name, region, industry } = await c.req.json();
-    
+    const { name, region, industry, domain } = await c.req.json();
+
     const baseId = c.env.AIRTABLE_BASE_ID;
     const pat = c.env.AIRTABLE_PAT;
-    
+
     const url = `https://api.airtable.com/v0/${baseId}/Accounts/${recordId}`;
-    
-    const { name, region, industry, domain } = await c.req.json(); // domain eklendi
 
     const fields = {};
     if (name) fields['Account Name'] = name;
