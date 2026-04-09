@@ -285,6 +285,17 @@
     <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
 <script>
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 const WORKER_URL = 'https://view-counter.agursel.workers.dev/';
 const viewCountCache = {};
 
@@ -293,7 +304,7 @@ async function incrementViewCount(pageId) {
         const response = await fetch(WORKER_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ page: pageId })
+            body: JSON.stringify({ page: pageId, action: 'increment' })
         });
         if (response.ok) {
             const data = await response.json();
