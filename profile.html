@@ -958,10 +958,11 @@ function onAvatarFileSelected(input) {
         if (_cropper) { _cropper.destroy(); _cropper = null; }
         _cropper = new Cropper(cropImg, {
             aspectRatio: 1,
-            viewMode: 2,
+            viewMode: 1,
             dragMode: 'move',
-            autoCropArea: 0.9,
+            autoCropArea: 1,
             responsive: true,
+            background: false,
         });
     };
     reader.readAsDataURL(file);
@@ -1019,9 +1020,11 @@ function updateHeaderAvatar(avatarUrl) {
     const dropdownAvatar = document.getElementById('dropdownAvatar');
     if (userAvatar) {
         userAvatar.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full">`;
+        userAvatar.className = 'w-8 h-8 rounded-full overflow-hidden flex items-center justify-center';
     }
     if (dropdownAvatar) {
         dropdownAvatar.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full">`;
+        dropdownAvatar.className = 'w-12 h-12 rounded-full overflow-hidden flex items-center justify-center';
     }
 }
 </script>
