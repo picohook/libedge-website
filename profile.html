@@ -190,6 +190,17 @@
             <div id="tab-subscriptions" class="tab-content hidden">
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Aboneliklerim</h2>
+                    <div class="border border-gray-100 rounded-xl p-4 bg-gray-50 mb-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <h3 class="font-semibold text-gray-800">E-bülten Aboneliği</h3>
+                                <p id="newsletterSubscriptionText" class="text-sm text-gray-500 mt-1">Durum yükleniyor...</p>
+                            </div>
+                            <button id="newsletterToggleBtn" type="button" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition text-sm">
+                                Yükleniyor...
+                            </button>
+                        </div>
+                    </div>
                     <div id="allSubscriptionsList" class="space-y-4"><p class="text-gray-500 text-center py-8">Yükleniyor...</p></div>
                 </div>
             </div>
@@ -480,6 +491,7 @@ async function checkAuthAndLoad() {
         if (el('settingsInstitution')) el('settingsInstitution').value = user.institution || '';
         setProfileAvatar(user.avatar_url, user.full_name);
         await loadSubscriptions();
+        await loadNewsletterSubscription();
     } catch (err) {
         console.error('checkAuthAndLoad error:', err);
         window.location.href = 'index.html';
@@ -532,6 +544,91 @@ async function loadSubscriptions() {
     } catch (err) {
         console.error(err);
         document.getElementById('activeSubscriptionsList').innerHTML = '<p class="text-red-500">Abonelikler yüklenemedi.</p>';
+    }
+}
+
+async function loadNewsletterSubscription() {
+    const textEl = document.getElementById('newsletterSubscriptionText');
+    const btn = document.getElementById('newsletterToggleBtn');
+    if (!textEl || !btn) return;
+
+    btn.disabled = true;
+    textEl.textContent = 'Durum yükleniyor...';
+    btn.textContent = 'Yükleniyor...';
+
+    try {
+        const res = await fetch('/api/newsletter/status', { credentials: 'include' });
+        const data = await res.json();
+        const email = data.email || window.currentUser?.email || '-';
+
+        if (data.subscribed) {
+            textEl.textContent = `${email} adresiyle e-bülten aboneliğiniz aktif.`;
+            btn.textContent = 'Aboneliği İptal Et';
+            btn.classList.remove('bg-primary');
+            btn.classList.add('bg-red-600', 'hover:bg-red-700');
+            btn.disabled = false;
+            btn.onclick = unsubscribeNewsletter;
+        } else {
+            textEl.textContent = `${email} adresiyle e-bültene henüz abone değilsiniz.`;
+            btn.textContent = 'Abone Ol';
+            btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+            btn.classList.add('bg-primary');
+            btn.disabled = false;
+            btn.onclick = subscribeNewsletterFromProfile;
+        }
+    } catch (error) {
+        textEl.textContent = 'E-bülten durumu alınamadı.';
+        btn.textContent = 'Tekrar Dene';
+        btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+        btn.classList.add('bg-primary');
+        btn.disabled = false;
+        btn.onclick = loadNewsletterSubscription;
+    }
+}
+
+async function subscribeNewsletterFromProfile() {
+    const btn = document.getElementById('newsletterToggleBtn');
+    if (!btn) return;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Kaydediliyor...';
+
+    try {
+        const res = await fetch('/api/newsletter/subscribe', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        if (!res.ok) throw new Error('subscribe failed');
+        showToast('E-bülten aboneliğiniz aktif edildi.', 'success');
+        await loadNewsletterSubscription();
+    } catch (error) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+        showToast('E-bülten aboneliği sırasında hata oluştu.', 'error');
+    }
+}
+
+async function unsubscribeNewsletter() {
+    const btn = document.getElementById('newsletterToggleBtn');
+    if (!btn) return;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Kaydediliyor...';
+
+    try {
+        const res = await fetch('/api/newsletter/subscribe', {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('unsubscribe failed');
+        showToast('E-bülten aboneliğiniz iptal edildi.', 'success');
+        await loadNewsletterSubscription();
+    } catch (error) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+        showToast('E-bülten aboneliği iptal edilirken hata oluştu.', 'error');
     }
 }
 

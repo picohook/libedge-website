@@ -250,6 +250,7 @@
             <p class="mb-6 sm:mb-8 max-w-2xl mx-auto text-base sm:text-lg text-gray-600">
                 En güncel duyurular, kampanyalar ve etkinliklerden anında haberdar olmak için e-bültenimize abone olun.
             </p>
+            <p id="newsletterStatusText" class="text-sm text-gray-500 mb-4 hidden"></p>
             <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-lg mx-auto">
                 <input type="email" id="newsletterEmail" placeholder="E-posta adresiniz" 
                        class="newsletter-input flex-grow px-4 sm:px-6 py-3 sm:py-4 rounded-full text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base">
@@ -687,20 +688,113 @@ async loadAnnouncements() {
     }
 }
 
-function subscribeNewsletter() {
-    const email = document.getElementById('newsletterEmail').value;
-    if (!email) {
-        announcementManager.showToast('Lütfen e-posta adresinizi girin', 'warning');
-        return;
+let newsletterState = {
+    loggedIn: false,
+    subscribed: false,
+    email: ''
+};
+
+function updateNewsletterUI() {
+    const emailInput = document.getElementById('newsletterEmail');
+    const submitBtn = document.querySelector('.newsletter-button');
+    const statusText = document.getElementById('newsletterStatusText');
+    if (!emailInput || !submitBtn || !statusText) return;
+
+    if (newsletterState.loggedIn) {
+        emailInput.value = newsletterState.email || '';
+        emailInput.readOnly = true;
+        emailInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+        statusText.classList.remove('hidden');
+        if (newsletterState.subscribed) {
+            statusText.textContent = `${newsletterState.email} adresiyle bülten aboneliğiniz aktif. İsterseniz profilinizden iptal edebilirsiniz.`;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Abonelik Aktif';
+        } else {
+            statusText.textContent = `${newsletterState.email} adresiyle abone olabilirsiniz.`;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-bell mr-2"></i>Abone Ol';
+        }
+    } else {
+        emailInput.readOnly = false;
+        emailInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+        emailInput.value = '';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-bell mr-2"></i>Abone Ol';
+        statusText.classList.add('hidden');
+        statusText.textContent = '';
     }
-    if (!email.includes('@')) {
+}
+
+async function loadNewsletterState() {
+    try {
+        const profileRes = await fetch('/api/user/profile', { credentials: 'include' });
+        if (!profileRes.ok) {
+            newsletterState = { loggedIn: false, subscribed: false, email: '' };
+            updateNewsletterUI();
+            return;
+        }
+
+        const user = await profileRes.json();
+        const statusRes = await fetch('/api/newsletter/status', { credentials: 'include' });
+        const statusData = statusRes.ok ? await statusRes.json() : {};
+
+        newsletterState = {
+            loggedIn: true,
+            subscribed: !!statusData.subscribed,
+            email: statusData.email || user.email || ''
+        };
+        updateNewsletterUI();
+    } catch (error) {
+        newsletterState = { loggedIn: false, subscribed: false, email: '' };
+        updateNewsletterUI();
+    }
+}
+
+async function subscribeNewsletter() {
+    const emailInput = document.getElementById('newsletterEmail');
+    const submitBtn = document.querySelector('.newsletter-button');
+    const email = newsletterState.loggedIn ? '' : emailInput.value.trim();
+    if (!email) {
+        if (!newsletterState.loggedIn) {
+            announcementManager.showToast('Lütfen e-posta adresinizi girin', 'warning');
+            return;
+        }
+    }
+    if (!newsletterState.loggedIn && !email.includes('@')) {
         announcementManager.showToast('Geçerli bir e-posta adresi girin', 'error');
         return;
     }
-    setTimeout(() => {
+    if (newsletterState.loggedIn && newsletterState.subscribed) {
+        announcementManager.showToast('Bülten aboneliğiniz zaten aktif', 'info');
+        return;
+    }
+
+    const originalLabel = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Gönderiliyor';
+
+    try {
+        const response = await fetch('/api/newsletter/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(newsletterState.loggedIn ? {} : { email })
+        });
+
+        if (!response.ok) {
+            throw new Error('Newsletter subscription failed');
+        }
+
+        await loadNewsletterState();
         announcementManager.showToast('Bülten aboneliğiniz başarıyla oluşturuldu!', 'success');
-        document.getElementById('newsletterEmail').value = '';
-    }, 1000);
+    } catch (error) {
+        announcementManager.showToast('Bülten aboneliği sırasında bir hata oluştu', 'error');
+    } finally {
+        if (!newsletterState.loggedIn || !newsletterState.subscribed) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalLabel;
+        }
+    }
 }
 
 function closeModal() {
@@ -718,6 +812,7 @@ function scrollToTop() {
 let announcementManager;
 document.addEventListener('DOMContentLoaded', () => {
     announcementManager = new AnnouncementManager();
+    loadNewsletterState();
 });
 
 document.addEventListener('keydown', (e) => {

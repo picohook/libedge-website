@@ -4,7 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Paneli - LibEdge</title>
+    <meta name="google-api-key" content="">
+    <meta name="google-client-id" content="">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -1936,23 +1939,64 @@ function formatFileSize(bytes) {
 
 // Google Drive Picker
 let pickerApiLoaded = false;
+let gisLoaded = false;
+
+function getGoogleDriveConfig() {
+    const metaApiKey = document.querySelector('meta[name="google-api-key"]')?.content?.trim();
+    const metaClientId = document.querySelector('meta[name="google-client-id"]')?.content?.trim();
+    const appConfig = window.__LIBEDGE_CONFIG || {};
+
+    return {
+        apiKey: window.GOOGLE_API_KEY || appConfig.googleApiKey || metaApiKey || '',
+        clientId: window.GOOGLE_CLIENT_ID || appConfig.googleClientId || metaClientId || ''
+    };
+}
+
 function loadGoogleApis() {
-    if (document.querySelector('script[src*="apis.google.com"]')) return;
-    const s = document.createElement('script');
-    s.src = 'https://apis.google.com/js/api.js';
-    s.onload = () => gapi.load('picker', () => { pickerApiLoaded = true; });
-    document.head.appendChild(s);
+    if (window.google?.accounts?.oauth2) {
+        gisLoaded = true;
+    }
+
+    if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]') && !gisLoaded) {
+        const gisScript = document.createElement('script');
+        gisScript.src = 'https://accounts.google.com/gsi/client';
+        gisScript.async = true;
+        gisScript.defer = true;
+        gisScript.onload = () => { gisLoaded = true; };
+        document.head.appendChild(gisScript);
+    }
+
+    if (window.gapi?.load) {
+        gapi.load('picker', () => { pickerApiLoaded = true; });
+        return;
+    }
+
+    if (!document.querySelector('script[src="https://apis.google.com/js/api.js"]')) {
+        const s = document.createElement('script');
+        s.src = 'https://apis.google.com/js/api.js';
+        s.onload = () => gapi.load('picker', () => { pickerApiLoaded = true; });
+        document.head.appendChild(s);
+    }
 }
 
 function openGooglePicker() {
-    const apiKey = window.GOOGLE_API_KEY;
-    const clientId = window.GOOGLE_CLIENT_ID;
+    const { apiKey, clientId } = getGoogleDriveConfig();
     if (!apiKey || !clientId) {
-        showToast('Google Drive API anahtarı tanımlı değil. URL sekmesini kullanın.', 'warning');
+        showToast('Google Drive yapılandırması eksik. İsterseniz URL sekmesini kullanın.', 'warning');
         switchUploadTab('url');
         return;
     }
-    if (!pickerApiLoaded) { loadGoogleApis(); setTimeout(openGooglePicker, 1200); return; }
+    if (!gisLoaded || !window.google?.accounts?.oauth2 || !pickerApiLoaded || !window.google?.picker) {
+        loadGoogleApis();
+        setTimeout(() => {
+            if (!window.google?.accounts?.oauth2 || !window.google?.picker) {
+                showToast('Google Drive entegrasyonu henüz yüklenemedi. İsterseniz URL sekmesini kullanın.', 'warning');
+                return;
+            }
+            openGooglePicker();
+        }, 1200);
+        return;
+    }
     const tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope: 'https://www.googleapis.com/auth/drive.readonly',

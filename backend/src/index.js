@@ -128,6 +128,26 @@ async function getCurrentUser(c) {
   return auth.user;
 }
 
+async function getOptionalAuth(c) {
+  const authHeader = c.req.header('Authorization');
+  const cookieHeader = c.req.header('Cookie');
+  const secret = c.env.JWT_SECRET;
+
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const payload = await verifyToken(token, secret);
+    return payload ? { user: payload, token } : null;
+  }
+
+  if (!cookieHeader) return null;
+  const tokenMatch = cookieHeader.match(/authToken=([^;]+)/);
+  if (!tokenMatch) return null;
+
+  const token = tokenMatch[1];
+  const payload = await verifyToken(token, secret);
+  return payload ? { user: payload, token } : null;
+}
+
 // 🆕 Token'dan rol ve kurum bilgilerini al (eski fonksiyonlarla uyumlu)
 async function getTokenPayloadFromCookie(c) {
   const auth = await requireAuth(c);
@@ -577,6 +597,7 @@ app.delete('/api/user/delete', async (c) => {
   const userId = auth.user.user_id;
   const db = c.env.DB;
   
+  await db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM subscriptions WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
   
@@ -673,6 +694,97 @@ app.get('/api/user/subscriptions', async (c) => {
   return c.json(Object.values(bySlug));
 });
 
+// ====================== NEWSLETTER ROUTES ======================
+app.get('/api/newsletter/status', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+
+  const db = c.env.DB;
+  const subscription = await db.prepare(`
+    SELECT id, email, status, subscribed_at, unsubscribed_at, updated_at
+    FROM newsletter_subscriptions
+    WHERE user_id = ?
+    LIMIT 1
+  `).bind(auth.user.user_id).first();
+
+  return c.json({
+    subscribed: subscription?.status === 'active',
+    subscription: subscription || null,
+    email: subscription?.email || auth.user.email || ''
+  });
+});
+
+app.post('/api/newsletter/subscribe', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const optionalAuth = await getOptionalAuth(c);
+    const userId = optionalAuth?.user?.user_id || null;
+    const userEmail = optionalAuth?.user?.email || '';
+    const email = String(body.email || userEmail || '').trim().toLowerCase();
+
+    if (!email) {
+      return c.json({ error: 'E-posta zorunludur.' }, 400);
+    }
+
+    const db = c.env.DB;
+    const existing = await db.prepare(`
+      SELECT id, user_id, email, status
+      FROM newsletter_subscriptions
+      WHERE email = ? OR (? IS NOT NULL AND user_id = ?)
+      LIMIT 1
+    `).bind(email, userId, userId).first();
+
+    if (existing) {
+      await db.prepare(`
+        UPDATE newsletter_subscriptions
+        SET email = ?, user_id = COALESCE(?, user_id), status = 'active',
+            source = ?, subscribed_at = COALESCE(subscribed_at, CURRENT_TIMESTAMP),
+            unsubscribed_at = NULL, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(email, userId, userId ? 'user' : 'guest', existing.id).run();
+    } else {
+      await db.prepare(`
+        INSERT INTO newsletter_subscriptions
+          (user_id, email, status, source, subscribed_at, updated_at)
+        VALUES (?, ?, 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).bind(userId, email, userId ? 'user' : 'guest').run();
+    }
+
+    const ip = c.req.header('CF-Connecting-IP') || '';
+    const payload = {
+      ...body,
+      email,
+      name: body.name || optionalAuth?.user?.full_name || email.split('@')[0],
+      formType: 'newsletter'
+    };
+
+    c.executionCtx.waitUntil(
+      sendToAirtable(c.env, payload, 'newsletter', ip).catch(err =>
+        console.error('Newsletter Airtable background error:', err)
+      )
+    );
+
+    return c.json({ success: true, subscribed: true, email });
+  } catch (err) {
+    console.error('Newsletter subscribe error:', err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.delete('/api/newsletter/subscribe', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+
+  const db = c.env.DB;
+  await db.prepare(`
+    UPDATE newsletter_subscriptions
+    SET status = 'inactive', unsubscribed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = ?
+  `).bind(auth.user.user_id).run();
+
+  return c.json({ success: true, subscribed: false });
+});
+
 // ====================== REGISTER (değişmedi) ======================
 // ====================== REGISTRATION ROUTES ======================
 app.post('/api/auth/register', async (c) => {
@@ -715,6 +827,9 @@ app.post('/form', async (c) => {
     } else if (formType === "suggest") {
       subject = "Suggest a Product";
       sheetPayload = { form: "Suggest", name, email, message };
+    } else if (formType === "newsletter") {
+      subject = "Newsletter Subscription";
+      sheetPayload = { form: "Newsletter", name: name || "Newsletter Subscriber", email, message: "Newsletter subscription request" };
     } else if (formType === "contact") {
       subject = "Contact Form";
       sheetPayload = {
@@ -745,7 +860,7 @@ app.post('/form', async (c) => {
               <p><b>Email:</b> ${email}</p>
               ${formType === "contact" ? `<p><b>Telefon:</b> ${data.phone || "-"}</p>` : ""}
               ${formType === "contact" ? `<p><b>Konu:</b> ${data.subject || "-"}</p>` : ""}
-              <p><b>Mesaj:</b> ${message || "-"}</p>
+              <p><b>Mesaj:</b> ${message || (formType === "newsletter" ? "Newsletter subscription request" : "-")}</p>
             `
           })
         });
@@ -1883,9 +1998,12 @@ async function sendToAirtable(env, formData, formType, ip) {
     try {
         const accountName = formData.institution || formData.company || '';
         const accountId = await findOrCreateAccount(env, accountName, ip);
+        const fallbackName = formData.email
+            ? formData.email.split('@')[0]
+            : 'Newsletter Subscriber';
 
         const contactData = {
-            name: formData.name,
+            name: formData.name || fallbackName,
             email: formData.email,
             title: formData.title || "Director"
         };
@@ -1905,13 +2023,23 @@ app.post('/api/contact', async (c) => {
     try {
         const body = await c.req.json();
         const { name, email, formType } = body;
+        const type = formType || 'contact';
+        const normalizedEmail = String(email || '').trim();
+        const normalizedName = String(name || '').trim();
 
-        if (!name || !email) {
+        if (!normalizedEmail) {
+            return c.json({ error: 'E-posta zorunludur.' }, 400);
+        }
+
+        if (type !== 'newsletter' && !normalizedName) {
             return c.json({ error: 'Ad ve e-posta zorunludur.' }, 400);
         }
 
         const ip = c.req.header('CF-Connecting-IP') || '';
-        const type = formType || 'contact';
+        body.email = normalizedEmail;
+        if (normalizedName) {
+            body.name = normalizedName;
+        }
 
         // waitUntil: response döndükten sonra da Airtable fetch'leri tamamlanır
         c.executionCtx.waitUntil(
