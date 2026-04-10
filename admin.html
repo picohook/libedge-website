@@ -17,6 +17,14 @@
         .sidebar-link:hover { background-color: #3b2a7a; color: white; }
         .sidebar-link.active { background-color: #4c3d8c; color: white; }
         .stat-card { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .dashboard-kpi-card { display: flex; justify-content: space-between; align-items: stretch; min-height: 116px; }
+        .dashboard-kpi-content { display: flex; flex-direction: column; justify-content: space-between; min-height: 68px; }
+        .dashboard-kpi-label { min-height: 2.5rem; display: flex; align-items: flex-start; line-height: 1.25rem; }
+        .dashboard-kpi-value { margin-top: auto; line-height: 1; }
+        #tab-dashboard > .grid .stat-card.flex.justify-between.items-start { align-items: stretch; min-height: 116px; }
+        #tab-dashboard > .grid .stat-card.flex.justify-between.items-start > div { display: flex; flex-direction: column; justify-content: space-between; min-height: 68px; }
+        #tab-dashboard > .grid .stat-card.flex.justify-between.items-start > div > p:first-child { min-height: 2.5rem; display: flex; align-items: flex-start; line-height: 1.25rem; }
+        #tab-dashboard > .grid .stat-card.flex.justify-between.items-start > div > p:last-child { margin-top: auto; line-height: 1; }
         th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
         th { background-color: #f9fafb; font-weight: 600; }
         .btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; }
