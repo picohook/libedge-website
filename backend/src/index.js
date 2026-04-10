@@ -1559,7 +1559,7 @@ app.put('/api/admin/institution/:id', async (c) => {
   const id = c.req.param('id');
   const { name, domain, category, status } = await c.req.json();
   const validCategories = ['University','Corporate','K-12','Government','Publisher','Service Provider','Sub-distributor'];
-  const validStatuses = ['Active','Prospect','Inactive'];
+  const validStatuses = ['Customer','Prospect','Partner','Inactive'];
   const db = c.env.DB;
 
   if (role === 'super_admin') {
@@ -1910,7 +1910,7 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
             const name = record.fields['Account Name'] || '';
             const domain = record.fields['Domain'] || '';
             const category = record.fields['Organization'] || '';
-            const status = record.fields['Status'] || 'Active';
+            const status = record.fields['Status'] || 'Prospect';
 
             if (!name) { skipped++; continue; }
 

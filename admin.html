@@ -491,8 +491,9 @@
                 </select>
                 <select id="institutionStatusFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterInstitutions()">
                     <option value="">Tüm Status</option>
-                    <option value="Active">Active</option>
+                    <option value="Customer">Customer</option>
                     <option value="Prospect">Prospect</option>
+                    <option value="Partner">Partner</option>
                     <option value="Inactive">Inactive</option>
                 </select>
             </div>
@@ -2352,9 +2353,10 @@ const INSTITUTION_CATEGORIES = [
 ];
 
 const INSTITUTION_STATUSES = [
-    { value: 'Active',    label: 'Active' },
-    { value: 'Prospect',  label: 'Prospect' },
-    { value: 'Inactive',  label: 'Inactive' },
+    { value: 'Customer', label: 'Customer' },
+    { value: 'Prospect', label: 'Prospect' },
+    { value: 'Partner',  label: 'Partner' },
+    { value: 'Inactive', label: 'Inactive' },
 ];
 
 const CATEGORY_BADGE = {
@@ -2368,8 +2370,9 @@ const CATEGORY_BADGE = {
 };
 
 const STATUS_BADGE = {
-    'Active':   'bg-green-100 text-green-800',
+    'Customer': 'bg-green-100 text-green-800',
     'Prospect': 'bg-yellow-100 text-yellow-800',
+    'Partner':  'bg-blue-100 text-blue-800',
     'Inactive': 'bg-gray-100 text-gray-600',
 };
 
@@ -2532,7 +2535,7 @@ function openEditInstitutionModal(id, name, domain, category, status) {
     document.getElementById('editInstitutionName').value = name;
     document.getElementById('editInstitutionDomain').value = domain;
     document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml(category || 'University');
-    document.getElementById('editInstitutionStatus').innerHTML = statusOptionsHtml(status || 'Active');
+    document.getElementById('editInstitutionStatus').innerHTML = statusOptionsHtml(status || 'Customer');
     const nameInput = document.getElementById('editInstitutionName');
     const isSuper = currentAdmin?.role === 'super_admin';
     nameInput.disabled = !isSuper;
@@ -2996,7 +2999,7 @@ function editAirtableAccount(id, name, domain, category, status) {
     document.getElementById('editInstitutionName').value = name;
     document.getElementById('editInstitutionDomain').value = domain || '';
     document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml(category || 'University');
-    document.getElementById('editInstitutionStatus').innerHTML = statusOptionsHtml(status || 'Active');
+    document.getElementById('editInstitutionStatus').innerHTML = statusOptionsHtml(status || 'Customer');
     document.getElementById('editInstitutionModal').classList.remove('hidden');
 }
 
