@@ -106,5 +106,11 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_user
 CREATE INDEX IF NOT EXISTS idx_subscriptions_product
   ON subscriptions(product_slug);
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_institutions_airtable_id
-  ON institutions(airtable_id);
+-- NOTE:
+-- Older local databases may already have an `institutions` table without
+-- the `airtable_id` column. Creating this index here would fail the whole
+-- migration chain on those environments.
+--
+-- Fresh installs still work correctly without this index, and runtime
+-- behavior does not depend on it. If needed later, it can be added in a
+-- dedicated compatibility migration after the column is guaranteed to exist.
