@@ -510,6 +510,9 @@ app.post('/api/user/avatar', async (c) => {
   const bucket = c.env.FILES_BUCKET;
   const r2PublicUrl = c.env.R2_PUBLIC_URL;
 
+  if (!r2PublicUrl) return c.json({ error: 'R2_PUBLIC_URL yapılandırılmamış' }, 500);
+  if (!bucket) return c.json({ error: 'R2 bucket bağlantısı yok' }, 500);
+
   try {
     const formData = await c.req.formData();
     const file = formData.get('avatar');

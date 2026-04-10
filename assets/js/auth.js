@@ -257,7 +257,8 @@ async function checkAuth() {
                     email: user.email,
                     full_name: user.full_name,
                     institution: user.institution,
-                    role: user.role
+                    role: user.role,
+                    avatar_url: user.avatar_url || null
                 });
                 isLoggedIn = true;
                 startTokenRefresh();
