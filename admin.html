@@ -1032,8 +1032,11 @@ document.addEventListener('click', function(e) {
     // Edit user button
     if (e.target.closest('.edit-user-btn')) {
         const btn = e.target.closest('.edit-user-btn');
-        const userData = btn.dataset.userJson;
-        if (userData) editUserByData(userData);
+        const userId = parseInt(btn.dataset.userId);
+        if (userId) {
+            const user = allUsers.find(item => item.id === userId);
+            if (user) editUser(user);
+        }
     }
     
     // Set role button
@@ -1120,16 +1123,6 @@ document.addEventListener('click', function(e) {
     function renderUsers(users) {
         const isSuper = currentAdmin?.role === 'super_admin';
         document.getElementById('usersList').innerHTML = users.length ? users.map(u => {
-            const userData = JSON.stringify({
-                id: u.id,
-                full_name: u.full_name || '',
-                first_name: u.first_name || '',
-                last_name: u.last_name || '',
-                title: u.title || '',
-                email: u.email,
-                institutionId: u.institution_id || '',
-                role: u.role
-            }).replace(/'/g, '&#039;').replace(/"/g, '&quot;');
             return `
             <tr>
                 <td class="px-4 py-2">${u.id}</td>
@@ -1140,7 +1133,7 @@ document.addEventListener('click', function(e) {
                 <td class="px-4 py-2">${u.created_at ? new Date(u.created_at).toLocaleDateString('tr-TR') : '-'}</td>
                 <td class="px-4 py-2 text-gray-500 text-sm">${timeAgo(u.last_login)}</td>
                 <td class="px-4 py-2">
-                    <button class="text-blue-600 mr-2 edit-user-btn" data-user-json="${userData}"><i class="fas fa-edit"></i></button>
+                    <button class="text-blue-600 mr-2 edit-user-btn" data-user-id="${u.id}"><i class="fas fa-edit"></i></button>
                     ${isSuper && u.role !== 'super_admin' ? `<button class="text-green-600 mr-2 set-role-btn" data-user-id="${u.id}" data-new-role="${escapeHtml(u.role === 'admin' ? 'user' : 'admin')}" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}"><i class="fas fa-user-shield"></i></button>` : ''}
                     <button class="text-red-600 delete-user-btn" data-user-id="${u.id}"><i class="fas fa-trash"></i></button>
                 </td>
@@ -1261,14 +1254,6 @@ function composeFullName(firstName, lastName) {
         document.getElementById('userModal').classList.remove('hidden');
     }
     function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); document.getElementById('userForm').reset(); document.getElementById('userId').value = ''; document.getElementById('userFormError').classList.add('hidden'); }
-    function editUserByData(jsonString) {
-        try {
-            const data = JSON.parse(jsonString);
-            editUser(data);
-        } catch (e) {
-            console.error('Geçersiz kullanıcı verisi:', e);
-        }
-    }
     function editUser(user) {
         const fallbackNames = splitNameParts(user.full_name || '');
         document.getElementById('userId').value = user.id;
@@ -1278,7 +1263,7 @@ function composeFullName(firstName, lastName) {
         document.getElementById('userEmail').value = user.email;
         document.getElementById('userRole').value = user.role;
         document.getElementById('userModalTitle').textContent = 'Kullanıcı Düzenle';
-        loadInstitutionsForUserModal(user.institutionId);
+        loadInstitutionsForUserModal(user.institution_id || user.institutionId);
         document.getElementById('userModal').classList.remove('hidden');
     }
     async function deleteUser(id) {
