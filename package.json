@@ -8,13 +8,17 @@
     "test": "npm run smoke-checklist",
     "smoke-checklist": "echo \"Manual smoke checks: homepage, login/logout, profile, announcements, newsletter, admin, institution files\"",
     "dev": "wrangler dev",
-    "build": "echo 'No build step required' && exit 0",
+    "build:css": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --minify",
+    "build:css:watch": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --watch",
+    "build": "npm run build:css",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
     "hono": "^4.12.10"
   },
   "devDependencies": {
+    "tailwindcss": "^3.4.17",
     "wrangler": "^4.81.0"
   },
   "repository": {
