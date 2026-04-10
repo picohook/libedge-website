@@ -1,7 +1,8 @@
 export async function onRequest(context) {
-  const { request } = context;
+  const { request, env } = context;
   const url = new URL(request.url);
-  const targetUrl = `https://form-handler-staging.agursel.workers.dev/api${url.pathname.replace('/api', '')}${url.search}`;
+  const workerBase = env.WORKER_BASE_URL || 'https://form-handler-staging.agursel.workers.dev';
+  const targetUrl = `${workerBase}/api${url.pathname.replace('/api', '')}${url.search}`;
   const headers = new Headers(request.headers);
 
   // Cookie'den token al, Authorization header'a taşı
