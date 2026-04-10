@@ -1,4 +1,5 @@
-// ====================== XSS KORUMA ======================
+// ====================== SECURITY HELPERS ======================
+// XSS koruması için ortak escape yardımcıları
 window.escapeHtml = function(text) {
     if (typeof text !== 'string') text = String(text || '');
     const map = {
@@ -19,7 +20,8 @@ if (!String.prototype.escapeHtml) {
 }
 
 
-// ====================== TEK DOMContentLoaded ======================
+// ====================== PAGE INITIALIZATION ======================
+// Sayfa davranışlarının ana başlangıç noktası
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM loaded - initializing site");
     
@@ -38,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Login form
+    // --- Auth Forms ---
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
@@ -62,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // --- Flip Card Interaction ---
+    // --- Product Cards ---
     document.querySelectorAll('.flip-card').forEach(card => {
         card.addEventListener('click', function(e) {
             if (e.target.tagName.toLowerCase() === 'a') return;
@@ -167,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateFilter();
     }
 
-    // --- Back to Top Button ---
+    // --- Page Utilities ---
     const backToTopButton = document.getElementById('backToTop');
     if (backToTopButton) {
         window.addEventListener('scroll', () => {
@@ -660,6 +662,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // --- CTA Shortcuts ---
     // Hero slider AI button
     setTimeout(() => {
         document.querySelectorAll('a.hero-badge[href="#products"]').forEach(link => {
@@ -699,7 +702,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// ====================== GLOBAL MODAL FUNCTIONS ======================
+// ====================== GLOBAL UI HELPERS ======================
+// HTML içindeki inline onclick kullanımları için global yardımcılar
 function openModal() { const m = document.getElementById('trialModal'); if(m) { m.classList.remove('hidden'); document.body.classList.add('no-scroll'); } }
 function closeModal() { const m = document.getElementById('trialModal'); if(m) { m.classList.add('hidden'); document.body.classList.remove('no-scroll'); } }
 function openSuggestionModal() { const m = document.getElementById('suggestionModal'); if(m) { m.classList.remove('hidden'); document.body.classList.add('no-scroll'); } }

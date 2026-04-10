@@ -6,7 +6,8 @@ import { setCookie } from 'hono/cookie';
 
 const app = new Hono();
 
-// ====================== CORS AYARLARI ======================
+// ====================== CONFIGURATION ======================
+// Ortak sabitler ve uygulama yapılandırmaları
 const ALLOWED_ORIGINS = [
   'https://libedge.com',
   'https://www.libedge.com',
@@ -28,7 +29,7 @@ app.use('*', cors({
   maxAge: 86400,
 }));
 
-// ====================== JWT YARDIMCILARI ======================
+// ====================== TOKEN HELPERS ======================
 
 function b64urlEncode(str) {
   return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
@@ -159,7 +160,7 @@ async function isAdmin(c) {
   return role === 'admin' || role === 'super_admin';
 }
 
-// ====================== RATE LIMITER (In-Memory) ======================
+// ====================== RATE LIMITING ======================
 const rateLimitStore = new Map();
 
 function getRateLimitKey(endpoint, identifier) {
@@ -207,7 +208,7 @@ async function canListUsers(c) {
   return role === 'super_admin' || role === 'admin';
 }
 
-// ====================== ŞİFRE HASHLEME (PBKDF2) ======================
+// ====================== PASSWORD HELPERS ======================
 
 async function hashPassword(password) {
   const salt       = crypto.getRandomValues(new Uint8Array(16));
@@ -275,7 +276,7 @@ function timingSafeEqual(a, b) {
   return diff === 0;
 }
 
-// ====================== GET ENDPOINT'LERİ ======================
+// ====================== HEALTH AND AUTH ROUTES ======================
 app.get('/test', (c) => {
   console.log("✅ Test endpoint called");
   return c.text('Worker is alive - ' + new Date().toISOString());
@@ -585,7 +586,7 @@ app.delete('/api/user/delete', async (c) => {
   return c.json({ success: true });
 });
 
-// ====================== ABONELİK ENDPOINT'LERİ ======================
+// ====================== SUBSCRIPTION ROUTES ======================
 app.get('/api/subscription/check', async (c) => {
   const product = c.req.query('product');
   if (!product) return c.json({ hasAccess: false, error: 'Product belirtilmedi.' }, 400);
@@ -673,6 +674,7 @@ app.get('/api/user/subscriptions', async (c) => {
 });
 
 // ====================== REGISTER (değişmedi) ======================
+// ====================== REGISTRATION ROUTES ======================
 app.post('/api/auth/register', async (c) => {
   try {
     const { email, password, full_name, institution } = await c.req.json();
@@ -772,6 +774,7 @@ app.post('/form', async (c) => {
 
 // ====================== ADMIN ENDPOINT'LERİ (Cookie ile güncellendi) ======================
 
+// ====================== ADMIN ROUTES ======================
 app.get('/api/admin/users', async (c) => {
   if (!await canListUsers(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
@@ -1635,7 +1638,7 @@ app.delete('/api/admin/institution/:id', async (c) => {
 });
 
 
-// ====================== R2 DOSYA SERVE ======================
+// ====================== FILE ROUTES ======================
 
 app.get('/api/files/*', async (c) => {
   const bucket = c.env.FILES_BUCKET;
@@ -1682,7 +1685,7 @@ app.get('/api/files/*', async (c) => {
   return new Response(object.body, { headers });
 });
 
-// ====================== DUYURU YÖNETİMİ ======================
+// ====================== ANNOUNCEMENT ROUTES ======================
 
 // Public: sadece yayında olanlar
 app.get('/api/announcements', async (c) => {
@@ -1779,7 +1782,7 @@ app.delete('/api/admin/announcements/:id', async (c) => {
   }
 });
 
-// ====================== AIRTABLE ENTEGRASYONU ======================
+// ====================== AIRTABLE HELPERS ======================
 
 // Account bul veya oluştur
 async function findOrCreateAccount(env, accountName, ip) {
@@ -1887,7 +1890,7 @@ async function sendToAirtable(env, formData, formType, ip) {
     }
 }
 
-// ====================== CONTACT FORM ENDPOINT ======================
+// ====================== CONTACT ROUTES ======================
 
 app.post('/api/contact', async (c) => {
     try {
