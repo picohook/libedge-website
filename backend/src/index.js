@@ -1657,13 +1657,22 @@ app.get('/api/files/*', async (c) => {
 
   if (fileRecord) {
     if (!fileRecord.is_public) {
-      // Giriş yapmış ve yetkili mi?
       const auth = await requireAuth(c);
       if (auth.response) {
         return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
       }
       const role = auth.user.role;
-      if (role !== 'super_admin' && role !== 'admin') {
+      // super_admin tüm dosyalara erişebilir
+      if (role === 'super_admin') {
+        // izin ver
+      } else if (role === 'admin') {
+        // admin sadece kendi kurumunun private dosyasına erişebilir
+        const adminInstitutionId = await getUserInstitutionId(c);
+        if (!adminInstitutionId || adminInstitutionId !== fileRecord.institution_id) {
+          return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
+        }
+      } else {
+        // normal kullanıcı: kendi kurumuna ait private dosyalara erişemez
         return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
       }
     }
