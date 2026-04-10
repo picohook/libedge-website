@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -117,9 +118,16 @@
         <div class="lg:w-1/4">
             <div class="bg-white rounded-xl shadow-sm p-4 sticky top-24">
                 <div class="text-center mb-6">
-                    <div class="w-24 h-24 bg-primary rounded-full flex items-center justify-center mx-auto mb-3">
-                        <i class="fas fa-user fa-3x text-white"></i>
+                    <div class="relative w-24 h-24 mx-auto mb-3 group cursor-pointer" onclick="document.getElementById('avatarFileInput').click()">
+                        <div id="profileAvatarWrap" class="w-24 h-24 bg-primary rounded-full flex items-center justify-center overflow-hidden">
+                            <span id="profileAvatarInitials" class="text-white text-2xl font-bold"></span>
+                            <img id="profileAvatarImg" src="" alt="Avatar" class="w-full h-full object-cover hidden">
+                        </div>
+                        <div class="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fas fa-camera text-white text-lg"></i>
+                        </div>
                     </div>
+                    <input type="file" id="avatarFileInput" accept="image/*" capture="user" class="hidden" onchange="onAvatarFileSelected(this)">
                     <h3 id="profileName" class="text-lg font-semibold text-gray-800">Yükleniyor...</h3>
                     <p id="profileEmail" class="text-sm text-gray-500">-</p>
                 </div>
@@ -232,6 +240,25 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Avatar Crop Modal -->
+<div id="avatarCropModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-lg font-bold mb-4">Profil Fotoğrafını Kırp</h3>
+        <div class="mb-4" style="max-height:350px;overflow:hidden;">
+            <img id="cropperImage" src="" alt="" style="max-width:100%;display:block;">
+        </div>
+        <div class="flex gap-2">
+            <button onclick="applyCrop()" class="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition">
+                <i class="fas fa-check mr-2"></i>Uygula ve Yükle
+            </button>
+            <button onclick="cancelCrop()" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+                İptal
+            </button>
+        </div>
+        <p id="avatarUploadStatus" class="mt-3 text-sm text-center text-gray-500 hidden"></p>
     </div>
 </div>
 
@@ -451,6 +478,7 @@ async function checkAuthAndLoad() {
             `Hoş geldiniz, ${user.full_name || 'Kullanıcı'}! Hesap bilgilerinizi ve aboneliklerinizi buradan yönetebilirsiniz.`;
         if (el('settingsFullName')) el('settingsFullName').value = user.full_name || '';
         if (el('settingsInstitution')) el('settingsInstitution').value = user.institution || '';
+        setProfileAvatar(user.avatar_url, user.full_name);
         await loadSubscriptions();
     } catch (err) {
         console.error('checkAuthAndLoad error:', err);
@@ -897,6 +925,104 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
 });
 
 
+
+// ====================== AVATAR ======================
+let _cropper = null;
+
+function setProfileAvatar(avatarUrl, fullName) {
+    const img = document.getElementById('profileAvatarImg');
+    const initials = document.getElementById('profileAvatarInitials');
+    if (avatarUrl) {
+        img.src = avatarUrl;
+        img.classList.remove('hidden');
+        initials.classList.add('hidden');
+    } else {
+        const name = fullName || '';
+        const parts = name.trim().split(' ');
+        initials.textContent = parts.length >= 2
+            ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+            : (parts[0][0] || '?').toUpperCase();
+        img.classList.add('hidden');
+        initials.classList.remove('hidden');
+    }
+}
+
+function onAvatarFileSelected(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const cropImg = document.getElementById('cropperImage');
+        cropImg.src = e.target.result;
+        document.getElementById('avatarCropModal').classList.remove('hidden');
+        if (_cropper) { _cropper.destroy(); _cropper = null; }
+        _cropper = new Cropper(cropImg, {
+            aspectRatio: 1,
+            viewMode: 2,
+            dragMode: 'move',
+            autoCropArea: 0.9,
+            responsive: true,
+        });
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+}
+
+function cancelCrop() {
+    if (_cropper) { _cropper.destroy(); _cropper = null; }
+    document.getElementById('avatarCropModal').classList.add('hidden');
+}
+
+async function applyCrop() {
+    if (!_cropper) return;
+    const statusEl = document.getElementById('avatarUploadStatus');
+    const applyBtn = document.querySelector('#avatarCropModal button');
+    applyBtn.disabled = true;
+    applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...';
+    statusEl.textContent = '';
+    statusEl.classList.remove('hidden');
+
+    try {
+        const canvas = _cropper.getCroppedCanvas({ width: 400, height: 400, imageSmoothingQuality: 'high' });
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+
+        const formData = new FormData();
+        formData.append('avatar', blob, 'avatar.jpg');
+
+        const res = await fetch('/api/user/avatar', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Yükleme başarısız');
+
+        // Güncelle
+        setProfileAvatar(data.avatar_url, window.currentUser?.full_name);
+        // Header'daki avatar da güncellensin
+        if (window.currentUser) window.currentUser.avatar_url = data.avatar_url;
+        updateHeaderAvatar(data.avatar_url);
+
+        cancelCrop();
+    } catch (err) {
+        statusEl.textContent = err.message;
+    } finally {
+        applyBtn.disabled = false;
+        applyBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Uygula ve Yükle';
+    }
+}
+
+function updateHeaderAvatar(avatarUrl) {
+    const userAvatar = document.getElementById('userAvatar');
+    const dropdownAvatar = document.getElementById('dropdownAvatar');
+    if (userAvatar) {
+        userAvatar.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full">`;
+    }
+    if (dropdownAvatar) {
+        dropdownAvatar.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full">`;
+    }
+}
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 </body>
 </html>

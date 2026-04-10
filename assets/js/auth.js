@@ -308,14 +308,24 @@ function updateAuthUI(isLoggedIn) {
         const adminMenuLink = getAuthElement('adminMenuLink');
 
         if (userAvatar) {
-            userAvatar.textContent = initials;
-            userAvatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor}`;
+            if (currentUser.avatar_url) {
+                userAvatar.innerHTML = `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover rounded-full" onerror="this.parentElement.textContent='${initials}'">`;
+                userAvatar.className = 'w-7 h-7 rounded-full overflow-hidden flex items-center justify-center';
+            } else {
+                userAvatar.textContent = initials;
+                userAvatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor}`;
+            }
         }
         if (userName) userName.textContent = fullName.length > 12 ? `${fullName.substring(0, 10)}..` : fullName;
 
         if (dropdownAvatar) {
-            dropdownAvatar.textContent = initials;
-            dropdownAvatar.className = `w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${avatarColor}`;
+            if (currentUser.avatar_url) {
+                dropdownAvatar.innerHTML = `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover rounded-full" onerror="this.parentElement.textContent='${initials}'">`;
+                dropdownAvatar.className = 'w-12 h-12 rounded-full overflow-hidden flex items-center justify-center';
+            } else {
+                dropdownAvatar.textContent = initials;
+                dropdownAvatar.className = `w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${avatarColor}`;
+            }
         }
         if (dropdownName) dropdownName.textContent = fullName;
         if (dropdownEmail) dropdownEmail.textContent = currentUser.email;

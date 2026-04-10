@@ -488,7 +488,7 @@ app.get('/api/user/profile', async (c) => {
   const db = c.env.DB;
   
   const user = await db.prepare(`
-    SELECT u.id, u.email, u.full_name, u.institution, u.institution_id, u.role, u.created_at,
+    SELECT u.id, u.email, u.full_name, u.institution, u.institution_id, u.role, u.created_at, u.avatar_url,
            i.name as institution_name
     FROM users u
     LEFT JOIN institutions i ON u.institution_id = i.id
@@ -499,6 +499,47 @@ app.get('/api/user/profile', async (c) => {
     return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
   }
   return c.json(user);
+});
+
+app.post('/api/user/avatar', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+
+  const userId = auth.user.user_id;
+  const db = c.env.DB;
+  const bucket = c.env.FILES_BUCKET;
+  const r2PublicUrl = c.env.R2_PUBLIC_URL;
+
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get('avatar');
+
+    if (!file || typeof file === 'string') return c.json({ error: 'Dosya bulunamadı' }, 400);
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) return c.json({ error: 'Sadece JPEG, PNG veya WebP desteklenir' }, 400);
+
+    const maxSize = 2 * 1024 * 1024; // 2MB
+    if (file.size > maxSize) return c.json({ error: 'Dosya 2MB\'dan küçük olmalı' }, 400);
+
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const key = `avatars/${userId}.${ext}`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    await bucket.put(key, arrayBuffer, {
+      httpMetadata: { contentType: file.type, cacheControl: 'public, max-age=31536000' }
+    });
+
+    // Cache busting için timestamp ekle
+    const avatarUrl = `${r2PublicUrl}/${key}?t=${Date.now()}`;
+
+    await db.prepare(`UPDATE users SET avatar_url = ? WHERE id = ?`).bind(avatarUrl, userId).run();
+
+    return c.json({ success: true, avatar_url: avatarUrl });
+  } catch (err) {
+    console.error('Avatar upload error:', err);
+    return c.json({ error: err.message }, 500);
+  }
 });
 
 app.post('/api/user/update', async (c) => {
