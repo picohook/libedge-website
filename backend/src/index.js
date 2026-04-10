@@ -1043,6 +1043,31 @@ app.get('/api/admin/dashboard', async (c) => {
   const adminInstitution = await getUserInstitution(c);
 
   const isSuper = role === 'super_admin';
+  const requestedPeriod = c.req.query('period') || 'all';
+  const periodConfig = (() => {
+    switch (requestedPeriod) {
+      case 'today':
+        return { key: 'today', label: 'Bugün', modifier: ", 'start of day'" };
+      case '7d':
+        return { key: '7d', label: 'Son 7 Gün', modifier: ", '-6 day', 'start of day'" };
+      case '30d':
+        return { key: '30d', label: 'Son 30 Gün', modifier: ", '-29 day', 'start of day'" };
+      case '90d':
+        return { key: '90d', label: 'Son 90 Gün', modifier: ", '-89 day', 'start of day'" };
+      default:
+        return { key: 'all', label: 'Tüm Zamanlar', modifier: '' };
+    }
+  })();
+  const appendCondition = (baseClause, extraCondition) => {
+    if (!extraCondition) return baseClause;
+    return baseClause ? `${baseClause} AND ${extraCondition}` : `WHERE ${extraCondition}`;
+  };
+  const getPeriodCondition = (columnName) => (
+    periodConfig.key === 'all'
+      ? ''
+      : `date(${columnName}) >= date('now'${periodConfig.modifier})`
+  );
+
   const userScope = isSuper
     ? { clause: '', bindings: [] }
     : adminInstitutionId
@@ -1061,22 +1086,29 @@ app.get('/api/admin/dashboard', async (c) => {
       ? { clause: 'WHERE institution = ?', bindings: [adminInstitution] }
       : { clause: 'WHERE 1 = 0', bindings: [] };
 
+  const userPeriodClause = appendCondition(userScope.clause, getPeriodCondition('u.created_at'));
+  const institutionPeriodClause = appendCondition(institutionScope.clause, getPeriodCondition('i.created_at'));
+  const submissionPeriodClause = appendCondition(submissionScope.clause, getPeriodCondition('submitted_at'));
+  const subscriptionPeriodClause = appendCondition(userScope.clause, getPeriodCondition('s.created_at'));
+  const institutionSubscriptionPeriodClause = appendCondition(institutionScope.clause, getPeriodCondition('is2.created_at'));
+  const announcementPeriodClause = appendCondition('', getPeriodCondition('published_at'));
+
   const userCountRow = await db.prepare(`
     SELECT COUNT(*) as count
     FROM users u
-    ${userScope.clause}
+    ${userPeriodClause}
   `).bind(...userScope.bindings).first();
 
   const todayRegistrationsRow = await db.prepare(`
     SELECT COUNT(*) as count
     FROM users u
-    ${userScope.clause ? `${userScope.clause} AND ` : 'WHERE '}date(u.created_at) = date('now')
+    ${userPeriodClause}
   `).bind(...userScope.bindings).first();
 
   const recentUsersRows = await db.prepare(`
     SELECT u.id, u.full_name, u.email, u.institution, u.created_at
     FROM users u
-    ${userScope.clause}
+    ${userPeriodClause}
     ORDER BY u.created_at DESC, u.id DESC
     LIMIT 5
   `).bind(...userScope.bindings).all();
@@ -1084,33 +1116,33 @@ app.get('/api/admin/dashboard', async (c) => {
   const institutionsCountRow = await db.prepare(`
     SELECT COUNT(*) as count
     FROM institutions i
-    ${institutionScope.clause}
+    ${institutionPeriodClause}
   `).bind(...institutionScope.bindings).first();
 
   const activeIndividualRow = await db.prepare(`
     SELECT COUNT(*) as count
     FROM subscriptions s
     LEFT JOIN users u ON s.user_id = u.id
-    ${userScope.clause ? `${userScope.clause.replace('WHERE', 'WHERE')} AND ` : 'WHERE '}s.status = 'active'
+    ${appendCondition(subscriptionPeriodClause, `s.status = 'active'`)}
   `).bind(...userScope.bindings).first();
 
   const activeInstitutionRow = await db.prepare(`
     SELECT COUNT(*) as count
     FROM institution_subscriptions is2
     LEFT JOIN institutions i ON is2.institution_id = i.id
-    ${institutionScope.clause ? `${institutionScope.clause.replace('WHERE', 'WHERE')} AND ` : 'WHERE '}is2.status = 'active'
+    ${appendCondition(institutionSubscriptionPeriodClause, `is2.status = 'active'`)}
   `).bind(...institutionScope.bindings).first();
 
   const trialRequestsRow = await db.prepare(`
     SELECT COUNT(*) as count
     FROM form_submissions
-    ${submissionScope.clause ? `${submissionScope.clause} AND ` : 'WHERE '}form_type = 'trial'
+    ${appendCondition(submissionPeriodClause, `form_type = 'trial'`)}
   `).bind(...submissionScope.bindings).first();
 
   const pendingRequestsRow = await db.prepare(`
     SELECT COUNT(*) as count
     FROM form_submissions
-    ${submissionScope.clause ? `${submissionScope.clause} AND ` : 'WHERE '}status = 'pending'
+    ${appendCondition(submissionPeriodClause, `status = 'pending'`)}
   `).bind(...submissionScope.bindings).first();
 
   const usersWithoutInstitutionRow = await db.prepare(`
@@ -1142,7 +1174,7 @@ app.get('/api/admin/dashboard', async (c) => {
   const recentUsersActivity = await db.prepare(`
     SELECT u.id, u.full_name, u.email, u.created_at
     FROM users u
-    ${userScope.clause}
+    ${userPeriodClause}
     ORDER BY u.created_at DESC, u.id DESC
     LIMIT 4
   `).bind(...userScope.bindings).all();
@@ -1150,7 +1182,7 @@ app.get('/api/admin/dashboard', async (c) => {
   const recentInstitutionsActivity = await db.prepare(`
     SELECT i.id, i.name, i.created_at
     FROM institutions i
-    ${institutionScope.clause}
+    ${institutionPeriodClause}
     ORDER BY i.created_at DESC, i.id DESC
     LIMIT 3
   `).bind(...institutionScope.bindings).all();
@@ -1158,6 +1190,7 @@ app.get('/api/admin/dashboard', async (c) => {
   const recentAnnouncementsActivity = await db.prepare(`
     SELECT id, title, published_at
     FROM announcements
+    ${announcementPeriodClause}
     ORDER BY published_at DESC, id DESC
     LIMIT 3
   `).all();
@@ -1166,7 +1199,7 @@ app.get('/api/admin/dashboard', async (c) => {
     SELECT s.id, s.product_slug, s.status, s.created_at, u.full_name
     FROM subscriptions s
     LEFT JOIN users u ON s.user_id = u.id
-    ${userScope.clause ? `${userScope.clause} AND ` : 'WHERE '}1 = 1
+    ${appendCondition(subscriptionPeriodClause, '1 = 1')}
     ORDER BY s.created_at DESC, s.id DESC
     LIMIT 4
   `).bind(...userScope.bindings).all();
@@ -1175,7 +1208,7 @@ app.get('/api/admin/dashboard', async (c) => {
     SELECT is2.id, is2.product_slug, is2.status, is2.created_at, i.name as institution_name
     FROM institution_subscriptions is2
     LEFT JOIN institutions i ON is2.institution_id = i.id
-    ${institutionScope.clause ? `${institutionScope.clause} AND ` : 'WHERE '}1 = 1
+    ${appendCondition(institutionSubscriptionPeriodClause, '1 = 1')}
     ORDER BY is2.created_at DESC, is2.id DESC
     LIMIT 4
   `).bind(...institutionScope.bindings).all();
@@ -1257,6 +1290,10 @@ app.get('/api/admin/dashboard', async (c) => {
 
   return c.json({
     success: true,
+    period: {
+      key: periodConfig.key,
+      label: periodConfig.label
+    },
     stats,
     actions,
     activity,

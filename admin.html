@@ -93,6 +93,23 @@
 <div class="p-6">
     <!-- Dashboard Tab -->
     <div id="tab-dashboard" class="tab-content">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800">Dashboard Genel Bakış</h3>
+                <p id="dashboardPeriodSummary" class="text-sm text-gray-500">Tüm zamanlar görünümü</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <label for="dashboardPeriodFilter" class="text-sm text-gray-600">Zaman Aralığı</label>
+                <select id="dashboardPeriodFilter" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" onchange="handleDashboardPeriodChange()">
+                    <option value="all">Tüm Zamanlar</option>
+                    <option value="today">Bugün</option>
+                    <option value="7d">Son 7 Gün</option>
+                    <option value="30d">Son 30 Gün</option>
+                    <option value="90d">Son 90 Gün</option>
+                </select>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7 gap-4 mb-8">
             <div class="stat-card flex justify-between items-start">
                 <div>
@@ -131,7 +148,7 @@
             </div>
             <div class="stat-card flex justify-between items-start">
                 <div>
-                    <p class="text-gray-500 text-sm">Bugün Kayıt</p>
+                    <p id="statRegistrationsLabel" class="text-gray-500 text-sm">Dönem Kayıt</p>
                     <p id="statTodayRegistrations" class="text-2xl font-bold">0</p>
                 </div>
                 <i class="fas fa-user-clock text-3xl text-indigo-500 opacity-50"></i>
@@ -1260,6 +1277,24 @@ document.addEventListener('click', function(e) {
         syncAirtableContactsToUsers();
     }
 
+    let dashboardPeriod = 'all';
+
+    function getDashboardPeriodLabel(period) {
+        const labels = {
+            all: 'Tüm Zamanlar',
+            today: 'Bugün',
+            '7d': 'Son 7 Gün',
+            '30d': 'Son 30 Gün',
+            '90d': 'Son 90 Gün'
+        };
+        return labels[period] || labels.all;
+    }
+
+    function handleDashboardPeriodChange() {
+        dashboardPeriod = document.getElementById('dashboardPeriodFilter')?.value || 'all';
+        loadDashboard();
+    }
+
     function renderDashboardActions(items) {
         const container = document.getElementById('dashboardActions');
         const visibleItems = (items || []).filter(item => item.count > 0 || item.key === 'pending_requests');
@@ -1308,11 +1343,21 @@ document.addEventListener('click', function(e) {
     // Dashboard verilerini yükle
     async function loadDashboard() {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/dashboard`, { credentials: 'include' });
+            const summaryEl = document.getElementById('dashboardPeriodSummary');
+            const registrationsLabelEl = document.getElementById('statRegistrationsLabel');
+            const legacyRegistrationsLabelEl = registrationsLabelEl?.previousElementSibling;
+            const fallbackLabel = getDashboardPeriodLabel(dashboardPeriod);
+
+            if (summaryEl) summaryEl.textContent = `${fallbackLabel} görünümü`;
+            if (registrationsLabelEl) registrationsLabelEl.textContent = `${fallbackLabel} Kaydı`;
+            if (legacyRegistrationsLabelEl?.tagName === 'P') legacyRegistrationsLabelEl.style.display = 'none';
+
+            const res = await fetch(`${API_BASE}/api/admin/dashboard?period=${encodeURIComponent(dashboardPeriod)}`, { credentials: 'include' });
             if (!res.ok) throw new Error('Dashboard verileri alınamadı');
 
             const data = await res.json();
             const stats = data.stats || {};
+            const activePeriodLabel = data.period?.label || fallbackLabel;
 
             document.getElementById('statUsers').textContent = stats.users || 0;
             
@@ -1323,6 +1368,8 @@ document.addEventListener('click', function(e) {
             document.getElementById('statInstitutionSubscriptions').textContent = stats.active_institution_subscriptions || 0;
             
             document.getElementById('statInstitutions').textContent = stats.institutions || 0;
+            if (summaryEl) summaryEl.textContent = `${activePeriodLabel} görünümü`;
+            if (registrationsLabelEl) registrationsLabelEl.textContent = `${activePeriodLabel} Kaydı`;
             
             const recent = data.recent_users || [];
             document.getElementById('recentUsers').innerHTML = recent.map(u => `<tr><td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td><td class="px-4 py-2">${escapeHtml(u.email)}</td><td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td><td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center py-4">Henüz kullanıcı yok</td></tr>';

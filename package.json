@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "tailwindcss": "^3.4.17",
-    "wrangler": "^4.81.0"
+    "wrangler": "^4.81.1"
   },
   "repository": {
     "type": "git",
