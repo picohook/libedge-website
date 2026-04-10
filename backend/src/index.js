@@ -1917,9 +1917,10 @@ app.get('/api/admin/sync/airtable-to-d1', async (c) => {
             ).bind(rec.airtable_id).first();
 
             if (existing) {
-                // Değişiklik var mı?
-                if (existing.name !== rec.name || existing.domain !== (rec.domain || null) ||
-                    existing.category !== rec.category || existing.status !== rec.status) {
+                // Değişiklik var mı? (null ve '' aynı kabul et)
+                const norm = v => v || '';
+                if (norm(existing.name) !== norm(rec.name) || norm(existing.domain) !== norm(rec.domain) ||
+                    norm(existing.category) !== norm(rec.category) || norm(existing.status) !== norm(rec.status)) {
                     changes.push({
                         action: 'update',
                         airtable_id: rec.airtable_id,
