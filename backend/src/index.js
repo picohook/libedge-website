@@ -175,6 +175,69 @@ async function ensureNewsletterTable(db) {
   `).run();
 }
 
+function splitFullName(fullName) {
+  const cleaned = String(fullName || '').trim().replace(/\s+/g, ' ');
+  if (!cleaned) return { first_name: '', last_name: '' };
+
+  const parts = cleaned.split(' ');
+  if (parts.length === 1) {
+    return { first_name: parts[0], last_name: '' };
+  }
+
+  return {
+    first_name: parts[0],
+    last_name: parts.slice(1).join(' ')
+  };
+}
+
+function buildFullName(firstName, lastName, fallbackFullName) {
+  const joined = [firstName, lastName]
+    .map(value => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
+  if (joined) return joined;
+
+  const fallback = String(fallbackFullName || '').trim().replace(/\s+/g, ' ');
+  return fallback || null;
+}
+
+function normalizeUserProfileFields(input = {}) {
+  const fallbackNames = splitFullName(input.full_name);
+  const firstName = String(input.first_name ?? fallbackNames.first_name ?? '').trim();
+  const lastName = String(input.last_name ?? fallbackNames.last_name ?? '').trim();
+  const title = String(input.title || '').trim();
+
+  return {
+    first_name: firstName || null,
+    last_name: lastName || null,
+    full_name: buildFullName(firstName, lastName, input.full_name),
+    title: title || null
+  };
+}
+
+function randomPassword(length = 24) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
+  const bytes = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(bytes, byte => alphabet[byte % alphabet.length]).join('');
+}
+
+async function ensureUserContactColumns(db) {
+  const columns = await db.prepare(`PRAGMA table_info(users)`).all();
+  const existing = new Set((columns.results || []).map(column => column.name));
+
+  if (!existing.has('first_name')) {
+    await db.prepare(`ALTER TABLE users ADD COLUMN first_name TEXT`).run();
+  }
+  if (!existing.has('last_name')) {
+    await db.prepare(`ALTER TABLE users ADD COLUMN last_name TEXT`).run();
+  }
+  if (!existing.has('title')) {
+    await db.prepare(`ALTER TABLE users ADD COLUMN title TEXT`).run();
+  }
+}
+
 // 🆕 Token'dan rol ve kurum bilgilerini al (eski fonksiyonlarla uyumlu)
 async function getTokenPayloadFromCookie(c) {
   const auth = await requireAuth(c);
@@ -600,6 +663,8 @@ app.post('/api/user/update', async (c) => {
   const userId = auth.user.user_id;
   const { full_name, institution, new_password } = await c.req.json();
   const db = c.env.DB;
+  await ensureUserContactColumns(db);
+  const profileFields = normalizeUserProfileFields({ full_name });
 
   if (new_password) {
     if (new_password.length < 6) {
@@ -607,12 +672,12 @@ app.post('/api/user/update', async (c) => {
     }
     const password_hash = await hashPassword(new_password);
     await db.prepare(`
-      UPDATE users SET full_name = ?, institution = ?, password_hash = ? WHERE id = ?
-    `).bind(full_name || null, institution || null, password_hash, userId).run();
+      UPDATE users SET full_name = ?, first_name = ?, last_name = ?, institution = ?, password_hash = ? WHERE id = ?
+    `).bind(profileFields.full_name, profileFields.first_name, profileFields.last_name, institution || null, password_hash, userId).run();
   } else {
     await db.prepare(`
-      UPDATE users SET full_name = ?, institution = ? WHERE id = ?
-    `).bind(full_name || null, institution || null, userId).run();
+      UPDATE users SET full_name = ?, first_name = ?, last_name = ?, institution = ? WHERE id = ?
+    `).bind(profileFields.full_name, profileFields.first_name, profileFields.last_name, institution || null, userId).run();
   }
   return c.json({ success: true });
 });
@@ -822,17 +887,19 @@ app.post('/api/auth/register', async (c) => {
   try {
     const { email, password, full_name, institution } = await c.req.json();
     const db = c.env.DB;
+    await ensureUserContactColumns(db);
 
     if (!email || !password) {
       return c.json({ success: false, error: 'E-posta ve şifre zorunludur.' }, 400);
     }
 
     const password_hash = await hashPassword(password);
+    const profileFields = normalizeUserProfileFields({ full_name });
 
     await db.prepare(`
-      INSERT INTO users (email, password_hash, full_name, institution, role)
-      VALUES (?, ?, ?, ?, 'user')
-    `).bind(email.toLowerCase().trim(), password_hash, full_name || null, institution || null).run();
+      INSERT INTO users (email, password_hash, full_name, first_name, last_name, institution, role)
+      VALUES (?, ?, ?, ?, ?, ?, 'user')
+    `).bind(email.toLowerCase().trim(), password_hash, profileFields.full_name, profileFields.first_name, profileFields.last_name, institution || null).run();
 
     return c.json({ success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.' });
   } catch (err) {
@@ -925,11 +992,13 @@ app.get('/api/admin/users', async (c) => {
   if (!await canListUsers(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   const role = await getUserRole(c);
+  await ensureUserContactColumns(db);
 
   let users;
   if (role === 'super_admin') {
     users = await db.prepare(`
-      SELECT u.id, u.email, u.full_name, u.institution, u.institution_id, u.role, u.created_at, u.last_login,
+      SELECT u.id, u.email, u.full_name, u.first_name, u.last_name, u.title,
+             u.institution, u.institution_id, u.role, u.created_at, u.last_login,
              COALESCE(i.name, u.institution) as institution_name
       FROM users u
       LEFT JOIN institutions i ON u.institution_id = i.id
@@ -940,7 +1009,8 @@ app.get('/api/admin/users', async (c) => {
     const adminInstitution = await getUserInstitution(c);
     if (adminInstitutionId) {
       users = await db.prepare(`
-        SELECT u.id, u.email, u.full_name, u.institution, u.institution_id, u.role, u.created_at, u.last_login,
+        SELECT u.id, u.email, u.full_name, u.first_name, u.last_name, u.title,
+               u.institution, u.institution_id, u.role, u.created_at, u.last_login,
                COALESCE(i.name, u.institution) as institution_name
         FROM users u
         LEFT JOIN institutions i ON u.institution_id = i.id
@@ -949,7 +1019,8 @@ app.get('/api/admin/users', async (c) => {
       `).bind(adminInstitutionId).all();
     } else {
       users = await db.prepare(`
-        SELECT u.id, u.email, u.full_name, u.institution, u.institution_id, u.role, u.created_at, u.last_login,
+        SELECT u.id, u.email, u.full_name, u.first_name, u.last_name, u.title,
+               u.institution, u.institution_id, u.role, u.created_at, u.last_login,
                COALESCE(i.name, u.institution) as institution_name
         FROM users u
         LEFT JOIN institutions i ON u.institution_id = i.id
@@ -963,11 +1034,18 @@ app.get('/api/admin/users', async (c) => {
 
 app.post('/api/admin/user', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const { email, password, full_name, institution, institution_id, role } = await c.req.json();
+  const { email, password, full_name, first_name, last_name, title, institution, institution_id, role } = await c.req.json();
   const db = c.env.DB;
+  await ensureUserContactColumns(db);
   const adminRole = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
+  const normalizedEmail = email?.toLowerCase().trim();
+  const profileFields = normalizeUserProfileFields({ full_name, first_name, last_name, title });
+
+  if (!normalizedEmail) {
+    return c.json({ error: 'E-posta zorunludur' }, 400);
+  }
 
   // institution_id veya institution string'inden her iki değeri de resolve et
   let finalInstitutionId = institution_id ? parseInt(institution_id) : null;
@@ -988,7 +1066,7 @@ app.post('/api/admin/user', async (c) => {
     finalInstitution = adminInstitution;
 
     // Email domain kontrolü
-    const emailDomain = email?.split('@')[1]?.toLowerCase();
+    const emailDomain = normalizedEmail?.split('@')[1]?.toLowerCase();
     if (emailDomain && finalInstitution) {
       const inst = await db.prepare(`SELECT domain FROM institutions WHERE name = ?`).bind(finalInstitution).first();
       if (inst?.domain) {
@@ -1001,20 +1079,39 @@ app.post('/api/admin/user', async (c) => {
   }
 
   const finalRole = (role === 'admin' && adminRole !== 'super_admin') ? 'user' : (role || 'user');
-  const password_hash = await hashPassword(password);
-  await db.prepare(`INSERT INTO users (email, password_hash, full_name, institution, institution_id, role) VALUES (?, ?, ?, ?, ?, ?)`)
-    .bind(email, password_hash, full_name, finalInstitution, finalInstitutionId, finalRole).run();
+  const password_hash = await hashPassword(password || randomPassword());
+  await db.prepare(`
+    INSERT INTO users (email, password_hash, full_name, first_name, last_name, title, institution, institution_id, role)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `)
+    .bind(
+      normalizedEmail,
+      password_hash,
+      profileFields.full_name,
+      profileFields.first_name,
+      profileFields.last_name,
+      profileFields.title,
+      finalInstitution,
+      finalInstitutionId,
+      finalRole
+    ).run();
   return c.json({ success: true });
 });
 
 app.put('/api/admin/user/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const id = c.req.param('id');
-  const { email, password, full_name, institution, institution_id, role } = await c.req.json();
+  const { email, password, full_name, first_name, last_name, title, institution, institution_id, role } = await c.req.json();
   const db = c.env.DB;
+  await ensureUserContactColumns(db);
   const adminRole = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
+  const normalizedEmail = email?.toLowerCase().trim();
+  const profileFields = normalizeUserProfileFields({ full_name, first_name, last_name, title });
+  if (!normalizedEmail) {
+    return c.json({ error: 'E-posta zorunludur' }, 400);
+  }
 
   if (adminRole === 'admin' && !await canAccessUser(c, id)) {
     return c.json({ error: 'Sadece kendi kurumunuzdaki kullanıcıları düzenleyebilirsiniz' }, 403);
@@ -1042,19 +1139,19 @@ app.put('/api/admin/user/:id', async (c) => {
   if (password) {
     const password_hash = await hashPassword(password);
     if (finalRole) {
-      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, institution_id=?, role=? WHERE id=?`)
-        .bind(email, password_hash, full_name, finalInstitution, finalInstitutionId, finalRole, id).run();
+      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=?, role=? WHERE id=?`)
+        .bind(normalizedEmail, password_hash, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, finalRole, id).run();
     } else {
-      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, institution=?, institution_id=? WHERE id=?`)
-        .bind(email, password_hash, full_name, finalInstitution, finalInstitutionId, id).run();
+      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=? WHERE id=?`)
+        .bind(normalizedEmail, password_hash, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, id).run();
     }
   } else {
     if (finalRole) {
-      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=?, institution_id=?, role=? WHERE id=?`)
-        .bind(email, full_name, finalInstitution, finalInstitutionId, finalRole, id).run();
+      await db.prepare(`UPDATE users SET email=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=?, role=? WHERE id=?`)
+        .bind(normalizedEmail, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, finalRole, id).run();
     } else {
-      await db.prepare(`UPDATE users SET email=?, full_name=?, institution=?, institution_id=? WHERE id=?`)
-        .bind(email, full_name, finalInstitution, finalInstitutionId, id).run();
+      await db.prepare(`UPDATE users SET email=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=? WHERE id=?`)
+        .bind(normalizedEmail, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, id).run();
     }
   }
   return c.json({ success: true });
@@ -2112,6 +2209,168 @@ async function fetchAirtableAccounts(env) {
     }));
 }
 
+async function fetchAirtableContacts(env, accountMap = new Map()) {
+    const baseId = env.AIRTABLE_BASE_ID;
+    const pat = env.AIRTABLE_PAT;
+    let records = [];
+    let offset = null;
+
+    do {
+        const url = new URL(`https://api.airtable.com/v0/${baseId}/Contacts`);
+        url.searchParams.set('pageSize', '100');
+        if (offset) url.searchParams.set('offset', offset);
+        const res = await fetch(url.toString(), { headers: { 'Authorization': `Bearer ${pat}` } });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        records = records.concat(data.records || []);
+        offset = data.offset || null;
+    } while (offset);
+
+    const scalar = (value) => Array.isArray(value) ? (value[0] || '') : (value || '');
+
+    return records.map(r => {
+        const accountRaw = r.fields['Account'];
+        const accountId = Array.isArray(accountRaw) ? (accountRaw[0] || '') : '';
+        const accountName = accountMap.get(accountId) || scalar(r.fields['Account Name']) || scalar(accountRaw);
+
+        return {
+            airtable_id: r.id,
+            first_name: String(r.fields['First Name'] || '').trim(),
+            last_name: String(r.fields['Last Name'] || '').trim(),
+            email: String(r.fields['Email'] || '').trim().toLowerCase(),
+            title: String(scalar(r.fields['Title']) || '').trim(),
+            account_name: String(accountName || '').trim(),
+            account_airtable_id: accountId || null
+        };
+    });
+}
+
+function normalizeComparableValue(value) {
+    return String(value || '').trim();
+}
+
+async function resolveInstitutionForContact(db, contact) {
+    if (contact.account_airtable_id) {
+        const byAirtable = await db.prepare(`
+          SELECT id, name, airtable_id FROM institutions WHERE airtable_id = ?
+        `).bind(contact.account_airtable_id).first();
+        if (byAirtable) return byAirtable;
+    }
+
+    if (contact.account_name) {
+        const byName = await db.prepare(`
+          SELECT id, name, airtable_id FROM institutions WHERE LOWER(name) = LOWER(?)
+        `).bind(contact.account_name).first();
+        if (byName) return byName;
+    }
+
+    return null;
+}
+
+async function buildAirtableUserSyncChanges(c, { restrictToAdminInstitution = true } = {}) {
+    const db = c.env.DB;
+    await ensureUserContactColumns(db);
+
+    const accounts = await fetchAirtableAccounts(c.env);
+    const accountMap = new Map(accounts.map(account => [account.airtable_id, account.name]));
+    let contacts = await fetchAirtableContacts(c.env, accountMap);
+
+    const auth = await requireAuth(c);
+    if (auth.response) throw new Error('Yetkisiz');
+
+    if (restrictToAdminInstitution && auth.user.role === 'admin') {
+        const adminInstitutionId = auth.user.institution_id || null;
+        const adminInstitutionName = normalizeComparableValue(auth.user.institution).toLowerCase();
+        let adminInstitutionAirtableId = null;
+
+        if (adminInstitutionId) {
+            const institution = await db.prepare(`
+              SELECT airtable_id, name FROM institutions WHERE id = ?
+            `).bind(adminInstitutionId).first();
+            adminInstitutionAirtableId = institution?.airtable_id || null;
+        }
+
+        contacts = contacts.filter(contact => {
+            const sameAirtable = adminInstitutionAirtableId && contact.account_airtable_id === adminInstitutionAirtableId;
+            const sameName = adminInstitutionName && normalizeComparableValue(contact.account_name).toLowerCase() === adminInstitutionName;
+            return sameAirtable || sameName;
+        });
+    }
+
+    const changes = [];
+    for (const contact of contacts) {
+        if (!contact.email) continue;
+
+        const profileFields = normalizeUserProfileFields(contact);
+        const linkedInstitution = await resolveInstitutionForContact(db, contact);
+        const existing = await db.prepare(`
+          SELECT id, email, full_name, first_name, last_name, title, institution, institution_id, role
+          FROM users
+          WHERE LOWER(email) = LOWER(?)
+        `).bind(contact.email).first();
+
+        const nextState = {
+            email: contact.email,
+            first_name: profileFields.first_name,
+            last_name: profileFields.last_name,
+            full_name: profileFields.full_name,
+            title: profileFields.title,
+            institution: linkedInstitution?.name || contact.account_name || null,
+            institution_id: linkedInstitution?.id || null,
+            account_name: contact.account_name || null,
+            account_airtable_id: contact.account_airtable_id || null
+        };
+
+        if (existing) {
+            const changed =
+                normalizeComparableValue(existing.first_name) !== normalizeComparableValue(nextState.first_name) ||
+                normalizeComparableValue(existing.last_name) !== normalizeComparableValue(nextState.last_name) ||
+                normalizeComparableValue(existing.full_name) !== normalizeComparableValue(nextState.full_name) ||
+                normalizeComparableValue(existing.title) !== normalizeComparableValue(nextState.title) ||
+                normalizeComparableValue(existing.institution) !== normalizeComparableValue(nextState.institution) ||
+                Number(existing.institution_id || 0) !== Number(nextState.institution_id || 0);
+
+            if (changed) {
+                changes.push({
+                    action: 'update',
+                    id: existing.id,
+                    email: nextState.email,
+                    first_name: nextState.first_name,
+                    last_name: nextState.last_name,
+                    full_name: nextState.full_name,
+                    title: nextState.title,
+                    institution: nextState.institution,
+                    institution_id: nextState.institution_id,
+                    account_name: nextState.account_name,
+                    account_airtable_id: nextState.account_airtable_id,
+                    before: {
+                        full_name: existing.full_name,
+                        title: existing.title,
+                        institution: existing.institution,
+                        role: existing.role
+                    }
+                });
+            }
+        } else {
+            changes.push({
+                action: 'create',
+                email: nextState.email,
+                first_name: nextState.first_name,
+                last_name: nextState.last_name,
+                full_name: nextState.full_name,
+                title: nextState.title,
+                institution: nextState.institution,
+                institution_id: nextState.institution_id,
+                account_name: nextState.account_name,
+                account_airtable_id: nextState.account_airtable_id,
+                before: null
+            });
+        }
+    }
+
+    return { total: contacts.length, changes };
+}
+
 // GET /api/admin/sync/airtable-to-d1 — Dry-run, önizleme
 app.get('/api/admin/sync/airtable-to-d1', async (c) => {
     const auth = await requireAuth(c);
@@ -2222,6 +2481,88 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
         return c.json({ success: true, created, updated });
     } catch (err) {
         console.error('Sync apply error:', err);
+        return c.json({ error: err.message }, 500);
+    }
+});
+
+// GET /api/admin/sync/airtable-contacts-to-users — Dry-run, önizleme
+app.get('/api/admin/sync/airtable-contacts-to-users', async (c) => {
+    const auth = await requireAuth(c);
+    if (auth.response) return auth.response;
+    if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+    if (!c.env.AIRTABLE_BASE_ID || !c.env.AIRTABLE_PAT) return c.json({ error: 'Airtable ayarları eksik' }, 500);
+
+    try {
+        const result = await buildAirtableUserSyncChanges(c);
+        return c.json({ success: true, total: result.total, changes: result.changes });
+    } catch (err) {
+        console.error('User sync preview error:', err);
+        return c.json({ error: err.message }, 500);
+    }
+});
+
+// POST /api/admin/sync/airtable-contacts-to-users — Seçili değişiklikleri uygula
+app.post('/api/admin/sync/airtable-contacts-to-users', async (c) => {
+    const auth = await requireAuth(c);
+    if (auth.response) return auth.response;
+    if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+    if (!c.env.AIRTABLE_BASE_ID || !c.env.AIRTABLE_PAT) return c.json({ error: 'Airtable ayarları eksik' }, 500);
+
+    try {
+        const db = c.env.DB;
+        await ensureUserContactColumns(db);
+        const { changes } = await c.req.json();
+        if (!Array.isArray(changes) || changes.length === 0) return c.json({ error: 'Uygulanacak değişiklik yok' }, 400);
+
+        let created = 0;
+        let updated = 0;
+
+        for (const rawChange of changes) {
+            const normalizedEmail = String(rawChange.email || '').trim().toLowerCase();
+            if (!normalizedEmail) continue;
+
+            const profileFields = normalizeUserProfileFields(rawChange);
+            const finalInstitutionId = rawChange.institution_id ? parseInt(rawChange.institution_id) : null;
+            const finalInstitution = rawChange.institution || null;
+            const existing = await db.prepare(`SELECT id FROM users WHERE LOWER(email) = LOWER(?)`).bind(normalizedEmail).first();
+
+            if (rawChange.action === 'update' || existing) {
+                await db.prepare(`
+                  UPDATE users
+                  SET full_name = ?, first_name = ?, last_name = ?, title = ?, institution = ?, institution_id = ?
+                  WHERE LOWER(email) = LOWER(?)
+                `).bind(
+                  profileFields.full_name,
+                  profileFields.first_name,
+                  profileFields.last_name,
+                  profileFields.title,
+                  finalInstitution,
+                  finalInstitutionId,
+                  normalizedEmail
+                ).run();
+                updated++;
+            } else if (rawChange.action === 'create') {
+                const password_hash = await hashPassword(randomPassword());
+                await db.prepare(`
+                  INSERT INTO users (email, password_hash, full_name, first_name, last_name, title, institution, institution_id, role)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'user')
+                `).bind(
+                  normalizedEmail,
+                  password_hash,
+                  profileFields.full_name,
+                  profileFields.first_name,
+                  profileFields.last_name,
+                  profileFields.title,
+                  finalInstitution,
+                  finalInstitutionId
+                ).run();
+                created++;
+            }
+        }
+
+        return c.json({ success: true, created, updated });
+    } catch (err) {
+        console.error('User sync apply error:', err);
         return c.json({ error: err.message }, 500);
     }
 });

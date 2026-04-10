@@ -152,6 +152,9 @@
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Kullanıcılar</h3>
                 <div class="flex gap-2">
+                    <button type="button" id="syncContactsBtn" class="btn bg-blue-50 text-blue-700 border border-blue-200" onclick="syncAirtableContactsToUsers()">
+                        <i class="fas fa-address-book mr-2"></i>Airtable Contacts Sync
+                    </button>
                     <button type="button" class="btn bg-gray-200 text-gray-700" onclick="openBulkUserModal()">
                         <i class="fas fa-list mr-2"></i>Toplu Ekle
                     </button>
@@ -632,6 +635,41 @@
     </div>
 </div>
 
+<!-- User Sync Preview Modal -->
+<div id="userSyncPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-5xl max-h-[90vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
+            <h3 class="text-xl font-bold">Airtable Contacts Sync Önizleme</h3>
+            <span id="userSyncPreviewSummary" class="text-sm text-gray-500"></span>
+        </div>
+        <div class="flex gap-2 mb-3 flex-shrink-0">
+            <button type="button" onclick="selectAllUserSyncChanges(true)" class="text-xs text-blue-600 hover:underline">Tümünü Seç</button>
+            <span class="text-gray-300">|</span>
+            <button type="button" onclick="selectAllUserSyncChanges(false)" class="text-xs text-blue-600 hover:underline">Tümünü Kaldır</button>
+        </div>
+        <div class="overflow-y-auto flex-1 border rounded">
+            <table class="w-full text-sm">
+                <thead class="sticky top-0 bg-gray-50 z-10">
+                    <tr>
+                        <th class="px-3 py-2 text-left w-8"><input type="checkbox" id="userSyncSelectAll" onchange="selectAllUserSyncChanges(this.checked)"></th>
+                        <th class="px-3 py-2 text-left">İşlem</th>
+                        <th class="px-3 py-2 text-left">Ad Soyad</th>
+                        <th class="px-3 py-2 text-left">E-posta</th>
+                        <th class="px-3 py-2 text-left">Unvan</th>
+                        <th class="px-3 py-2 text-left">Kurum</th>
+                        <th class="px-3 py-2 text-left text-gray-400">Önceki</th>
+                    </tr>
+                </thead>
+                <tbody id="userSyncPreviewRows"></tbody>
+            </table>
+        </div>
+        <div class="flex gap-2 mt-4 flex-shrink-0">
+            <button type="button" id="userSyncApplyBtn" onclick="applyUserSyncChanges()" class="btn btn-primary flex-1">Seçilileri Uygula</button>
+            <button type="button" onclick="closeUserSyncPreviewModal()" class="btn bg-gray-300 flex-1">İptal</button>
+        </div>
+    </div>
+</div>
+
 <!-- Announcement Modal -->
 <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -796,7 +834,11 @@
         <h3 id="userModalTitle" class="text-xl font-bold mb-4">Kullanıcı Ekle</h3>
         <form id="userForm">
             <input type="hidden" id="userId">
-            <div class="mb-3"><input type="text" id="userFullName" placeholder="Ad Soyad" class="w-full border p-2 rounded" required></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <input type="text" id="userFirstName" placeholder="Ad" class="w-full border p-2 rounded" required>
+                <input type="text" id="userLastName" placeholder="Soyad" class="w-full border p-2 rounded">
+            </div>
+            <div class="mb-3"><input type="text" id="userTitle" placeholder="Unvan (opsiyonel)" class="w-full border p-2 rounded"></div>
             <div class="mb-3"><input type="email" id="userEmail" placeholder="E-posta" class="w-full border p-2 rounded" required></div>
             <div class="mb-3"><input type="password" id="userPassword" name="password" placeholder="Şifre (değiştirmek için doldurun)" class="w-full border p-2 rounded" autocomplete="new-password"></div>
             <div class="mb-3">
@@ -819,9 +861,9 @@
 
         <!-- Adım 1: Yapıştır -->
         <div id="bulkUserStep1" class="flex flex-col flex-1 min-h-0">
-            <p class="text-sm text-gray-500 mb-3 flex-shrink-0">Excel veya CSV'den kopyalayıp yapıştırın. Sütunlar: <span class="font-medium text-gray-700">Ad Soyad</span>, <span class="font-medium text-gray-700">E-posta</span>, <span class="font-medium text-gray-700">Kurum</span> (opsiyonel), <span class="font-medium text-gray-700">Rol</span> (opsiyonel, user/admin). Tab veya virgülle ayrılmış.</p>
+            <p class="text-sm text-gray-500 mb-3 flex-shrink-0">Eski formatı da yeni formatı da kabul eder. Yeni sütunlar: <span class="font-medium text-gray-700">Ad</span>, <span class="font-medium text-gray-700">Soyad</span>, <span class="font-medium text-gray-700">E-posta</span>, <span class="font-medium text-gray-700">Unvan</span> (opsiyonel), <span class="font-medium text-gray-700">Kurum</span> (opsiyonel), <span class="font-medium text-gray-700">Rol</span> (opsiyonel, user/admin). Eski formatta ise <span class="font-medium text-gray-700">Ad Soyad</span>, <span class="font-medium text-gray-700">E-posta</span>, <span class="font-medium text-gray-700">Kurum</span>, <span class="font-medium text-gray-700">Rol</span> kullanabilirsiniz.</p>
             <textarea id="bulkUserPasteArea" rows="12"
-                placeholder="Ahmet Yılmaz&#9;ahmet@ankara.edu.tr&#9;Ankara Üniversitesi&#9;user&#10;Ayşe Kaya&#9;ayse@itu.edu.tr&#9;&#9;user"
+                placeholder="Ahmet&#9;Yılmaz&#9;ahmet@ankara.edu.tr&#9;Kütüphane Direktörü&#9;Ankara Üniversitesi&#9;user&#10;Ayşe Kaya&#9;ayse@itu.edu.tr&#9;&#9;user"
                 class="w-full border rounded p-3 text-sm font-mono flex-1 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 min-h-0"></textarea>
             <div class="flex gap-2 pt-3 mt-3 border-t flex-shrink-0">
                 <button type="button" onclick="parseBulkUsers()" class="btn btn-primary flex-1">Önizle</button>
@@ -836,8 +878,10 @@
                 <table class="w-full text-sm">
                     <thead class="sticky top-0 bg-gray-50 z-10">
                         <tr>
-                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Ad Soyad</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Ad</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Soyad</th>
                             <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">E-posta</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Unvan</th>
                             <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Kurum</th>
                             <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Rol</th>
                             <th class="w-8 sticky top-0 bg-gray-50"></th>
@@ -1078,7 +1122,10 @@ document.addEventListener('click', function(e) {
         document.getElementById('usersList').innerHTML = users.length ? users.map(u => {
             const userData = JSON.stringify({
                 id: u.id,
-                name: u.full_name || '',
+                full_name: u.full_name || '',
+                first_name: u.first_name || '',
+                last_name: u.last_name || '',
+                title: u.title || '',
                 email: u.email,
                 institutionId: u.institution_id || '',
                 role: u.role
@@ -1170,6 +1217,18 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
+function splitNameParts(fullName) {
+    const cleaned = String(fullName || '').trim().replace(/\s+/g, ' ');
+    if (!cleaned) return { firstName: '', lastName: '' };
+    const parts = cleaned.split(' ');
+    if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
+function composeFullName(firstName, lastName) {
+    return [firstName, lastName].map(v => String(v || '').trim()).filter(Boolean).join(' ').trim();
+}
+
     // Rol değiştirme (sadece super admin)
     async function setRole(userId, newRole) {
         if (confirm(`Kullanıcı rolünü ${newRole === 'admin' ? 'Admin' : 'Kullanıcı'} yapmak istediğinize emin misiniz?`)) {
@@ -1198,24 +1257,28 @@ function escapeHtml(text) {
     }
     function openUserModal() {
         loadInstitutionsForUserModal(null);
+        document.getElementById('userModalTitle').textContent = 'Kullanıcı Ekle';
         document.getElementById('userModal').classList.remove('hidden');
     }
     function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); document.getElementById('userForm').reset(); document.getElementById('userId').value = ''; document.getElementById('userFormError').classList.add('hidden'); }
     function editUserByData(jsonString) {
         try {
             const data = JSON.parse(jsonString);
-            editUser(data.id, data.name, data.email, data.institutionId, data.role);
+            editUser(data);
         } catch (e) {
             console.error('Geçersiz kullanıcı verisi:', e);
         }
     }
-    function editUser(id, name, email, institutionId, role) {
-        document.getElementById('userId').value = id;
-        document.getElementById('userFullName').value = name;
-        document.getElementById('userEmail').value = email;
-        document.getElementById('userRole').value = role;
+    function editUser(user) {
+        const fallbackNames = splitNameParts(user.full_name || '');
+        document.getElementById('userId').value = user.id;
+        document.getElementById('userFirstName').value = user.first_name || fallbackNames.firstName;
+        document.getElementById('userLastName').value = user.last_name || fallbackNames.lastName;
+        document.getElementById('userTitle').value = user.title || '';
+        document.getElementById('userEmail').value = user.email;
+        document.getElementById('userRole').value = user.role;
         document.getElementById('userModalTitle').textContent = 'Kullanıcı Düzenle';
-        loadInstitutionsForUserModal(institutionId);
+        loadInstitutionsForUserModal(user.institutionId);
         document.getElementById('userModal').classList.remove('hidden');
     }
     async function deleteUser(id) {
@@ -1274,8 +1337,13 @@ function escapeHtml(text) {
         errorEl.classList.add('hidden');
         const id = document.getElementById('userId').value;
         const instIdVal = document.getElementById('userInstitutionId').value;
+        const firstName = document.getElementById('userFirstName').value.trim();
+        const lastName = document.getElementById('userLastName').value.trim();
         const data = {
-            full_name: document.getElementById('userFullName').value,
+            first_name: firstName,
+            last_name: lastName,
+            full_name: composeFullName(firstName, lastName),
+            title: document.getElementById('userTitle').value.trim(),
             email: document.getElementById('userEmail').value,
             institution_id: instIdVal ? parseInt(instIdVal) : null,
             role: document.getElementById('userRole').value,
@@ -2231,18 +2299,38 @@ function parseBulkUsers() {
     tbody.innerHTML = lines.map(line => {
         const sep = line.includes('\t') ? '\t' : ',';
         const parts = line.split(sep).map(s => s.trim());
-        const fullName = parts[0] || '';
-        const email    = parts[1] || '';
-        const inst     = isSuper ? (parts[2] || '') : adminInstitution;
-        const role     = validRoles.includes(parts[3]?.toLowerCase()) ? parts[3].toLowerCase() : 'user';
+        let firstName = '';
+        let lastName = '';
+        let email = '';
+        let title = '';
+        let inst = isSuper ? '' : adminInstitution;
+        let role = 'user';
+
+        if ((parts[2] || '').includes('@')) {
+            firstName = parts[0] || '';
+            lastName = parts[1] || '';
+            email = parts[2] || '';
+            title = parts[3] || '';
+            inst = isSuper ? (parts[4] || '') : adminInstitution;
+            role = validRoles.includes(parts[5]?.toLowerCase()) ? parts[5].toLowerCase() : 'user';
+        } else {
+            const fallbackNames = splitNameParts(parts[0] || '');
+            firstName = fallbackNames.firstName;
+            lastName = fallbackNames.lastName;
+            email = parts[1] || '';
+            inst = isSuper ? (parts[2] || '') : adminInstitution;
+            role = validRoles.includes(parts[3]?.toLowerCase()) ? parts[3].toLowerCase() : 'user';
+        }
 
         const instCell = isSuper
             ? `<input type="text" value="${escapeHtml(inst)}" class="bulk-user-inst w-full border rounded px-2 py-0.5 text-xs">`
             : `<span class="text-gray-500 text-xs">${escapeHtml(inst)}</span>`;
 
         return `<tr class="border-t border-gray-100">
-            <td class="px-3 py-1">${escapeHtml(fullName)}</td>
+            <td class="px-3 py-1">${escapeHtml(firstName)}</td>
+            <td class="px-3 py-1">${escapeHtml(lastName)}</td>
             <td class="px-3 py-1">${escapeHtml(email)}</td>
+            <td class="px-3 py-1"><input type="text" value="${escapeHtml(title)}" class="bulk-user-title w-full border rounded px-2 py-0.5 text-xs"></td>
             <td class="px-3 py-1">${instCell}</td>
             <td class="px-3 py-1">
                 <select class="bulk-user-role border rounded px-1 py-0.5 text-xs">
@@ -2265,8 +2353,14 @@ async function submitBulkUsers() {
     const adminInstitution = currentAdmin?.institution || '';
     const rows = [...document.querySelectorAll('#bulkUserPreviewRows tr')];
     const entries = rows.map(tr => ({
-        full_name:   tr.querySelectorAll('td')[0]?.textContent.trim() || '',
-        email:       tr.querySelectorAll('td')[1]?.textContent.trim() || '',
+        first_name:  tr.querySelectorAll('td')[0]?.textContent.trim() || '',
+        last_name:   tr.querySelectorAll('td')[1]?.textContent.trim() || '',
+        full_name:   composeFullName(
+            tr.querySelectorAll('td')[0]?.textContent.trim() || '',
+            tr.querySelectorAll('td')[1]?.textContent.trim() || ''
+        ),
+        email:       tr.querySelectorAll('td')[2]?.textContent.trim() || '',
+        title:       tr.querySelector('.bulk-user-title')?.value.trim() || '',
         institution: isSuper
             ? (tr.querySelector('.bulk-user-inst')?.value.trim() || '')
             : adminInstitution,
@@ -2583,6 +2677,7 @@ function filterInstitutions() {
     renderInstitutions(filtered);
 }
 let _syncChanges = [];
+let _userSyncChanges = [];
 
 async function syncAirtableToD1() {
     const btn = document.getElementById('syncAirtableBtn');
@@ -2607,6 +2702,102 @@ async function syncAirtableToD1() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sync mr-2"></i>Airtable\'dan Senkronize Et';
+    }
+}
+
+async function syncAirtableContactsToUsers() {
+    const btn = document.getElementById('syncContactsBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Önizleniyor...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/sync/airtable-contacts-to-users`, { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Önizleme hatası');
+
+        if (data.changes.length === 0) {
+            showToast('Değişiklik yok, kullanıcılar zaten güncel.', 'success');
+            return;
+        }
+
+        _userSyncChanges = data.changes;
+        renderUserSyncPreview(data.changes, data.total);
+        document.getElementById('userSyncPreviewModal').classList.remove('hidden');
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-address-book mr-2"></i>Airtable Contacts Sync';
+    }
+}
+
+function renderUserSyncPreview(changes, total) {
+    const actionLabel = { create: 'Ekle', update: 'Güncelle' };
+    const actionCls = { create: 'bg-green-100 text-green-800', update: 'bg-blue-100 text-blue-800' };
+
+    document.getElementById('userSyncPreviewSummary').textContent =
+        `${total} contact çekildi — ${changes.length} değişiklik`;
+
+    document.getElementById('userSyncPreviewRows').innerHTML = changes.map((ch, i) => {
+        const beforeText = ch.before
+            ? `${ch.before.full_name || '-'} / ${ch.before.title || '-'} / ${ch.before.institution || '-'}`
+            : '';
+
+        return `<tr class="border-t border-gray-100">
+            <td class="px-3 py-2"><input type="checkbox" class="user-sync-chk" data-idx="${i}" checked></td>
+            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs font-medium ${actionCls[ch.action]}">${actionLabel[ch.action]}</span></td>
+            <td class="px-3 py-2 font-medium">${escapeHtml(ch.full_name || composeFullName(ch.first_name, ch.last_name) || '-')}</td>
+            <td class="px-3 py-2">${escapeHtml(ch.email)}</td>
+            <td class="px-3 py-2">${escapeHtml(ch.title || '-')}</td>
+            <td class="px-3 py-2">${escapeHtml(ch.institution || ch.account_name || '-')}</td>
+            <td class="px-3 py-2 text-gray-400 text-xs">${escapeHtml(beforeText)}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('userSyncSelectAll').checked = true;
+}
+
+function selectAllUserSyncChanges(checked) {
+    document.querySelectorAll('.user-sync-chk').forEach(cb => cb.checked = checked);
+    document.getElementById('userSyncSelectAll').checked = checked;
+}
+
+function closeUserSyncPreviewModal() {
+    document.getElementById('userSyncPreviewModal').classList.add('hidden');
+}
+
+async function applyUserSyncChanges() {
+    const selected = [...document.querySelectorAll('.user-sync-chk:checked')]
+        .map(cb => _userSyncChanges[parseInt(cb.dataset.idx)]);
+
+    if (selected.length === 0) {
+        showToast('Hiç değişiklik seçilmedi.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('userSyncApplyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uygulanıyor...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/sync/airtable-contacts-to-users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ changes: selected })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Uygulama hatası');
+
+        closeUserSyncPreviewModal();
+        showToast(`Contacts sync tamamlandı: ${data.created} eklendi, ${data.updated} güncellendi`, 'success');
+        loadUsers();
+        loadDashboard();
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Seçilileri Uygula';
     }
 }
 
