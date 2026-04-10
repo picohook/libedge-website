@@ -594,6 +594,41 @@
     </div>
 
 
+<!-- Sync Preview Modal -->
+<div id="syncPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
+            <h3 class="text-xl font-bold">Airtable Sync Önizleme</h3>
+            <span id="syncPreviewSummary" class="text-sm text-gray-500"></span>
+        </div>
+        <div class="flex gap-2 mb-3 flex-shrink-0">
+            <button type="button" onclick="selectAllSyncChanges(true)" class="text-xs text-blue-600 hover:underline">Tümünü Seç</button>
+            <span class="text-gray-300">|</span>
+            <button type="button" onclick="selectAllSyncChanges(false)" class="text-xs text-blue-600 hover:underline">Tümünü Kaldır</button>
+        </div>
+        <div class="overflow-y-auto flex-1 border rounded">
+            <table class="w-full text-sm">
+                <thead class="sticky top-0 bg-gray-50 z-10">
+                    <tr>
+                        <th class="px-3 py-2 text-left w-8"><input type="checkbox" id="syncSelectAll" onchange="selectAllSyncChanges(this.checked)"></th>
+                        <th class="px-3 py-2 text-left">İşlem</th>
+                        <th class="px-3 py-2 text-left">Kurum</th>
+                        <th class="px-3 py-2 text-left">Organization</th>
+                        <th class="px-3 py-2 text-left">Status</th>
+                        <th class="px-3 py-2 text-left">Domain</th>
+                        <th class="px-3 py-2 text-left text-gray-400">Önceki</th>
+                    </tr>
+                </thead>
+                <tbody id="syncPreviewRows"></tbody>
+            </table>
+        </div>
+        <div class="flex gap-2 mt-4 flex-shrink-0">
+            <button type="button" id="syncApplyBtn" onclick="applySyncChanges()" class="btn btn-primary flex-1">Seçilileri Uygula</button>
+            <button type="button" onclick="closeSyncPreviewModal()" class="btn bg-gray-300 flex-1">İptal</button>
+        </div>
+    </div>
+</div>
+
 <!-- Announcement Modal -->
 <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -2503,27 +2538,96 @@ function filterInstitutions() {
 
     renderInstitutions(filtered);
 }
+let _syncChanges = [];
+
 async function syncAirtableToD1() {
     const btn = document.getElementById('syncAirtableBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Senkronize ediliyor...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Önizleniyor...';
 
     try {
-        const res = await fetch(`${API_BASE}/api/admin/sync/airtable-to-d1`, {
-            method: 'POST',
-            credentials: 'include'
-        });
+        const res = await fetch(`${API_BASE}/api/admin/sync/airtable-to-d1`, { credentials: 'include' });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Önizleme hatası');
 
-        if (!res.ok) throw new Error(data.error || 'Sync hatası');
+        if (data.changes.length === 0) {
+            showToast('Değişiklik yok, D1 zaten güncel.', 'success');
+            return;
+        }
 
-        showToast(`Sync tamamlandı: ${data.created} eklendi, ${data.updated} güncellendi, ${data.skipped} atlandı`, 'success');
-        loadInstitutions();
+        _syncChanges = data.changes;
+        renderSyncPreview(data.changes, data.total);
+        document.getElementById('syncPreviewModal').classList.remove('hidden');
     } catch (err) {
         showToast(err.message, 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sync mr-2"></i>Airtable\'dan Senkronize Et';
+    }
+}
+
+function renderSyncPreview(changes, total) {
+    const actionLabel = { create: 'Ekle', update: 'Güncelle', link: 'Eşleştir' };
+    const actionCls   = { create: 'bg-green-100 text-green-800', update: 'bg-blue-100 text-blue-800', link: 'bg-yellow-100 text-yellow-800' };
+
+    document.getElementById('syncPreviewSummary').textContent =
+        `${total} kayıt çekildi — ${changes.length} değişiklik`;
+
+    document.getElementById('syncPreviewRows').innerHTML = changes.map((ch, i) => {
+        const beforeText = ch.before
+            ? `${ch.before.name || '-'} / ${ch.before.category || '-'} / ${ch.before.status || '-'}`
+            : '';
+        return `<tr class="border-t border-gray-100">
+            <td class="px-3 py-2"><input type="checkbox" class="sync-chk" data-idx="${i}" checked></td>
+            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs font-medium ${actionCls[ch.action]}">${actionLabel[ch.action]}</span></td>
+            <td class="px-3 py-2 font-medium">${escapeHtml(ch.name)}</td>
+            <td class="px-3 py-2">${escapeHtml(ch.category || '-')}</td>
+            <td class="px-3 py-2">${escapeHtml(ch.status || '-')}</td>
+            <td class="px-3 py-2">${escapeHtml(ch.domain || '-')}</td>
+            <td class="px-3 py-2 text-gray-400 text-xs">${escapeHtml(beforeText)}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('syncSelectAll').checked = true;
+}
+
+function selectAllSyncChanges(checked) {
+    document.querySelectorAll('.sync-chk').forEach(cb => cb.checked = checked);
+    document.getElementById('syncSelectAll').checked = checked;
+}
+
+function closeSyncPreviewModal() {
+    document.getElementById('syncPreviewModal').classList.add('hidden');
+}
+
+async function applySyncChanges() {
+    const selected = [...document.querySelectorAll('.sync-chk:checked')]
+        .map(cb => _syncChanges[parseInt(cb.dataset.idx)]);
+
+    if (selected.length === 0) { showToast('Hiç değişiklik seçilmedi.', 'error'); return; }
+
+    const btn = document.getElementById('syncApplyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uygulanıyor...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/sync/airtable-to-d1`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ changes: selected })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Uygulama hatası');
+
+        closeSyncPreviewModal();
+        showToast(`Sync tamamlandı: ${data.created} eklendi, ${data.updated} güncellendi`, 'success');
+        loadInstitutions();
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Seçilileri Uygula';
     }
 }
 

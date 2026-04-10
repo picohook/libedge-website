@@ -1872,87 +1872,140 @@ app.post('/api/contact', async (c) => {
 });
 
 
-// POST /api/admin/sync/airtable-to-d1
-app.post('/api/admin/sync/airtable-to-d1', async (c) => {
+// Airtable kayıtlarını çekip parse eden yardımcı
+async function fetchAirtableAccounts(env) {
+    const baseId = env.AIRTABLE_BASE_ID;
+    const pat = env.AIRTABLE_PAT;
+    let records = [];
+    let offset = null;
+    do {
+        const url = new URL(`https://api.airtable.com/v0/${baseId}/Accounts`);
+        url.searchParams.set('pageSize', '100');
+        if (offset) url.searchParams.set('offset', offset);
+        const res = await fetch(url.toString(), { headers: { 'Authorization': `Bearer ${pat}` } });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        records = records.concat(data.records || []);
+        offset = data.offset || null;
+    } while (offset);
+    return records.map(r => ({
+        airtable_id: r.id,
+        name: r.fields['Account Name'] || '',
+        domain: r.fields['Domain'] || '',
+        category: Array.isArray(r.fields['Organization']) ? r.fields['Organization'][0] : (r.fields['Organization'] || ''),
+        status: Array.isArray(r.fields['Status']) ? r.fields['Status'][0] : (r.fields['Status'] || ''),
+    }));
+}
+
+// GET /api/admin/sync/airtable-to-d1 — Dry-run, önizleme
+app.get('/api/admin/sync/airtable-to-d1', async (c) => {
     const auth = await requireAuth(c);
     if (auth.response) return auth.response;
-    if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') {
-        return c.json({ error: 'Yetkisiz' }, 403);
-    }
-
-    const db = c.env.DB;
-    const baseId = c.env.AIRTABLE_BASE_ID;
-    const pat = c.env.AIRTABLE_PAT;
-
-    if (!baseId || !pat) return c.json({ error: 'Airtable ayarları eksik' }, 500);
+    if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+    if (!c.env.AIRTABLE_BASE_ID || !c.env.AIRTABLE_PAT) return c.json({ error: 'Airtable ayarları eksik' }, 500);
 
     try {
-        // Tüm Airtable kayıtlarını çek (sayfalama)
-        let records = [];
-        let offset = null;
-        do {
-            const url = new URL(`https://api.airtable.com/v0/${baseId}/Accounts`);
-            url.searchParams.set('pageSize', '100');
-            if (offset) url.searchParams.set('offset', offset);
+        const db = c.env.DB;
+        const records = await fetchAirtableAccounts(c.env);
+        const changes = [];
 
-            const res = await fetch(url.toString(), {
-                headers: { 'Authorization': `Bearer ${pat}` }
-            });
-            const data = await res.json();
-            if (data.error) throw new Error(data.error.message);
+        for (const rec of records) {
+            if (!rec.name) continue;
 
-            records = records.concat(data.records || []);
-            offset = data.offset || null;
-        } while (offset);
-
-        let created = 0, updated = 0, skipped = 0;
-
-        for (const record of records) {
-            const airtableId = record.id;
-            const name = record.fields['Account Name'] || '';
-            const domain = record.fields['Domain'] || '';
-            const rawOrg = record.fields['Organization'];
-            const category = Array.isArray(rawOrg) ? rawOrg[0] : (rawOrg || '');
-            const rawStatus = record.fields['Status'];
-            const status = Array.isArray(rawStatus) ? rawStatus[0] : (rawStatus || '');
-
-            if (!name) { skipped++; continue; }
-
-            // Var mı kontrol et
             const existing = await db.prepare(
-                `SELECT id FROM institutions WHERE airtable_id = ?`
-            ).bind(airtableId).first();
+                `SELECT id, name, domain, category, status FROM institutions WHERE airtable_id = ?`
+            ).bind(rec.airtable_id).first();
 
             if (existing) {
-                await db.prepare(
-                    `UPDATE institutions SET name = ?, domain = ?, category = ?, status = ? WHERE airtable_id = ?`
-                ).bind(name, domain, category, status, airtableId).run();
-                updated++;
+                // Değişiklik var mı?
+                if (existing.name !== rec.name || existing.domain !== (rec.domain || null) ||
+                    existing.category !== rec.category || existing.status !== rec.status) {
+                    changes.push({
+                        action: 'update',
+                        airtable_id: rec.airtable_id,
+                        name: rec.name,
+                        domain: rec.domain,
+                        category: rec.category,
+                        status: rec.status,
+                        before: { name: existing.name, domain: existing.domain, category: existing.category, status: existing.status }
+                    });
+                }
             } else {
-                // İsim çakışması var mı?
                 const nameConflict = await db.prepare(
-                    `SELECT id FROM institutions WHERE name = ?`
-                ).bind(name).first();
+                    `SELECT id, name, domain, category, status FROM institutions WHERE name = ?`
+                ).bind(rec.name).first();
 
                 if (nameConflict) {
-                    await db.prepare(
-                        `UPDATE institutions SET domain = ?, category = ?, status = ?, airtable_id = ? WHERE id = ?`
-                    ).bind(domain, category, status, airtableId, nameConflict.id).run();
-                    updated++;
+                    changes.push({
+                        action: 'link',
+                        airtable_id: rec.airtable_id,
+                        name: rec.name,
+                        domain: rec.domain,
+                        category: rec.category,
+                        status: rec.status,
+                        before: { name: nameConflict.name, domain: nameConflict.domain, category: nameConflict.category, status: nameConflict.status }
+                    });
                 } else {
-                    await db.prepare(
-                        `INSERT INTO institutions (name, domain, category, status, airtable_id) VALUES (?, ?, ?, ?, ?)`
-                    ).bind(name, domain, category, status, airtableId).run();
-                    created++;
+                    changes.push({
+                        action: 'create',
+                        airtable_id: rec.airtable_id,
+                        name: rec.name,
+                        domain: rec.domain,
+                        category: rec.category,
+                        status: rec.status,
+                        before: null
+                    });
                 }
             }
         }
 
-        console.log(`✅ Sync tamamlandı: ${created} eklendi, ${updated} güncellendi, ${skipped} atlandı`);
-        return c.json({ success: true, total: records.length, created, updated, skipped });
-
+        return c.json({ success: true, total: records.length, changes });
     } catch (err) {
-        console.error('Sync error:', err);
+        console.error('Sync preview error:', err);
+        return c.json({ error: err.message }, 500);
+    }
+});
+
+// POST /api/admin/sync/airtable-to-d1 — Seçili değişiklikleri uygula
+app.post('/api/admin/sync/airtable-to-d1', async (c) => {
+    const auth = await requireAuth(c);
+    if (auth.response) return auth.response;
+    if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+    if (!c.env.AIRTABLE_BASE_ID || !c.env.AIRTABLE_PAT) return c.json({ error: 'Airtable ayarları eksik' }, 500);
+
+    try {
+        const db = c.env.DB;
+        const { changes } = await c.req.json(); // Seçili change listesi
+        if (!Array.isArray(changes) || changes.length === 0) return c.json({ error: 'Uygulanacak değişiklik yok' }, 400);
+
+        let created = 0, updated = 0;
+
+        for (const ch of changes) {
+            const { action, airtable_id, name, domain, category, status } = ch;
+            if (!name || !airtable_id) continue;
+
+            if (action === 'update') {
+                await db.prepare(
+                    `UPDATE institutions SET name = ?, domain = ?, category = ?, status = ? WHERE airtable_id = ?`
+                ).bind(name, domain, category, status, airtable_id).run();
+                updated++;
+            } else if (action === 'link') {
+                await db.prepare(
+                    `UPDATE institutions SET domain = ?, category = ?, status = ?, airtable_id = ? WHERE name = ?`
+                ).bind(domain, category, status, airtable_id, name).run();
+                updated++;
+            } else if (action === 'create') {
+                await db.prepare(
+                    `INSERT INTO institutions (name, domain, category, status, airtable_id) VALUES (?, ?, ?, ?, ?)`
+                ).bind(name, domain, category, status, airtable_id).run();
+                created++;
+            }
+        }
+
+        console.log(`✅ Sync uygulandı: ${created} eklendi, ${updated} güncellendi`);
+        return c.json({ success: true, created, updated });
+    } catch (err) {
+        console.error('Sync apply error:', err);
         return c.json({ error: err.message }, 500);
     }
 });
