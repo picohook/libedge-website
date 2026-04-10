@@ -2227,17 +2227,44 @@ async function fetchAirtableContacts(env, accountMap = new Map()) {
     } while (offset);
 
     const scalar = (value) => Array.isArray(value) ? (value[0] || '') : (value || '');
+    const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+    const pickPrimaryEmail = (value) => {
+        const raw = String(scalar(value) || '').trim();
+        if (!raw) {
+            return { email: '', emails: [], note: '' };
+        }
+
+        const candidates = raw
+            .split(/[;,/]+/)
+            .map(item => item.trim().toLowerCase())
+            .filter(Boolean);
+
+        const validEmails = candidates.filter(isValidEmail);
+        const primary = validEmails[0] || (isValidEmail(raw.toLowerCase()) ? raw.toLowerCase() : '');
+        const note = validEmails.length > 1
+            ? `Çoklu e-posta bulundu, ilk adres kullanıldı: ${primary}`
+            : '';
+
+        return {
+            email: primary,
+            emails: validEmails,
+            note
+        };
+    };
 
     return records.map(r => {
         const accountRaw = r.fields['Account'];
         const accountId = Array.isArray(accountRaw) ? (accountRaw[0] || '') : '';
         const accountName = accountMap.get(accountId) || scalar(r.fields['Account Name']) || scalar(accountRaw);
+        const emailSelection = pickPrimaryEmail(r.fields['Email']);
 
         return {
             airtable_id: r.id,
             first_name: String(r.fields['First Name'] || '').trim(),
             last_name: String(r.fields['Last Name'] || '').trim(),
-            email: String(r.fields['Email'] || '').trim().toLowerCase(),
+            email: emailSelection.email,
+            email_candidates: emailSelection.emails,
+            sync_note: emailSelection.note,
             title: String(scalar(r.fields['Title']) || '').trim(),
             account_name: String(accountName || '').trim(),
             account_airtable_id: accountId || null
@@ -2343,6 +2370,7 @@ async function buildAirtableUserSyncChanges(c, { restrictToAdminInstitution = tr
                     institution_id: nextState.institution_id,
                     account_name: nextState.account_name,
                     account_airtable_id: nextState.account_airtable_id,
+                    sync_note: contact.sync_note || '',
                     before: {
                         full_name: existing.full_name,
                         title: existing.title,
@@ -2363,6 +2391,7 @@ async function buildAirtableUserSyncChanges(c, { restrictToAdminInstitution = tr
                 institution_id: nextState.institution_id,
                 account_name: nextState.account_name,
                 account_airtable_id: nextState.account_airtable_id,
+                sync_note: contact.sync_note || '',
                 before: null
             });
         }

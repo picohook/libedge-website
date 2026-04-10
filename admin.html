@@ -2727,12 +2727,15 @@ function renderUserSyncPreview(changes, total) {
         const beforeText = ch.before
             ? `${ch.before.full_name || '-'} / ${ch.before.title || '-'} / ${ch.before.institution || '-'}`
             : '';
+        const emailText = ch.sync_note
+            ? `${ch.email} (${ch.sync_note})`
+            : ch.email;
 
         return `<tr class="border-t border-gray-100">
             <td class="px-3 py-2"><input type="checkbox" class="user-sync-chk" data-idx="${i}" checked></td>
             <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs font-medium ${actionCls[ch.action]}">${actionLabel[ch.action]}</span></td>
             <td class="px-3 py-2 font-medium">${escapeHtml(ch.full_name || composeFullName(ch.first_name, ch.last_name) || '-')}</td>
-            <td class="px-3 py-2">${escapeHtml(ch.email)}</td>
+            <td class="px-3 py-2">${escapeHtml(emailText)}</td>
             <td class="px-3 py-2">${escapeHtml(ch.title || '-')}</td>
             <td class="px-3 py-2">${escapeHtml(ch.institution || ch.account_name || '-')}</td>
             <td class="px-3 py-2 text-gray-400 text-xs">${escapeHtml(beforeText)}</td>
