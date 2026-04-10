@@ -3315,7 +3315,7 @@ async function loadRequests() {
                 <td class="text-xs">${escapeHtml(r.institution || '-')}</td>
                 <td class="text-xs text-gray-600" title="${escapeHtml(r.message || '')}">${escapeHtml(msg)}</td>
                 <td><span class="text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}">${statusLabel}</span>${note}</td>
-                <td><button onclick="openSubmissionModal(${r.id}, '${r.status}', ${JSON.stringify(r.admin_note || '').replace(/'/g, "\\'")})" class="text-xs text-primary hover:underline">Düzenle</button></td>
+                <td><button onclick="openSubmissionModal(this)" data-id="${r.id}" data-status="${escapeHtml(r.status || 'pending')}" data-note="${escapeHtml(r.admin_note || '')}" class="text-xs text-primary hover:underline">Düzenle</button></td>
             </tr>`;
         }).join('');
     } catch (err) {
@@ -3323,10 +3323,10 @@ async function loadRequests() {
     }
 }
 
-function openSubmissionModal(id, status, note) {
-    document.getElementById('submissionEditId').value = id;
-    document.getElementById('submissionEditStatus').value = status || 'pending';
-    document.getElementById('submissionEditNote').value = note || '';
+function openSubmissionModal(btn) {
+    document.getElementById('submissionEditId').value = btn.dataset.id;
+    document.getElementById('submissionEditStatus').value = btn.dataset.status || 'pending';
+    document.getElementById('submissionEditNote').value = btn.dataset.note || '';
     document.getElementById('submissionModal').classList.remove('hidden');
 }
 
