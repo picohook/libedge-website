@@ -2412,43 +2412,15 @@ async function loadInstitutions() {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Yükleniyor...</td</tr>';
     
     try {
-        // D1'den kurumları al
         const d1Res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
         const d1Institutions = await d1Res.json();
-        
-        // Airtable'dan Accounts al
-        const airtableRes = await fetch('/api/admin/airtable/accounts', { credentials: 'include' });
-        const airtableData = await airtableRes.json();
-        const airtableAccounts = airtableData.records || [];
-        
-        // Birleştir
-        allInstitutions = [
-            ...d1Institutions.map(i => ({ 
-                ...i, 
-                source: 'd1',
-                displayName: i.name,
-                category: i.category,
-                domain: i.domain,
-                user_count: i.user_count,
-                file_count: i.file_count,
-                id: i.id,
-                editable: true
-            })),
-            ...airtableAccounts.map(a => ({
-                name: a.fields['Account Name'],
-                source: 'airtable',
-                displayName: a.fields['Account Name'],
-                category: a.fields['Organization'] || '',
-                status: a.fields['Status'] || '',
-                domain: a.fields['Domain'] || '',
-                user_count: '',
-                file_count: '',
-                id: a.id,
-                editable: false,
-                createdTime: a.createdTime
-            }))
-        ];
-        
+
+        allInstitutions = d1Institutions.map(i => ({
+            ...i,
+            source: 'd1',
+            displayName: i.name,
+        }));
+
         renderInstitutions(allInstitutions);
         
     } catch (err) {
