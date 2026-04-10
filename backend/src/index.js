@@ -1909,8 +1909,10 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
             const airtableId = record.id;
             const name = record.fields['Account Name'] || '';
             const domain = record.fields['Domain'] || '';
-            const category = record.fields['Organization'] || '';
-            const status = record.fields['Status'] || 'Prospect';
+            const rawOrg = record.fields['Organization'];
+            const category = Array.isArray(rawOrg) ? rawOrg[0] : (rawOrg || '');
+            const rawStatus = record.fields['Status'];
+            const status = Array.isArray(rawStatus) ? rawStatus[0] : (rawStatus || '');
 
             if (!name) { skipped++; continue; }
 
