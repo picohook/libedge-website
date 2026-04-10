@@ -344,7 +344,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Translation System ---
-    const translateButton = document.getElementById('translateBtn');
     let isTranslated = localStorage.getItem('language') === 'en';
 
     // Translation dictionary
@@ -605,11 +604,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Translation apply/reset flow
     function translatePage(toEnglish) {
+        const translateButton = document.getElementById('translateBtn');
         document.body.classList.add('translating');
         if (translateButton) translateButton.disabled = true;
 
         const translatableElements = document.querySelectorAll('[translatable], .translatable');
-        
+
         translatableElements.forEach(element => {
             if (element.textContent.trim()) {
                 const originalText = element.textContent.trim();
@@ -621,7 +621,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     delete element.dataset.originalText;
                 }
             }
-            
+
             if (element.placeholder) {
                 const originalPlaceholder = element.placeholder.trim();
                 if (toEnglish && translations[originalPlaceholder]) {
@@ -634,10 +634,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        if (translateButton) {
-            const translateText = document.getElementById('translateText');
-            if (translateText) translateText.textContent = toEnglish ? 'Türkçe' : 'English';
-        }
+        const translateText = document.getElementById('translateText');
+        if (translateText) translateText.textContent = toEnglish ? 'Türkçe' : 'English';
 
         localStorage.setItem('language', toEnglish ? 'en' : 'tr');
 
@@ -647,21 +645,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300);
     }
 
-    if (isTranslated && translateButton) {
-        translatePage(true);
-        const translateText = document.getElementById('translateText');
-        if (translateText) translateText.textContent = 'Türkçe';
-    } else if (translateButton) {
-        const translateText = document.getElementById('translateText');
-        if (translateText) translateText.textContent = 'English';
-    }
+    function initTranslateButton() {
+        const translateButton = document.getElementById('translateBtn');
+        if (!translateButton || translateButton.dataset.listenerBound) return;
+        translateButton.dataset.listenerBound = 'true';
 
-    if (translateButton) {
+        const translateText = document.getElementById('translateText');
+        if (translateText) translateText.textContent = isTranslated ? 'Türkçe' : 'English';
+
         translateButton.addEventListener('click', () => {
             isTranslated = !isTranslated;
             translatePage(isTranslated);
         });
+
+        if (isTranslated) translatePage(true);
     }
+
+    initTranslateButton();
+    document.addEventListener('header:ready', initTranslateButton);
 
     // --- CTA Shortcuts ---
     // Hero slider AI button
