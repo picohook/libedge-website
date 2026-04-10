@@ -782,13 +782,14 @@ async function subscribeNewsletter() {
         });
 
         if (!response.ok) {
-            throw new Error('Newsletter subscription failed');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Newsletter subscription failed');
         }
 
         await loadNewsletterState();
         announcementManager.showToast('Bülten aboneliğiniz başarıyla oluşturuldu!', 'success');
     } catch (error) {
-        announcementManager.showToast('Bülten aboneliği sırasında bir hata oluştu', 'error');
+        announcementManager.showToast(error.message || 'Bülten aboneliği sırasında bir hata oluştu', 'error');
     } finally {
         if (!newsletterState.loggedIn || !newsletterState.subscribed) {
             submitBtn.disabled = false;

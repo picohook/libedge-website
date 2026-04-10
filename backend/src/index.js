@@ -148,6 +148,33 @@ async function getOptionalAuth(c) {
   return payload ? { user: payload, token } : null;
 }
 
+async function ensureNewsletterTable(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS newsletter_subscriptions (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id         INTEGER UNIQUE,
+      email           TEXT NOT NULL UNIQUE,
+      status          TEXT NOT NULL DEFAULT 'active',
+      source          TEXT NOT NULL DEFAULT 'guest',
+      subscribed_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+      unsubscribed_at DATETIME,
+      created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `).run();
+
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_newsletter_status
+    ON newsletter_subscriptions(status)
+  `).run();
+
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_newsletter_user_status
+    ON newsletter_subscriptions(user_id, status)
+  `).run();
+}
+
 // 🆕 Token'dan rol ve kurum bilgilerini al (eski fonksiyonlarla uyumlu)
 async function getTokenPayloadFromCookie(c) {
   const auth = await requireAuth(c);
@@ -597,6 +624,7 @@ app.delete('/api/user/delete', async (c) => {
   const userId = auth.user.user_id;
   const db = c.env.DB;
   
+  await ensureNewsletterTable(db);
   await db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM subscriptions WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
@@ -700,6 +728,7 @@ app.get('/api/newsletter/status', async (c) => {
   if (auth.response) return auth.response;
 
   const db = c.env.DB;
+  await ensureNewsletterTable(db);
   const subscription = await db.prepare(`
     SELECT id, email, status, subscribed_at, unsubscribed_at, updated_at
     FROM newsletter_subscriptions
@@ -727,6 +756,7 @@ app.post('/api/newsletter/subscribe', async (c) => {
     }
 
     const db = c.env.DB;
+    await ensureNewsletterTable(db);
     const existing = await db.prepare(`
       SELECT id, user_id, email, status
       FROM newsletter_subscriptions
@@ -776,6 +806,7 @@ app.delete('/api/newsletter/subscribe', async (c) => {
   if (auth.response) return auth.response;
 
   const db = c.env.DB;
+  await ensureNewsletterTable(db);
   await db.prepare(`
     UPDATE newsletter_subscriptions
     SET status = 'inactive', unsubscribed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
