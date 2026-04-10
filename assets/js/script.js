@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
         backToTopButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
 
-    // --- "Brochures" Link Flips All Cards ---
+    // --- Brochure Navigation Helpers ---
     let _flipIgnoreNextOutside = false;
 
     function bindBrochuresFlip() {
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
     bindBrochuresFlip();
     document.addEventListener('header:ready', bindBrochuresFlip);
 
-    // --- Click Outside / Filter Click Removes Global Flip ---
+    // --- Product Card Reset Rules ---
     document.addEventListener('click', function(e) {
         if (_flipIgnoreNextOutside) { _flipIgnoreNextOutside = false; return; }
         if (productsGrid && !e.target.closest('.flip-card') &&
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const translateButton = document.getElementById('translateBtn');
     let isTranslated = localStorage.getItem('language') === 'en';
 
-    // Comprehensive translation mapping
+    // Translation dictionary
     const translations = {
         // Header and Navigation
         'LibEdge Eğitim ve Danışmanlık': 'LibEdge Education and Consulting',
@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'Gönder': 'Send',
         'Gönderiliyor...': 'Sending...',
         'Gönderildi!': 'Sent!',
-  // Services
+        // Services
         'Hizmetlerimiz': 'Our Services',
         'Ürün Danışmanlığı ve Tedarik': 'Product Consulting and Procurement',
         'Kullanıcı ve Yönetici Eğitimleri': 'User and Administrator Trainings',
@@ -533,11 +533,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-        // --- YASAL METİNLERİN ÇEVİRİLERİ ---
-    'Gizlilik Politikası ve Aydınlatma Metni': 'Privacy Policy and Data Processing Notice',
-    'Web Sitesi Kullanım Şartları': 'Website Terms of Use',
-    'Çerez Politikası': 'Cookie Policy',
-    'Son Güncelleme Tarihi:': 'Last Updated:',
+        // Legal Pages
+        'Gizlilik Politikası ve Aydınlatma Metni': 'Privacy Policy and Data Processing Notice',
+        'Web Sitesi Kullanım Şartları': 'Website Terms of Use',
+        'Çerez Politikası': 'Cookie Policy',
+        'Son Güncelleme Tarihi:': 'Last Updated:',
 
     // 1. Gizlilik Politikası (privacy.html)
     '1. Veri Sorumlusu Kimliği (Data Controller)': '1. Data Controller',
@@ -603,6 +603,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add more translations as needed
     };
 
+    // Translation apply/reset flow
     function translatePage(toEnglish) {
         document.body.classList.add('translating');
         if (translateButton) translateButton.disabled = true;
