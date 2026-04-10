@@ -1,7 +1,8 @@
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const workerBase = env.WORKER_BASE_URL || 'https://form-handler-staging.agursel.workers.dev';
+  // Never silently fall back to staging in live traffic.
+  const workerBase = env.WORKER_BASE_URL || 'https://form-handler.agursel.workers.dev';
   const targetUrl = `${workerBase}/api${url.pathname.replace('/api', '')}${url.search}`;
   const headers = new Headers(request.headers);
 
