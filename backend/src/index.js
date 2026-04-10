@@ -2150,7 +2150,7 @@ async function sendToAirtable(env, formData, formType, ip) {
 app.post('/api/contact', async (c) => {
     try {
         const body = await c.req.json();
-        const { name, email, formType } = body;
+        const { name, email, formType, company, product, subject, message, onBehalf } = body;
         const type = formType || 'contact';
         const normalizedEmail = String(email || '').trim();
         const normalizedName = String(name || '').trim();
@@ -2165,11 +2165,33 @@ app.post('/api/contact', async (c) => {
 
         const ip = c.req.header('CF-Connecting-IP') || '';
         body.email = normalizedEmail;
-        if (normalizedName) {
-            body.name = normalizedName;
-        }
+        if (normalizedName) body.name = normalizedName;
 
-        // waitUntil: response döndükten sonra da Airtable fetch'leri tamamlanır
+        // Giriş yapmış kullanıcıyı tespit et (hata olursa görmezden gel)
+        let userId = null;
+        try {
+            const auth = await requireAuth(c);
+            if (!auth.response) userId = auth.user.user_id;
+        } catch (_) {}
+
+        // D1'e kaydet
+        const db = c.env.DB;
+        await db.prepare(`
+            INSERT INTO form_submissions (form_type, name, email, institution, product, subject, message, user_id, on_behalf)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+            type,
+            normalizedName || null,
+            normalizedEmail,
+            company || null,
+            product || null,
+            subject || null,
+            message || null,
+            userId,
+            onBehalf ? 1 : 0
+        ).run();
+
+        // Airtable arka planda
         c.executionCtx.waitUntil(
             sendToAirtable(c.env, body, type, ip).catch(err =>
                 console.error('Airtable background error:', err)
@@ -2181,6 +2203,51 @@ app.post('/api/contact', async (c) => {
         console.error('Contact endpoint error:', err);
         return c.json({ error: err.message }, 500);
     }
+});
+
+// Admin: tüm form gönderimlerini listele
+app.get('/api/admin/submissions', async (c) => {
+    if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+    const db = c.env.DB;
+    const status = c.req.query('status');
+    const type = c.req.query('type');
+
+    let query = `SELECT fs.*, u.full_name as user_name FROM form_submissions fs
+                 LEFT JOIN users u ON fs.user_id = u.id`;
+    const conditions = [];
+    const bindings = [];
+
+    if (status) { conditions.push(`fs.status = ?`); bindings.push(status); }
+    if (type)   { conditions.push(`fs.form_type = ?`); bindings.push(type); }
+
+    if (conditions.length) query += ` WHERE ` + conditions.join(' AND ');
+    query += ` ORDER BY fs.submitted_at DESC LIMIT 200`;
+
+    const rows = await db.prepare(query).bind(...bindings).all();
+    return c.json(rows.results || []);
+});
+
+// Admin: durum veya not güncelle
+app.put('/api/admin/submission/:id', async (c) => {
+    if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+    const id = c.req.param('id');
+    const { status, admin_note } = await c.req.json();
+    const db = c.env.DB;
+
+    const validStatuses = ['pending', 'reviewing', 'responded', 'completed'];
+    if (status && !validStatuses.includes(status)) {
+        return c.json({ error: 'Geçersiz durum' }, 400);
+    }
+
+    await db.prepare(`
+        UPDATE form_submissions
+        SET status = COALESCE(?, status),
+            admin_note = COALESCE(?, admin_note),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    `).bind(status || null, admin_note ?? null, id).run();
+
+    return c.json({ success: true });
 });
 
 

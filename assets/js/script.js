@@ -664,6 +664,11 @@ document.addEventListener('DOMContentLoaded', function() {
     initTranslateButton();
     document.addEventListener('header:ready', initTranslateButton);
 
+    // Contact formunu auth yüklendikten sonra prefill et
+    if (window.waitForAuth) {
+        window.waitForAuth().then(() => prefillContactForm());
+    }
+
     // --- CTA Shortcuts ---
     // Hero slider AI button
     setTimeout(() => {
@@ -706,9 +711,63 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ====================== GLOBAL UI HELPERS ======================
 // HTML içindeki inline onclick kullanımları için global yardımcılar
-function openModal() { const m = document.getElementById('trialModal'); if(m) { m.classList.remove('hidden'); document.body.classList.add('no-scroll'); } }
+function prefillFormFromUser(fields) {
+    // fields: { nameId, emailId, companyId, bannerId }
+    const u = window.currentUser;
+    const banner = fields.bannerId ? document.getElementById(fields.bannerId) : null;
+
+    if (u && u.email) {
+        if (fields.nameId) {
+            const el = document.getElementById(fields.nameId);
+            if (el) { el.value = u.full_name || ''; el.readOnly = false; }
+        }
+        if (fields.emailId) {
+            const el = document.getElementById(fields.emailId);
+            if (el) { el.value = u.email; el.readOnly = true; el.classList.add('bg-gray-50', 'cursor-not-allowed'); }
+        }
+        if (fields.companyId) {
+            const el = document.getElementById(fields.companyId);
+            if (el && u.institution) { el.value = u.institution; }
+        }
+        if (banner) {
+            const isAdmin = u.role === 'admin' || u.role === 'super_admin';
+            banner.textContent = isAdmin
+                ? `${u.institution ? u.institution + ' adına g' : 'G'}önderiliyor · ${u.email}`
+                : `Giriş yapıldı · ${u.email}`;
+            banner.classList.remove('hidden');
+        }
+    } else {
+        // Giriş yapılmamış: alanları temizle, editable yap
+        ['nameId', 'emailId', 'companyId'].forEach(k => {
+            if (!fields[k]) return;
+            const el = document.getElementById(fields[k]);
+            if (el) { el.value = ''; el.readOnly = false; el.classList.remove('bg-gray-50', 'cursor-not-allowed'); }
+        });
+        if (banner) banner.classList.add('hidden');
+    }
+}
+
+function prefillContactForm() {
+    const u = window.currentUser;
+    if (!u || !u.email) return;
+    const nameEl = document.getElementById('name');
+    const emailEl = document.getElementById('email');
+    if (nameEl && !nameEl.value) nameEl.value = u.full_name || '';
+    if (emailEl) { emailEl.value = u.email; emailEl.readOnly = true; emailEl.classList.add('bg-gray-50', 'cursor-not-allowed'); }
+}
+
+function openModal() {
+    const m = document.getElementById('trialModal');
+    if (m) { m.classList.remove('hidden'); document.body.classList.add('no-scroll'); }
+    prefillFormFromUser({ nameId: 'trialName', emailId: 'trialEmail', companyId: 'trialCompany', bannerId: 'trialAuthBanner' });
+}
 function closeModal() { const m = document.getElementById('trialModal'); if(m) { m.classList.add('hidden'); document.body.classList.remove('no-scroll'); } }
-function openSuggestionModal() { const m = document.getElementById('suggestionModal'); if(m) { m.classList.remove('hidden'); document.body.classList.add('no-scroll'); } }
+
+function openSuggestionModal() {
+    const m = document.getElementById('suggestionModal');
+    if (m) { m.classList.remove('hidden'); document.body.classList.add('no-scroll'); }
+    prefillFormFromUser({ nameId: 'suggestName', emailId: 'suggestEmail', companyId: 'suggestCompany', bannerId: 'suggestAuthBanner' });
+}
 function closeSuggestionModal() { const m = document.getElementById('suggestionModal'); if(m) { m.classList.add('hidden'); document.body.classList.remove('no-scroll'); } }
 function openMapModal() { const m = document.getElementById('mapModal'); if(m) { m.classList.remove('hidden'); document.body.classList.add('no-scroll'); } }
 function closeMapModal() { const m = document.getElementById('mapModal'); if(m) { m.classList.add('hidden'); document.body.classList.remove('no-scroll'); } }
