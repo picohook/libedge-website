@@ -1038,7 +1038,7 @@ document.addEventListener('click', function(e) {
                 email: u.email,
                 institutionId: u.institution_id || '',
                 role: u.role
-            }).replace(/'/g, '&#039;');
+            }).replace(/'/g, '&#039;').replace(/"/g, '&quot;');
             return `
             <tr>
                 <td class="px-4 py-2">${u.id}</td>
@@ -2476,13 +2476,33 @@ function renderInstitutions(institutions) {
             <td class="px-4 py-2">${escapeHtml(inst.domain || '-')}</td>
             <td class="px-4 py-2">${inst.user_count ?? '-'}</td>
             <td class="px-4 py-2">${inst.file_count ?? '-'}</td>
-            <td class="px-4 py-2">
+            <td class="px-4 py-2 flex gap-2">
                 ${inst.source === 'airtable' ?
                     `<button onclick="editAirtableAccount('${inst.id}', '${escapeHtml(inst.displayName)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(inst.category || '')}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>` :
-                    `<button onclick="openEditInstitutionModal(${inst.id}, '${escapeHtml(inst.name)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(normalizeCategory(inst.category || ''))}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>`}
+                    `<button onclick="openEditInstitutionModal(${inst.id}, '${escapeHtml(inst.name)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(normalizeCategory(inst.category || ''))}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>
+                     <button onclick="deleteInstitution(${inst.id}, '${escapeHtml(inst.name)}')" class="text-red-600"><i class="fas fa-trash"></i></button>`}
             </td>
         </tr>`;
     }).join('');
+}
+
+async function deleteInstitution(id, name) {
+    if (!confirm(`"${name}" kurumunu silmek istediğinize emin misiniz?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+            showToast('Kurum silindi!', 'success');
+            loadInstitutions();
+        } else {
+            showToast(data.error || 'Silme başarısız!', 'error');
+        }
+    } catch (err) {
+        showToast('Bağlantı hatası!', 'error');
+    }
 }
 
 function filterInstitutions() {
