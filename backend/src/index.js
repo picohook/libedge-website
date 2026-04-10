@@ -1539,13 +1539,15 @@ app.delete('/api/institution/file/:id', async (c) => {
 
 app.post('/api/admin/institution', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
-  const { name, domain, category } = await c.req.json();
+  const { name, domain, category, status } = await c.req.json();
   if (!name?.trim()) return c.json({ error: 'Kurum adı zorunludur' }, 400);
-  const validCategories = ['university','corporate','government','publisher','sub_distributor','k12'];
-  const cat = validCategories.includes(category) ? category : 'university';
+  const validCategories = ['University','Corporate','K-12','Government','Publisher','Service Provider','Sub-distributor'];
+  const validStatuses = ['Customer','Prospect','Partner','Inactive'];
+  const cat = validCategories.includes(category) ? category : 'University';
+  const st = validStatuses.includes(status) ? status : 'Customer';
   const db = c.env.DB;
   try {
-    const result = await db.prepare(`INSERT INTO institutions (name, domain, category) VALUES (?, ?, ?)`).bind(name.trim(), domain?.trim() || null, cat).run();
+    const result = await db.prepare(`INSERT INTO institutions (name, domain, category, status) VALUES (?, ?, ?, ?)`).bind(name.trim(), domain?.trim() || null, cat, st).run();
     return c.json({ success: true, id: result.meta?.last_row_id });
   } catch (e) {
     if (e.message?.includes('UNIQUE')) return c.json({ error: 'Bu kurum adı zaten var' }, 409);

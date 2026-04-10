@@ -655,8 +655,12 @@
                 <input type="text" id="institutionName" placeholder="Örn: Ankara Üniversitesi" class="w-full border p-2 rounded" required>
             </div>
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Organization</label>
                 <select id="institutionCategory" class="w-full border p-2 rounded"></select>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="institutionStatus" class="w-full border p-2 rounded"></select>
             </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
@@ -710,7 +714,7 @@
 
         <!-- Adım 1: Yapıştır -->
         <div id="bulkStep1" class="flex flex-col flex-1 min-h-0">
-            <p class="text-sm text-gray-500 mb-3 flex-shrink-0">Excel veya CSV'den kopyalayıp yapıştırın. Üç sütun: <span class="font-medium text-gray-700">Kurum Adı</span>, <span class="font-medium text-gray-700">Domain(lar)</span> (opsiyonel), <span class="font-medium text-gray-700">Kategori</span> (opsiyonel). Tab veya virgülle ayrılmış.</p>
+            <p class="text-sm text-gray-500 mb-3 flex-shrink-0">Excel veya CSV'den kopyalayıp yapıştırın. Sütunlar: <span class="font-medium text-gray-700">Kurum Adı</span>, <span class="font-medium text-gray-700">Domain</span> (opsiyonel), <span class="font-medium text-gray-700">Organization</span> (opsiyonel), <span class="font-medium text-gray-700">Status</span> (opsiyonel). Tab veya virgülle ayrılmış.</p>
             <textarea id="bulkPasteArea" rows="10"
                 placeholder="Ankara Üniversitesi&#9;ankara.edu.tr&#10;İstanbul Teknik Üniversitesi&#9;itu.edu.tr&#10;Hacettepe Üniversitesi"
                 class="w-full border rounded p-3 text-sm font-mono flex-1 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 min-h-0"></textarea>
@@ -728,8 +732,9 @@
                     <thead class="sticky top-0 bg-gray-50 z-10">
                         <tr>
                             <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Kurum Adı</th>
-                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Domain(lar)</th>
-                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Kategori</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Domain</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Organization</th>
+                            <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Status</th>
                             <th class="w-8 sticky top-0 bg-gray-50"></th>
                         </tr>
                     </thead>
@@ -2406,7 +2411,9 @@ function categoryOptionsHtml(selected = 'University') {
 
 // Kategori select'lerini doldur
 document.getElementById('institutionCategory').innerHTML = categoryOptionsHtml();
+document.getElementById('institutionStatus').innerHTML = statusOptionsHtml();
 document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml();
+document.getElementById('editInstitutionStatus').innerHTML = statusOptionsHtml();
 
 let allInstitutions = [];
 
@@ -2523,6 +2530,7 @@ async function syncAirtableToD1() {
 function openInstitutionModal() {
     document.getElementById('institutionForm').reset();
     document.getElementById('institutionCategory').innerHTML = categoryOptionsHtml('University');
+    document.getElementById('institutionStatus').innerHTML = statusOptionsHtml('Customer');
     document.getElementById('institutionModal').classList.remove('hidden');
 }
 function closeInstitutionModal() {
@@ -2623,6 +2631,7 @@ function parseBulkPaste() {
     if (!lines.length) return;
 
     const validCategories = INSTITUTION_CATEGORIES.map(c => c.value);
+    const validStatuses = INSTITUTION_STATUSES.map(s => s.value);
     const tbody = document.getElementById('bulkPreviewRows');
     tbody.innerHTML = lines.map(line => {
         const sep = line.includes('\t') ? '\t' : ',';
@@ -2630,12 +2639,17 @@ function parseBulkPaste() {
         const name = parts[0] || '';
         const domain = parts[1] || '';
         const rawCat = parts[2] || '';
+        const rawStatus = parts[3] || '';
         const category = validCategories.includes(rawCat) ? rawCat : 'University';
+        const status = validStatuses.includes(rawStatus) ? rawStatus : 'Customer';
         return `<tr class="border-t border-gray-100">
             <td class="px-3 py-1">${escapeHtml(name)}</td>
             <td class="px-3 py-1 text-gray-500">${escapeHtml(domain)}</td>
             <td class="px-3 py-1">
                 <select class="bulk-cat-select border rounded px-1 py-0.5 text-xs">${categoryOptionsHtml(category)}</select>
+            </td>
+            <td class="px-3 py-1">
+                <select class="bulk-status-select border rounded px-1 py-0.5 text-xs">${statusOptionsHtml(status)}</select>
             </td>
             <td class="px-2 py-1 text-center">
                 <button type="button" onclick="this.closest('tr').remove()" class="text-gray-300 hover:text-red-500 text-xs"><i class="fas fa-times"></i></button>
@@ -2652,11 +2666,12 @@ document.getElementById('institutionForm').addEventListener('submit', async (e) 
     const name = document.getElementById('institutionName').value.trim();
     const domain = document.getElementById('institutionDomain').value.trim();
     const category = document.getElementById('institutionCategory').value;
+    const status = document.getElementById('institutionStatus').value;
     await fetch(`${API_BASE}/api/admin/institution`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name, domain: domain || null, category })
+        body: JSON.stringify({ name, domain: domain || null, category, status })
     });
     closeInstitutionModal();
     loadInstitutions();
@@ -2669,7 +2684,8 @@ async function submitBulkInstitutions() {
         return {
             name: cells[0]?.textContent.trim() || '',
             domain: cells[1]?.textContent.trim() || '',
-            category: cells[2]?.querySelector('select')?.value || 'University'
+            category: cells[2]?.querySelector('select')?.value || 'University',
+            status: cells[3]?.querySelector('select')?.value || 'Customer'
         };
     }).filter(e => e.name.length > 0);
 
@@ -2688,7 +2704,7 @@ async function submitBulkInstitutions() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ name: entry.name, domain: entry.domain || null, category: entry.category })
+                body: JSON.stringify({ name: entry.name, domain: entry.domain || null, category: entry.category, status: entry.status })
             });
             res.ok ? ok++ : fail++;
         } catch { fail++; }
