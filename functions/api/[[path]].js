@@ -13,10 +13,7 @@ export async function onRequest(context) {
     }
   }
 
-  let body = undefined;
-  if (!['GET', 'HEAD'].includes(request.method)) {
-    body = await request.arrayBuffer();
-  }
+  const body = !['GET', 'HEAD'].includes(request.method) ? request.body : null;
 
   const response = await fetch(new Request(targetUrl, {
     method: request.method,

@@ -994,7 +994,9 @@ async function applyCrop() {
             credentials: 'include',
             body: formData
         });
-        const data = await res.json();
+        let data;
+        const rawText = await res.text();
+        try { data = JSON.parse(rawText); } catch { throw new Error(rawText.slice(0, 200) || 'Sunucu yanıtı geçersiz'); }
         if (!res.ok) throw new Error(data.error || 'Yükleme başarısız');
 
         // Güncelle
