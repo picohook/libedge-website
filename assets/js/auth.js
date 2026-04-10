@@ -111,7 +111,44 @@ window.closeRegisterModal = function() {
 };
 
 function showNotification(message, type) {
+    if (typeof window.showToast === 'function') {
+        window.showToast(message, type || 'info');
+        return;
+    }
     alert(message);
+}
+
+function setAuthRedirectMessage(message, type = 'warning') {
+    try {
+        sessionStorage.setItem('authRedirectMsg', message);
+        sessionStorage.setItem('authRedirectType', type);
+    } catch (e) {
+        queueMicrotask(() => {
+            console.error('Session message set error:', e.toString());
+        });
+    }
+}
+
+function consumeAuthRedirectMessage() {
+    try {
+        const message = sessionStorage.getItem('authRedirectMsg');
+        if (!message) return;
+
+        const type = sessionStorage.getItem('authRedirectType') || 'warning';
+        sessionStorage.removeItem('authRedirectMsg');
+        sessionStorage.removeItem('authRedirectType');
+
+        setTimeout(() => {
+            showNotification(message, type);
+            if (typeof window.openLoginModal === 'function') {
+                window.openLoginModal();
+            }
+        }, 150);
+    } catch (e) {
+        queueMicrotask(() => {
+            console.error('Session message consume error:', e.toString());
+        });
+    }
 }
 
 window.register = async function(fullName, email, password, institution) {
@@ -180,6 +217,10 @@ async function login(email, password) {
 }
 
 async function logout() {
+    return logoutWithReason();
+}
+
+async function logoutWithReason(message = '', type = 'warning') {
     try {
         await fetch(`${API_BASE}/api/auth/logout`, {
             method: 'POST',
@@ -198,6 +239,9 @@ async function logout() {
 
     syncCurrentUser(null);
     updateAuthUI(false);
+    if (message) {
+        setAuthRedirectMessage(message, type);
+    }
     window.location.href = '/';
 }
 
@@ -212,7 +256,7 @@ async function refreshToken() {
 
         if (res.ok) return true;
         if (res.status === 401) {
-            await logout();
+            await logoutWithReason('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.', 'warning');
             return false;
         }
 
@@ -392,3 +436,5 @@ window.checkAuth = checkAuth;
 window.updateAuthUI = updateAuthUI;
 window.login = login;
 window.logout = logout;
+
+consumeAuthRedirectMessage();

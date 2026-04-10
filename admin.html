@@ -1012,8 +1012,33 @@ async function checkAdminAuth() {
 }
 
 function redirectToHome(msg) {
+    try {
         sessionStorage.setItem('authRedirectMsg', msg);
-    window.location.replace('index.html');
+        sessionStorage.setItem('authRedirectType', 'warning');
+    } catch (e) {
+        console.error('Redirect message save error:', e);
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(msg, 'warning');
+    }
+
+    setTimeout(() => {
+        window.location.replace('index.html');
+    }, 900);
+}
+
+let _adminSessionRedirecting = false;
+const _nativeAdminFetch = window.fetch.bind(window);
+window.fetch = async function(...args) {
+    const response = await _nativeAdminFetch(...args);
+
+    if (response.status === 401 && !_adminSessionRedirecting) {
+        _adminSessionRedirecting = true;
+        redirectToHome('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.');
+    }
+
+    return response;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
