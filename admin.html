@@ -93,7 +93,7 @@
 <div class="p-6">
     <!-- Dashboard Tab -->
     <div id="tab-dashboard" class="tab-content">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7 gap-4 mb-8">
             <div class="stat-card flex justify-between items-start">
                 <div>
                     <p class="text-gray-500 text-sm">Toplam Kullanıcı</p>
@@ -122,26 +122,100 @@
                 </div>
                 <i class="fas fa-building text-3xl text-blue-500 opacity-50"></i>
             </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Bekleyen Talep</p>
+                    <p id="statPendingRequests" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-inbox text-3xl text-amber-500 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Bugün Kayıt</p>
+                    <p id="statTodayRegistrations" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-user-clock text-3xl text-indigo-500 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Aktif Kurum Aboneliği</p>
+                    <p id="statInstitutionSubscriptions" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-building-circle-check text-3xl text-emerald-500 opacity-50"></i>
+            </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm p-6">
-            <h3 class="text-lg font-semibold mb-4">Son Kayıt Olan Kullanıcılar</h3>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead>
-                        <tr>
-                            <th>Ad Soyad</th>
-                            <th>E-posta</th>
-                            <th>Kurum</th>
-                            <th>Kayıt Tarihi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="recentUsers">
-                        <tr>
-                            <td colspan="4" class="text-center py-4">Yükleniyor...</td>
-                        </tr>
-                    </tbody>
-                </table>
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+            <div class="bg-white rounded-xl shadow-sm p-6 xl:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Hızlı İşlemler</h3>
+                    <span class="text-xs text-gray-400">Tek tıkla geçiş</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                    <button type="button" onclick="openUserModalFromDashboard()" class="text-left border border-violet-100 bg-violet-50 hover:bg-violet-100 rounded-xl px-4 py-4 transition">
+                        <div class="text-violet-700 text-lg mb-2"><i class="fas fa-user-plus"></i></div>
+                        <p class="font-semibold text-gray-800">Kullanıcı Ekle</p>
+                        <p class="text-xs text-gray-500 mt-1">Yeni kullanıcı oluştur</p>
+                    </button>
+                    <button type="button" onclick="openInstitutionModalFromDashboard()" class="text-left border border-blue-100 bg-blue-50 hover:bg-blue-100 rounded-xl px-4 py-4 transition">
+                        <div class="text-blue-700 text-lg mb-2"><i class="fas fa-building-medical"></i></div>
+                        <p class="font-semibold text-gray-800">Kurum Ekle</p>
+                        <p class="text-xs text-gray-500 mt-1">Yeni kurum kaydı aç</p>
+                    </button>
+                    <button type="button" onclick="openAnnouncementModalFromDashboard()" class="text-left border border-amber-100 bg-amber-50 hover:bg-amber-100 rounded-xl px-4 py-4 transition">
+                        <div class="text-amber-700 text-lg mb-2"><i class="fas fa-bullhorn"></i></div>
+                        <p class="font-semibold text-gray-800">Duyuru Oluştur</p>
+                        <p class="text-xs text-gray-500 mt-1">Yeni duyuru yayınla</p>
+                    </button>
+                    <button type="button" onclick="runDashboardAirtableSync()" class="text-left border border-emerald-100 bg-emerald-50 hover:bg-emerald-100 rounded-xl px-4 py-4 transition">
+                        <div class="text-emerald-700 text-lg mb-2"><i class="fas fa-arrows-rotate"></i></div>
+                        <p class="font-semibold text-gray-800">Airtable Sync</p>
+                        <p class="text-xs text-gray-500 mt-1">Kaynak verileri senkronize et</p>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Aksiyon Gerektirenler</h3>
+                    <span class="text-xs text-gray-400">Öncelikli</span>
+                </div>
+                <div id="dashboardActions" class="space-y-3">
+                    <div class="text-sm text-gray-400">Yükleniyor...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+            <div class="bg-white rounded-xl shadow-sm p-6 xl:col-span-3">
+                <h3 class="text-lg font-semibold mb-4">Son Kayıt Olan Kullanıcılar</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr>
+                                <th>Ad Soyad</th>
+                                <th>E-posta</th>
+                                <th>Kurum</th>
+                                <th>Kayıt Tarihi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentUsers">
+                            <tr>
+                                <td colspan="4" class="text-center py-4">Yükleniyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 xl:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Activity Feed</h3>
+                    <span class="text-xs text-gray-400">Son 10 olay</span>
+                </div>
+                <div id="dashboardActivityFeed" class="space-y-3">
+                    <div class="text-sm text-gray-400">Yükleniyor...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -1152,25 +1226,108 @@ document.addEventListener('click', function(e) {
         `).join('');
     }
 
+    function goToAdminTab(tab) {
+        const link = document.querySelector(`.sidebar-link[data-tab="${tab}"]`);
+        if (link) link.click();
+    }
+
+    function openUserModalFromDashboard() {
+        goToAdminTab('users');
+        openUserModal();
+    }
+
+    function openInstitutionModalFromDashboard() {
+        if (currentAdmin?.role !== 'super_admin') {
+            showToast('Kurum ekleme sadece Super Admin yetkisindedir.', 'warning');
+            return;
+        }
+        goToAdminTab('institutions');
+        openInstitutionModal();
+    }
+
+    function openAnnouncementModalFromDashboard() {
+        goToAdminTab('announcements');
+        openAnnouncementModal();
+    }
+
+    function runDashboardAirtableSync() {
+        if (currentAdmin?.role === 'super_admin') {
+            goToAdminTab('institutions');
+            syncAirtableToD1();
+            return;
+        }
+        goToAdminTab('users');
+        syncAirtableContactsToUsers();
+    }
+
+    function renderDashboardActions(items) {
+        const container = document.getElementById('dashboardActions');
+        const visibleItems = (items || []).filter(item => item.count > 0 || item.key === 'pending_requests');
+
+        if (!visibleItems.length) {
+            container.innerHTML = '<div class="text-sm text-gray-400">Şu an aksiyon gerektiren kritik konu yok.</div>';
+            return;
+        }
+
+        container.innerHTML = visibleItems.map(item => `
+            <button type="button" ${item.tab ? `onclick="goToAdminTab('${item.tab}')"` : 'disabled'}
+                class="w-full text-left border rounded-xl px-4 py-3 transition ${item.tab ? 'hover:border-primary hover:bg-gray-50' : 'opacity-70 cursor-not-allowed'}">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="font-medium text-gray-800">${escapeHtml(item.label)}</p>
+                        <p class="text-xs text-gray-500 mt-1">${escapeHtml(item.description || '')}</p>
+                    </div>
+                    <span class="min-w-[2rem] text-center px-2 py-1 rounded-full bg-red-50 text-red-700 text-sm font-semibold">${item.count}</span>
+                </div>
+            </button>
+        `).join('');
+    }
+
+    function renderDashboardActivity(items) {
+        const container = document.getElementById('dashboardActivityFeed');
+
+        if (!items?.length) {
+            container.innerHTML = '<div class="text-sm text-gray-400">Henüz gösterilecek aktivite yok.</div>';
+            return;
+        }
+
+        container.innerHTML = items.map(item => `
+            <div class="flex gap-3 items-start border-b border-gray-100 pb-3 last:border-b-0 last:pb-0">
+                <div class="w-10 h-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center flex-shrink-0">
+                    <i class="${escapeHtml(item.icon || 'fas fa-bolt')}"></i>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-gray-800">${escapeHtml(item.title || '-')}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(item.meta || '-')}</p>
+                    <p class="text-xs text-gray-400 mt-1">${timeAgo(item.created_at)}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+
     // Dashboard verilerini yükle
     async function loadDashboard() {
         try {
-            const usersRes = await fetch('/api/admin/users', {
-    credentials: 'include'
-})
-            const users = await usersRes.json();
-            document.getElementById('statUsers').textContent = users.length || 0;
+            const res = await fetch(`${API_BASE}/api/admin/dashboard`, { credentials: 'include' });
+            if (!res.ok) throw new Error('Dashboard verileri alınamadı');
+
+            const data = await res.json();
+            const stats = data.stats || {};
+
+            document.getElementById('statUsers').textContent = stats.users || 0;
             
-            const subsRes = await fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' });
-            const subs = await subsRes.json();
-            document.getElementById('statSubscriptions').textContent = subs.filter(s => s.status === 'active').length || 0;
+            document.getElementById('statSubscriptions').textContent = stats.active_subscriptions || 0;
+            document.getElementById('statTrials').textContent = stats.trial_requests || 0;
+            document.getElementById('statPendingRequests').textContent = stats.pending_requests || 0;
+            document.getElementById('statTodayRegistrations').textContent = stats.today_registrations || 0;
+            document.getElementById('statInstitutionSubscriptions').textContent = stats.active_institution_subscriptions || 0;
             
-            const institutionsRes = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
-            const allInstitutions = institutionsRes.ok ? await institutionsRes.json() : [];
-            document.getElementById('statInstitutions').textContent = allInstitutions.length || 0;
+            document.getElementById('statInstitutions').textContent = stats.institutions || 0;
             
-            const recent = users.slice(-5).reverse();
+            const recent = data.recent_users || [];
             document.getElementById('recentUsers').innerHTML = recent.map(u => `<tr><td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td><td class="px-4 py-2">${escapeHtml(u.email)}</td><td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td><td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center py-4">Henüz kullanıcı yok</td></tr>';
+            renderDashboardActions(data.actions || []);
+            renderDashboardActivity(data.activity || []);
         } catch(e) { console.error(e); }
     }
 

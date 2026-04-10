@@ -1032,6 +1032,238 @@ app.get('/api/admin/users', async (c) => {
   return c.json(users.results);
 });
 
+app.get('/api/admin/dashboard', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  const db = c.env.DB;
+  await ensureUserContactColumns(db);
+
+  const role = await getUserRole(c);
+  const adminInstitutionId = await getUserInstitutionId(c);
+  const adminInstitution = await getUserInstitution(c);
+
+  const isSuper = role === 'super_admin';
+  const userScope = isSuper
+    ? { clause: '', bindings: [] }
+    : adminInstitutionId
+      ? { clause: 'WHERE u.institution_id = ?', bindings: [adminInstitutionId] }
+      : { clause: 'WHERE u.institution = ?', bindings: [adminInstitution] };
+
+  const institutionScope = isSuper
+    ? { clause: '', bindings: [] }
+    : adminInstitutionId
+      ? { clause: 'WHERE i.id = ?', bindings: [adminInstitutionId] }
+      : { clause: 'WHERE i.name = ?', bindings: [adminInstitution] };
+
+  const submissionScope = isSuper
+    ? { clause: '', bindings: [] }
+    : adminInstitution
+      ? { clause: 'WHERE institution = ?', bindings: [adminInstitution] }
+      : { clause: 'WHERE 1 = 0', bindings: [] };
+
+  const userCountRow = await db.prepare(`
+    SELECT COUNT(*) as count
+    FROM users u
+    ${userScope.clause}
+  `).bind(...userScope.bindings).first();
+
+  const todayRegistrationsRow = await db.prepare(`
+    SELECT COUNT(*) as count
+    FROM users u
+    ${userScope.clause ? `${userScope.clause} AND ` : 'WHERE '}date(u.created_at) = date('now')
+  `).bind(...userScope.bindings).first();
+
+  const recentUsersRows = await db.prepare(`
+    SELECT u.id, u.full_name, u.email, u.institution, u.created_at
+    FROM users u
+    ${userScope.clause}
+    ORDER BY u.created_at DESC, u.id DESC
+    LIMIT 5
+  `).bind(...userScope.bindings).all();
+
+  const institutionsCountRow = await db.prepare(`
+    SELECT COUNT(*) as count
+    FROM institutions i
+    ${institutionScope.clause}
+  `).bind(...institutionScope.bindings).first();
+
+  const activeIndividualRow = await db.prepare(`
+    SELECT COUNT(*) as count
+    FROM subscriptions s
+    LEFT JOIN users u ON s.user_id = u.id
+    ${userScope.clause ? `${userScope.clause.replace('WHERE', 'WHERE')} AND ` : 'WHERE '}s.status = 'active'
+  `).bind(...userScope.bindings).first();
+
+  const activeInstitutionRow = await db.prepare(`
+    SELECT COUNT(*) as count
+    FROM institution_subscriptions is2
+    LEFT JOIN institutions i ON is2.institution_id = i.id
+    ${institutionScope.clause ? `${institutionScope.clause.replace('WHERE', 'WHERE')} AND ` : 'WHERE '}is2.status = 'active'
+  `).bind(...institutionScope.bindings).first();
+
+  const trialRequestsRow = await db.prepare(`
+    SELECT COUNT(*) as count
+    FROM form_submissions
+    ${submissionScope.clause ? `${submissionScope.clause} AND ` : 'WHERE '}form_type = 'trial'
+  `).bind(...submissionScope.bindings).first();
+
+  const pendingRequestsRow = await db.prepare(`
+    SELECT COUNT(*) as count
+    FROM form_submissions
+    ${submissionScope.clause ? `${submissionScope.clause} AND ` : 'WHERE '}status = 'pending'
+  `).bind(...submissionScope.bindings).first();
+
+  const usersWithoutInstitutionRow = await db.prepare(`
+    SELECT COUNT(*) as count
+    FROM users u
+    ${isSuper ? "WHERE (u.institution_id IS NULL AND (u.institution IS NULL OR TRIM(u.institution) = ''))" : `${userScope.clause} AND (u.institution_id IS NULL OR COALESCE(TRIM(u.institution), '') = '')`}
+  `).bind(...userScope.bindings).first();
+
+  const expiringIndividualRows = await db.prepare(`
+    SELECT COUNT(*) as count
+    FROM subscriptions s
+    LEFT JOIN users u ON s.user_id = u.id
+    ${userScope.clause ? `${userScope.clause} AND ` : 'WHERE '}s.status IN ('active', 'trial')
+      AND s.end_date IS NOT NULL
+      AND date(s.end_date) >= date('now')
+      AND date(s.end_date) <= date('now', '+7 day')
+  `).bind(...userScope.bindings).first();
+
+  const expiringInstitutionRows = await db.prepare(`
+    SELECT COUNT(*) as count
+    FROM institution_subscriptions is2
+    LEFT JOIN institutions i ON is2.institution_id = i.id
+    ${institutionScope.clause ? `${institutionScope.clause} AND ` : 'WHERE '}is2.status IN ('active', 'trial')
+      AND is2.end_date IS NOT NULL
+      AND date(is2.end_date) >= date('now')
+      AND date(is2.end_date) <= date('now', '+7 day')
+  `).bind(...institutionScope.bindings).first();
+
+  const recentUsersActivity = await db.prepare(`
+    SELECT u.id, u.full_name, u.email, u.created_at
+    FROM users u
+    ${userScope.clause}
+    ORDER BY u.created_at DESC, u.id DESC
+    LIMIT 4
+  `).bind(...userScope.bindings).all();
+
+  const recentInstitutionsActivity = await db.prepare(`
+    SELECT i.id, i.name, i.created_at
+    FROM institutions i
+    ${institutionScope.clause}
+    ORDER BY i.created_at DESC, i.id DESC
+    LIMIT 3
+  `).bind(...institutionScope.bindings).all();
+
+  const recentAnnouncementsActivity = await db.prepare(`
+    SELECT id, title, published_at
+    FROM announcements
+    ORDER BY published_at DESC, id DESC
+    LIMIT 3
+  `).all();
+
+  const recentIndividualSubscriptions = await db.prepare(`
+    SELECT s.id, s.product_slug, s.status, s.created_at, u.full_name
+    FROM subscriptions s
+    LEFT JOIN users u ON s.user_id = u.id
+    ${userScope.clause ? `${userScope.clause} AND ` : 'WHERE '}1 = 1
+    ORDER BY s.created_at DESC, s.id DESC
+    LIMIT 4
+  `).bind(...userScope.bindings).all();
+
+  const recentInstitutionSubscriptions = await db.prepare(`
+    SELECT is2.id, is2.product_slug, is2.status, is2.created_at, i.name as institution_name
+    FROM institution_subscriptions is2
+    LEFT JOIN institutions i ON is2.institution_id = i.id
+    ${institutionScope.clause ? `${institutionScope.clause} AND ` : 'WHERE '}1 = 1
+    ORDER BY is2.created_at DESC, is2.id DESC
+    LIMIT 4
+  `).bind(...institutionScope.bindings).all();
+
+  const activity = [
+    ...(recentUsersActivity.results || []).map(row => ({
+      type: 'user',
+      icon: 'fas fa-user-plus',
+      title: row.full_name || row.email,
+      meta: 'Yeni kullanıcı eklendi',
+      created_at: row.created_at
+    })),
+    ...(recentInstitutionsActivity.results || []).map(row => ({
+      type: 'institution',
+      icon: 'fas fa-building',
+      title: row.name,
+      meta: 'Yeni kurum kaydı',
+      created_at: row.created_at
+    })),
+    ...(recentAnnouncementsActivity.results || []).map(row => ({
+      type: 'announcement',
+      icon: 'fas fa-bullhorn',
+      title: row.title,
+      meta: 'Yeni duyuru',
+      created_at: row.published_at
+    })),
+    ...(recentIndividualSubscriptions.results || []).map(row => ({
+      type: 'subscription',
+      icon: 'fas fa-ticket-alt',
+      title: row.full_name || 'Kullanıcı aboneliği',
+      meta: `${row.product_slug} aboneliği (${row.status})`,
+      created_at: row.created_at
+    })),
+    ...(recentInstitutionSubscriptions.results || []).map(row => ({
+      type: 'institution_subscription',
+      icon: 'fas fa-building-circle-check',
+      title: row.institution_name || 'Kurum aboneliği',
+      meta: `${row.product_slug} kurum aboneliği (${row.status})`,
+      created_at: row.created_at
+    }))
+  ]
+    .filter(item => item.created_at)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 10);
+
+  const stats = {
+    users: userCountRow?.count || 0,
+    active_subscriptions: (activeIndividualRow?.count || 0) + (activeInstitutionRow?.count || 0),
+    trial_requests: trialRequestsRow?.count || 0,
+    institutions: institutionsCountRow?.count || 0,
+    pending_requests: pendingRequestsRow?.count || 0,
+    today_registrations: todayRegistrationsRow?.count || 0,
+    active_institution_subscriptions: activeInstitutionRow?.count || 0
+  };
+
+  const actions = [
+    {
+      key: 'expiring_subscriptions',
+      label: 'Yakında bitecek abonelikler',
+      count: (expiringIndividualRows?.count || 0) + (expiringInstitutionRows?.count || 0),
+      description: '7 gün içinde süresi dolacak aktif/deneme abonelikler',
+      tab: 'subscriptions'
+    },
+    {
+      key: 'users_without_institution',
+      label: 'Kurumsuz kullanıcılar',
+      count: usersWithoutInstitutionRow?.count || 0,
+      description: 'Kurum bilgisi eksik kullanıcı kayıtları',
+      tab: 'users'
+    },
+    {
+      key: 'pending_requests',
+      label: 'Bekleyen talepler',
+      count: pendingRequestsRow?.count || 0,
+      description: isSuper ? 'Henüz işleme alınmamış formlar' : 'Sadece Super Admin tarafından yönetilir',
+      tab: isSuper ? 'requests' : null
+    }
+  ];
+
+  return c.json({
+    success: true,
+    stats,
+    actions,
+    activity,
+    recent_users: recentUsersRows.results || []
+  });
+});
+
 app.post('/api/admin/user', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const { email, password, full_name, first_name, last_name, title, institution, institution_id, role } = await c.req.json();
