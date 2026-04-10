@@ -1116,7 +1116,7 @@ app.get('/api/admin/institutions', async (c) => {
 
   if (role === 'super_admin') {
     const institutions = await db.prepare(`
-      SELECT inst.id, inst.name, inst.domain, inst.category, inst.created_at,
+      SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
         (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
         (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
       FROM institutions inst ORDER BY inst.name
@@ -1128,14 +1128,14 @@ app.get('/api/admin/institutions', async (c) => {
     let inst;
     if (adminInstitutionId) {
       inst = await db.prepare(`
-        SELECT inst.id, inst.name, inst.domain, inst.category, inst.created_at,
+        SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
           (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
           (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
         FROM institutions inst WHERE inst.id = ?
       `).bind(adminInstitutionId).first();
     } else if (adminInstitution) {
       inst = await db.prepare(`
-        SELECT inst.id, inst.name, inst.domain, inst.category, inst.created_at,
+        SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
           (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
           (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
         FROM institutions inst WHERE inst.name = ?
@@ -1557,19 +1557,22 @@ app.put('/api/admin/institution/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetersiz yetki' }, 403);
   const role = await getUserRole(c);
   const id = c.req.param('id');
-  const { name, domain, category } = await c.req.json();
-  const validCategories = ['university','corporate','government','publisher','sub_distributor','k12'];
+  const { name, domain, category, status } = await c.req.json();
+  const validCategories = ['University','Corporate','K-12','Government','Publisher','Service Provider','Sub-distributor'];
+  const validStatuses = ['Active','Prospect','Inactive'];
   const db = c.env.DB;
 
   if (role === 'super_admin') {
     const cat = validCategories.includes(category) ? category : null;
-    await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ?, category = COALESCE(?, category) WHERE id = ?`).bind(name || null, domain ?? null, cat, id).run();
+    const st = validStatuses.includes(status) ? status : null;
+    await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ?, category = COALESCE(?, category), status = COALESCE(?, status) WHERE id = ?`)
+      .bind(name || null, domain ?? null, cat, st, id).run();
   } else {
-    // Admin sadece kendi kurumunun domain'ini güncelleyebilir — JWT payload'undan al
     const payload = await getTokenPayloadFromCookie(c);
     const target = await db.prepare(`SELECT name FROM institutions WHERE id = ?`).bind(id).first();
     if (!target || !payload?.institution || target.name !== payload.institution) return c.json({ error: 'Bu kurumu düzenleme yetkiniz yok' }, 403);
-    await db.prepare(`UPDATE institutions SET domain = ? WHERE id = ?`).bind(domain ?? null, id).run();
+    const st = validStatuses.includes(status) ? status : null;
+    await db.prepare(`UPDATE institutions SET domain = ?, status = COALESCE(?, status) WHERE id = ?`).bind(domain ?? null, st, id).run();
   }
 
   return c.json({ success: true });
@@ -1906,7 +1909,8 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
             const airtableId = record.id;
             const name = record.fields['Account Name'] || '';
             const domain = record.fields['Domain'] || '';
-            const category = record.fields['Industry'] || 'University';
+            const category = record.fields['Organization'] || '';
+            const status = record.fields['Status'] || 'Active';
 
             if (!name) { skipped++; continue; }
 
@@ -1917,8 +1921,8 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
 
             if (existing) {
                 await db.prepare(
-                    `UPDATE institutions SET name = ?, domain = ?, category = ? WHERE airtable_id = ?`
-                ).bind(name, domain, category, airtableId).run();
+                    `UPDATE institutions SET name = ?, domain = ?, category = ?, status = ? WHERE airtable_id = ?`
+                ).bind(name, domain, category, status, airtableId).run();
                 updated++;
             } else {
                 // İsim çakışması var mı?
@@ -1927,15 +1931,14 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
                 ).bind(name).first();
 
                 if (nameConflict) {
-                    // Mevcut kaydı Airtable id ile eşleştir
                     await db.prepare(
-                        `UPDATE institutions SET domain = ?, category = ?, airtable_id = ? WHERE id = ?`
-                    ).bind(domain, category, airtableId, nameConflict.id).run();
+                        `UPDATE institutions SET domain = ?, category = ?, status = ?, airtable_id = ? WHERE id = ?`
+                    ).bind(domain, category, status, airtableId, nameConflict.id).run();
                     updated++;
                 } else {
                     await db.prepare(
-                        `INSERT INTO institutions (name, domain, category, airtable_id) VALUES (?, ?, ?, ?)`
-                    ).bind(name, domain, category, airtableId).run();
+                        `INSERT INTO institutions (name, domain, category, status, airtable_id) VALUES (?, ?, ?, ?, ?)`
+                    ).bind(name, domain, category, status, airtableId).run();
                     created++;
                 }
             }
@@ -1959,7 +1962,7 @@ app.put('/api/admin/airtable/accounts/:id', async (c) => {
     }
     
     const recordId = c.req.param('id');
-    const { name, region, industry, domain } = await c.req.json();
+    const { name, organization, status, domain } = await c.req.json();
 
     const baseId = c.env.AIRTABLE_BASE_ID;
     const pat = c.env.AIRTABLE_PAT;
@@ -1968,9 +1971,9 @@ app.put('/api/admin/airtable/accounts/:id', async (c) => {
 
     const fields = {};
     if (name) fields['Account Name'] = name;
-    if (region) fields['Region'] = region;
-    if (industry) fields['Industry'] = industry;
-    if (domain) fields['Domain'] = domain;  // ← YENİ
+    if (organization) fields['Organization'] = organization;
+    if (status) fields['Status'] = status;
+    if (domain !== undefined) fields['Domain'] = domain;
     
     try {
         const response = await fetch(url, {

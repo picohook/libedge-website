@@ -479,10 +479,21 @@
             <div class="flex flex-wrap gap-2 mb-4">
                 <input type="text" id="institutionSearchInput" placeholder="Kurum ara..."
                        class="border rounded px-3 py-1.5 text-sm flex-1 min-w-[200px]" oninput="filterInstitutions()">
-                <select id="institutionSourceFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterInstitutions()">
-                    <option value="all">Tüm Kaynaklar</option>
-                    <option value="d1">Yerel (D1)</option>
-                    <option value="airtable">Airtable</option>
+                <select id="institutionOrgFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterInstitutions()">
+                    <option value="">Tüm Organization</option>
+                    <option value="University">University</option>
+                    <option value="Corporate">Corporate</option>
+                    <option value="K-12">K-12</option>
+                    <option value="Government">Government</option>
+                    <option value="Publisher">Publisher</option>
+                    <option value="Service Provider">Service Provider</option>
+                    <option value="Sub-distributor">Sub-distributor</option>
+                </select>
+                <select id="institutionStatusFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterInstitutions()">
+                    <option value="">Tüm Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Prospect">Prospect</option>
+                    <option value="Inactive">Inactive</option>
                 </select>
             </div>
             <div class="overflow-x-auto">
@@ -490,7 +501,8 @@
                     <thead>
                         <tr>
                             <th>Kurum Adı</th>
-                            <th>Kategori</th>
+                            <th>Organization</th>
+                            <th>Status</th>
                             <th>Domain</th>
                             <th>Kullanıcı Sayısı</th>
                             <th>Dosya Sayısı</th>
@@ -669,8 +681,12 @@
                 <input type="text" id="editInstitutionName" class="w-full border p-2 rounded bg-gray-50" required>
             </div>
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Organization</label>
                 <select id="editInstitutionCategory" class="w-full border p-2 rounded"></select>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="editInstitutionStatus" class="w-full border p-2 rounded"></select>
             </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
@@ -2326,22 +2342,42 @@ form.addEventListener('submit', (e) => {
 // ====================== KURUMLAR YÖNETİMİ ======================
 
 const INSTITUTION_CATEGORIES = [
-    { value: 'University',      label: 'University' },
-    { value: 'Corporate',       label: 'Corporate' },
-    { value: 'Government',      label: 'Government' },
-    { value: 'Publisher',       label: 'Publisher' },
-    { value: 'Sub-distributor', label: 'Sub-distributor' },
-    { value: 'K-12',            label: 'K-12' },
+    { value: 'University',       label: 'University' },
+    { value: 'Corporate',        label: 'Corporate' },
+    { value: 'K-12',             label: 'K-12' },
+    { value: 'Government',       label: 'Government' },
+    { value: 'Publisher',        label: 'Publisher' },
+    { value: 'Service Provider', label: 'Service Provider' },
+    { value: 'Sub-distributor',  label: 'Sub-distributor' },
+];
+
+const INSTITUTION_STATUSES = [
+    { value: 'Active',    label: 'Active' },
+    { value: 'Prospect',  label: 'Prospect' },
+    { value: 'Inactive',  label: 'Inactive' },
 ];
 
 const CATEGORY_BADGE = {
-    'University':      'bg-blue-100 text-blue-800',
-    'Corporate':       'bg-purple-100 text-purple-800',
-    'Government':      'bg-yellow-100 text-yellow-800',
-    'Publisher':       'bg-green-100 text-green-800',
-    'Sub-distributor': 'bg-orange-100 text-orange-800',
-    'K-12':            'bg-pink-100 text-pink-800',
+    'University':       'bg-blue-100 text-blue-800',
+    'Corporate':        'bg-purple-100 text-purple-800',
+    'Government':       'bg-yellow-100 text-yellow-800',
+    'Publisher':        'bg-green-100 text-green-800',
+    'Sub-distributor':  'bg-orange-100 text-orange-800',
+    'K-12':             'bg-pink-100 text-pink-800',
+    'Service Provider': 'bg-teal-100 text-teal-800',
 };
+
+const STATUS_BADGE = {
+    'Active':   'bg-green-100 text-green-800',
+    'Prospect': 'bg-yellow-100 text-yellow-800',
+    'Inactive': 'bg-gray-100 text-gray-600',
+};
+
+function statusOptionsHtml(selected = 'Active') {
+    return INSTITUTION_STATUSES.map(s =>
+        `<option value="${s.value}"${s.value === selected ? ' selected' : ''}>${s.label}</option>`
+    ).join('');
+}
 
 function normalizeCategory(value) {
     if (!value) return '';
@@ -2398,13 +2434,12 @@ async function loadInstitutions() {
                 id: i.id,
                 editable: true
             })),
-            ...airtableAccounts.map(a => ({ 
+            ...airtableAccounts.map(a => ({
                 name: a.fields['Account Name'],
-                region: a.fields['Region'],
-                industry: a.fields['Industry'],
                 source: 'airtable',
                 displayName: a.fields['Account Name'],
-                category: a.fields['Industry'] || '-',
+                category: a.fields['Organization'] || '',
+                status: a.fields['Status'] || '',
                 domain: a.fields['Domain'] || '',
                 user_count: '',
                 file_count: '',
@@ -2430,39 +2465,40 @@ function renderInstitutions(institutions) {
         return;
     }
     
-    tbody.innerHTML = institutions.map(inst => `
+    tbody.innerHTML = institutions.map(inst => {
+        const statusCls = STATUS_BADGE[inst.status] || 'bg-gray-100 text-gray-600';
+        const orgLabel = categoryLabel(inst.category || '');
+        return `
         <tr>
-            <td class="px-4 py-2">
-                ${escapeHtml(inst.displayName || inst.name)} 
-                ${inst.source === 'airtable' ? '<span class="text-xs text-blue-500 ml-1">(Airtable)</span>' : ''}
-            </td>
-            <td class="px-4 py-2">${escapeHtml(categoryLabel(inst.category || inst.industry || ''))}</td>
+            <td class="px-4 py-2">${escapeHtml(inst.displayName || inst.name)}</td>
+            <td class="px-4 py-2">${orgLabel ? `<span class="px-2 py-0.5 rounded text-xs font-medium ${CATEGORY_BADGE[inst.category] || 'bg-gray-100 text-gray-700'}">${escapeHtml(orgLabel)}</span>` : '-'}</td>
+            <td class="px-4 py-2">${inst.status ? `<span class="px-2 py-0.5 rounded text-xs font-medium ${statusCls}">${escapeHtml(inst.status)}</span>` : '-'}</td>
             <td class="px-4 py-2">${escapeHtml(inst.domain || '-')}</td>
             <td class="px-4 py-2">${inst.user_count ?? '-'}</td>
             <td class="px-4 py-2">${inst.file_count ?? '-'}</td>
             <td class="px-4 py-2">
-                ${inst.source === 'airtable' ? 
-                    `<button onclick="editAirtableAccount('${inst.id}', '${escapeHtml(inst.displayName)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(normalizeCategory(inst.category || inst.industry || ''))}')" class="text-blue-600"><i class="fas fa-edit"></i></button>` :
-                    `<button onclick="openEditInstitutionModal(${inst.id}, '${escapeHtml(inst.name)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(normalizeCategory(inst.category || ''))}')" class="text-blue-600"><i class="fas fa-edit"></i></button>`}
-             </td>
-         </tr>
-    `).join('');
+                ${inst.source === 'airtable' ?
+                    `<button onclick="editAirtableAccount('${inst.id}', '${escapeHtml(inst.displayName)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(inst.category || '')}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>` :
+                    `<button onclick="openEditInstitutionModal(${inst.id}, '${escapeHtml(inst.name)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(normalizeCategory(inst.category || ''))}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>`}
+            </td>
+        </tr>`;
+    }).join('');
 }
 
 function filterInstitutions() {
     const searchTerm = document.getElementById('institutionSearchInput').value.toLowerCase();
-    const sourceFilter = document.getElementById('institutionSourceFilter').value;
-    
+    const orgFilter = document.getElementById('institutionOrgFilter').value;
+    const statusFilter = document.getElementById('institutionStatusFilter').value;
+
     const filtered = allInstitutions.filter(inst => {
-        const matchSearch = !searchTerm || 
+        const matchSearch = !searchTerm ||
             (inst.displayName || inst.name || '').toLowerCase().includes(searchTerm) ||
-            (inst.category || inst.industry || '').toLowerCase().includes(searchTerm);
-        
-        const matchSource = sourceFilter === 'all' || inst.source === sourceFilter;
-        
-        return matchSearch && matchSource;
+            (inst.domain || '').toLowerCase().includes(searchTerm);
+        const matchOrg = !orgFilter || (inst.category || '') === orgFilter;
+        const matchStatus = !statusFilter || (inst.status || '') === statusFilter;
+        return matchSearch && matchOrg && matchStatus;
     });
-    
+
     renderInstitutions(filtered);
 }
 async function syncAirtableToD1() {
@@ -2498,11 +2534,13 @@ function closeInstitutionModal() {
     document.getElementById('institutionModal').classList.add('hidden');
 }
 
-function openEditInstitutionModal(id, name, domain, category) {
+function openEditInstitutionModal(id, name, domain, category, status) {
+    currentAirtableId = null;
     document.getElementById('editInstitutionId').value = id;
     document.getElementById('editInstitutionName').value = name;
     document.getElementById('editInstitutionDomain').value = domain;
     document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml(category || 'University');
+    document.getElementById('editInstitutionStatus').innerHTML = statusOptionsHtml(status || 'Active');
     const nameInput = document.getElementById('editInstitutionName');
     const isSuper = currentAdmin?.role === 'super_admin';
     nameInput.disabled = !isSuper;
@@ -2519,13 +2557,15 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
     
     const name = document.getElementById('editInstitutionName').value.trim();
     const category = document.getElementById('editInstitutionCategory').value;
-    
+    const status = document.getElementById('editInstitutionStatus').value;
+    const domain = document.getElementById('editInstitutionDomain').value.trim();
+
     if (currentAirtableId) {
         const res = await fetch(`/api/admin/airtable/accounts/${currentAirtableId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ name, industry: category, domain: document.getElementById('editInstitutionDomain').value.trim() })
+            body: JSON.stringify({ name, organization: category, status, domain })
         });
         
         if (res.ok) {
@@ -2538,9 +2578,8 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
     } else {
         // Mevcut D1 güncelleme kodu buraya gelecek
         const id = document.getElementById('editInstitutionId').value;
-        const domain = document.getElementById('editInstitutionDomain').value.trim();
         const isSuper = currentAdmin?.role === 'super_admin';
-        const body = isSuper ? { name, domain: domain || null, category } : { domain: domain || null };
+        const body = isSuper ? { name, domain: domain || null, category, status } : { domain: domain || null, status };
         
         const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
             method: 'PUT',
@@ -2959,12 +2998,13 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
 
 let currentAirtableId = null;
 
-function editAirtableAccount(id, name, domain, category) {
+function editAirtableAccount(id, name, domain, category, status) {
     currentAirtableId = id;
     document.getElementById('editInstitutionId').value = '';
     document.getElementById('editInstitutionName').value = name;
     document.getElementById('editInstitutionDomain').value = domain || '';
     document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml(category || 'University');
+    document.getElementById('editInstitutionStatus').innerHTML = statusOptionsHtml(status || 'Active');
     document.getElementById('editInstitutionModal').classList.remove('hidden');
 }
 
