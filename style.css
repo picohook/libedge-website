@@ -1,4 +1,4 @@
-
+/* ====================== BASE STYLES ====================== */
         body {
             font-family: 'Inter', sans-serif;
             color: #220f60;
@@ -13,6 +13,7 @@
             color: #220f60;
         }
 
+/* ====================== HERO SECTION ====================== */
 .hero-container {
     position: relative;
     width: 100%;
@@ -144,6 +145,7 @@
         text-align: center;
     }
 }
+/* ====================== PRODUCT CARDS ====================== */
         .flip-card {
             perspective: 1000px;
             width: 100%;
@@ -260,6 +262,7 @@
         .text-indigo-800 { color: #4338CA; }
         .text-gray-800 { color: #374151; }
 
+/* ====================== PRODUCT FILTERS AND BADGES ====================== */
         .badge-container {
             display: flex;
             flex-direction: column;
@@ -386,6 +389,7 @@
             width: 100%;
         }
 
+/* ====================== HEADER AND NAVIGATION ====================== */
         .hamburger {
             display: none;
             flex-direction: column;
@@ -574,6 +578,7 @@
             }
         }
 
+/* ====================== PAGE UTILITIES ====================== */
         #backToTop {
             position: fixed;
             bottom: 2rem;
@@ -690,6 +695,7 @@
             list-style: none;
         }
 
+/* ====================== PRODUCT-SPECIFIC CARD BACKGROUNDS ====================== */
 #primal-pictures .flip-back {
     background: linear-gradient(to bottom, rgba(254, 242, 242, 0.3), transparent), url('assets/images/anatomy.png');
     background-size: cover;
