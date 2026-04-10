@@ -1029,11 +1029,7 @@ let _cropper = null;
 function setProfileAvatar(avatarUrl, fullName) {
     const img = document.getElementById('profileAvatarImg');
     const initials = document.getElementById('profileAvatarInitials');
-    if (avatarUrl) {
-        img.src = avatarUrl;
-        img.classList.remove('hidden');
-        initials.classList.add('hidden');
-    } else {
+    const showInitials = () => {
         const name = fullName || '';
         const parts = name.trim().split(' ');
         initials.textContent = parts.length >= 2
@@ -1041,6 +1037,16 @@ function setProfileAvatar(avatarUrl, fullName) {
             : (parts[0][0] || '?').toUpperCase();
         img.classList.add('hidden');
         initials.classList.remove('hidden');
+        img.removeAttribute('src');
+    };
+
+    if (avatarUrl) {
+        img.onerror = () => showInitials();
+        img.src = avatarUrl;
+        img.classList.remove('hidden');
+        initials.classList.add('hidden');
+    } else {
+        showInitials();
     }
 }
 
@@ -1116,12 +1122,28 @@ function updateHeaderAvatar(avatarUrl) {
     const userAvatar = document.getElementById('userAvatar');
     const dropdownAvatar = document.getElementById('dropdownAvatar');
     if (userAvatar) {
+        const initials = ((window.currentUser?.full_name || window.currentUser?.email || '?').trim().split(' ').map(s => s[0] || '').slice(0, 2).join('') || '?').toUpperCase();
         userAvatar.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full">`;
         userAvatar.className = 'w-8 h-8 rounded-full overflow-hidden flex items-center justify-center';
+        const img = userAvatar.querySelector('img');
+        if (img) {
+            img.onerror = () => {
+                userAvatar.textContent = initials;
+                userAvatar.className = 'w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold avatar-purple';
+            };
+        }
     }
     if (dropdownAvatar) {
+        const initials = ((window.currentUser?.full_name || window.currentUser?.email || '?').trim().split(' ').map(s => s[0] || '').slice(0, 2).join('') || '?').toUpperCase();
         dropdownAvatar.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full">`;
         dropdownAvatar.className = 'w-12 h-12 rounded-full overflow-hidden flex items-center justify-center';
+        const img = dropdownAvatar.querySelector('img');
+        if (img) {
+            img.onerror = () => {
+                dropdownAvatar.textContent = initials;
+                dropdownAvatar.className = 'w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold avatar-purple';
+            };
+        }
     }
 }
 </script>

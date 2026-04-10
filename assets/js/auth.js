@@ -17,6 +17,12 @@ function getInitials(name) {
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
+function applyAvatarFallback(container, initials, avatarColor, sizeClass, textClass) {
+    if (!container) return;
+    container.textContent = initials;
+    container.className = `${sizeClass} rounded-full flex items-center justify-center text-white font-bold ${textClass} ${avatarColor}`;
+}
+
 const API_BASE = '';
 let currentUser = null;
 let refreshInterval = null;
@@ -354,22 +360,28 @@ function updateAuthUI(isLoggedIn) {
 
         if (userAvatar) {
             if (currentUser.avatar_url) {
-                userAvatar.innerHTML = `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover rounded-full" onerror="this.parentElement.textContent='${initials}'">`;
+                userAvatar.innerHTML = `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover rounded-full">`;
                 userAvatar.className = 'w-7 h-7 rounded-full overflow-hidden flex items-center justify-center';
+                const img = userAvatar.querySelector('img');
+                if (img) {
+                    img.onerror = () => applyAvatarFallback(userAvatar, initials, avatarColor, 'w-7 h-7', 'text-xs');
+                }
             } else {
-                userAvatar.textContent = initials;
-                userAvatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor}`;
+                applyAvatarFallback(userAvatar, initials, avatarColor, 'w-7 h-7', 'text-xs');
             }
         }
         if (userName) userName.textContent = fullName.length > 12 ? `${fullName.substring(0, 10)}..` : fullName;
 
         if (dropdownAvatar) {
             if (currentUser.avatar_url) {
-                dropdownAvatar.innerHTML = `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover rounded-full" onerror="this.parentElement.textContent='${initials}'">`;
+                dropdownAvatar.innerHTML = `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover rounded-full">`;
                 dropdownAvatar.className = 'w-12 h-12 rounded-full overflow-hidden flex items-center justify-center';
+                const img = dropdownAvatar.querySelector('img');
+                if (img) {
+                    img.onerror = () => applyAvatarFallback(dropdownAvatar, initials, avatarColor, 'w-12 h-12', 'text-lg');
+                }
             } else {
-                dropdownAvatar.textContent = initials;
-                dropdownAvatar.className = `w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold ${avatarColor}`;
+                applyAvatarFallback(dropdownAvatar, initials, avatarColor, 'w-12 h-12', 'text-lg');
             }
         }
         if (dropdownName) dropdownName.textContent = fullName;
