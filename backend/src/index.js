@@ -2877,6 +2877,18 @@ app.post('/api/contact', async (c) => {
     }
 });
 
+// Kullanıcı: kendi form gönderimlerini listele
+app.get('/api/user/submissions', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const rows = await db.prepare(
+    `SELECT id, form_type, name, institution, product, subject, message, status, admin_note, submitted_at
+     FROM form_submissions WHERE user_id = ? ORDER BY submitted_at DESC`
+  ).bind(auth.user.user_id).all();
+  return c.json(rows.results || []);
+});
+
 // Admin: tüm form gönderimlerini listele
 app.get('/api/admin/submissions', async (c) => {
     if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);

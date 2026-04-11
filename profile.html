@@ -166,7 +166,7 @@
                     <p class="text-gray-600" id="welcomeMessage"></p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="bg-white rounded-xl shadow-sm p-6">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-lg font-semibold text-gray-800">Hesap Bilgileri</h3>
@@ -186,6 +186,17 @@
                             <i class="fas fa-check-circle text-2xl text-green-500"></i>
                         </div>
                         <div id="activeSubscriptionsList" class="space-y-3"><p class="text-gray-500 text-sm">Yükleniyor...</p></div>
+                    </div>
+                </div>
+
+                <!-- Taleplerim (form_submissions) -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Taleplerim</h3>
+                        <i class="fas fa-envelope text-2xl text-primary"></i>
+                    </div>
+                    <div id="userSubmissionsList" class="space-y-2">
+                        <p class="text-gray-400 text-sm">Yükleniyor...</p>
                     </div>
                 </div>
             </div>
@@ -562,6 +573,7 @@ async function checkAuthAndLoad() {
         setProfileAvatar(user.avatar_url, user.full_name);
         await loadSubscriptions();
         await loadNewsletterSubscription();
+        loadUserSubmissions();
     } catch (err) {
         console.error('checkAuthAndLoad error:', err);
         window.location.href = 'index.html';
@@ -1222,6 +1234,41 @@ function updateHeaderAvatar(avatarUrl) {
                 dropdownAvatar.className = 'w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold avatar-purple';
             };
         }
+    }
+}
+
+// ====================== TALEPLERİM (form_submissions) ======================
+const SUBMISSION_TYPE_LABELS = { trial: 'Deneme Erişimi', suggest: 'Ürün Önerisi', contact: 'İletişim' };
+const SUBMISSION_TYPE_COLORS_P = { trial: 'bg-blue-100 text-blue-700', suggest: 'bg-purple-100 text-purple-700', contact: 'bg-gray-100 text-gray-600' };
+const SUBMISSION_STATUS_LABELS_P = { pending: 'Bekliyor', reviewing: 'İnceleniyor', responded: 'Yanıtlandı', completed: 'Tamamlandı' };
+const SUBMISSION_STATUS_COLORS_P = { pending: 'bg-yellow-100 text-yellow-700', reviewing: 'bg-blue-100 text-blue-700', responded: 'bg-green-100 text-green-700', completed: 'bg-gray-100 text-gray-500' };
+
+async function loadUserSubmissions() {
+    const el = document.getElementById('userSubmissionsList');
+    if (!el) return;
+    try {
+        const res = await fetch('/api/user/submissions', { credentials: 'include' });
+        if (!res.ok) { el.innerHTML = ''; return; }
+        const data = await res.json();
+        if (!data.length) {
+            el.innerHTML = '<p class="text-gray-400 text-sm">Henüz gönderilmiş talebiniz yok.</p>';
+            return;
+        }
+        el.innerHTML = data.map(s => `
+            <div class="flex items-start justify-between gap-3 border rounded-xl px-4 py-3">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        <span class="text-xs font-medium px-2 py-0.5 rounded-full ${SUBMISSION_TYPE_COLORS_P[s.form_type] || 'bg-gray-100 text-gray-600'}">${SUBMISSION_TYPE_LABELS[s.form_type] || s.form_type}</span>
+                        <span class="text-xs font-medium px-2 py-0.5 rounded-full ${SUBMISSION_STATUS_COLORS_P[s.status] || ''}">${SUBMISSION_STATUS_LABELS_P[s.status] || s.status}</span>
+                    </div>
+                    <p class="text-sm font-medium text-gray-800 truncate">${escapeHtml(s.subject || s.product || '—')}</p>
+                    ${s.message ? `<p class="text-xs text-gray-400 mt-0.5 line-clamp-1">${escapeHtml(s.message)}</p>` : ''}
+                    ${s.admin_note ? `<p class="text-xs text-indigo-600 mt-1"><i class="fas fa-reply mr-1"></i>${escapeHtml(s.admin_note)}</p>` : ''}
+                </div>
+                <p class="text-xs text-gray-400 shrink-0">${new Date(s.submitted_at).toLocaleDateString('tr-TR')}</p>
+            </div>`).join('');
+    } catch (err) {
+        el.innerHTML = '<p class="text-gray-400 text-sm">Talepler yüklenemedi.</p>';
     }
 }
 
