@@ -1810,7 +1810,8 @@ app.get('/api/institution/:id/folders', async (c) => {
         // Rol kontrolü — admin değilse sadece public klasörler
         const role = await getUserRole(c);
         const isAdmin = role === 'super_admin' || role === 'admin';
-        const publicOnly = isAdmin ? '' : 'AND f.is_public = 1';
+        const folderFilter  = isAdmin ? '' : 'AND f.is_public = 1';
+        const fileCountCond = isAdmin ? 'AND is_active = 1' : 'AND is_active = 1 AND is_public = 1';
 
         // 2. Klasörleri getir
         let query, params;
@@ -1818,20 +1819,20 @@ app.get('/api/institution/:id/folders', async (c) => {
             query = `
                 SELECT f.*,
                     (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
-                    (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
+                    (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id ${fileCountCond}) as file_count
                 FROM institution_folders f
                 WHERE CAST(f.institution_id AS INTEGER) = ? AND f.parent_folder_id = ?
-                  ${publicOnly}
+                  ${folderFilter}
                 ORDER BY f.folder_name`;
             params = [institutionId, parseInt(parentId)];
         } else {
             query = `
                 SELECT f.*,
                     (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
-                    (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
+                    (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id ${fileCountCond}) as file_count
                 FROM institution_folders f
                 WHERE CAST(f.institution_id AS INTEGER) = ? AND (f.parent_folder_id IS NULL OR f.parent_folder_id = 0)
-                  ${publicOnly}
+                  ${folderFilter}
                 ORDER BY f.folder_name`;
             params = [institutionId];
         }
