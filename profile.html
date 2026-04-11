@@ -968,7 +968,7 @@ function previewFile(url, name, type) {
     const videos = ['mp4','webm','ogg','mov'];
     const audio  = ['mp3','wav','aac','flac'];
     const office = ['doc','docx','xls','xlsx','ppt','pptx'];
-    const fullUrl = window.location.origin + url;
+    const fullUrl = url.startsWith('http') ? url : window.location.origin + url;
 
     if (ext === 'pdf') {
         body.innerHTML = `<iframe src="${url}" style="width:100%;height:calc(100vh - 52px);border:0" onload="this.previousElementSibling&&this.previousElementSibling.remove()"></iframe>`;
