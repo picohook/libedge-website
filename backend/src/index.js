@@ -287,6 +287,7 @@ function buildAnnouncementImageUrl(title, summary, env, options = {}) {
   url.searchParams.set('width', '1200');
   url.searchParams.set('height', '630');
   url.searchParams.set('nologo', 'true');
+  url.searchParams.set('seed', String(Math.floor(Math.random() * 2147483647)));
 
   return {
     prompt,
@@ -2105,12 +2106,15 @@ app.post('/api/upload', async (c) => {
   if (!file || typeof file === 'string') return c.json({ error: 'Dosya bulunamadı' }, 400);
   const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
   const key = `uploads/${auth.user.user_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  await bucket.put(key, file.stream(), {
+  const allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip'];
+  if (!allowed.includes(ext)) return c.json({ error: 'Desteklenmeyen dosya türü' }, 400);
+
+  const buf = await file.arrayBuffer();
+  await bucket.put(key, buf, {
     httpMetadata: { contentType: file.type || 'application/octet-stream' },
   });
-  const publicUrl = c.env.R2_PUBLIC_URL
-    ? `${c.env.R2_PUBLIC_URL}/${key}`
-    : `/api/files/${key}`;
+  const r2PublicUrl = c.env.R2_PUBLIC_URL;
+  const publicUrl = r2PublicUrl ? `${r2PublicUrl}/${key}` : `/api/files/${key}`;
   return c.json({ success: true, url: publicUrl, key, name: file.name, type: ext, size: file.size });
 });
 

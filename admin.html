@@ -3787,11 +3787,18 @@ function updateAnnouncementCoverPreview() {
     const prompt = document.getElementById('announcementAiImagePrompt').value.trim();
 
     if (url) {
-        preview.src = url;
         previewWrapper.classList.remove('hidden');
+        // Show spinner while loading
+        previewWrapper.innerHTML = '<div class="w-full h-56 flex items-center justify-center bg-slate-50 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i></div>';
+        const img = new Image();
+        img.className = 'w-full h-56 object-cover';
+        img.alt = 'Duyuru kapak önizleme';
+        img.onload = () => { previewWrapper.innerHTML = ''; previewWrapper.appendChild(img); };
+        img.onerror = () => { previewWrapper.innerHTML = '<div class="w-full h-56 flex items-center justify-center bg-red-50 text-red-400 text-sm"><i class="fas fa-exclamation-circle mr-2"></i>Görsel yüklenemedi</div>'; };
+        img.src = url;
     } else {
-        preview.src = '';
         previewWrapper.classList.add('hidden');
+        previewWrapper.innerHTML = '';
     }
 
     if (prompt) {
