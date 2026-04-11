@@ -817,7 +817,7 @@
         <div class="flex items-start justify-between gap-4 mb-5">
             <div>
                 <h3 id="announcementModalTitle" class="text-2xl font-bold text-gray-900">Yeni Duyuru</h3>
-                <p class="text-sm text-gray-500 mt-1">Kapak görseli, AI destekli metin düzenleme ve Ýngilizce içerik alanlarý tek formda yönetilir.</p>
+                <p class="text-sm text-gray-500 mt-1">Kapak gÃ¶rseli, AI destekli metin dÃ¼zenleme ve Ä°ngilizce iÃ§erik alanlarÄ± tek formda yÃ¶netilir.</p>
             </div>
             <button type="button" onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600 text-xl" aria-label="Modali kapat">
                 <i class="fas fa-times"></i>
@@ -833,17 +833,17 @@
                     <div class="bg-gray-50 border border-gray-200 rounded-2xl p-5 mb-5">
                         <div class="flex items-center justify-between gap-3 mb-4">
                             <div>
-                                <h4 class="font-semibold text-gray-900">Ana Ýçerik</h4>
-                                <p class="text-xs text-gray-500">Türkçe duyuru içeriði ve yayýn ayarlarý</p>
+                                <h4 class="font-semibold text-gray-900">Ana Ä°Ã§erik</h4>
+                                <p class="text-xs text-gray-500">TÃ¼rkÃ§e duyuru iÃ§eriÄŸi ve yayÄ±n ayarlarÄ±</p>
                             </div>
                             <button type="button" id="announcementPolishBtn" onclick="polishAnnouncementContent()" class="btn btn-primary whitespace-nowrap">
-                                <i class="fas fa-magic mr-2"></i>AI ile Profesyonelleþtir
+                                <i class="fas fa-magic mr-2"></i>AI ile ProfesyonelleÅŸtir
                             </button>
                         </div>
 
                         <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Baþlýk</label>
-                            <input type="text" id="announcementTitle" placeholder="Duyuru baþlýðý" class="w-full border p-3 rounded-xl" required>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">BaÅŸlÄ±k</label>
+                            <input type="text" id="announcementTitle" placeholder="Duyuru baÅŸlÄ±ÄŸÄ±" class="w-full border p-3 rounded-xl" required>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
@@ -852,46 +852,46 @@
                                 <select id="announcementCategory" class="w-full border p-3 rounded-xl">
                                     <option value="general">Genel</option>
                                     <option value="urgent">Acil</option>
-                                    <option value="new-product">Yeni Ürün</option>
-                                    <option value="product-update">Güncelleme</option>
+                                    <option value="new-product">Yeni ÃœrÃ¼n</option>
+                                    <option value="product-update">GÃ¼ncelleme</option>
                                     <option value="event">Etkinlik</option>
-                                    <option value="maintenance">Bakým</option>
+                                    <option value="maintenance">BakÄ±m</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Öncelik</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Ã–ncelik</label>
                                 <select id="announcementPriority" class="w-full border p-3 rounded-xl">
                                     <option value="medium">Orta</option>
-                                    <option value="high">Yüksek</option>
-                                    <option value="low">Düþük</option>
+                                    <option value="high">YÃ¼ksek</option>
+                                    <option value="low">DÃ¼ÅŸÃ¼k</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Özet</label>
-                            <textarea id="announcementSummary" rows="3" placeholder="Kýsa özet (liste görünümünde gösterilir)" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Ã–zet</label>
+                            <textarea id="announcementSummary" rows="3" placeholder="KÄ±sa Ã¶zet (liste gÃ¶rÃ¼nÃ¼mÃ¼nde gÃ¶sterilir)" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
                         </div>
 
                         <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Ýçerik</label>
-                            <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Ä°Ã§erik</label>
+                            <textarea id="announcementFullContent" rows="8" placeholder="Tam iÃ§erik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
                         </div>
 
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="announcementPublished" checked class="rounded">
-                            <label for="announcementPublished" class="text-sm text-gray-700">Yayýnda</label>
+                            <label for="announcementPublished" class="text-sm text-gray-700">YayÄ±nda</label>
                         </div>
                     </div>
 
                     <div class="bg-white border border-gray-200 rounded-2xl p-5">
                         <div class="flex items-center justify-between gap-3 mb-4">
                             <div>
-                                <h4 class="font-semibold text-gray-900">Ýngilizce Versiyon</h4>
-                                <p class="text-xs text-gray-500">Public sayfadaki EN görünüm bu alanlardan beslenir.</p>
+                                <h4 class="font-semibold text-gray-900">Ä°ngilizce Versiyon</h4>
+                                <p class="text-xs text-gray-500">Public sayfadaki EN gÃ¶rÃ¼nÃ¼m bu alanlardan beslenir.</p>
                             </div>
                             <button type="button" id="announcementTranslateBtn" onclick="translateAnnouncementContent()" class="btn bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap">
-                                <i class="fas fa-language mr-2"></i>TR to EN Çevir
+                                <i class="fas fa-language mr-2"></i>TR to EN Ã‡evir
                             </button>
                         </div>
 
@@ -916,31 +916,31 @@
                     <div class="bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-5 sticky top-4">
                         <div class="flex items-start justify-between gap-3 mb-4">
                             <div>
-                                <h4 class="font-semibold text-gray-900">Kapak Görseli</h4>
-                                <p class="text-xs text-gray-500">Manuel URL ekleyin veya baþlýktan AI görsel üretin.</p>
+                                <h4 class="font-semibold text-gray-900">Kapak GÃ¶rseli</h4>
+                                <p class="text-xs text-gray-500">Manuel URL ekleyin veya baÅŸlÄ±ktan AI gÃ¶rsel Ã¼retin.</p>
                             </div>
                             <button type="button" id="announcementImageBtn" onclick="generateAnnouncementImage()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 whitespace-nowrap">
-                                <i class="fas fa-image mr-2"></i>AI Görsel Üret
+                                <i class="fas fa-image mr-2"></i>AI GÃ¶rsel Ãœret
                             </button>
                         </div>
 
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Görsel URL</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">GÃ¶rsel URL</label>
                         <input type="url" id="announcementCoverImage" placeholder="https://..." class="w-full border p-3 rounded-xl mb-3" oninput="updateAnnouncementCoverPreview()">
 
                         <div id="announcementImagePromptBox" class="hidden text-xs text-gray-500 bg-white/80 border border-white rounded-xl px-3 py-2 mb-3"></div>
 
                         <div id="announcementCoverPreviewWrapper" class="hidden rounded-2xl overflow-hidden border border-white bg-white shadow-sm">
-                            <img id="announcementCoverPreview" src="" alt="Duyuru kapak önizleme" class="w-full h-56 object-cover">
+                            <img id="announcementCoverPreview" src="" alt="Duyuru kapak Ã¶nizleme" class="w-full h-56 object-cover">
                         </div>
 
                         <div class="mt-4 space-y-2 text-xs text-gray-600">
                             <div class="flex items-start gap-2">
                                 <i class="fas fa-sparkles text-indigo-500 mt-0.5"></i>
-                                <span>AI görsel Pollinations.ai üzerinden duyuru baþlýðý ve özetine göre üretilir.</span>
+                                <span>AI gÃ¶rsel Pollinations.ai Ã¼zerinden duyuru baÅŸlÄ±ÄŸÄ± ve Ã¶zetine gÃ¶re Ã¼retilir.</span>
                             </div>
                             <div class="flex items-start gap-2">
                                 <i class="fas fa-circle-info text-blue-500 mt-0.5"></i>
-                                <span>Ýngilizce alanlar boþ kalýrsa public sayfa Türkçe içeriðe geri düþer.</span>
+                                <span>Ä°ngilizce alanlar boÅŸ kalÄ±rsa public sayfa TÃ¼rkÃ§e iÃ§eriÄŸe geri dÃ¼ÅŸer.</span>
                             </div>
                         </div>
                     </div>
@@ -949,7 +949,7 @@
 
             <div class="flex gap-3 mt-6">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
-                <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 flex-1">Ýptal</button>
+                <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 flex-1">Ä°ptal</button>
             </div>
         </form>
     </div>
@@ -3655,7 +3655,7 @@ async function saveSubmission() {
 
 async function loadAnnouncements() {
     const container = document.getElementById('announcementsList');
-    container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">Yükleniyor...</p>';
+    container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">YÃ¼kleniyor...</p>';
 
     try {
         const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
@@ -3663,7 +3663,7 @@ async function loadAnnouncements() {
         const list = data.announcements || data || [];
 
         if (!list.length) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">Henüz duyuru yok</p>';
+            container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">HenÃ¼z duyuru yok</p>';
             return;
         }
 
@@ -3677,14 +3677,14 @@ async function loadAnnouncements() {
         };
 
         const localPriorityMap = {
-            high: '<span class="text-red-600">Yüksek</span>',
+            high: '<span class="text-red-600">YÃ¼ksek</span>',
             medium: '<span class="text-yellow-600">Orta</span>',
-            low: '<span class="text-green-600">Düþük</span>'
+            low: '<span class="text-green-600">DÃ¼ÅŸÃ¼k</span>'
         };
 
         container.innerHTML = list.map(a => {
             const previewImage = a.cover_image_url
-                ? `<img src="${escapeHtml(a.cover_image_url)}" alt="${escapeHtml(a.title || 'Duyuru görseli')}" class="w-full h-40 object-cover">`
+                ? `<img src="${escapeHtml(a.cover_image_url)}" alt="${escapeHtml(a.title || 'Duyuru gÃ¶rseli')}" class="w-full h-40 object-cover">`
                 : '<div class="w-full h-40 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-3xl text-slate-400"><i class="fas fa-image"></i></div>';
 
             return `
@@ -3699,10 +3699,10 @@ async function loadAnnouncements() {
                                 <span class="text-xs ${a.priority === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-600'} px-2 py-0.5 rounded-full">
                                     ${localPriorityMap[a.priority] || a.priority}
                                 </span>
-                                ${a.title_en || a.summary_en || a.full_content_en ? '<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">EN hazýr</span>' : ''}
+                                ${a.title_en || a.summary_en || a.full_content_en ? '<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">EN hazÄ±r</span>' : ''}
                             </div>
                             <div class="flex gap-1">
-                                <button onclick="editAnnouncement(${a.id})" class="text-blue-500 hover:text-blue-700 p-1" title="Düzenle">
+                                <button onclick="editAnnouncement(${a.id})" class="text-blue-500 hover:text-blue-700 p-1" title="DÃ¼zenle">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button onclick="deleteAnnouncement(${a.id})" class="text-red-500 hover:text-red-700 p-1" title="Sil">
@@ -3712,7 +3712,7 @@ async function loadAnnouncements() {
                         </div>
                         <h4 class="font-semibold text-gray-800 mb-1">${escapeHtml(a.title)}</h4>
                         <p class="text-xs text-gray-500 mb-2">${new Date(a.published_at).toLocaleDateString('tr-TR')}</p>
-                        <p class="text-sm text-gray-600 line-clamp-2">${escapeHtml((a.summary || '').substring(0, 120))}${(a.summary || '').length > 120 ? '…' : ''}</p>
+                        <p class="text-sm text-gray-600 line-clamp-2">${escapeHtml((a.summary || '').substring(0, 120))}${(a.summary || '').length > 120 ? 'â€¦' : ''}</p>
                         ${!a.is_published ? '<div class="mt-3 text-xs text-gray-400 italic">Taslak</div>' : ''}
                     </div>
                 </div>
@@ -3721,7 +3721,7 @@ async function loadAnnouncements() {
 
     } catch (err) {
         console.error('loadAnnouncements error:', err);
-        container.innerHTML = '<p class="col-span-full text-center text-red-500 py-8">Yüklenirken hata oluþtu</p>';
+        container.innerHTML = '<p class="col-span-full text-center text-red-500 py-8">YÃ¼klenirken hata oluÅŸtu</p>';
     }
 }
 
@@ -3798,7 +3798,7 @@ async function callAnnouncementAiEndpoint(path, payload) {
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-        throw new Error(data.error || 'AI iþlemi baþarýsýz oldu');
+        throw new Error(data.error || 'AI iÅŸlemi baÅŸarÄ±sÄ±z oldu');
     }
     return data;
 }
@@ -3808,22 +3808,22 @@ async function generateAnnouncementImage() {
     const summary = document.getElementById('announcementSummary').value.trim();
 
     if (!title) {
-        showToast('Önce duyuru baþlýðýný girin', 'warning');
+        showToast('Ã–nce duyuru baÅŸlÄ±ÄŸÄ±nÄ± girin', 'warning');
         return;
     }
 
-    setAnnouncementActionLoading('announcementImageBtn', true, '<i class="fas fa-image mr-2"></i>AI Görsel Üret', '<i class="fas fa-spinner fa-spin mr-2"></i>Üretiliyor...');
+    setAnnouncementActionLoading('announcementImageBtn', true, '<i class="fas fa-image mr-2"></i>AI GÃ¶rsel Ãœret', '<i class="fas fa-spinner fa-spin mr-2"></i>Ãœretiliyor...');
 
     try {
         const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/image', { title, summary });
         document.getElementById('announcementCoverImage').value = data.image_url || '';
         document.getElementById('announcementAiImagePrompt').value = data.prompt || '';
         updateAnnouncementCoverPreview();
-        showToast('AI kapak görseli hazýrlandý', 'success');
+        showToast('AI kapak gÃ¶rseli hazÄ±rlandÄ±', 'success');
     } catch (err) {
-        showToast(err.message || 'Görsel üretilemedi', 'error');
+        showToast(err.message || 'GÃ¶rsel Ã¼retilemedi', 'error');
     } finally {
-        setAnnouncementActionLoading('announcementImageBtn', false, '<i class="fas fa-image mr-2"></i>AI Görsel Üret', '<i class="fas fa-spinner fa-spin mr-2"></i>Üretiliyor...');
+        setAnnouncementActionLoading('announcementImageBtn', false, '<i class="fas fa-image mr-2"></i>AI GÃ¶rsel Ãœret', '<i class="fas fa-spinner fa-spin mr-2"></i>Ãœretiliyor...');
     }
 }
 
@@ -3833,11 +3833,11 @@ async function polishAnnouncementContent() {
     const full_content = document.getElementById('announcementFullContent').value.trim();
 
     if (!title && !summary && !full_content) {
-        showToast('Önce düzenlenecek bir içerik girin', 'warning');
+        showToast('Ã–nce dÃ¼zenlenecek bir iÃ§erik girin', 'warning');
         return;
     }
 
-    setAnnouncementActionLoading('announcementPolishBtn', true, '<i class="fas fa-magic mr-2"></i>AI ile Profesyonelleþtir', '<i class="fas fa-spinner fa-spin mr-2"></i>Düzenleniyor...');
+    setAnnouncementActionLoading('announcementPolishBtn', true, '<i class="fas fa-magic mr-2"></i>AI ile ProfesyonelleÅŸtir', '<i class="fas fa-spinner fa-spin mr-2"></i>DÃ¼zenleniyor...');
 
     try {
         const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/polish', { title, summary, full_content, source_lang: 'tr' });
@@ -3845,11 +3845,11 @@ async function polishAnnouncementContent() {
         document.getElementById('announcementTitle').value = announcement.title || title;
         document.getElementById('announcementSummary').value = announcement.summary || summary;
         document.getElementById('announcementFullContent').value = announcement.full_content || full_content;
-        showToast('Ýçerik daha profesyonel hale getirildi', 'success');
+        showToast('Ä°Ã§erik daha profesyonel hale getirildi', 'success');
     } catch (err) {
-        showToast(err.message || 'Ýçerik düzenlenemedi', 'error');
+        showToast(err.message || 'Ä°Ã§erik dÃ¼zenlenemedi', 'error');
     } finally {
-        setAnnouncementActionLoading('announcementPolishBtn', false, '<i class="fas fa-magic mr-2"></i>AI ile Profesyonelleþtir', '<i class="fas fa-spinner fa-spin mr-2"></i>Düzenleniyor...');
+        setAnnouncementActionLoading('announcementPolishBtn', false, '<i class="fas fa-magic mr-2"></i>AI ile ProfesyonelleÅŸtir', '<i class="fas fa-spinner fa-spin mr-2"></i>DÃ¼zenleniyor...');
     }
 }
 
@@ -3859,11 +3859,11 @@ async function translateAnnouncementContent() {
     const full_content = document.getElementById('announcementFullContent').value.trim();
 
     if (!title && !summary && !full_content) {
-        showToast('Önce Türkçe içerik girin', 'warning');
+        showToast('Ã–nce TÃ¼rkÃ§e iÃ§erik girin', 'warning');
         return;
     }
 
-    setAnnouncementActionLoading('announcementTranslateBtn', true, '<i class="fas fa-language mr-2"></i>TR to EN Çevir', '<i class="fas fa-spinner fa-spin mr-2"></i>Çevriliyor...');
+    setAnnouncementActionLoading('announcementTranslateBtn', true, '<i class="fas fa-language mr-2"></i>TR to EN Ã‡evir', '<i class="fas fa-spinner fa-spin mr-2"></i>Ã‡evriliyor...');
 
     try {
         const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/translate', {
@@ -3877,11 +3877,11 @@ async function translateAnnouncementContent() {
         document.getElementById('announcementTitleEn').value = announcement.title || '';
         document.getElementById('announcementSummaryEn').value = announcement.summary || '';
         document.getElementById('announcementFullContentEn').value = announcement.full_content || '';
-        showToast('Ýngilizce versiyon hazýrlandý', 'success');
+        showToast('Ä°ngilizce versiyon hazÄ±rlandÄ±', 'success');
     } catch (err) {
-        showToast(err.message || 'Çeviri yapýlamadý', 'error');
+        showToast(err.message || 'Ã‡eviri yapÄ±lamadÄ±', 'error');
     } finally {
-        setAnnouncementActionLoading('announcementTranslateBtn', false, '<i class="fas fa-language mr-2"></i>TR to EN Çevir', '<i class="fas fa-spinner fa-spin mr-2"></i>Çevriliyor...');
+        setAnnouncementActionLoading('announcementTranslateBtn', false, '<i class="fas fa-language mr-2"></i>TR to EN Ã‡evir', '<i class="fas fa-spinner fa-spin mr-2"></i>Ã‡evriliyor...');
     }
 }
 
@@ -3897,12 +3897,12 @@ async function editAnnouncement(id) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.announcements || []);
         const a = list.find(x => x.id === id);
-        if (!a) { showToast('Duyuru bulunamadý', 'error'); return; }
-        document.getElementById('announcementModalTitle').textContent = 'Duyuruyu Düzenle';
+        if (!a) { showToast('Duyuru bulunamadÄ±', 'error'); return; }
+        document.getElementById('announcementModalTitle').textContent = 'Duyuruyu DÃ¼zenle';
         fillAnnouncementForm(a);
         document.getElementById('announcementModal').classList.remove('hidden');
     } catch (err) {
-        showToast('Duyuru bilgileri alýnamadý', 'error');
+        showToast('Duyuru bilgileri alÄ±namadÄ±', 'error');
     }
 }
 
@@ -3911,10 +3911,10 @@ function closeAnnouncementModal() {
 }
 
 async function deleteAnnouncement(id) {
-    if (!confirm('Bu duyuruyu silmek istediðinize emin misiniz?')) return;
+    if (!confirm('Bu duyuruyu silmek istediÄŸinize emin misiniz?')) return;
     const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { showToast('Duyuru silindi', 'success'); loadAnnouncements(); }
-    else showToast('Ýþlem baþarýsýz oldu', 'error');
+    else showToast('Ä°ÅŸlem baÅŸarÄ±sÄ±z oldu', 'error');
 }
 
 document.getElementById('announcementForm').addEventListener('submit', async function(e) {
@@ -3941,12 +3941,12 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
         body: JSON.stringify(payload)
     });
     if (res.ok) {
-        showToast(id ? 'Duyuru güncellendi' : 'Duyuru oluþturuldu', 'success');
+        showToast(id ? 'Duyuru gÃ¼ncellendi' : 'Duyuru oluÅŸturuldu', 'success');
         closeAnnouncementModal();
         loadAnnouncements();
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Ýþlem baþarýsýz oldu', 'error');
+        showToast(data.error || 'Ä°ÅŸlem baÅŸarÄ±sÄ±z oldu', 'error');
     }
 });
 let currentAirtableId = null;

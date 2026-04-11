@@ -2332,7 +2332,7 @@ app.get('/api/files/*', async (c) => {
 
 // ====================== ANNOUNCEMENT ROUTES ======================
 
-// Public: sadece yayýnda olanlar
+// Public: sadece yayÄ±nda olanlar
 app.get('/api/announcements', async (c) => {
   const db = c.env.DB;
   try {
@@ -2391,13 +2391,13 @@ app.post('/api/admin/announcements/ai/image', async (c) => {
   try {
     const { title, summary } = await c.req.json();
     const cleanTitle = cleanAnnouncementText(title);
-    if (!cleanTitle) return c.json({ error: 'Baþlýk zorunludur' }, 400);
+    if (!cleanTitle) return c.json({ error: 'BaÅŸlÄ±k zorunludur' }, 400);
 
     const image = buildAnnouncementImageUrl(cleanTitle, summary, c.env);
     return c.json({ success: true, image_url: image.imageUrl, prompt: image.prompt });
   } catch (err) {
     console.error('Generate announcement image error:', err);
-    return c.json({ error: err.message || 'Görsel oluþturulamadý' }, 500);
+    return c.json({ error: err.message || 'GÃ¶rsel oluÅŸturulamadÄ±' }, 500);
   }
 });
 
@@ -2407,14 +2407,14 @@ app.post('/api/admin/announcements/ai/polish', async (c) => {
   try {
     const payload = await c.req.json();
     if (!cleanAnnouncementText(payload.title) && !cleanAnnouncementText(payload.full_content) && !cleanAnnouncementText(payload.summary)) {
-      return c.json({ error: 'Düzenlenecek metin bulunamadý' }, 400);
+      return c.json({ error: 'DÃ¼zenlenecek metin bulunamadÄ±' }, 400);
     }
 
     const polished = await runAnnouncementAiTask('polish', payload, c.env);
     return c.json({ success: true, announcement: polished });
   } catch (err) {
     console.error('Polish announcement error:', err);
-    return c.json({ error: err.message || 'Ýçerik düzenlenemedi' }, 500);
+    return c.json({ error: err.message || 'Ä°Ã§erik dÃ¼zenlenemedi' }, 500);
   }
 });
 
@@ -2424,14 +2424,14 @@ app.post('/api/admin/announcements/ai/translate', async (c) => {
   try {
     const payload = await c.req.json();
     if (!cleanAnnouncementText(payload.title) && !cleanAnnouncementText(payload.full_content) && !cleanAnnouncementText(payload.summary)) {
-      return c.json({ error: 'Çevrilecek metin bulunamadý' }, 400);
+      return c.json({ error: 'Ã‡evrilecek metin bulunamadÄ±' }, 400);
     }
 
     const translated = await runAnnouncementAiTask('translate', payload, c.env);
     return c.json({ success: true, announcement: translated });
   } catch (err) {
     console.error('Translate announcement error:', err);
-    return c.json({ error: err.message || 'Çeviri yapýlamadý' }, 500);
+    return c.json({ error: err.message || 'Ã‡eviri yapÄ±lamadÄ±' }, 500);
   }
 });
 
@@ -2452,7 +2452,7 @@ app.post('/api/admin/announcements', async (c) => {
   const priority = cleanAnnouncementText(body.priority) || 'medium';
   const isPublished = body.is_published ? 1 : 0;
 
-  if (!title) return c.json({ error: 'Baþlýk zorunludur' }, 400);
+  if (!title) return c.json({ error: 'BaÅŸlÄ±k zorunludur' }, 400);
 
   try {
     await ensureAnnouncementColumns(db);
@@ -2485,7 +2485,7 @@ app.put('/api/admin/announcements/:id', async (c) => {
   const priority = cleanAnnouncementText(body.priority) || 'medium';
   const isPublished = body.is_published ? 1 : 0;
 
-  if (!title) return c.json({ error: 'Baþlýk zorunludur' }, 400);
+  if (!title) return c.json({ error: 'BaÅŸlÄ±k zorunludur' }, 400);
 
   try {
     await ensureAnnouncementColumns(db);
@@ -2495,7 +2495,7 @@ app.put('/api/admin/announcements/:id', async (c) => {
       SET title = ?, summary = ?, full_content = ?, title_en = ?, summary_en = ?, full_content_en = ?, cover_image_url = ?, ai_image_prompt = ?, category = ?, priority = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, id).run();
-    if (result.meta?.changes === 0) return c.json({ error: 'Duyuru bulunamadý' }, 404);
+    if (result.meta?.changes === 0) return c.json({ error: 'Duyuru bulunamadÄ±' }, 404);
     return c.json({ success: true });
   } catch (err) {
     console.error('Update announcement error:', err);
