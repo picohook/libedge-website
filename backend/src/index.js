@@ -2167,7 +2167,7 @@ app.get('/api/files/*', async (c) => {
       } else if (role === 'admin') {
         // admin sadece kendi kurumunun private dosyasına erişebilir
         const adminInstitutionId = await getUserInstitutionId(c);
-        if (!adminInstitutionId || adminInstitutionId !== fileRecord.institution_id) {
+        if (!adminInstitutionId || String(adminInstitutionId) !== String(fileRecord.institution_id)) {
           return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
         }
       } else {
