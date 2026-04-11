@@ -813,55 +813,147 @@
 
 <!-- Announcement Modal -->
 <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <h3 id="announcementModalTitle" class="text-xl font-bold mb-4">Yeni Duyuru</h3>
+    <div class="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-2xl">
+        <div class="flex items-start justify-between gap-4 mb-5">
+            <div>
+                <h3 id="announcementModalTitle" class="text-2xl font-bold text-gray-900">Yeni Duyuru</h3>
+                <p class="text-sm text-gray-500 mt-1">Kapak görseli, AI destekli metin düzenleme ve İngilizce içerik alanları tek formda yönetilir.</p>
+            </div>
+            <button type="button" onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600 text-xl" aria-label="Modali kapat">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
         <form id="announcementForm">
             <input type="hidden" id="announcementId">
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">BaÅŸlÄ±k</label>
-                <input type="text" id="announcementTitle" placeholder="Duyuru baÅŸlÄ±ÄŸÄ±" class="w-full border p-2 rounded" required>
-            </div>
-            <div class="grid grid-cols-2 gap-3 mb-3">
+            <input type="hidden" id="announcementAiImagePrompt">
+
+            <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                    <select id="announcementCategory" class="w-full border p-2 rounded">
-                        <option value="general">ğŸ“¢ Genel</option>
-                        <option value="urgent">ğŸš¨ Acil</option>
-                        <option value="new-product">ğŸ¯ Yeni ÃœrÃ¼n</option>
-                        <option value="product-update">ğŸ”„ GÃ¼ncelleme</option>
-                        <option value="event">ğŸ“… Etkinlik</option>
-                        <option value="maintenance">ğŸ”§ BakÄ±m</option>
-                    </select>
+                    <div class="bg-gray-50 border border-gray-200 rounded-2xl p-5 mb-5">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h4 class="font-semibold text-gray-900">Ana İçerik</h4>
+                                <p class="text-xs text-gray-500">Türkçe duyuru içeriği ve yayın ayarları</p>
+                            </div>
+                            <button type="button" id="announcementPolishBtn" onclick="polishAnnouncementContent()" class="btn btn-primary whitespace-nowrap">
+                                <i class="fas fa-magic mr-2"></i>AI ile Profesyonelleştir
+                            </button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Başlık</label>
+                            <input type="text" id="announcementTitle" placeholder="Duyuru başlığı" class="w-full border p-3 rounded-xl" required>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                                <select id="announcementCategory" class="w-full border p-3 rounded-xl">
+                                    <option value="general">Genel</option>
+                                    <option value="urgent">Acil</option>
+                                    <option value="new-product">Yeni Ürün</option>
+                                    <option value="product-update">Güncelleme</option>
+                                    <option value="event">Etkinlik</option>
+                                    <option value="maintenance">Bakım</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Öncelik</label>
+                                <select id="announcementPriority" class="w-full border p-3 rounded-xl">
+                                    <option value="medium">Orta</option>
+                                    <option value="high">Yüksek</option>
+                                    <option value="low">Düşük</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Özet</label>
+                            <textarea id="announcementSummary" rows="3" placeholder="Kısa özet (liste görünümünde gösterilir)" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">İçerik</label>
+                            <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="announcementPublished" checked class="rounded">
+                            <label for="announcementPublished" class="text-sm text-gray-700">Yayında</label>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-2xl p-5">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h4 class="font-semibold text-gray-900">İngilizce Versiyon</h4>
+                                <p class="text-xs text-gray-500">Public sayfadaki EN görünüm bu alanlardan beslenir.</p>
+                            </div>
+                            <button type="button" id="announcementTranslateBtn" onclick="translateAnnouncementContent()" class="btn bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap">
+                                <i class="fas fa-language mr-2"></i>TR to EN Çevir
+                            </button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">English Title</label>
+                            <input type="text" id="announcementTitleEn" placeholder="English title" class="w-full border p-3 rounded-xl">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">English Summary</label>
+                            <textarea id="announcementSummaryEn" rows="3" placeholder="Short English summary" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">English Content</label>
+                            <textarea id="announcementFullContentEn" rows="8" placeholder="Full English content (Markdown supported)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
+                        </div>
+                    </div>
                 </div>
+
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Ã–ncelik</label>
-                    <select id="announcementPriority" class="w-full border p-2 rounded">
-                        <option value="medium">ğŸŸ¡ Orta</option>
-                        <option value="high">ğŸ”¥ YÃ¼ksek</option>
-                        <option value="low">ğŸŸ¢ DÃ¼ÅŸÃ¼k</option>
-                    </select>
+                    <div class="bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-5 sticky top-4">
+                        <div class="flex items-start justify-between gap-3 mb-4">
+                            <div>
+                                <h4 class="font-semibold text-gray-900">Kapak Görseli</h4>
+                                <p class="text-xs text-gray-500">Manuel URL ekleyin veya başlıktan AI görsel üretin.</p>
+                            </div>
+                            <button type="button" id="announcementImageBtn" onclick="generateAnnouncementImage()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 whitespace-nowrap">
+                                <i class="fas fa-image mr-2"></i>AI Görsel Üret
+                            </button>
+                        </div>
+
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Görsel URL</label>
+                        <input type="url" id="announcementCoverImage" placeholder="https://..." class="w-full border p-3 rounded-xl mb-3" oninput="updateAnnouncementCoverPreview()">
+
+                        <div id="announcementImagePromptBox" class="hidden text-xs text-gray-500 bg-white/80 border border-white rounded-xl px-3 py-2 mb-3"></div>
+
+                        <div id="announcementCoverPreviewWrapper" class="hidden rounded-2xl overflow-hidden border border-white bg-white shadow-sm">
+                            <img id="announcementCoverPreview" src="" alt="Duyuru kapak önizleme" class="w-full h-56 object-cover">
+                        </div>
+
+                        <div class="mt-4 space-y-2 text-xs text-gray-600">
+                            <div class="flex items-start gap-2">
+                                <i class="fas fa-sparkles text-indigo-500 mt-0.5"></i>
+                                <span>AI görsel Pollinations.ai üzerinden duyuru başlığı ve özetine göre üretilir.</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <i class="fas fa-circle-info text-blue-500 mt-0.5"></i>
+                                <span>İngilizce alanlar boş kalırsa public sayfa Türkçe içeriğe geri düşer.</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Ã–zet</label>
-                <textarea id="announcementSummary" rows="2" placeholder="KÄ±sa Ã¶zet (liste gÃ¶rÃ¼nÃ¼mÃ¼nde gÃ¶sterilir)" class="w-full border p-2 rounded text-sm resize-y"></textarea>
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Ä°Ã§erik</label>
-                <textarea id="announcementFullContent" rows="6" placeholder="Tam iÃ§erik (Markdown destekli)" class="w-full border p-2 rounded font-mono text-sm resize-y"></textarea>
-            </div>
-            <div class="mb-4 flex items-center gap-2">
-                <input type="checkbox" id="announcementPublished" checked class="rounded">
-                <label for="announcementPublished" class="text-sm text-gray-700">YayÄ±nda</label>
-            </div>
-            <div class="flex gap-2">
+
+            <div class="flex gap-3 mt-6">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
-                <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 flex-1">Ä°ptal</button>
+                <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
         </form>
     </div>
 </div>
-
 <!-- Institution Modal -->
 <div id="institutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-md">
@@ -3563,71 +3655,239 @@ async function saveSubmission() {
 
 async function loadAnnouncements() {
     const container = document.getElementById('announcementsList');
-    container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">YÃ¼kleniyor...</p>';
-    
+    container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">Yükleniyor...</p>';
+
     try {
         const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
         const data = await res.json();
         const list = data.announcements || data || [];
-        
+
         if (!list.length) {
-            container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">HenÃ¼z duyuru yok</p>';
+            container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">Henüz duyuru yok</p>';
             return;
         }
-        
-        const categoryMap = {
-            'urgent': 'ğŸš¨ Acil', 'new-product': 'ğŸ¯ Yeni ÃœrÃ¼n', 'product-update': 'ğŸ”„ GÃ¼ncelleme',
-            'event': 'ğŸ“… Etkinlik', 'maintenance': 'ğŸ”§ BakÄ±m', 'general': 'ğŸ“¢ Genel'
+
+        const localCategoryMap = {
+            urgent: 'Acil',
+            'new-product': 'Yeni Ürün',
+            'product-update': 'Güncelleme',
+            event: 'Etkinlik',
+            maintenance: 'Bakım',
+            general: 'Genel'
         };
-        
-        const priorityMap = {
-            'high': '<span class="text-red-600">ğŸ”¥ YÃ¼ksek</span>',
-            'medium': '<span class="text-yellow-600">ğŸŸ¡ Orta</span>',
-            'low': '<span class="text-green-600">ğŸŸ¢ DÃ¼ÅŸÃ¼k</span>'
+
+        const localPriorityMap = {
+            high: '<span class="text-red-600">Yüksek</span>',
+            medium: '<span class="text-yellow-600">Orta</span>',
+            low: '<span class="text-green-600">Düşük</span>'
         };
-        
-        container.innerHTML = list.map(a => `
-            <div class="border rounded-lg p-4 hover:shadow-md transition ${a.is_published ? 'bg-white' : 'bg-gray-50 opacity-75'}">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="flex gap-1 flex-wrap">
-                        <span class="text-xs ${a.category === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} px-2 py-0.5 rounded-full">
-                            ${categoryMap[a.category] || a.category}
-                        </span>
-                        <span class="text-xs ${a.priority === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-600'} px-2 py-0.5 rounded-full">
-                            ${priorityMap[a.priority] || a.priority}
-                        </span>
-                    </div>
-                    <div class="flex gap-1">
-                        <button onclick="editAnnouncement(${a.id})" class="text-blue-500 hover:text-blue-700 p-1" title="DÃ¼zenle">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button onclick="deleteAnnouncement(${a.id})" class="text-red-500 hover:text-red-700 p-1" title="Sil">
-                            <i class="fas fa-trash"></i>
-                        </button>
+
+        container.innerHTML = list.map(a => {
+            const previewImage = a.cover_image_url
+                ? `<img src="${escapeHtml(a.cover_image_url)}" alt="${escapeHtml(a.title || 'Duyuru görseli')}" class="w-full h-40 object-cover">`
+                : '<div class="w-full h-40 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-3xl text-slate-400"><i class="fas fa-image"></i></div>';
+
+            return `
+                <div class="border rounded-2xl overflow-hidden hover:shadow-md transition ${a.is_published ? 'bg-white' : 'bg-gray-50 opacity-80'}">
+                    ${previewImage}
+                    <div class="p-4">
+                        <div class="flex justify-between items-start mb-2 gap-2">
+                            <div class="flex gap-1 flex-wrap">
+                                <span class="text-xs ${a.category === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} px-2 py-0.5 rounded-full">
+                                    ${localCategoryMap[a.category] || a.category}
+                                </span>
+                                <span class="text-xs ${a.priority === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-600'} px-2 py-0.5 rounded-full">
+                                    ${localPriorityMap[a.priority] || a.priority}
+                                </span>
+                                ${a.title_en || a.summary_en || a.full_content_en ? '<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">EN hazır</span>' : ''}
+                            </div>
+                            <div class="flex gap-1">
+                                <button onclick="editAnnouncement(${a.id})" class="text-blue-500 hover:text-blue-700 p-1" title="Düzenle">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteAnnouncement(${a.id})" class="text-red-500 hover:text-red-700 p-1" title="Sil">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h4 class="font-semibold text-gray-800 mb-1">${escapeHtml(a.title)}</h4>
+                        <p class="text-xs text-gray-500 mb-2">${new Date(a.published_at).toLocaleDateString('tr-TR')}</p>
+                        <p class="text-sm text-gray-600 line-clamp-2">${escapeHtml((a.summary || '').substring(0, 120))}${(a.summary || '').length > 120 ? '…' : ''}</p>
+                        ${!a.is_published ? '<div class="mt-3 text-xs text-gray-400 italic">Taslak</div>' : ''}
                     </div>
                 </div>
-                <h4 class="font-semibold text-gray-800 mb-1">${escapeHtml(a.title)}</h4>
-                <p class="text-xs text-gray-500 mb-2">${new Date(a.published_at).toLocaleDateString('tr-TR')}</p>
-                <p class="text-sm text-gray-600 line-clamp-2">${escapeHtml((a.summary || '').substring(0, 100))}${(a.summary || '').length > 100 ? 'â€¦' : ''}</p>
-                ${!a.is_published ? '<div class="mt-2 text-xs text-gray-400 italic">â¸ Taslak</div>' : ''}
-            </div>
-        `).join('');
-        
+            `;
+        }).join('');
+
     } catch (err) {
         console.error('loadAnnouncements error:', err);
-        container.innerHTML = '<p class="col-span-full text-center text-red-500 py-8">YÃ¼klenirken hata oluÅŸtu</p>';
+        container.innerHTML = '<p class="col-span-full text-center text-red-500 py-8">Yüklenirken hata oluştu</p>';
     }
 }
 
-function openAnnouncementModal() {
-    document.getElementById('announcementModalTitle').textContent = 'Yeni Duyuru';
+function resetAnnouncementForm() {
     document.getElementById('announcementId').value = '';
+    document.getElementById('announcementAiImagePrompt').value = '';
     document.getElementById('announcementTitle').value = '';
     document.getElementById('announcementCategory').value = 'general';
     document.getElementById('announcementPriority').value = 'medium';
     document.getElementById('announcementSummary').value = '';
     document.getElementById('announcementFullContent').value = '';
+    document.getElementById('announcementTitleEn').value = '';
+    document.getElementById('announcementSummaryEn').value = '';
+    document.getElementById('announcementFullContentEn').value = '';
+    document.getElementById('announcementCoverImage').value = '';
     document.getElementById('announcementPublished').checked = true;
+    updateAnnouncementCoverPreview();
+}
+
+function fillAnnouncementForm(a) {
+    document.getElementById('announcementId').value = a.id || '';
+    document.getElementById('announcementAiImagePrompt').value = a.ai_image_prompt || '';
+    document.getElementById('announcementTitle').value = a.title || '';
+    document.getElementById('announcementCategory').value = a.category || 'general';
+    document.getElementById('announcementPriority').value = a.priority || 'medium';
+    document.getElementById('announcementSummary').value = a.summary || '';
+    document.getElementById('announcementFullContent').value = a.full_content || '';
+    document.getElementById('announcementTitleEn').value = a.title_en || '';
+    document.getElementById('announcementSummaryEn').value = a.summary_en || '';
+    document.getElementById('announcementFullContentEn').value = a.full_content_en || '';
+    document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
+    document.getElementById('announcementPublished').checked = !!a.is_published;
+    updateAnnouncementCoverPreview();
+}
+
+function updateAnnouncementCoverPreview() {
+    const url = document.getElementById('announcementCoverImage').value.trim();
+    const previewWrapper = document.getElementById('announcementCoverPreviewWrapper');
+    const preview = document.getElementById('announcementCoverPreview');
+    const promptBox = document.getElementById('announcementImagePromptBox');
+    const prompt = document.getElementById('announcementAiImagePrompt').value.trim();
+
+    if (url) {
+        preview.src = url;
+        previewWrapper.classList.remove('hidden');
+    } else {
+        preview.src = '';
+        previewWrapper.classList.add('hidden');
+    }
+
+    if (prompt) {
+        promptBox.textContent = `AI prompt: ${prompt}`;
+        promptBox.classList.remove('hidden');
+    } else {
+        promptBox.textContent = '';
+        promptBox.classList.add('hidden');
+    }
+}
+
+function setAnnouncementActionLoading(buttonId, loading, idleHtml, loadingHtml) {
+    const button = document.getElementById(buttonId);
+    if (!button) return;
+    button.disabled = loading;
+    button.innerHTML = loading ? loadingHtml : idleHtml;
+}
+
+async function callAnnouncementAiEndpoint(path, payload) {
+    const res = await fetch(`${API_BASE}${path}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new Error(data.error || 'AI işlemi başarısız oldu');
+    }
+    return data;
+}
+
+async function generateAnnouncementImage() {
+    const title = document.getElementById('announcementTitle').value.trim();
+    const summary = document.getElementById('announcementSummary').value.trim();
+
+    if (!title) {
+        showToast('Önce duyuru başlığını girin', 'warning');
+        return;
+    }
+
+    setAnnouncementActionLoading('announcementImageBtn', true, '<i class="fas fa-image mr-2"></i>AI Görsel Üret', '<i class="fas fa-spinner fa-spin mr-2"></i>Üretiliyor...');
+
+    try {
+        const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/image', { title, summary });
+        document.getElementById('announcementCoverImage').value = data.image_url || '';
+        document.getElementById('announcementAiImagePrompt').value = data.prompt || '';
+        updateAnnouncementCoverPreview();
+        showToast('AI kapak görseli hazırlandı', 'success');
+    } catch (err) {
+        showToast(err.message || 'Görsel üretilemedi', 'error');
+    } finally {
+        setAnnouncementActionLoading('announcementImageBtn', false, '<i class="fas fa-image mr-2"></i>AI Görsel Üret', '<i class="fas fa-spinner fa-spin mr-2"></i>Üretiliyor...');
+    }
+}
+
+async function polishAnnouncementContent() {
+    const title = document.getElementById('announcementTitle').value.trim();
+    const summary = document.getElementById('announcementSummary').value.trim();
+    const full_content = document.getElementById('announcementFullContent').value.trim();
+
+    if (!title && !summary && !full_content) {
+        showToast('Önce düzenlenecek bir içerik girin', 'warning');
+        return;
+    }
+
+    setAnnouncementActionLoading('announcementPolishBtn', true, '<i class="fas fa-magic mr-2"></i>AI ile Profesyonelleştir', '<i class="fas fa-spinner fa-spin mr-2"></i>Düzenleniyor...');
+
+    try {
+        const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/polish', { title, summary, full_content, source_lang: 'tr' });
+        const announcement = data.announcement || {};
+        document.getElementById('announcementTitle').value = announcement.title || title;
+        document.getElementById('announcementSummary').value = announcement.summary || summary;
+        document.getElementById('announcementFullContent').value = announcement.full_content || full_content;
+        showToast('İçerik daha profesyonel hale getirildi', 'success');
+    } catch (err) {
+        showToast(err.message || 'İçerik düzenlenemedi', 'error');
+    } finally {
+        setAnnouncementActionLoading('announcementPolishBtn', false, '<i class="fas fa-magic mr-2"></i>AI ile Profesyonelleştir', '<i class="fas fa-spinner fa-spin mr-2"></i>Düzenleniyor...');
+    }
+}
+
+async function translateAnnouncementContent() {
+    const title = document.getElementById('announcementTitle').value.trim();
+    const summary = document.getElementById('announcementSummary').value.trim();
+    const full_content = document.getElementById('announcementFullContent').value.trim();
+
+    if (!title && !summary && !full_content) {
+        showToast('Önce Türkçe içerik girin', 'warning');
+        return;
+    }
+
+    setAnnouncementActionLoading('announcementTranslateBtn', true, '<i class="fas fa-language mr-2"></i>TR to EN Çevir', '<i class="fas fa-spinner fa-spin mr-2"></i>Çevriliyor...');
+
+    try {
+        const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/translate', {
+            title,
+            summary,
+            full_content,
+            source_lang: 'tr',
+            target_lang: 'english'
+        });
+        const announcement = data.announcement || {};
+        document.getElementById('announcementTitleEn').value = announcement.title || '';
+        document.getElementById('announcementSummaryEn').value = announcement.summary || '';
+        document.getElementById('announcementFullContentEn').value = announcement.full_content || '';
+        showToast('İngilizce versiyon hazırlandı', 'success');
+    } catch (err) {
+        showToast(err.message || 'Çeviri yapılamadı', 'error');
+    } finally {
+        setAnnouncementActionLoading('announcementTranslateBtn', false, '<i class="fas fa-language mr-2"></i>TR to EN Çevir', '<i class="fas fa-spinner fa-spin mr-2"></i>Çevriliyor...');
+    }
+}
+
+function openAnnouncementModal() {
+    document.getElementById('announcementModalTitle').textContent = 'Yeni Duyuru';
+    resetAnnouncementForm();
     document.getElementById('announcementModal').classList.remove('hidden');
 }
 
@@ -3637,18 +3897,12 @@ async function editAnnouncement(id) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.announcements || []);
         const a = list.find(x => x.id === id);
-        if (!a) { showToast('Duyuru bulunamadÄ±', 'error'); return; }
-        document.getElementById('announcementModalTitle').textContent = 'Duyuruyu DÃ¼zenle';
-        document.getElementById('announcementId').value = a.id;
-        document.getElementById('announcementTitle').value = a.title || '';
-        document.getElementById('announcementCategory').value = a.category || 'general';
-        document.getElementById('announcementPriority').value = a.priority || 'medium';
-        document.getElementById('announcementSummary').value = a.summary || '';
-        document.getElementById('announcementFullContent').value = a.full_content || '';
-        document.getElementById('announcementPublished').checked = !!a.is_published;
+        if (!a) { showToast('Duyuru bulunamadı', 'error'); return; }
+        document.getElementById('announcementModalTitle').textContent = 'Duyuruyu Düzenle';
+        fillAnnouncementForm(a);
         document.getElementById('announcementModal').classList.remove('hidden');
     } catch (err) {
-        showToast('Duyuru bilgileri alÄ±namadÄ±', 'error');
+        showToast('Duyuru bilgileri alınamadı', 'error');
     }
 }
 
@@ -3657,10 +3911,10 @@ function closeAnnouncementModal() {
 }
 
 async function deleteAnnouncement(id) {
-    if (!confirm('Bu duyuruyu silmek istediÄŸinize emin misiniz?')) return;
+    if (!confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
     const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { showToast('Duyuru silindi', 'success'); loadAnnouncements(); }
-    else showToast('Ä°ÅŸlem baÅŸarÄ±sÄ±z oldu', 'error');
+    else showToast('İşlem başarısız oldu', 'error');
 }
 
 document.getElementById('announcementForm').addEventListener('submit', async function(e) {
@@ -3672,6 +3926,11 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
         priority: document.getElementById('announcementPriority').value,
         summary: document.getElementById('announcementSummary').value.trim(),
         full_content: document.getElementById('announcementFullContent').value.trim(),
+        title_en: document.getElementById('announcementTitleEn').value.trim(),
+        summary_en: document.getElementById('announcementSummaryEn').value.trim(),
+        full_content_en: document.getElementById('announcementFullContentEn').value.trim(),
+        cover_image_url: document.getElementById('announcementCoverImage').value.trim(),
+        ai_image_prompt: document.getElementById('announcementAiImagePrompt').value.trim(),
         is_published: document.getElementById('announcementPublished').checked ? 1 : 0
     };
     const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
@@ -3682,15 +3941,14 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
         body: JSON.stringify(payload)
     });
     if (res.ok) {
-        showToast(id ? 'Duyuru gÃ¼ncellendi' : 'Duyuru oluÅŸturuldu', 'success');
+        showToast(id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu', 'success');
         closeAnnouncementModal();
         loadAnnouncements();
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Ä°ÅŸlem baÅŸarÄ±sÄ±z oldu', 'error');
+        showToast(data.error || 'İşlem başarısız oldu', 'error');
     }
 });
-
 let currentAirtableId = null;
 
 function editAirtableAccount(id, name, domain, category, status) {
@@ -3713,3 +3971,7 @@ function closeEditInstitutionModal() {
 
 </body>
 </html>
+
+
+
+

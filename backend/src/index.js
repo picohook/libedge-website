@@ -238,6 +238,143 @@ async function ensureUserContactColumns(db) {
   }
 }
 
+async function ensureAnnouncementColumns(db) {
+  const columns = await db.prepare(`PRAGMA table_info(announcements)`).all();
+  const existing = new Set((columns.results || []).map(column => column.name));
+
+  if (!existing.has('cover_image_url')) {
+    await db.prepare(`ALTER TABLE announcements ADD COLUMN cover_image_url TEXT`).run();
+  }
+  if (!existing.has('title_en')) {
+    await db.prepare(`ALTER TABLE announcements ADD COLUMN title_en TEXT`).run();
+  }
+  if (!existing.has('summary_en')) {
+    await db.prepare(`ALTER TABLE announcements ADD COLUMN summary_en TEXT`).run();
+  }
+  if (!existing.has('full_content_en')) {
+    await db.prepare(`ALTER TABLE announcements ADD COLUMN full_content_en TEXT`).run();
+  }
+  if (!existing.has('ai_image_prompt')) {
+    await db.prepare(`ALTER TABLE announcements ADD COLUMN ai_image_prompt TEXT`).run();
+  }
+}
+
+function cleanAnnouncementText(value) {
+  return String(value || '').trim();
+}
+
+function getPollinationsKey(env) {
+  return env.POLLINATIONS_API_KEY || env.POLLINATIONS_KEY || '';
+}
+
+function buildAnnouncementImageUrl(title, summary, env) {
+  const prompt = cleanAnnouncementText(
+    `${title}. ${summary || ''}. Premium educational technology announcement cover, modern editorial layout, clean corporate composition, no readable text, photorealistic marketing image`
+  ).replace(/\s+/g, ' ');
+
+  const url = new URL(`https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}`);
+  const key = getPollinationsKey(env);
+  if (key) {
+    url.searchParams.set('key', key);
+  }
+  url.searchParams.set('model', 'flux');
+
+  return {
+    prompt,
+    imageUrl: url.toString()
+  };
+}
+
+async function callPollinationsText(prompt, env) {
+  const url = new URL(`https://gen.pollinations.ai/text/${encodeURIComponent(prompt)}`);
+  const key = getPollinationsKey(env);
+  if (key) {
+    url.searchParams.set('key', key);
+  }
+  url.searchParams.set('model', 'openai');
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      'Accept': 'text/plain, application/json'
+    }
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(body || `Pollinations request failed with ${response.status}`);
+  }
+
+  return response.text();
+}
+
+function extractJsonObject(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+  }
+
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+
+  try {
+    return JSON.parse(match[0]);
+  } catch (_) {
+    return null;
+  }
+}
+
+async function runAnnouncementAiTask(task, payload, env) {
+  const title = cleanAnnouncementText(payload.title);
+  const summary = cleanAnnouncementText(payload.summary);
+  const fullContent = cleanAnnouncementText(payload.full_content);
+  const sourceLang = cleanAnnouncementText(payload.source_lang || 'tr');
+  const targetLang = cleanAnnouncementText(payload.target_lang || 'en');
+
+  let prompt = '';
+
+  if (task === 'polish') {
+    prompt = [
+      'You are an expert announcement editor for a B2B education technology company.',
+      'Rewrite the input into polished, professional Turkish.',
+      'Preserve meaning, product facts, numbers, links, Markdown structure, and tone of urgency.',
+      'Return ONLY valid JSON with keys: title, summary, full_content.',
+      'Keep summary under 240 characters.',
+      '',
+      `TITLE: ${title}`,
+      `SUMMARY: ${summary}`,
+      `FULL_CONTENT: ${fullContent}`
+    ].join('\n');
+  } else if (task === 'translate') {
+    prompt = [
+      'You are a professional translator for product announcements.',
+      `Translate the content from ${sourceLang} to ${targetLang}.`,
+      'Preserve product names, Markdown formatting, links, and factual accuracy.',
+      'Return ONLY valid JSON with keys: title, summary, full_content.',
+      '',
+      `TITLE: ${title}`,
+      `SUMMARY: ${summary}`,
+      `FULL_CONTENT: ${fullContent}`
+    ].join('\n');
+  } else {
+    throw new Error('Unsupported AI task');
+  }
+
+  const responseText = await callPollinationsText(prompt, env);
+  const parsed = extractJsonObject(responseText);
+
+  if (!parsed?.title && !parsed?.summary && !parsed?.full_content) {
+    throw new Error('AI response could not be parsed');
+  }
+
+  return {
+    title: cleanAnnouncementText(parsed.title) || title,
+    summary: cleanAnnouncementText(parsed.summary) || summary,
+    full_content: cleanAnnouncementText(parsed.full_content) || fullContent
+  };
+}
 // ðŸ†• Token'dan rol ve kurum bilgilerini al (eski fonksiyonlarla uyumlu)
 async function getTokenPayloadFromCookie(c) {
   const auth = await requireAuth(c);
@@ -2195,12 +2332,14 @@ app.get('/api/files/*', async (c) => {
 
 // ====================== ANNOUNCEMENT ROUTES ======================
 
-// Public: sadece yayÄ±nda olanlar
+// Public: sadece yayýnda olanlar
 app.get('/api/announcements', async (c) => {
   const db = c.env.DB;
   try {
+    await ensureAnnouncementColumns(db);
+
     const rows = await db.prepare(`
-      SELECT id, title, summary, full_content, category, priority, published_at
+      SELECT id, title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, published_at
       FROM announcements
       WHERE is_published = 1
       ORDER BY published_at DESC
@@ -2210,6 +2349,11 @@ app.get('/api/announcements', async (c) => {
       title: row.title,
       summary: row.summary,
       full_content: row.full_content,
+      title_en: row.title_en,
+      summary_en: row.summary_en,
+      full_content_en: row.full_content_en,
+      cover_image_url: row.cover_image_url,
+      ai_image_prompt: row.ai_image_prompt,
       category: row.category,
       priority: row.priority,
       date: row.published_at,
@@ -2226,6 +2370,8 @@ app.get('/api/admin/announcements', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   try {
+    await ensureAnnouncementColumns(db);
+
     const rows = await db.prepare(`
       SELECT a.*, u.full_name as author_name
       FROM announcements a
@@ -2239,17 +2385,82 @@ app.get('/api/admin/announcements', async (c) => {
   }
 });
 
+app.post('/api/admin/announcements/ai/image', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  try {
+    const { title, summary } = await c.req.json();
+    const cleanTitle = cleanAnnouncementText(title);
+    if (!cleanTitle) return c.json({ error: 'Baþlýk zorunludur' }, 400);
+
+    const image = buildAnnouncementImageUrl(cleanTitle, summary, c.env);
+    return c.json({ success: true, image_url: image.imageUrl, prompt: image.prompt });
+  } catch (err) {
+    console.error('Generate announcement image error:', err);
+    return c.json({ error: err.message || 'Görsel oluþturulamadý' }, 500);
+  }
+});
+
+app.post('/api/admin/announcements/ai/polish', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  try {
+    const payload = await c.req.json();
+    if (!cleanAnnouncementText(payload.title) && !cleanAnnouncementText(payload.full_content) && !cleanAnnouncementText(payload.summary)) {
+      return c.json({ error: 'Düzenlenecek metin bulunamadý' }, 400);
+    }
+
+    const polished = await runAnnouncementAiTask('polish', payload, c.env);
+    return c.json({ success: true, announcement: polished });
+  } catch (err) {
+    console.error('Polish announcement error:', err);
+    return c.json({ error: err.message || 'Ýçerik düzenlenemedi' }, 500);
+  }
+});
+
+app.post('/api/admin/announcements/ai/translate', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  try {
+    const payload = await c.req.json();
+    if (!cleanAnnouncementText(payload.title) && !cleanAnnouncementText(payload.full_content) && !cleanAnnouncementText(payload.summary)) {
+      return c.json({ error: 'Çevrilecek metin bulunamadý' }, 400);
+    }
+
+    const translated = await runAnnouncementAiTask('translate', payload, c.env);
+    return c.json({ success: true, announcement: translated });
+  } catch (err) {
+    console.error('Translate announcement error:', err);
+    return c.json({ error: err.message || 'Çeviri yapýlamadý' }, 500);
+  }
+});
+
 app.post('/api/admin/announcements', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const auth = await requireAuth(c);
   const db = c.env.DB;
-  const { title, summary, full_content, category, priority, is_published } = await c.req.json();
-  if (!title?.trim()) return c.json({ error: 'BaÅŸlÄ±k zorunludur' }, 400);
+  const body = await c.req.json();
+  const title = cleanAnnouncementText(body.title);
+  const summary = cleanAnnouncementText(body.summary);
+  const fullContent = cleanAnnouncementText(body.full_content);
+  const titleEn = cleanAnnouncementText(body.title_en);
+  const summaryEn = cleanAnnouncementText(body.summary_en);
+  const fullContentEn = cleanAnnouncementText(body.full_content_en);
+  const coverImageUrl = cleanAnnouncementText(body.cover_image_url);
+  const aiImagePrompt = cleanAnnouncementText(body.ai_image_prompt);
+  const category = cleanAnnouncementText(body.category) || 'general';
+  const priority = cleanAnnouncementText(body.priority) || 'medium';
+  const isPublished = body.is_published ? 1 : 0;
+
+  if (!title) return c.json({ error: 'Baþlýk zorunludur' }, 400);
+
   try {
+    await ensureAnnouncementColumns(db);
+
     const result = await db.prepare(`
-      INSERT INTO announcements (title, summary, full_content, category, priority, is_published, published_at, updated_at, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
-    `).bind(title.trim(), summary || '', full_content || '', category || 'general', priority || 'medium', is_published ? 1 : 0, auth.user.user_id).run();
+      INSERT INTO announcements (title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, is_published, published_at, updated_at, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
+    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, auth.user.user_id).run();
     return c.json({ success: true, id: result.meta?.last_row_id });
   } catch (err) {
     console.error('Create announcement error:', err);
@@ -2261,15 +2472,30 @@ app.put('/api/admin/announcements/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   const id = c.req.param('id');
-  const { title, summary, full_content, category, priority, is_published } = await c.req.json();
-  if (!title?.trim()) return c.json({ error: 'BaÅŸlÄ±k zorunludur' }, 400);
+  const body = await c.req.json();
+  const title = cleanAnnouncementText(body.title);
+  const summary = cleanAnnouncementText(body.summary);
+  const fullContent = cleanAnnouncementText(body.full_content);
+  const titleEn = cleanAnnouncementText(body.title_en);
+  const summaryEn = cleanAnnouncementText(body.summary_en);
+  const fullContentEn = cleanAnnouncementText(body.full_content_en);
+  const coverImageUrl = cleanAnnouncementText(body.cover_image_url);
+  const aiImagePrompt = cleanAnnouncementText(body.ai_image_prompt);
+  const category = cleanAnnouncementText(body.category) || 'general';
+  const priority = cleanAnnouncementText(body.priority) || 'medium';
+  const isPublished = body.is_published ? 1 : 0;
+
+  if (!title) return c.json({ error: 'Baþlýk zorunludur' }, 400);
+
   try {
+    await ensureAnnouncementColumns(db);
+
     const result = await db.prepare(`
       UPDATE announcements
-      SET title = ?, summary = ?, full_content = ?, category = ?, priority = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
+      SET title = ?, summary = ?, full_content = ?, title_en = ?, summary_en = ?, full_content_en = ?, cover_image_url = ?, ai_image_prompt = ?, category = ?, priority = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(title.trim(), summary || '', full_content || '', category || 'general', priority || 'medium', is_published ? 1 : 0, id).run();
-    if (result.meta?.changes === 0) return c.json({ error: 'Duyuru bulunamadÄ±' }, 404);
+    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, id).run();
+    if (result.meta?.changes === 0) return c.json({ error: 'Duyuru bulunamadý' }, 404);
     return c.json({ success: true });
   } catch (err) {
     console.error('Update announcement error:', err);
@@ -2282,6 +2508,7 @@ app.delete('/api/admin/announcements/:id', async (c) => {
   const db = c.env.DB;
   const id = c.req.param('id');
   try {
+    await ensureAnnouncementColumns(db);
     await db.prepare(`DELETE FROM announcements WHERE id = ?`).bind(id).run();
     return c.json({ success: true });
   } catch (err) {
@@ -2289,7 +2516,6 @@ app.delete('/api/admin/announcements/:id', async (c) => {
     return c.json({ error: err.message }, 500);
   }
 });
-
 // ====================== AIRTABLE HELPERS ======================
 
 // Account bul veya oluÅŸtur
@@ -2965,3 +3191,7 @@ app.put('/api/admin/airtable/accounts/:id', async (c) => {
 });
 
 export default app;
+
+
+
+
