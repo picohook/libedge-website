@@ -144,6 +144,10 @@
                         <i class="fas fa-folder-open w-5"></i>
                         <span>Kurum Dosyaları</span>
                     </a>
+                    <a href="#" class="sidebar-link" data-tab="support">
+                        <i class="fas fa-headset w-5"></i>
+                        <span>Destek Taleplerim</span>
+                    </a>
                     <a href="#" class="sidebar-link" data-tab="settings">
                         <i class="fas fa-cog w-5"></i>
                         <span>Hesap Ayarları</span>
@@ -224,6 +228,39 @@
                     </div>
                 </div>
             </div>
+            <!-- Destek Taleplerim Tab -->
+            <div id="tab-support" class="tab-content hidden">
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Destek Taleplerim</h2>
+                        <button onclick="openNewTicketModal()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-opacity-90 transition">
+                            <i class="fas fa-plus mr-1"></i> Yeni Talep
+                        </button>
+                    </div>
+                    <div id="ticketList" class="space-y-3">
+                        <p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p>
+                    </div>
+                </div>
+
+                <!-- Ticket detail panel -->
+                <div id="ticketDetail" class="hidden bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 id="ticketDetailTitle" class="font-semibold text-gray-900"></h3>
+                        <div class="flex items-center gap-3">
+                            <span id="ticketDetailStatus" class="text-xs px-2 py-0.5 rounded-full"></span>
+                            <button type="button" onclick="closeTicketDetail()" title="Kapat" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <div id="ticketDetailReplies" class="space-y-3 max-h-72 overflow-y-auto border rounded-xl p-3 bg-gray-50 mb-4"></div>
+                    <div>
+                        <textarea id="ticketReplyText" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="Yanıt yaz..."></textarea>
+                        <button onclick="sendTicketReply()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm mt-2 hover:bg-opacity-90 transition">
+                            <i class="fas fa-paper-plane mr-1"></i> Gönder
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Kurum Dosyaları Tab -->
             <div id="tab-files" class="tab-content hidden">
                 <div class="bg-white rounded-xl shadow-sm p-6">
@@ -371,6 +408,39 @@
             <div class="flex gap-2">
                 <button type="submit" id="profileFileSubmitBtn" class="bg-primary text-white px-4 py-2 rounded-lg flex-1">Kaydet</button>
                 <button type="button" onclick="closeFileModal()" class="bg-gray-300 px-4 py-2 rounded-lg flex-1">İptal</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Yeni Destek Talebi Modal -->
+<div id="newTicketModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+        <div class="flex items-center justify-between px-6 py-4 border-b">
+            <h3 class="font-semibold text-gray-900">Yeni Destek Talebi</h3>
+            <button type="button" onclick="closeNewTicketModal()" title="Kapat" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="newTicketForm" class="p-6 space-y-4" onsubmit="submitNewTicket(event)">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Konu</label>
+                <input type="text" id="newTicketSubject" required class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Sorunuzu kısaca özetleyin">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Öncelik</label>
+                <select id="newTicketPriority" title="Öncelik" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <option value="low">Düşük</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="high">Yüksek</option>
+                    <option value="urgent">Acil</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Mesaj</label>
+                <textarea id="newTicketMessage" required rows="5" class="w-full border rounded-lg px-3 py-2 text-sm resize-none" placeholder="Sorununuzu detaylıca açıklayın..."></textarea>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeNewTicketModal()" class="flex-1 border border-gray-300 text-gray-700 rounded-lg py-2 text-sm hover:bg-gray-50 transition">İptal</button>
+                <button type="submit" id="newTicketSubmitBtn" class="flex-1 bg-primary text-white rounded-lg py-2 text-sm hover:bg-opacity-90 transition">Gönder</button>
             </div>
         </form>
     </div>
@@ -1022,6 +1092,8 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 currentFolderName = null;
                 folderStack = [];
                 loadFolders(null);
+            } else if (tab === 'support') {
+                loadMyTickets();
             }
         }
     });
@@ -1152,6 +1224,132 @@ function updateHeaderAvatar(avatarUrl) {
         }
     }
 }
+
+// ====================== DESTEK TALEPLERİ ======================
+const TICKET_STATUS_LABELS = { open: 'Açık', in_progress: 'İşlemde', resolved: 'Çözüldü', closed: 'Kapatıldı' };
+const TICKET_STATUS_COLORS = { open: 'bg-red-100 text-red-700', in_progress: 'bg-yellow-100 text-yellow-800', resolved: 'bg-green-100 text-green-700', closed: 'bg-gray-100 text-gray-500' };
+const TICKET_PRIORITY_LABELS = { low: 'Düşük', normal: 'Normal', high: 'Yüksek', urgent: 'Acil' };
+let currentTicketId = null;
+
+async function loadMyTickets() {
+    const el = document.getElementById('ticketList');
+    el.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p>';
+    closeTicketDetail();
+    try {
+        const res = await fetch('/api/support/tickets', { credentials: 'include' });
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) {
+            el.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Henüz destek talebiniz yok.</p>';
+            return;
+        }
+        el.innerHTML = data.map(t => `
+            <div class="border rounded-xl px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center justify-between gap-3" onclick="openTicketDetail(${t.id})">
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-sm truncate">${escapeHtml(t.subject)}</p>
+                    <p class="text-xs text-gray-400 mt-0.5">${new Date(t.created_at).toLocaleDateString('tr-TR')} · ${TICKET_PRIORITY_LABELS[t.priority] || t.priority}</p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    ${t.reply_count > 0 ? `<span class="text-xs text-gray-400"><i class="fas fa-comment mr-1"></i>${t.reply_count}</span>` : ''}
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium ${TICKET_STATUS_COLORS[t.status] || ''}">${TICKET_STATUS_LABELS[t.status] || t.status}</span>
+                </div>
+            </div>`).join('');
+    } catch (err) {
+        el.innerHTML = `<p class="text-red-400 text-sm text-center py-4">${err.message}</p>`;
+    }
+}
+
+async function openTicketDetail(id) {
+    currentTicketId = id;
+    const detail = document.getElementById('ticketDetail');
+    detail.classList.remove('hidden');
+    document.getElementById('ticketDetailReplies').innerHTML = '<p class="text-gray-400 text-sm">Yükleniyor...</p>';
+    document.getElementById('ticketReplyText').value = '';
+    try {
+        const res = await fetch(`/api/support/tickets/${id}`, { credentials: 'include' });
+        const t = await res.json();
+        document.getElementById('ticketDetailTitle').textContent = `#${t.id} — ${t.subject}`;
+        const statusEl = document.getElementById('ticketDetailStatus');
+        statusEl.textContent = TICKET_STATUS_LABELS[t.status] || t.status;
+        statusEl.className = `text-xs px-2 py-0.5 rounded-full font-medium ${TICKET_STATUS_COLORS[t.status] || ''}`;
+        const replies = t.replies || [];
+        document.getElementById('ticketDetailReplies').innerHTML = replies.length === 0
+            ? `<p class="text-gray-400 text-sm text-center py-2">Mesajınız iletildi, yanıt bekleniyor.</p>
+               <div class="flex gap-2"><div class="max-w-xs rounded-xl px-3 py-2 text-sm bg-white border text-gray-800"><p class="font-semibold text-xs mb-1 opacity-60">Siz</p><p>${escapeHtml(t.message)}</p></div></div>`
+            : [{ message: t.message, is_admin: 0, author_name: 'Siz', created_at: t.created_at }, ...replies].map(r => `
+                <div class="flex gap-2 ${r.is_admin ? 'justify-end' : ''}">
+                    <div class="max-w-xs rounded-xl px-3 py-2 text-sm ${r.is_admin ? 'bg-indigo-100 text-indigo-900' : 'bg-white border text-gray-800'}">
+                        <p class="font-semibold text-xs mb-1 opacity-60">${r.is_admin ? 'Destek Ekibi' : escapeHtml(r.author_name || 'Siz')}</p>
+                        <p>${escapeHtml(r.message)}</p>
+                        <p class="text-xs opacity-40 mt-1">${new Date(r.created_at).toLocaleString('tr-TR')}</p>
+                    </div>
+                </div>`).join('');
+        detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) {
+        document.getElementById('ticketDetailReplies').innerHTML = `<p class="text-red-400 text-sm">${err.message}</p>`;
+    }
+}
+
+function closeTicketDetail() {
+    document.getElementById('ticketDetail').classList.add('hidden');
+    currentTicketId = null;
+}
+
+async function sendTicketReply() {
+    if (!currentTicketId) return;
+    const message = document.getElementById('ticketReplyText').value.trim();
+    if (!message) return;
+    try {
+        const res = await fetch(`/api/support/tickets/${currentTicketId}/reply`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Gönderilemedi');
+        document.getElementById('ticketReplyText').value = '';
+        openTicketDetail(currentTicketId);
+        loadMyTickets();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+function openNewTicketModal() {
+    document.getElementById('newTicketModal').classList.remove('hidden');
+    document.getElementById('newTicketSubject').value = '';
+    document.getElementById('newTicketMessage').value = '';
+    document.getElementById('newTicketPriority').value = 'normal';
+}
+
+function closeNewTicketModal() {
+    document.getElementById('newTicketModal').classList.add('hidden');
+}
+
+async function submitNewTicket(e) {
+    e.preventDefault();
+    const subject = document.getElementById('newTicketSubject').value.trim();
+    const message = document.getElementById('newTicketMessage').value.trim();
+    const priority = document.getElementById('newTicketPriority').value;
+    const btn = document.getElementById('newTicketSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Gönderiliyor...';
+    try {
+        const res = await fetch('/api/support/tickets', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, message, priority })
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Gönderilemedi');
+        closeNewTicketModal();
+        loadMyTickets();
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Gönder';
+    }
+}
+
+
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 </body>

@@ -77,11 +77,12 @@
                 <a href="#" class="sidebar-link" data-tab="users"><i class="fas fa-users w-5"></i><span>Kullanıcılar</span></a>
                 <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-ticket-alt w-5"></i><span>Abonelikler</span></a>
                 <a href="#" class="sidebar-link" data-tab="files"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
-                <a href="#" class="sidebar-link" data-tab="products"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
-                <a href="#" class="sidebar-link" data-tab="requests"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
+                <a href="#" class="sidebar-link" data-tab="support" id="supportTab"><i class="fas fa-headset w-5"></i><span>Destek Talepleri</span></a>
+                <a href="#" class="sidebar-link" data-tab="products" id="productsTab"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
+                <a href="#" class="sidebar-link" data-tab="requests" id="requestsTab"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
                 <a href="#" class="sidebar-link" data-tab="institutions" id="institutionsTab"><i class="fas fa-building w-5"></i><span>Kurumlar</span></a>
                 <a href="#" class="sidebar-link" data-tab="my-institution" id="myInstitutionTab" style="display:none"><i class="fas fa-university w-5"></i><span>Kurumum</span></a>
-                <a href="#" class="sidebar-link" data-tab="announcements"><i class="fas fa-bullhorn w-5"></i><span>Duyurular</span></a>
+                <a href="#" class="sidebar-link" data-tab="announcements" id="announcementsTab"><i class="fas fa-bullhorn w-5"></i><span>Duyurular</span></a>
             </nav>
             <div class="absolute bottom-6 left-6">
                 <a href="index.html" class="sidebar-link-exit"><i class="fas fa-arrow-left w-5"></i><span>Siteye Dön</span></a>
@@ -627,33 +628,75 @@
     <!-- Requests Tab -->
     <!-- My Institution Tab -->
     <div id="tab-my-institution" class="tab-content hidden">
-        <div class="bg-white rounded-xl shadow-sm p-6 max-w-lg">
-            <h3 class="text-lg font-semibold mb-6">Kurum Ayarları</h3>
-            <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="space-y-6">
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="stat-card text-center">
-                    <p class="text-gray-500 text-sm mb-1">Kullanıcı Sayısı</p>
-                    <p id="myInstUserCount" class="text-2xl font-bold">-</p>
+                    <p class="text-gray-500 text-sm mb-1">Kullanıcı</p>
+                    <p id="myInstUserCount" class="text-2xl font-bold text-indigo-600">-</p>
                 </div>
                 <div class="stat-card text-center">
-                    <p class="text-gray-500 text-sm mb-1">Dosya Sayısı</p>
-                    <p id="myInstFileCount" class="text-2xl font-bold">-</p>
+                    <p class="text-gray-500 text-sm mb-1">Dosya</p>
+                    <p id="myInstFileCount" class="text-2xl font-bold text-indigo-600">-</p>
+                </div>
+                <div class="stat-card text-center">
+                    <p class="text-gray-500 text-sm mb-1">Aktif Abonelik</p>
+                    <p id="myInstSubCount" class="text-2xl font-bold text-green-600">-</p>
+                </div>
+                <div class="stat-card text-center">
+                    <p class="text-gray-500 text-sm mb-1">Açık Destek</p>
+                    <p id="myInstTicketCount" class="text-2xl font-bold text-orange-500">-</p>
                 </div>
             </div>
-            <form id="myInstitutionForm">
-                <input type="hidden" id="myInstitutionId">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı</label>
-                    <input type="text" id="myInstitutionName" class="w-full border p-2 rounded bg-gray-50 text-gray-500" disabled>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Kurum Ayarları -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-base font-semibold mb-4">Kurum Ayarları</h3>
+                    <form id="myInstitutionForm">
+                        <input type="hidden" id="myInstitutionId">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı</label>
+                            <input type="text" id="myInstitutionName" class="w-full border p-2 rounded bg-gray-50 text-gray-500" disabled>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                            <input type="text" id="myInstitutionCategory" class="w-full border p-2 rounded bg-gray-50 text-gray-500" disabled>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
+                            <input type="text" id="myInstitutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
+                            <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgülle ayırın</p>
+                        </div>
+                        <div id="myInstitutionError" class="hidden mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2"></div>
+                        <div id="myInstitutionSuccess" class="hidden mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">Kaydedildi.</div>
+                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                    </form>
                 </div>
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
-                    <input type="text" id="myInstitutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
-                    <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgülle ayırın</p>
+
+                <!-- Aktif Abonelikler -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-base font-semibold mb-4">Aktif Abonelikler</h3>
+                    <div id="myInstSubscriptions" class="space-y-2">
+                        <p class="text-gray-400 text-sm">Yükleniyor...</p>
+                    </div>
                 </div>
-                <div id="myInstitutionError" class="hidden mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2"></div>
-                <div id="myInstitutionSuccess" class="hidden mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">Kaydedildi.</div>
-                <button type="submit" class="btn btn-primary">Kaydet</button>
-            </form>
+            </div>
+
+            <!-- Son Kullanıcılar -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-base font-semibold mb-4">Son Eklenen Kullanıcılar</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr><th>Ad Soyad</th><th>E-posta</th><th>Rol</th><th>Kayıt Tarihi</th></tr>
+                        </thead>
+                        <tbody id="myInstRecentUsers">
+                            <tr><td colspan="4" class="text-center text-gray-400 py-4">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -720,6 +763,92 @@
             <div class="flex gap-2 justify-end">
                 <button onclick="document.getElementById('submissionModal').classList.add('hidden')" class="btn">İptal</button>
                 <button onclick="saveSubmission()" class="btn btn-primary">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Support Tab -->
+    <div id="tab-support" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex flex-wrap gap-3 items-center justify-between mb-5">
+                <h3 class="text-lg font-semibold">Destek Talepleri</h3>
+                <div class="flex gap-2 flex-wrap">
+                    <select id="supportStatusFilter" onchange="loadSupport()" class="border rounded-lg px-3 py-2 text-sm">
+                        <option value="">Tüm Durumlar</option>
+                        <option value="open">Açık</option>
+                        <option value="in_progress">İşlemde</option>
+                        <option value="resolved">Çözüldü</option>
+                        <option value="closed">Kapatıldı</option>
+                    </select>
+                    <select id="supportPriorityFilter" onchange="loadSupport()" class="border rounded-lg px-3 py-2 text-sm">
+                        <option value="">Tüm Öncelikler</option>
+                        <option value="urgent">Acil</option>
+                        <option value="high">Yüksek</option>
+                        <option value="normal">Normal</option>
+                        <option value="low">Düşük</option>
+                    </select>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left">
+                            <th>#</th>
+                            <th>Konu</th>
+                            <th>Kullanıcı</th>
+                            <th>Kurum</th>
+                            <th>Öncelik</th>
+                            <th>Durum</th>
+                            <th>Yanıt</th>
+                            <th>Tarih</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="supportTableBody">
+                        <tr><td colspan="9" class="text-center text-gray-400 py-6">Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Support Ticket Detail Modal -->
+        <div id="supportModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                <div class="flex items-center justify-between px-6 py-4 border-b">
+                    <h3 class="font-semibold text-gray-900" id="supportModalTitle">Talep Detayı</h3>
+                    <button onclick="closeSupportModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                    <div class="flex gap-3 flex-wrap">
+                        <div class="flex-1 min-w-40">
+                            <label class="block text-xs text-gray-500 mb-1">Durum</label>
+                            <select id="supportModalStatus" class="w-full border rounded-lg p-2 text-sm">
+                                <option value="open">Açık</option>
+                                <option value="in_progress">İşlemde</option>
+                                <option value="resolved">Çözüldü</option>
+                                <option value="closed">Kapatıldı</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 min-w-40">
+                            <label class="block text-xs text-gray-500 mb-1">Öncelik</label>
+                            <select id="supportModalPriority" class="w-full border rounded-lg p-2 text-sm">
+                                <option value="low">Düşük</option>
+                                <option value="normal">Normal</option>
+                                <option value="high">Yüksek</option>
+                                <option value="urgent">Acil</option>
+                            </select>
+                        </div>
+                        <div class="pt-5">
+                            <button onclick="saveSupportTicket()" class="btn btn-primary">Güncelle</button>
+                        </div>
+                    </div>
+                    <div id="supportReplies" class="space-y-3 max-h-60 overflow-y-auto border rounded-xl p-3 bg-gray-50"></div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Yanıt Yaz</label>
+                        <textarea id="supportReplyText" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="Kullanıcıya yanıt..."></textarea>
+                        <button onclick="sendSupportReply()" class="btn btn-primary mt-2 w-full">Yanıt Gönder</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1245,19 +1374,26 @@ async function checkAdminAuth() {
         const adminNameEl = document.getElementById('adminName');
         if (adminNameEl) adminNameEl.textContent = user.full_name || user.email;
         
-        if (user.role !== 'super_admin') {
-            const productsTab = document.querySelector('[data-tab="products"]');
-            if (productsTab) productsTab.style.display = 'none';
-            const institutionsTab = document.getElementById('institutionsTab');
-            if (institutionsTab) institutionsTab.style.display = 'none';
+        // Super Admin: tüm menüler görünür
+        // Admin: Ürünler, Talepler, Kurumlar, Duyurular gizlenir; Kurumum gösterilir
+        const isSuperAdmin = user.role === 'super_admin';
+        const isAdmin = user.role === 'admin';
+
+        const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+        const show = (id) => { const el = document.getElementById(id); if (el) el.style.display = ''; };
+
+        if (!isSuperAdmin) {
+            hide('productsTab');
+            hide('requestsTab');
+            hide('institutionsTab');
+            hide('announcementsTab');
         }
-        if (user.role === 'super_admin') {
+        if (isSuperAdmin) {
             const instSubBtn = document.getElementById('addInstSubscriptionBtn');
             if (instSubBtn) instSubBtn.style.display = '';
         }
-        if (user.role === 'admin') {
-            const myInstTab = document.getElementById('myInstitutionTab');
-            if (myInstTab) myInstTab.style.display = '';
+        if (isAdmin) {
+            show('myInstitutionTab');
         }
         return true;
     } catch (err) {
@@ -1829,6 +1965,8 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 loadAnnouncements();
             } else if (tab === 'requests') {
                 loadRequests();
+            } else if (tab === 'support') {
+                loadSupport();
             }
         }
     });
@@ -2803,14 +2941,44 @@ async function loadMyInstitution() {
         }
         
         const inst = await res.json();
-        console.log('Kurum bilgileri:', inst);
-        
+
         document.getElementById('myInstitutionId').value = inst.id || '';
         document.getElementById('myInstitutionName').value = inst.name || '';
         document.getElementById('myInstitutionDomain').value = inst.domain || '';
-        document.getElementById('myInstUserCount').textContent = inst.user_count ?? '-';
-        document.getElementById('myInstFileCount').textContent = inst.file_count ?? '-';
-        
+        const catEl = document.getElementById('myInstitutionCategory');
+        if (catEl) catEl.value = inst.category || '';
+        document.getElementById('myInstUserCount').textContent = inst.user_count ?? 0;
+        document.getElementById('myInstFileCount').textContent = inst.file_count ?? 0;
+        document.getElementById('myInstSubCount').textContent = (inst.active_subscriptions || []).length;
+        document.getElementById('myInstTicketCount').textContent = inst.open_ticket_count ?? 0;
+
+        // Aktif abonelikler
+        const subs = inst.active_subscriptions || [];
+        const subEl = document.getElementById('myInstSubscriptions');
+        subEl.innerHTML = subs.length === 0
+            ? '<p class="text-gray-400 text-sm">Aktif abonelik yok</p>'
+            : subs.map(s => `
+                <div class="flex items-center justify-between border rounded-lg px-3 py-2">
+                    <div>
+                        <p class="font-medium text-sm">${escapeHtml(s.product_slug)}</p>
+                        <p class="text-xs text-gray-400">Bitiş: ${s.end_date ? new Date(s.end_date).toLocaleDateString('tr-TR') : '—'}</p>
+                    </div>
+                    <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Aktif</span>
+                </div>`).join('');
+
+        // Son kullanıcılar
+        const users = inst.recent_users || [];
+        const usersTbody = document.getElementById('myInstRecentUsers');
+        const ROLE_LABELS = { super_admin: 'Super Admin', admin: 'Kurum Yöneticisi', user: 'Kullanıcı' };
+        usersTbody.innerHTML = users.length === 0
+            ? '<tr><td colspan="4" class="text-center text-gray-400 py-4">Kullanıcı yok</td></tr>'
+            : users.map(u => `<tr>
+                <td class="font-medium">${escapeHtml(u.full_name || '—')}</td>
+                <td class="text-gray-500">${escapeHtml(u.email)}</td>
+                <td><span class="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">${ROLE_LABELS[u.role] || u.role}</span></td>
+                <td class="text-gray-400 text-xs">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td>
+            </tr>`).join('');
+
     } catch (e) {
         console.error('loadMyInstitution error:', e);
         errEl.textContent = 'Kurum bilgileri yüklenemedi: ' + e.message;
@@ -3601,6 +3769,112 @@ const priorityMap = {
 
 // ====================== TALEPLER ======================
 const SUBMISSION_TYPE_LABELS = { trial: 'Deneme', suggest: 'Öneri', contact: 'İletişim' };
+// ====================== DESTEK TALEPLERİ ======================
+const SUPPORT_STATUS_LABELS = { open: 'Açık', in_progress: 'İşlemde', resolved: 'Çözüldü', closed: 'Kapatıldı' };
+const SUPPORT_STATUS_COLORS = { open: 'bg-red-100 text-red-700', in_progress: 'bg-yellow-100 text-yellow-800', resolved: 'bg-green-100 text-green-700', closed: 'bg-gray-100 text-gray-500' };
+const SUPPORT_PRIORITY_LABELS = { low: 'Düşük', normal: 'Normal', high: 'Yüksek', urgent: 'Acil' };
+const SUPPORT_PRIORITY_COLORS = { low: 'bg-gray-100 text-gray-500', normal: 'bg-blue-100 text-blue-700', high: 'bg-orange-100 text-orange-700', urgent: 'bg-red-100 text-red-700' };
+
+let currentSupportTicketId = null;
+
+async function loadSupport() {
+    const tbody = document.getElementById('supportTableBody');
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Yükleniyor...</td></tr>';
+    const status = document.getElementById('supportStatusFilter')?.value || '';
+    const priority = document.getElementById('supportPriorityFilter')?.value || '';
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (priority) params.set('priority', priority);
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/support/tickets?${params}`, { credentials: 'include' });
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-gray-400">Henüz destek talebi yok</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(t => `
+            <tr class="hover:bg-gray-50 cursor-pointer" onclick="openSupportModal(${t.id})">
+                <td class="text-gray-400">#${t.id}</td>
+                <td class="font-medium max-w-xs truncate">${escapeHtml(t.subject)}</td>
+                <td>${escapeHtml(t.user_name || t.user_email || '')}</td>
+                <td class="text-gray-500 text-xs">${escapeHtml(t.institution_name || '—')}</td>
+                <td><span class="px-2 py-0.5 rounded-full text-xs font-medium ${SUPPORT_PRIORITY_COLORS[t.priority] || ''}">${SUPPORT_PRIORITY_LABELS[t.priority] || t.priority}</span></td>
+                <td><span class="px-2 py-0.5 rounded-full text-xs font-medium ${SUPPORT_STATUS_COLORS[t.status] || ''}">${SUPPORT_STATUS_LABELS[t.status] || t.status}</span></td>
+                <td class="text-center text-gray-400">${t.reply_count || 0}</td>
+                <td class="text-xs text-gray-400">${new Date(t.created_at).toLocaleDateString('tr-TR')}</td>
+                <td><button class="text-indigo-600 hover:text-indigo-800 text-xs" onclick="event.stopPropagation();openSupportModal(${t.id})"><i class="fas fa-eye"></i></button></td>
+            </tr>`).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-red-400">Hata: ${err.message}</td></tr>`;
+    }
+}
+
+async function openSupportModal(id) {
+    currentSupportTicketId = id;
+    document.getElementById('supportModal').classList.remove('hidden');
+    document.getElementById('supportReplies').innerHTML = '<p class="text-gray-400 text-sm">Yükleniyor...</p>';
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/support/tickets/${id}`, { credentials: 'include' });
+        const t = await res.json();
+        document.getElementById('supportModalTitle').textContent = `#${t.id} — ${t.subject}`;
+        document.getElementById('supportModalStatus').value = t.status || 'open';
+        document.getElementById('supportModalPriority').value = t.priority || 'normal';
+        const replies = t.replies || [];
+        document.getElementById('supportReplies').innerHTML = replies.length === 0
+            ? '<p class="text-gray-400 text-sm text-center py-2">Henüz yanıt yok</p>'
+            : replies.map(r => `
+                <div class="flex gap-2 ${r.is_admin ? 'justify-end' : ''}">
+                    <div class="max-w-xs rounded-xl px-3 py-2 text-sm ${r.is_admin ? 'bg-indigo-100 text-indigo-900' : 'bg-white border text-gray-800'}">
+                        <p class="font-semibold text-xs mb-1 opacity-60">${r.is_admin ? 'Admin' : escapeHtml(r.author_name || 'Kullanıcı')}</p>
+                        <p>${escapeHtml(r.message)}</p>
+                        <p class="text-xs opacity-40 mt-1">${new Date(r.created_at).toLocaleString('tr-TR')}</p>
+                    </div>
+                </div>`).join('');
+    } catch (err) {
+        document.getElementById('supportReplies').innerHTML = `<p class="text-red-400 text-sm">${err.message}</p>`;
+    }
+}
+
+function closeSupportModal() {
+    document.getElementById('supportModal').classList.add('hidden');
+    currentSupportTicketId = null;
+    document.getElementById('supportReplyText').value = '';
+}
+
+async function saveSupportTicket() {
+    if (!currentSupportTicketId) return;
+    const status = document.getElementById('supportModalStatus').value;
+    const priority = document.getElementById('supportModalPriority').value;
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/support/tickets/${currentSupportTicketId}`, {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status, priority })
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Güncelleme başarısız');
+        showToast('Talep güncellendi', 'success');
+        loadSupport();
+    } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function sendSupportReply() {
+    if (!currentSupportTicketId) return;
+    const message = document.getElementById('supportReplyText').value.trim();
+    if (!message) return showToast('Yanıt boş olamaz', 'warning');
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/support/tickets/${currentSupportTicketId}/reply`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Gönderilemedi');
+        document.getElementById('supportReplyText').value = '';
+        showToast('Yanıt gönderildi', 'success');
+        openSupportModal(currentSupportTicketId);
+        loadSupport();
+    } catch (err) { showToast(err.message, 'error'); }
+}
+
 const SUBMISSION_TYPE_COLORS = { trial: 'bg-blue-100 text-blue-800', suggest: 'bg-purple-100 text-purple-800', contact: 'bg-gray-100 text-gray-700' };
 const SUBMISSION_STATUS_LABELS = { pending: 'Bekliyor', reviewing: 'İnceleniyor', responded: 'Yanıtlandı', completed: 'Tamamlandı' };
 const SUBMISSION_STATUS_COLORS = { pending: 'bg-yellow-100 text-yellow-800', reviewing: 'bg-blue-100 text-blue-800', responded: 'bg-green-100 text-green-800', completed: 'bg-gray-100 text-gray-600' };

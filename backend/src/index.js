@@ -1815,7 +1815,31 @@ app.get('/api/admin/my-institution', async (c) => {
     WHERE institution_id = ? AND is_active = 1
   `).bind(inst.id).first();
 
-  return c.json({ ...inst, file_count: fileRow?.cnt ?? 0 });
+  const subRows = await db.prepare(`
+    SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date
+    FROM institution_subscriptions is2
+    WHERE is2.institution_id = ? AND is2.status = 'active'
+    ORDER BY is2.end_date ASC
+  `).bind(inst.id).all();
+
+  const recentUsers = await db.prepare(`
+    SELECT id, full_name, email, role, created_at
+    FROM users WHERE institution_id = ? OR institution = ?
+    ORDER BY created_at DESC LIMIT 5
+  `).bind(inst.id, inst.name).all();
+
+  const openTickets = await db.prepare(`
+    SELECT COUNT(*) as cnt FROM support_tickets
+    WHERE institution_id = ? AND status NOT IN ('resolved','closed')
+  `).bind(inst.id).first();
+
+  return c.json({
+    ...inst,
+    file_count: fileRow?.cnt ?? 0,
+    active_subscriptions: subRows.results || [],
+    recent_users: recentUsers.results || [],
+    open_ticket_count: openTickets?.cnt ?? 0
+  });
 });
 
 app.get('/api/admin/institutions', async (c) => {
@@ -2400,7 +2424,7 @@ app.get('/api/admin/announcements', async (c) => {
 });
 
 app.post('/api/admin/announcements/ai/image', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
 
   try {
     const { title, summary, model, custom_prompt } = await c.req.json();
@@ -2416,7 +2440,7 @@ app.post('/api/admin/announcements/ai/image', async (c) => {
 });
 
 app.post('/api/admin/announcements/ai/polish', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
 
   try {
     const payload = await c.req.json();
@@ -2433,7 +2457,7 @@ app.post('/api/admin/announcements/ai/polish', async (c) => {
 });
 
 app.post('/api/admin/announcements/ai/translate', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
 
   try {
     const payload = await c.req.json();
@@ -2450,7 +2474,7 @@ app.post('/api/admin/announcements/ai/translate', async (c) => {
 });
 
 app.post('/api/admin/announcements', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const auth = await requireAuth(c);
   const db = c.env.DB;
   const body = await c.req.json();
@@ -2483,7 +2507,7 @@ app.post('/api/admin/announcements', async (c) => {
 });
 
 app.put('/api/admin/announcements/:id', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   const id = c.req.param('id');
   const body = await c.req.json();
@@ -2518,7 +2542,7 @@ app.put('/api/admin/announcements/:id', async (c) => {
 });
 
 app.delete('/api/admin/announcements/:id', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   const id = c.req.param('id');
   try {
@@ -2530,6 +2554,158 @@ app.delete('/api/admin/announcements/:id', async (c) => {
     return c.json({ error: err.message }, 500);
   }
 });
+// ====================== DESTEK TALEPLERİ ======================
+
+// Kullanıcı: yeni talep oluştur
+app.post('/api/support/tickets', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const { subject, message, priority } = await c.req.json();
+  if (!subject?.trim() || !message?.trim()) return c.json({ error: 'Konu ve mesaj zorunludur' }, 400);
+  const allowed_priority = ['low', 'normal', 'high', 'urgent'];
+  const p = allowed_priority.includes(priority) ? priority : 'normal';
+  const user = auth.user;
+  const institution_id = user.institution_id || null;
+  const result = await db.prepare(
+    `INSERT INTO support_tickets (user_id, institution_id, subject, message, priority) VALUES (?, ?, ?, ?, ?)`
+  ).bind(user.user_id, institution_id, subject.trim(), message.trim(), p).run();
+  return c.json({ success: true, id: result.meta.last_row_id }, 201);
+});
+
+// Kullanıcı: kendi taleplerini listele
+app.get('/api/support/tickets', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const rows = await db.prepare(
+    `SELECT t.id, t.subject, t.status, t.priority, t.created_at, t.updated_at,
+      (SELECT COUNT(*) FROM ticket_replies WHERE ticket_id = t.id) as reply_count
+     FROM support_tickets t WHERE t.user_id = ? ORDER BY t.updated_at DESC`
+  ).bind(auth.user.user_id).all();
+  return c.json(rows.results || []);
+});
+
+// Kullanıcı: tek talep detayı (sadece kendi talebi)
+app.get('/api/support/tickets/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const id = c.req.param('id');
+  const ticket = await db.prepare(
+    `SELECT t.*, u.full_name as user_name, u.email as user_email
+     FROM support_tickets t JOIN users u ON t.user_id = u.id
+     WHERE t.id = ? AND t.user_id = ?`
+  ).bind(id, auth.user.user_id).first();
+  if (!ticket) return c.json({ error: 'Talep bulunamadı' }, 404);
+  const replies = await db.prepare(
+    `SELECT r.*, u.full_name as author_name FROM ticket_replies r
+     LEFT JOIN users u ON r.user_id = u.id WHERE r.ticket_id = ? ORDER BY r.created_at ASC`
+  ).bind(id).all();
+  return c.json({ ...ticket, replies: replies.results || [] });
+});
+
+// Kullanıcı: talebe yanıt yaz
+app.post('/api/support/tickets/:id/reply', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const id = c.req.param('id');
+  const ticket = await db.prepare(`SELECT id FROM support_tickets WHERE id = ? AND user_id = ?`)
+    .bind(id, auth.user.user_id).first();
+  if (!ticket) return c.json({ error: 'Talep bulunamadı' }, 404);
+  const { message } = await c.req.json();
+  if (!message?.trim()) return c.json({ error: 'Mesaj boş olamaz' }, 400);
+  await db.prepare(`INSERT INTO ticket_replies (ticket_id, user_id, message, is_admin) VALUES (?, ?, ?, 0)`)
+    .bind(id, auth.user.user_id, message.trim()).run();
+  await db.prepare(`UPDATE support_tickets SET status = 'open', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run();
+  return c.json({ success: true });
+});
+
+// Admin: tüm/kurum taleplerini listele
+app.get('/api/admin/support/tickets', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const role = await getUserRole(c);
+  const isSA = role === 'super_admin';
+  const instId = await getUserInstitutionId(c);
+  const status = c.req.query('status') || '';
+  const priority = c.req.query('priority') || '';
+
+  let where = isSA ? '1=1' : `t.institution_id = ${instId ? Number(instId) : 0}`;
+  if (status) where += ` AND t.status = '${status.replace(/'/g, '')}'`;
+  if (priority) where += ` AND t.priority = '${priority.replace(/'/g, '')}'`;
+
+  const rows = await db.prepare(
+    `SELECT t.id, t.subject, t.status, t.priority, t.created_at, t.updated_at,
+      u.full_name as user_name, u.email as user_email,
+      COALESCE(i.name, '') as institution_name,
+      (SELECT COUNT(*) FROM ticket_replies WHERE ticket_id = t.id) as reply_count
+     FROM support_tickets t
+     JOIN users u ON t.user_id = u.id
+     LEFT JOIN institutions i ON t.institution_id = i.id
+     WHERE ${where} ORDER BY t.updated_at DESC`
+  ).all();
+  return c.json(rows.results || []);
+});
+
+// Admin: tek talep detayı
+app.get('/api/admin/support/tickets/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const id = c.req.param('id');
+  const role = await getUserRole(c);
+  const isSA = role === 'super_admin';
+  const instId = await getUserInstitutionId(c);
+
+  const ticket = await db.prepare(
+    `SELECT t.*, u.full_name as user_name, u.email as user_email, COALESCE(i.name,'') as institution_name
+     FROM support_tickets t JOIN users u ON t.user_id = u.id LEFT JOIN institutions i ON t.institution_id = i.id
+     WHERE t.id = ?`
+  ).bind(id).first();
+  if (!ticket) return c.json({ error: 'Talep bulunamadı' }, 404);
+  if (!isSA && instId && String(ticket.institution_id) !== String(instId))
+    return c.json({ error: 'Yetkisiz' }, 403);
+
+  const replies = await db.prepare(
+    `SELECT r.*, u.full_name as author_name FROM ticket_replies r
+     LEFT JOIN users u ON r.user_id = u.id WHERE r.ticket_id = ? ORDER BY r.created_at ASC`
+  ).bind(id).all();
+  return c.json({ ...ticket, replies: replies.results || [] });
+});
+
+// Admin: durum güncelle
+app.put('/api/admin/support/tickets/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const id = c.req.param('id');
+  const { status, priority } = await c.req.json();
+  const allowed_status = ['open', 'in_progress', 'resolved', 'closed'];
+  const allowed_priority = ['low', 'normal', 'high', 'urgent'];
+  const updates = [];
+  if (status && allowed_status.includes(status)) updates.push(`status = '${status}'`);
+  if (priority && allowed_priority.includes(priority)) updates.push(`priority = '${priority}'`);
+  if (!updates.length) return c.json({ error: 'Güncellenecek alan yok' }, 400);
+  updates.push(`updated_at = CURRENT_TIMESTAMP`);
+  await db.prepare(`UPDATE support_tickets SET ${updates.join(', ')} WHERE id = ?`).bind(id).run();
+  return c.json({ success: true });
+});
+
+// Admin: talebe yanıt yaz
+app.post('/api/admin/support/tickets/:id/reply', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const id = c.req.param('id');
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const { message } = await c.req.json();
+  if (!message?.trim()) return c.json({ error: 'Mesaj boş olamaz' }, 400);
+  await db.prepare(`INSERT INTO ticket_replies (ticket_id, user_id, message, is_admin) VALUES (?, ?, ?, 1)`)
+    .bind(id, auth.user.user_id, message.trim()).run();
+  await db.prepare(`UPDATE support_tickets SET status = 'in_progress', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run();
+  return c.json({ success: true });
+});
+
 // ====================== AIRTABLE HELPERS ======================
 
 // Account bul veya oluştur
