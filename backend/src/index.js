@@ -1744,58 +1744,37 @@ app.get('/api/admin/all-files', async (c) => {
 app.get('/api/institution/:id/files', async (c) => {
     const identifier = c.req.param('id');
     const db = c.env.DB;
-    
-    console.log('🔍 [ROOT-FILES] Request for:', identifier);
-    
-    // 1. Önce kurum ID'sini bul (gelen değer isim veya ID olabilir)
+
+    // Kurum ID'sini bul
     let institutionId = null;
-    
-    // Eğer gelen değer sayı ise direkt ID olarak kullan
     if (/^\d+$/.test(identifier)) {
         institutionId = parseInt(identifier);
-        console.log('   → ID olarak kullanılıyor:', institutionId);
     } else {
-        // Değilse institutions tablosundan isim ile ara
         const inst = await db.prepare(`SELECT id FROM institutions WHERE name = ?`).bind(identifier).first();
-        if (inst) {
-            institutionId = inst.id;
-            console.log('   → İsimden bulundu:', institutionId, '(', identifier, ')');
-        }
+        if (inst) institutionId = inst.id;
     }
-    
-    if (!institutionId) {
-        console.log('❌ Kurum bulunamadı:', identifier);
-        return c.json([]);
-    }
-    
-    // 2. Root dosyalarını getir (folder_id IS NULL)
-    const query = `
-        SELECT 
-            f.*, 
-            u.full_name as uploaded_by_name,
-            COALESCE(i.name, '') as institution_name
-        FROM institution_files f
-        LEFT JOIN users u ON f.uploaded_by = u.id
-        LEFT JOIN institutions i ON f.institution_id = i.id
-        WHERE CAST(f.institution_id AS INTEGER) = ?
-        AND f.is_active = 1
-        AND (f.folder_id IS NULL OR f.folder_id = 0)
-        ORDER BY f.id DESC
-    `;
-    
+    if (!institutionId) return c.json([]);
+
+    // Rol ve kurum kontrolü
+    const role = await getUserRole(c);
+    const isAdmin = role === 'super_admin' || role === 'admin';
+    const publicOnly = isAdmin ? '' : 'AND f.is_public = 1';
+
     try {
-        const result = await db.prepare(query).bind(institutionId).all();
-        const files = result.results || [];
-        console.log(`✅ ${files.length} root dosyası bulundu (institution_id: ${institutionId})`);
-        
-        // Debug: Dosya isimlerini logla
-        if (files.length > 0) {
-            files.forEach(f => console.log(`   📄 ${f.file_name}`));
-        }
-        
-        return c.json(files);
+        const result = await db.prepare(`
+            SELECT f.*, u.full_name as uploaded_by_name, COALESCE(i.name, '') as institution_name
+            FROM institution_files f
+            LEFT JOIN users u ON f.uploaded_by = u.id
+            LEFT JOIN institutions i ON f.institution_id = i.id
+            WHERE CAST(f.institution_id AS INTEGER) = ?
+              AND f.is_active = 1
+              AND (f.folder_id IS NULL OR f.folder_id = 0)
+              ${publicOnly}
+            ORDER BY f.id DESC
+        `).bind(institutionId).all();
+        return c.json(result.results || []);
     } catch (err) {
-        console.error('❌ Root dosyaları sorgu hatası:', err);
+        console.error('Root dosyaları sorgu hatası:', err);
         return c.json({ error: 'Dosyalar alınamadı' }, 500);
     }
 });
@@ -1828,6 +1807,11 @@ app.get('/api/institution/:id/folders', async (c) => {
         
         console.log('🏢 Kurum ID:', institutionId);
         
+        // Rol kontrolü — admin değilse sadece public klasörler
+        const role = await getUserRole(c);
+        const isAdmin = role === 'super_admin' || role === 'admin';
+        const publicOnly = isAdmin ? '' : 'AND f.is_public = 1';
+
         // 2. Klasörleri getir
         let query, params;
         if (parentId && parentId !== 'null') {
@@ -1837,6 +1821,7 @@ app.get('/api/institution/:id/folders', async (c) => {
                     (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
                 FROM institution_folders f
                 WHERE CAST(f.institution_id AS INTEGER) = ? AND f.parent_folder_id = ?
+                  ${publicOnly}
                 ORDER BY f.folder_name`;
             params = [institutionId, parseInt(parentId)];
         } else {
@@ -1846,6 +1831,7 @@ app.get('/api/institution/:id/folders', async (c) => {
                     (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id AND is_active = 1) as file_count
                 FROM institution_folders f
                 WHERE CAST(f.institution_id AS INTEGER) = ? AND (f.parent_folder_id IS NULL OR f.parent_folder_id = 0)
+                  ${publicOnly}
                 ORDER BY f.folder_name`;
             params = [institutionId];
         }
@@ -1883,10 +1869,10 @@ app.get('/api/institution/folder/:id/files', async (c) => {
       return c.json({ error: 'Klasör bulunamadı' }, 404);
     }
     
-    const userInstitution = await getUserInstitutionId(c);
-    
+    const userInstitutionId = await getUserInstitutionId(c);
+
     let files;
-    if (role === 'super_admin' || (role === 'admin' && userInstitution === folder.institution_name)) {
+    if (role === 'super_admin' || (role === 'admin' && String(userInstitutionId) === String(folder.institution_id))) {
       files = await db.prepare(`
         SELECT f.*, u.full_name as uploaded_by_name 
         FROM institution_files f 
