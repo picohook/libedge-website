@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="assets/css/tailwind.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
@@ -1215,6 +1216,7 @@
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 <script src="assets/js/auth.js"></script>
 <script src="assets/js/script.js"></script>
 <script>
@@ -3801,9 +3803,17 @@ function updateAnnouncementCoverPreview() {
         const img = new Image();
         img.className = 'w-full h-56 object-cover';
         img.alt = 'Duyuru kapak önizleme';
+        img.crossOrigin = 'anonymous';
         img.onload = () => {
             const spinner = document.getElementById('announcementImgSpinner');
             if (spinner) spinner.replaceWith(img);
+            // Add crop button after image loads
+            const cropBtn = document.createElement('button');
+            cropBtn.type = 'button';
+            cropBtn.className = 'absolute bottom-2 right-2 btn bg-white/90 text-gray-700 hover:bg-white text-xs shadow border border-gray-200';
+            cropBtn.innerHTML = '<i class="fas fa-crop-alt mr-1"></i>Kırp';
+            cropBtn.onclick = () => openCoverCropModal(src, null);
+            previewWrapper.appendChild(cropBtn);
         };
         img.onerror = () => {
             const spinner = document.getElementById('announcementImgSpinner');
@@ -3869,10 +3879,16 @@ async function generateAnnouncementImage() {
 
     try {
         const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/image', { title, summary, model, custom_prompt });
-        document.getElementById('announcementCoverImage').value = data.image_url || '';
+        const imageUrl = data.image_url || '';
         document.getElementById('announcementAiImagePrompt').value = data.prompt || '';
-        updateAnnouncementCoverPreview();
-        showToast(`AI kapak görseli hazırlandı (${data.model || model})`, 'success');
+
+        // Fetch image as blob to avoid CORS issues in Cropper
+        showToast(`Görsel üretildi, kırpma ekranı açılıyor…`, 'info');
+        const imgRes = await fetch(imageUrl);
+        if (!imgRes.ok) throw new Error('Görsel indirilemedi');
+        const blob = await imgRes.blob();
+        const localUrl = URL.createObjectURL(blob);
+        openCoverCropModal(localUrl, blob);
     } catch (err) {
         showToast(err.message || 'Görsel üretilemedi', 'error');
     } finally {
@@ -3880,42 +3896,19 @@ async function generateAnnouncementImage() {
     }
 }
 
-async function uploadAnnouncementImage() {
+function uploadAnnouncementImage() {
     const input = document.getElementById('announcementImageFile');
     const file = input.files[0];
     if (!file) return;
 
     const label = document.getElementById('announcementUploadLabel');
-    const progress = document.getElementById('announcementUploadProgress');
+    label.textContent = file.name;
+    input.value = '';
 
-    label.classList.add('hidden');
-    progress.classList.remove('hidden');
-
-    try {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const res = await fetch(`${API_BASE}/api/upload`, {
-            method: 'POST',
-            credentials: 'include',
-            body: formData
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Yükleme başarısız');
-
-        document.getElementById('announcementCoverImage').value = data.url || '';
-        document.getElementById('announcementAiImagePrompt').value = '';
-        updateAnnouncementCoverPreview();
-        label.textContent = file.name;
-        showToast('Görsel yüklendi', 'success');
-    } catch (err) {
-        showToast(err.message || 'Yükleme hatası', 'error');
-        label.textContent = 'JPG, PNG veya WEBP seçin';
-    } finally {
-        label.classList.remove('hidden');
-        progress.classList.add('hidden');
-        input.value = '';
-    }
+    // Open crop modal with local file — upload happens after crop
+    const reader = new FileReader();
+    reader.onload = (e) => openCoverCropModal(e.target.result, file);
+    reader.readAsDataURL(file);
 }
 
 async function polishAnnouncementContent() {
@@ -4058,7 +4051,92 @@ function closeEditInstitutionModal() {
     currentAirtableId = null;
 }
 
+// ====================== KAPAK GÖRSELİ CROP ======================
+let _coverCropper = null;
+let _coverCropSourceBlob = null; // original file blob for re-crop
+
+function openCoverCropModal(src, blob) {
+    _coverCropSourceBlob = blob || null;
+    const modal = document.getElementById('coverCropModal');
+    const img = document.getElementById('coverCropImage');
+
+    if (_coverCropper) { _coverCropper.destroy(); _coverCropper = null; }
+
+    img.src = src;
+    modal.classList.remove('hidden');
+
+    // Wait for image to load before initializing cropper
+    img.onload = () => {
+        _coverCropper = new Cropper(img, {
+            aspectRatio: 1200 / 630,
+            viewMode: 1,
+            autoCropArea: 0.85,
+            background: false,
+            movable: true,
+            zoomable: true,
+            rotatable: false,
+            scalable: false,
+        });
+    };
+}
+
+function closeCoverCropModal() {
+    if (_coverCropper) { _coverCropper.destroy(); _coverCropper = null; }
+    document.getElementById('coverCropModal').classList.add('hidden');
+}
+
+async function applyCoverCrop() {
+    if (!_coverCropper) return;
+    const canvas = _coverCropper.getCroppedCanvas({ width: 1200, height: 630, imageSmoothingQuality: 'high' });
+    const btn = document.getElementById('coverCropApplyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor…';
+
+    canvas.toBlob(async (blob) => {
+        try {
+            const formData = new FormData();
+            formData.append('file', blob, 'cover.jpg');
+            const res = await fetch(`${API_BASE}/api/upload`, { method: 'POST', credentials: 'include', body: formData });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Yükleme başarısız');
+
+            document.getElementById('announcementCoverImage').value = data.url || '';
+            document.getElementById('announcementAiImagePrompt').value = '';
+            updateAnnouncementCoverPreview();
+            closeCoverCropModal();
+            showToast('Görsel kırpıldı ve yüklendi', 'success');
+        } catch (err) {
+            showToast(err.message || 'Yükleme hatası', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-crop-alt mr-2"></i>Uygula ve Kaydet';
+        }
+    }, 'image/jpeg', 0.92);
+}
+
 </script>
+
+<!-- Kapak Görseli Crop Modal -->
+<div id="coverCropModal" class="hidden fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b">
+            <div>
+                <h3 class="font-semibold text-gray-900">Görseli Kırp</h3>
+                <p class="text-xs text-gray-500 mt-0.5">16:9 (1200×630) oranında kırpma alanı seçin</p>
+            </div>
+            <button onclick="closeCoverCropModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-4 bg-gray-900" style="max-height:60vh;overflow:hidden;">
+            <img id="coverCropImage" src="" alt="" style="max-width:100%;display:block;max-height:55vh;">
+        </div>
+        <div class="flex gap-3 px-5 py-4 border-t">
+            <button onclick="closeCoverCropModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
+            <button id="coverCropApplyBtn" onclick="applyCoverCrop()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 flex-1">
+                <i class="fas fa-crop-alt mr-2"></i>Uygula ve Kaydet
+            </button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
