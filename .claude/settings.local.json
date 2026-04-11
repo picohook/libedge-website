@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx wrangler:*)"
+      "Bash(npx wrangler:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }
