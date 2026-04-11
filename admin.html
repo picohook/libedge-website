@@ -844,9 +844,13 @@
                     </div>
                     <div id="supportReplies" class="space-y-3 max-h-60 overflow-y-auto border rounded-xl p-3 bg-gray-50"></div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Yanıt Yaz</label>
-                        <textarea id="supportReplyText" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="Kullanıcıya yanıt..."></textarea>
-                        <button onclick="sendSupportReply()" class="btn btn-primary mt-2 w-full">Yanıt Gönder</button>
+                        <label class="block text-xs text-gray-500 mb-1">Yan&#305;t Yaz</label>
+                        <textarea id="supportReplyText" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="Kullan&#305;c&#305;ya yan&#305;t..."></textarea>
+                        <div class="mt-2 flex items-center gap-3 flex-wrap">
+                            <label class="text-xs text-gray-500" for="supportReplyFile">Dosya ekle</label>
+                            <input type="file" id="supportReplyFile" class="text-xs text-gray-500" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.txt,.zip">
+                        </div>
+                        <button onclick="sendSupportReply()" class="btn btn-primary mt-2 w-full">Yan&#305;t G&#246;nder</button>
                     </div>
                 </div>
             </div>
@@ -3770,39 +3774,58 @@ const priorityMap = {
 // ====================== TALEPLER ======================
 const SUBMISSION_TYPE_LABELS = { trial: 'Deneme', suggest: 'Öneri', contact: 'İletişim' };
 // ====================== DESTEK TALEPLERİ ======================
-const SUPPORT_STATUS_LABELS = { open: 'Açık', in_progress: 'İşlemde', resolved: 'Çözüldü', closed: 'Kapatıldı' };
+const SUPPORT_STATUS_LABELS = { open: '\u0041\u00e7\u0131k', in_progress: '\u0130\u015flemde', resolved: '\u00c7\u00f6z\u00fcld\u00fc', closed: 'Kapat\u0131ld\u0131' };
 const SUPPORT_STATUS_COLORS = { open: 'bg-red-100 text-red-700', in_progress: 'bg-yellow-100 text-yellow-800', resolved: 'bg-green-100 text-green-700', closed: 'bg-gray-100 text-gray-500' };
-const SUPPORT_PRIORITY_LABELS = { low: 'Düşük', normal: 'Normal', high: 'Yüksek', urgent: 'Acil' };
-const SUPPORT_PRIORITY_COLORS = { low: 'bg-gray-100 text-gray-500', normal: 'bg-blue-100 text-blue-700', high: 'bg-orange-100 text-orange-700', urgent: 'bg-red-100 text-red-700' };
+const SUPPORT_PRIORITY_LABELS = { low: 'D\u00fc\u015f\u00fck', normal: 'Normal', high: 'Y\u00fcksek', urgent: 'Acil' };
+const SUPPORT_PRIORITY_COLORS = { low: 'bg-slate-100 text-slate-700', normal: 'bg-blue-100 text-blue-700', high: 'bg-orange-100 text-orange-700', urgent: 'bg-red-100 text-red-700' };
+
+function renderSupportAttachment(url) {
+    if (!url) return '';
+    return `<p class="mt-2"><a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline"><i class="fas fa-paperclip mr-1"></i>Ek dosya</a></p>`;
+}
+
+function renderSupportUnreadDot() {
+    return `<span data-unread-marker class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span></span>`;
+}
 
 let currentSupportTicketId = null;
 
 async function loadSupport() {
     const tbody = document.getElementById('supportTableBody');
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Yükleniyor...</td></tr>';
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Y\u00fckleniyor...</td></tr>';
     const status = document.getElementById('supportStatusFilter')?.value || '';
     const priority = document.getElementById('supportPriorityFilter')?.value || '';
     const params = new URLSearchParams();
     if (status) params.set('status', status);
     if (priority) params.set('priority', priority);
+
     try {
-        const res = await fetch(`${API_BASE}/api/admin/support/tickets?${params}`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/admin/support/tickets?${params.toString()}`, { credentials: 'include' });
         const data = await res.json();
+
         if (!Array.isArray(data) || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-gray-400">Henüz destek talebi yok</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-gray-400">Hen\u00fcz destek talebi yok.</td></tr>';
             return;
         }
-        tbody.innerHTML = data.map(t => `
-            <tr class="hover:bg-gray-50 cursor-pointer" onclick="openSupportModal(${t.id})">
+
+        tbody.innerHTML = data.map((t) => `
+            <tr id="support-row-${t.id}" class="hover:bg-gray-50 cursor-pointer ${t.has_unread_user_reply ? 'bg-amber-50/60' : ''}" onclick="openSupportModal(${t.id})">
                 <td class="text-gray-400">#${t.id}</td>
                 <td class="font-medium max-w-xs truncate">${escapeHtml(t.subject)}</td>
                 <td>${escapeHtml(t.user_name || t.user_email || '')}</td>
-                <td class="text-gray-500 text-xs">${escapeHtml(t.institution_name || '—')}</td>
+                <td class="text-gray-500 text-xs">${escapeHtml(t.institution_name || '-')}</td>
                 <td><span class="px-2 py-0.5 rounded-full text-xs font-medium ${SUPPORT_PRIORITY_COLORS[t.priority] || ''}">${SUPPORT_PRIORITY_LABELS[t.priority] || t.priority}</span></td>
                 <td><span class="px-2 py-0.5 rounded-full text-xs font-medium ${SUPPORT_STATUS_COLORS[t.status] || ''}">${SUPPORT_STATUS_LABELS[t.status] || t.status}</span></td>
                 <td class="text-center text-gray-400">${t.reply_count || 0}</td>
                 <td class="text-xs text-gray-400">${new Date(t.created_at).toLocaleDateString('tr-TR')}</td>
-                <td><button class="text-indigo-600 hover:text-indigo-800 text-xs" onclick="event.stopPropagation();openSupportModal(${t.id})"><i class="fas fa-eye"></i></button></td>
+                <td>
+                    <div class="flex items-center justify-end gap-2">
+                        ${t.has_unread_user_reply ? `${renderSupportUnreadDot()}<span class="text-[11px] font-medium text-amber-600">Yeni</span>` : ''}
+                        <button class="text-indigo-600 hover:text-indigo-800 text-xs" onclick="event.stopPropagation();openSupportModal(${t.id})"><i class="fas fa-eye"></i></button>
+                    </div>
+                </td>
             </tr>`).join('');
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-red-400">Hata: ${err.message}</td></tr>`;
@@ -3811,27 +3834,44 @@ async function loadSupport() {
 
 async function openSupportModal(id) {
     currentSupportTicketId = id;
-    document.getElementById('supportModal').classList.remove('hidden');
-    document.getElementById('supportReplies').innerHTML = '<p class="text-gray-400 text-sm">Yükleniyor...</p>';
+    const modal = document.getElementById('supportModal');
+    const repliesEl = document.getElementById('supportReplies');
+    if (!modal || !repliesEl) return;
+
+    modal.classList.remove('hidden');
+    repliesEl.innerHTML = '<p class="text-gray-400 text-sm">Y\u00fckleniyor...</p>';
+    document.getElementById('supportReplyText').value = '';
+    const replyFile = document.getElementById('supportReplyFile');
+    if (replyFile) replyFile.value = '';
+
+    const row = document.getElementById(`support-row-${id}`);
+    row?.querySelector('[data-unread-marker]')?.remove();
+    row?.classList.remove('bg-amber-50/60');
+
     try {
         const res = await fetch(`${API_BASE}/api/admin/support/tickets/${id}`, { credentials: 'include' });
         const t = await res.json();
-        document.getElementById('supportModalTitle').textContent = `#${t.id} — ${t.subject}`;
+
+        document.getElementById('supportModalTitle').textContent = `#${t.id} - ${t.subject}`;
         document.getElementById('supportModalStatus').value = t.status || 'open';
         document.getElementById('supportModalPriority').value = t.priority || 'normal';
-        const replies = t.replies || [];
-        document.getElementById('supportReplies').innerHTML = replies.length === 0
-            ? '<p class="text-gray-400 text-sm text-center py-2">Henüz yanıt yok</p>'
-            : replies.map(r => `
+
+        const thread = [{ message: t.message, is_admin: 0, author_name: t.user_name || 'Kullan\u0131c\u0131', created_at: t.created_at, attachment_url: t.attachment_url || '' }, ...(t.replies || [])];
+        repliesEl.innerHTML = thread.length === 0
+            ? '<p class="text-gray-400 text-sm text-center py-2">Hen\u00fcz yan\u0131t yok.</p>'
+            : thread.map((r) => `
                 <div class="flex gap-2 ${r.is_admin ? 'justify-end' : ''}">
                     <div class="max-w-xs rounded-xl px-3 py-2 text-sm ${r.is_admin ? 'bg-indigo-100 text-indigo-900' : 'bg-white border text-gray-800'}">
-                        <p class="font-semibold text-xs mb-1 opacity-60">${r.is_admin ? 'Admin' : escapeHtml(r.author_name || 'Kullanıcı')}</p>
-                        <p>${escapeHtml(r.message)}</p>
+                        <p class="font-semibold text-xs mb-1 opacity-60">${r.is_admin ? 'Admin' : escapeHtml(r.author_name || 'Kullan\u0131c\u0131')}</p>
+                        ${r.message ? `<p>${escapeHtml(r.message)}</p>` : '<p class="italic opacity-60">Dosya payla\u015f\u0131ld\u0131.</p>'}
+                        ${renderSupportAttachment(r.attachment_url)}
                         <p class="text-xs opacity-40 mt-1">${new Date(r.created_at).toLocaleString('tr-TR')}</p>
                     </div>
                 </div>`).join('');
+
+        await loadSupport();
     } catch (err) {
-        document.getElementById('supportReplies').innerHTML = `<p class="text-red-400 text-sm">${err.message}</p>`;
+        repliesEl.innerHTML = `<p class="text-red-400 text-sm">${err.message}</p>`;
     }
 }
 
@@ -3839,40 +3879,67 @@ function closeSupportModal() {
     document.getElementById('supportModal').classList.add('hidden');
     currentSupportTicketId = null;
     document.getElementById('supportReplyText').value = '';
+    const replyFile = document.getElementById('supportReplyFile');
+    if (replyFile) replyFile.value = '';
 }
 
 async function saveSupportTicket() {
     if (!currentSupportTicketId) return;
+
     const status = document.getElementById('supportModalStatus').value;
     const priority = document.getElementById('supportModalPriority').value;
+
     try {
         const res = await fetch(`${API_BASE}/api/admin/support/tickets/${currentSupportTicketId}`, {
-            method: 'PUT', credentials: 'include',
+            method: 'PUT',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status, priority })
         });
-        if (!res.ok) throw new Error((await res.json()).error || 'Güncelleme başarısız');
-        showToast('Talep güncellendi', 'success');
-        loadSupport();
-    } catch (err) { showToast(err.message, 'error'); }
+
+        if (!res.ok) throw new Error((await res.json()).error || 'G\u00fcncelleme ba\u015far\u0131s\u0131z');
+
+        showToast('Talep g\u00fcncellendi.', 'success');
+        await loadSupport();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
 }
 
 async function sendSupportReply() {
     if (!currentSupportTicketId) return;
-    const message = document.getElementById('supportReplyText').value.trim();
-    if (!message) return showToast('Yanıt boş olamaz', 'warning');
+
+    const messageEl = document.getElementById('supportReplyText');
+    const fileEl = document.getElementById('supportReplyFile');
+    const message = messageEl.value.trim();
+    const file = fileEl?.files?.[0] || null;
+
+    if (!message && !file) {
+        showToast('Yan\u0131t veya dosya gerekli.', 'warning');
+        return;
+    }
+
     try {
+        const formData = new FormData();
+        formData.append('message', message);
+        if (file) formData.append('file', file);
+
         const res = await fetch(`${API_BASE}/api/admin/support/tickets/${currentSupportTicketId}/reply`, {
-            method: 'POST', credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message })
+            method: 'POST',
+            credentials: 'include',
+            body: formData
         });
-        if (!res.ok) throw new Error((await res.json()).error || 'Gönderilemedi');
-        document.getElementById('supportReplyText').value = '';
-        showToast('Yanıt gönderildi', 'success');
-        openSupportModal(currentSupportTicketId);
-        loadSupport();
-    } catch (err) { showToast(err.message, 'error'); }
+
+        if (!res.ok) throw new Error((await res.json()).error || 'Yan\u0131t g\u00f6nderilemedi');
+
+        messageEl.value = '';
+        if (fileEl) fileEl.value = '';
+        showToast('Yan\u0131t g\u00f6nderildi.', 'success');
+        await openSupportModal(currentSupportTicketId);
+        await loadSupport();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
 }
 
 const SUBMISSION_TYPE_COLORS = { trial: 'bg-blue-100 text-blue-800', suggest: 'bg-purple-100 text-purple-800', contact: 'bg-gray-100 text-gray-700' };

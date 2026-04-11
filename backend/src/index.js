@@ -2580,13 +2580,20 @@ app.get('/api/support/tickets', async (c) => {
   const db = c.env.DB;
   const rows = await db.prepare(
     `SELECT t.id, t.subject, t.status, t.priority, t.created_at, t.updated_at,
-      (SELECT COUNT(*) FROM ticket_replies WHERE ticket_id = t.id) as reply_count
+      (SELECT COUNT(*) FROM ticket_replies WHERE ticket_id = t.id) as reply_count,
+      EXISTS(
+        SELECT 1
+        FROM ticket_replies r
+        WHERE r.ticket_id = t.id
+          AND r.is_admin = 1
+          AND r.created_at > COALESCE(t.user_last_seen, '1970-01-01 00:00:00')
+      ) as has_unread_admin_reply
      FROM support_tickets t WHERE t.user_id = ? ORDER BY t.updated_at DESC`
   ).bind(auth.user.user_id).all();
   return c.json(rows.results || []);
 });
 
-// Kullanıcı: tek talep detayı (sadece kendi talebi)
+// Kullanıcı: tek talep detayı (sadece kendi talebi) + mark seen
 app.get('/api/support/tickets/:id', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
@@ -2602,23 +2609,43 @@ app.get('/api/support/tickets/:id', async (c) => {
     `SELECT r.*, u.full_name as author_name FROM ticket_replies r
      LEFT JOIN users u ON r.user_id = u.id WHERE r.ticket_id = ? ORDER BY r.created_at ASC`
   ).bind(id).all();
+  // mark user as having seen this ticket now
+  await db.prepare(`UPDATE support_tickets SET user_last_seen = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run();
   return c.json({ ...ticket, replies: replies.results || [] });
 });
 
-// Kullanıcı: talebe yanıt yaz
+// Kullanıcı: talebe yanıt yaz (JSON veya multipart)
 app.post('/api/support/tickets/:id/reply', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   const db = c.env.DB;
+  const bucket = c.env.FILES_BUCKET;
   const id = c.req.param('id');
   const ticket = await db.prepare(`SELECT id FROM support_tickets WHERE id = ? AND user_id = ?`)
     .bind(id, auth.user.user_id).first();
   if (!ticket) return c.json({ error: 'Talep bulunamadı' }, 404);
-  const { message } = await c.req.json();
-  if (!message?.trim()) return c.json({ error: 'Mesaj boş olamaz' }, 400);
-  await db.prepare(`INSERT INTO ticket_replies (ticket_id, user_id, message, is_admin) VALUES (?, ?, ?, 0)`)
-    .bind(id, auth.user.user_id, message.trim()).run();
-  await db.prepare(`UPDATE support_tickets SET status = 'open', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run();
+
+  let message = '', attachment_url = null;
+  const ct = c.req.header('content-type') || '';
+  if (ct.includes('multipart/form-data')) {
+    const fd = await c.req.formData();
+    message = String(fd.get('message') || '').trim();
+    const file = fd.get('file');
+    if (file && typeof file !== 'string' && bucket) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+      const key = `tickets/${id}/user-${Date.now()}.${ext}`;
+      await bucket.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
+      attachment_url = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : `/api/files/${key}`;
+    }
+  } else {
+    const body = await c.req.json();
+    message = String(body.message || '').trim();
+  }
+  if (!message && !attachment_url) return c.json({ error: 'Mesaj veya dosya gerekli' }, 400);
+
+  await db.prepare(`INSERT INTO ticket_replies (ticket_id, user_id, message, is_admin, attachment_url) VALUES (?, ?, ?, 0, ?)`)
+    .bind(id, auth.user.user_id, message, attachment_url).run();
+  await db.prepare(`UPDATE support_tickets SET status = 'open', updated_at = CURRENT_TIMESTAMP, user_last_seen = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run();
   return c.json({ success: true });
 });
 
@@ -2640,7 +2667,14 @@ app.get('/api/admin/support/tickets', async (c) => {
     `SELECT t.id, t.subject, t.status, t.priority, t.created_at, t.updated_at,
       u.full_name as user_name, u.email as user_email,
       COALESCE(i.name, '') as institution_name,
-      (SELECT COUNT(*) FROM ticket_replies WHERE ticket_id = t.id) as reply_count
+      (SELECT COUNT(*) FROM ticket_replies WHERE ticket_id = t.id) as reply_count,
+      EXISTS(
+        SELECT 1
+        FROM ticket_replies r
+        WHERE r.ticket_id = t.id
+          AND r.is_admin = 0
+          AND r.created_at > COALESCE(t.admin_last_seen, '1970-01-01 00:00:00')
+      ) as has_unread_user_reply
      FROM support_tickets t
      JOIN users u ON t.user_id = u.id
      LEFT JOIN institutions i ON t.institution_id = i.id
@@ -2671,6 +2705,7 @@ app.get('/api/admin/support/tickets/:id', async (c) => {
     `SELECT r.*, u.full_name as author_name FROM ticket_replies r
      LEFT JOIN users u ON r.user_id = u.id WHERE r.ticket_id = ? ORDER BY r.created_at ASC`
   ).bind(id).all();
+  await db.prepare(`UPDATE support_tickets SET admin_last_seen = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run();
   return c.json({ ...ticket, replies: replies.results || [] });
 });
 
@@ -2691,18 +2726,37 @@ app.put('/api/admin/support/tickets/:id', async (c) => {
   return c.json({ success: true });
 });
 
-// Admin: talebe yanıt yaz
+// Admin: talebe yan?t yaz
 app.post('/api/admin/support/tickets/:id/reply', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
+  const bucket = c.env.FILES_BUCKET;
   const id = c.req.param('id');
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
-  const { message } = await c.req.json();
-  if (!message?.trim()) return c.json({ error: 'Mesaj boş olamaz' }, 400);
-  await db.prepare(`INSERT INTO ticket_replies (ticket_id, user_id, message, is_admin) VALUES (?, ?, ?, 1)`)
-    .bind(id, auth.user.user_id, message.trim()).run();
-  await db.prepare(`UPDATE support_tickets SET status = 'in_progress', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run();
+
+  let message = '', attachment_url = null;
+  const ct = c.req.header('content-type') || '';
+  if (ct.includes('multipart/form-data')) {
+    const fd = await c.req.formData();
+    message = String(fd.get('message') || '').trim();
+    const file = fd.get('file');
+    if (file && typeof file !== 'string' && bucket) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+      const key = `tickets/${id}/admin-${Date.now()}.${ext}`;
+      await bucket.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
+      attachment_url = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : `/api/files/${key}`;
+    }
+  } else {
+    const body = await c.req.json();
+    message = String(body.message || '').trim();
+  }
+
+  if (!message && !attachment_url) return c.json({ error: 'Mesaj veya dosya gerekli' }, 400);
+
+  await db.prepare(`INSERT INTO ticket_replies (ticket_id, user_id, message, is_admin, attachment_url) VALUES (?, ?, ?, 1, ?)`)
+    .bind(id, auth.user.user_id, message, attachment_url).run();
+  await db.prepare(`UPDATE support_tickets SET status = 'in_progress', updated_at = CURRENT_TIMESTAMP, admin_last_seen = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run();
   return c.json({ success: true });
 });
 
@@ -2884,8 +2938,11 @@ app.get('/api/user/submissions', async (c) => {
   const db = c.env.DB;
   const rows = await db.prepare(
     `SELECT id, form_type, name, institution, product, subject, message, status, admin_note, submitted_at
-     FROM form_submissions WHERE user_id = ? ORDER BY submitted_at DESC`
-  ).bind(auth.user.user_id).all();
+     FROM form_submissions
+     WHERE user_id = ?
+        OR (user_id IS NULL AND LOWER(TRIM(email)) = LOWER(TRIM(?)))
+     ORDER BY submitted_at DESC`
+  ).bind(auth.user.user_id, auth.user.email || '').all();
   return c.json(rows.results || []);
 });
 

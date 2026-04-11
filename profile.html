@@ -264,9 +264,13 @@
                     </div>
                     <div id="ticketDetailReplies" class="space-y-3 max-h-72 overflow-y-auto border rounded-xl p-3 bg-gray-50 mb-4"></div>
                     <div>
-                        <textarea id="ticketReplyText" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="Yanıt yaz..."></textarea>
+                        <textarea id="ticketReplyText" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="Yan&#305;t yaz..."></textarea>
+                        <div class="mt-2 flex items-center gap-3 flex-wrap">
+                            <label class="text-xs text-gray-500" for="ticketReplyFile">Dosya ekle</label>
+                            <input type="file" id="ticketReplyFile" class="text-xs text-gray-500" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.txt,.zip">
+                        </div>
                         <button onclick="sendTicketReply()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm mt-2 hover:bg-opacity-90 transition">
-                            <i class="fas fa-paper-plane mr-1"></i> Gönder
+                            <i class="fas fa-paper-plane mr-1"></i> G&#246;nder
                         </button>
                     </div>
                 </div>
@@ -1238,64 +1242,84 @@ function updateHeaderAvatar(avatarUrl) {
 }
 
 // ====================== TALEPLERİM (form_submissions) ======================
-const SUBMISSION_TYPE_LABELS = { trial: 'Deneme Erişimi', suggest: 'Ürün Önerisi', contact: 'İletişim' };
+const SUBMISSION_TYPE_LABELS = { trial: 'Deneme Eri\u015fimi', suggest: '\u00dcr\u00fcn \u00d6nerisi', contact: '\u0130leti\u015fim' };
 const SUBMISSION_TYPE_COLORS_P = { trial: 'bg-blue-100 text-blue-700', suggest: 'bg-purple-100 text-purple-700', contact: 'bg-gray-100 text-gray-600' };
-const SUBMISSION_STATUS_LABELS_P = { pending: 'Bekliyor', reviewing: 'İnceleniyor', responded: 'Yanıtlandı', completed: 'Tamamlandı' };
+const SUBMISSION_STATUS_LABELS_P = { pending: 'Bekliyor', reviewing: '\u0130nceleniyor', responded: 'Yan\u0131tland\u0131', completed: 'Tamamland\u0131' };
 const SUBMISSION_STATUS_COLORS_P = { pending: 'bg-yellow-100 text-yellow-700', reviewing: 'bg-blue-100 text-blue-700', responded: 'bg-green-100 text-green-700', completed: 'bg-gray-100 text-gray-500' };
 
 async function loadUserSubmissions() {
     const el = document.getElementById('userSubmissionsList');
     if (!el) return;
+
     try {
         const res = await fetch('/api/user/submissions', { credentials: 'include' });
-        if (!res.ok) { el.innerHTML = ''; return; }
-        const data = await res.json();
-        if (!data.length) {
-            el.innerHTML = '<p class="text-gray-400 text-sm">Henüz gönderilmiş talebiniz yok.</p>';
+        if (!res.ok) {
+            el.innerHTML = '';
             return;
         }
-        el.innerHTML = data.map(s => `
+
+        const data = await res.json();
+        if (!data.length) {
+            el.innerHTML = '<p class="text-gray-400 text-sm">Hen\u00fcz g\u00f6nderilmi\u015f talebiniz yok.</p>';
+            return;
+        }
+
+        el.innerHTML = data.map((s) => `
             <div class="flex items-start justify-between gap-3 border rounded-xl px-4 py-3">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
                         <span class="text-xs font-medium px-2 py-0.5 rounded-full ${SUBMISSION_TYPE_COLORS_P[s.form_type] || 'bg-gray-100 text-gray-600'}">${SUBMISSION_TYPE_LABELS[s.form_type] || s.form_type}</span>
                         <span class="text-xs font-medium px-2 py-0.5 rounded-full ${SUBMISSION_STATUS_COLORS_P[s.status] || ''}">${SUBMISSION_STATUS_LABELS_P[s.status] || s.status}</span>
                     </div>
-                    <p class="text-sm font-medium text-gray-800 truncate">${escapeHtml(s.subject || s.product || '—')}</p>
+                    <p class="text-sm font-medium text-gray-800 truncate">${escapeHtml(s.subject || s.product || '-')}</p>
                     ${s.message ? `<p class="text-xs text-gray-400 mt-0.5 line-clamp-1">${escapeHtml(s.message)}</p>` : ''}
                     ${s.admin_note ? `<p class="text-xs text-indigo-600 mt-1"><i class="fas fa-reply mr-1"></i>${escapeHtml(s.admin_note)}</p>` : ''}
                 </div>
                 <p class="text-xs text-gray-400 shrink-0">${new Date(s.submitted_at).toLocaleDateString('tr-TR')}</p>
             </div>`).join('');
     } catch (err) {
-        el.innerHTML = '<p class="text-gray-400 text-sm">Talepler yüklenemedi.</p>';
+        el.innerHTML = '<p class="text-gray-400 text-sm">Talepler y\u00fcklenemedi.</p>';
     }
 }
 
-// ====================== DESTEK TALEPLERİ ======================
-const TICKET_STATUS_LABELS = { open: 'Açık', in_progress: 'İşlemde', resolved: 'Çözüldü', closed: 'Kapatıldı' };
+const TICKET_STATUS_LABELS = { open: '\u0041\u00e7\u0131k', in_progress: '\u0130\u015flemde', resolved: '\u00c7\u00f6z\u00fcld\u00fc', closed: 'Kapat\u0131ld\u0131' };
 const TICKET_STATUS_COLORS = { open: 'bg-red-100 text-red-700', in_progress: 'bg-yellow-100 text-yellow-800', resolved: 'bg-green-100 text-green-700', closed: 'bg-gray-100 text-gray-500' };
-const TICKET_PRIORITY_LABELS = { low: 'Düşük', normal: 'Normal', high: 'Yüksek', urgent: 'Acil' };
+const TICKET_PRIORITY_LABELS = { low: 'D\u00fc\u015f\u00fck', normal: 'Normal', high: 'Y\u00fcksek', urgent: 'Acil' };
 let currentTicketId = null;
+
+function renderTicketAttachment(url) {
+    if (!url) return '';
+    return `<p class="mt-2"><a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline"><i class="fas fa-paperclip mr-1"></i>Ek dosya</a></p>`;
+}
+
+function renderUnreadTicketDot() {
+    return `<span data-unread-marker class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span></span>`;
+}
 
 async function loadMyTickets() {
     const el = document.getElementById('ticketList');
-    el.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p>';
+    if (!el) return;
+
+    el.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Y\u00fckleniyor...</p>';
     closeTicketDetail();
+
     try {
         const res = await fetch('/api/support/tickets', { credentials: 'include' });
         const data = await res.json();
+
         if (!Array.isArray(data) || data.length === 0) {
-            el.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Henüz destek talebiniz yok.</p>';
+            el.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Hen\u00fcz destek talebiniz yok.</p>';
             return;
         }
-        el.innerHTML = data.map(t => `
-            <div class="border rounded-xl px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center justify-between gap-3" onclick="openTicketDetail(${t.id})">
+
+        el.innerHTML = data.map((t) => `
+            <div id="ticket-item-${t.id}" class="border rounded-xl px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center justify-between gap-3 ${t.has_unread_admin_reply ? 'ring-1 ring-indigo-200 bg-indigo-50/40' : ''}" onclick="openTicketDetail(${t.id})">
                 <div class="flex-1 min-w-0">
                     <p class="font-medium text-sm truncate">${escapeHtml(t.subject)}</p>
-                    <p class="text-xs text-gray-400 mt-0.5">${new Date(t.created_at).toLocaleDateString('tr-TR')} · ${TICKET_PRIORITY_LABELS[t.priority] || t.priority}</p>
+                    <p class="text-xs text-gray-400 mt-0.5">${new Date(t.created_at).toLocaleDateString('tr-TR')} - ${TICKET_PRIORITY_LABELS[t.priority] || t.priority}</p>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
+                    ${t.has_unread_admin_reply ? `${renderUnreadTicketDot()}<span class="text-[11px] font-medium text-indigo-600">Yeni</span>` : ''}
                     ${t.reply_count > 0 ? `<span class="text-xs text-gray-400"><i class="fas fa-comment mr-1"></i>${t.reply_count}</span>` : ''}
                     <span class="text-xs px-2 py-0.5 rounded-full font-medium ${TICKET_STATUS_COLORS[t.status] || ''}">${TICKET_STATUS_LABELS[t.status] || t.status}</span>
                 </div>
@@ -1308,55 +1332,88 @@ async function loadMyTickets() {
 async function openTicketDetail(id) {
     currentTicketId = id;
     const detail = document.getElementById('ticketDetail');
+    const repliesEl = document.getElementById('ticketDetailReplies');
+    if (!detail || !repliesEl) return;
+
     detail.classList.remove('hidden');
-    document.getElementById('ticketDetailReplies').innerHTML = '<p class="text-gray-400 text-sm">Yükleniyor...</p>';
+    repliesEl.innerHTML = '<p class="text-gray-400 text-sm">Y\u00fckleniyor...</p>';
     document.getElementById('ticketReplyText').value = '';
+    const ticketReplyFile = document.getElementById('ticketReplyFile');
+    if (ticketReplyFile) ticketReplyFile.value = '';
+
+    const ticketItem = document.getElementById(`ticket-item-${id}`);
+    ticketItem?.querySelector('[data-unread-marker]')?.remove();
+    ticketItem?.classList.remove('ring-1', 'ring-indigo-200', 'bg-indigo-50/40');
+
     try {
         const res = await fetch(`/api/support/tickets/${id}`, { credentials: 'include' });
         const t = await res.json();
-        document.getElementById('ticketDetailTitle').textContent = `#${t.id} — ${t.subject}`;
+
+        document.getElementById('ticketDetailTitle').textContent = `#${t.id} - ${t.subject}`;
         const statusEl = document.getElementById('ticketDetailStatus');
         statusEl.textContent = TICKET_STATUS_LABELS[t.status] || t.status;
         statusEl.className = `text-xs px-2 py-0.5 rounded-full font-medium ${TICKET_STATUS_COLORS[t.status] || ''}`;
-        const replies = t.replies || [];
-        document.getElementById('ticketDetailReplies').innerHTML = replies.length === 0
-            ? `<p class="text-gray-400 text-sm text-center py-2">Mesajınız iletildi, yanıt bekleniyor.</p>
-               <div class="flex gap-2"><div class="max-w-xs rounded-xl px-3 py-2 text-sm bg-white border text-gray-800"><p class="font-semibold text-xs mb-1 opacity-60">Siz</p><p>${escapeHtml(t.message)}</p></div></div>`
-            : [{ message: t.message, is_admin: 0, author_name: 'Siz', created_at: t.created_at }, ...replies].map(r => `
+
+        const thread = [{ message: t.message, is_admin: 0, author_name: 'Siz', created_at: t.created_at, attachment_url: t.attachment_url || '' }, ...(t.replies || [])];
+        repliesEl.innerHTML = thread.length === 0
+            ? '<p class="text-gray-400 text-sm text-center py-2">Hen\u00fcz mesaj bulunmuyor.</p>'
+            : thread.map((r) => `
                 <div class="flex gap-2 ${r.is_admin ? 'justify-end' : ''}">
                     <div class="max-w-xs rounded-xl px-3 py-2 text-sm ${r.is_admin ? 'bg-indigo-100 text-indigo-900' : 'bg-white border text-gray-800'}">
                         <p class="font-semibold text-xs mb-1 opacity-60">${r.is_admin ? 'Destek Ekibi' : escapeHtml(r.author_name || 'Siz')}</p>
-                        <p>${escapeHtml(r.message)}</p>
+                        ${r.message ? `<p>${escapeHtml(r.message)}</p>` : '<p class="italic opacity-60">Dosya payla\u015f\u0131ld\u0131.</p>'}
+                        ${renderTicketAttachment(r.attachment_url)}
                         <p class="text-xs opacity-40 mt-1">${new Date(r.created_at).toLocaleString('tr-TR')}</p>
                     </div>
                 </div>`).join('');
+
         detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
-        document.getElementById('ticketDetailReplies').innerHTML = `<p class="text-red-400 text-sm">${err.message}</p>`;
+        repliesEl.innerHTML = `<p class="text-red-400 text-sm">${err.message}</p>`;
     }
 }
 
 function closeTicketDetail() {
-    document.getElementById('ticketDetail').classList.add('hidden');
+    const detail = document.getElementById('ticketDetail');
+    if (detail) detail.classList.add('hidden');
     currentTicketId = null;
+    const ticketReplyFile = document.getElementById('ticketReplyFile');
+    if (ticketReplyFile) ticketReplyFile.value = '';
 }
 
 async function sendTicketReply() {
     if (!currentTicketId) return;
-    const message = document.getElementById('ticketReplyText').value.trim();
-    if (!message) return;
+
+    const messageEl = document.getElementById('ticketReplyText');
+    const fileEl = document.getElementById('ticketReplyFile');
+    const message = messageEl.value.trim();
+    const file = fileEl?.files?.[0] || null;
+
+    if (!message && !file) {
+        showToast('Yan\u0131t veya dosya gerekli.', 'warning');
+        return;
+    }
+
     try {
+        const formData = new FormData();
+        formData.append('message', message);
+        if (file) formData.append('file', file);
+
         const res = await fetch(`/api/support/tickets/${currentTicketId}/reply`, {
-            method: 'POST', credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message })
+            method: 'POST',
+            credentials: 'include',
+            body: formData
         });
-        if (!res.ok) throw new Error((await res.json()).error || 'Gönderilemedi');
-        document.getElementById('ticketReplyText').value = '';
-        openTicketDetail(currentTicketId);
-        loadMyTickets();
+
+        if (!res.ok) throw new Error((await res.json()).error || 'Yan\u0131t g\u00f6nderilemedi');
+
+        messageEl.value = '';
+        if (fileEl) fileEl.value = '';
+        showToast('Yan\u0131t g\u00f6nderildi.', 'success');
+        await openTicketDetail(currentTicketId);
+        await loadMyTickets();
     } catch (err) {
-        alert(err.message);
+        showToast(err.message, 'error');
     }
 }
 
@@ -1377,22 +1434,28 @@ async function submitNewTicket(e) {
     const message = document.getElementById('newTicketMessage').value.trim();
     const priority = document.getElementById('newTicketPriority').value;
     const btn = document.getElementById('newTicketSubmitBtn');
+
     btn.disabled = true;
-    btn.textContent = 'Gönderiliyor...';
+    btn.textContent = 'G\u00f6nderiliyor...';
+
     try {
         const res = await fetch('/api/support/tickets', {
-            method: 'POST', credentials: 'include',
+            method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ subject, message, priority })
         });
-        if (!res.ok) throw new Error((await res.json()).error || 'Gönderilemedi');
+
+        if (!res.ok) throw new Error((await res.json()).error || 'Talep g\u00f6nderilemedi');
+
         closeNewTicketModal();
-        loadMyTickets();
+        showToast('Destek talebi olu\u015fturuldu.', 'success');
+        await loadMyTickets();
     } catch (err) {
-        alert(err.message);
+        showToast(err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Gönder';
+        btn.textContent = 'G\u00f6nder';
     }
 }
 
