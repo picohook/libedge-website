@@ -267,23 +267,30 @@ function getPollinationsKey(env) {
   return env.POLLINATIONS_API_KEY || env.POLLINATIONS_KEY || '';
 }
 
-function buildAnnouncementImageUrl(title, summary, env) {
-  const prompt = cleanAnnouncementText(
+const ALLOWED_IMAGE_MODELS = ['flux', 'flux-realism', 'flux-anime', 'flux-3d', 'turbo'];
+
+function buildAnnouncementImageUrl(title, summary, env, options = {}) {
+  const basePrompt = cleanAnnouncementText(
     `${title}. ${summary || ''}. Premium educational technology announcement cover, modern editorial layout, clean corporate composition, no readable text, photorealistic marketing image`
   ).replace(/\s+/g, ' ');
+
+  const customPrompt = cleanAnnouncementText(options.custom_prompt);
+  const prompt = customPrompt || basePrompt;
+  const model = ALLOWED_IMAGE_MODELS.includes(options.model) ? options.model : 'flux';
 
   const url = new URL(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`);
   const key = getPollinationsKey(env);
   if (key) {
     url.searchParams.set('key', key);
   }
-  url.searchParams.set('model', 'flux');
+  url.searchParams.set('model', model);
   url.searchParams.set('width', '1200');
   url.searchParams.set('height', '630');
   url.searchParams.set('nologo', 'true');
 
   return {
     prompt,
+    model,
     imageUrl: url.toString()
   };
 }
@@ -2394,12 +2401,12 @@ app.post('/api/admin/announcements/ai/image', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
 
   try {
-    const { title, summary } = await c.req.json();
+    const { title, summary, model, custom_prompt } = await c.req.json();
     const cleanTitle = cleanAnnouncementText(title);
     if (!cleanTitle) return c.json({ error: 'Başlık zorunludur' }, 400);
 
-    const image = buildAnnouncementImageUrl(cleanTitle, summary, c.env);
-    return c.json({ success: true, image_url: image.imageUrl, prompt: image.prompt });
+    const image = buildAnnouncementImageUrl(cleanTitle, summary, c.env, { model, custom_prompt });
+    return c.json({ success: true, image_url: image.imageUrl, prompt: image.prompt, model: image.model });
   } catch (err) {
     console.error('Generate announcement image error:', err);
     return c.json({ error: err.message || 'Görsel oluşturulamadı' }, 500);

@@ -913,36 +913,55 @@
                 </div>
 
                 <div>
-                    <div class="bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-5 sticky top-4">
-                        <div class="flex items-start justify-between gap-3 mb-4">
+                    <div class="bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-5 sticky top-4 space-y-4">
+                        <h4 class="font-semibold text-gray-900">Kapak Görseli</h4>
+
+                        <!-- AI Görsel Üret -->
+                        <div class="bg-white rounded-xl border border-indigo-100 p-4 space-y-3">
+                            <p class="text-xs font-medium text-indigo-700 uppercase tracking-wide"><i class="fas fa-sparkles mr-1"></i>AI ile Üret</p>
                             <div>
-                                <h4 class="font-semibold text-gray-900">Kapak Görseli</h4>
-                                <p class="text-xs text-gray-500">Manuel URL ekleyin veya başlıktan AI görsel üretin.</p>
+                                <label class="block text-xs text-gray-600 mb-1">Model</label>
+                                <select id="announcementImageModel" class="w-full border p-2 rounded-lg text-sm">
+                                    <option value="flux">Flux — Genel amaçlı</option>
+                                    <option value="flux-realism">Flux Realism — Gerçekçi fotoğraf</option>
+                                    <option value="flux-3d">Flux 3D — 3D / render görünümü</option>
+                                    <option value="flux-anime">Flux Anime — İllüstrasyon tarzı</option>
+                                    <option value="turbo">Turbo — Hızlı (düşük kalite)</option>
+                                </select>
                             </div>
-                            <button type="button" id="announcementImageBtn" onclick="generateAnnouncementImage()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 whitespace-nowrap">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Prompt <span class="text-gray-400">(boş bırakılırsa başlık+özetden otomatik)</span></label>
+                                <textarea id="announcementImageCustomPrompt" rows="2" placeholder="Örn: futuristic library with glowing screens, blue tones, no text…" class="w-full border p-2 rounded-lg text-sm resize-none"></textarea>
+                            </div>
+                            <button type="button" id="announcementImageBtn" onclick="generateAnnouncementImage()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 w-full">
                                 <i class="fas fa-image mr-2"></i>AI Görsel Üret
                             </button>
                         </div>
 
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Görsel URL</label>
-                        <input type="url" id="announcementCoverImage" placeholder="https://..." class="w-full border p-3 rounded-xl mb-3" oninput="updateAnnouncementCoverPreview()">
+                        <!-- Kendi görselini yükle -->
+                        <div class="bg-white rounded-xl border border-green-100 p-4 space-y-2">
+                            <p class="text-xs font-medium text-green-700 uppercase tracking-wide"><i class="fas fa-upload mr-1"></i>Dosyadan Yükle</p>
+                            <label class="flex items-center gap-2 cursor-pointer border-2 border-dashed border-green-200 rounded-xl p-3 hover:bg-green-50 transition-colors">
+                                <i class="fas fa-cloud-upload-alt text-green-500 text-lg"></i>
+                                <span id="announcementUploadLabel" class="text-sm text-gray-500">JPG, PNG veya WEBP seçin</span>
+                                <input type="file" id="announcementImageFile" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="uploadAnnouncementImage()">
+                            </label>
+                            <div id="announcementUploadProgress" class="hidden text-xs text-green-600"><i class="fas fa-spinner fa-spin mr-1"></i>Yükleniyor…</div>
+                        </div>
 
-                        <div id="announcementImagePromptBox" class="hidden text-xs text-gray-500 bg-white/80 border border-white rounded-xl px-3 py-2 mb-3"></div>
+                        <!-- Manuel URL / önizleme -->
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">Görsel URL <span class="text-gray-400">(otomatik dolar veya el ile girin)</span></label>
+                            <input type="url" id="announcementCoverImage" placeholder="https://..." class="w-full border p-2 rounded-xl text-sm" oninput="updateAnnouncementCoverPreview()">
+                        </div>
+
+                        <div id="announcementImagePromptBox" class="hidden text-xs text-gray-500 bg-white/80 border border-white rounded-xl px-3 py-2"></div>
 
                         <div id="announcementCoverPreviewWrapper" class="hidden rounded-2xl overflow-hidden border border-white bg-white shadow-sm">
                             <img id="announcementCoverPreview" src="" alt="Duyuru kapak önizleme" class="w-full h-56 object-cover">
                         </div>
 
-                        <div class="mt-4 space-y-2 text-xs text-gray-600">
-                            <div class="flex items-start gap-2">
-                                <i class="fas fa-sparkles text-indigo-500 mt-0.5"></i>
-                                <span>AI görsel Pollinations.ai üzerinden duyuru başlığı ve özetine göre üretilir.</span>
-                            </div>
-                            <div class="flex items-start gap-2">
-                                <i class="fas fa-circle-info text-blue-500 mt-0.5"></i>
-                                <span>İngilizce alanlar boş kalırsa public sayfa Türkçe içeriğe geri düşer.</span>
-                            </div>
-                        </div>
+                        <p class="text-xs text-gray-400"><i class="fas fa-circle-info mr-1"></i>İngilizce alanlar boş kalırsa public sayfa Türkçe içeriğe geri düşer.</p>
                     </div>
                 </div>
             </div>
@@ -3728,6 +3747,9 @@ async function loadAnnouncements() {
 function resetAnnouncementForm() {
     document.getElementById('announcementId').value = '';
     document.getElementById('announcementAiImagePrompt').value = '';
+    document.getElementById('announcementImageCustomPrompt').value = '';
+    document.getElementById('announcementImageModel').value = 'flux';
+    document.getElementById('announcementUploadLabel').textContent = 'JPG, PNG veya WEBP seçin';
     document.getElementById('announcementTitle').value = '';
     document.getElementById('announcementCategory').value = 'general';
     document.getElementById('announcementPriority').value = 'medium';
@@ -3806,24 +3828,64 @@ async function callAnnouncementAiEndpoint(path, payload) {
 async function generateAnnouncementImage() {
     const title = document.getElementById('announcementTitle').value.trim();
     const summary = document.getElementById('announcementSummary').value.trim();
+    const model = document.getElementById('announcementImageModel').value;
+    const custom_prompt = document.getElementById('announcementImageCustomPrompt').value.trim();
 
-    if (!title) {
-        showToast('Önce duyuru başlığını girin', 'warning');
+    if (!title && !custom_prompt) {
+        showToast('Önce duyuru başlığını veya bir prompt girin', 'warning');
         return;
     }
 
     setAnnouncementActionLoading('announcementImageBtn', true, '<i class="fas fa-image mr-2"></i>AI Görsel Üret', '<i class="fas fa-spinner fa-spin mr-2"></i>Üretiliyor...');
 
     try {
-        const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/image', { title, summary });
+        const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/image', { title, summary, model, custom_prompt });
         document.getElementById('announcementCoverImage').value = data.image_url || '';
         document.getElementById('announcementAiImagePrompt').value = data.prompt || '';
         updateAnnouncementCoverPreview();
-        showToast('AI kapak görseli hazırlandı', 'success');
+        showToast(`AI kapak görseli hazırlandı (${data.model || model})`, 'success');
     } catch (err) {
         showToast(err.message || 'Görsel üretilemedi', 'error');
     } finally {
         setAnnouncementActionLoading('announcementImageBtn', false, '<i class="fas fa-image mr-2"></i>AI Görsel Üret', '<i class="fas fa-spinner fa-spin mr-2"></i>Üretiliyor...');
+    }
+}
+
+async function uploadAnnouncementImage() {
+    const input = document.getElementById('announcementImageFile');
+    const file = input.files[0];
+    if (!file) return;
+
+    const label = document.getElementById('announcementUploadLabel');
+    const progress = document.getElementById('announcementUploadProgress');
+
+    label.classList.add('hidden');
+    progress.classList.remove('hidden');
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch(`${API_BASE}/api/upload`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Yükleme başarısız');
+
+        document.getElementById('announcementCoverImage').value = data.url || '';
+        document.getElementById('announcementAiImagePrompt').value = '';
+        updateAnnouncementCoverPreview();
+        label.textContent = file.name;
+        showToast('Görsel yüklendi', 'success');
+    } catch (err) {
+        showToast(err.message || 'Yükleme hatası', 'error');
+        label.textContent = 'JPG, PNG veya WEBP seçin';
+    } finally {
+        label.classList.remove('hidden');
+        progress.classList.add('hidden');
+        input.value = '';
     }
 }
 
