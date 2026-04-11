@@ -286,22 +286,24 @@ function buildAnnouncementImageUrl(title, summary, env) {
 }
 
 async function callPollinationsText(prompt, env) {
-  const url = new URL(`https://gen.pollinations.ai/text/${encodeURIComponent(prompt)}`);
   const key = getPollinationsKey(env);
-  if (key) {
-    url.searchParams.set('key', key);
-  }
-  url.searchParams.set('model', 'openai');
+  const body = {
+    model: 'openai',
+    messages: [{ role: 'user', content: prompt }],
+    jsonMode: true,
+    seed: Math.floor(Math.random() * 1e9)
+  };
+  if (key) body.key = key;
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      'Accept': 'text/plain, application/json'
-    }
+  const response = await fetch('https://text.pollinations.ai/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(body || `Pollinations request failed with ${response.status}`);
+    const errBody = await response.text().catch(() => '');
+    throw new Error(errBody || `Pollinations request failed with ${response.status}`);
   }
 
   return response.text();
