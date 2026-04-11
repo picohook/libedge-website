@@ -1164,7 +1164,7 @@ app.get('/api/admin/users', async (c) => {
                COALESCE(i.name, u.institution) as institution_name
         FROM users u
         LEFT JOIN institutions i ON u.institution_id = i.id
-        WHERE u.institution_id = ?
+        WHERE u.institution_id = ? AND u.role != 'super_admin'
         ORDER BY u.id DESC
       `).bind(adminInstitutionId).all();
     } else {
@@ -1174,7 +1174,7 @@ app.get('/api/admin/users', async (c) => {
                COALESCE(i.name, u.institution) as institution_name
         FROM users u
         LEFT JOIN institutions i ON u.institution_id = i.id
-        WHERE u.institution = ?
+        WHERE u.institution = ? AND u.role != 'super_admin'
         ORDER BY u.id DESC
       `).bind(adminInstitution).all();
     }
@@ -1221,8 +1221,8 @@ app.get('/api/admin/dashboard', async (c) => {
   const userScope = isSuper
     ? { clause: '', bindings: [] }
     : adminInstitutionId
-      ? { clause: 'WHERE u.institution_id = ?', bindings: [adminInstitutionId] }
-      : { clause: 'WHERE u.institution = ?', bindings: [adminInstitution] };
+      ? { clause: "WHERE u.institution_id = ? AND u.role != 'super_admin'", bindings: [adminInstitutionId] }
+      : { clause: "WHERE u.institution = ? AND u.role != 'super_admin'", bindings: [adminInstitution] };
 
   const institutionScope = isSuper
     ? { clause: '', bindings: [] }
@@ -1805,7 +1805,7 @@ app.get('/api/admin/my-institution', async (c) => {
   if (!payload.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
   const inst = await db.prepare(`
     SELECT id, name, domain, category,
-      (SELECT COUNT(*) FROM users WHERE institution = name) as user_count
+      (SELECT COUNT(*) FROM users WHERE institution = name AND role != 'super_admin') as user_count
     FROM institutions WHERE name = ?
   `).bind(payload.institution).first();
   if (!inst) return c.json({ error: 'Kurum bulunamadı' }, 404);
@@ -1824,7 +1824,7 @@ app.get('/api/admin/my-institution', async (c) => {
 
   const recentUsers = await db.prepare(`
     SELECT id, full_name, email, role, created_at
-    FROM users WHERE institution_id = ? OR institution = ?
+    FROM users WHERE (institution_id = ? OR institution = ?) AND role != 'super_admin'
     ORDER BY created_at DESC LIMIT 5
   `).bind(inst.id, inst.name).all();
 
@@ -1862,14 +1862,14 @@ app.get('/api/admin/institutions', async (c) => {
     if (adminInstitutionId) {
       inst = await db.prepare(`
         SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
-          (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
+          (SELECT COUNT(*) FROM users WHERE institution = inst.name AND role != 'super_admin') as user_count,
           (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
         FROM institutions inst WHERE inst.id = ?
       `).bind(adminInstitutionId).first();
     } else if (adminInstitution) {
       inst = await db.prepare(`
         SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
-          (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
+          (SELECT COUNT(*) FROM users WHERE institution = inst.name AND role != 'super_admin') as user_count,
           (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
         FROM institutions inst WHERE inst.name = ?
       `).bind(adminInstitution).first();
