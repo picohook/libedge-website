@@ -88,7 +88,7 @@
             from { opacity: 0; transform: translateY(-50px) scale(0.9); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
-        
+
         .priority-high { position: relative; }
         .priority-high:before {
             content: 'ðŸ”¥';
@@ -370,30 +370,30 @@ class AnnouncementManager {
             }
             : {
                 heroTitle: '<i class="fas fa-bullhorn mr-2"></i>Duyurular',
-                heroSubtitle: 'En güncel ürün haberleri, etkinlikler, kampanyalar ve sektör duyurularýndan haberdar olun.',
+                heroSubtitle: 'En gÃ¼ncel Ã¼rÃ¼n haberleri, etkinlikler, kampanyalar ve sektÃ¶r duyurularÄ±ndan haberdar olun.',
                 searchPlaceholder: 'Duyurularda ara...',
-                noResultsTitle: 'Duyuru bulunamadý',
-                noResultsBody: 'Arama kriterlerinizi deðiþtirmeyi deneyin.',
-                readMore: 'Devamýný oku',
-                previous: 'Önceki',
+                noResultsTitle: 'Duyuru bulunamadÄ±',
+                noResultsBody: 'Arama kriterlerinizi deÄŸiÅŸtirmeyi deneyin.',
+                readMore: 'DevamÄ±nÄ± oku',
+                previous: 'Ã–nceki',
                 next: 'Sonraki',
-                highPriority: 'Yüksek Öncelik',
-                views: 'görüntüleme',
+                highPriority: 'YÃ¼ksek Ã–ncelik',
+                views: 'gÃ¶rÃ¼ntÃ¼leme',
                 minutes: 'dk okuma',
-                share: 'Paylaþ',
+                share: 'PaylaÅŸ',
                 close: 'Kapat',
-                copied: 'Link panoya kopyalandý!',
-                errorTitle: 'Bir hata oluþtu',
-                errorBody: 'Duyurular yüklenirken bir sorun yaþandý.',
+                copied: 'Link panoya kopyalandÄ±!',
+                errorTitle: 'Bir hata oluÅŸtu',
+                errorBody: 'Duyurular yÃ¼klenirken bir sorun yaÅŸandÄ±.',
                 retry: 'Tekrar Dene',
                 categories: {
                     urgent: 'Acil',
-                    'new-product': 'Yeni Ürün',
-                    'product-update': 'Güncelleme',
+                    'new-product': 'Yeni ÃœrÃ¼n',
+                    'product-update': 'GÃ¼ncelleme',
                     event: 'Etkinlik',
-                    maintenance: 'Bakým',
+                    maintenance: 'BakÄ±m',
                     general: 'Genel',
-                    all: 'Tümü'
+                    all: 'TÃ¼mÃ¼'
                 }
             };
     }
@@ -437,7 +437,7 @@ class AnnouncementManager {
         if (heroTitle) heroTitle.innerHTML = ui.heroTitle;
         if (heroSubtitle) heroSubtitle.textContent = ui.heroSubtitle;
         if (searchInput) searchInput.placeholder = ui.searchPlaceholder;
-        if (pageLanguageToggleBtn) pageLanguageToggleBtn.textContent = this.currentLanguage === 'tr' ? 'English' : 'Türkçe';
+        if (pageLanguageToggleBtn) pageLanguageToggleBtn.textContent = this.currentLanguage === 'tr' ? 'English' : 'TÃ¼rkÃ§e';
         if (shareBtn) shareBtn.innerHTML = `<i class="fas fa-share-alt mr-2"></i>${ui.share}`;
         if (closeBtn) closeBtn.textContent = ui.close;
 
@@ -445,8 +445,8 @@ class AnnouncementManager {
             const options = sortSelect.querySelectorAll('option');
             if (options[0]) options[0].textContent = this.currentLanguage === 'en' ? 'Newest' : 'En Yeni';
             if (options[1]) options[1].textContent = this.currentLanguage === 'en' ? 'Oldest' : 'En Eski';
-            if (options[2]) options[2].textContent = this.currentLanguage === 'en' ? 'Priority' : 'Öncelik';
-            if (options[3]) options[3].textContent = this.currentLanguage === 'en' ? 'Title (A-Z)' : 'Baþlýk (A-Z)';
+            if (options[2]) options[2].textContent = this.currentLanguage === 'en' ? 'Priority' : 'Ã–ncelik';
+            if (options[3]) options[3].textContent = this.currentLanguage === 'en' ? 'Title (A-Z)' : 'BaÅŸlÄ±k (A-Z)';
         }
 
         filterButtons.forEach(btn => {
