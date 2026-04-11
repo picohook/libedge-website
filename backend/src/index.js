@@ -2113,9 +2113,7 @@ app.post('/api/upload', async (c) => {
   await bucket.put(key, buf, {
     httpMetadata: { contentType: file.type || 'application/octet-stream' },
   });
-  const r2PublicUrl = c.env.R2_PUBLIC_URL;
-  const publicUrl = r2PublicUrl ? `${r2PublicUrl}/${key}` : `/api/files/${key}`;
-  return c.json({ success: true, url: publicUrl, key, name: file.name, type: ext, size: file.size });
+  return c.json({ success: true, url: `/api/files/${key}`, key, name: file.name, type: ext, size: file.size });
 });
 
 // ====================== KURUM KLASÖR CRUD ======================
