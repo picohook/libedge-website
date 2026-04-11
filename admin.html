@@ -4,8 +4,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Paneli - LibEdge</title>
-    <meta name="google-api-key" content="">
-    <meta name="google-client-id" content="">
     <link rel="stylesheet" href="assets/css/tailwind.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
@@ -424,10 +422,6 @@
                 class="upload-tab active-tab flex-1 py-2 px-3 rounded-md text-sm font-medium transition" id="tab-computer">
                 <i class="fas fa-laptop mr-1"></i> Bilgisayar
             </button>
-            <button type="button" onclick="switchUploadTab('gdrive')"
-                class="upload-tab flex-1 py-2 px-3 rounded-md text-sm font-medium transition" id="tab-gdrive">
-                <i class="fab fa-google-drive mr-1"></i> Google Drive
-            </button>
             <button type="button" onclick="switchUploadTab('url')"
                 class="upload-tab flex-1 py-2 px-3 rounded-md text-sm font-medium transition" id="tab-url">
                 <i class="fas fa-link mr-1"></i> URL
@@ -484,28 +478,6 @@
                         <div id="uploadProgressBar" class="bg-purple-600 h-2 rounded-full transition-all" style="width:0%"></div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Google Drive paneli -->
-            <div id="upload-panel-gdrive" class="hidden">
-                <div class="mb-3 p-4 bg-blue-50 rounded-lg text-center">
-                    <i class="fab fa-google-drive text-4xl text-blue-500 mb-2 block"></i>
-                    <p class="text-sm text-gray-600 mb-3">Google Drive'dan dosya seçin</p>
-                    <button type="button" onclick="openGooglePicker()"
-                        class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition inline-flex items-center gap-2">
-                        <img src="https://www.google.com/favicon.ico" class="w-4 h-4" alt="">
-                        Google Drive'ı Aç
-                    </button>
-                </div>
-                <div id="driveFilePreview" class="hidden mb-3 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <i class="fab fa-google-drive text-2xl text-blue-500"></i>
-                    <div class="flex-1 min-w-0">
-                        <p id="driveFileName" class="text-sm font-medium truncate"></p>
-                        <p class="text-xs text-gray-500">Google Drive dosyası seçildi</p>
-                    </div>
-                    <button type="button" onclick="clearDriveSelection()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
-                </div>
-                <p class="text-xs text-gray-400 text-center mt-2">Dosya "Bağlantıya sahip herkes görüntüleyebilir" paylaşımında olmalı</p>
             </div>
 
             <!-- URL paneli -->
@@ -2478,11 +2450,10 @@ async function loadAllAdminFiles() {
 
 let currentUploadTab = 'computer';
 let selectedFile = null;
-let selectedDriveFile = null;
 
 function switchUploadTab(tab) {
     currentUploadTab = tab;
-    ['computer', 'gdrive', 'url'].forEach(t => {
+    ['computer', 'url'].forEach(t => {  // ← 'gdrive' kaldırıldı
         document.getElementById(`upload-panel-${t}`)?.classList.toggle('hidden', t !== tab);
         document.getElementById(`tab-${t}`)?.classList.toggle('active-tab', t === tab);
     });
@@ -2527,101 +2498,11 @@ function formatFileSize(bytes) {
     return (bytes/(1024*1024)).toFixed(1) + ' MB';
 }
 
-// Google Drive Picker
-let pickerApiLoaded = false;
-let gisLoaded = false;
-
-function getGoogleDriveConfig() {
-    const metaApiKey = document.querySelector('meta[name="google-api-key"]')?.content?.trim();
-    const metaClientId = document.querySelector('meta[name="google-client-id"]')?.content?.trim();
-    const appConfig = window.__LIBEDGE_CONFIG || {};
-
-    return {
-        apiKey: window.GOOGLE_API_KEY || appConfig.googleApiKey || metaApiKey || '',
-        clientId: window.GOOGLE_CLIENT_ID || appConfig.googleClientId || metaClientId || ''
-    };
-}
-
-function loadGoogleApis() {
-    if (window.google?.accounts?.oauth2) {
-        gisLoaded = true;
-    }
-
-    if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]') && !gisLoaded) {
-        const gisScript = document.createElement('script');
-        gisScript.src = 'https://accounts.google.com/gsi/client';
-        gisScript.async = true;
-        gisScript.defer = true;
-        gisScript.onload = () => { gisLoaded = true; };
-        document.head.appendChild(gisScript);
-    }
-
-    if (window.gapi?.load) {
-        gapi.load('picker', () => { pickerApiLoaded = true; });
-        return;
-    }
-
-    if (!document.querySelector('script[src="https://apis.google.com/js/api.js"]')) {
-        const s = document.createElement('script');
-        s.src = 'https://apis.google.com/js/api.js';
-        s.onload = () => gapi.load('picker', () => { pickerApiLoaded = true; });
-        document.head.appendChild(s);
-    }
-}
-
-function openGooglePicker() {
-    const { apiKey, clientId } = getGoogleDriveConfig();
-    if (!apiKey || !clientId) {
-        showToast('Google Drive yapılandırması eksik. İsterseniz URL sekmesini kullanın.', 'warning');
-        switchUploadTab('url');
-        return;
-    }
-    if (!gisLoaded || !window.google?.accounts?.oauth2 || !pickerApiLoaded || !window.google?.picker) {
-        loadGoogleApis();
-        setTimeout(() => {
-            if (!window.google?.accounts?.oauth2 || !window.google?.picker) {
-                showToast('Google Drive entegrasyonu henüz yüklenemedi. İsterseniz URL sekmesini kullanın.', 'warning');
-                return;
-            }
-            openGooglePicker();
-        }, 1200);
-        return;
-    }
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: 'https://www.googleapis.com/auth/drive.readonly',
-        callback: (t) => {
-            if (t.error) return;
-            new google.picker.PickerBuilder()
-                .addView(google.picker.ViewId.DOCS)
-                .setOAuthToken(t.access_token)
-                .setDeveloperKey(apiKey)
-                .setCallback(pickerCallback)
-                .build().setVisible(true);
-        }
-    });
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-}
-
-function pickerCallback(data) {
-    if (data.action !== google.picker.Action.PICKED) return;
-    const doc = data.docs[0];
-    selectedDriveFile = { name: doc.name, url: `https://drive.google.com/file/d/${doc.id}/view` };
-    document.getElementById('driveFileName').textContent = doc.name;
-    document.getElementById('driveFilePreview').classList.remove('hidden');
-    if (!document.getElementById('adminFileName').value)
-        document.getElementById('adminFileName').value = doc.name.replace(/\.[^/.]+$/, '');
-}
-
-function clearDriveSelection() {
-    selectedDriveFile = null;
-    document.getElementById('driveFilePreview').classList.add('hidden');
-    document.getElementById('adminFileName').value = '';
-}
 
 function openAdminFileModal() {
     document.getElementById('adminFileModal').classList.remove('hidden');
-    loadGoogleApis();
+    // Google Drive kaldırıldı, API yüklemeye gerek yok
+    
     const instId = document.getElementById('institutionFilter')?.value;
     if (instId && instId !== 'all') {
         document.getElementById('adminFileInstitution').value = instId;
@@ -2639,7 +2520,6 @@ function closeAdminFileModal() {
     document.getElementById('adminFileModal').classList.add('hidden');
     document.getElementById('adminFileForm').reset();
     clearFileSelection();
-    clearDriveSelection();
     switchUploadTab('computer');
 }
 
@@ -2673,10 +2553,6 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
             fileUrl = uploadData.url;
             fileType = selectedFile.name.split('.').pop()?.toLowerCase() || 'other';
             document.getElementById('uploadProgressBar').style.width = '100%';
-        } else if (currentUploadTab === 'gdrive') {
-            if (!selectedDriveFile) { showToast('Lütfen bir Google Drive dosyası seçin.', 'warning'); return; }
-            fileUrl = selectedDriveFile.url; fileType = 'gdrive';
-            if (!fileName) fileName = selectedDriveFile.name;
         } else {
             fileUrl = document.getElementById('adminFileUrl').value.trim();
             if (!fileUrl) { showToast('Lütfen bir URL girin.', 'warning'); return; }
