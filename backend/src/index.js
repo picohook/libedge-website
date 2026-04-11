@@ -272,12 +272,15 @@ function buildAnnouncementImageUrl(title, summary, env) {
     `${title}. ${summary || ''}. Premium educational technology announcement cover, modern editorial layout, clean corporate composition, no readable text, photorealistic marketing image`
   ).replace(/\s+/g, ' ');
 
-  const url = new URL(`https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}`);
+  const url = new URL(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`);
   const key = getPollinationsKey(env);
   if (key) {
     url.searchParams.set('key', key);
   }
   url.searchParams.set('model', 'flux');
+  url.searchParams.set('width', '1200');
+  url.searchParams.set('height', '630');
+  url.searchParams.set('nologo', 'true');
 
   return {
     prompt,
