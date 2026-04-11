@@ -949,17 +949,18 @@
                             <div id="announcementUploadProgress" class="hidden text-xs text-green-600"><i class="fas fa-spinner fa-spin mr-1"></i>Yükleniyor…</div>
                         </div>
 
-                        <!-- Manuel URL / önizleme -->
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Görsel URL <span class="text-gray-400">(otomatik dolar veya el ile girin)</span></label>
-                            <input type="url" id="announcementCoverImage" placeholder="https://..." class="w-full border p-2 rounded-xl text-sm" oninput="updateAnnouncementCoverPreview()">
+                        <!-- Mevcut görsel / önizleme -->
+                        <div id="announcementCoverPreviewWrapper" class="hidden rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm relative">
+                            <button type="button" onclick="clearAnnouncementImage()" title="Görseli kaldır"
+                                class="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow">
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
                         </div>
 
                         <div id="announcementImagePromptBox" class="hidden text-xs text-gray-500 bg-white/80 border border-white rounded-xl px-3 py-2"></div>
 
-                        <div id="announcementCoverPreviewWrapper" class="hidden rounded-2xl overflow-hidden border border-white bg-white shadow-sm">
-                            <img id="announcementCoverPreview" src="" alt="Duyuru kapak önizleme" class="w-full h-56 object-cover">
-                        </div>
+                        <!-- Hidden field — relative veya absolute URL -->
+                        <input type="hidden" id="announcementCoverImage">
 
                         <p class="text-xs text-gray-400"><i class="fas fa-circle-info mr-1"></i>İngilizce alanlar boş kalırsa public sayfa Türkçe içeriğe geri düşer.</p>
                     </div>
@@ -3782,20 +3783,33 @@ function fillAnnouncementForm(a) {
 function updateAnnouncementCoverPreview() {
     const url = document.getElementById('announcementCoverImage').value.trim();
     const previewWrapper = document.getElementById('announcementCoverPreviewWrapper');
-    const preview = document.getElementById('announcementCoverPreview');
     const promptBox = document.getElementById('announcementImagePromptBox');
     const prompt = document.getElementById('announcementAiImagePrompt').value.trim();
 
     if (url) {
         previewWrapper.classList.remove('hidden');
-        // Show spinner while loading
-        previewWrapper.innerHTML = '<div class="w-full h-56 flex items-center justify-center bg-slate-50 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i></div>';
+        // Resolve relative paths to absolute for <img src>
+        const src = url.startsWith('http') ? url : window.location.origin + url;
+        previewWrapper.innerHTML = `
+            <button type="button" onclick="clearAnnouncementImage()" title="Görseli kaldır"
+                class="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+            <div id="announcementImgSpinner" class="w-full h-56 flex items-center justify-center bg-slate-50 text-slate-400">
+                <i class="fas fa-spinner fa-spin text-2xl"></i>
+            </div>`;
         const img = new Image();
         img.className = 'w-full h-56 object-cover';
         img.alt = 'Duyuru kapak önizleme';
-        img.onload = () => { previewWrapper.innerHTML = ''; previewWrapper.appendChild(img); };
-        img.onerror = () => { previewWrapper.innerHTML = '<div class="w-full h-56 flex items-center justify-center bg-red-50 text-red-400 text-sm"><i class="fas fa-exclamation-circle mr-2"></i>Görsel yüklenemedi</div>'; };
-        img.src = url;
+        img.onload = () => {
+            const spinner = document.getElementById('announcementImgSpinner');
+            if (spinner) spinner.replaceWith(img);
+        };
+        img.onerror = () => {
+            const spinner = document.getElementById('announcementImgSpinner');
+            if (spinner) spinner.innerHTML = '<i class="fas fa-exclamation-circle mr-2"></i>Görsel yüklenemedi';
+        };
+        img.src = src;
     } else {
         previewWrapper.classList.add('hidden');
         previewWrapper.innerHTML = '';
@@ -3808,6 +3822,14 @@ function updateAnnouncementCoverPreview() {
         promptBox.textContent = '';
         promptBox.classList.add('hidden');
     }
+}
+
+function clearAnnouncementImage() {
+    document.getElementById('announcementCoverImage').value = '';
+    document.getElementById('announcementAiImagePrompt').value = '';
+    document.getElementById('announcementImageCustomPrompt').value = '';
+    document.getElementById('announcementUploadLabel').textContent = 'JPG, PNG veya WEBP seçin';
+    updateAnnouncementCoverPreview();
 }
 
 function setAnnouncementActionLoading(buttonId, loading, idleHtml, loadingHtml) {
