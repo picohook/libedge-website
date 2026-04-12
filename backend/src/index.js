@@ -2475,8 +2475,8 @@ app.get('/api/institution/folder/:id', async (c) => {
 async function handleManagedUpload(c) {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
-  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
-    return c.json({ error: 'Yetkisiz' }, 403);
+  if (auth.user.role !== 'super_admin') {
+    return c.json({ error: 'Sadece Super Admin dosya yukleyebilir' }, 403);
   }
 
   const formData = await c.req.formData();

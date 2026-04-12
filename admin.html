@@ -531,7 +531,7 @@
         </div>
 
         <form id="shareFileForm">
-            <div class="mb-3">
+            <div id="shareRecipientTypeGroup" class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Alıcı Tipi</label>
                 <select id="shareRecipientType" class="w-full border p-2 rounded">
                     <option value="user">Kullanıcı</option>
@@ -1427,6 +1427,7 @@ async function checkAdminAuth() {
         }
         if (isAdmin) {
             show('myInstitutionTab');
+            hide('addFileBtnAdmin');
         }
         return true;
     } catch (err) {
@@ -2354,7 +2355,7 @@ function adminGoRoot() {
 // CRUD
 let currentShareFile = null;
 
-async function shareAdminFile(fileId, fileName) {
+async function legacyShareAdminFilePrompt(fileId, fileName) { return;
     const recipient = prompt('Alıcı kullanıcı ID veya kurum ID girin. Örnek: user:12 veya institution:5', 'user:');
     if (!recipient) return;
 
@@ -2394,6 +2395,7 @@ function closeShareFileModal() {
 
 function toggleShareRecipientFields() {
     const type = document.getElementById('shareRecipientType')?.value || 'user';
+    document.getElementById('shareRecipientTypeGroup')?.classList.toggle('hidden', currentAdmin?.role === 'admin');
     document.getElementById('shareUserGroup')?.classList.toggle('hidden', type !== 'user');
     document.getElementById('shareInstitutionGroup')?.classList.toggle('hidden', type !== 'institution');
     document.getElementById('shareInstitutionFilterGroup')?.classList.toggle('hidden', type !== 'institution');
@@ -2646,6 +2648,10 @@ function formatFileSize(bytes) {
 
 
 function openAdminFileModal() {
+    if (currentAdmin?.role !== 'super_admin') {
+        showToast('Dosya yükleme sadece Super Admin yetkisindedir.', 'warning');
+        return;
+    }
     document.getElementById('adminFileModal').classList.remove('hidden');
     // Google Drive kaldırıldı, API yüklemeye gerek yok
     
@@ -2739,7 +2745,9 @@ document.getElementById('shareFileForm')?.addEventListener('submit', async (e) =
         return;
     }
 
-    const type = document.getElementById('shareRecipientType').value;
+    const type = currentAdmin?.role === 'admin'
+        ? 'user'
+        : document.getElementById('shareRecipientType').value;
     const id = type === 'user'
         ? Number(document.getElementById('shareUserId').value)
         : Number(document.getElementById('shareInstitutionId').value);
