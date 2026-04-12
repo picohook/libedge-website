@@ -331,7 +331,7 @@
     <div class="bg-white rounded-xl p-6 w-full max-w-md">
         <h3 class="text-xl font-bold mb-4">Yeni Klasör</h3>
         <form id="addFolderForm">
-            <div class="mb-3">
+            <div id="folderVisibilityGroup" class="mb-3">
                 <input type="text" id="folderName" placeholder="Klasör Adı" class="w-full border p-2 rounded" required>
             </div>
             <div class="mb-3">
@@ -1018,8 +1018,15 @@ function updateBackButton() {
 }
 
 // ====================== MODAL FONKSİYONLARI ======================
-function openFolderModal() { document.getElementById('addFolderModal').classList.remove('hidden'); }
-function closeFolderModal() { document.getElementById('addFolderModal').classList.add('hidden'); document.getElementById('addFolderForm').reset(); }
+function openFolderModal() {
+    document.getElementById('folderVisibilityGroup')?.classList.toggle('hidden', isProfileUserMode());
+    document.getElementById('addFolderModal').classList.remove('hidden');
+}
+function closeFolderModal() {
+    document.getElementById('addFolderModal').classList.add('hidden');
+    document.getElementById('addFolderForm').reset();
+    document.getElementById('folderVisibilityGroup')?.classList.remove('hidden');
+}
 function openFileModal() {
     if (window.currentUser?.role !== 'super_admin') {
         showToast('Dosya yükleme sadece Super Admin yetkisindedir.', 'warning');
@@ -1082,6 +1089,7 @@ function formatFileSize(bytes) {
 
 // ====================== CRUD İŞLEMLERİ ======================
 document.getElementById('addFolderForm')?.addEventListener('submit', async (e) => {
+    if (isProfileUserMode()) return;
     e.preventDefault();
     const folderName = document.getElementById('folderName').value.trim();
     const isPublic = parseInt(document.getElementById('folderVisibility').value);
