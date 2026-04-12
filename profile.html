@@ -1268,7 +1268,7 @@ async function deleteUserFile(fileId) {
 function hydrateInstitutionFileActions(files) {
     if (!['admin', 'super_admin'].includes(window.currentUser?.role)) return;
 
-    const institutionId = Number(window.currentUser?.institution_id || 0);
+    const institutionId = window.currentUser?.institution_id || window.currentUser?.institution || '';
     const canRename = window.currentUser?.role === 'super_admin';
     const actionGroups = document.querySelectorAll('#filesList .flex.gap-2.ml-2');
 
@@ -1279,7 +1279,7 @@ function hydrateInstitutionFileActions(files) {
         const moveBtn = document.createElement('button');
         moveBtn.type = 'button';
         moveBtn.className = 'text-slate-500 hover:text-slate-700';
-        moveBtn.title = 'Taşı';
+        moveBtn.title = 'Tasi';
         moveBtn.innerHTML = '<i class="fas fa-folder-open"></i>';
         moveBtn.onclick = () => moveInstitutionFileRef(file.id, institutionId);
 
@@ -1323,7 +1323,7 @@ async function moveInstitutionFileRef(refId, institutionId) {
         return;
     }
 
-    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${institutionId}`, {
+    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(institutionId)}`, {
         credentials: 'include'
     });
     const collections = res.ok ? await res.json() : [];
