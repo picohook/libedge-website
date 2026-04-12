@@ -2289,7 +2289,7 @@ async function loadAdminFiles() {
                     </div>
                 </div>
                 <div class="flex items-center gap-2 ml-2">
-                    <button onclick="shareAdminFile(${file.file_id || file.id}, '${escapeHtml(file.file_name)}')" 
+                    <button onclick="shareAdminFile(${file.source_file_id || file.file_id || file.id}, '${escapeHtml(file.file_name)}')" 
                         class="text-emerald-500 hover:text-emerald-700 transition" 
                         title="Paylaş">
                         <i class="fas fa-share-alt"></i>

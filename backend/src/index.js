@@ -3633,10 +3633,12 @@ app.post('/api/files/share', async (c) => {
 
   const shareIds = [];
   let recipientCount = 0;
+  let validFileCount = 0;
 
   for (const fileId of file_ids.map(Number)) {
     const stored = await getStoredFileById(db, fileId);
     if (!stored) continue;
+    validFileCount++;
 
     const shareResult = await db.prepare(`
       INSERT INTO file_shares (file_id, from_user_id, message, expires_at, created_at, is_revoked)
@@ -3668,6 +3670,10 @@ app.post('/api/files/share', async (c) => {
       );
       recipientCount++;
     }
+  }
+
+  if (!validFileCount) {
+    return c.json({ error: 'Paylasilabilir dosya bulunamadi' }, 400);
   }
 
   return c.json({ success: true, share_ids: shareIds, recipient_count: recipientCount });
