@@ -1089,8 +1089,29 @@ function formatFileSize(bytes) {
 
 // ====================== CRUD İŞLEMLERİ ======================
 document.getElementById('addFolderForm')?.addEventListener('submit', async (e) => {
-    if (isProfileUserMode()) return;
     e.preventDefault();
+    if (isProfileUserMode()) {
+        const folderName = document.getElementById('folderName').value.trim();
+        if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
+
+        const res = await fetch(`${API_BASE}/api/user/collections`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name: folderName, parent_id: currentFolderId })
+        });
+
+        if (res.ok) {
+            showToast('Klasör başarıyla oluşturuldu!', 'success');
+            closeFolderModal();
+            loadFolders(currentFolderId);
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'İşlem başarısız oldu!', 'error');
+        }
+        return;
+    }
+
     const folderName = document.getElementById('folderName').value.trim();
     const isPublic = parseInt(document.getElementById('folderVisibility').value);
     if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
@@ -1238,28 +1259,7 @@ async function deleteUserFile(fileId) {
 }
 
 document.getElementById('addFolderForm')?.addEventListener('submit', async (e) => {
-    if (!isProfileUserMode()) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-
-    const folderName = document.getElementById('folderName').value.trim();
-    if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
-
-    const res = await fetch(`${API_BASE}/api/user/collections`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ name: folderName, parent_id: currentFolderId })
-    });
-
-    if (res.ok) {
-        showToast('Klasör başarıyla oluşturuldu!', 'success');
-        closeFolderModal();
-        loadFolders(currentFolderId);
-    } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'İşlem başarısız oldu!', 'error');
-    }
+    return;
 }, true);
 
 // Profil güncelleme
