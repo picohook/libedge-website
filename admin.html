@@ -2294,6 +2294,16 @@ async function loadAdminFiles() {
                         title="Paylaş">
                         <i class="fas fa-share-alt"></i>
                     </button>
+                    <button onclick="renameInstitutionFileRef(${file.id}, '${escapeHtml(file.file_name)}')" 
+                        class="text-amber-500 hover:text-amber-700 transition" 
+                        title="Yeniden AdlandÄ±r">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <button onclick="moveInstitutionFileRef(${file.id}, ${institutionId})" 
+                        class="text-slate-500 hover:text-slate-700 transition" 
+                        title="TaÅŸÄ±">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
                     <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})" 
                         class="text-blue-500 hover:text-blue-700 transition" 
                         title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
@@ -2421,6 +2431,58 @@ async function loadShareTargets() {
     const currentInstitution = document.getElementById('institutionFilter')?.value;
     if (currentInstitution && currentInstitution !== 'all') {
         document.getElementById('shareInstitutionId').value = currentInstitution;
+    }
+}
+
+async function renameInstitutionFileRef(refId, currentName) {
+    const displayName = prompt('Yeni dosya adı:', currentName);
+    if (!displayName || !displayName.trim()) return;
+
+    const res = await fetch(`${API_BASE}/api/collection_files/${refId}/rename`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ display_name: displayName.trim() })
+    });
+
+    if (res.ok) {
+        showToast('Dosya adı güncellendi.', 'success');
+        loadAdminFiles();
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Dosya adı güncellenemedi.', 'error');
+    }
+}
+
+async function moveInstitutionFileRef(refId, institutionId) {
+    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${institutionId}`, {
+        credentials: 'include'
+    });
+    const collections = res.ok ? await res.json() : [];
+    const folders = (collections || []).filter((item) => item.kind === 'folder');
+
+    if (!folders.length) {
+        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
+        return;
+    }
+
+    const options = folders.map((item) => `${item.id}: ${item.name}`).join('\n');
+    const target = prompt(`Hedef klasör ID seçin:\n${options}`);
+    if (!target || Number.isNaN(Number(target))) return;
+
+    const moveRes = await fetch(`${API_BASE}/api/collection_files/${refId}/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ target_collection_id: Number(target) })
+    });
+
+    if (moveRes.ok) {
+        showToast('Dosya taşındı.', 'success');
+        loadAdminFiles();
+    } else {
+        const data = await moveRes.json().catch(() => ({}));
+        showToast(data.error || 'Dosya taşınamadı.', 'error');
     }
 }
 

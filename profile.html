@@ -947,6 +947,7 @@ async function loadFiles(folderId = null) {
                 </div>` : ''}
             </div>
         `).join('') : '<p class="text-gray-400 text-center py-8">Bu klasörde dosya yok.</p>';
+        hydrateInstitutionFileActions(files);
     } catch (err) {
         console.error('loadFiles error:', err);
         container.innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenemedi.</p>';
@@ -1255,6 +1256,93 @@ async function deleteUserFile(fileId) {
         loadFiles(currentFolderId);
     } else {
         showToast('Dosya kaldırılamadı.', 'error');
+    }
+}
+
+function hydrateInstitutionFileActions(files) {
+    if (!['admin', 'super_admin'].includes(window.currentUser?.role)) return;
+
+    const institutionId = Number(window.currentUser?.institution_id || 0);
+    const actionGroups = document.querySelectorAll('#filesList .flex.gap-2.ml-2');
+
+    actionGroups.forEach((group, index) => {
+        const file = files[index];
+        if (!file || group.dataset.enhanced === 'true') return;
+
+        const renameBtn = document.createElement('button');
+        renameBtn.type = 'button';
+        renameBtn.className = 'text-amber-500 hover:text-amber-700';
+        renameBtn.title = 'Yeniden adlandır';
+        renameBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+        renameBtn.onclick = () => renameInstitutionFileRef(file.id, file.file_name);
+
+        const moveBtn = document.createElement('button');
+        moveBtn.type = 'button';
+        moveBtn.className = 'text-slate-500 hover:text-slate-700';
+        moveBtn.title = 'Taşı';
+        moveBtn.innerHTML = '<i class="fas fa-folder-open"></i>';
+        moveBtn.onclick = () => moveInstitutionFileRef(file.id, institutionId);
+
+        group.insertBefore(moveBtn, group.firstChild);
+        group.insertBefore(renameBtn, group.firstChild);
+        group.dataset.enhanced = 'true';
+    });
+}
+
+async function renameInstitutionFileRef(refId, currentName) {
+    const displayName = prompt('Yeni dosya adı:', currentName);
+    if (!displayName || !displayName.trim()) return;
+
+    const res = await fetch(`${API_BASE}/api/collection_files/${refId}/rename`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ display_name: displayName.trim() })
+    });
+
+    if (res.ok) {
+        showToast('Dosya adı güncellendi.', 'success');
+        loadFiles(currentFolderId);
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Dosya adı güncellenemedi.', 'error');
+    }
+}
+
+async function moveInstitutionFileRef(refId, institutionId) {
+    if (!institutionId) {
+        showToast('Kurum bilgisi bulunamadı.', 'error');
+        return;
+    }
+
+    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${institutionId}`, {
+        credentials: 'include'
+    });
+    const collections = res.ok ? await res.json() : [];
+    const folders = (collections || []).filter((item) => item.kind === 'folder');
+
+    if (!folders.length) {
+        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
+        return;
+    }
+
+    const options = folders.map((item) => `${item.id}: ${item.name}`).join('\n');
+    const target = prompt(`Hedef klasör ID seçin:\n${options}`);
+    if (!target || Number.isNaN(Number(target))) return;
+
+    const moveRes = await fetch(`${API_BASE}/api/collection_files/${refId}/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ target_collection_id: Number(target) })
+    });
+
+    if (moveRes.ok) {
+        showToast('Dosya taşındı.', 'success');
+        loadFiles(currentFolderId);
+    } else {
+        const data = await moveRes.json().catch(() => ({}));
+        showToast(data.error || 'Dosya taşınamadı.', 'error');
     }
 }
 
