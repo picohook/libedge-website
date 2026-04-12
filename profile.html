@@ -838,7 +838,8 @@ async function loadFolders(parentId = null) {
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) throw new Error(`${res.status}`);
         const folders = await res.json();
-        const isAdmin = ['admin','super_admin'].includes(window.currentUser?.role);
+        const canManageFolders = ['admin','super_admin'].includes(window.currentUser?.role);
+        const canUploadFiles = window.currentUser?.role === 'super_admin';
 
         container.innerHTML = folders.length ? folders.map(f => `
             <div class="border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-yellow-50 text-center group relative"
@@ -849,7 +850,7 @@ async function loadFolders(parentId = null) {
                 ${f.is_public
                     ? '<span class="text-xs text-green-600"><i class="fas fa-globe mr-1"></i>Açık</span>'
                     : '<span class="text-xs text-gray-400"><i class="fas fa-lock mr-1"></i>İçi</span>'}
-                ${isAdmin ? `
+                ${canManageFolders ? `
                 <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
                     <button type="button" onclick="event.stopPropagation();deleteFolder(${f.id})"
                         class="text-gray-300 hover:text-red-500 transition" title="Sil" aria-label="Klasörü sil">
@@ -863,8 +864,8 @@ async function loadFolders(parentId = null) {
         updateBreadcrumb();
         updateBackButton();
 
-        document.getElementById('addFolderBtn')?.classList.toggle('hidden', !isAdmin);
-        document.getElementById('addFileBtn')?.classList.toggle('hidden', !isAdmin);
+        document.getElementById('addFolderBtn')?.classList.toggle('hidden', !canManageFolders);
+        document.getElementById('addFileBtn')?.classList.toggle('hidden', !canUploadFiles);
     } catch (err) {
         console.error('loadFolders error:', err);
         container.innerHTML = '<p class="text-red-500 text-center col-span-full py-4">Klasörler yüklenemedi.</p>';
@@ -1020,6 +1021,10 @@ function updateBackButton() {
 function openFolderModal() { document.getElementById('addFolderModal').classList.remove('hidden'); }
 function closeFolderModal() { document.getElementById('addFolderModal').classList.add('hidden'); document.getElementById('addFolderForm').reset(); }
 function openFileModal() {
+    if (window.currentUser?.role !== 'super_admin') {
+        showToast('Dosya yükleme sadece Super Admin yetkisindedir.', 'warning');
+        return;
+    }
     document.getElementById('addFileModal').classList.remove('hidden');
     switchUploadTab('computer');
 }
