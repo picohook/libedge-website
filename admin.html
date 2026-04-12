@@ -517,6 +517,63 @@
         </form>
     </div>
 </div>
+
+<div id="shareFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-screen overflow-y-auto">
+        <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+                <h3 class="text-xl font-bold">Dosya Paylaş</h3>
+                <p id="shareFileName" class="text-sm text-gray-500 mt-1"></p>
+            </div>
+            <button type="button" onclick="closeShareFileModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form id="shareFileForm">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Alıcı Tipi</label>
+                <select id="shareRecipientType" class="w-full border p-2 rounded">
+                    <option value="user">Kullanıcı</option>
+                    <option value="institution">Kurum</option>
+                </select>
+            </div>
+
+            <div id="shareUserGroup" class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kullanıcı</label>
+                <select id="shareUserId" class="w-full border p-2 rounded">
+                    <option value="">Kullanıcı seçin</option>
+                </select>
+            </div>
+
+            <div id="shareInstitutionGroup" class="mb-3 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum</label>
+                <select id="shareInstitutionId" class="w-full border p-2 rounded">
+                    <option value="">Kurum seçin</option>
+                </select>
+            </div>
+
+            <div id="shareInstitutionFilterGroup" class="mb-3 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum İçin Hedef</label>
+                <select id="shareInstitutionFilter" class="w-full border p-2 rounded">
+                    <option value="all">Tüm kullanıcılar</option>
+                    <option value="admin">Sadece adminler</option>
+                    <option value="user">Sadece kullanıcılar</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Mesaj</label>
+                <textarea id="shareMessage" rows="3" class="w-full border p-2 rounded" placeholder="İsteğe bağlı kısa not"></textarea>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" id="shareFileSubmitBtn" class="btn btn-primary flex-1">Gönder</button>
+                <button type="button" onclick="closeShareFileModal()" class="btn bg-gray-300 flex-1">İptal</button>
+            </div>
+        </form>
+    </div>
+</div>
     <!-- Products Tab -->
     <div id="tab-products" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
@@ -2295,6 +2352,8 @@ function adminGoRoot() {
 }
 
 // CRUD
+let currentShareFile = null;
+
 async function shareAdminFile(fileId, fileName) {
     const recipient = prompt('Alıcı kullanıcı ID veya kurum ID girin. Örnek: user:12 veya institution:5', 'user:');
     if (!recipient) return;
@@ -2325,6 +2384,52 @@ async function shareAdminFile(fileId, fileName) {
         const data = await res.json().catch(() => ({}));
         showToast(data.error || 'Paylaşım başarısız oldu.', 'error');
     }
+}
+
+function closeShareFileModal() {
+    document.getElementById('shareFileModal').classList.add('hidden');
+    document.getElementById('shareFileForm')?.reset();
+    currentShareFile = null;
+}
+
+function toggleShareRecipientFields() {
+    const type = document.getElementById('shareRecipientType')?.value || 'user';
+    document.getElementById('shareUserGroup')?.classList.toggle('hidden', type !== 'user');
+    document.getElementById('shareInstitutionGroup')?.classList.toggle('hidden', type !== 'institution');
+    document.getElementById('shareInstitutionFilterGroup')?.classList.toggle('hidden', type !== 'institution');
+}
+
+async function loadShareTargets() {
+    const [usersRes, institutionsRes] = await Promise.all([
+        fetch('/api/admin/users', { credentials: 'include' }),
+        fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' })
+    ]);
+
+    const users = usersRes.ok ? await usersRes.json() : [];
+    const institutions = institutionsRes.ok ? await institutionsRes.json() : [];
+
+    document.getElementById('shareUserId').innerHTML =
+        '<option value="">Kullanıcı seçin</option>' +
+        users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name || u.email)}${u.institution_name ? ` (${escapeHtml(u.institution_name)})` : ''}</option>`).join('');
+
+    document.getElementById('shareInstitutionId').innerHTML =
+        '<option value="">Kurum seçin</option>' +
+        institutions.map(i => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('');
+
+    const currentInstitution = document.getElementById('institutionFilter')?.value;
+    if (currentInstitution && currentInstitution !== 'all') {
+        document.getElementById('shareInstitutionId').value = currentInstitution;
+    }
+}
+
+async function shareAdminFile(fileId, fileName) {
+    currentShareFile = { fileId, fileName };
+    document.getElementById('shareFileName').textContent = fileName || 'Seçili dosya';
+    document.getElementById('shareMessage').value = '';
+    document.getElementById('shareRecipientType').value = 'user';
+    toggleShareRecipientFields();
+    await loadShareTargets();
+    document.getElementById('shareFileModal').classList.remove('hidden');
 }
 
 async function toggleAdminFilePublic(fileId, currentStatus) {
@@ -2626,6 +2731,58 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
 
 // Buton işlemleri
 document.getElementById('addFileBtnAdmin')?.addEventListener('click', openAdminFileModal);
+document.getElementById('shareRecipientType')?.addEventListener('change', toggleShareRecipientFields);
+document.getElementById('shareFileForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentShareFile?.fileId) {
+        showToast('Paylaşılacak dosya bulunamadı.', 'error');
+        return;
+    }
+
+    const type = document.getElementById('shareRecipientType').value;
+    const id = type === 'user'
+        ? Number(document.getElementById('shareUserId').value)
+        : Number(document.getElementById('shareInstitutionId').value);
+    const filter = type === 'institution'
+        ? document.getElementById('shareInstitutionFilter').value
+        : 'all';
+
+    if (Number.isNaN(id) || !id) {
+        showToast(type === 'user' ? 'Lütfen bir kullanıcı seçin.' : 'Lütfen bir kurum seçin.', 'warning');
+        return;
+    }
+
+    const submitBtn = document.getElementById('shareFileSubmitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Gönderiliyor...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/files/share`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                file_ids: [currentShareFile.fileId],
+                recipients: [{ type, id, filter }],
+                message: document.getElementById('shareMessage').value.trim()
+            })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            showToast(data.error || 'Paylaşım başarısız oldu.', 'error');
+            return;
+        }
+
+        showToast(`Dosya paylaşıldı. ${data.recipient_count || 0} alıcı işlendi.`, 'success');
+        closeShareFileModal();
+    } catch (err) {
+        showToast(err.message || 'Paylaşım sırasında hata oluştu.', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Gönder';
+    }
+});
 
 // Dosya ikonu helper
 function getFileIcon(fileType) {
