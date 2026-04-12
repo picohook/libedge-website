@@ -420,6 +420,320 @@ async function isAdmin(c) {
   return role === 'admin' || role === 'super_admin';
 }
 
+const MANAGED_FILE_EXTENSIONS = new Set([
+  'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg',
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+  'zip', 'txt', 'csv'
+]);
+
+function normalizeExtension(fileName = '', fallback = 'bin') {
+  const ext = String(fileName || '').split('.').pop()?.toLowerCase().trim();
+  return ext || fallback;
+}
+
+function normalizePublicBaseUrl(url = '') {
+  return String(url || '').trim().replace(/\/+$/, '');
+}
+
+function buildInternalFileUrl(fileKey) {
+  return `/api/files/${fileKey}`;
+}
+
+function buildManagedFileKey(hash, extension) {
+  return `files/${hash.slice(0, 2)}/${hash.slice(2, 4)}/${hash}.${extension}`;
+}
+
+function mapFileType(extension, mimeType = '') {
+  const ext = String(extension || '').toLowerCase().trim();
+  if (ext) return ext;
+  const subtype = String(mimeType || '').split('/')[1];
+  return subtype || 'other';
+}
+
+async function sha256Hex(arrayBuffer) {
+  const digest = await crypto.subtle.digest('SHA-256', arrayBuffer);
+  return Array.from(new Uint8Array(digest))
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function extractManagedFileKey(rawUrl, publicBaseUrl = '') {
+  const value = String(rawUrl || '').trim();
+  if (!value) return null;
+  if (value.startsWith('/api/files/')) return value.slice('/api/files/'.length);
+
+  const normalizedBase = normalizePublicBaseUrl(publicBaseUrl);
+  if (normalizedBase && value.startsWith(`${normalizedBase}/`)) {
+    return value.slice(normalizedBase.length + 1);
+  }
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.pathname.startsWith('/api/files/')) {
+      return parsed.pathname.slice('/api/files/'.length);
+    }
+    if (normalizedBase && value.startsWith(`${normalizedBase}/`)) {
+      return value.slice(normalizedBase.length + 1);
+    }
+  } catch (_) {
+    return null;
+  }
+
+  return null;
+}
+
+function canManageInstitutionScope(user, institution) {
+  if (!user || !institution) return false;
+  if (user.role === 'super_admin') return true;
+  if (user.role !== 'admin') return false;
+
+  return String(user.institution_id || '') === String(institution.id || '')
+    || (user.institution && institution.name && String(user.institution) === String(institution.name));
+}
+
+async function getInstitutionByIdentifier(db, identifier) {
+  if (/^\d+$/.test(String(identifier || '').trim())) {
+    return db.prepare(`SELECT id, name, domain, category, status, created_at FROM institutions WHERE id = ?`)
+      .bind(Number(identifier))
+      .first();
+  }
+
+  return db.prepare(`SELECT id, name, domain, category, status, created_at FROM institutions WHERE name = ?`)
+    .bind(identifier)
+    .first();
+}
+
+async function ensureInstitutionRootCollection(db, institutionId, createdBy = null) {
+  const existing = await db.prepare(`
+    SELECT id, parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by, created_at
+    FROM collections
+    WHERE scope_type = 'institution' AND scope_id = ? AND kind = 'root' AND is_active = 1
+    ORDER BY id ASC
+    LIMIT 1
+  `).bind(institutionId).first();
+
+  if (existing) return existing;
+
+  const result = await db.prepare(`
+    INSERT INTO collections (parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by)
+    VALUES (NULL, '__root__', 'institution', ?, 'root', 0, 1, 0, ?)
+  `).bind(institutionId, createdBy).run();
+
+  return db.prepare(`
+    SELECT id, parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by, created_at
+    FROM collections
+    WHERE id = ?
+  `).bind(result.meta?.last_row_id).first();
+}
+
+async function getActiveCollection(db, collectionId) {
+  return db.prepare(`
+    SELECT id, parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by, created_at
+    FROM collections
+    WHERE id = ? AND is_active = 1
+  `).bind(collectionId).first();
+}
+
+async function getInstitutionCollectionOrRoot(db, institutionId, folderId = null, createdBy = null) {
+  const root = await ensureInstitutionRootCollection(db, institutionId, createdBy);
+  if (!folderId) return root;
+
+  const folder = await getActiveCollection(db, folderId);
+  if (!folder || folder.scope_type !== 'institution' || String(folder.scope_id) !== String(institutionId)) {
+    return null;
+  }
+
+  return folder;
+}
+
+async function getStoredFileByKey(db, fileKey) {
+  return db.prepare(`
+    SELECT id, hash, file_key, original_name, file_size, mime_type, extension, uploaded_by, created_at
+    FROM files
+    WHERE file_key = ?
+  `).bind(fileKey).first();
+}
+
+async function getStoredFileById(db, fileId) {
+  return db.prepare(`
+    SELECT id, hash, file_key, original_name, file_size, mime_type, extension, uploaded_by, created_at
+    FROM files
+    WHERE id = ?
+  `).bind(fileId).first();
+}
+
+async function ensureStoredFileRecord(c, file, uploadedBy) {
+  const bucket = c.env.FILES_BUCKET;
+  if (!bucket) throw new Error('R2 bucket bagli degil');
+
+  const extension = normalizeExtension(file.name);
+  if (!MANAGED_FILE_EXTENSIONS.has(extension)) {
+    throw new Error('Desteklenmeyen dosya turu');
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const hash = await sha256Hex(arrayBuffer);
+  const db = c.env.DB;
+
+  let stored = await db.prepare(`
+    SELECT id, hash, file_key, original_name, file_size, mime_type, extension, uploaded_by, created_at
+    FROM files
+    WHERE hash = ?
+    LIMIT 1
+  `).bind(hash).first();
+
+  if (!stored) {
+    const fileKey = buildManagedFileKey(hash, extension);
+    await bucket.put(fileKey, arrayBuffer, {
+      httpMetadata: { contentType: file.type || 'application/octet-stream' }
+    });
+
+    const result = await db.prepare(`
+      INSERT INTO files (hash, file_key, original_name, file_size, mime_type, extension, uploaded_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(hash, fileKey, file.name, file.size || arrayBuffer.byteLength, file.type || 'application/octet-stream', extension, uploadedBy).run();
+
+    stored = await getStoredFileById(db, result.meta?.last_row_id);
+    return { stored, deduplicated: false };
+  }
+
+  return { stored, deduplicated: true };
+}
+
+async function countActiveReferences(db, fileId) {
+  const row = await db.prepare(`
+    SELECT COUNT(*) AS cnt
+    FROM collection_files
+    WHERE file_id = ? AND is_active = 1
+  `).bind(fileId).first();
+
+  return Number(row?.cnt || 0);
+}
+
+async function formatManagedFileResponse(db, refId) {
+  return db.prepare(`
+    SELECT
+      cf.id,
+      col.scope_id AS institution_id,
+      COALESCE(inst.name, '') AS institution_name,
+      cf.collection_id AS folder_id,
+      COALESCE(cf.display_name, f.original_name) AS file_name,
+      '/api/files/' || f.file_key AS file_url,
+      COALESCE(f.extension, '') AS file_type,
+      f.file_size,
+      COALESCE(cf.category, 'other') AS category,
+      cf.is_public,
+      cf.added_by AS uploaded_by,
+      cf.added_at AS uploaded_at,
+      u.full_name AS uploaded_by_name,
+      f.mime_type,
+      f.id AS source_file_id
+    FROM collection_files cf
+    JOIN files f ON f.id = cf.file_id
+    JOIN collections col ON col.id = cf.collection_id
+    LEFT JOIN institutions inst ON inst.id = col.scope_id
+    LEFT JOIN users u ON u.id = cf.added_by
+    WHERE cf.id = ?
+  `).bind(refId).first();
+}
+
+async function getInstitutionFileCount(db, institutionId) {
+  const row = await db.prepare(`
+    SELECT COUNT(*) AS cnt
+    FROM collection_files cf
+    JOIN collections col ON col.id = cf.collection_id
+    WHERE col.scope_type = 'institution'
+      AND col.scope_id = ?
+      AND col.is_active = 1
+      AND cf.is_active = 1
+  `).bind(institutionId).first();
+
+  return Number(row?.cnt || 0);
+}
+
+async function ensureUserRootCollection(db, userId) {
+  const existing = await db.prepare(`
+    SELECT id, user_id, parent_id, name, created_at, sort_order
+    FROM user_collections
+    WHERE user_id = ? AND parent_id IS NULL AND name = '__root__'
+    LIMIT 1
+  `).bind(userId).first();
+
+  if (existing) return existing;
+
+  const result = await db.prepare(`
+    INSERT INTO user_collections (user_id, parent_id, name, sort_order)
+    VALUES (?, NULL, '__root__', 0)
+  `).bind(userId).run();
+
+  return db.prepare(`
+    SELECT id, user_id, parent_id, name, created_at, sort_order
+    FROM user_collections
+    WHERE id = ?
+  `).bind(result.meta?.last_row_id).first();
+}
+
+async function getUserCollection(db, collectionId, userId = null) {
+  const row = await db.prepare(`
+    SELECT id, user_id, parent_id, name, created_at, sort_order
+    FROM user_collections
+    WHERE id = ?
+  `).bind(collectionId).first();
+
+  if (!row) return null;
+  if (userId && String(row.user_id) !== String(userId)) return null;
+  return row;
+}
+
+async function createNotification(db, userId, type, title, content = null, data = null) {
+  await db.prepare(`
+    INSERT INTO notifications (user_id, type, title, content, data, is_read, created_at)
+    VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+  `).bind(userId, type, title, content, data ? JSON.stringify(data) : null).run();
+}
+
+async function resolveShareRecipients(db, actor, recipients = []) {
+  const resolved = new Map();
+
+  for (const recipient of recipients) {
+    if (!recipient?.type) continue;
+
+    if (recipient.type === 'user' && recipient.id) {
+      const user = await db.prepare(`
+        SELECT id, full_name, email, institution_id, institution, role
+        FROM users
+        WHERE id = ?
+      `).bind(Number(recipient.id)).first();
+      if (!user) continue;
+      if (actor.role === 'admin' && String(user.institution_id || '') !== String(actor.institution_id || '')) continue;
+      resolved.set(String(user.id), user);
+      continue;
+    }
+
+    if (recipient.type === 'institution' && recipient.id) {
+      const institutionId = Number(recipient.id);
+      if (actor.role === 'admin' && String(actor.institution_id || '') !== String(institutionId)) continue;
+
+      let roleFilter = `AND role IN ('admin','user')`;
+      if (recipient.filter === 'admin') roleFilter = `AND role = 'admin'`;
+      if (recipient.filter === 'user') roleFilter = `AND role = 'user'`;
+
+      const users = await db.prepare(`
+        SELECT id, full_name, email, institution_id, institution, role
+        FROM users
+        WHERE institution_id = ?
+          ${roleFilter}
+      `).bind(institutionId).all();
+
+      for (const user of users.results || []) {
+        resolved.set(String(user.id), user);
+      }
+    }
+  }
+
+  return Array.from(resolved.values());
+}
+
 // ====================== RATE LIMITING ======================
 const rateLimitStore = new Map();
 
@@ -1810,11 +2124,6 @@ app.get('/api/admin/my-institution', async (c) => {
   `).bind(payload.institution).first();
   if (!inst) return c.json({ error: 'Kurum bulunamadı' }, 404);
 
-  const fileRow = await db.prepare(`
-    SELECT COUNT(*) as cnt FROM institution_files
-    WHERE institution_id = ? AND is_active = 1
-  `).bind(inst.id).first();
-
   const subRows = await db.prepare(`
     SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date
     FROM institution_subscriptions is2
@@ -1835,7 +2144,7 @@ app.get('/api/admin/my-institution', async (c) => {
 
   return c.json({
     ...inst,
-    file_count: fileRow?.cnt ?? 0,
+    file_count: await getInstitutionFileCount(db, inst.id),
     active_subscriptions: subRows.results || [],
     recent_users: recentUsers.results || [],
     open_ticket_count: openTickets?.cnt ?? 0
@@ -1850,11 +2159,14 @@ app.get('/api/admin/institutions', async (c) => {
   if (role === 'super_admin') {
     const institutions = await db.prepare(`
       SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
-        (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count,
-        (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
+        (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count
       FROM institutions inst ORDER BY inst.name
     `).all();
-    return c.json(institutions.results);
+    const rows = institutions.results || [];
+    for (const row of rows) {
+      row.file_count = await getInstitutionFileCount(db, row.id);
+    }
+    return c.json(rows);
   } else {
     const adminInstitutionId = await getUserInstitutionId(c);
     const adminInstitution = await getUserInstitution(c);
@@ -1862,17 +2174,18 @@ app.get('/api/admin/institutions', async (c) => {
     if (adminInstitutionId) {
       inst = await db.prepare(`
         SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
-          (SELECT COUNT(*) FROM users WHERE institution = inst.name AND role != 'super_admin') as user_count,
-          (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
+          (SELECT COUNT(*) FROM users WHERE institution = inst.name AND role != 'super_admin') as user_count
         FROM institutions inst WHERE inst.id = ?
       `).bind(adminInstitutionId).first();
     } else if (adminInstitution) {
       inst = await db.prepare(`
         SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
-          (SELECT COUNT(*) FROM users WHERE institution = inst.name AND role != 'super_admin') as user_count,
-          (SELECT COUNT(*) FROM institution_files WHERE institution_id = inst.id AND is_active = 1) as file_count
+          (SELECT COUNT(*) FROM users WHERE institution = inst.name AND role != 'super_admin') as user_count
         FROM institutions inst WHERE inst.name = ?
       `).bind(adminInstitution).first();
+    }
+    if (inst) {
+      inst.file_count = await getInstitutionFileCount(db, inst.id);
     }
     return c.json(inst ? [inst] : []);
   }
@@ -1887,12 +2200,29 @@ app.get('/api/admin/all-files', async (c) => {
   let files;
   if (role === 'super_admin') {
     files = await db.prepare(`
-      SELECT f.*, u.full_name as uploaded_by_name, i.name as institution_name
-      FROM institution_files f
-      LEFT JOIN users u ON f.uploaded_by = u.id
-      LEFT JOIN institutions i ON f.institution_id = i.id
-      WHERE f.is_active = 1
-      ORDER BY f.id DESC
+      SELECT
+        cf.id,
+        col.scope_id AS institution_id,
+        i.name AS institution_name,
+        cf.collection_id AS folder_id,
+        COALESCE(cf.display_name, f.original_name) AS file_name,
+        '/api/files/' || f.file_key AS file_url,
+        COALESCE(f.extension, '') AS file_type,
+        f.file_size,
+        COALESCE(cf.category, 'other') AS category,
+        cf.is_public,
+        cf.added_by AS uploaded_by,
+        cf.added_at AS uploaded_at,
+        u.full_name as uploaded_by_name,
+        f.mime_type,
+        f.id AS source_file_id
+      FROM collection_files cf
+      JOIN files f ON f.id = cf.file_id
+      JOIN collections col ON col.id = cf.collection_id AND col.scope_type = 'institution' AND col.is_active = 1
+      LEFT JOIN users u ON cf.added_by = u.id
+      LEFT JOIN institutions i ON col.scope_id = i.id
+      WHERE cf.is_active = 1
+      ORDER BY cf.id DESC
     `).all();
   } else {
     const adminInstId = auth.user.institution_id;
@@ -1903,19 +2233,587 @@ app.get('/api/admin/all-files', async (c) => {
       instId = instRow?.id;
     }
     files = await db.prepare(`
-      SELECT f.*, u.full_name as uploaded_by_name, i.name as institution_name
-      FROM institution_files f
-      LEFT JOIN users u ON f.uploaded_by = u.id
-      LEFT JOIN institutions i ON f.institution_id = i.id
-      WHERE f.is_active = 1 AND f.institution_id = ?
-      ORDER BY f.id DESC
+      SELECT
+        cf.id,
+        col.scope_id AS institution_id,
+        i.name AS institution_name,
+        cf.collection_id AS folder_id,
+        COALESCE(cf.display_name, f.original_name) AS file_name,
+        '/api/files/' || f.file_key AS file_url,
+        COALESCE(f.extension, '') AS file_type,
+        f.file_size,
+        COALESCE(cf.category, 'other') AS category,
+        cf.is_public,
+        cf.added_by AS uploaded_by,
+        cf.added_at AS uploaded_at,
+        u.full_name as uploaded_by_name,
+        f.mime_type,
+        f.id AS source_file_id
+      FROM collection_files cf
+      JOIN files f ON f.id = cf.file_id
+      JOIN collections col ON col.id = cf.collection_id AND col.scope_type = 'institution' AND col.is_active = 1
+      LEFT JOIN users u ON cf.added_by = u.id
+      LEFT JOIN institutions i ON col.scope_id = i.id
+      WHERE cf.is_active = 1 AND col.scope_id = ?
+      ORDER BY cf.id DESC
     `).bind(instId).all();
   }
   return c.json(files.results);
 });
 
-// ====================== KURUM ROOT DOSYALARINI GETİR ======================
+// ====================== MERKEZI DOSYA YONETIMI ======================
+
 app.get('/api/institution/:id/files', async (c) => {
+  const identifier = c.req.param('id');
+  const db = c.env.DB;
+
+  try {
+    const institution = await getInstitutionByIdentifier(db, identifier);
+    if (!institution) return c.json([]);
+
+    const auth = await getOptionalAuth(c);
+    const canManage = canManageInstitutionScope(auth?.user, institution);
+    const root = await ensureInstitutionRootCollection(db, institution.id);
+
+    const result = await db.prepare(`
+      SELECT
+        cf.id,
+        col.scope_id AS institution_id,
+        COALESCE(inst.name, '') AS institution_name,
+        cf.collection_id AS folder_id,
+        COALESCE(cf.display_name, f.original_name) AS file_name,
+        '/api/files/' || f.file_key AS file_url,
+        COALESCE(f.extension, '') AS file_type,
+        f.file_size,
+        COALESCE(cf.category, 'other') AS category,
+        cf.is_public,
+        cf.added_by AS uploaded_by,
+        cf.added_at AS uploaded_at,
+        u.full_name AS uploaded_by_name,
+        f.mime_type,
+        f.id AS source_file_id
+      FROM collection_files cf
+      JOIN files f ON f.id = cf.file_id
+      JOIN collections col ON col.id = cf.collection_id
+      LEFT JOIN users u ON cf.added_by = u.id
+      LEFT JOIN institutions inst ON inst.id = col.scope_id
+      WHERE cf.collection_id = ?
+        AND cf.is_active = 1
+        ${canManage ? '' : 'AND cf.is_public = 1'}
+      ORDER BY cf.id DESC
+    `).bind(root.id).all();
+
+    return c.json(result.results || []);
+  } catch (err) {
+    console.error('Root dosyalari sorgu hatasi:', err);
+    return c.json({ error: 'Dosyalar alinamadi' }, 500);
+  }
+});
+
+app.get('/api/institution/:id/folders', async (c) => {
+  const identifier = c.req.param('id');
+  const parentId = c.req.query('parent') || null;
+  const db = c.env.DB;
+
+  try {
+    const institution = await getInstitutionByIdentifier(db, identifier);
+    if (!institution) return c.json([]);
+
+    const auth = await getOptionalAuth(c);
+    const canManage = canManageInstitutionScope(auth?.user, institution);
+    const root = await ensureInstitutionRootCollection(db, institution.id);
+    const parentCollectionId = parentId && parentId !== 'null' ? Number(parentId) : root.id;
+
+    const result = await db.prepare(`
+      SELECT
+        col.id,
+        col.scope_id AS institution_id,
+        col.name AS folder_name,
+        col.parent_id AS parent_folder_id,
+        col.is_public,
+        col.created_by,
+        col.created_at,
+        (
+          SELECT COUNT(*)
+          FROM collections child
+          WHERE child.parent_id = col.id
+            AND child.kind = 'folder'
+            AND child.is_active = 1
+            ${canManage ? '' : 'AND child.is_public = 1'}
+        ) AS subfolder_count,
+        (
+          SELECT COUNT(*)
+          FROM collection_files cf
+          WHERE cf.collection_id = col.id
+            AND cf.is_active = 1
+            ${canManage ? '' : 'AND cf.is_public = 1'}
+        ) AS file_count
+      FROM collections col
+      WHERE col.scope_type = 'institution'
+        AND col.scope_id = ?
+        AND col.kind = 'folder'
+        AND col.is_active = 1
+        AND col.parent_id = ?
+        ${canManage ? '' : 'AND col.is_public = 1'}
+      ORDER BY col.sort_order, col.name
+    `).bind(institution.id, parentCollectionId).all();
+
+    return c.json(result.results || []);
+  } catch (err) {
+    console.error('Klasor sorgu hatasi:', err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.get('/api/institution/folder/:id/files', async (c) => {
+  try {
+    const folderId = Number(c.req.param('id'));
+    const db = c.env.DB;
+
+    const folder = await db.prepare(`
+      SELECT
+        col.id,
+        col.parent_id,
+        col.name AS folder_name,
+        col.scope_id AS institution_id,
+        col.is_public,
+        i.name AS institution_name
+      FROM collections col
+      LEFT JOIN institutions i ON col.scope_id = i.id
+      WHERE col.id = ?
+        AND col.scope_type = 'institution'
+        AND col.kind = 'folder'
+        AND col.is_active = 1
+    `).bind(folderId).first();
+
+    if (!folder) {
+      return c.json({ error: 'Klasor bulunamadi' }, 404);
+    }
+
+    const auth = await getOptionalAuth(c);
+    const canManage = canManageInstitutionScope(auth?.user, { id: folder.institution_id, name: folder.institution_name });
+
+    const files = await db.prepare(`
+      SELECT
+        cf.id,
+        col.scope_id AS institution_id,
+        COALESCE(inst.name, '') AS institution_name,
+        cf.collection_id AS folder_id,
+        COALESCE(cf.display_name, f.original_name) AS file_name,
+        '/api/files/' || f.file_key AS file_url,
+        COALESCE(f.extension, '') AS file_type,
+        f.file_size,
+        COALESCE(cf.category, 'other') AS category,
+        cf.is_public,
+        cf.added_by AS uploaded_by,
+        cf.added_at AS uploaded_at,
+        u.full_name AS uploaded_by_name,
+        f.mime_type,
+        f.id AS source_file_id
+      FROM collection_files cf
+      JOIN files f ON f.id = cf.file_id
+      JOIN collections col ON col.id = cf.collection_id
+      LEFT JOIN users u ON cf.added_by = u.id
+      LEFT JOIN institutions inst ON inst.id = col.scope_id
+      WHERE cf.collection_id = ?
+        AND cf.is_active = 1
+        ${canManage ? '' : 'AND cf.is_public = 1'}
+      ORDER BY cf.id DESC
+    `).bind(folderId).all();
+
+    return c.json(files.results || []);
+  } catch (error) {
+    console.error('Folder files endpoint error:', error);
+    return c.json({
+      error: 'Dosyalar yuklenirken bir hata olustu',
+      details: error.message
+    }, 500);
+  }
+});
+
+app.get('/api/institution/folder/:id', async (c) => {
+  try {
+    const folderId = Number(c.req.param('id'));
+    const db = c.env.DB;
+
+    const folder = await db.prepare(`
+      SELECT
+        col.id,
+        col.name AS folder_name,
+        col.parent_id AS parent_folder_id,
+        col.scope_id AS institution_id,
+        col.is_public,
+        i.name AS institution_name
+      FROM collections col
+      LEFT JOIN institutions i ON col.scope_id = i.id
+      WHERE col.id = ?
+        AND col.scope_type = 'institution'
+        AND col.kind = 'folder'
+        AND col.is_active = 1
+    `).bind(folderId).first();
+
+    if (!folder) {
+      return c.json({ error: 'Klasor bulunamadi' }, 404);
+    }
+
+    const auth = await getOptionalAuth(c);
+    const canManage = canManageInstitutionScope(auth?.user, { id: folder.institution_id, name: folder.institution_name });
+    if (!canManage && folder.is_public !== 1) {
+      return c.json({ error: 'Bu klasore erisim yetkiniz yok' }, 403);
+    }
+
+    return c.json(folder);
+  } catch (error) {
+    console.error('Folder detail endpoint error:', error);
+    return c.json({
+      error: 'Klasor bilgisi yuklenirken bir hata olustu',
+      details: error.message
+    }, 500);
+  }
+});
+
+async function handleManagedUpload(c) {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const formData = await c.req.formData();
+  const file = formData.get('file');
+  if (!file || typeof file === 'string') {
+    return c.json({ error: 'Dosya bulunamadi' }, 400);
+  }
+
+  try {
+    const { stored, deduplicated } = await ensureStoredFileRecord(c, file, auth.user.user_id);
+    return c.json({
+      success: true,
+      deduplicated,
+      file_id: stored.id,
+      url: buildInternalFileUrl(stored.file_key),
+      key: stored.file_key,
+      name: stored.original_name,
+      type: mapFileType(stored.extension, stored.mime_type),
+      size: stored.file_size
+    });
+  } catch (error) {
+    return c.json({ error: error.message || 'Yukleme basarisiz' }, 400);
+  }
+}
+
+app.post('/api/upload', handleManagedUpload);
+app.post('/api/files/upload', handleManagedUpload);
+
+app.post('/api/institution/:id/folder', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const db = c.env.DB;
+  const institution = await getInstitutionByIdentifier(db, c.req.param('id'));
+  if (!institution) return c.json({ error: 'Kurum bulunamadi' }, 404);
+  if (!canManageInstitutionScope(auth.user, institution)) {
+    return c.json({ error: 'Sadece kendi kurumunuza klasor ekleyebilirsiniz' }, 403);
+  }
+
+  const { folder_name, parent_folder_id, is_public } = await c.req.json();
+  if (!folder_name?.trim()) return c.json({ error: 'Klasor adi bos olamaz' }, 400);
+
+  const parentCollection = await getInstitutionCollectionOrRoot(db, institution.id, parent_folder_id || null, auth.user.user_id);
+  if (!parentCollection) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+
+  const result = await db.prepare(`
+    INSERT INTO collections (parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by)
+    VALUES (?, ?, 'institution', ?, 'folder', ?, 1, 0, ?)
+  `).bind(parentCollection.id, folder_name.trim(), institution.id, is_public ? 1 : 0, auth.user.user_id).run();
+
+  return c.json({ success: true, id: result.meta?.last_row_id });
+});
+
+app.delete('/api/institution/folder/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const folderId = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const folder = await db.prepare(`
+    SELECT
+      col.id,
+      col.scope_id AS institution_id,
+      i.name AS institution_name
+    FROM collections col
+    LEFT JOIN institutions i ON col.scope_id = i.id
+    WHERE col.id = ?
+      AND col.scope_type = 'institution'
+      AND col.kind = 'folder'
+      AND col.is_active = 1
+  `).bind(folderId).first();
+
+  if (!folder) return c.json({ error: 'Klasor bulunamadi' }, 404);
+  if (!canManageInstitutionScope(auth.user, { id: folder.institution_id, name: folder.institution_name })) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const folderIds = [];
+  let queue = [folderId];
+  while (queue.length) {
+    const batch = queue.splice(0, 20);
+    folderIds.push(...batch);
+
+    const placeholders = batch.map(() => '?').join(', ');
+    const children = await db.prepare(`
+      SELECT id
+      FROM collections
+      WHERE parent_id IN (${placeholders})
+        AND kind = 'folder'
+        AND is_active = 1
+    `).bind(...batch).all();
+    queue.push(...(children.results || []).map(row => Number(row.id)));
+  }
+
+  const placeholders = folderIds.map(() => '?').join(', ');
+  const affectedRefs = await db.prepare(`
+    SELECT DISTINCT file_id
+    FROM collection_files
+    WHERE collection_id IN (${placeholders})
+      AND is_active = 1
+  `).bind(...folderIds).all();
+
+  await db.prepare(`
+    UPDATE collection_files
+    SET is_active = 0
+    WHERE collection_id IN (${placeholders})
+  `).bind(...folderIds).run();
+
+  await db.prepare(`
+    UPDATE collections
+    SET is_active = 0
+    WHERE id IN (${placeholders})
+  `).bind(...folderIds).run();
+
+  for (const row of affectedRefs.results || []) {
+    const refCount = await countActiveReferences(db, row.file_id);
+    if (refCount > 0) continue;
+
+    const stored = await getStoredFileById(db, row.file_id);
+    if (stored && c.env.FILES_BUCKET) {
+      await c.env.FILES_BUCKET.delete(stored.file_key);
+    }
+    await db.prepare(`DELETE FROM files WHERE id = ?`).bind(row.file_id).run();
+  }
+
+  return c.json({ success: true });
+});
+
+app.put('/api/institution/folder/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const folderId = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const { folder_name } = await c.req.json();
+  if (!folder_name?.trim()) return c.json({ error: 'Klasor adi bos olamaz' }, 400);
+
+  const folder = await db.prepare(`
+    SELECT
+      col.id,
+      col.scope_id AS institution_id,
+      i.name AS institution_name
+    FROM collections col
+    LEFT JOIN institutions i ON col.scope_id = i.id
+    WHERE col.id = ?
+      AND col.scope_type = 'institution'
+      AND col.kind = 'folder'
+      AND col.is_active = 1
+  `).bind(folderId).first();
+
+  if (!folder) return c.json({ error: 'Klasor bulunamadi' }, 404);
+  if (!canManageInstitutionScope(auth.user, { id: folder.institution_id, name: folder.institution_name })) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  await db.prepare(`UPDATE collections SET name = ? WHERE id = ?`).bind(folder_name.trim(), folderId).run();
+  return c.json({ success: true });
+});
+
+app.post('/api/institution/:id/file', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const db = c.env.DB;
+  const institution = await getInstitutionByIdentifier(db, c.req.param('id'));
+  if (!institution) return c.json({ error: 'Kurum bulunamadi' }, 404);
+  if (!canManageInstitutionScope(auth.user, institution)) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const { file_name, file_url, category, folder_id, is_public, source_file_id } = await c.req.json();
+  const targetCollection = await getInstitutionCollectionOrRoot(db, institution.id, folder_id || null, auth.user.user_id);
+  if (!targetCollection) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+
+  let stored = null;
+  if (source_file_id) {
+    stored = await getStoredFileById(db, source_file_id);
+  } else {
+    const fileKey = extractManagedFileKey(file_url, c.env.R2_PUBLIC_URL);
+    if (fileKey) stored = await getStoredFileByKey(db, fileKey);
+  }
+
+  if (!stored) {
+    return c.json({ error: 'Yalnizca sistemde yuklenmis dosyalar eklenebilir' }, 400);
+  }
+
+  const existingRef = await db.prepare(`
+    SELECT id
+    FROM collection_files
+    WHERE collection_id = ? AND file_id = ? AND is_active = 1
+    LIMIT 1
+  `).bind(targetCollection.id, stored.id).first();
+
+  if (existingRef) {
+    return c.json({ success: true, id: existingRef.id, deduplicated: true });
+  }
+
+  const result = await db.prepare(`
+    INSERT INTO collection_files (collection_id, file_id, display_name, category, is_public, is_active, sort_order, added_by, added_at)
+    VALUES (?, ?, ?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP)
+  `).bind(
+    targetCollection.id,
+    stored.id,
+    file_name?.trim() || stored.original_name,
+    category || 'other',
+    is_public ? 1 : 0,
+    auth.user.user_id
+  ).run();
+
+  return c.json({ success: true, id: result.meta?.last_row_id });
+});
+
+app.put('/api/institution/file/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const refId = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const ref = await db.prepare(`
+    SELECT
+      cf.id,
+      cf.collection_id,
+      cf.file_id,
+      col.scope_id AS institution_id,
+      i.name AS institution_name
+    FROM collection_files cf
+    JOIN collections col ON col.id = cf.collection_id
+    LEFT JOIN institutions i ON col.scope_id = i.id
+    WHERE cf.id = ?
+      AND cf.is_active = 1
+      AND col.scope_type = 'institution'
+      AND col.is_active = 1
+  `).bind(refId).first();
+
+  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!canManageInstitutionScope(auth.user, { id: ref.institution_id, name: ref.institution_name })) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const { file_name, file_url, category, is_public, folder_id, source_file_id } = await c.req.json();
+  let nextCollectionId = ref.collection_id;
+  if (folder_id !== undefined) {
+    const targetCollection = await getInstitutionCollectionOrRoot(db, ref.institution_id, folder_id || null, auth.user.user_id);
+    if (!targetCollection) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+    nextCollectionId = targetCollection.id;
+  }
+
+  let nextFileId = ref.file_id;
+  if (source_file_id || file_url) {
+    const nextStored = source_file_id
+      ? await getStoredFileById(db, source_file_id)
+      : await getStoredFileByKey(db, extractManagedFileKey(file_url, c.env.R2_PUBLIC_URL));
+    if (!nextStored) return c.json({ error: 'Kaynak dosya bulunamadi' }, 404);
+    nextFileId = nextStored.id;
+  }
+
+  await db.prepare(`
+    UPDATE collection_files
+    SET
+      display_name = COALESCE(?, display_name),
+      category = COALESCE(?, category),
+      is_public = COALESCE(?, is_public),
+      collection_id = ?,
+      file_id = ?
+    WHERE id = ?
+  `).bind(
+    file_name?.trim() || null,
+    category || null,
+    is_public !== undefined ? (is_public ? 1 : 0) : null,
+    nextCollectionId,
+    nextFileId,
+    refId
+  ).run();
+
+  return c.json({ success: true });
+});
+
+app.delete('/api/institution/file/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const refId = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const ref = await db.prepare(`
+    SELECT
+      cf.id,
+      cf.file_id,
+      col.scope_id AS institution_id,
+      i.name AS institution_name
+    FROM collection_files cf
+    JOIN collections col ON col.id = cf.collection_id
+    LEFT JOIN institutions i ON col.scope_id = i.id
+    WHERE cf.id = ?
+      AND cf.is_active = 1
+      AND col.scope_type = 'institution'
+      AND col.is_active = 1
+  `).bind(refId).first();
+
+  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!canManageInstitutionScope(auth.user, { id: ref.institution_id, name: ref.institution_name })) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  await db.prepare(`UPDATE collection_files SET is_active = 0 WHERE id = ?`).bind(refId).run();
+
+  const remainingRefs = await countActiveReferences(db, ref.file_id);
+  if (remainingRefs === 0) {
+    const stored = await getStoredFileById(db, ref.file_id);
+    if (stored && c.env.FILES_BUCKET) {
+      await c.env.FILES_BUCKET.delete(stored.file_key);
+    }
+    await db.prepare(`DELETE FROM files WHERE id = ?`).bind(ref.file_id).run();
+  }
+
+  return c.json({ success: true });
+});
+
+// ====================== KURUM ROOT DOSYALARINI GETİR ======================
+app.get('/api/_legacy/institution/:id/files', async (c) => {
     const identifier = c.req.param('id');
     const db = c.env.DB;
 
@@ -1954,7 +2852,7 @@ app.get('/api/institution/:id/files', async (c) => {
 });
 
 // ====================== KURUM KLASÖRLERİNİ GETİR (DÜZELTİLMİŞ) ======================
-app.get('/api/institution/:id/folders', async (c) => {
+app.get('/api/_legacy/institution/:id/folders', async (c) => {
     const identifier = c.req.param('id');
     const parentId = c.req.query('parent') || null;
     const db = c.env.DB;
@@ -2027,7 +2925,7 @@ app.get('/api/institution/:id/folders', async (c) => {
     }
 });
 
-app.get('/api/institution/folder/:id/files', async (c) => {
+app.get('/api/_legacy/institution/folder/:id/files', async (c) => {
   try {
     const folderId = c.req.param('id');
     const role = await getUserRole(c);
@@ -2076,7 +2974,7 @@ app.get('/api/institution/folder/:id/files', async (c) => {
   }
 });
 
-app.get('/api/institution/folder/:id', async (c) => {
+app.get('/api/_legacy/institution/folder/:id', async (c) => {
   try {
     const folderId = c.req.param('id');
     const role = await getUserRole(c);
@@ -2117,7 +3015,7 @@ app.get('/api/institution/folder/:id', async (c) => {
 
 // ====================== DOSYA UPLOAD (R2) ======================
 
-app.post('/api/upload', async (c) => {
+app.post('/api/_legacy/upload', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
@@ -2142,7 +3040,7 @@ app.post('/api/upload', async (c) => {
 
 // ====================== KURUM KLASÖR CRUD ======================
 
-app.post('/api/institution/:id/folder', async (c) => {
+app.post('/api/_legacy/institution/:id/folder', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   const role = auth.user.role;
@@ -2159,7 +3057,7 @@ app.post('/api/institution/:id/folder', async (c) => {
   return c.json({ success: true, id: result.meta?.last_row_id });
 });
 
-app.delete('/api/institution/folder/:id', async (c) => {
+app.delete('/api/_legacy/institution/folder/:id', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   const role = auth.user.role;
@@ -2174,7 +3072,7 @@ app.delete('/api/institution/folder/:id', async (c) => {
   return c.json({ success: true });
 });
 
-app.put('/api/institution/folder/:id', async (c) => {
+app.put('/api/_legacy/institution/folder/:id', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   const role = auth.user.role;
@@ -2192,7 +3090,7 @@ app.put('/api/institution/folder/:id', async (c) => {
 
 // ====================== KURUM DOSYA CRUD ======================
 
-app.post('/api/institution/:id/file', async (c) => {
+app.post('/api/_legacy/institution/:id/file', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   const role = auth.user.role;
@@ -2209,7 +3107,7 @@ app.post('/api/institution/:id/file', async (c) => {
   return c.json({ success: true, id: result.meta?.last_row_id });
 });
 
-app.put('/api/institution/file/:id', async (c) => {
+app.put('/api/_legacy/institution/file/:id', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   const role = auth.user.role;
@@ -2225,7 +3123,7 @@ app.put('/api/institution/file/:id', async (c) => {
   return c.json({ success: true });
 });
 
-app.delete('/api/institution/file/:id', async (c) => {
+app.delete('/api/_legacy/institution/file/:id', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   const role = auth.user.role;
@@ -2257,6 +3155,736 @@ app.delete('/api/institution/file/:id', async (c) => {
 });
 
 // ====================== KURUM YÖNETİMİ ======================
+
+app.get('/api/files/library', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const db = c.env.DB;
+  if (auth.user.role === 'super_admin') {
+    const rows = await db.prepare(`
+      SELECT
+        f.id,
+        f.original_name,
+        f.file_key,
+        '/api/files/' || f.file_key AS file_url,
+        f.file_size,
+        f.mime_type,
+        f.extension,
+        f.created_at,
+        f.uploaded_by,
+        u.full_name AS uploaded_by_name,
+        (
+          SELECT COUNT(*)
+          FROM collection_files cf
+          WHERE cf.file_id = f.id AND cf.is_active = 1
+        ) AS usage_count
+      FROM files f
+      LEFT JOIN users u ON u.id = f.uploaded_by
+      ORDER BY f.created_at DESC, f.id DESC
+    `).all();
+    return c.json(rows.results || []);
+  }
+
+  const institutionId = auth.user.institution_id;
+  const rows = await db.prepare(`
+    SELECT DISTINCT
+      f.id,
+      f.original_name,
+      f.file_key,
+      '/api/files/' || f.file_key AS file_url,
+      f.file_size,
+      f.mime_type,
+      f.extension,
+      f.created_at,
+      f.uploaded_by,
+      u.full_name AS uploaded_by_name,
+      (
+        SELECT COUNT(*)
+        FROM collection_files cf2
+        WHERE cf2.file_id = f.id AND cf2.is_active = 1
+      ) AS usage_count
+    FROM files f
+    JOIN collection_files cf ON cf.file_id = f.id AND cf.is_active = 1
+    JOIN collections col ON col.id = cf.collection_id
+    LEFT JOIN users u ON u.id = f.uploaded_by
+    WHERE col.scope_type = 'institution' AND col.scope_id = ?
+    ORDER BY f.created_at DESC, f.id DESC
+  `).bind(institutionId).all();
+
+  return c.json(rows.results || []);
+});
+
+app.get('/api/files/:id/usage', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const fileId = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const rows = await db.prepare(`
+    SELECT
+      cf.id,
+      cf.collection_id,
+      col.name AS collection_name,
+      col.kind,
+      col.scope_id AS institution_id,
+      i.name AS institution_name,
+      cf.is_public,
+      cf.added_at
+    FROM collection_files cf
+    JOIN collections col ON col.id = cf.collection_id
+    LEFT JOIN institutions i ON i.id = col.scope_id
+    WHERE cf.file_id = ? AND cf.is_active = 1 AND col.is_active = 1
+    ORDER BY cf.added_at DESC, cf.id DESC
+  `).bind(fileId).all();
+
+  if (auth.user.role === 'admin') {
+    const filtered = (rows.results || []).filter(row => String(row.institution_id) === String(auth.user.institution_id || ''));
+    return c.json(filtered);
+  }
+
+  return c.json(rows.results || []);
+});
+
+app.post('/api/files/use', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const { file_id, collection_id, display_name, category, is_public } = await c.req.json();
+  if (!file_id || !collection_id) {
+    return c.json({ error: 'file_id ve collection_id zorunlu' }, 400);
+  }
+
+  const db = c.env.DB;
+  const collection = await getActiveCollection(db, Number(collection_id));
+  if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
+  if (collection.scope_type !== 'institution') return c.json({ error: 'Yalnizca kurum klasorleri destekleniyor' }, 400);
+  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
+  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  const stored = await getStoredFileById(db, Number(file_id));
+  if (!stored) return c.json({ error: 'Dosya bulunamadi' }, 404);
+
+  const existing = await db.prepare(`
+    SELECT id
+    FROM collection_files
+    WHERE collection_id = ? AND file_id = ? AND is_active = 1
+    LIMIT 1
+  `).bind(collection.id, stored.id).first();
+  if (existing) return c.json({ success: true, id: existing.id, deduplicated: true });
+
+  const result = await db.prepare(`
+    INSERT INTO collection_files (collection_id, file_id, display_name, category, is_public, is_active, sort_order, added_by, added_at)
+    VALUES (?, ?, ?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP)
+  `).bind(
+    collection.id,
+    stored.id,
+    display_name?.trim() || stored.original_name,
+    category || 'other',
+    is_public ? 1 : 0,
+    auth.user.user_id
+  ).run();
+
+  return c.json({ success: true, id: result.meta?.last_row_id });
+});
+
+app.post('/api/files/bulk-add', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const { file_id, collection_ids, institution_ids, folder_name, display_name, category, is_public } = await c.req.json();
+  if (!file_id) return c.json({ error: 'file_id zorunlu' }, 400);
+
+  const db = c.env.DB;
+  const stored = await getStoredFileById(db, Number(file_id));
+  if (!stored) return c.json({ error: 'Dosya bulunamadi' }, 404);
+
+  const targetCollectionIds = new Set();
+  for (const id of Array.isArray(collection_ids) ? collection_ids : []) {
+    targetCollectionIds.add(Number(id));
+  }
+
+  for (const institutionId of Array.isArray(institution_ids) ? institution_ids : []) {
+    const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(Number(institutionId)).first();
+    if (!institution) continue;
+    if (!canManageInstitutionScope(auth.user, institution)) continue;
+
+    let targetCollection = await ensureInstitutionRootCollection(db, institution.id, auth.user.user_id);
+    if (folder_name?.trim()) {
+      const existingFolder = await db.prepare(`
+        SELECT id
+        FROM collections
+        WHERE scope_type = 'institution'
+          AND scope_id = ?
+          AND parent_id = ?
+          AND kind = 'folder'
+          AND is_active = 1
+          AND name = ?
+        LIMIT 1
+      `).bind(institution.id, targetCollection.id, folder_name.trim()).first();
+
+      if (existingFolder) {
+        targetCollection = await getActiveCollection(db, existingFolder.id);
+      } else {
+        const createResult = await db.prepare(`
+          INSERT INTO collections (parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by)
+          VALUES (?, ?, 'institution', ?, 'folder', 0, 1, 0, ?)
+        `).bind(targetCollection.id, folder_name.trim(), institution.id, auth.user.user_id).run();
+        targetCollection = await getActiveCollection(db, createResult.meta?.last_row_id);
+      }
+    }
+
+    if (targetCollection?.id) targetCollectionIds.add(Number(targetCollection.id));
+  }
+
+  const createdIds = [];
+  for (const collectionId of targetCollectionIds) {
+    const collection = await getActiveCollection(db, collectionId);
+    if (!collection || collection.scope_type !== 'institution') continue;
+    const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
+    if (!canManageInstitutionScope(auth.user, institution)) continue;
+
+    const existing = await db.prepare(`
+      SELECT id
+      FROM collection_files
+      WHERE collection_id = ? AND file_id = ? AND is_active = 1
+      LIMIT 1
+    `).bind(collectionId, stored.id).first();
+
+    if (existing) {
+      createdIds.push(existing.id);
+      continue;
+    }
+
+    const result = await db.prepare(`
+      INSERT INTO collection_files (collection_id, file_id, display_name, category, is_public, is_active, sort_order, added_by, added_at)
+      VALUES (?, ?, ?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP)
+    `).bind(
+      collectionId,
+      stored.id,
+      display_name?.trim() || stored.original_name,
+      category || 'other',
+      is_public ? 1 : 0,
+      auth.user.user_id
+    ).run();
+
+    createdIds.push(result.meta?.last_row_id);
+  }
+
+  return c.json({ success: true, count: createdIds.length, ids: createdIds });
+});
+
+app.get('/api/collections', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const db = c.env.DB;
+  const scopeType = c.req.query('scope_type') || 'institution';
+  const scopeId = c.req.query('scope_id');
+  const parentId = c.req.query('parent_id');
+
+  let effectiveScopeId = scopeId;
+  if (auth.user.role === 'admin') {
+    effectiveScopeId = auth.user.institution_id;
+  }
+
+  if (!effectiveScopeId) {
+    return c.json({ error: 'scope_id zorunlu' }, 400);
+  }
+
+  const rows = await db.prepare(`
+    SELECT id, parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by, created_at
+    FROM collections
+    WHERE scope_type = ?
+      AND scope_id = ?
+      AND is_active = 1
+      AND (${parentId ? 'parent_id = ?' : '1=1'})
+    ORDER BY sort_order, name
+  `).bind(...(parentId ? [scopeType, Number(effectiveScopeId), Number(parentId)] : [scopeType, Number(effectiveScopeId)])).all();
+
+  return c.json(rows.results || []);
+});
+
+app.post('/api/collections', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const db = c.env.DB;
+  const { parent_id, name, scope_type, scope_id, kind, is_public } = await c.req.json();
+  if (!name?.trim()) return c.json({ error: 'Koleksiyon adi zorunlu' }, 400);
+  if (scope_type !== 'institution') return c.json({ error: 'Su an yalnizca institution destekleniyor' }, 400);
+
+  const effectiveScopeId = auth.user.role === 'admin' ? auth.user.institution_id : scope_id;
+  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(Number(effectiveScopeId)).first();
+  if (!institution) return c.json({ error: 'Kurum bulunamadi' }, 404);
+  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  const result = await db.prepare(`
+    INSERT INTO collections (parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?)
+  `).bind(parent_id || null, name.trim(), scope_type, Number(effectiveScopeId), kind || 'folder', is_public ? 1 : 0, auth.user.user_id).run();
+
+  return c.json({ success: true, id: result.meta?.last_row_id });
+});
+
+app.put('/api/collections/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const db = c.env.DB;
+  const collection = await getActiveCollection(db, Number(c.req.param('id')));
+  if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
+  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
+  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  const { name, is_public, sort_order } = await c.req.json();
+  await db.prepare(`
+    UPDATE collections
+    SET
+      name = COALESCE(?, name),
+      is_public = COALESCE(?, is_public),
+      sort_order = COALESCE(?, sort_order)
+    WHERE id = ?
+  `).bind(name?.trim() || null, is_public !== undefined ? (is_public ? 1 : 0) : null, sort_order ?? null, collection.id).run();
+
+  return c.json({ success: true });
+});
+
+app.delete('/api/collections/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const db = c.env.DB;
+  const collection = await getActiveCollection(db, Number(c.req.param('id')));
+  if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
+  if (collection.kind !== 'folder') return c.json({ error: 'Yalnizca folder silinebilir' }, 400);
+
+  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
+  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  await c.env.DB.prepare(`UPDATE collections SET is_active = 0 WHERE id = ?`).bind(collection.id).run();
+  await c.env.DB.prepare(`UPDATE collection_files SET is_active = 0 WHERE collection_id = ?`).bind(collection.id).run();
+
+  return c.json({ success: true });
+});
+
+app.post('/api/collections/:id/files', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const { file_id, display_name, category, is_public } = await c.req.json();
+  if (!file_id) return c.json({ error: 'file_id zorunlu' }, 400);
+
+  const db = c.env.DB;
+  const collection = await getActiveCollection(db, Number(c.req.param('id')));
+  if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
+  if (collection.scope_type !== 'institution') return c.json({ error: 'Yalnizca institution destekleniyor' }, 400);
+
+  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
+  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  const stored = await getStoredFileById(db, Number(file_id));
+  if (!stored) return c.json({ error: 'Dosya bulunamadi' }, 404);
+
+  const existing = await db.prepare(`
+    SELECT id
+    FROM collection_files
+    WHERE collection_id = ? AND file_id = ? AND is_active = 1
+    LIMIT 1
+  `).bind(collection.id, stored.id).first();
+  if (existing) return c.json({ success: true, id: existing.id, deduplicated: true });
+
+  const result = await db.prepare(`
+    INSERT INTO collection_files (collection_id, file_id, display_name, category, is_public, is_active, sort_order, added_by, added_at)
+    VALUES (?, ?, ?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP)
+  `).bind(
+    collection.id,
+    stored.id,
+    display_name?.trim() || stored.original_name,
+    category || 'other',
+    is_public ? 1 : 0,
+    auth.user.user_id
+  ).run();
+
+  return c.json({ success: true, id: result.meta?.last_row_id });
+});
+
+app.delete('/api/collections/:id/files/:fileId', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const collectionId = Number(c.req.param('id'));
+  const fileId = Number(c.req.param('fileId'));
+  const db = c.env.DB;
+  const collection = await getActiveCollection(db, collectionId);
+  if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
+  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
+  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  await db.prepare(`
+    UPDATE collection_files
+    SET is_active = 0
+    WHERE collection_id = ? AND file_id = ? AND is_active = 1
+  `).bind(collectionId, fileId).run();
+
+  const remainingRefs = await countActiveReferences(db, fileId);
+  if (remainingRefs === 0) {
+    const stored = await getStoredFileById(db, fileId);
+    if (stored && c.env.FILES_BUCKET) {
+      await c.env.FILES_BUCKET.delete(stored.file_key);
+    }
+    await db.prepare(`DELETE FROM files WHERE id = ?`).bind(fileId).run();
+  }
+
+  return c.json({ success: true });
+});
+
+app.patch('/api/collection_files/:id/move', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (!['super_admin', 'admin'].includes(auth.user.role)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  const refId = Number(c.req.param('id'));
+  const { target_collection_id } = await c.req.json();
+  const db = c.env.DB;
+  const ref = await db.prepare(`
+    SELECT cf.id
+    FROM collection_files cf
+    JOIN collections col ON col.id = cf.collection_id
+    WHERE cf.id = ? AND cf.is_active = 1 AND col.is_active = 1
+  `).bind(refId).first();
+  if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
+
+  const target = await getActiveCollection(db, Number(target_collection_id));
+  if (!target || target.scope_type !== 'institution') return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(target.scope_id).first();
+  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  await db.prepare(`UPDATE collection_files SET collection_id = ? WHERE id = ?`).bind(target.id, refId).run();
+  return c.json({ success: true });
+});
+
+app.patch('/api/collection_files/:id/rename', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (!['super_admin', 'admin'].includes(auth.user.role)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  const refId = Number(c.req.param('id'));
+  const { display_name } = await c.req.json();
+  if (!String(display_name || '').trim()) return c.json({ error: 'display_name zorunlu' }, 400);
+  const db = c.env.DB;
+  const ref = await db.prepare(`
+    SELECT cf.id, col.scope_id
+    FROM collection_files cf
+    JOIN collections col ON col.id = cf.collection_id
+    WHERE cf.id = ? AND cf.is_active = 1 AND col.is_active = 1
+  `).bind(refId).first();
+  if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
+
+  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(ref.scope_id).first();
+  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  await db.prepare(`UPDATE collection_files SET display_name = ? WHERE id = ?`).bind(String(display_name).trim(), refId).run();
+  return c.json({ success: true });
+});
+
+app.post('/api/files/share', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (!['super_admin', 'admin'].includes(auth.user.role)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  const { file_ids, recipients, message, expires_at } = await c.req.json();
+  if (!Array.isArray(file_ids) || !file_ids.length) return c.json({ error: 'file_ids zorunlu' }, 400);
+  if (!Array.isArray(recipients) || !recipients.length) return c.json({ error: 'recipients zorunlu' }, 400);
+
+  const db = c.env.DB;
+  const resolvedRecipients = await resolveShareRecipients(db, auth.user, recipients);
+  if (!resolvedRecipients.length) return c.json({ error: 'Gecerli alici bulunamadi' }, 400);
+
+  const shareIds = [];
+  let recipientCount = 0;
+
+  for (const fileId of file_ids.map(Number)) {
+    const stored = await getStoredFileById(db, fileId);
+    if (!stored) continue;
+
+    const shareResult = await db.prepare(`
+      INSERT INTO file_shares (file_id, from_user_id, message, expires_at, created_at, is_revoked)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 0)
+    `).bind(fileId, auth.user.user_id, message || null, expires_at || null).run();
+
+    const shareId = shareResult.meta?.last_row_id;
+    shareIds.push(shareId);
+
+    for (const recipient of resolvedRecipients) {
+      await db.prepare(`
+        INSERT OR IGNORE INTO share_recipients (share_id, user_id, delivered_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+      `).bind(shareId, recipient.id).run();
+
+      const root = await ensureUserRootCollection(db, recipient.id);
+      await db.prepare(`
+        INSERT INTO user_collection_files (collection_id, file_id, share_id, display_name, is_read, added_at, sort_order)
+        VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0)
+      `).bind(root.id, fileId, shareId, stored.original_name).run();
+
+      await createNotification(
+        db,
+        recipient.id,
+        'file_shared',
+        'Yeni dosya paylasildi',
+        message || `${stored.original_name} dosyasi sizinle paylasildi.`,
+        { share_id: shareId, file_id: fileId, file_name: stored.original_name }
+      );
+      recipientCount++;
+    }
+  }
+
+  return c.json({ success: true, share_ids: shareIds, recipient_count: recipientCount });
+});
+
+app.get('/api/user/files', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+
+  const db = c.env.DB;
+  const collectionId = c.req.query('collection_id');
+  const root = await ensureUserRootCollection(db, auth.user.user_id);
+  const targetCollectionId = collectionId ? Number(collectionId) : root.id;
+  const targetCollection = await getUserCollection(db, targetCollectionId, auth.user.user_id);
+  if (!targetCollection) return c.json({ error: 'Klasor bulunamadi' }, 404);
+
+  const collections = await db.prepare(`
+    SELECT id, user_id, parent_id, name, created_at, sort_order
+    FROM user_collections
+    WHERE user_id = ?
+    ORDER BY parent_id, sort_order, name
+  `).bind(auth.user.user_id).all();
+
+  const files = await db.prepare(`
+    SELECT
+      ucf.id,
+      ucf.collection_id,
+      ucf.share_id,
+      COALESCE(ucf.display_name, f.original_name) AS file_name,
+      '/api/files/' || f.file_key AS file_url,
+      f.id AS file_id,
+      f.file_size,
+      f.mime_type,
+      f.extension AS file_type,
+      ucf.is_read,
+      ucf.added_at,
+      fs.message AS share_message,
+      fs.created_at AS shared_at,
+      sender.full_name AS shared_by_name
+    FROM user_collection_files ucf
+    JOIN files f ON f.id = ucf.file_id
+    LEFT JOIN file_shares fs ON fs.id = ucf.share_id
+    LEFT JOIN users sender ON sender.id = fs.from_user_id
+    WHERE ucf.collection_id = ?
+    ORDER BY ucf.added_at DESC, ucf.id DESC
+  `).bind(targetCollection.id).all();
+
+  return c.json({ files: files.results || [], collections: collections.results || [], current_collection_id: targetCollection.id });
+});
+
+app.patch('/api/user/files/:id/read', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const refId = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const ref = await db.prepare(`
+    SELECT ucf.id, ucf.share_id
+    FROM user_collection_files ucf
+    JOIN user_collections uc ON uc.id = ucf.collection_id
+    WHERE ucf.id = ? AND uc.user_id = ?
+  `).bind(refId, auth.user.user_id).first();
+  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+
+  await db.prepare(`UPDATE user_collection_files SET is_read = 1 WHERE id = ?`).bind(refId).run();
+  if (ref.share_id) {
+    await db.prepare(`
+      UPDATE share_recipients
+      SET read_at = COALESCE(read_at, CURRENT_TIMESTAMP)
+      WHERE share_id = ? AND user_id = ?
+    `).bind(ref.share_id, auth.user.user_id).run();
+  }
+  return c.json({ success: true });
+});
+
+app.patch('/api/user/files/:id/move', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const refId = Number(c.req.param('id'));
+  const { target_collection_id } = await c.req.json();
+  const db = c.env.DB;
+  const target = await getUserCollection(db, Number(target_collection_id), auth.user.user_id);
+  if (!target) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+
+  const ref = await db.prepare(`
+    SELECT ucf.id
+    FROM user_collection_files ucf
+    JOIN user_collections uc ON uc.id = ucf.collection_id
+    WHERE ucf.id = ? AND uc.user_id = ?
+  `).bind(refId, auth.user.user_id).first();
+  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+
+  await db.prepare(`UPDATE user_collection_files SET collection_id = ? WHERE id = ?`).bind(target.id, refId).run();
+  return c.json({ success: true });
+});
+
+app.patch('/api/user/files/:id/rename', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const refId = Number(c.req.param('id'));
+  const { display_name } = await c.req.json();
+  if (!String(display_name || '').trim()) return c.json({ error: 'display_name zorunlu' }, 400);
+  const db = c.env.DB;
+  const ref = await db.prepare(`
+    SELECT ucf.id
+    FROM user_collection_files ucf
+    JOIN user_collections uc ON uc.id = ucf.collection_id
+    WHERE ucf.id = ? AND uc.user_id = ?
+  `).bind(refId, auth.user.user_id).first();
+  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+
+  await db.prepare(`UPDATE user_collection_files SET display_name = ? WHERE id = ?`).bind(String(display_name).trim(), refId).run();
+  return c.json({ success: true });
+});
+
+app.delete('/api/user/files/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const refId = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const ref = await db.prepare(`
+    SELECT ucf.id
+    FROM user_collection_files ucf
+    JOIN user_collections uc ON uc.id = ucf.collection_id
+    WHERE ucf.id = ? AND uc.user_id = ?
+  `).bind(refId, auth.user.user_id).first();
+  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+
+  await db.prepare(`DELETE FROM user_collection_files WHERE id = ?`).bind(refId).run();
+  return c.json({ success: true });
+});
+
+app.post('/api/user/collections', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const { name, parent_id } = await c.req.json();
+  if (!String(name || '').trim()) return c.json({ error: 'Klasor adi zorunlu' }, 400);
+  const db = c.env.DB;
+
+  if (parent_id) {
+    const parent = await getUserCollection(db, Number(parent_id), auth.user.user_id);
+    if (!parent) return c.json({ error: 'Ust klasor bulunamadi' }, 404);
+  }
+
+  const result = await db.prepare(`
+    INSERT INTO user_collections (user_id, parent_id, name, created_at, sort_order)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP, 0)
+  `).bind(auth.user.user_id, parent_id || null, String(name).trim()).run();
+  return c.json({ id: result.meta?.last_row_id, name: String(name).trim() });
+});
+
+app.put('/api/user/collections/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const collectionId = Number(c.req.param('id'));
+  const { name } = await c.req.json();
+  if (!String(name || '').trim()) return c.json({ error: 'Klasor adi zorunlu' }, 400);
+  const db = c.env.DB;
+  const collection = await getUserCollection(db, collectionId, auth.user.user_id);
+  if (!collection) return c.json({ error: 'Klasor bulunamadi' }, 404);
+
+  await db.prepare(`UPDATE user_collections SET name = ? WHERE id = ?`).bind(String(name).trim(), collectionId).run();
+  return c.json({ success: true });
+});
+
+app.delete('/api/user/collections/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const collectionId = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const collection = await getUserCollection(db, collectionId, auth.user.user_id);
+  if (!collection) return c.json({ error: 'Klasor bulunamadi' }, 404);
+  if (!collection.parent_id) return c.json({ error: 'Kok klasor silinemez' }, 400);
+
+  await db.prepare(`DELETE FROM user_collection_files WHERE collection_id = ?`).bind(collectionId).run();
+  await db.prepare(`DELETE FROM user_collections WHERE id = ?`).bind(collectionId).run();
+  return c.json({ success: true });
+});
+
+app.get('/api/notifications', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const unreadOnly = c.req.query('unread_only') === 'true';
+  const limit = Math.min(Number(c.req.query('limit') || 20), 100);
+  const offset = Math.max(Number(c.req.query('offset') || 0), 0);
+
+  const rows = await db.prepare(`
+    SELECT id, type, title, content, data, is_read, created_at
+    FROM notifications
+    WHERE user_id = ?
+      ${unreadOnly ? 'AND is_read = 0' : ''}
+    ORDER BY created_at DESC, id DESC
+    LIMIT ? OFFSET ?
+  `).bind(auth.user.user_id, limit, offset).all();
+
+  const unread = await db.prepare(`
+    SELECT COUNT(*) AS cnt
+    FROM notifications
+    WHERE user_id = ? AND is_read = 0
+  `).bind(auth.user.user_id).first();
+
+  return c.json({ notifications: rows.results || [], unread_count: Number(unread?.cnt || 0) });
+});
+
+app.patch('/api/notifications/:id/read', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  await c.env.DB.prepare(`UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?`).bind(Number(c.req.param('id')), auth.user.user_id).run();
+  return c.json({ success: true });
+});
+
+app.patch('/api/notifications/read-all', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  await c.env.DB.prepare(`UPDATE notifications SET is_read = 1 WHERE user_id = ?`).bind(auth.user.user_id).run();
+  return c.json({ success: true });
+});
 
 app.post('/api/admin/institution', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
@@ -2305,8 +3933,41 @@ app.delete('/api/admin/institution/:id', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const id = c.req.param('id');
   const db = c.env.DB;
-  await db.prepare(`UPDATE institution_files SET is_active = 0 WHERE institution_id = ?`).bind(id).run();
-  await db.prepare(`DELETE FROM institution_folders WHERE institution_id = ?`).bind(id).run();
+  const fileRows = await db.prepare(`
+    SELECT DISTINCT cf.file_id
+    FROM collection_files cf
+    JOIN collections col ON col.id = cf.collection_id
+    WHERE col.scope_type = 'institution'
+      AND col.scope_id = ?
+      AND cf.is_active = 1
+  `).bind(id).all();
+  await db.prepare(`
+    UPDATE collection_files
+    SET is_active = 0
+    WHERE collection_id IN (
+      SELECT id
+      FROM collections
+      WHERE scope_type = 'institution' AND scope_id = ?
+    )
+  `).bind(id).run();
+
+  await db.prepare(`
+    UPDATE collections
+    SET is_active = 0
+    WHERE scope_type = 'institution' AND scope_id = ?
+  `).bind(id).run();
+
+  for (const row of fileRows.results || []) {
+    const remainingRefs = await countActiveReferences(db, row.file_id);
+    if (remainingRefs > 0) continue;
+
+    const stored = await getStoredFileById(db, row.file_id);
+    if (stored && c.env.FILES_BUCKET) {
+      await c.env.FILES_BUCKET.delete(stored.file_key);
+    }
+    await db.prepare(`DELETE FROM files WHERE id = ?`).bind(row.file_id).run();
+  }
+
   await db.prepare(`DELETE FROM institutions WHERE id = ?`).bind(id).run();
   return c.json({ success: true });
 });
@@ -2315,6 +3976,62 @@ app.delete('/api/admin/institution/:id', async (c) => {
 // ====================== FILE ROUTES ======================
 
 app.get('/api/files/*', async (c) => {
+  const bucket = c.env.FILES_BUCKET;
+  if (!bucket) return c.json({ error: 'R2 bucket bagli degil' }, 500);
+
+  const key = c.req.path.replace('/api/files/', '');
+  if (!key) return c.json({ error: 'Dosya bulunamadi' }, 404);
+
+  const db = c.env.DB;
+  const stored = await getStoredFileByKey(db, key);
+  const referenceRows = stored
+    ? await db.prepare(`
+        SELECT cf.is_public, col.scope_id AS institution_id
+        FROM collection_files cf
+        JOIN collections col ON col.id = cf.collection_id
+        WHERE cf.file_id = ?
+          AND cf.is_active = 1
+          AND col.scope_type = 'institution'
+          AND col.is_active = 1
+      `).bind(stored.id).all()
+    : { results: [] };
+
+  const refs = referenceRows.results || [];
+  const hasPublicReference = refs.some(row => Number(row.is_public) === 1);
+  if (refs.length > 0 && !hasPublicReference) {
+    const auth = await requireAuth(c);
+    if (auth.response) {
+      return c.json({ error: 'Bu dosyaya erisim yetkiniz yok' }, 403);
+    }
+
+    if (auth.user.role !== 'super_admin') {
+      if (auth.user.role !== 'admin') {
+        return c.json({ error: 'Bu dosyaya erisim yetkiniz yok' }, 403);
+      }
+
+      const adminInstitutionId = auth.user.institution_id;
+      const matchesInstitution = refs.some(row => String(row.institution_id) === String(adminInstitutionId || ''));
+      if (!matchesInstitution) {
+        return c.json({ error: 'Bu dosyaya erisim yetkiniz yok' }, 403);
+      }
+    }
+  }
+
+  const object = await bucket.get(key);
+  if (!object) return c.json({ error: 'Dosya bulunamadi' }, 404);
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('etag', object.httpEtag);
+  headers.set('cache-control', 'public, max-age=3600');
+  headers.set('content-disposition', 'inline');
+  headers.delete('x-frame-options');
+  headers.set('access-control-allow-origin', '*');
+
+  return new Response(object.body, { headers });
+});
+
+app.get('/api/_legacy/files/*', async (c) => {
   const bucket = c.env.FILES_BUCKET;
   if (!bucket) return c.json({ error: 'R2 bucket bağlı değil' }, 500);
 

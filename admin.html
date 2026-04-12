@@ -2231,6 +2231,11 @@ async function loadAdminFiles() {
                     </div>
                 </div>
                 <div class="flex items-center gap-2 ml-2">
+                    <button onclick="shareAdminFile(${file.file_id || file.id}, '${escapeHtml(file.file_name)}')" 
+                        class="text-emerald-500 hover:text-emerald-700 transition" 
+                        title="Paylaş">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
                     <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})" 
                         class="text-blue-500 hover:text-blue-700 transition" 
                         title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
@@ -2290,6 +2295,38 @@ function adminGoRoot() {
 }
 
 // CRUD
+async function shareAdminFile(fileId, fileName) {
+    const recipient = prompt('Alıcı kullanıcı ID veya kurum ID girin. Örnek: user:12 veya institution:5', 'user:');
+    if (!recipient) return;
+
+    const [type, rawId] = recipient.split(':');
+    const targetId = Number(rawId);
+    if (!['user', 'institution'].includes(type) || Number.isNaN(targetId)) {
+        showToast('Geçerli bir alıcı girin. Örnek: user:12', 'error');
+        return;
+    }
+
+    const message = prompt(`${fileName} için kısa mesaj (opsiyonel):`, '') || '';
+    const res = await fetch(`${API_BASE}/api/files/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+            file_ids: [fileId],
+            recipients: [{ type, id: targetId, filter: 'all' }],
+            message
+        })
+    });
+
+    if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast(`Dosya paylaşıldı. ${data.recipient_count || 0} alıcı işlendi.`, 'success');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Paylaşım başarısız oldu.', 'error');
+    }
+}
+
 async function toggleAdminFilePublic(fileId, currentStatus) {
     if (!confirm(`Bu dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
     const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
@@ -2452,6 +2489,10 @@ let currentUploadTab = 'computer';
 let selectedFile = null;
 
 function switchUploadTab(tab) {
+    if (tab === 'url') {
+        showToast('URL ile ekleme bu yeni dosya yapisinda kapali. Lutfen dosyayi bilgisayarinizdan yukleyin.', 'warning');
+        tab = 'computer';
+    }
     currentUploadTab = tab;
     ['computer', 'url'].forEach(t => {  // ← 'gdrive' kaldırıldı
         document.getElementById(`upload-panel-${t}`)?.classList.toggle('hidden', t !== tab);
