@@ -3655,10 +3655,31 @@ app.post('/api/files/share', async (c) => {
       `).bind(shareId, recipient.id).run();
 
       const root = await ensureUserRootCollection(db, recipient.id);
-      await db.prepare(`
-        INSERT INTO user_collection_files (collection_id, file_id, share_id, display_name, is_read, added_at, sort_order)
-        VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0)
-      `).bind(root.id, fileId, shareId, stored.original_name).run();
+      const existingUserRef = await db.prepare(`
+        SELECT ucf.id, ucf.collection_id, ucf.display_name
+        FROM user_collection_files ucf
+        JOIN user_collections uc ON uc.id = ucf.collection_id
+        WHERE uc.user_id = ?
+          AND ucf.file_id = ?
+        ORDER BY ucf.id DESC
+        LIMIT 1
+      `).bind(recipient.id, fileId).first();
+
+      if (existingUserRef) {
+        await db.prepare(`
+          UPDATE user_collection_files
+          SET
+            share_id = ?,
+            is_read = 0,
+            added_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).bind(shareId, existingUserRef.id).run();
+      } else {
+        await db.prepare(`
+          INSERT INTO user_collection_files (collection_id, file_id, share_id, display_name, is_read, added_at, sort_order)
+          VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0)
+        `).bind(root.id, fileId, shareId, stored.original_name).run();
+      }
 
       await createNotification(
         db,
