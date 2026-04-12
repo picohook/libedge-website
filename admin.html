@@ -2294,11 +2294,12 @@ async function loadAdminFiles() {
                         title="Paylaş">
                         <i class="fas fa-share-alt"></i>
                     </button>
+                    ${currentAdmin?.role === 'super_admin' ? `
                     <button onclick="renameInstitutionFileRef(${file.id}, '${escapeHtml(file.file_name)}')" 
                         class="text-amber-500 hover:text-amber-700 transition" 
-                        title="Yeniden AdlandÄ±r">
+                        title="Yeniden Adlandir">
                         <i class="fas fa-pencil-alt"></i>
-                    </button>
+                    </button>` : ''}
                     <button onclick="moveInstitutionFileRef(${file.id}, ${institutionId})" 
                         class="text-slate-500 hover:text-slate-700 transition" 
                         title="TaÅŸÄ±">

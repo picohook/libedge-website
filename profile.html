@@ -814,7 +814,7 @@ async function loadFolders(parentId = null) {
                      onclick="openFolder(${f.id}, '${escapeHtml(f.name)}')">
                     <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
                     <p class="text-xs font-medium truncate">${escapeHtml(f.name)}</p>
-                    <p class="text-[11px] text-gray-400">ID: ${f.id}</p>
+                    <p class="text-[11px] text-gray-400">${Number(f.child_folder_count || 0)} klasor, ${Number(f.file_count || 0)} dosya</p>
                 </div>
             `).join('') : '<p class="col-span-full text-center text-gray-400 py-4">Henüz klasör yok</p>';
 
@@ -826,7 +826,10 @@ async function loadFolders(parentId = null) {
             await loadNotifications();
         } catch (err) {
             console.error('loadFolders user mode error:', err);
-            container.innerHTML = '<p class="text-red-500 text-center col-span-full py-4">Klasörler yüklenemedi.</p>';
+            const message = err.message === '401'
+                ? 'Oturumunuz sona ermis. Lutfen tekrar giris yapin.'
+                : 'Klasorler yuklenemedi.';
+            container.innerHTML = `<p class="text-red-500 text-center col-span-full py-4">${message}</p>`;
         }
         return;
     }
@@ -868,7 +871,10 @@ async function loadFolders(parentId = null) {
         document.getElementById('addFileBtn')?.classList.toggle('hidden', !canUploadFiles);
     } catch (err) {
         console.error('loadFolders error:', err);
-        container.innerHTML = '<p class="text-red-500 text-center col-span-full py-4">Klasörler yüklenemedi.</p>';
+        const message = err.message === '401'
+            ? 'Oturumunuz sona ermis. Lutfen tekrar giris yapin.'
+            : 'Klasorler yuklenemedi.';
+        container.innerHTML = `<p class="text-red-500 text-center col-span-full py-4">${message}</p>`;
     }
 }
 
@@ -1263,18 +1269,12 @@ function hydrateInstitutionFileActions(files) {
     if (!['admin', 'super_admin'].includes(window.currentUser?.role)) return;
 
     const institutionId = Number(window.currentUser?.institution_id || 0);
+    const canRename = window.currentUser?.role === 'super_admin';
     const actionGroups = document.querySelectorAll('#filesList .flex.gap-2.ml-2');
 
     actionGroups.forEach((group, index) => {
         const file = files[index];
         if (!file || group.dataset.enhanced === 'true') return;
-
-        const renameBtn = document.createElement('button');
-        renameBtn.type = 'button';
-        renameBtn.className = 'text-amber-500 hover:text-amber-700';
-        renameBtn.title = 'Yeniden adlandır';
-        renameBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-        renameBtn.onclick = () => renameInstitutionFileRef(file.id, file.file_name);
 
         const moveBtn = document.createElement('button');
         moveBtn.type = 'button';
@@ -1284,7 +1284,15 @@ function hydrateInstitutionFileActions(files) {
         moveBtn.onclick = () => moveInstitutionFileRef(file.id, institutionId);
 
         group.insertBefore(moveBtn, group.firstChild);
-        group.insertBefore(renameBtn, group.firstChild);
+        if (canRename) {
+            const renameBtn = document.createElement('button');
+            renameBtn.type = 'button';
+            renameBtn.className = 'text-amber-500 hover:text-amber-700';
+            renameBtn.title = 'Yeniden adlandir';
+            renameBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+            renameBtn.onclick = () => renameInstitutionFileRef(file.id, file.file_name);
+            group.insertBefore(renameBtn, group.firstChild);
+        }
         group.dataset.enhanced = 'true';
     });
 }

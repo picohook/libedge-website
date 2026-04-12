@@ -3597,7 +3597,7 @@ app.patch('/api/collection_files/:id/move', async (c) => {
 app.patch('/api/collection_files/:id/rename', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
-  if (!['super_admin', 'admin'].includes(auth.user.role)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
 
   const refId = Number(c.req.param('id'));
   const { display_name } = await c.req.json();
@@ -3712,11 +3712,30 @@ app.get('/api/user/files', async (c) => {
   if (!targetCollection) return c.json({ error: 'Klasor bulunamadi' }, 404);
 
   const collections = await db.prepare(`
-    SELECT id, user_id, parent_id, name, created_at, sort_order
-    FROM user_collections
-    WHERE user_id = ?
-    ORDER BY parent_id, sort_order, name
-  `).bind(auth.user.user_id).all();
+    SELECT
+      uc.id,
+      uc.user_id,
+      uc.parent_id,
+      uc.name,
+      uc.created_at,
+      uc.sort_order,
+      COALESCE(child_counts.child_folder_count, 0) AS child_folder_count,
+      COALESCE(file_counts.file_count, 0) AS file_count
+    FROM user_collections uc
+    LEFT JOIN (
+      SELECT parent_id, COUNT(*) AS child_folder_count
+      FROM user_collections
+      WHERE user_id = ?
+      GROUP BY parent_id
+    ) child_counts ON child_counts.parent_id = uc.id
+    LEFT JOIN (
+      SELECT collection_id, COUNT(*) AS file_count
+      FROM user_collection_files
+      GROUP BY collection_id
+    ) file_counts ON file_counts.collection_id = uc.id
+    WHERE uc.user_id = ?
+    ORDER BY uc.parent_id, uc.sort_order, uc.name
+  `).bind(auth.user.user_id, auth.user.user_id).all();
 
   const files = await db.prepare(`
     SELECT
