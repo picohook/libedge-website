@@ -1957,10 +1957,16 @@ let adminFolderStack = [];
 
 // Kurum arama filtresi (super_admin için)
 let _allInstitutionOptions = [];
+function _normInst(s) {
+    // Normalize Turkish chars so e.g. "s" matches "Şişli", "g" matches "Güngören"
+    return String(s || '').toLocaleLowerCase('tr-TR')
+        .replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ç/g, 'c')
+        .replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ı/g, 'i');
+}
 function filterInstitutionOptions(query) {
     const filterSelect = document.getElementById('institutionFilter');
     if (!filterSelect) return;
-    const q = (query || '').toLocaleLowerCase('tr-TR');
+    const q = _normInst(query);
     if (!_allInstitutionOptions.length) {
         // Snapshot all options except "Tüm Kurumlar"
         _allInstitutionOptions = Array.from(filterSelect.options).filter(o => o.value !== 'all').map(o => ({
@@ -1968,7 +1974,7 @@ function filterInstitutionOptions(query) {
         }));
     }
     const filtered = q
-        ? _allInstitutionOptions.filter(o => o.text.toLocaleLowerCase('tr-TR').includes(q))
+        ? _allInstitutionOptions.filter(o => _normInst(o.text).includes(q))
         : _allInstitutionOptions;
     filterSelect.innerHTML = '<option value="all">📋 Tüm Kurumlar</option>' +
         filtered.map(o => `<option value="${escapeHtml(o.value)}" data-institution-id="${escapeHtml(o.id)}">${escapeHtml(o.text)}</option>`).join('');
@@ -2467,6 +2473,17 @@ async function loadAllAdminFiles() {
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button class="text-slate-500 hover:text-slate-700 transition js-admin-move-file"
+                        data-file-id="${file.id}" data-file-name="${escapeHtml(file.file_name)}"
+                        data-institution-id="${file.institution_id}"
+                        title="Taşı">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                    <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})"
+                        class="text-blue-500 hover:text-blue-700 transition"
+                        title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
+                        <i class="fas ${file.is_public ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                    </button>
                     <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -4462,16 +4479,21 @@ async function submitAdminMoveModal() {
     }
 }
 
-async function moveAdminFileRef(refId, fileName) {
-    const filterEl = document.getElementById('institutionFilter');
-    const institutionId = filterEl?.value;
-    if (!institutionId || institutionId === 'all') {
-        showToast('L\u00fctfen \u00f6nce bir kurum se\u00e7in.', 'warning');
-        return;
+async function moveAdminFileRef(refId, fileName, overrideInstitutionId) {
+    let numericScopeId;
+    if (overrideInstitutionId) {
+        // File row carries its own institution_id (e.g. "Tüm Kurumlar" view)
+        numericScopeId = overrideInstitutionId;
+    } else {
+        const filterEl = document.getElementById('institutionFilter');
+        const filterValue = filterEl?.value;
+        if (!filterValue || filterValue === 'all') {
+            showToast('L\u00fctfen \u00f6nce bir kurum se\u00e7in.', 'warning');
+            return;
+        }
+        const selectedOpt = filterEl?.options[filterEl.selectedIndex];
+        numericScopeId = selectedOpt?.dataset?.institutionId || filterValue;
     }
-    // Prefer numeric ID from data attribute (super_admin); fall back to value for admin role
-    const selectedOpt = filterEl?.options[filterEl.selectedIndex];
-    const numericScopeId = selectedOpt?.dataset?.institutionId || institutionId;
 
     const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(numericScopeId)}`, { credentials: 'include' });
     const collections = res.ok ? await res.json() : [];
@@ -4507,7 +4529,8 @@ async function moveAdminFileRef(refId, fileName) {
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.js-admin-move-file');
     if (btn) {
-        moveAdminFileRef(parseInt(btn.dataset.fileId), btn.dataset.fileName || '');
+        const instId = btn.dataset.institutionId ? parseInt(btn.dataset.institutionId) : undefined;
+        moveAdminFileRef(parseInt(btn.dataset.fileId), btn.dataset.fileName || '', instId);
     }
 });
 
