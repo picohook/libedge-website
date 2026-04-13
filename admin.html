@@ -2230,9 +2230,14 @@ async function loadAdminFiles() {
                     </div>
                 </div>
                 <div class="flex items-center gap-2 ml-2">
-                    <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})" 
-                        class="text-blue-500 hover:text-blue-700 transition" 
-                        title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
+                    <button class="text-slate-500 hover:text-slate-700 transition js-admin-move-file"
+                        data-file-id="${file.id}" data-file-name="${escapeHtml(file.file_name)}"
+                        title="Ta\u015f\u0131">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                    <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})"
+                        class="text-blue-500 hover:text-blue-700 transition"
+                        title="${file.is_public ? 'Y\u00f6netici g\u00f6r\u00fcn\u00fcrl\u00fc\u011f\u00fcne al' : 'Herkese a\u00e7\u0131k yap'}">
                         <i class="fas ${file.is_public ? 'fa-eye-slash' : 'fa-eye'}"></i>
                     </button>
                     <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
@@ -4330,7 +4335,171 @@ async function applyCoverCrop() {
     }, 'image/jpeg', 0.92);
 }
 
+// ====================== DOSYA TAŞIMA ======================
+let adminMoveModalState = {
+    refId: null, fileName: '', selectedTargetId: null,
+    currentCollectionId: null, folders: [], search: ''
+};
+
+function normalizeSearchText(value) {
+    return String(value || '').toLocaleLowerCase('tr-TR')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\u0131/g, 'i').replace(/\u015f/g, 's').replace(/\u011f/g, 'g')
+        .replace(/\u00e7/g, 'c').replace(/\u00f6/g, 'o').replace(/\u00fc/g, 'u');
+}
+
+function buildAdminMoveTree(folders, parentId, depth) {
+    return folders
+        .filter(item => (item.parent_id == null ? null : Number(item.parent_id)) === parentId)
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'tr'))
+        .flatMap(item => [
+            { id: Number(item.id), name: item.name, depth },
+            ...buildAdminMoveTree(folders, Number(item.id), depth + 1)
+        ]);
+}
+
+function renderAdminMoveModalFolders() {
+    const list = document.getElementById('adminMoveModalFolderList');
+    const confirmBtn = document.getElementById('adminMoveModalConfirmBtn');
+    const searchInput = document.getElementById('adminMoveModalSearch');
+    const status = document.getElementById('adminMoveModalSearchStatus');
+    if (!list || !confirmBtn) return;
+
+    const items = buildAdminMoveTree(adminMoveModalState.folders, null, 0);
+    const query = normalizeSearchText(searchInput?.value || adminMoveModalState.search || '');
+    const visible = !query ? items : items.filter(item => normalizeSearchText(item.name).includes(query));
+
+    if (status) status.textContent = query
+        ? `${visible.length} e\u015fle\u015fme / ${items.length} klas\u00f6r`
+        : `${items.length} klas\u00f6r`;
+
+    if (!visible.length) {
+        list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klas\u00f6r bulunamad\u0131.</div>';
+        confirmBtn.disabled = true;
+        return;
+    }
+
+    list.innerHTML = visible.map(item => {
+        const selected = adminMoveModalState.selectedTargetId === item.id;
+        const disabled = adminMoveModalState.currentCollectionId != null &&
+            Number(adminMoveModalState.currentCollectionId) === Number(item.id);
+        return `<button type="button"
+            class="w-full text-left px-4 py-3 transition ${disabled ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : selected ? 'bg-blue-100' : 'bg-white hover:bg-blue-50'}"
+            ${disabled ? '' : `onclick="selectAdminMoveTarget(${item.id})"`}>
+            <div class="flex items-center gap-2" style="padding-left:${item.depth * 18}px">
+                <i class="fas ${item.name === '(Ana Dizin)' ? 'fa-inbox text-slate-500' : 'fa-folder text-yellow-500'}"></i>
+                <span class="text-sm font-medium">${escapeHtml(item.name)}${disabled ? ' (mevcut)' : ''}</span>
+            </div>
+        </button>`;
+    }).join('');
+
+    confirmBtn.disabled = !adminMoveModalState.selectedTargetId;
+}
+
+function selectAdminMoveTarget(targetId) {
+    adminMoveModalState.selectedTargetId = Number(targetId);
+    renderAdminMoveModalFolders();
+}
+
+function closeAdminMoveModal() {
+    document.getElementById('adminMoveModal')?.classList.add('hidden');
+    const s = document.getElementById('adminMoveModalSearch');
+    if (s) s.value = '';
+    adminMoveModalState = { refId: null, fileName: '', selectedTargetId: null, currentCollectionId: null, folders: [], search: '' };
+}
+
+async function submitAdminMoveModal() {
+    if (!adminMoveModalState.refId || !adminMoveModalState.selectedTargetId) return;
+    const targetName = adminMoveModalState.folders.find(f => Number(f.id) === adminMoveModalState.selectedTargetId)?.name || 'se\u00e7ilen klas\u00f6r';
+    if (!confirm(`"${adminMoveModalState.fileName || 'Dosya'}" \u2192 "${targetName}" klas\u00f6r\u00fcne ta\u015f\u0131?`)) return;
+
+    const res = await fetch(`${API_BASE}/api/collection_files/${adminMoveModalState.refId}/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ target_collection_id: Number(adminMoveModalState.selectedTargetId) })
+    });
+
+    if (res.ok) {
+        showToast('Dosya ta\u015f\u0131nd\u0131.', 'success');
+        closeAdminMoveModal();
+        loadAdminFolders(adminCurrentFolderId);
+        loadAdminFiles();
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Dosya ta\u015f\u0131namad\u0131.', 'error');
+    }
+}
+
+async function moveAdminFileRef(refId, fileName) {
+    const institutionId = document.getElementById('institutionFilter')?.value;
+    if (!institutionId || institutionId === 'all') {
+        showToast('L\u00fctfen \u00f6nce bir kurum se\u00e7in.', 'warning');
+        return;
+    }
+
+    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(institutionId)}`, { credentials: 'include' });
+    const collections = res.ok ? await res.json() : [];
+    const rootCol = (collections || []).find(item => item.kind === 'root');
+    const subfolders = (collections || []).filter(item => item.kind === 'folder');
+    const allFolders = rootCol ? [{ ...rootCol, name: '(Ana Dizin)' }, ...subfolders] : subfolders;
+
+    if (!allFolders.length) {
+        showToast('Ta\u015f\u0131nabilecek klas\u00f6r bulunamad\u0131.', 'warning');
+        return;
+    }
+
+    const effectiveCurrent = adminCurrentFolderId != null
+        ? adminCurrentFolderId
+        : (rootCol ? Number(rootCol.id) : null);
+
+    adminMoveModalState = {
+        refId, fileName: fileName || '',
+        selectedTargetId: null,
+        currentCollectionId: effectiveCurrent,
+        folders: allFolders, search: ''
+    };
+
+    const s = document.getElementById('adminMoveModalSearch');
+    if (s) s.value = '';
+    document.getElementById('adminMoveModalSubtitle').textContent =
+        `"${fileName || 'Dosya'}" i\u00e7in hedef klas\u00f6r se\u00e7in`;
+    renderAdminMoveModalFolders();
+    document.getElementById('adminMoveModal')?.classList.remove('hidden');
+}
+
+// Move butonları için event delegation
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.js-admin-move-file');
+    if (btn) {
+        moveAdminFileRef(parseInt(btn.dataset.fileId), btn.dataset.fileName || '');
+    }
+});
+
 </script>
+
+<!-- Dosya Taşıma Modal -->
+<div id="adminMoveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div class="flex items-center justify-between px-5 py-4 border-b">
+            <div>
+                <h3 class="font-semibold text-gray-900">Dosyay&#305; Ta&#351;&#305;</h3>
+                <p id="adminMoveModalSubtitle" class="text-sm text-gray-500 mt-0.5">Hedef klas&#246;r&#252; se&#231;in</p>
+            </div>
+            <button onclick="closeAdminMoveModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="px-5 pt-4">
+            <input id="adminMoveModalSearch" type="text" placeholder="Klas&#246;r ara..." class="w-full border rounded-lg px-3 py-2 text-sm mb-1"
+                oninput="adminMoveModalState.search=this.value;renderAdminMoveModalFolders()">
+            <p id="adminMoveModalSearchStatus" class="text-xs text-gray-500 mb-2"></p>
+            <div id="adminMoveModalFolderList" class="border rounded-xl divide-y max-h-72 overflow-y-auto mb-4 bg-gray-50"></div>
+        </div>
+        <div class="flex gap-3 px-5 py-4 border-t">
+            <button type="button" onclick="closeAdminMoveModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">&#304;ptal</button>
+            <button type="button" id="adminMoveModalConfirmBtn" onclick="submitAdminMoveModal()" class="btn btn-primary flex-1 disabled:opacity-50" disabled>Ta&#351;&#305;</button>
+        </div>
+    </div>
+</div>
 
 <!-- Kapak Görseli Crop Modal -->
 <div id="coverCropModal" class="hidden fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4">

@@ -3603,15 +3603,21 @@ app.patch('/api/collection_files/:id/move', async (c) => {
   const { target_collection_id } = await c.req.json();
   const db = c.env.DB;
   const ref = await db.prepare(`
-    SELECT cf.id
+    SELECT cf.id, col.scope_id AS institution_id, i.name AS institution_name
     FROM collection_files cf
     JOIN collections col ON col.id = cf.collection_id
+    LEFT JOIN institutions i ON i.id = col.scope_id
     WHERE cf.id = ? AND cf.is_active = 1 AND col.is_active = 1
   `).bind(refId).first();
   if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
+  // Kaynak dosyanın kurumunu da kontrol et
+  if (!canManageInstitutionScope(auth.user, { id: ref.institution_id, name: ref.institution_name }))
+    return c.json({ error: 'Yetkisiz' }, 403);
 
   const target = await getActiveCollection(db, Number(target_collection_id));
   if (!target || target.scope_type !== 'institution') return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+  // Kaynak ve hedef aynı kuruma ait olmalı
+  if (String(target.scope_id) !== String(ref.institution_id)) return c.json({ error: 'Farkli kurumlar arasi tasima yapilamaz' }, 400);
   const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(target.scope_id).first();
   if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
 

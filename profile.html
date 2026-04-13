@@ -1281,14 +1281,9 @@ async function submitMoveModal() {
     });
 
     if (res.ok) {
-        const moveType = moveModalState.type;
-        showToast('Dosya taşındı.', 'success');
+        showToast('Dosya ta\u015f\u0131nd\u0131.', 'success');
         closeMoveModal();
-        if (moveType === 'user') {
-            loadFolders(currentFolderId);
-        } else {
-            loadFiles(currentFolderId);
-        }
+        loadFolders(currentFolderId); // hem klas\u00f6r say\u0131lar\u0131n\u0131 hem dosya listesini g\u00fcnceller
     } else {
         const data = await res.json().catch(() => ({}));
         showToast(data.error || 'Dosya taşınamadı.', 'error');
@@ -1610,25 +1605,33 @@ async function moveInstitutionFileRef(refId, institutionId, fileName) {
         credentials: 'include'
     });
     const collections = res.ok ? await res.json() : [];
-    const folders = (collections || []).filter((item) => item.kind === 'folder');
+    const rootCol = (collections || []).find((item) => item.kind === 'root');
+    const subfolders = (collections || []).filter((item) => item.kind === 'folder');
+    // Ana dizini de seçenek olarak ekle (dosyaları root'a geri taşıyabilmek için)
+    const allFolders = rootCol ? [{ ...rootCol, name: '(Ana Dizin)' }, ...subfolders] : subfolders;
 
-    if (!folders.length) {
+    if (!allFolders.length) {
         showToast('Taşınabilecek klasör bulunamadı.', 'warning');
         return;
     }
+
+    // Root seviyesindeyken currentFolderId null olur; root collection ID'yi currentCollectionId olarak kullan
+    const effectiveCurrentCollectionId = currentFolderId != null
+        ? currentFolderId
+        : (rootCol ? Number(rootCol.id) : null);
 
     moveModalState = {
         type: 'institution',
         refId,
         fileName: fileName || '',
         selectedTargetId: null,
-        currentCollectionId: currentFolderId,
+        currentCollectionId: effectiveCurrentCollectionId,
         rootId: null,
-        folders,
+        folders: allFolders,
         search: ''
     };
 
-    document.getElementById('moveModalSubtitle').textContent = 'Dosyayı kurum klasörleri arasında taşı.';
+    document.getElementById('moveModalSubtitle').textContent = 'Dosyay\u0131 kurum klas\u00f6rleri aras\u0131nda ta\u015f\u0131.';
     const searchInput = document.getElementById('moveModalSearch');
     if (searchInput) searchInput.value = '';
     renderMoveModalFolders();
