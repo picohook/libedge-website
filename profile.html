@@ -430,7 +430,7 @@
 </div>
 
 <div id="moveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
-    <div class="bg-white rounded-xl p-5 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+    <div class="bg-white rounded-xl p-6 w-full max-w-xl max-h-[85vh] overflow-y-auto">
         <div class="flex items-start justify-between gap-4 mb-4">
             <div>
                 <h3 class="text-xl font-bold">Dosya Taşı</h3>
@@ -1158,6 +1158,26 @@ function buildMoveTree(folders, parentId, depth = 0) {
     return items;
 }
 
+function buildUserMoveTreeItems() {
+    const rootId = moveModalState.rootId == null ? null : Number(moveModalState.rootId);
+    const items = [];
+
+    if (rootId != null) {
+        items.push({ id: rootId, name: '(Ana dizin)', depth: 0 });
+    }
+
+    const topLevelFolders = moveModalState.folders
+        .filter((item) => Number(item.id) !== rootId && item.parent_id == null)
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'tr'));
+
+    topLevelFolders.forEach((item) => {
+        items.push({ id: Number(item.id), name: item.name, depth: 1 });
+        items.push(...buildMoveTree(moveModalState.folders, Number(item.id), 2));
+    });
+
+    return items;
+}
+
 function renderMoveModalFolders() {
     const list = document.getElementById('moveModalFolderList');
     const confirmBtn = document.getElementById('moveModalConfirmBtn');
@@ -1167,8 +1187,7 @@ function renderMoveModalFolders() {
 
     const items = [];
     if (moveModalState.type === 'user' && moveModalState.rootId != null) {
-        items.push({ id: Number(moveModalState.rootId), name: '(Ana dizin)', depth: 0 });
-        items.push(...buildMoveTree(moveModalState.folders, Number(moveModalState.rootId), 1));
+        items.push(...buildUserMoveTreeItems());
     } else {
         items.push(...buildMoveTree(moveModalState.folders, null, 0));
     }
