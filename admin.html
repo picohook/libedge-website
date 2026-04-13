@@ -345,6 +345,9 @@
                 <div id="adminBreadcrumb" class="text-sm text-gray-500 mt-1"></div>
             </div>
             <div class="flex gap-2 flex-wrap items-center">
+                <input id="institutionSearch" type="text" placeholder="🔍 Kurum ara..."
+                       class="border rounded px-2 py-1.5 text-sm bg-white w-32 hidden"
+                       oninput="filterInstitutionOptions(this.value)">
                 <select id="institutionFilter" class="border rounded px-3 py-2 text-sm bg-white">
                     <option value="all">Tüm Kurumlar</option>
                 </select>
@@ -1952,6 +1955,30 @@ let currentAdminInstitutionFilter = 'all';
 let adminCurrentFolderId = null;
 let adminFolderStack = [];
 
+// Kurum arama filtresi (super_admin için)
+let _allInstitutionOptions = [];
+function filterInstitutionOptions(query) {
+    const filterSelect = document.getElementById('institutionFilter');
+    if (!filterSelect) return;
+    const q = (query || '').toLocaleLowerCase('tr-TR');
+    if (!_allInstitutionOptions.length) {
+        // Snapshot all options except "Tüm Kurumlar"
+        _allInstitutionOptions = Array.from(filterSelect.options).filter(o => o.value !== 'all').map(o => ({
+            value: o.value, text: o.text, id: o.dataset.institutionId || ''
+        }));
+    }
+    const filtered = q
+        ? _allInstitutionOptions.filter(o => o.text.toLocaleLowerCase('tr-TR').includes(q))
+        : _allInstitutionOptions;
+    filterSelect.innerHTML = '<option value="all">📋 Tüm Kurumlar</option>' +
+        filtered.map(o => `<option value="${escapeHtml(o.value)}" data-institution-id="${escapeHtml(o.id)}">${escapeHtml(o.text)}</option>`).join('');
+    // Auto-select if exactly one result
+    if (filtered.length === 1) {
+        filterSelect.value = filtered[0].value;
+        filterSelect.dispatchEvent(new Event('change'));
+    }
+}
+
 // Kurum listesini yükle
 // ====================== KURUM DOSYALARI - ADMIN İÇİN DÜZELTİLMİŞ VERSİYON ======================
 
@@ -2008,14 +2035,18 @@ async function loadAdminInstitutions() {
         }
         
         const filterSelect = document.getElementById('institutionFilter');
-        
+
         if (!filterSelect) return;
-        
+        _allInstitutionOptions = []; // Reset search cache
+
         if (user.role === 'super_admin') {
             // Super Admin: Tüm kurumlar + Tüm Kurumlar seçeneği
             filterSelect.innerHTML = '<option value="all">📋 Tüm Kurumlar</option>' +
-                institutions.map(i => `<option value="${escapeHtml(i.name)}">🏢 ${escapeHtml(i.name)}</option>`).join('');
+                institutions.map(i => `<option value="${escapeHtml(i.name)}" data-institution-id="${i.id}">🏢 ${escapeHtml(i.name)}</option>`).join('');
             filterSelect.disabled = false;
+            // Show institution search input for super_admin
+            const searchEl = document.getElementById('institutionSearch');
+            if (searchEl) searchEl.classList.remove('hidden');
             
         } else if (user.role === 'admin') {
             // Admin: Sadece yetkili olduğu kurumlar
@@ -4432,13 +4463,17 @@ async function submitAdminMoveModal() {
 }
 
 async function moveAdminFileRef(refId, fileName) {
-    const institutionId = document.getElementById('institutionFilter')?.value;
+    const filterEl = document.getElementById('institutionFilter');
+    const institutionId = filterEl?.value;
     if (!institutionId || institutionId === 'all') {
         showToast('L\u00fctfen \u00f6nce bir kurum se\u00e7in.', 'warning');
         return;
     }
+    // Prefer numeric ID from data attribute (super_admin); fall back to value for admin role
+    const selectedOpt = filterEl?.options[filterEl.selectedIndex];
+    const numericScopeId = selectedOpt?.dataset?.institutionId || institutionId;
 
-    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(institutionId)}`, { credentials: 'include' });
+    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(numericScopeId)}`, { credentials: 'include' });
     const collections = res.ok ? await res.json() : [];
     const rootCol = (collections || []).find(item => item.kind === 'root');
     const subfolders = (collections || []).filter(item => item.kind === 'folder');
