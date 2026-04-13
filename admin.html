@@ -580,7 +580,7 @@
     <div class="bg-white rounded-xl p-6 w-full max-w-xl max-h-screen overflow-y-auto">
         <div class="flex items-start justify-between gap-4 mb-4">
             <div>
-                <h3 class="text-xl font-bold">Dosya Tasi</h3>
+                <h3 class="text-xl font-bold">Dosya Taşı</h3>
                 <p id="moveFileModalSubtitle" class="text-sm text-gray-500 mt-1"></p>
             </div>
             <button type="button" onclick="closeMoveFileModal()" class="text-gray-400 hover:text-gray-600">
@@ -588,16 +588,16 @@
             </button>
         </div>
         <div class="mb-3">
-            <input id="moveFileSearch" type="text" placeholder="Klasor ara..." class="w-full border p-2 rounded">
+            <input id="moveFileSearch" type="text" placeholder="Klasör ara..." class="w-full border p-2 rounded">
         </div>
         <div class="mb-3 flex gap-2">
-            <input id="moveFileNewFolderName" type="text" placeholder="Yeni klasor adi" class="flex-1 border p-2 rounded">
-            <button type="button" id="moveFileCreateFolderBtn" onclick="createMoveFileFolder()" class="btn bg-yellow-600 text-white whitespace-nowrap">Yeni Klasor</button>
+            <input id="moveFileNewFolderName" type="text" placeholder="Yeni klasör adı" class="flex-1 border p-2 rounded">
+            <button type="button" id="moveFileCreateFolderBtn" onclick="createMoveFileFolder()" class="btn bg-yellow-600 text-white whitespace-nowrap">Yeni Klasör</button>
         </div>
         <div id="moveFileFolderList" class="border rounded-xl divide-y max-h-80 overflow-y-auto mb-4 bg-gray-50"></div>
         <div class="flex gap-2">
-            <button type="button" id="moveFileConfirmBtn" onclick="submitMoveFile()" class="btn btn-primary flex-1" disabled>Tasi</button>
-            <button type="button" onclick="closeMoveFileModal()" class="btn bg-gray-300 flex-1">Iptal</button>
+            <button type="button" id="moveFileConfirmBtn" onclick="submitMoveFile()" class="btn btn-primary flex-1" disabled>Taşı</button>
+            <button type="button" onclick="closeMoveFileModal()" class="btn bg-gray-300 flex-1">İptal</button>
         </div>
     </div>
 </div>
@@ -2097,7 +2097,7 @@ function renderAdminMoveFolders() {
         : tree.filter((item) => String(item.name || '').toLocaleLowerCase('tr-TR').includes(query));
 
     if (!visibleItems.length) {
-        list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasor bulunamadi.</div>';
+        list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasör bulunamadı.</div>';
         confirmBtn.disabled = true;
         return;
     }
@@ -2145,8 +2145,8 @@ async function submitMoveFile() {
     if (!adminMoveState.refId || !adminMoveState.selectedTargetId) return;
 
     const targetFolder = adminMoveState.folders.find((item) => Number(item.id) === Number(adminMoveState.selectedTargetId));
-    const targetName = targetFolder?.name || 'secilen klasor';
-    if (!confirm(`"${adminMoveState.fileName || 'Dosya'}" dosyasini "${targetName}" klasorune tasimak istiyor musunuz?`)) {
+    const targetName = targetFolder?.name || 'seçilen klasör';
+    if (!confirm(`"${adminMoveState.fileName || 'Dosya'}" dosyasını "${targetName}" klasörüne taşımak istiyor musunuz?`)) {
         return;
     }
 
@@ -2158,12 +2158,12 @@ async function submitMoveFile() {
     });
 
     if (moveRes.ok) {
-        showToast('Dosya tasindi.', 'success');
+        showToast('Dosya taşındı.', 'success');
         closeMoveFileModal();
         loadAdminFiles();
     } else {
         const data = await moveRes.json().catch(() => ({}));
-        showToast(data.error || 'Dosya tasinamadi.', 'error');
+        showToast(data.error || 'Dosya taşınamadı.', 'error');
     }
 }
 
@@ -2172,7 +2172,7 @@ async function createMoveFileFolder() {
     const button = document.getElementById('moveFileCreateFolderBtn');
     const folderName = input?.value.trim();
     if (!folderName) {
-        showToast('Yeni klasor adi gerekli.', 'warning');
+        showToast('Yeni klasör adı gerekli.', 'warning');
         return;
     }
 
@@ -2197,7 +2197,7 @@ async function createMoveFileFolder() {
 
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Klasor olusturulamadi.', 'error');
+        showToast(data.error || 'Klasör oluşturulamadı.', 'error');
         return;
     }
 
@@ -2210,7 +2210,7 @@ async function createMoveFileFolder() {
     adminMoveState.selectedTargetId = Number(createData.id || 0) || adminMoveState.selectedTargetId;
     if (input) input.value = '';
     renderAdminMoveFolders();
-    showToast('Klasor olusturuldu.', 'success');
+    showToast('Klasör oluşturuldu.', 'success');
 }
 
 // Kurum listesini yükle
@@ -2687,7 +2687,7 @@ async function moveInstitutionFileRef(refId, institutionId) {
     const folders = (collections || []).filter((item) => item.kind === 'folder');
 
     if (!folders.length) {
-        showToast('Tasinabilecek klasor bulunamadi.', 'warning');
+        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
         return;
     }
 
@@ -2701,7 +2701,7 @@ async function moveInstitutionFileRef(refId, institutionId) {
         search: ''
     };
 
-    document.getElementById('moveFileModalSubtitle').textContent = 'Hedef klasoru secin.';
+    document.getElementById('moveFileModalSubtitle').textContent = 'Hedef klasörü seçin.';
     const searchInput = document.getElementById('moveFileSearch');
     if (searchInput) searchInput.value = '';
     renderAdminMoveFolders();

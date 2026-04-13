@@ -433,7 +433,7 @@
     <div class="bg-white rounded-xl p-6 w-full max-w-xl max-h-screen overflow-y-auto">
         <div class="flex items-start justify-between gap-4 mb-4">
             <div>
-                <h3 class="text-xl font-bold">Dosya Tasi</h3>
+                <h3 class="text-xl font-bold">Dosya Taşı</h3>
                 <p id="moveModalSubtitle" class="text-sm text-gray-500 mt-1"></p>
             </div>
             <button type="button" onclick="closeMoveModal()" class="text-gray-400 hover:text-gray-600">
@@ -441,16 +441,16 @@
             </button>
         </div>
         <div class="mb-3">
-            <input id="moveModalSearch" type="text" placeholder="Klasor ara..." class="w-full border p-2 rounded">
+            <input id="moveModalSearch" type="text" placeholder="Klasör ara..." class="w-full border p-2 rounded">
         </div>
         <div class="mb-3 flex gap-2">
-            <input id="moveModalNewFolderName" type="text" placeholder="Yeni klasor adi" class="flex-1 border p-2 rounded">
-            <button type="button" id="moveModalCreateFolderBtn" onclick="createMoveModalFolder()" class="bg-yellow-600 text-white px-4 py-2 rounded-lg whitespace-nowrap">Yeni Klasor</button>
+            <input id="moveModalNewFolderName" type="text" placeholder="Yeni klasör adı" class="flex-1 border p-2 rounded">
+            <button type="button" id="moveModalCreateFolderBtn" onclick="createMoveModalFolder()" class="bg-yellow-600 text-white px-4 py-2 rounded-lg whitespace-nowrap">Yeni Klasör</button>
         </div>
         <div id="moveModalFolderList" class="border rounded-xl divide-y max-h-80 overflow-y-auto mb-4 bg-gray-50"></div>
         <div class="flex gap-2">
-            <button type="button" id="moveModalConfirmBtn" onclick="submitMoveModal()" class="bg-primary text-white px-4 py-2 rounded-lg flex-1 disabled:opacity-50" disabled>Tasi</button>
-            <button type="button" onclick="closeMoveModal()" class="bg-gray-300 px-4 py-2 rounded-lg flex-1">Iptal</button>
+            <button type="button" id="moveModalConfirmBtn" onclick="submitMoveModal()" class="bg-primary text-white px-4 py-2 rounded-lg flex-1 disabled:opacity-50" disabled>Taşı</button>
+            <button type="button" onclick="closeMoveModal()" class="bg-gray-300 px-4 py-2 rounded-lg flex-1">İptal</button>
         </div>
     </div>
 </div>
@@ -1163,7 +1163,7 @@ function renderMoveModalFolders() {
         : items.filter((item) => String(item.name || '').toLocaleLowerCase('tr-TR').includes(query));
 
     if (!visibleItems.length) {
-        list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasor bulunamadi.</div>';
+        list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasör bulunamadı.</div>';
         confirmBtn.disabled = true;
         return;
     }
@@ -1213,9 +1213,9 @@ async function submitMoveModal() {
 
     const targetName = moveModalState.selectedTargetId === moveModalState.rootId
         ? '(Ana dizin)'
-        : (moveModalState.folders.find((item) => Number(item.id) === Number(moveModalState.selectedTargetId))?.name || 'secilen klasor');
+        : (moveModalState.folders.find((item) => Number(item.id) === Number(moveModalState.selectedTargetId))?.name || 'seçilen klasör');
 
-    if (!confirm(`"${moveModalState.fileName || 'Dosya'}" dosyasini "${targetName}" klasorune tasimak istiyor musunuz?`)) {
+    if (!confirm(`"${moveModalState.fileName || 'Dosya'}" dosyasını "${targetName}" klasörüne taşımak istiyor musunuz?`)) {
         return;
     }
 
@@ -1232,7 +1232,7 @@ async function submitMoveModal() {
 
     if (res.ok) {
         const moveType = moveModalState.type;
-        showToast('Dosya tasindi.', 'success');
+        showToast('Dosya taşındı.', 'success');
         closeMoveModal();
         if (moveType === 'user') {
             loadFolders(currentFolderId);
@@ -1241,7 +1241,7 @@ async function submitMoveModal() {
         }
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Dosya tasinamadi.', 'error');
+        showToast(data.error || 'Dosya taşınamadı.', 'error');
     }
 }
 
@@ -1250,7 +1250,7 @@ async function createMoveModalFolder() {
     const button = document.getElementById('moveModalCreateFolderBtn');
     const folderName = input?.value.trim();
     if (!folderName) {
-        showToast('Yeni klasor adi gerekli.', 'warning');
+        showToast('Yeni klasör adı gerekli.', 'warning');
         return;
     }
 
@@ -1287,7 +1287,7 @@ async function createMoveModalFolder() {
 
     if (!res?.ok) {
         const data = await res?.json().catch(() => ({}));
-        showToast(data?.error || 'Klasor olusturulamadi.', 'error');
+        showToast(data?.error || 'Klasör oluşturulamadı.', 'error');
         return;
     }
 
@@ -1313,7 +1313,7 @@ async function createMoveModalFolder() {
     moveModalState.selectedTargetId = Number(createData.id || 0) || moveModalState.selectedTargetId;
     if (input) input.value = '';
     renderMoveModalFolders();
-    showToast('Klasor olusturuldu.', 'success');
+    showToast('Klasör oluşturuldu.', 'success');
 }
 
 // ====================== CRUD İŞLEMLERİ ======================
@@ -1461,7 +1461,7 @@ async function moveUserFile(fileId) {
     const root = folders.find((item) => item.parent_id == null) || null;
 
     if (!folders.length || !root) {
-        showToast('Tasinabilecek klasor bulunamadi.', 'warning');
+        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
         return;
     }
 
@@ -1476,7 +1476,7 @@ async function moveUserFile(fileId) {
         search: ''
     };
 
-    document.getElementById('moveModalSubtitle').textContent = 'Dosyayi kullanici klasorleri arasinda tasi.';
+    document.getElementById('moveModalSubtitle').textContent = 'Dosyayı kullanıcı klasörleri arasında taşı.';
     const searchInput = document.getElementById('moveModalSearch');
     if (searchInput) searchInput.value = '';
     renderMoveModalFolders();
@@ -1562,7 +1562,7 @@ async function moveInstitutionFileRef(refId, institutionId) {
     const folders = (collections || []).filter((item) => item.kind === 'folder');
 
     if (!folders.length) {
-        showToast('Tasinabilecek klasor bulunamadi.', 'warning');
+        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
         return;
     }
 
@@ -1577,7 +1577,7 @@ async function moveInstitutionFileRef(refId, institutionId) {
         search: ''
     };
 
-    document.getElementById('moveModalSubtitle').textContent = 'Dosyayi kurum klasorleri arasinda tasi.';
+    document.getElementById('moveModalSubtitle').textContent = 'Dosyayı kurum klasörleri arasında taşı.';
     const searchInput = document.getElementById('moveModalSearch');
     if (searchInput) searchInput.value = '';
     renderMoveModalFolders();
