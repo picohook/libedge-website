@@ -2574,7 +2574,7 @@ async function loadAdminFiles() {
                         title="Yeniden Adlandır">
                         <i class="fas fa-pencil-alt"></i>
                     </button>` : ''}
-                    <button onclick='moveInstitutionFileRef(${file.id}, ${JSON.stringify(String(institutionId))})' 
+                    <button onclick='moveInstitutionFileRef(${file.id}, ${JSON.stringify(String(institutionId))}, ${JSON.stringify(String(file.file_name || ""))})' 
                         class="text-slate-500 hover:text-slate-700 transition" 
                         title="Taşı">
                         <i class="fas fa-folder-open"></i>
@@ -2739,7 +2739,7 @@ async function renameInstitutionFileRef(refId, currentName) {
     }
 }
 
-async function moveInstitutionFileRef(refId, institutionId) {
+async function moveInstitutionFileRef(refId, institutionId, fileName) {
     const scopeId = resolveInstitutionScopeId(institutionId);
     const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(scopeId)}`, {
         credentials: 'include'
@@ -2755,7 +2755,7 @@ async function moveInstitutionFileRef(refId, institutionId) {
     adminMoveState = {
         refId,
         institutionId: scopeId,
-        fileName: '',
+        fileName: fileName || '',
         selectedTargetId: null,
         currentCollectionId: adminCurrentFolderId,
         folders,

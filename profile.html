@@ -942,7 +942,7 @@ async function loadFiles(folderId = null) {
                     </div>
                     <div class="flex gap-2 ml-2">
                         ${file.is_read ? '' : `<button type="button" onclick="markUserFileRead(${file.id})" title="Okundu yap" class="text-blue-500 hover:text-blue-700"><i class="fas fa-envelope-open"></i></button>`}
-                        <button type="button" onclick="moveUserFile(${file.id})" title="Taşı" class="text-gray-500 hover:text-gray-700"><i class="fas fa-folder-open"></i></button>
+                        <button type="button" onclick="moveUserFile(${file.id}, '${escapeHtml(file.file_name)}')" title="Taşı" class="text-gray-500 hover:text-gray-700"><i class="fas fa-folder-open"></i></button>
                         <button type="button" onclick="renameUserFile(${file.id}, '${escapeHtml(file.file_name)}')" title="Yeniden adlandır" class="text-amber-500 hover:text-amber-700"><i class="fas fa-pencil-alt"></i></button>
                         <button type="button" onclick="deleteUserFile(${file.id})" title="Kaldır" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
                     </div>
@@ -1167,7 +1167,7 @@ function buildUserMoveTreeItems() {
     }
 
     const topLevelFolders = moveModalState.folders
-        .filter((item) => Number(item.id) !== rootId && item.parent_id == null)
+        .filter((item) => Number(item.id) !== rootId && (item.parent_id == null ? null : Number(item.parent_id)) === rootId)
         .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'tr'));
 
     topLevelFolders.forEach((item) => {
@@ -1504,8 +1504,9 @@ async function renameUserFile(fileId, currentName) {
     }
 }
 
-async function moveUserFile(fileId) {
-    const res = await fetch(`${API_BASE}/api/user/files`, { credentials: 'include' });
+async function moveUserFile(fileId, fileName) {
+    const activeCollectionId = currentFolderId == null ? '' : `?collection_id=${currentFolderId}`;
+    const res = await fetch(`${API_BASE}/api/user/files${activeCollectionId}`, { credentials: 'include' });
     const data = res.ok ? await res.json() : null;
     const folders = data?.collections || [];
     const root = folders.find((item) => item.parent_id == null) || null;
@@ -1518,9 +1519,9 @@ async function moveUserFile(fileId) {
     moveModalState = {
         type: 'user',
         refId: fileId,
-        fileName: '',
+        fileName: fileName || '',
         selectedTargetId: null,
-        currentCollectionId: data?.current_collection_id ?? null,
+        currentCollectionId: currentFolderId ?? data?.current_collection_id ?? null,
         rootId: Number(root.id),
         folders,
         search: ''
@@ -1563,7 +1564,7 @@ function hydrateInstitutionFileActions(files) {
         moveBtn.className = 'text-slate-500 hover:text-slate-700';
         moveBtn.title = 'Taşı';
         moveBtn.innerHTML = '<i class="fas fa-folder-open"></i>';
-        moveBtn.onclick = () => moveInstitutionFileRef(file.id, institutionId);
+        moveBtn.onclick = () => moveInstitutionFileRef(file.id, institutionId, file.file_name);
 
         group.insertBefore(moveBtn, group.firstChild);
         if (canRename) {
@@ -1599,7 +1600,7 @@ async function renameInstitutionFileRef(refId, currentName) {
     }
 }
 
-async function moveInstitutionFileRef(refId, institutionId) {
+async function moveInstitutionFileRef(refId, institutionId, fileName) {
     if (!institutionId) {
         showToast('Kurum bilgisi bulunamadı.', 'error');
         return;
@@ -1619,7 +1620,7 @@ async function moveInstitutionFileRef(refId, institutionId) {
     moveModalState = {
         type: 'institution',
         refId,
-        fileName: '',
+        fileName: fileName || '',
         selectedTargetId: null,
         currentCollectionId: currentFolderId,
         rootId: null,
