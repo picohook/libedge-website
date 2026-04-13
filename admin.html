@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
@@ -345,7 +345,7 @@
                 <div id="adminBreadcrumb" class="text-sm text-gray-500 mt-1"></div>
             </div>
             <div class="flex gap-2 flex-wrap items-center">
-                <input id="institutionSearch" type="text" placeholder="🔍 Kurum ara..."
+                <input id="institutionSearch" type="text" placeholder="Kurum ara..."
                        class="border rounded px-2 py-1.5 text-sm bg-white w-32 hidden"
                        oninput="filterInstitutionOptions(this.value)">
                 <select id="institutionFilter" class="border rounded px-3 py-2 text-sm bg-white">
@@ -1966,22 +1966,19 @@ function _normInst(s) {
 function filterInstitutionOptions(query) {
     const filterSelect = document.getElementById('institutionFilter');
     if (!filterSelect) return;
+    const selectedValue = filterSelect.value || currentAdminInstitutionFilter || 'all';
     const q = _normInst(query);
-    if (!_allInstitutionOptions.length) {
-        // Snapshot all options except "Tüm Kurumlar"
-        _allInstitutionOptions = Array.from(filterSelect.options).filter(o => o.value !== 'all').map(o => ({
-            value: o.value, text: o.text, id: o.dataset.institutionId || ''
-        }));
-    }
     const filtered = q
         ? _allInstitutionOptions.filter(o => _normInst(o.text).includes(q))
         : _allInstitutionOptions;
-    filterSelect.innerHTML = '<option value="all">📋 Tüm Kurumlar</option>' +
+    filterSelect.innerHTML = '<option value="all">Tüm Kurumlar</option>' +
         filtered.map(o => `<option value="${escapeHtml(o.value)}" data-institution-id="${escapeHtml(o.id)}">${escapeHtml(o.text)}</option>`).join('');
-    // Auto-select if exactly one result
-    if (filtered.length === 1) {
+    if ([...filterSelect.options].some(o => o.value === selectedValue)) {
+        filterSelect.value = selectedValue;
+    } else if (filtered.length === 1) {
         filterSelect.value = filtered[0].value;
-        filterSelect.dispatchEvent(new Event('change'));
+    } else {
+        filterSelect.value = 'all';
     }
 }
 
@@ -2041,31 +2038,50 @@ async function loadAdminInstitutions() {
         }
         
         const filterSelect = document.getElementById('institutionFilter');
+        const searchEl = document.getElementById('institutionSearch');
 
         if (!filterSelect) return;
-        _allInstitutionOptions = []; // Reset search cache
+        _allInstitutionOptions = [];
+        if (searchEl) {
+            searchEl.value = '';
+            searchEl.classList.add('hidden');
+        }
 
         if (user.role === 'super_admin') {
             // Super Admin: Tüm kurumlar + Tüm Kurumlar seçeneği
-            filterSelect.innerHTML = '<option value="all">📋 Tüm Kurumlar</option>' +
-                institutions.map(i => `<option value="${escapeHtml(i.name)}" data-institution-id="${i.id}">🏢 ${escapeHtml(i.name)}</option>`).join('');
+            _allInstitutionOptions = institutions.map(i => ({
+                value: i.name,
+                text: i.name,
+                id: i.id
+            }));
+            filterSelect.innerHTML = '<option value="all">Tüm Kurumlar</option>' +
+                institutions.map(i => `<option value="${escapeHtml(i.name)}" data-institution-id="${i.id}">${escapeHtml(i.name)}</option>`).join('');
             filterSelect.disabled = false;
-            // Show institution search input for super_admin
-            const searchEl = document.getElementById('institutionSearch');
             if (searchEl) searchEl.classList.remove('hidden');
             
         } else if (user.role === 'admin') {
             // Admin: Sadece yetkili olduğu kurumlar
             if (adminInstitutions.length > 1) {
                 // Birden fazla kurum yetkisi varsa - "Tüm Kurumlar" GÖSTER
-                filterSelect.innerHTML = '<option value="all">📋 Tüm Kurumlar</option>' +
-                    adminInstitutions.map(inst => `<option value="${escapeHtml(inst)}">🏢 ${escapeHtml(inst)}</option>`).join('');
+                _allInstitutionOptions = adminInstitutions.map(inst => ({
+                    value: inst,
+                    text: inst,
+                    id: ''
+                }));
+                filterSelect.innerHTML = '<option value="all">Tüm Kurumlar</option>' +
+                    adminInstitutions.map(inst => `<option value="${escapeHtml(inst)}">${escapeHtml(inst)}</option>`).join('');
                 filterSelect.disabled = false;
+                if (searchEl) searchEl.classList.remove('hidden');
                 console.log(`${adminInstitutions.length} kurum yetkisi var, "Tüm Kurumlar" gösteriliyor`);
                 
             } else if (adminInstitutions.length === 1) {
                 // Tek kurum yetkisi varsa - "Tüm Kurumlar" GÖSTERME
-                filterSelect.innerHTML = `<option value="${escapeHtml(adminInstitutions[0])}">🏢 ${escapeHtml(adminInstitutions[0])}</option>`;
+                _allInstitutionOptions = [{
+                    value: adminInstitutions[0],
+                    text: adminInstitutions[0],
+                    id: ''
+                }];
+                filterSelect.innerHTML = `<option value="${escapeHtml(adminInstitutions[0])}">${escapeHtml(adminInstitutions[0])}</option>`;
                 filterSelect.disabled = false;
                 console.log('Tek kurum yetkisi, "Tüm Kurumlar" gösterilmiyor');
                 
@@ -2469,7 +2485,7 @@ async function loadAllAdminFiles() {
                         <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
                         <a href="javascript:void(0)" onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type || ''}')"
                            class="font-medium text-primary hover:underline">${escapeHtml(file.file_name)}</a>
-                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">🏢 ${escapeHtml(file.institution_name)}</span>
+                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${escapeHtml(file.institution_name)}</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -4583,6 +4599,7 @@ document.addEventListener('click', function(e) {
 
 </body>
 </html>
+
 
 
 
