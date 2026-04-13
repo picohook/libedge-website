@@ -441,7 +441,7 @@
             </button>
         </div>
         <div class="mb-3">
-            <input id="moveModalSearch" type="text" placeholder="Klasör ara..." class="w-full border p-2 rounded">
+            <input id="moveModalSearch" type="text" placeholder="Klasör ara..." class="w-full border p-2 rounded" oninput="handleMoveSearchInput(this.value)">
         </div>
         <div class="mb-3 flex gap-2">
             <input id="moveModalNewFolderName" type="text" placeholder="Yeni klasör adı" class="flex-1 border p-2 rounded">
@@ -850,7 +850,7 @@ async function loadFolders(parentId = null) {
                      onclick="openFolder(${f.id}, '${escapeHtml(f.name)}')">
                     <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
                     <p class="text-xs font-medium truncate">${escapeHtml(f.name)}</p>
-                    <p class="text-[11px] text-gray-400">${Number(f.child_folder_count || 0)} klasor, ${Number(f.file_count || 0)} dosya</p>
+                    <p class="text-[11px] text-gray-400">${Number(f.child_folder_count || 0)} klasör, ${Number(f.file_count || 0)} dosya</p>
                 </div>
             `).join('') : '<p class="col-span-full text-center text-gray-400 py-4">Henüz klasör yok</p>';
 
@@ -1197,6 +1197,11 @@ function renderMoveModalFolders() {
 
 function selectMoveModalTarget(targetId) {
     moveModalState.selectedTargetId = Number(targetId);
+    renderMoveModalFolders();
+}
+
+function handleMoveSearchInput(value) {
+    moveModalState.search = value || '';
     renderMoveModalFolders();
 }
 
@@ -1597,8 +1602,7 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
 }, true);
 
 document.getElementById('moveModalSearch')?.addEventListener('input', function() {
-    moveModalState.search = this.value || '';
-    renderMoveModalFolders();
+    handleMoveSearchInput(this.value);
 });
 
 // Profil güncelleme
@@ -2053,4 +2057,5 @@ async function submitNewTicket(e) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 </body>
 </html>
+
 
