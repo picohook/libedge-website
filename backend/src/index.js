@@ -2885,32 +2885,57 @@ app.get('/api/_legacy/institution/:id/folders', async (c) => {
         const folderFilter  = isAdmin ? '' : 'AND f.is_public = 1';
         const fileCountCond = isAdmin ? 'AND is_active = 1' : 'AND is_active = 1 AND is_public = 1';
 
-        // 2. Klasörleri getir
-        let query, params;
-        if (parentId && parentId !== 'null') {
-            query = `
-                SELECT f.*,
-                    (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
-                    (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id ${fileCountCond}) as file_count
-                FROM institution_folders f
-                WHERE CAST(f.institution_id AS INTEGER) = ? AND f.parent_folder_id = ?
-                  ${folderFilter}
-                ORDER BY f.folder_name`;
-            params = [institutionId, parseInt(parentId)];
-        } else {
-            query = `
-                SELECT f.*,
-                    (SELECT COUNT(*) FROM institution_folders WHERE parent_folder_id = f.id) as subfolder_count,
-                    (SELECT COUNT(*) FROM institution_files WHERE folder_id = f.id ${fileCountCond}) as file_count
-                FROM institution_folders f
-                WHERE CAST(f.institution_id AS INTEGER) = ? AND (f.parent_folder_id IS NULL OR f.parent_folder_id = 0)
-                  ${folderFilter}
-                ORDER BY f.folder_name`;
-            params = [institutionId];
+        const allFoldersResult = await db.prepare(`
+            SELECT f.*
+            FROM institution_folders f
+            WHERE CAST(f.institution_id AS INTEGER) = ?
+              ${folderFilter}
+            ORDER BY f.folder_name
+        `).bind(institutionId).all();
+        const allFolders = allFoldersResult.results || [];
+
+        const fileCountQuery = `
+            SELECT folder_id, COUNT(*) AS file_count
+            FROM institution_files
+            WHERE CAST(institution_id AS INTEGER) = ?
+              ${fileCountCond}
+            GROUP BY folder_id
+        `;
+        const fileCountRows = await db.prepare(fileCountQuery).bind(institutionId).all();
+        const directFileCountMap = new Map((fileCountRows.results || []).map((row) => [Number(row.folder_id || 0), Number(row.file_count || 0)]));
+
+        const childrenMap = new Map();
+        allFolders.forEach((folder) => {
+            const key = folder.parent_folder_id == null ? 0 : Number(folder.parent_folder_id);
+            if (!childrenMap.has(key)) childrenMap.set(key, []);
+            childrenMap.get(key).push(folder);
+        });
+
+        const aggregateCache = new Map();
+        function computeFolderAggregate(folderId) {
+            const id = Number(folderId);
+            if (aggregateCache.has(id)) return aggregateCache.get(id);
+
+            const children = childrenMap.get(id) || [];
+            let folderCount = children.length;
+            let fileCount = Number(directFileCountMap.get(id) || 0);
+
+            children.forEach((child) => {
+                const childAgg = computeFolderAggregate(child.id);
+                folderCount += childAgg.subfolder_count;
+                fileCount += childAgg.file_count;
+            });
+
+            const aggregate = { subfolder_count: folderCount, file_count: fileCount };
+            aggregateCache.set(id, aggregate);
+            return aggregate;
         }
-        
-        const result = await db.prepare(query).bind(...params).all();
-        const folders = result.results || [];
+
+        const targetParentId = parentId && parentId !== 'null' ? Number(parentId) : 0;
+        const folders = (childrenMap.get(targetParentId) || []).map((folder) => ({
+            ...folder,
+            ...computeFolderAggregate(folder.id)
+        }));
         
         console.log(`✅ ${folders.length} klasör bulundu`);
         if (folders.length > 0) {
@@ -3711,31 +3736,56 @@ app.get('/api/user/files', async (c) => {
   const targetCollection = await getUserCollection(db, targetCollectionId, auth.user.user_id);
   if (!targetCollection) return c.json({ error: 'Klasor bulunamadi' }, 404);
 
-  const collections = await db.prepare(`
-    SELECT
-      uc.id,
-      uc.user_id,
-      uc.parent_id,
-      uc.name,
-      uc.created_at,
-      uc.sort_order,
-      COALESCE(child_counts.child_folder_count, 0) AS child_folder_count,
-      COALESCE(file_counts.file_count, 0) AS file_count
+  const collectionsResult = await db.prepare(`
+    SELECT id, user_id, parent_id, name, created_at, sort_order
+    FROM user_collections
+    WHERE user_id = ?
+    ORDER BY parent_id, sort_order, name
+  `).bind(auth.user.user_id).all();
+  const baseCollections = collectionsResult.results || [];
+
+  const fileCountRows = await db.prepare(`
+    SELECT uc.id AS collection_id, COUNT(ucf.id) AS file_count
     FROM user_collections uc
-    LEFT JOIN (
-      SELECT parent_id, COUNT(*) AS child_folder_count
-      FROM user_collections
-      WHERE user_id = ?
-      GROUP BY parent_id
-    ) child_counts ON child_counts.parent_id = uc.id
-    LEFT JOIN (
-      SELECT collection_id, COUNT(*) AS file_count
-      FROM user_collection_files
-      GROUP BY collection_id
-    ) file_counts ON file_counts.collection_id = uc.id
+    LEFT JOIN user_collection_files ucf ON ucf.collection_id = uc.id
     WHERE uc.user_id = ?
-    ORDER BY uc.parent_id, uc.sort_order, uc.name
-  `).bind(auth.user.user_id, auth.user.user_id).all();
+    GROUP BY uc.id
+  `).bind(auth.user.user_id).all();
+  const directFileCountMap = new Map((fileCountRows.results || []).map((row) => [Number(row.collection_id), Number(row.file_count || 0)]));
+
+  const childrenMap = new Map();
+  baseCollections.forEach((collection) => {
+    const key = collection.parent_id == null ? 0 : Number(collection.parent_id);
+    if (!childrenMap.has(key)) childrenMap.set(key, []);
+    childrenMap.get(key).push(collection);
+  });
+
+  const aggregateCache = new Map();
+  function computeUserCollectionAggregate(collectionId) {
+    const id = Number(collectionId);
+    if (aggregateCache.has(id)) return aggregateCache.get(id);
+
+    const children = childrenMap.get(id) || [];
+    let folderCount = children.length;
+    let fileCount = Number(directFileCountMap.get(id) || 0);
+
+    children.forEach((child) => {
+      const childAgg = computeUserCollectionAggregate(child.id);
+      folderCount += childAgg.child_folder_count;
+      fileCount += childAgg.file_count;
+    });
+
+    const aggregate = { child_folder_count: folderCount, file_count: fileCount };
+    aggregateCache.set(id, aggregate);
+    return aggregate;
+  }
+
+  const collections = {
+    results: baseCollections.map((collection) => ({
+      ...collection,
+      ...computeUserCollectionAggregate(collection.id)
+    }))
+  };
 
   const files = await db.prepare(`
     SELECT

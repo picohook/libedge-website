@@ -2036,6 +2036,7 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
 
 let currentAdminInstitutionFilter = 'all';
 let adminCurrentFolderId = null;
+let adminCurrentFolderName = null;
 let adminFolderStack = [];
 let adminInstitutionFilterOptions = [];
 let adminInstitutionScopeMap = {};
@@ -2574,8 +2575,11 @@ async function loadAdminFiles() {
 }
 // Klasör navigasyon
 function adminOpenFolder(folderId, folderName) {
-    adminFolderStack.push({ id: adminCurrentFolderId, name: folderName });
+    if (adminCurrentFolderId !== null) {
+        adminFolderStack.push({ id: adminCurrentFolderId, name: adminCurrentFolderName || folderName });
+    }
     adminCurrentFolderId = folderId;
+    adminCurrentFolderName = folderName;
     updateAdminBreadcrumb();
     loadAdminFolders(folderId);
     loadAdminFiles();
@@ -2585,6 +2589,7 @@ function adminOpenFolder(folderId, folderName) {
 function adminGoBack() {
     const prev = adminFolderStack.pop();
     adminCurrentFolderId = prev?.id ?? null;
+    adminCurrentFolderName = prev?.name ?? null;
     updateAdminBreadcrumb();
     loadAdminFolders(adminCurrentFolderId);
     loadAdminFiles();
@@ -2595,17 +2600,23 @@ function adminGoBack() {
 function updateAdminBreadcrumb() {
     const bc = document.getElementById('adminBreadcrumb');
     if (!bc) return;
-    const instId = document.getElementById('institutionFilter')?.value;
-    const instName = instId && instId !== 'all' ? escapeHtml(instId) : 'Tüm Kurumlar';
+    const filterSelect = document.getElementById('institutionFilter');
+    const instValue = filterSelect?.value;
+    const instLabel = filterSelect?.selectedOptions?.[0]?.textContent?.trim();
+    const instName = instValue && instValue !== 'all' ? escapeHtml(instLabel || instValue) : 'Tüm Kurumlar';
     let html = `<span class="cursor-pointer hover:text-primary" onclick="adminGoRoot()">${instName}</span>`;
     adminFolderStack.filter(f => f.id !== null).forEach(f => {
-        html += ` / <span>${escapeHtml(f.name)}</span>`;
+        html += ` / <span class="text-gray-500">${escapeHtml(f.name)}</span>`;
     });
+    if (adminCurrentFolderId !== null && adminCurrentFolderName) {
+        html += ` / <span class="font-medium text-gray-800">${escapeHtml(adminCurrentFolderName)}</span>`;
+    }
     bc.innerHTML = html;
 }
 
 function adminGoRoot() {
     adminCurrentFolderId = null;
+    adminCurrentFolderName = null;
     adminFolderStack = [];
     document.getElementById('adminBackBtn')?.classList.add('hidden');
     updateAdminBreadcrumb();
