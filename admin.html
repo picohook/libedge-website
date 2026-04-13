@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
@@ -576,8 +576,8 @@
     </div>
 </div>
 
-<div id="moveFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-xl max-h-screen overflow-y-auto">
+<div id="moveFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-xl p-5 w-full max-w-lg max-h-[80vh] overflow-y-auto">
         <div class="flex items-start justify-between gap-4 mb-4">
             <div>
                 <h3 class="text-xl font-bold">Dosya Taşı</h3>
@@ -2038,6 +2038,7 @@ let currentAdminInstitutionFilter = 'all';
 let adminCurrentFolderId = null;
 let adminFolderStack = [];
 let adminInstitutionFilterOptions = [];
+let adminInstitutionScopeMap = {};
 let adminMoveState = {
     refId: null,
     institutionId: '',
@@ -2071,6 +2072,19 @@ function applyInstitutionFilterSearch() {
     renderInstitutionFilterOptions(visibleOptions.length ? visibleOptions : adminInstitutionFilterOptions, selectedValue);
 }
 
+function resolveInstitutionScopeId(value) {
+    if (value == null || value === '' || value === 'all') return value;
+    return adminInstitutionScopeMap[String(value)] ?? value;
+}
+
+function normalizeSearchText(value) {
+    return String(value || '')
+        .toLocaleLowerCase('tr-TR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/ı/g, 'i');
+}
+
 function buildAdminMoveTree(folders, parentId = null, depth = 0) {
     const items = [];
     const children = folders
@@ -2091,10 +2105,10 @@ function renderAdminMoveFolders() {
     if (!list || !confirmBtn) return;
 
     const tree = buildAdminMoveTree(adminMoveState.folders);
-    const query = adminMoveState.search.trim().toLocaleLowerCase('tr-TR');
+    const query = normalizeSearchText(adminMoveState.search.trim());
     const visibleItems = !query
         ? tree
-        : tree.filter((item) => String(item.name || '').toLocaleLowerCase('tr-TR').includes(query));
+        : tree.filter((item) => normalizeSearchText(item.name).includes(query));
 
     if (!visibleItems.length) {
         list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasör bulunamadı.</div>';
@@ -2220,6 +2234,7 @@ async function loadAdminInstitutions() {
     try {
         let institutions = [];
         let userInstitutions = []; // Kullanıcının yetkili olduğu tüm kurumlar
+        adminInstitutionScopeMap = {};
         
         // Kullanıcı profilini al
         const profileRes = await fetch('/api/user/profile', { credentials: 'include' });
@@ -2286,6 +2301,9 @@ async function loadAdminInstitutions() {
                     searchText: String(i.name || '').toLocaleLowerCase('tr-TR')
                 }))
             ];
+            institutions.forEach((i) => {
+                adminInstitutionScopeMap[String(i.name)] = i.id;
+            });
             renderInstitutionFilterOptions(adminInstitutionFilterOptions, currentAdminInstitutionFilter);
             filterSelect.disabled = false;
             
@@ -2299,6 +2317,11 @@ async function loadAdminInstitutions() {
                         searchText: String(inst || '').toLocaleLowerCase('tr-TR')
                     }))
                 ];
+                institutions.forEach((i) => {
+                    if (i?.name != null && i?.id != null) {
+                        adminInstitutionScopeMap[String(i.name)] = i.id;
+                    }
+                });
                 renderInstitutionFilterOptions(adminInstitutionFilterOptions, currentAdminInstitutionFilter);
                 filterSelect.disabled = false;
                 console.log(`${adminInstitutions.length} kurum yetkisi var, "Tum Kurumlar" gosteriliyor`);
@@ -2309,13 +2332,16 @@ async function loadAdminInstitutions() {
                     label: adminInstitutions[0],
                     searchText: String(adminInstitutions[0] || '').toLocaleLowerCase('tr-TR')
                 }];
+                if (institutions[0]?.name != null && institutions[0]?.id != null) {
+                    adminInstitutionScopeMap[String(institutions[0].name)] = institutions[0].id;
+                }
                 renderInstitutionFilterOptions(adminInstitutionFilterOptions, currentAdminInstitutionFilter || adminInstitutions[0]);
                 filterSelect.disabled = false;
                 if (searchInput) searchInput.disabled = true;
                 console.log('Tek kurum yetkisi, "Tum Kurumlar" gosterilmiyor');
                 
             } else {
-                adminInstitutionFilterOptions = [{ value: '', label: 'Kurum bulunamadi', searchText: '' }];
+                adminInstitutionFilterOptions = [{ value: '', label: 'Kurum bulunamadı', searchText: '' }];
                 renderInstitutionFilterOptions(adminInstitutionFilterOptions, '');
                 filterSelect.disabled = true;
                 if (searchInput) searchInput.disabled = true;
@@ -2521,17 +2547,17 @@ async function loadAdminFiles() {
                     ${currentAdmin?.role === 'super_admin' ? `
                     <button onclick="renameInstitutionFileRef(${file.id}, '${escapeHtml(file.file_name)}')" 
                         class="text-amber-500 hover:text-amber-700 transition" 
-                        title="Yeniden Adlandir">
+                        title="Yeniden Adlandır">
                         <i class="fas fa-pencil-alt"></i>
                     </button>` : ''}
-                    <button onclick="moveInstitutionFileRef(${file.id}, ${institutionId})" 
+                    <button onclick='moveInstitutionFileRef(${file.id}, ${JSON.stringify(String(institutionId))})' 
                         class="text-slate-500 hover:text-slate-700 transition" 
-                        title="Tasi">
+                        title="Taşı">
                         <i class="fas fa-folder-open"></i>
                     </button>
                     <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})" 
                         class="text-blue-500 hover:text-blue-700 transition" 
-                        title="${file.is_public ? 'Yonetici gorunurlugune al' : 'Herkese acik yap'}">
+                        title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
                         <i class="fas ${file.is_public ? 'fa-eye-slash' : 'fa-eye'}"></i>
                     </button>
                     <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
@@ -2680,7 +2706,8 @@ async function renameInstitutionFileRef(refId, currentName) {
 }
 
 async function moveInstitutionFileRef(refId, institutionId) {
-    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${institutionId}`, {
+    const scopeId = resolveInstitutionScopeId(institutionId);
+    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(scopeId)}`, {
         credentials: 'include'
     });
     const collections = res.ok ? await res.json() : [];
@@ -2693,7 +2720,7 @@ async function moveInstitutionFileRef(refId, institutionId) {
 
     adminMoveState = {
         refId,
-        institutionId,
+        institutionId: scopeId,
         fileName: '',
         selectedTargetId: null,
         currentCollectionId: adminCurrentFolderId,
@@ -2891,7 +2918,7 @@ let selectedFile = null;
 
 function switchUploadTab(tab) {
     if (tab === 'url') {
-        showToast('URL ile ekleme bu yeni dosya yapisinda kapali. Lutfen dosyayi bilgisayarinizdan yukleyin.', 'warning');
+        showToast('URL ile ekleme bu yeni dosya yapısında kapalı. Lütfen dosyayı bilgisayarınızdan yükleyin.', 'warning');
         tab = 'computer';
     }
     currentUploadTab = tab;
@@ -4857,6 +4884,8 @@ async function applyCoverCrop() {
 
 </body>
 </html>
+
+
 
 
 

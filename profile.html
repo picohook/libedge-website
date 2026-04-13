@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
@@ -429,8 +429,8 @@
     </div>
 </div>
 
-<div id="moveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-xl max-h-screen overflow-y-auto">
+<div id="moveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-xl p-5 w-full max-w-lg max-h-[80vh] overflow-y-auto">
         <div class="flex items-start justify-between gap-4 mb-4">
             <div>
                 <h3 class="text-xl font-bold">Dosya Taşı</h3>
@@ -863,8 +863,8 @@ async function loadFolders(parentId = null) {
         } catch (err) {
             console.error('loadFolders user mode error:', err);
             const message = err.message === '401'
-                ? 'Oturumunuz sona ermis. Lutfen tekrar giris yapin.'
-                : 'Klasorler yuklenemedi.';
+                ? 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'
+                : 'Klasörler yüklenemedi.';
             container.innerHTML = `<p class="text-red-500 text-center col-span-full py-4">${message}</p>`;
         }
         return;
@@ -908,8 +908,8 @@ async function loadFolders(parentId = null) {
     } catch (err) {
         console.error('loadFolders error:', err);
         const message = err.message === '401'
-            ? 'Oturumunuz sona ermis. Lutfen tekrar giris yapin.'
-            : 'Klasorler yuklenemedi.';
+            ? 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'
+            : 'Klasörler yüklenemedi.';
         container.innerHTML = `<p class="text-red-500 text-center col-span-full py-4">${message}</p>`;
     }
 }
@@ -1087,7 +1087,7 @@ function closeFileModal() {
 // ====================== UPLOAD TAB ======================
 function switchUploadTab(tab) {
     if (tab === 'url') {
-        showToast('URL ile ekleme bu yeni dosya yapisinda kapali. Lutfen dosyayi bilgisayarinizdan yukleyin.', 'warning');
+        showToast('URL ile ekleme bu yeni dosya yapısında kapalı. Lütfen dosyayı bilgisayarınızdan yükleyin.', 'warning');
         tab = 'computer';
     }
     profileUploadTab = tab;
@@ -1130,6 +1130,14 @@ function formatFileSize(bytes) {
     return (bytes/(1024*1024)).toFixed(1) + ' MB';
 }
 
+function normalizeSearchText(value) {
+    return String(value || '')
+        .toLocaleLowerCase('tr-TR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/ı/g, 'i');
+}
+
 function buildMoveTree(folders, parentId, depth = 0) {
     const items = [];
     const children = folders
@@ -1157,10 +1165,10 @@ function renderMoveModalFolders() {
         items.push(...buildMoveTree(moveModalState.folders, null, 0));
     }
 
-    const query = moveModalState.search.trim().toLocaleLowerCase('tr-TR');
+    const query = normalizeSearchText(moveModalState.search.trim());
     const visibleItems = !query
         ? items
-        : items.filter((item) => String(item.name || '').toLocaleLowerCase('tr-TR').includes(query));
+        : items.filter((item) => normalizeSearchText(item.name).includes(query));
 
     if (!visibleItems.length) {
         list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasör bulunamadı.</div>';
@@ -1511,7 +1519,7 @@ function hydrateInstitutionFileActions(files) {
         const moveBtn = document.createElement('button');
         moveBtn.type = 'button';
         moveBtn.className = 'text-slate-500 hover:text-slate-700';
-        moveBtn.title = 'Tasi';
+        moveBtn.title = 'Taşı';
         moveBtn.innerHTML = '<i class="fas fa-folder-open"></i>';
         moveBtn.onclick = () => moveInstitutionFileRef(file.id, institutionId);
 
@@ -1520,7 +1528,7 @@ function hydrateInstitutionFileActions(files) {
             const renameBtn = document.createElement('button');
             renameBtn.type = 'button';
             renameBtn.className = 'text-amber-500 hover:text-amber-700';
-            renameBtn.title = 'Yeniden adlandir';
+            renameBtn.title = 'Yeniden adlandır';
             renameBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
             renameBtn.onclick = () => renameInstitutionFileRef(file.id, file.file_name);
             group.insertBefore(renameBtn, group.firstChild);
@@ -2045,3 +2053,4 @@ async function submitNewTicket(e) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 </body>
 </html>
+
