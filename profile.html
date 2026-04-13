@@ -442,6 +442,7 @@
         </div>
         <div class="mb-3">
             <input id="moveModalSearch" type="text" placeholder="Klasör ara..." class="w-full border p-2 rounded" oninput="handleMoveSearchInput(this.value)">
+            <p id="moveModalSearchStatus" class="mt-1 text-xs text-gray-500"></p>
         </div>
         <div class="mb-3 flex gap-2">
             <input id="moveModalNewFolderName" type="text" placeholder="Yeni klasör adı" class="flex-1 border p-2 rounded">
@@ -1135,7 +1136,12 @@ function normalizeSearchText(value) {
         .toLocaleLowerCase('tr-TR')
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-        .replace(/ı/g, 'i');
+        .replace(/ı/g, 'i')
+        .replace(/ş/g, 's')
+        .replace(/ğ/g, 'g')
+        .replace(/ç/g, 'c')
+        .replace(/ö/g, 'o')
+        .replace(/ü/g, 'u');
 }
 
 function buildMoveTree(folders, parentId, depth = 0) {
@@ -1156,6 +1162,7 @@ function renderMoveModalFolders() {
     const list = document.getElementById('moveModalFolderList');
     const confirmBtn = document.getElementById('moveModalConfirmBtn');
     const searchInput = document.getElementById('moveModalSearch');
+    const status = document.getElementById('moveModalSearchStatus');
     if (!list || !confirmBtn) return;
 
     const items = [];
@@ -1171,11 +1178,15 @@ function renderMoveModalFolders() {
     const visibleItems = !query
         ? items
         : items.filter((item) => {
-            const rawName = String(item.name || '');
-            const loweredName = rawName.toLocaleLowerCase('tr-TR');
-            const normalizedName = normalizeSearchText(rawName);
-            return loweredName.includes(rawQuery.toLocaleLowerCase('tr-TR')) || normalizedName.includes(query);
+            const normalizedName = normalizeSearchText(item.name);
+            return normalizedName.includes(query);
         });
+
+    if (status) {
+        status.textContent = query
+            ? `${visibleItems.length} eşleşme / ${items.length} klasör`
+            : `${items.length} klasör`;
+    }
 
     if (!visibleItems.length) {
         list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasör bulunamadı.</div>';
