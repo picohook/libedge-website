@@ -429,6 +429,32 @@
     </div>
 </div>
 
+<div id="moveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-xl max-h-screen overflow-y-auto">
+        <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+                <h3 class="text-xl font-bold">Dosya Tasi</h3>
+                <p id="moveModalSubtitle" class="text-sm text-gray-500 mt-1"></p>
+            </div>
+            <button type="button" onclick="closeMoveModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="mb-3">
+            <input id="moveModalSearch" type="text" placeholder="Klasor ara..." class="w-full border p-2 rounded">
+        </div>
+        <div class="mb-3 flex gap-2">
+            <input id="moveModalNewFolderName" type="text" placeholder="Yeni klasor adi" class="flex-1 border p-2 rounded">
+            <button type="button" id="moveModalCreateFolderBtn" onclick="createMoveModalFolder()" class="bg-yellow-600 text-white px-4 py-2 rounded-lg whitespace-nowrap">Yeni Klasor</button>
+        </div>
+        <div id="moveModalFolderList" class="border rounded-xl divide-y max-h-80 overflow-y-auto mb-4 bg-gray-50"></div>
+        <div class="flex gap-2">
+            <button type="button" id="moveModalConfirmBtn" onclick="submitMoveModal()" class="bg-primary text-white px-4 py-2 rounded-lg flex-1 disabled:opacity-50" disabled>Tasi</button>
+            <button type="button" onclick="closeMoveModal()" class="bg-gray-300 px-4 py-2 rounded-lg flex-1">Iptal</button>
+        </div>
+    </div>
+</div>
+
 <!-- Yeni Destek Talebi Modal -->
 <div id="newTicketModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg">
@@ -506,6 +532,16 @@ let currentFolderName = null;
 let folderStack = [];
 let profileSelectedFile = null;
 let profileUploadTab = 'computer';
+let moveModalState = {
+    type: '',
+    refId: null,
+    fileName: '',
+    selectedTargetId: null,
+    currentCollectionId: null,
+    rootId: null,
+    folders: [],
+    search: ''
+};
 
 // ====================== YARDIMCI FONKSİYONLAR ======================
 function showToast(message, type = 'info') {
@@ -1094,6 +1130,192 @@ function formatFileSize(bytes) {
     return (bytes/(1024*1024)).toFixed(1) + ' MB';
 }
 
+function buildMoveTree(folders, parentId, depth = 0) {
+    const items = [];
+    const children = folders
+        .filter((item) => (item.parent_id == null ? null : Number(item.parent_id)) === parentId)
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'tr'));
+
+    children.forEach((item) => {
+        items.push({ id: Number(item.id), name: item.name, depth });
+        items.push(...buildMoveTree(folders, Number(item.id), depth + 1));
+    });
+
+    return items;
+}
+
+function renderMoveModalFolders() {
+    const list = document.getElementById('moveModalFolderList');
+    const confirmBtn = document.getElementById('moveModalConfirmBtn');
+    if (!list || !confirmBtn) return;
+
+    const items = [];
+    if (moveModalState.type === 'user' && moveModalState.rootId != null) {
+        items.push({ id: Number(moveModalState.rootId), name: '(Ana dizin)', depth: 0 });
+        items.push(...buildMoveTree(moveModalState.folders, Number(moveModalState.rootId), 1));
+    } else {
+        items.push(...buildMoveTree(moveModalState.folders, null, 0));
+    }
+
+    const query = moveModalState.search.trim().toLocaleLowerCase('tr-TR');
+    const visibleItems = !query
+        ? items
+        : items.filter((item) => String(item.name || '').toLocaleLowerCase('tr-TR').includes(query));
+
+    if (!visibleItems.length) {
+        list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasor bulunamadi.</div>';
+        confirmBtn.disabled = true;
+        return;
+    }
+
+    list.innerHTML = visibleItems.map((item) => {
+        const selected = moveModalState.selectedTargetId === item.id;
+        const disabled = moveModalState.currentCollectionId != null && Number(moveModalState.currentCollectionId) === Number(item.id);
+        const clickAction = disabled ? 'return false' : `selectMoveModalTarget(${item.id})`;
+        return `
+            <button type="button"
+                class="w-full text-left px-4 py-3 transition ${disabled ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : selected ? 'bg-blue-100 hover:bg-blue-100' : 'bg-white hover:bg-blue-50'}"
+                onclick="${clickAction}">
+                <div class="flex items-center gap-2" style="padding-left:${item.depth * 18}px">
+                    <i class="fas ${item.name === '(Ana dizin)' ? 'fa-inbox text-slate-500' : 'fa-folder text-yellow-500'}"></i>
+                    <span class="text-sm font-medium">${escapeHtml(item.name)}${disabled ? ' (mevcut)' : ''}</span>
+                </div>
+            </button>
+        `;
+    }).join('');
+
+    confirmBtn.disabled = !moveModalState.selectedTargetId;
+}
+
+function selectMoveModalTarget(targetId) {
+    moveModalState.selectedTargetId = Number(targetId);
+    renderMoveModalFolders();
+}
+
+function closeMoveModal() {
+    document.getElementById('moveModal')?.classList.add('hidden');
+    const searchInput = document.getElementById('moveModalSearch');
+    if (searchInput) searchInput.value = '';
+    moveModalState = {
+        type: '',
+        refId: null,
+        fileName: '',
+        selectedTargetId: null,
+        currentCollectionId: null,
+        rootId: null,
+        folders: [],
+        search: ''
+    };
+}
+
+async function submitMoveModal() {
+    if (!moveModalState.refId || !moveModalState.selectedTargetId) return;
+
+    const targetName = moveModalState.selectedTargetId === moveModalState.rootId
+        ? '(Ana dizin)'
+        : (moveModalState.folders.find((item) => Number(item.id) === Number(moveModalState.selectedTargetId))?.name || 'secilen klasor');
+
+    if (!confirm(`"${moveModalState.fileName || 'Dosya'}" dosyasini "${targetName}" klasorune tasimak istiyor musunuz?`)) {
+        return;
+    }
+
+    const endpoint = moveModalState.type === 'user'
+        ? `${API_BASE}/api/user/files/${moveModalState.refId}/move`
+        : `${API_BASE}/api/collection_files/${moveModalState.refId}/move`;
+
+    const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ target_collection_id: Number(moveModalState.selectedTargetId) })
+    });
+
+    if (res.ok) {
+        const moveType = moveModalState.type;
+        showToast('Dosya tasindi.', 'success');
+        closeMoveModal();
+        if (moveType === 'user') {
+            loadFolders(currentFolderId);
+        } else {
+            loadFiles(currentFolderId);
+        }
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Dosya tasinamadi.', 'error');
+    }
+}
+
+async function createMoveModalFolder() {
+    const input = document.getElementById('moveModalNewFolderName');
+    const button = document.getElementById('moveModalCreateFolderBtn');
+    const folderName = input?.value.trim();
+    if (!folderName) {
+        showToast('Yeni klasor adi gerekli.', 'warning');
+        return;
+    }
+
+    button.disabled = true;
+    let res;
+
+    if (moveModalState.type === 'user') {
+        const parentId = moveModalState.selectedTargetId || moveModalState.rootId || null;
+        res = await fetch(`${API_BASE}/api/user/collections`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name: folderName, parent_id: parentId })
+        });
+    } else {
+        const institutionId = window.currentUser?.institution_id || window.currentUser?.institution || '';
+        const parentId = moveModalState.selectedTargetId || currentFolderId || null;
+        res = await fetch(`${API_BASE}/api/collections`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                name: folderName,
+                parent_id: parentId,
+                scope_type: 'institution',
+                scope_id: institutionId,
+                kind: 'folder',
+                is_public: 0
+            })
+        });
+    }
+
+    button.disabled = false;
+
+    if (!res?.ok) {
+        const data = await res?.json().catch(() => ({}));
+        showToast(data?.error || 'Klasor olusturulamadi.', 'error');
+        return;
+    }
+
+    const createData = await res.json().catch(() => ({}));
+
+    if (moveModalState.type === 'user') {
+        const refresh = await fetch(`${API_BASE}/api/user/files`, { credentials: 'include' });
+        const data = refresh.ok ? await refresh.json() : null;
+        moveModalState.folders = data?.collections || moveModalState.folders;
+        if (moveModalState.rootId == null) {
+            const root = moveModalState.folders.find((item) => item.parent_id == null);
+            moveModalState.rootId = root ? Number(root.id) : null;
+        }
+    } else {
+        const institutionId = window.currentUser?.institution_id || window.currentUser?.institution || '';
+        const refresh = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(institutionId)}`, {
+            credentials: 'include'
+        });
+        const collections = refresh.ok ? await refresh.json() : [];
+        moveModalState.folders = (collections || []).filter((item) => item.kind === 'folder');
+    }
+
+    moveModalState.selectedTargetId = Number(createData.id || 0) || moveModalState.selectedTargetId;
+    if (input) input.value = '';
+    renderMoveModalFolders();
+    showToast('Klasor olusturuldu.', 'success');
+}
+
 // ====================== CRUD İŞLEMLERİ ======================
 document.getElementById('addFolderForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1233,22 +1455,32 @@ async function renameUserFile(fileId, currentName) {
 }
 
 async function moveUserFile(fileId) {
-    const target = prompt('Taşınacak klasör ID:');
-    if (!target || Number.isNaN(Number(target))) return;
+    const res = await fetch(`${API_BASE}/api/user/files`, { credentials: 'include' });
+    const data = res.ok ? await res.json() : null;
+    const folders = data?.collections || [];
+    const root = folders.find((item) => item.parent_id == null) || null;
 
-    const res = await fetch(`${API_BASE}/api/user/files/${fileId}/move`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ target_collection_id: Number(target) })
-    });
-
-    if (res.ok) {
-        showToast('Dosya taşındı.', 'success');
-        loadFolders(currentFolderId);
-    } else {
-        showToast('Dosya taşınamadı.', 'error');
+    if (!folders.length || !root) {
+        showToast('Tasinabilecek klasor bulunamadi.', 'warning');
+        return;
     }
+
+    moveModalState = {
+        type: 'user',
+        refId: fileId,
+        fileName: '',
+        selectedTargetId: null,
+        currentCollectionId: data?.current_collection_id ?? null,
+        rootId: Number(root.id),
+        folders,
+        search: ''
+    };
+
+    document.getElementById('moveModalSubtitle').textContent = 'Dosyayi kullanici klasorleri arasinda tasi.';
+    const searchInput = document.getElementById('moveModalSearch');
+    if (searchInput) searchInput.value = '';
+    renderMoveModalFolders();
+    document.getElementById('moveModal')?.classList.remove('hidden');
 }
 
 async function deleteUserFile(fileId) {
@@ -1330,33 +1562,36 @@ async function moveInstitutionFileRef(refId, institutionId) {
     const folders = (collections || []).filter((item) => item.kind === 'folder');
 
     if (!folders.length) {
-        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
+        showToast('Tasinabilecek klasor bulunamadi.', 'warning');
         return;
     }
 
-    const options = folders.map((item) => `${item.id}: ${item.name}`).join('\n');
-    const target = prompt(`Hedef klasör ID seçin:\n${options}`);
-    if (!target || Number.isNaN(Number(target))) return;
+    moveModalState = {
+        type: 'institution',
+        refId,
+        fileName: '',
+        selectedTargetId: null,
+        currentCollectionId: currentFolderId,
+        rootId: null,
+        folders,
+        search: ''
+    };
 
-    const moveRes = await fetch(`${API_BASE}/api/collection_files/${refId}/move`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ target_collection_id: Number(target) })
-    });
-
-    if (moveRes.ok) {
-        showToast('Dosya taşındı.', 'success');
-        loadFiles(currentFolderId);
-    } else {
-        const data = await moveRes.json().catch(() => ({}));
-        showToast(data.error || 'Dosya taşınamadı.', 'error');
-    }
+    document.getElementById('moveModalSubtitle').textContent = 'Dosyayi kurum klasorleri arasinda tasi.';
+    const searchInput = document.getElementById('moveModalSearch');
+    if (searchInput) searchInput.value = '';
+    renderMoveModalFolders();
+    document.getElementById('moveModal')?.classList.remove('hidden');
 }
 
 document.getElementById('addFolderForm')?.addEventListener('submit', async (e) => {
     return;
 }, true);
+
+document.getElementById('moveModalSearch')?.addEventListener('input', function() {
+    moveModalState.search = this.value || '';
+    renderMoveModalFolders();
+});
 
 // Profil güncelleme
 document.getElementById('profileUpdateForm')?.addEventListener('submit', async (e) => {
