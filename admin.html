@@ -2307,7 +2307,7 @@ async function loadAdminFiles() {
 }
 // Klasör navigasyon
 function adminOpenFolder(folderId, folderName) {
-    adminFolderStack.push({ id: adminCurrentFolderId, name: folderName });
+    adminFolderStack.push({ id: folderId, name: folderName });
     adminCurrentFolderId = folderId;
     updateAdminBreadcrumb();
     loadAdminFolders(folderId);
@@ -2316,8 +2316,10 @@ function adminOpenFolder(folderId, folderName) {
 }
 
 function adminGoBack() {
-    const prev = adminFolderStack.pop();
-    adminCurrentFolderId = prev?.id ?? null;
+    adminFolderStack.pop();
+    adminCurrentFolderId = adminFolderStack.length
+        ? adminFolderStack[adminFolderStack.length - 1].id
+        : null;
     updateAdminBreadcrumb();
     loadAdminFolders(adminCurrentFolderId);
     loadAdminFiles();
@@ -2331,10 +2333,22 @@ function updateAdminBreadcrumb() {
     const instId = document.getElementById('institutionFilter')?.value;
     const instName = instId && instId !== 'all' ? escapeHtml(instId) : 'Tüm Kurumlar';
     let html = `<span class="cursor-pointer hover:text-primary" onclick="adminGoRoot()">${instName}</span>`;
-    adminFolderStack.filter(f => f.id !== null).forEach(f => {
-        html += ` / <span>${escapeHtml(f.name)}</span>`;
+    adminFolderStack.forEach((f, index) => {
+        const isLast = index === adminFolderStack.length - 1;
+        html += isLast
+            ? ` / <span class="font-medium">${escapeHtml(f.name)}</span>`
+            : ` / <span class="cursor-pointer hover:text-primary" onclick="adminGoToFolder(${index})">${escapeHtml(f.name)}</span>`;
     });
     bc.innerHTML = html;
+}
+
+function adminGoToFolder(index) {
+    adminFolderStack = adminFolderStack.slice(0, index + 1);
+    adminCurrentFolderId = adminFolderStack[index]?.id ?? null;
+    document.getElementById('adminBackBtn')?.classList.toggle('hidden', adminFolderStack.length === 0);
+    updateAdminBreadcrumb();
+    loadAdminFolders(adminCurrentFolderId);
+    loadAdminFiles();
 }
 
 function adminGoRoot() {
@@ -4422,11 +4436,29 @@ function buildAdminMoveTree(folders, parentId, depth) {
         ]);
 }
 
+function getAdminFolderPathLabel(folderId) {
+    const targetId = folderId == null ? null : Number(folderId);
+    if (targetId == null) return 'Ana dizin';
+    const folderMap = new Map(adminMoveModalState.folders.map(item => [Number(item.id), item]));
+    const parts = [];
+    let cursor = folderMap.get(targetId) || null;
+
+    while (cursor) {
+        const name = String(cursor.name || '').trim();
+        if (name) parts.unshift(name === '(Ana Dizin)' ? 'Ana dizin' : name);
+        const parentId = cursor.parent_id == null ? null : Number(cursor.parent_id);
+        cursor = parentId == null ? null : folderMap.get(parentId);
+    }
+
+    return parts.length ? parts.join(' / ') : 'Ana dizin';
+}
+
 function renderAdminMoveModalFolders() {
     const list = document.getElementById('adminMoveModalFolderList');
     const confirmBtn = document.getElementById('adminMoveModalConfirmBtn');
     const searchInput = document.getElementById('adminMoveModalSearch');
     const status = document.getElementById('adminMoveModalSearchStatus');
+    const pathInfo = document.getElementById('adminMoveModalPathInfo');
     if (!list || !confirmBtn) return;
 
     const items = buildAdminMoveTree(adminMoveModalState.folders, null, 0);
@@ -4436,6 +4468,16 @@ function renderAdminMoveModalFolders() {
     if (status) status.textContent = query
         ? `${visible.length} e\u015fle\u015fme / ${items.length} klas\u00f6r`
         : `${items.length} klas\u00f6r`;
+
+    if (pathInfo) {
+        const currentPath = getAdminFolderPathLabel(adminMoveModalState.currentCollectionId);
+        const targetPath = adminMoveModalState.selectedTargetId != null
+            ? getAdminFolderPathLabel(adminMoveModalState.selectedTargetId)
+            : null;
+        pathInfo.textContent = targetPath
+            ? `Mevcut: ${currentPath} | Hedef: ${targetPath}`
+            : `Mevcut: ${currentPath}`;
+    }
 
     if (!visible.length) {
         list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klas\u00f6r bulunamad\u0131.</div>';
@@ -4554,11 +4596,12 @@ document.addEventListener('click', function(e) {
 
 <!-- Dosya Taşıma Modal -->
 <div id="adminMoveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[85vh] overflow-y-auto">
         <div class="flex items-center justify-between px-5 py-4 border-b">
             <div>
                 <h3 class="font-semibold text-gray-900">Dosyay&#305; Ta&#351;&#305;</h3>
                 <p id="adminMoveModalSubtitle" class="text-sm text-gray-500 mt-0.5">Hedef klas&#246;r&#252; se&#231;in</p>
+                <p id="adminMoveModalPathInfo" class="text-xs text-gray-500 mt-1"></p>
             </div>
             <button onclick="closeAdminMoveModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
         </div>

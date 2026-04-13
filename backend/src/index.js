@@ -491,6 +491,19 @@ function canManageInstitutionScope(user, institution) {
     || (user.institution && institution.name && String(user.institution) === String(institution.name));
 }
 
+function canManageCollectionScope(user, collection) {
+  if (!user || !collection) return false;
+  if (collection.scope_type === 'institution') {
+    return canManageInstitutionScope(user, { id: collection.scope_id, name: collection.scope_name || null });
+  }
+
+  if (collection.scope_type === 'system') {
+    return user.role === 'super_admin' && String(collection.scope_id || '') === String(user.user_id || '');
+  }
+
+  return false;
+}
+
 async function getInstitutionByIdentifier(db, identifier) {
   if (/^\d+$/.test(String(identifier || '').trim())) {
     return db.prepare(`SELECT id, name, domain, category, status, created_at FROM institutions WHERE id = ?`)
@@ -526,6 +539,29 @@ async function ensureInstitutionRootCollection(db, institutionId, createdBy = nu
   `).bind(result.meta?.last_row_id).first();
 }
 
+async function ensureSystemRootCollection(db, userId, createdBy = null) {
+  const existing = await db.prepare(`
+    SELECT id, parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by, created_at
+    FROM collections
+    WHERE scope_type = 'system' AND scope_id = ? AND kind = 'root' AND is_active = 1
+    ORDER BY id ASC
+    LIMIT 1
+  `).bind(userId).first();
+
+  if (existing) return existing;
+
+  const result = await db.prepare(`
+    INSERT INTO collections (parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by)
+    VALUES (NULL, '__root__', 'system', ?, 'root', 0, 1, 0, ?)
+  `).bind(userId, createdBy).run();
+
+  return db.prepare(`
+    SELECT id, parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by, created_at
+    FROM collections
+    WHERE id = ?
+  `).bind(result.meta?.last_row_id).first();
+}
+
 async function getActiveCollection(db, collectionId) {
   return db.prepare(`
     SELECT id, parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by, created_at
@@ -540,6 +576,18 @@ async function getInstitutionCollectionOrRoot(db, institutionId, folderId = null
 
   const folder = await getActiveCollection(db, folderId);
   if (!folder || folder.scope_type !== 'institution' || String(folder.scope_id) !== String(institutionId)) {
+    return null;
+  }
+
+  return folder;
+}
+
+async function getSystemCollectionOrRoot(db, userId, folderId = null, createdBy = null) {
+  const root = await ensureSystemRootCollection(db, userId, createdBy);
+  if (!folderId) return root;
+
+  const folder = await getActiveCollection(db, folderId);
+  if (!folder || folder.scope_type !== 'system' || String(folder.scope_id) !== String(userId)) {
     return null;
   }
 
@@ -602,10 +650,11 @@ async function ensureStoredFileRecord(c, file, uploadedBy) {
 
 async function countActiveReferences(db, fileId) {
   const row = await db.prepare(`
-    SELECT COUNT(*) AS cnt
-    FROM collection_files
-    WHERE file_id = ? AND is_active = 1
-  `).bind(fileId).first();
+    SELECT (
+      COALESCE((SELECT COUNT(*) FROM collection_files WHERE file_id = ? AND is_active = 1), 0) +
+      COALESCE((SELECT COUNT(*) FROM user_collection_files WHERE file_id = ?), 0)
+    ) AS cnt
+  `).bind(fileId, fileId).first();
 
   return Number(row?.cnt || 0);
 }
@@ -2487,6 +2536,17 @@ async function handleManagedUpload(c) {
 
   try {
     const { stored, deduplicated } = await ensureStoredFileRecord(c, file, auth.user.user_id);
+    const systemRoot = await ensureSystemRootCollection(c.env.DB, auth.user.user_id, auth.user.user_id);
+    await c.env.DB.prepare(`
+      INSERT INTO collection_files (collection_id, file_id, display_name, category, is_public, is_active, sort_order, added_by, added_at)
+      SELECT ?, ?, ?, 'other', 0, 1, 0, ?, CURRENT_TIMESTAMP
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM collection_files
+        WHERE collection_id = ? AND file_id = ? AND is_active = 1
+      )
+    `).bind(systemRoot.id, stored.id, stored.original_name, auth.user.user_id, systemRoot.id, stored.id).run();
+
     return c.json({
       success: true,
       deduplicated,
@@ -3191,7 +3251,7 @@ app.get('/api/files/library', async (c) => {
   const db = c.env.DB;
   if (auth.user.role === 'super_admin') {
     const rows = await db.prepare(`
-      SELECT
+      SELECT DISTINCT
         f.id,
         f.original_name,
         f.file_key,
@@ -3208,9 +3268,11 @@ app.get('/api/files/library', async (c) => {
           WHERE cf.file_id = f.id AND cf.is_active = 1
         ) AS usage_count
       FROM files f
+      JOIN collection_files cf ON cf.file_id = f.id AND cf.is_active = 1
+      JOIN collections col ON col.id = cf.collection_id AND col.scope_type = 'system' AND col.scope_id = ? AND col.is_active = 1
       LEFT JOIN users u ON u.id = f.uploaded_by
       ORDER BY f.created_at DESC, f.id DESC
-    `).all();
+    `).bind(auth.user.user_id).all();
     return c.json(rows.results || []);
   }
 
@@ -3424,7 +3486,13 @@ app.get('/api/collections', async (c) => {
   const parentId = c.req.query('parent_id');
 
   let effectiveScopeId = scopeId;
-  if (auth.user.role === 'admin') {
+  if (scopeType === 'system') {
+    if (auth.user.role !== 'super_admin') {
+      return c.json({ error: 'Yetkisiz' }, 403);
+    }
+    effectiveScopeId = auth.user.user_id;
+    await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
+  } else if (auth.user.role === 'admin') {
     effectiveScopeId = auth.user.institution_id;
   }
 
@@ -3455,12 +3523,21 @@ app.post('/api/collections', async (c) => {
   const db = c.env.DB;
   const { parent_id, name, scope_type, scope_id, kind, is_public } = await c.req.json();
   if (!name?.trim()) return c.json({ error: 'Koleksiyon adi zorunlu' }, 400);
-  if (scope_type !== 'institution') return c.json({ error: 'Su an yalnizca institution destekleniyor' }, 400);
+  if (!['institution', 'system'].includes(scope_type)) {
+    return c.json({ error: 'Desteklenmeyen scope_type' }, 400);
+  }
 
-  const effectiveScopeId = auth.user.role === 'admin' ? auth.user.institution_id : scope_id;
-  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(Number(effectiveScopeId)).first();
-  if (!institution) return c.json({ error: 'Kurum bulunamadi' }, 404);
-  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+  let effectiveScopeId;
+  if (scope_type === 'system') {
+    if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+    effectiveScopeId = auth.user.user_id;
+    await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
+  } else {
+    effectiveScopeId = auth.user.role === 'admin' ? auth.user.institution_id : scope_id;
+    const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(Number(effectiveScopeId)).first();
+    if (!institution) return c.json({ error: 'Kurum bulunamadi' }, 404);
+    if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+  }
 
   const result = await db.prepare(`
     INSERT INTO collections (parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by)
@@ -3480,8 +3557,7 @@ app.put('/api/collections/:id', async (c) => {
   const db = c.env.DB;
   const collection = await getActiveCollection(db, Number(c.req.param('id')));
   if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
-  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
-  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!canManageCollectionScope(auth.user, collection)) return c.json({ error: 'Yetkisiz' }, 403);
 
   const { name, is_public, sort_order } = await c.req.json();
   await db.prepare(`
@@ -3507,9 +3583,7 @@ app.delete('/api/collections/:id', async (c) => {
   const collection = await getActiveCollection(db, Number(c.req.param('id')));
   if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
   if (collection.kind !== 'folder') return c.json({ error: 'Yalnizca folder silinebilir' }, 400);
-
-  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
-  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!canManageCollectionScope(auth.user, collection)) return c.json({ error: 'Yetkisiz' }, 403);
 
   await c.env.DB.prepare(`UPDATE collections SET is_active = 0 WHERE id = ?`).bind(collection.id).run();
   await c.env.DB.prepare(`UPDATE collection_files SET is_active = 0 WHERE collection_id = ?`).bind(collection.id).run();
@@ -3530,10 +3604,8 @@ app.post('/api/collections/:id/files', async (c) => {
   const db = c.env.DB;
   const collection = await getActiveCollection(db, Number(c.req.param('id')));
   if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
-  if (collection.scope_type !== 'institution') return c.json({ error: 'Yalnizca institution destekleniyor' }, 400);
-
-  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
-  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!['institution', 'system'].includes(collection.scope_type)) return c.json({ error: 'Desteklenmeyen scope' }, 400);
+  if (!canManageCollectionScope(auth.user, collection)) return c.json({ error: 'Yetkisiz' }, 403);
 
   const stored = await getStoredFileById(db, Number(file_id));
   if (!stored) return c.json({ error: 'Dosya bulunamadi' }, 404);
@@ -3573,8 +3645,7 @@ app.delete('/api/collections/:id/files/:fileId', async (c) => {
   const db = c.env.DB;
   const collection = await getActiveCollection(db, collectionId);
   if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
-  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
-  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!canManageCollectionScope(auth.user, collection)) return c.json({ error: 'Yetkisiz' }, 403);
 
   await db.prepare(`
     UPDATE collection_files
@@ -3603,7 +3674,7 @@ app.patch('/api/collection_files/:id/move', async (c) => {
   const { target_collection_id } = await c.req.json();
   const db = c.env.DB;
   const ref = await db.prepare(`
-    SELECT cf.id, col.scope_id AS institution_id, i.name AS institution_name
+    SELECT cf.id, col.scope_type, col.scope_id, i.name AS institution_name
     FROM collection_files cf
     JOIN collections col ON col.id = cf.collection_id
     LEFT JOIN institutions i ON i.id = col.scope_id
@@ -3611,15 +3682,18 @@ app.patch('/api/collection_files/:id/move', async (c) => {
   `).bind(refId).first();
   if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
   // Kaynak dosyanın kurumunu da kontrol et
-  if (!canManageInstitutionScope(auth.user, { id: ref.institution_id, name: ref.institution_name }))
-    return c.json({ error: 'Yetkisiz' }, 403);
+  if (!canManageCollectionScope(auth.user, {
+    scope_type: ref.scope_type,
+    scope_id: ref.scope_id,
+    scope_name: ref.institution_name
+  })) return c.json({ error: 'Yetkisiz' }, 403);
 
   const target = await getActiveCollection(db, Number(target_collection_id));
-  if (!target || target.scope_type !== 'institution') return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
-  // Kaynak ve hedef aynı kuruma ait olmalı
-  if (String(target.scope_id) !== String(ref.institution_id)) return c.json({ error: 'Farkli kurumlar arasi tasima yapilamaz' }, 400);
-  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(target.scope_id).first();
-  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!target) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+  if (String(target.scope_type) !== String(ref.scope_type) || String(target.scope_id) !== String(ref.scope_id)) {
+    return c.json({ error: 'Farkli alanlar arasi tasima yapilamaz' }, 400);
+  }
+  if (!canManageCollectionScope(auth.user, target)) return c.json({ error: 'Yetkisiz' }, 403);
 
   await db.prepare(`UPDATE collection_files SET collection_id = ? WHERE id = ?`).bind(target.id, refId).run();
   return c.json({ success: true });
@@ -3635,17 +3709,159 @@ app.patch('/api/collection_files/:id/rename', async (c) => {
   if (!String(display_name || '').trim()) return c.json({ error: 'display_name zorunlu' }, 400);
   const db = c.env.DB;
   const ref = await db.prepare(`
-    SELECT cf.id, col.scope_id
+    SELECT cf.id, col.scope_type, col.scope_id
     FROM collection_files cf
     JOIN collections col ON col.id = cf.collection_id
     WHERE cf.id = ? AND cf.is_active = 1 AND col.is_active = 1
   `).bind(refId).first();
   if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
-
-  const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(ref.scope_id).first();
-  if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
+  if (!canManageCollectionScope(auth.user, ref)) return c.json({ error: 'Yetkisiz' }, 403);
 
   await db.prepare(`UPDATE collection_files SET display_name = ? WHERE id = ?`).bind(String(display_name).trim(), refId).run();
+  return c.json({ success: true });
+});
+
+app.get('/api/system/files', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const db = c.env.DB;
+  const root = await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
+  const requestedCollectionId = c.req.query('collection_id');
+  const targetCollection = await getSystemCollectionOrRoot(db, auth.user.user_id, requestedCollectionId || null, auth.user.user_id);
+  if (!targetCollection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
+
+  const rows = await db.prepare(`
+    SELECT
+      cf.id,
+      cf.collection_id AS folder_id,
+      COALESCE(cf.display_name, f.original_name) AS file_name,
+      '/api/files/' || f.file_key AS file_url,
+      COALESCE(f.extension, '') AS file_type,
+      f.file_size,
+      COALESCE(cf.category, 'other') AS category,
+      cf.added_by AS uploaded_by,
+      cf.added_at AS uploaded_at,
+      u.full_name AS uploaded_by_name,
+      f.mime_type,
+      f.id AS source_file_id
+    FROM collection_files cf
+    JOIN files f ON f.id = cf.file_id
+    LEFT JOIN users u ON u.id = cf.added_by
+    WHERE cf.collection_id = ? AND cf.is_active = 1
+    ORDER BY cf.added_at DESC, cf.id DESC
+  `).bind(targetCollection.id).all();
+
+  return c.json({
+    root_collection_id: root.id,
+    current_collection_id: targetCollection.id,
+    files: rows.results || []
+  });
+});
+
+app.post('/api/system/file', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const { file_id, folder_id, display_name, category } = await c.req.json();
+  if (!file_id) return c.json({ error: 'file_id zorunlu' }, 400);
+
+  const db = c.env.DB;
+  const root = await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
+  const targetCollection = await getSystemCollectionOrRoot(db, auth.user.user_id, folder_id || null, auth.user.user_id);
+  if (!targetCollection) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+
+  const stored = await getStoredFileById(db, Number(file_id));
+  if (!stored) return c.json({ error: 'Dosya bulunamadi' }, 404);
+
+  const existing = await db.prepare(`
+    SELECT id
+    FROM collection_files
+    WHERE collection_id = ? AND file_id = ? AND is_active = 1
+    LIMIT 1
+  `).bind(targetCollection.id, stored.id).first();
+  if (existing) return c.json({ success: true, id: existing.id, deduplicated: true });
+
+  if (Number(targetCollection.id) !== Number(root.id)) {
+    const existingRootRef = await db.prepare(`
+      SELECT id
+      FROM collection_files
+      WHERE collection_id = ? AND file_id = ? AND is_active = 1
+      LIMIT 1
+    `).bind(root.id, stored.id).first();
+
+    if (existingRootRef) {
+      const scopeRefCount = await db.prepare(`
+        SELECT COUNT(*) AS cnt
+        FROM collection_files cf
+        JOIN collections col ON col.id = cf.collection_id
+        WHERE cf.file_id = ?
+          AND cf.is_active = 1
+          AND col.is_active = 1
+          AND col.scope_type = 'system'
+          AND col.scope_id = ?
+      `).bind(stored.id, auth.user.user_id).first();
+
+      if (Number(scopeRefCount?.cnt || 0) === 1) {
+        await db.prepare(`
+          UPDATE collection_files
+          SET collection_id = ?, display_name = ?, category = ?
+          WHERE id = ?
+        `).bind(
+          targetCollection.id,
+          display_name?.trim() || stored.original_name,
+          category || 'other',
+          existingRootRef.id
+        ).run();
+
+        return c.json({ success: true, id: existingRootRef.id, moved_from_root: true });
+      }
+    }
+  }
+
+  const result = await db.prepare(`
+    INSERT INTO collection_files (collection_id, file_id, display_name, category, is_public, is_active, sort_order, added_by, added_at)
+    VALUES (?, ?, ?, ?, 0, 1, 0, ?, CURRENT_TIMESTAMP)
+  `).bind(
+    targetCollection.id,
+    stored.id,
+    display_name?.trim() || stored.original_name,
+    category || 'other',
+    auth.user.user_id
+  ).run();
+
+  return c.json({ success: true, id: result.meta?.last_row_id });
+});
+
+app.delete('/api/system/file/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const refId = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const ref = await db.prepare(`
+    SELECT cf.id, cf.file_id, col.scope_type, col.scope_id
+    FROM collection_files cf
+    JOIN collections col ON col.id = cf.collection_id
+    WHERE cf.id = ? AND cf.is_active = 1 AND col.is_active = 1
+  `).bind(refId).first();
+  if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
+  if (!canManageCollectionScope(auth.user, ref)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  await db.prepare(`UPDATE collection_files SET is_active = 0 WHERE id = ?`).bind(refId).run();
+
+  const remainingRefs = await countActiveReferences(db, ref.file_id);
+  if (remainingRefs === 0) {
+    const stored = await getStoredFileById(db, ref.file_id);
+    if (stored && c.env.FILES_BUCKET) {
+      await c.env.FILES_BUCKET.delete(stored.file_key);
+    }
+    await db.prepare(`DELETE FROM files WHERE id = ?`).bind(ref.file_id).run();
+  }
+
   return c.json({ success: true });
 });
 

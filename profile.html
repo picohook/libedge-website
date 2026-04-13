@@ -435,6 +435,7 @@
             <div>
                 <h3 class="text-xl font-bold">Dosya Taşı</h3>
                 <p id="moveModalSubtitle" class="text-sm text-gray-500 mt-1"></p>
+                <p id="moveModalPathInfo" class="text-xs text-gray-500 mt-1"></p>
             </div>
             <button type="button" onclick="closeMoveModal()" class="text-gray-400 hover:text-gray-600">
                 <i class="fas fa-times"></i>
@@ -531,6 +532,7 @@
 let currentFolderId = null;
 let currentFolderName = null;
 let folderStack = [];
+let systemRootCollectionId = null;
 let profileSelectedFile = null;
 let profileUploadTab = 'computer';
 let moveModalState = {
@@ -595,9 +597,18 @@ function isProfileUserMode() {
     return window.currentUser?.role === 'user';
 }
 
+function isProfileSystemMode() {
+    return window.currentUser?.role === 'super_admin';
+}
+
 function updateFileTabMode() {
     const title = document.getElementById('filesTabTitle');
-    if (title) title.textContent = isProfileUserMode() ? 'Dosyalarim' : 'Kurum Dosyalari';
+    if (!title) return;
+    if (isProfileUserMode()) {
+        title.textContent = 'Dosyalarım';
+        return;
+    }
+    title.textContent = isProfileSystemMode() ? 'Merkezi Dosyalar' : 'Kurum Dosyaları';
 }
 
 async function loadNotifications() {
@@ -870,6 +881,39 @@ async function loadFolders(parentId = null) {
         }
         return;
     }
+    if (isProfileSystemMode()) {
+        try {
+            const res = await fetch(`${API_BASE}/api/collections?scope_type=system&scope_id=self`, { credentials: 'include' });
+            if (!res.ok) throw new Error(`${res.status}`);
+            const collections = await res.json();
+            const root = (collections || []).find((item) => item.kind === 'root') || null;
+            systemRootCollectionId = root ? Number(root.id) : null;
+            const expectedParent = parentId == null ? systemRootCollectionId : Number(parentId);
+            const folders = (collections || []).filter((item) => {
+                if (item.kind !== 'folder') return false;
+                const itemParent = item.parent_id == null ? null : Number(item.parent_id);
+                return itemParent === expectedParent;
+            });
+
+            container.innerHTML = folders.length ? folders.map(f => `
+                <div class="border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-yellow-50 text-center group relative"
+                     onclick="openFolder(${f.id}, '${escapeHtml(f.name)}')">
+                    <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
+                    <p class="text-xs font-medium truncate">${escapeHtml(f.name)}</p>
+                </div>
+            `).join('') : '<p class="col-span-full text-center text-gray-400 py-4">Henüz klasör yok</p>';
+
+            await loadFiles(parentId);
+            updateBreadcrumb();
+            updateBackButton();
+            document.getElementById('addFolderBtn')?.classList.remove('hidden');
+            document.getElementById('addFileBtn')?.classList.remove('hidden');
+        } catch (err) {
+            console.error('loadFolders system mode error:', err);
+            container.innerHTML = '<p class="text-red-500 text-center col-span-full py-4">Klasörler yüklenemedi.</p>';
+        }
+        return;
+    }
     if (!instKey) { container.innerHTML = '<p class="text-gray-400 text-center col-span-full py-4">Kurum bilgisi bulunamadı.</p>'; return; }
 
     try {
@@ -917,7 +961,7 @@ async function loadFolders(parentId = null) {
 
 async function loadFiles(folderId = null) {
     const instKey = window.currentUser?.institution_id || window.currentUser?.institution;
-    if (!instKey && !isProfileUserMode()) return;
+    if (!instKey && !isProfileUserMode() && !isProfileSystemMode()) return;
     const container = document.getElementById('filesList');
     if (isProfileUserMode()) {
         try {
@@ -950,6 +994,42 @@ async function loadFiles(folderId = null) {
             `).join('') : '<p class="text-gray-400 text-center py-8">Bu klasörde dosya yok.</p>';
         } catch (err) {
             console.error('loadFiles user mode error:', err);
+            container.innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenemedi.</p>';
+        }
+        return;
+    }
+    if (isProfileSystemMode()) {
+        try {
+            const query = folderId != null ? `?collection_id=${folderId}` : '';
+            const res = await fetch(`${API_BASE}/api/system/files${query}`, { credentials: 'include' });
+            if (!res.ok) throw new Error(`${res.status}`);
+            const data = await res.json();
+            if (systemRootCollectionId == null && data?.root_collection_id != null) {
+                systemRootCollectionId = Number(data.root_collection_id);
+            }
+            const files = data.files || [];
+
+            container.innerHTML = files.length ? files.map(file => `
+                <div class="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
+                            <a href="javascript:void(0)"
+                               onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type||''}')"
+                               class="font-medium text-primary hover:underline truncate">${escapeHtml(file.file_name)}</a>
+                            <span class="text-xs text-gray-400">${getCategoryName(file.category)}</span>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">${new Date(file.uploaded_at || file.created_at).toLocaleDateString('tr-TR')}</p>
+                    </div>
+                    <div class="flex gap-2 ml-2">
+                        <button type="button" onclick="moveSystemFile(${file.id}, '${escapeHtml(file.file_name)}')" title="Taşı" class="text-gray-500 hover:text-gray-700"><i class="fas fa-folder-open"></i></button>
+                        <button type="button" onclick="renameSystemFile(${file.id}, '${escapeHtml(file.file_name)}')" title="Yeniden adlandır" class="text-amber-500 hover:text-amber-700"><i class="fas fa-pencil-alt"></i></button>
+                        <button type="button" onclick="deleteFile(${file.id})" title="Sil" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('') : '<p class="text-gray-400 text-center py-8">Bu klasörde dosya yok.</p>';
+        } catch (err) {
+            console.error('loadFiles system mode error:', err);
             container.innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenemedi.</p>';
         }
         return;
@@ -1063,7 +1143,7 @@ function updateBackButton() {
 
 // ====================== MODAL FONKSİYONLARI ======================
 function openFolderModal() {
-    document.getElementById('folderVisibilityGroup')?.classList.toggle('hidden', isProfileUserMode());
+    document.getElementById('folderVisibilityGroup')?.classList.toggle('hidden', isProfileUserMode() || isProfileSystemMode());
     document.getElementById('addFolderModal').classList.remove('hidden');
 }
 function closeFolderModal() {
@@ -1178,15 +1258,34 @@ function buildUserMoveTreeItems() {
     return items;
 }
 
+function getMoveFolderPathLabel(folderId) {
+    const targetId = folderId == null ? null : Number(folderId);
+    if (targetId == null) return 'Ana dizin';
+    if (moveModalState.rootId != null && targetId === Number(moveModalState.rootId)) return 'Ana dizin';
+    const folderMap = new Map(moveModalState.folders.map((item) => [Number(item.id), item]));
+    const parts = [];
+    let cursor = folderMap.get(targetId) || null;
+
+    while (cursor) {
+        const name = String(cursor.name || '').trim();
+        if (name && name !== '__root__') parts.unshift(name === '(Ana dizin)' ? 'Ana dizin' : name);
+        const parentId = cursor.parent_id == null ? null : Number(cursor.parent_id);
+        cursor = parentId == null ? null : folderMap.get(parentId);
+    }
+
+    return parts.length ? parts.join(' / ') : 'Ana dizin';
+}
+
 function renderMoveModalFolders() {
     const list = document.getElementById('moveModalFolderList');
     const confirmBtn = document.getElementById('moveModalConfirmBtn');
     const searchInput = document.getElementById('moveModalSearch');
     const status = document.getElementById('moveModalSearchStatus');
+    const pathInfo = document.getElementById('moveModalPathInfo');
     if (!list || !confirmBtn) return;
 
     const items = [];
-    if (moveModalState.type === 'user' && moveModalState.rootId != null) {
+    if ((moveModalState.type === 'user' || moveModalState.type === 'system') && moveModalState.rootId != null) {
         items.push(...buildUserMoveTreeItems());
     } else {
         items.push(...buildMoveTree(moveModalState.folders, null, 0));
@@ -1205,6 +1304,16 @@ function renderMoveModalFolders() {
         status.textContent = query
             ? `${visibleItems.length} eşleşme / ${items.length} klasör`
             : `${items.length} klasör`;
+    }
+
+    if (pathInfo) {
+        const currentPath = getMoveFolderPathLabel(moveModalState.currentCollectionId);
+        const targetPath = moveModalState.selectedTargetId != null
+            ? getMoveFolderPathLabel(moveModalState.selectedTargetId)
+            : null;
+        pathInfo.textContent = targetPath
+            ? `Mevcut: ${currentPath} | Hedef: ${targetPath}`
+            : `Mevcut: ${currentPath}`;
     }
 
     if (!visibleItems.length) {
@@ -1310,6 +1419,21 @@ async function createMoveModalFolder() {
             credentials: 'include',
             body: JSON.stringify({ name: folderName, parent_id: parentId })
         });
+    } else if (moveModalState.type === 'system') {
+        const parentId = moveModalState.selectedTargetId || systemRootCollectionId || null;
+        res = await fetch(`${API_BASE}/api/collections`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                name: folderName,
+                parent_id: parentId,
+                scope_type: 'system',
+                scope_id: window.currentUser?.id || window.currentUser?.user_id || null,
+                kind: 'folder',
+                is_public: 0
+            })
+        });
     } else {
         const institutionId = window.currentUser?.institution_id || window.currentUser?.institution || '';
         const parentId = moveModalState.selectedTargetId || currentFolderId || null;
@@ -1345,6 +1469,16 @@ async function createMoveModalFolder() {
         if (moveModalState.rootId == null) {
             const root = moveModalState.folders.find((item) => item.parent_id == null);
             moveModalState.rootId = root ? Number(root.id) : null;
+        }
+    } else if (moveModalState.type === 'system') {
+        const refresh = await fetch(`${API_BASE}/api/collections?scope_type=system&scope_id=self`, {
+            credentials: 'include'
+        });
+        const collections = refresh.ok ? await refresh.json() : [];
+        moveModalState.folders = collections || [];
+        if (systemRootCollectionId == null) {
+            const root = moveModalState.folders.find((item) => item.kind === 'root');
+            systemRootCollectionId = root ? Number(root.id) : null;
         }
     } else {
         const institutionId = window.currentUser?.institution_id || window.currentUser?.institution || '';
@@ -1385,6 +1519,35 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
         }
         return;
     }
+    if (isProfileSystemMode()) {
+        const folderName = document.getElementById('folderName').value.trim();
+        if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
+
+        const parentId = currentFolderId ?? systemRootCollectionId ?? null;
+        const res = await fetch(`${API_BASE}/api/collections`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                name: folderName,
+                parent_id: parentId,
+                scope_type: 'system',
+                scope_id: window.currentUser?.id || window.currentUser?.user_id || null,
+                kind: 'folder',
+                is_public: 0
+            })
+        });
+
+        if (res.ok) {
+            showToast('Klasör başarıyla oluşturuldu!', 'success');
+            closeFolderModal();
+            loadFolders(currentFolderId);
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'İşlem başarısız oldu!', 'error');
+        }
+        return;
+    }
 
     const folderName = document.getElementById('folderName').value.trim();
     const isPublic = parseInt(document.getElementById('folderVisibility').value);
@@ -1400,11 +1563,9 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
 
 document.getElementById('addFileForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const inst = window.currentUser?.institution_id || window.currentUser?.institution;
-    if (!inst) { showToast('Kurum bilgisi bulunamadı.', 'error'); return; }
     const btn = document.getElementById('profileFileSubmitBtn');
     btn.disabled = true; btn.textContent = 'Kaydediliyor...';
-    let fileUrl = '', fileType = 'other';
+    let fileUrl = '', fileType = 'other', uploadedFileId = null;
     let fileName = document.getElementById('profileFileName').value.trim();
     try {
         if (profileUploadTab === 'computer') {
@@ -1417,6 +1578,7 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
             const uploadData = await uploadRes.json();
             if (!uploadRes.ok) throw new Error(uploadData.error || 'Yükleme başarısız');
             fileUrl = uploadData.url;
+            uploadedFileId = uploadData.file_id;
             fileType = profileSelectedFile.name.split('.').pop()?.toLowerCase() || 'other';
             document.getElementById('uploadProgressBar').style.width = '100%';
         } else {
@@ -1425,6 +1587,24 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
             fileType = fileUrl.split('.').pop()?.split('?')[0].toLowerCase() || 'other';
         }
         if (!fileName) fileName = fileUrl.split('/').pop()?.split('?')[0] || 'Dosya';
+        if (isProfileSystemMode()) {
+            const res = await fetch(`${API_BASE}/api/system/file`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    file_id: uploadedFileId,
+                    folder_id: currentFolderId ?? systemRootCollectionId ?? null,
+                    display_name: fileName,
+                    category: document.getElementById('profileFileCategory').value
+                })
+            });
+            if (res.ok) { showToast('Dosya başarıyla yüklendi!', 'success'); closeFileModal(); loadFolders(currentFolderId); }
+            else { const d = await res.json().catch(()=>({})); showToast(d.error || 'İşlem başarısız oldu!', 'error'); }
+            return;
+        }
+        const inst = window.currentUser?.institution_id || window.currentUser?.institution;
+        if (!inst) { showToast('Kurum bilgisi bulunamadı.', 'error'); return; }
         const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(inst)}/file`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
             body: JSON.stringify({
@@ -1455,7 +1635,10 @@ async function toggleFilePublic(fileId, currentStatus) {
 
 async function deleteFile(fileId) {
     if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
-    const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, { method: 'DELETE', credentials: 'include' });
+    const url = isProfileSystemMode()
+        ? `${API_BASE}/api/system/file/${fileId}`
+        : `${API_BASE}/api/institution/file/${fileId}`;
+    const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadFolders(currentFolderId); }
     else showToast('İşlem başarısız oldu!', 'error');
 }
@@ -1527,6 +1710,58 @@ async function moveUserFile(fileId, fileName) {
     if (searchInput) searchInput.value = '';
     renderMoveModalFolders();
     document.getElementById('moveModal')?.classList.remove('hidden');
+}
+
+async function moveSystemFile(fileId, fileName) {
+    const query = currentFolderId == null ? '' : `?collection_id=${currentFolderId}`;
+    const res = await fetch(`${API_BASE}/api/system/files${query}`, { credentials: 'include' });
+    const data = res.ok ? await res.json() : null;
+    const collectionsRes = await fetch(`${API_BASE}/api/collections?scope_type=system&scope_id=self`, { credentials: 'include' });
+    const folders = collectionsRes.ok ? await collectionsRes.json() : [];
+    const root = (folders || []).find((item) => item.kind === 'root') || null;
+
+    if (!folders.length || !root) {
+        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
+        return;
+    }
+
+    systemRootCollectionId = Number(root.id);
+    moveModalState = {
+        type: 'system',
+        refId: fileId,
+        fileName: fileName || '',
+        selectedTargetId: null,
+        currentCollectionId: currentFolderId ?? data?.current_collection_id ?? systemRootCollectionId,
+        rootId: systemRootCollectionId,
+        folders,
+        search: ''
+    };
+
+    document.getElementById('moveModalSubtitle').textContent = 'Dosyayı merkezi klasörler arasında taşı.';
+    const searchInput = document.getElementById('moveModalSearch');
+    if (searchInput) searchInput.value = '';
+    renderMoveModalFolders();
+    document.getElementById('moveModal')?.classList.remove('hidden');
+}
+
+async function renameSystemFile(refId, currentName) {
+    const displayName = prompt('Yeni dosya adı:', currentName);
+    if (!displayName || !displayName.trim()) return;
+
+    const res = await fetch(`${API_BASE}/api/collection_files/${refId}/rename`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ display_name: displayName.trim() })
+    });
+
+    if (res.ok) {
+        showToast('Dosya adı güncellendi.', 'success');
+        loadFiles(currentFolderId);
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Dosya adı güncellenemedi.', 'error');
+    }
 }
 
 async function deleteUserFile(fileId) {
