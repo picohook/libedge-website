@@ -1,11 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Paneli - LibEdge</title>
     <link rel="stylesheet" href="assets/css/tailwind.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -346,7 +345,6 @@
                 <div id="adminBreadcrumb" class="text-sm text-gray-500 mt-1"></div>
             </div>
             <div class="flex gap-2 flex-wrap items-center">
-                <input id="institutionFilterSearch" type="text" placeholder="Kurum ara..." class="border rounded px-3 py-2 text-sm bg-white min-w-[220px]">
                 <select id="institutionFilter" class="border rounded px-3 py-2 text-sm bg-white">
                     <option value="all">Tüm Kurumlar</option>
                 </select>
@@ -516,90 +514,6 @@
                 <button type="button" onclick="closeAdminFileModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
         </form>
-    </div>
-</div>
-
-<div id="shareFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-screen overflow-y-auto">
-        <div class="flex items-start justify-between gap-4 mb-4">
-            <div>
-                <h3 class="text-xl font-bold">Dosya Paylaş</h3>
-                <p id="shareFileName" class="text-sm text-gray-500 mt-1"></p>
-            </div>
-            <button type="button" onclick="closeShareFileModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-
-        <form id="shareFileForm">
-            <div id="shareRecipientTypeGroup" class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Alıcı Tipi</label>
-                <select id="shareRecipientType" class="w-full border p-2 rounded">
-                    <option value="user">Kullanıcı</option>
-                    <option value="institution">Kurum</option>
-                </select>
-            </div>
-
-            <div id="shareUserGroup" class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kullanıcı</label>
-                <select id="shareUserId" class="w-full border p-2 rounded">
-                    <option value="">Kullanıcı seçin</option>
-                </select>
-            </div>
-
-            <div id="shareInstitutionGroup" class="mb-3 hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum</label>
-                <select id="shareInstitutionId" class="w-full border p-2 rounded">
-                    <option value="">Kurum seçin</option>
-                </select>
-            </div>
-
-            <div id="shareInstitutionFilterGroup" class="mb-3 hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum İçin Hedef</label>
-                <select id="shareInstitutionFilter" class="w-full border p-2 rounded">
-                    <option value="all">Tüm kullanıcılar</option>
-                    <option value="admin">Sadece adminler</option>
-                    <option value="user">Sadece kullanıcılar</option>
-                </select>
-            </div>
-
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Mesaj</label>
-                <textarea id="shareMessage" rows="3" class="w-full border p-2 rounded" placeholder="İsteğe bağlı kısa not"></textarea>
-            </div>
-
-            <div class="flex gap-2">
-                <button type="submit" id="shareFileSubmitBtn" class="btn btn-primary flex-1">Gönder</button>
-                <button type="button" onclick="closeShareFileModal()" class="btn bg-gray-300 flex-1">İptal</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div id="moveFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
-    <div class="bg-white rounded-xl p-6 w-full max-w-xl max-h-[85vh] overflow-y-auto">
-        <div class="flex items-start justify-between gap-4 mb-4">
-            <div>
-                <h3 class="text-xl font-bold">Dosya Taşı</h3>
-                <p id="moveFileModalSubtitle" class="text-sm text-gray-500 mt-1"></p>
-            </div>
-            <button type="button" onclick="closeMoveFileModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="mb-3">
-            <input id="moveFileSearch" type="text" placeholder="Klasör ara..." class="w-full border p-2 rounded" oninput="handleAdminMoveSearchInput(this.value)">
-            <p id="moveFileSearchStatus" class="mt-1 text-xs text-gray-500"></p>
-        </div>
-        <div class="mb-3 flex gap-2">
-            <input id="moveFileNewFolderName" type="text" placeholder="Yeni klasör adı" class="flex-1 border p-2 rounded">
-            <button type="button" id="moveFileCreateFolderBtn" onclick="createMoveFileFolder()" class="btn bg-yellow-600 text-white whitespace-nowrap">Yeni Klasör</button>
-        </div>
-        <div id="moveFileFolderList" class="border rounded-xl divide-y max-h-80 overflow-y-auto mb-4 bg-gray-50"></div>
-        <div class="flex gap-2">
-            <button type="button" id="moveFileConfirmBtn" onclick="submitMoveFile()" class="btn btn-primary flex-1" disabled>Taşı</button>
-            <button type="button" onclick="closeMoveFileModal()" class="btn bg-gray-300 flex-1">İptal</button>
-        </div>
     </div>
 </div>
     <!-- Products Tab -->
@@ -1455,7 +1369,6 @@ async function checkAdminAuth() {
         }
         if (isAdmin) {
             show('myInstitutionTab');
-            hide('addFileBtnAdmin');
         }
         return true;
     } catch (err) {
@@ -2037,219 +1950,7 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
 
 let currentAdminInstitutionFilter = 'all';
 let adminCurrentFolderId = null;
-let adminCurrentFolderName = null;
 let adminFolderStack = [];
-let adminInstitutionFilterOptions = [];
-let adminInstitutionScopeMap = {};
-let adminMoveState = {
-    refId: null,
-    institutionId: '',
-    fileName: '',
-    selectedTargetId: null,
-    currentCollectionId: null,
-    folders: [],
-    search: ''
-};
-
-function renderInstitutionFilterOptions(items, selectedValue) {
-    const filterSelect = document.getElementById('institutionFilter');
-    if (!filterSelect) return;
-
-    filterSelect.innerHTML = items.map((item) => `
-        <option value="${escapeHtml(item.value)}"${item.value === selectedValue ? ' selected' : ''}>${escapeHtml(item.label)}</option>
-    `).join('');
-}
-
-function applyInstitutionFilterSearch() {
-    const filterSelect = document.getElementById('institutionFilter');
-    const searchInput = document.getElementById('institutionFilterSearch');
-    if (!filterSelect || !searchInput) return;
-
-    const selectedValue = filterSelect.value || currentAdminInstitutionFilter || 'all';
-    const query = searchInput.value.trim().toLocaleLowerCase('tr-TR');
-    const visibleOptions = !query
-        ? adminInstitutionFilterOptions
-        : adminInstitutionFilterOptions.filter((item) => item.searchText.includes(query));
-
-    renderInstitutionFilterOptions(visibleOptions.length ? visibleOptions : adminInstitutionFilterOptions, selectedValue);
-}
-
-function resolveInstitutionScopeId(value) {
-    if (value == null || value === '' || value === 'all') return value;
-    return adminInstitutionScopeMap[String(value)] ?? value;
-}
-
-function normalizeSearchText(value) {
-    return String(value || '')
-        .toLocaleLowerCase('tr-TR')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/ı/g, 'i')
-        .replace(/ş/g, 's')
-        .replace(/ğ/g, 'g')
-        .replace(/ç/g, 'c')
-        .replace(/ö/g, 'o')
-        .replace(/ü/g, 'u');
-}
-
-function buildAdminMoveTree(folders, parentId = null, depth = 0) {
-    const items = [];
-    const children = folders
-        .filter((item) => (item.parent_id == null ? null : Number(item.parent_id)) === parentId)
-        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'tr'));
-
-    children.forEach((item) => {
-        items.push({ id: Number(item.id), name: item.name, depth });
-        items.push(...buildAdminMoveTree(folders, Number(item.id), depth + 1));
-    });
-
-    return items;
-}
-
-function renderAdminMoveFolders() {
-    const list = document.getElementById('moveFileFolderList');
-    const confirmBtn = document.getElementById('moveFileConfirmBtn');
-    const searchInput = document.getElementById('moveFileSearch');
-    const status = document.getElementById('moveFileSearchStatus');
-    if (!list || !confirmBtn) return;
-
-    const tree = buildAdminMoveTree(adminMoveState.folders);
-    const rawQuery = String(searchInput?.value || adminMoveState.search || '').trim();
-    const query = normalizeSearchText(rawQuery);
-    const visibleItems = !query
-        ? tree
-        : tree.filter((item) => {
-            const normalizedName = normalizeSearchText(item.name);
-            return normalizedName.includes(query);
-        });
-
-    if (status) {
-        status.textContent = query
-            ? `${visibleItems.length} eşleşme / ${tree.length} klasör`
-            : `${tree.length} klasör`;
-    }
-
-    if (!visibleItems.length) {
-        list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasör bulunamadı.</div>';
-        confirmBtn.disabled = true;
-        return;
-    }
-
-    list.innerHTML = visibleItems.map((item) => {
-        const selected = adminMoveState.selectedTargetId === item.id;
-        const disabled = adminMoveState.currentCollectionId != null && Number(adminMoveState.currentCollectionId) === Number(item.id);
-        const clickAction = disabled ? 'return false' : `selectAdminMoveTarget(${item.id})`;
-        return `
-            <button type="button"
-                class="w-full text-left px-4 py-3 transition ${disabled ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : selected ? 'bg-blue-100 hover:bg-blue-100' : 'bg-white hover:bg-blue-50'}"
-                onclick="${clickAction}">
-                <div class="flex items-center gap-2" style="padding-left:${item.depth * 18}px">
-                    <i class="fas fa-folder text-yellow-500"></i>
-                    <span class="text-sm font-medium">${escapeHtml(item.name)}${disabled ? ' (mevcut)' : ''}</span>
-                </div>
-            </button>
-        `;
-    }).join('');
-
-    confirmBtn.disabled = !adminMoveState.selectedTargetId;
-}
-
-function selectAdminMoveTarget(targetId) {
-    adminMoveState.selectedTargetId = Number(targetId);
-    renderAdminMoveFolders();
-}
-
-function handleAdminMoveSearchInput(value) {
-    adminMoveState.search = value || '';
-    renderAdminMoveFolders();
-}
-
-function closeMoveFileModal() {
-    document.getElementById('moveFileModal')?.classList.add('hidden');
-    const searchInput = document.getElementById('moveFileSearch');
-    if (searchInput) searchInput.value = '';
-    adminMoveState = {
-        refId: null,
-        institutionId: '',
-        fileName: '',
-        selectedTargetId: null,
-        currentCollectionId: null,
-        folders: [],
-        search: ''
-    };
-}
-
-async function submitMoveFile() {
-    if (!adminMoveState.refId || !adminMoveState.selectedTargetId) return;
-
-    const targetFolder = adminMoveState.folders.find((item) => Number(item.id) === Number(adminMoveState.selectedTargetId));
-    const targetName = targetFolder?.name || 'seçilen klasör';
-    if (!confirm(`"${adminMoveState.fileName || 'Dosya'}" dosyasını "${targetName}" klasörüne taşımak istiyor musunuz?`)) {
-        return;
-    }
-
-    const moveRes = await fetch(`${API_BASE}/api/collection_files/${adminMoveState.refId}/move`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ target_collection_id: Number(adminMoveState.selectedTargetId) })
-    });
-
-    if (moveRes.ok) {
-        showToast('Dosya taşındı.', 'success');
-        closeMoveFileModal();
-        loadAdminFiles();
-    } else {
-        const data = await moveRes.json().catch(() => ({}));
-        showToast(data.error || 'Dosya taşınamadı.', 'error');
-    }
-}
-
-async function createMoveFileFolder() {
-    const input = document.getElementById('moveFileNewFolderName');
-    const button = document.getElementById('moveFileCreateFolderBtn');
-    const folderName = input?.value.trim();
-    if (!folderName) {
-        showToast('Yeni klasör adı gerekli.', 'warning');
-        return;
-    }
-
-    const parentId = adminMoveState.selectedTargetId || adminCurrentFolderId || null;
-    button.disabled = true;
-
-    const res = await fetch(`${API_BASE}/api/collections`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-            name: folderName,
-            parent_id: parentId,
-            scope_type: 'institution',
-            scope_id: adminMoveState.institutionId,
-            kind: 'folder',
-            is_public: 0
-        })
-    });
-
-    button.disabled = false;
-
-    if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Klasör oluşturulamadı.', 'error');
-        return;
-    }
-
-    const createData = await res.json().catch(() => ({}));
-    const refresh = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${adminMoveState.institutionId}`, {
-        credentials: 'include'
-    });
-    const collections = refresh.ok ? await refresh.json() : [];
-    adminMoveState.folders = (collections || []).filter((item) => item.kind === 'folder');
-    adminMoveState.selectedTargetId = Number(createData.id || 0) || adminMoveState.selectedTargetId;
-    if (input) input.value = '';
-    renderAdminMoveFolders();
-    showToast('Klasör oluşturuldu.', 'success');
-}
 
 // Kurum listesini yükle
 // ====================== KURUM DOSYALARI - ADMIN İÇİN DÜZELTİLMİŞ VERSİYON ======================
@@ -2258,7 +1959,6 @@ async function loadAdminInstitutions() {
     try {
         let institutions = [];
         let userInstitutions = []; // Kullanıcının yetkili olduğu tüm kurumlar
-        adminInstitutionScopeMap = {};
         
         // Kullanıcı profilini al
         const profileRes = await fetch('/api/user/profile', { credentials: 'include' });
@@ -2308,67 +2008,34 @@ async function loadAdminInstitutions() {
         }
         
         const filterSelect = document.getElementById('institutionFilter');
-        const searchInput = document.getElementById('institutionFilterSearch');
         
         if (!filterSelect) return;
-        if (searchInput) {
-            searchInput.value = '';
-            searchInput.disabled = false;
-        }
         
         if (user.role === 'super_admin') {
-            adminInstitutionFilterOptions = [
-                { value: 'all', label: 'Tum Kurumlar', searchText: 'tum kurumlar' },
-                ...institutions.map((i) => ({
-                    value: i.name,
-                    label: i.name,
-                    searchText: String(i.name || '').toLocaleLowerCase('tr-TR')
-                }))
-            ];
-            institutions.forEach((i) => {
-                adminInstitutionScopeMap[String(i.name)] = i.id;
-            });
-            renderInstitutionFilterOptions(adminInstitutionFilterOptions, currentAdminInstitutionFilter);
+            // Super Admin: Tüm kurumlar + Tüm Kurumlar seçeneği
+            filterSelect.innerHTML = '<option value="all">📋 Tüm Kurumlar</option>' +
+                institutions.map(i => `<option value="${escapeHtml(i.name)}">🏢 ${escapeHtml(i.name)}</option>`).join('');
             filterSelect.disabled = false;
             
         } else if (user.role === 'admin') {
+            // Admin: Sadece yetkili olduğu kurumlar
             if (adminInstitutions.length > 1) {
-                adminInstitutionFilterOptions = [
-                    { value: 'all', label: 'Tum Kurumlar', searchText: 'tum kurumlar' },
-                    ...adminInstitutions.map((inst) => ({
-                        value: inst,
-                        label: inst,
-                        searchText: String(inst || '').toLocaleLowerCase('tr-TR')
-                    }))
-                ];
-                institutions.forEach((i) => {
-                    if (i?.name != null && i?.id != null) {
-                        adminInstitutionScopeMap[String(i.name)] = i.id;
-                    }
-                });
-                renderInstitutionFilterOptions(adminInstitutionFilterOptions, currentAdminInstitutionFilter);
+                // Birden fazla kurum yetkisi varsa - "Tüm Kurumlar" GÖSTER
+                filterSelect.innerHTML = '<option value="all">📋 Tüm Kurumlar</option>' +
+                    adminInstitutions.map(inst => `<option value="${escapeHtml(inst)}">🏢 ${escapeHtml(inst)}</option>`).join('');
                 filterSelect.disabled = false;
-                console.log(`${adminInstitutions.length} kurum yetkisi var, "Tum Kurumlar" gosteriliyor`);
+                console.log(`${adminInstitutions.length} kurum yetkisi var, "Tüm Kurumlar" gösteriliyor`);
                 
             } else if (adminInstitutions.length === 1) {
-                adminInstitutionFilterOptions = [{
-                    value: adminInstitutions[0],
-                    label: adminInstitutions[0],
-                    searchText: String(adminInstitutions[0] || '').toLocaleLowerCase('tr-TR')
-                }];
-                if (institutions[0]?.name != null && institutions[0]?.id != null) {
-                    adminInstitutionScopeMap[String(institutions[0].name)] = institutions[0].id;
-                }
-                renderInstitutionFilterOptions(adminInstitutionFilterOptions, currentAdminInstitutionFilter || adminInstitutions[0]);
+                // Tek kurum yetkisi varsa - "Tüm Kurumlar" GÖSTERME
+                filterSelect.innerHTML = `<option value="${escapeHtml(adminInstitutions[0])}">🏢 ${escapeHtml(adminInstitutions[0])}</option>`;
                 filterSelect.disabled = false;
-                if (searchInput) searchInput.disabled = true;
-                console.log('Tek kurum yetkisi, "Tum Kurumlar" gosterilmiyor');
+                console.log('Tek kurum yetkisi, "Tüm Kurumlar" gösterilmiyor');
                 
             } else {
-                adminInstitutionFilterOptions = [{ value: '', label: 'Kurum bulunamadı', searchText: '' }];
-                renderInstitutionFilterOptions(adminInstitutionFilterOptions, '');
+                // Hiç kurum yetkisi yok
+                filterSelect.innerHTML = '<option value="">❌ Kurum bulunamadı</option>';
                 filterSelect.disabled = true;
-                if (searchInput) searchInput.disabled = true;
             }
         }
         
@@ -2563,22 +2230,6 @@ async function loadAdminFiles() {
                     </div>
                 </div>
                 <div class="flex items-center gap-2 ml-2">
-                    <button onclick="shareAdminFile(${file.source_file_id || file.file_id || file.id}, '${escapeHtml(file.file_name)}')" 
-                        class="text-emerald-500 hover:text-emerald-700 transition" 
-                        title="Paylaş">
-                        <i class="fas fa-share-alt"></i>
-                    </button>
-                    ${currentAdmin?.role === 'super_admin' ? `
-                    <button onclick="renameInstitutionFileRef(${file.id}, '${escapeHtml(file.file_name)}')" 
-                        class="text-amber-500 hover:text-amber-700 transition" 
-                        title="Yeniden Adlandır">
-                        <i class="fas fa-pencil-alt"></i>
-                    </button>` : ''}
-                    <button onclick='moveInstitutionFileRef(${file.id}, ${JSON.stringify(String(institutionId))}, ${JSON.stringify(String(file.file_name || ""))})' 
-                        class="text-slate-500 hover:text-slate-700 transition" 
-                        title="Taşı">
-                        <i class="fas fa-folder-open"></i>
-                    </button>
                     <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})" 
                         class="text-blue-500 hover:text-blue-700 transition" 
                         title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
@@ -2598,11 +2249,8 @@ async function loadAdminFiles() {
 }
 // Klasör navigasyon
 function adminOpenFolder(folderId, folderName) {
-    if (adminCurrentFolderId !== null) {
-        adminFolderStack.push({ id: adminCurrentFolderId, name: adminCurrentFolderName || folderName });
-    }
+    adminFolderStack.push({ id: adminCurrentFolderId, name: folderName });
     adminCurrentFolderId = folderId;
-    adminCurrentFolderName = folderName;
     updateAdminBreadcrumb();
     loadAdminFolders(folderId);
     loadAdminFiles();
@@ -2612,7 +2260,6 @@ function adminOpenFolder(folderId, folderName) {
 function adminGoBack() {
     const prev = adminFolderStack.pop();
     adminCurrentFolderId = prev?.id ?? null;
-    adminCurrentFolderName = prev?.name ?? null;
     updateAdminBreadcrumb();
     loadAdminFolders(adminCurrentFolderId);
     loadAdminFiles();
@@ -2623,23 +2270,17 @@ function adminGoBack() {
 function updateAdminBreadcrumb() {
     const bc = document.getElementById('adminBreadcrumb');
     if (!bc) return;
-    const filterSelect = document.getElementById('institutionFilter');
-    const instValue = filterSelect?.value;
-    const instLabel = filterSelect?.selectedOptions?.[0]?.textContent?.trim();
-    const instName = instValue && instValue !== 'all' ? escapeHtml(instLabel || instValue) : 'Tüm Kurumlar';
+    const instId = document.getElementById('institutionFilter')?.value;
+    const instName = instId && instId !== 'all' ? escapeHtml(instId) : 'Tüm Kurumlar';
     let html = `<span class="cursor-pointer hover:text-primary" onclick="adminGoRoot()">${instName}</span>`;
     adminFolderStack.filter(f => f.id !== null).forEach(f => {
-        html += ` / <span class="text-gray-500">${escapeHtml(f.name)}</span>`;
+        html += ` / <span>${escapeHtml(f.name)}</span>`;
     });
-    if (adminCurrentFolderId !== null && adminCurrentFolderName) {
-        html += ` / <span class="font-medium text-gray-800">${escapeHtml(adminCurrentFolderName)}</span>`;
-    }
     bc.innerHTML = html;
 }
 
 function adminGoRoot() {
     adminCurrentFolderId = null;
-    adminCurrentFolderName = null;
     adminFolderStack = [];
     document.getElementById('adminBackBtn')?.classList.add('hidden');
     updateAdminBreadcrumb();
@@ -2648,137 +2289,6 @@ function adminGoRoot() {
 }
 
 // CRUD
-let currentShareFile = null;
-
-async function legacyShareAdminFilePrompt(fileId, fileName) { return;
-    const recipient = prompt('Alıcı kullanıcı ID veya kurum ID girin. Örnek: user:12 veya institution:5', 'user:');
-    if (!recipient) return;
-
-    const [type, rawId] = recipient.split(':');
-    const targetId = Number(rawId);
-    if (!['user', 'institution'].includes(type) || Number.isNaN(targetId)) {
-        showToast('Geçerli bir alıcı girin. Örnek: user:12', 'error');
-        return;
-    }
-
-    const message = prompt(`${fileName} için kısa mesaj (opsiyonel):`, '') || '';
-    const res = await fetch(`${API_BASE}/api/files/share`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-            file_ids: [fileId],
-            recipients: [{ type, id: targetId, filter: 'all' }],
-            message
-        })
-    });
-
-    if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        showToast(`Dosya paylaşıldı. ${data.recipient_count || 0} alıcı işlendi.`, 'success');
-    } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Paylaşım başarısız oldu.', 'error');
-    }
-}
-
-function closeShareFileModal() {
-    document.getElementById('shareFileModal').classList.add('hidden');
-    document.getElementById('shareFileForm')?.reset();
-    currentShareFile = null;
-}
-
-function toggleShareRecipientFields() {
-    const type = document.getElementById('shareRecipientType')?.value || 'user';
-    document.getElementById('shareRecipientTypeGroup')?.classList.toggle('hidden', currentAdmin?.role === 'admin');
-    document.getElementById('shareUserGroup')?.classList.toggle('hidden', type !== 'user');
-    document.getElementById('shareInstitutionGroup')?.classList.toggle('hidden', type !== 'institution');
-    document.getElementById('shareInstitutionFilterGroup')?.classList.toggle('hidden', type !== 'institution');
-}
-
-async function loadShareTargets() {
-    const [usersRes, institutionsRes] = await Promise.all([
-        fetch('/api/admin/users', { credentials: 'include' }),
-        fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' })
-    ]);
-
-    const users = usersRes.ok ? await usersRes.json() : [];
-    const institutions = institutionsRes.ok ? await institutionsRes.json() : [];
-
-    document.getElementById('shareUserId').innerHTML =
-        '<option value="">Kullanıcı seçin</option>' +
-        users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name || u.email)}${u.institution_name ? ` (${escapeHtml(u.institution_name)})` : ''}</option>`).join('');
-
-    document.getElementById('shareInstitutionId').innerHTML =
-        '<option value="">Kurum seçin</option>' +
-        institutions.map(i => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('');
-
-    const currentInstitution = document.getElementById('institutionFilter')?.value;
-    if (currentInstitution && currentInstitution !== 'all') {
-        document.getElementById('shareInstitutionId').value = currentInstitution;
-    }
-}
-
-async function renameInstitutionFileRef(refId, currentName) {
-    const displayName = prompt('Yeni dosya adı:', currentName);
-    if (!displayName || !displayName.trim()) return;
-
-    const res = await fetch(`${API_BASE}/api/collection_files/${refId}/rename`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ display_name: displayName.trim() })
-    });
-
-    if (res.ok) {
-        showToast('Dosya adı güncellendi.', 'success');
-        loadAdminFiles();
-    } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Dosya adı güncellenemedi.', 'error');
-    }
-}
-
-async function moveInstitutionFileRef(refId, institutionId, fileName) {
-    const scopeId = resolveInstitutionScopeId(institutionId);
-    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(scopeId)}`, {
-        credentials: 'include'
-    });
-    const collections = res.ok ? await res.json() : [];
-    const folders = (collections || []).filter((item) => item.kind === 'folder');
-
-    if (!folders.length) {
-        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
-        return;
-    }
-
-    adminMoveState = {
-        refId,
-        institutionId: scopeId,
-        fileName: fileName || '',
-        selectedTargetId: null,
-        currentCollectionId: adminCurrentFolderId,
-        folders,
-        search: ''
-    };
-
-    document.getElementById('moveFileModalSubtitle').textContent = 'Hedef klasörü seçin.';
-    const searchInput = document.getElementById('moveFileSearch');
-    if (searchInput) searchInput.value = '';
-    renderAdminMoveFolders();
-    document.getElementById('moveFileModal')?.classList.remove('hidden');
-}
-
-async function shareAdminFile(fileId, fileName) {
-    currentShareFile = { fileId, fileName };
-    document.getElementById('shareFileName').textContent = fileName || 'Seçili dosya';
-    document.getElementById('shareMessage').value = '';
-    document.getElementById('shareRecipientType').value = 'user';
-    toggleShareRecipientFields();
-    await loadShareTargets();
-    document.getElementById('shareFileModal').classList.remove('hidden');
-}
-
 async function toggleAdminFilePublic(fileId, currentStatus) {
     if (!confirm(`Bu dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
     const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
@@ -2882,7 +2392,6 @@ document.getElementById('adminFileInstitution')?.addEventListener('change', func
 // Kurum filtresi değiştiğinde - Bu kısım da düzeltilmeli
 document.getElementById('institutionFilter')?.addEventListener('change', function() {
     const selectedValue = this.value;
-    currentAdminInstitutionFilter = selectedValue || 'all';
     
     if (selectedValue === 'all') {
         loadAllAdminFiles();
@@ -2895,14 +2404,6 @@ document.getElementById('institutionFilter')?.addEventListener('change', functio
         loadAdminFolders(null);
         loadAdminFiles();  // Bu çağrı şimdi root dosyalarını gösterecek
     }
-});
-
-document.getElementById('institutionFilterSearch')?.addEventListener('input', function() {
-    applyInstitutionFilterSearch();
-});
-
-document.getElementById('moveFileSearch')?.addEventListener('input', function() {
-    handleAdminMoveSearchInput(this.value);
 });
 
 // Admin'in yetkili olduğu tüm kurumların dosyalarını yükle
@@ -2950,10 +2451,6 @@ let currentUploadTab = 'computer';
 let selectedFile = null;
 
 function switchUploadTab(tab) {
-    if (tab === 'url') {
-        showToast('URL ile ekleme bu yeni dosya yapısında kapalı. Lütfen dosyayı bilgisayarınızdan yükleyin.', 'warning');
-        tab = 'computer';
-    }
     currentUploadTab = tab;
     ['computer', 'url'].forEach(t => {  // ← 'gdrive' kaldırıldı
         document.getElementById(`upload-panel-${t}`)?.classList.toggle('hidden', t !== tab);
@@ -3002,10 +2499,6 @@ function formatFileSize(bytes) {
 
 
 function openAdminFileModal() {
-    if (currentAdmin?.role !== 'super_admin') {
-        showToast('Dosya yükleme sadece Super Admin yetkisindedir.', 'warning');
-        return;
-    }
     document.getElementById('adminFileModal').classList.remove('hidden');
     // Google Drive kaldırıldı, API yüklemeye gerek yok
     
@@ -3091,60 +2584,6 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
 
 // Buton işlemleri
 document.getElementById('addFileBtnAdmin')?.addEventListener('click', openAdminFileModal);
-document.getElementById('shareRecipientType')?.addEventListener('change', toggleShareRecipientFields);
-document.getElementById('shareFileForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!currentShareFile?.fileId) {
-        showToast('Paylaşılacak dosya bulunamadı.', 'error');
-        return;
-    }
-
-    const type = currentAdmin?.role === 'admin'
-        ? 'user'
-        : document.getElementById('shareRecipientType').value;
-    const id = type === 'user'
-        ? Number(document.getElementById('shareUserId').value)
-        : Number(document.getElementById('shareInstitutionId').value);
-    const filter = type === 'institution'
-        ? document.getElementById('shareInstitutionFilter').value
-        : 'all';
-
-    if (Number.isNaN(id) || !id) {
-        showToast(type === 'user' ? 'Lütfen bir kullanıcı seçin.' : 'Lütfen bir kurum seçin.', 'warning');
-        return;
-    }
-
-    const submitBtn = document.getElementById('shareFileSubmitBtn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Gönderiliyor...';
-
-    try {
-        const res = await fetch(`${API_BASE}/api/files/share`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-                file_ids: [currentShareFile.fileId],
-                recipients: [{ type, id, filter }],
-                message: document.getElementById('shareMessage').value.trim()
-            })
-        });
-
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-            showToast(data.error || 'Paylaşım başarısız oldu.', 'error');
-            return;
-        }
-
-        showToast(`Dosya paylaşıldı. ${data.recipient_count || 0} alıcı işlendi.`, 'success');
-        closeShareFileModal();
-    } catch (err) {
-        showToast(err.message || 'Paylaşım sırasında hata oluştu.', 'error');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Gönder';
-    }
-});
 
 // Dosya ikonu helper
 function getFileIcon(fileType) {
@@ -4917,8 +4356,6 @@ async function applyCoverCrop() {
 
 </body>
 </html>
-
-
 
 
 
