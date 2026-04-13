@@ -2103,13 +2103,20 @@ function buildAdminMoveTree(folders, parentId = null, depth = 0) {
 function renderAdminMoveFolders() {
     const list = document.getElementById('moveFileFolderList');
     const confirmBtn = document.getElementById('moveFileConfirmBtn');
+    const searchInput = document.getElementById('moveFileSearch');
     if (!list || !confirmBtn) return;
 
     const tree = buildAdminMoveTree(adminMoveState.folders);
-    const query = normalizeSearchText(adminMoveState.search.trim());
+    const rawQuery = String(searchInput?.value || adminMoveState.search || '').trim();
+    const query = normalizeSearchText(rawQuery);
     const visibleItems = !query
         ? tree
-        : tree.filter((item) => normalizeSearchText(item.name).includes(query));
+        : tree.filter((item) => {
+            const rawName = String(item.name || '');
+            const loweredName = rawName.toLocaleLowerCase('tr-TR');
+            const normalizedName = normalizeSearchText(rawName);
+            return loweredName.includes(rawQuery.toLocaleLowerCase('tr-TR')) || normalizedName.includes(query);
+        });
 
     if (!visibleItems.length) {
         list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasör bulunamadı.</div>';

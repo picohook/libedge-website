@@ -1155,6 +1155,7 @@ function buildMoveTree(folders, parentId, depth = 0) {
 function renderMoveModalFolders() {
     const list = document.getElementById('moveModalFolderList');
     const confirmBtn = document.getElementById('moveModalConfirmBtn');
+    const searchInput = document.getElementById('moveModalSearch');
     if (!list || !confirmBtn) return;
 
     const items = [];
@@ -1165,10 +1166,16 @@ function renderMoveModalFolders() {
         items.push(...buildMoveTree(moveModalState.folders, null, 0));
     }
 
-    const query = normalizeSearchText(moveModalState.search.trim());
+    const rawQuery = String(searchInput?.value || moveModalState.search || '').trim();
+    const query = normalizeSearchText(rawQuery);
     const visibleItems = !query
         ? items
-        : items.filter((item) => normalizeSearchText(item.name).includes(query));
+        : items.filter((item) => {
+            const rawName = String(item.name || '');
+            const loweredName = rawName.toLocaleLowerCase('tr-TR');
+            const normalizedName = normalizeSearchText(rawName);
+            return loweredName.includes(rawQuery.toLocaleLowerCase('tr-TR')) || normalizedName.includes(query);
+        });
 
     if (!visibleItems.length) {
         list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasör bulunamadı.</div>';
