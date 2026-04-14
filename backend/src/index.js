@@ -3767,16 +3767,22 @@ app.post('/api/system/file', async (c) => {
   if (auth.response) return auth.response;
   if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
 
-  const { file_id, folder_id, display_name, category } = await c.req.json();
-  if (!file_id) return c.json({ error: 'file_id zorunlu' }, 400);
+  const { file_id, file_url, file_name, file_type, folder_id, display_name, category } = await c.req.json();
+  if (!file_id && !file_url) return c.json({ error: 'file_id veya file_url zorunlu' }, 400);
 
   const db = c.env.DB;
   const root = await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
   const targetCollection = await getSystemCollectionOrRoot(db, auth.user.user_id, folder_id || null, auth.user.user_id);
   if (!targetCollection) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
 
-  const stored = await getStoredFileById(db, Number(file_id));
-  if (!stored) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  let stored = null;
+  if (file_id) {
+    stored = await getStoredFileById(db, Number(file_id));
+  } else if (file_url) {
+    const fileKey = extractManagedFileKey(file_url, c.env.R2_PUBLIC_URL);
+    if (fileKey) stored = await getStoredFileByKey(db, fileKey);
+  }
+  if (!stored) return c.json({ error: 'Yalnizca sisteme yuklenmis dosyalar eklenebilir' }, 400);
 
   const existing = await db.prepare(`
     SELECT id

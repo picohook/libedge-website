@@ -2850,6 +2850,7 @@ function openAdminFileModal() {
     if (isAdminSystemScope()) {
         if (instSelect) instSelect.value = '__system__';
         if (visibilityWrap) visibilityWrap.classList.add('hidden');
+        loadAdminFileFolders('__system__');
     } else if (instId && instId !== 'all') {
         if (instSelect) instSelect.value = instId;
         if (visibilityWrap) visibilityWrap.classList.remove('hidden');
@@ -2910,16 +2911,23 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
 
         let res;
         if (isAdminSystemScope()) {
+            const sysPayload = {
+                folder_id: document.getElementById('adminFileFolderSelect').value || adminSystemRootCollectionId || null,
+                display_name: fileName,
+                category: document.getElementById('adminFileCategory').value
+            };
+            if (uploadedFileId) {
+                sysPayload.file_id = uploadedFileId;
+            } else {
+                sysPayload.file_url = fileUrl;
+                sysPayload.file_name = fileName;
+                sysPayload.file_type = fileType;
+            }
             res = await fetch(`${API_BASE}/api/system/file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({
-                    file_id: uploadedFileId,
-                    folder_id: document.getElementById('adminFileFolderSelect').value || adminSystemRootCollectionId || null,
-                    display_name: fileName,
-                    category: document.getElementById('adminFileCategory').value
-                })
+                body: JSON.stringify(sysPayload)
             });
         } else {
             res = await fetch(`/api/institution/${encodeURIComponent(institutionId)}/file`, {
@@ -4869,7 +4877,8 @@ async function moveAdminFileRef(refId, fileName, overrideInstitutionId) {
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.js-admin-move-file');
     if (btn) {
-        const instId = btn.dataset.institutionId ? parseInt(btn.dataset.institutionId) : undefined;
+        const rawInstId = btn.dataset.institutionId;
+        const instId = rawInstId === '__system__' ? '__system__' : (rawInstId ? parseInt(rawInstId) : undefined);
         moveAdminFileRef(parseInt(btn.dataset.fileId), btn.dataset.fileName || '', instId);
     }
 });

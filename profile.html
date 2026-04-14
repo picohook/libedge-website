@@ -932,6 +932,16 @@ async function loadFolders(parentId = null) {
             container.innerHTML = folders.length ? folders.map(f => `
                 <div class="border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-yellow-50 text-center group relative"
                      onclick="openFolder(${f.id}, '${escapeHtml(f.name)}')">
+                    <div class="absolute top-1 right-1 hidden group-hover:flex gap-1">
+                        <button onclick="event.stopPropagation();renameSystemFolder(${f.id}, '${escapeHtml(f.name)}')"
+                            class="p-1 text-gray-400 hover:text-blue-600 transition" title="Yeniden Adlandır">
+                            <i class="fas fa-pencil-alt text-xs"></i>
+                        </button>
+                        <button onclick="event.stopPropagation();deleteSystemFolder(${f.id}, '${escapeHtml(f.name)}')"
+                            class="p-1 text-gray-400 hover:text-red-500 transition" title="Sil">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
                     <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
                     <p class="text-xs font-medium truncate">${escapeHtml(f.name)}</p>
                 </div>
@@ -1264,6 +1274,39 @@ async function renameUserFolder(folderId, currentName) {
 async function deleteUserFolder(folderId, folderName) {
     if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\nİçindeki dosyalar da silinecektir.`)) return;
     const res = await fetch(`${API_BASE}/api/user/collections/${folderId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+    });
+    if (res.ok) {
+        showToast('Klasör silindi.', 'success');
+        loadFolders(currentFolderId);
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'İşlem başarısız oldu!', 'error');
+    }
+}
+
+async function renameSystemFolder(folderId, currentName) {
+    const newName = prompt('Klasör adını girin:', currentName);
+    if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
+    const res = await fetch(`${API_BASE}/api/collections/${folderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: newName.trim() })
+    });
+    if (res.ok) {
+        showToast('Klasör adı güncellendi.', 'success');
+        loadFolders(currentFolderId);
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'İşlem başarısız oldu!', 'error');
+    }
+}
+
+async function deleteSystemFolder(folderId, folderName) {
+    if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\nİçindeki dosyalar da silinecektir.`)) return;
+    const res = await fetch(`${API_BASE}/api/collections/${folderId}`, {
         method: 'DELETE',
         credentials: 'include'
     });
