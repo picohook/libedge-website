@@ -3837,6 +3837,33 @@ app.post('/api/system/file', async (c) => {
   return c.json({ success: true, id: result.meta?.last_row_id });
 });
 
+app.put('/api/system/file/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const refId = Number(c.req.param('id'));
+  const db = c.env.DB;
+  const ref = await db.prepare(`
+    SELECT cf.id FROM collection_files cf
+    JOIN collections col ON col.id = cf.collection_id
+    WHERE cf.id = ? AND cf.is_active = 1 AND col.is_active = 1
+  `).bind(refId).first();
+  if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
+
+  const { is_public, display_name, category } = await c.req.json();
+  const updates = [];
+  const binds = [];
+  if (is_public !== undefined) { updates.push('is_public = ?'); binds.push(is_public ? 1 : 0); }
+  if (display_name !== undefined) { updates.push('display_name = ?'); binds.push(display_name); }
+  if (category !== undefined) { updates.push('category = ?'); binds.push(category); }
+  if (!updates.length) return c.json({ error: 'Guncelleme alani yok' }, 400);
+
+  binds.push(refId);
+  await db.prepare(`UPDATE collection_files SET ${updates.join(', ')} WHERE id = ?`).bind(...binds).run();
+  return c.json({ success: true });
+});
+
 app.delete('/api/system/file/:id', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;

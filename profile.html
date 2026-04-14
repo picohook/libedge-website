@@ -297,6 +297,27 @@
                         </div>
                     </div>
                     <div id="notificationsPanel" class="hidden mb-4 border border-blue-100 bg-blue-50 rounded-xl p-4"></div>
+                    <!-- Arama ve sıralama -->
+                    <div class="flex items-center gap-2 mb-3 flex-wrap">
+                        <div class="relative flex-1 min-w-[160px] max-w-xs">
+                            <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            <input id="profileContentSearch" type="text" placeholder="Klasör veya dosya ara..."
+                                   class="w-full border rounded pl-7 pr-2 py-1.5 text-sm bg-white"
+                                   oninput="filterProfileContent(this.value)">
+                        </div>
+                        <div class="flex gap-1 text-xs">
+                            <button type="button" onclick="setProfileSort('name')"
+                                class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
+                                <i class="fas fa-font"></i> Ad
+                                <i id="profileSortNameIcon" class="fas fa-sort text-gray-400"></i>
+                            </button>
+                            <button type="button" onclick="setProfileSort('date')"
+                                class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
+                                <i class="fas fa-calendar-alt"></i> Tarih
+                                <i id="profileSortDateIcon" class="fas fa-sort text-gray-400"></i>
+                            </button>
+                        </div>
+                    </div>
                     <!-- Klasörler grid -->
                     <div id="foldersList" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6"></div>
                     <!-- Dosyalar listesi -->
@@ -845,6 +866,9 @@ async function unsubscribeNewsletter() {
 async function loadFolders(parentId = null) {
     const instKey = window.currentUser?.institution_id || window.currentUser?.institution;
     const container = document.getElementById('foldersList');
+    container.innerHTML = '<div class="col-span-full text-center py-4 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...</div>';
+    const searchEl = document.getElementById('profileContentSearch');
+    if (searchEl) searchEl.value = '';
     if (isProfileUserMode()) {
         try {
             const url = parentId ? `${API_BASE}/api/user/files?collection_id=${parentId}` : `${API_BASE}/api/user/files`;
@@ -860,6 +884,16 @@ async function loadFolders(parentId = null) {
             container.innerHTML = folders.length ? folders.map(f => `
                 <div class="border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-yellow-50 text-center group relative"
                      onclick="openFolder(${f.id}, '${escapeHtml(f.name)}')">
+                    <div class="absolute top-1 right-1 hidden group-hover:flex gap-1">
+                        <button onclick="event.stopPropagation();renameUserFolder(${f.id}, '${escapeHtml(f.name)}')"
+                            class="p-1 text-gray-400 hover:text-blue-600 transition" title="Yeniden Adlandır">
+                            <i class="fas fa-pencil-alt text-xs"></i>
+                        </button>
+                        <button onclick="event.stopPropagation();deleteUserFolder(${f.id}, '${escapeHtml(f.name)}')"
+                            class="p-1 text-gray-400 hover:text-red-500 transition" title="Sil">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
                     <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
                     <p class="text-xs font-medium truncate">${escapeHtml(f.name)}</p>
                     <p class="text-[11px] text-gray-400">${Number(f.child_folder_count || 0)} klasör, ${Number(f.file_count || 0)} dosya</p>
@@ -963,6 +997,7 @@ async function loadFiles(folderId = null) {
     const instKey = window.currentUser?.institution_id || window.currentUser?.institution;
     if (!instKey && !isProfileUserMode() && !isProfileSystemMode()) return;
     const container = document.getElementById('filesList');
+    container.innerHTML = '<div class="text-center py-4 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...</div>';
     if (isProfileUserMode()) {
         try {
             const url = folderId ? `${API_BASE}/api/user/files?collection_id=${folderId}` : `${API_BASE}/api/user/files`;
@@ -1151,6 +1186,96 @@ function closeFolderModal() {
     document.getElementById('addFolderForm').reset();
     document.getElementById('folderVisibilityGroup')?.classList.remove('hidden');
 }
+// ====================== ARAMA & SIRALAMA ======================
+let _profileSortKey = null;
+let _profileSortDir = 1;
+
+function filterProfileContent(query) {
+    const q = (query || '').toLocaleLowerCase('tr-TR');
+    document.querySelectorAll('#foldersList > div').forEach(el => {
+        const name = (el.querySelector('p.font-medium, p.text-xs')?.textContent || '').toLocaleLowerCase('tr-TR');
+        el.style.display = !q || name.includes(q) ? '' : 'none';
+    });
+    document.querySelectorAll('#filesList > div').forEach(el => {
+        const name = (el.querySelector('a, .font-medium')?.textContent || '').toLocaleLowerCase('tr-TR');
+        el.style.display = !q || name.includes(q) ? '' : 'none';
+    });
+}
+
+function setProfileSort(key) {
+    if (_profileSortKey === key) {
+        _profileSortDir *= -1;
+    } else {
+        _profileSortKey = key;
+        _profileSortDir = 1;
+    }
+    ['name', 'date'].forEach(k => {
+        const icon = document.getElementById(`profileSort${k.charAt(0).toUpperCase() + k.slice(1)}Icon`);
+        if (!icon) return;
+        if (_profileSortKey === k) {
+            icon.className = `fas fa-sort-${_profileSortDir === 1 ? 'up' : 'down'} text-violet-600`;
+        } else {
+            icon.className = 'fas fa-sort text-gray-400';
+        }
+    });
+    const foldersList = document.getElementById('foldersList');
+    const filesList = document.getElementById('filesList');
+    const sortFn = (a, b) => {
+        let va, vb;
+        if (_profileSortKey === 'name') {
+            va = (a.querySelector('p.font-medium, a, .font-medium')?.textContent || '').toLocaleLowerCase('tr-TR');
+            vb = (b.querySelector('p.font-medium, a, .font-medium')?.textContent || '').toLocaleLowerCase('tr-TR');
+        } else {
+            va = a.querySelector('.fa-calendar')?.parentElement?.textContent?.trim() || '';
+            vb = b.querySelector('.fa-calendar')?.parentElement?.textContent?.trim() || '';
+        }
+        return va < vb ? -_profileSortDir : va > vb ? _profileSortDir : 0;
+    };
+    if (foldersList) {
+        Array.from(foldersList.children)
+            .filter(el => !el.textContent.includes('Yükleniyor') && !el.textContent.includes('klasör yok'))
+            .sort(sortFn).forEach(el => foldersList.appendChild(el));
+    }
+    if (filesList) {
+        Array.from(filesList.children)
+            .filter(el => el.tagName === 'DIV' && !el.textContent.includes('Yükleniyor'))
+            .sort(sortFn).forEach(el => filesList.appendChild(el));
+    }
+}
+
+async function renameUserFolder(folderId, currentName) {
+    const newName = prompt('Klasör adını girin:', currentName);
+    if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
+    const res = await fetch(`${API_BASE}/api/user/collections/${folderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: newName.trim() })
+    });
+    if (res.ok) {
+        showToast('Klasör adı güncellendi.', 'success');
+        loadFolders(currentFolderId);
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'İşlem başarısız oldu!', 'error');
+    }
+}
+
+async function deleteUserFolder(folderId, folderName) {
+    if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\nİçindeki dosyalar da silinecektir.`)) return;
+    const res = await fetch(`${API_BASE}/api/user/collections/${folderId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+    });
+    if (res.ok) {
+        showToast('Klasör silindi.', 'success');
+        loadFolders(currentFolderId);
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'İşlem başarısız oldu!', 'error');
+    }
+}
+
 function openFileModal() {
     if (window.currentUser?.role !== 'super_admin') {
         showToast('Dosya yükleme sadece Super Admin yetkisindedir.', 'warning');

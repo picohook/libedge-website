@@ -363,6 +363,28 @@
             </div>
         </div>
 
+        <!-- Arama ve sıralama -->
+        <div class="flex items-center gap-2 mb-3 flex-wrap">
+            <div class="relative flex-1 min-w-[160px] max-w-xs">
+                <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                <input id="adminContentSearch" type="text" placeholder="Klasör veya dosya ara..."
+                       class="w-full border rounded pl-7 pr-2 py-1.5 text-sm bg-white"
+                       oninput="filterAdminContent(this.value)">
+            </div>
+            <div class="flex gap-1 text-xs">
+                <button id="adminSortName" onclick="setAdminSort('name')"
+                    class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
+                    <i class="fas fa-font"></i> Ad
+                    <i id="adminSortNameIcon" class="fas fa-sort text-gray-400"></i>
+                </button>
+                <button id="adminSortDate" onclick="setAdminSort('date')"
+                    class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
+                    <i class="fas fa-calendar-alt"></i> Tarih
+                    <i id="adminSortDateIcon" class="fas fa-sort text-gray-400"></i>
+                </button>
+            </div>
+        </div>
+
         <!-- Klasörler grid -->
         <div id="adminFoldersList" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-4"></div>
 
@@ -2160,6 +2182,8 @@ async function loadAdminInstitutions() {
 }
 // Klasörleri yükle - GÜNCELLENMİŞ VERSİYON
 async function loadAdminFolders(parentId = null) {
+    const searchEl = document.getElementById('adminContentSearch');
+    if (searchEl) { searchEl.value = ''; }
     const institutionId = document.getElementById('institutionFilter')?.value;
     const container = document.getElementById('adminFoldersList');
     
@@ -2193,7 +2217,7 @@ async function loadAdminFolders(parentId = null) {
                         </button>
                     </div>
                 </div>
-            `).join('') : '<div class="col-span-full text-center text-gray-400 py-4">Henlz klasor yok</div>';
+            `).join('') : '<div class="col-span-full text-center text-gray-400 py-4">Henüz klasör yok</div>';
             return;
         } catch (err) {
             console.error('loadAdminFolders system error:', err);
@@ -2258,7 +2282,7 @@ async function loadAdminFiles() {
         container.innerHTML = `
             <div class="text-center py-8">
                 <i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
-                <p class="text-gray-400 text-sm mt-2">Dosyalar ynkleniyor...</p>
+                <p class="text-gray-400 text-sm mt-2">Dosyalar yükleniyor...</p>
             </div>
         `;
 
@@ -2277,7 +2301,7 @@ async function loadAdminFiles() {
                     <div class="text-center py-8 text-gray-400">
                         <i class="fas fa-folder-open text-4xl mb-2 opacity-50"></i>
                         <p>Bu konumda dosya yok</p>
-                        <p class="text-xs mt-1">Yeni dosya eklemek i"in "Dosya Y"kle" butonunu kullanpn</p>
+                        <p class="text-xs mt-1">Yeni dosya eklemek için "Dosya Yükle" butonunu kullanın</p>
                     </div>
                 `;
                 return;
@@ -2301,13 +2325,19 @@ async function loadAdminFiles() {
                     <div class="flex items-center gap-2 ml-2">
                         <button class="text-slate-500 hover:text-slate-700 transition js-admin-move-file"
                             data-file-id="${file.id}" data-file-name="${escapeHtml(file.file_name)}" data-institution-id="__system__"
-                        title="Tasi">
+                            title="Taşı">
                             <i class="fas fa-folder-open"></i>
                         </button>
-                    <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
+                        <button onclick="renameAdminFileRef(${file.id}, '${escapeHtml(file.file_name)}')"
+                            class="text-amber-500 hover:text-amber-700 transition" title="Yeniden Adlandır">
                             <i class="fas fa-pencil-alt"></i>
                         </button>
-                        <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
+                        <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})"
+                            class="text-blue-500 hover:text-blue-700 transition"
+                            title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
+                            <i class="fas ${file.is_public ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                        </button>
+                        <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700" title="Sil">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -2316,7 +2346,7 @@ async function loadAdminFiles() {
             return;
         } catch (err) {
             console.error('loadAdminFiles system error:', err);
-            container.innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar ynklenirken hata olu/tu</p>';
+            container.innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenirken hata oluştu</p>';
             return;
         }
     }
@@ -2393,12 +2423,16 @@ async function loadAdminFiles() {
                         title="Taşı">
                         <i class="fas fa-folder-open"></i>
                     </button>
+                    <button onclick="renameAdminFileRef(${file.id}, '${escapeHtml(file.file_name)}')"
+                        class="text-amber-500 hover:text-amber-700 transition" title="Yeniden Adlandır">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
                     <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})"
                         class="text-blue-500 hover:text-blue-700 transition"
                         title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
                         <i class="fas ${file.is_public ? 'fa-eye-slash' : 'fa-eye'}"></i>
                     </button>
-                    <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
+                    <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700" title="Sil">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -2463,12 +2497,80 @@ function adminGoRoot() {
     loadAdminFiles();
 }
 
+// ====================== ARAMA & SIRALAMA ======================
+let _adminSortKey = null;   // 'name' | 'date'
+let _adminSortDir = 1;      // 1 = asc, -1 = desc
+
+function filterAdminContent(query) {
+    const q = (query || '').toLocaleLowerCase('tr-TR');
+    document.querySelectorAll('#adminFoldersList > div').forEach(el => {
+        const name = (el.querySelector('p')?.textContent || '').toLocaleLowerCase('tr-TR');
+        el.style.display = !q || name.includes(q) ? '' : 'none';
+    });
+    document.querySelectorAll('#adminFilesList > div').forEach(el => {
+        const name = (el.querySelector('a')?.textContent || el.querySelector('.font-medium')?.textContent || '').toLocaleLowerCase('tr-TR');
+        el.style.display = !q || name.includes(q) ? '' : 'none';
+    });
+}
+
+function setAdminSort(key) {
+    if (_adminSortKey === key) {
+        _adminSortDir *= -1;
+    } else {
+        _adminSortKey = key;
+        _adminSortDir = 1;
+    }
+    _updateAdminSortIcons();
+    _sortAdminContent();
+}
+
+function _updateAdminSortIcons() {
+    ['name', 'date'].forEach(k => {
+        const icon = document.getElementById(`adminSort${k.charAt(0).toUpperCase() + k.slice(1)}Icon`);
+        if (!icon) return;
+        if (_adminSortKey === k) {
+            icon.className = `fas fa-sort-${_adminSortDir === 1 ? 'up' : 'down'} text-primary`;
+        } else {
+            icon.className = 'fas fa-sort text-gray-400';
+        }
+    });
+}
+
+function _sortAdminContent() {
+    const foldersList = document.getElementById('adminFoldersList');
+    const filesList = document.getElementById('adminFilesList');
+    if (!foldersList || !filesList) return;
+
+    const sortFn = (a, b) => {
+        let va, vb;
+        if (_adminSortKey === 'name') {
+            va = (a.querySelector('p.text-xs, a.font-medium, .font-medium')?.textContent || '').toLocaleLowerCase('tr-TR');
+            vb = (b.querySelector('p.text-xs, a.font-medium, .font-medium')?.textContent || '').toLocaleLowerCase('tr-TR');
+        } else {
+            va = a.querySelector('.text-gray-500 .fa-calendar')?.parentElement?.textContent?.trim() || '';
+            vb = b.querySelector('.text-gray-500 .fa-calendar')?.parentElement?.textContent?.trim() || '';
+        }
+        return va < vb ? -_adminSortDir : va > vb ? _adminSortDir : 0;
+    };
+
+    const folders = Array.from(foldersList.children).filter(el => !el.textContent.includes('Yükleniyor'));
+    folders.sort(sortFn);
+    folders.forEach(el => foldersList.appendChild(el));
+
+    const files = Array.from(filesList.children).filter(el => el.tagName === 'DIV' && !el.textContent.includes('Yükleniyor'));
+    files.sort(sortFn);
+    files.forEach(el => filesList.appendChild(el));
+}
+
 // CRUD
 async function toggleAdminFilePublic(fileId, currentStatus) {
     if (!confirm(`Bu dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
-    const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
+    const endpoint = isAdminSystemScope()
+        ? `${API_BASE}/api/system/file/${fileId}`
+        : `${API_BASE}/api/institution/file/${fileId}`;
+    const res = await fetch(endpoint, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', body: JSON.stringify({ is_public: !currentStatus })
+        credentials: 'include', body: JSON.stringify({ is_public: currentStatus ? 0 : 1 })
     });
     if (res.ok) { showToast('Görünürlük başarıyla güncellendi!', 'success'); loadAdminFiles(); }
     else showToast('İşlem başarısız oldu!', 'error');
@@ -2527,7 +2629,7 @@ async function renameAdminFileRef(refId, currentName) {
         body: JSON.stringify({ display_name: displayName.trim() })
     });
     if (res.ok) {
-        showToast('Dosya add baaarryla ggncellendi!', 'success');
+        showToast('Dosya adı başarıyla güncellendi!', 'success');
         loadAdminFiles();
     } else {
         const data = await res.json().catch(() => ({}));
@@ -2662,12 +2764,16 @@ async function loadAllAdminFiles() {
                         title="Taşı">
                         <i class="fas fa-folder-open"></i>
                     </button>
+                    <button onclick="renameAdminFileRef(${file.id}, '${escapeHtml(file.file_name)}')"
+                        class="text-amber-500 hover:text-amber-700 transition" title="Yeniden Adlandır">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
                     <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})"
                         class="text-blue-500 hover:text-blue-700 transition"
                         title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
                         <i class="fas ${file.is_public ? 'fa-eye-slash' : 'fa-eye'}"></i>
                     </button>
-                    <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
+                    <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700" title="Sil">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
