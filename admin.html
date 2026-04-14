@@ -2116,7 +2116,8 @@ async function loadAdminInstitutions() {
                 text: i.name,
                 id: i.id
             }));
-        filterSelect.innerHTML = '<option value="all">Tüm Kurumlar</option>' +
+        filterSelect.innerHTML = '<option value="__system__">Merkezi Dosyalar</option>' +
+                '<option value="all">Tüm Kurumlar</option>' +
                 institutions.map(i => `<option value="${escapeHtml(i.name)}" data-institution-id="${i.id}">${escapeHtml(i.name)}</option>`).join('');
             filterSelect.disabled = false;
             filterSelect.value = 'all';
@@ -2676,12 +2677,22 @@ async function renameAdminFileRef(refId, currentName) {
         showToast(data.error || 'İşlem başarısız oldu!', 'error');
     }
 }
+function _ensureSystemOption(sel) {
+    if (!sel) return;
+    if (![...sel.options].some(o => o.value === '__system__')) {
+        const opt = document.createElement('option');
+        opt.value = '__system__';
+        opt.textContent = 'Merkezi Dosyalar';
+        sel.insertBefore(opt, sel.options[0] ? sel.options[0].nextSibling : null);
+    }
+}
 function openAdminFolderModal() {
     document.getElementById('adminFolderModal').classList.remove('hidden');
     const instId = document.getElementById('institutionFilter')?.value;
     const sel = document.getElementById('adminFolderInstitution');
     const visibilityWrap = document.getElementById('adminFolderVisibility')?.closest('div');
     if (isAdminSystemScope()) {
+        _ensureSystemOption(sel);
         if (sel) sel.value = '__system__';
         if (visibilityWrap) visibilityWrap.classList.add('hidden');
         return;
@@ -2969,6 +2980,7 @@ function openAdminFileModal() {
     const instSelect = document.getElementById('adminFileInstitution');
     const visibilityWrap = document.getElementById('adminFileVisibility')?.closest('div');
     if (isAdminSystemScope()) {
+        _ensureSystemOption(instSelect);
         if (instSelect) instSelect.value = '__system__';
         if (visibilityWrap) visibilityWrap.classList.add('hidden');
         loadAdminFileFolders('__system__');
