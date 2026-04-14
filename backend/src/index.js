@@ -3193,10 +3193,12 @@ app.post('/api/collections', async (c) => {
   }
 
   let effectiveScopeId;
+  let effectiveParentId = parent_id || null;
   if (scope_type === 'system') {
     if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
     effectiveScopeId = auth.user.user_id;
-    await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
+    const sysRoot = await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
+    if (!effectiveParentId) effectiveParentId = sysRoot.id;
   } else {
     effectiveScopeId = auth.user.role === 'admin' ? auth.user.institution_id : scope_id;
     const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(Number(effectiveScopeId)).first();
@@ -3207,7 +3209,7 @@ app.post('/api/collections', async (c) => {
   const result = await db.prepare(`
     INSERT INTO collections (parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by)
     VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?)
-  `).bind(parent_id || null, name.trim(), scope_type, Number(effectiveScopeId), kind || 'folder', is_public ? 1 : 0, auth.user.user_id).run();
+  `).bind(effectiveParentId, name.trim(), scope_type, Number(effectiveScopeId), kind || 'folder', is_public ? 1 : 0, auth.user.user_id).run();
 
   return c.json({ success: true, id: result.meta?.last_row_id });
 });

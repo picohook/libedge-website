@@ -2416,7 +2416,7 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({
             name: folderName,
-            parent_id: adminCurrentFolderId ?? adminSystemRootCollectionId ?? null,
+            parent_id: adminCurrentFolderId || adminSystemRootCollectionId || null,
             scope_type: 'system',
             scope_id: currentAdmin?.user_id || null,
             kind: 'folder',
@@ -2424,7 +2424,12 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
         })
     });
     const data = await res.json();
-    if (res.ok) { showToast('Klasör başarıyla oluşturuldu!', 'success'); closeAdminFolderModal(); loadAdminFolders(adminCurrentFolderId); }
+    if (res.ok) {
+        if (data.id && !adminSystemRootCollectionId) adminSystemRootCollectionId = data.parent_id;
+        showToast('Klasör başarıyla oluşturuldu!', 'success');
+        closeAdminFolderModal();
+        loadAdminFolders(adminCurrentFolderId);
+    }
     else showToast(data.error || 'İşlem başarısız oldu!', 'error');
 });
 
