@@ -45,6 +45,8 @@
     color: white;
 }
         .bulk-preview-scroll { max-height: calc(90vh - 220px); overflow-y: auto; }
+        #filesTabOuter.files-two-col { display: flex; flex-direction: row; align-items: flex-start; gap: 1.5rem; }
+        #filesTabOuter.files-two-col > div { flex: 1; min-width: 0; }
     </style>
 </head>
 <body>
@@ -337,60 +339,90 @@
     </div>
 <!-- Kurum Dosyaları Tab -->
 <div id="tab-files" class="tab-content hidden">
-    <div class="bg-white rounded-xl shadow-sm p-6">
-        <!-- Üst bar -->
-        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-            <div>
-                <h3 class="text-lg font-semibold">Kurum Dosyaları</h3>
-                <div id="adminBreadcrumb" class="text-sm text-gray-500 mt-1"></div>
+    <div id="filesTabOuter" class="flex flex-col gap-6">
+
+        <!-- Sol: Merkezi Dosyalar (yalnızca super_admin için gösterilir) -->
+        <div id="systemPanel" class="bg-white rounded-xl shadow-sm p-5 hidden">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-semibold flex items-center gap-2" style="color:#4c3d8c">
+                    <i class="fas fa-server" style="color:#7c3aed"></i> Merkezi Dosyalar
+                </h3>
+                <div class="flex gap-1">
+                    <button onclick="openSystemFolderAdd()" class="btn bg-yellow-600 text-white text-xs px-2 py-1" title="Klasör Ekle">
+                        <i class="fas fa-folder-plus mr-1"></i> Klasör
+                    </button>
+                    <button onclick="openSystemFileAdd()" class="btn btn-primary text-xs px-2 py-1" title="Dosya Yükle">
+                        <i class="fas fa-upload mr-1"></i> Dosya
+                    </button>
+                    <button onclick="switchToSystemScope()" class="btn text-xs px-2 py-1" style="background:#ede9fe;color:#6d28d9" title="Tam görünümde aç">
+                        <i class="fas fa-expand-alt mr-1"></i> Tümü
+                    </button>
+                </div>
             </div>
-            <div class="flex gap-2 flex-wrap items-center">
-                <input id="institutionSearch" type="text" placeholder="Kurum ara..."
-                       class="border rounded px-2 py-1.5 text-sm bg-white w-32 hidden"
-                       oninput="filterInstitutionOptions(this.value)">
-                <select id="institutionFilter" class="border rounded px-3 py-2 text-sm bg-white">
-                    <option value="all">Tüm Kurumlar</option>
-                </select>
-                <button id="adminBackBtn" onclick="adminGoBack()" class="btn bg-gray-200 text-gray-700 hidden">
-                    <i class="fas fa-arrow-left mr-1"></i> Geri
-                </button>
-                <button onclick="openAdminFolderModal()" class="btn bg-yellow-600 text-white">
-                    <i class="fas fa-folder-plus mr-1"></i> Klasör Ekle
-                </button>
-                <button id="addFileBtnAdmin" onclick="openAdminFileModal()" class="btn btn-primary">
-                    <i class="fas fa-upload mr-1"></i> Dosya Yükle
-                </button>
+            <div id="systemPanelFoldersList" class="grid grid-cols-3 gap-2 mb-3">
+                <div class="col-span-full text-xs text-center py-2" style="color:#9ca3af"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+            <div id="systemPanelFilesList" class="space-y-1" style="max-height:300px;overflow-y:auto">
+                <div class="text-xs text-center py-2" style="color:#9ca3af"><i class="fas fa-spinner fa-spin"></i></div>
             </div>
         </div>
 
-        <!-- Arama ve sıralama -->
-        <div class="flex items-center gap-2 mb-3 flex-wrap">
-            <div class="relative flex-1 min-w-[160px] max-w-xs">
-                <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                <input id="adminContentSearch" type="text" placeholder="Klasör veya dosya ara..."
-                       class="w-full border rounded pl-7 pr-2 py-1.5 text-sm bg-white"
-                       oninput="filterAdminContent(this.value)">
+        <!-- Sağ: Kurum Dosyaları -->
+        <div id="institutionFilesPanel" class="bg-white rounded-xl shadow-sm p-6">
+            <!-- Üst bar -->
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <div>
+                    <h3 class="text-lg font-semibold">Kurum Dosyaları</h3>
+                    <div id="adminBreadcrumb" class="text-sm text-gray-500 mt-1"></div>
+                </div>
+                <div class="flex gap-2 flex-wrap items-center">
+                    <input id="institutionSearch" type="text" placeholder="Kurum ara..."
+                           class="border rounded px-2 py-1.5 text-sm bg-white w-32 hidden"
+                           oninput="filterInstitutionOptions(this.value)">
+                    <select id="institutionFilter" class="border rounded px-3 py-2 text-sm bg-white">
+                        <option value="all">Tüm Kurumlar</option>
+                    </select>
+                    <button id="adminBackBtn" onclick="adminGoBack()" class="btn bg-gray-200 text-gray-700 hidden">
+                        <i class="fas fa-arrow-left mr-1"></i> Geri
+                    </button>
+                    <button onclick="openAdminFolderModal()" class="btn bg-yellow-600 text-white">
+                        <i class="fas fa-folder-plus mr-1"></i> Klasör Ekle
+                    </button>
+                    <button id="addFileBtnAdmin" onclick="openAdminFileModal()" class="btn btn-primary">
+                        <i class="fas fa-upload mr-1"></i> Dosya Yükle
+                    </button>
+                </div>
             </div>
-            <div class="flex gap-1 text-xs">
-                <button id="adminSortName" onclick="setAdminSort('name')"
-                    class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
-                    <i class="fas fa-font"></i> Ad
-                    <i id="adminSortNameIcon" class="fas fa-sort text-gray-400"></i>
-                </button>
-                <button id="adminSortDate" onclick="setAdminSort('date')"
-                    class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
-                    <i class="fas fa-calendar-alt"></i> Tarih
-                    <i id="adminSortDateIcon" class="fas fa-sort text-gray-400"></i>
-                </button>
+
+            <!-- Arama ve sıralama -->
+            <div class="flex items-center gap-2 mb-3 flex-wrap">
+                <div class="relative flex-1 min-w-[160px] max-w-xs">
+                    <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                    <input id="adminContentSearch" type="text" placeholder="Klasör veya dosya ara..."
+                           class="w-full border rounded pl-7 pr-2 py-1.5 text-sm bg-white"
+                           oninput="filterAdminContent(this.value)">
+                </div>
+                <div class="flex gap-1 text-xs">
+                    <button id="adminSortName" onclick="setAdminSort('name')"
+                        class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
+                        <i class="fas fa-font"></i> Ad
+                        <i id="adminSortNameIcon" class="fas fa-sort text-gray-400"></i>
+                    </button>
+                    <button id="adminSortDate" onclick="setAdminSort('date')"
+                        class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
+                        <i class="fas fa-calendar-alt"></i> Tarih
+                        <i id="adminSortDateIcon" class="fas fa-sort text-gray-400"></i>
+                    </button>
+                </div>
             </div>
-        </div>
 
-        <!-- Klasörler grid -->
-        <div id="adminFoldersList" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-4"></div>
+            <!-- Klasörler grid -->
+            <div id="adminFoldersList" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-4"></div>
 
-        <!-- Dosyalar listesi -->
-        <div id="adminFilesList" class="space-y-2">
-            <p class="text-gray-500 text-center py-8">Kurum seçin...</p>
+            <!-- Dosyalar listesi -->
+            <div id="adminFilesList" class="space-y-2">
+                <p class="text-gray-500 text-center py-8">Kurum seçin...</p>
+            </div>
         </div>
     </div>
 </div>
@@ -2089,7 +2121,11 @@ async function loadAdminInstitutions() {
             filterSelect.disabled = false;
             filterSelect.value = 'all';
             if (searchEl) searchEl.classList.remove('hidden');
-            
+            // Merkezi Dosyalar yan panelini göster
+            document.getElementById('systemPanel')?.classList.remove('hidden');
+            document.getElementById('filesTabOuter')?.classList.add('files-two-col');
+            loadSystemPanel();
+
         } else if (user.role === 'admin') {
             // Admin: Sadece yetkili olduğu kurumlar
             if (adminInstitutions.length > 1) {
@@ -2583,14 +2619,14 @@ async function toggleAdminFilePublic(fileId, currentStatus) {
 async function deleteAdminFile(fileId) {
     if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
     const res = await fetch(isAdminSystemScope() ? `${API_BASE}/api/system/file/${fileId}` : `${API_BASE}/api/institution/file/${fileId}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); }
+    if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); loadSystemPanel(); }
     else showToast('İşlem başarısız oldu!', 'error');
 }
 
 async function deleteAdminFolder(folderId) {
     if (!confirm('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?')) return;
     const res = await fetch(isAdminSystemScope() ? `${API_BASE}/api/collections/${folderId}` : `${API_BASE}/api/institution/folder/${folderId}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadAdminFolders(adminCurrentFolderId); loadAdminFiles(); }
+    if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadAdminFolders(adminCurrentFolderId); loadAdminFiles(); loadSystemPanel(); }
     else showToast('İşlem başarısız oldu!', 'error');
 }
 
@@ -2688,7 +2724,7 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
         });
     }
     const data = await res.json();
-    if (res.ok) { showToast('Klasör başarıyla oluşturuldu!', 'success'); closeAdminFolderModal(); loadAdminFolders(adminCurrentFolderId); }
+    if (res.ok) { showToast('Klasör başarıyla oluşturuldu!', 'success'); closeAdminFolderModal(); loadAdminFolders(adminCurrentFolderId); loadSystemPanel(); }
     else showToast(data.error || 'İşlem başarısız oldu!', 'error');
 });
 // Klasör filtresi
@@ -2722,6 +2758,84 @@ document.getElementById('adminFileInstitution')?.addEventListener('change', func
 document.getElementById('adminFolderInstitution')?.addEventListener('change', function() {
     if (this.value === '__system__') loadAdminFileFolders('__system__');
 });
+
+// Merkezi Dosyalar yan panel
+async function loadSystemPanel() {
+    if (!currentAdmin || currentAdmin.role !== 'super_admin') return;
+    const foldersEl = document.getElementById('systemPanelFoldersList');
+    const filesEl   = document.getElementById('systemPanelFilesList');
+    if (!foldersEl || !filesEl) return;
+
+    // Klasörler
+    try {
+        const res = await fetch('/api/collections?scope_type=system&scope_id=self', { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const cols = await res.json();
+        const root = (cols || []).find(c => c.kind === 'root');
+        adminSystemRootCollectionId = root ? Number(root.id) : adminSystemRootCollectionId;
+        const folders = (cols || []).filter(c => c.kind === 'folder' && Number(c.parent_id) === adminSystemRootCollectionId);
+        foldersEl.innerHTML = folders.length
+            ? folders.map(f => `
+                <div class="border border-gray-200 rounded-lg p-2 cursor-pointer hover:bg-yellow-50 text-center group relative"
+                     onclick="switchToSystemFolder(${f.id},'${escapeHtml(f.name)}')">
+                    <i class="fas fa-folder text-2xl text-yellow-500 mb-0.5 block"></i>
+                    <p class="text-xs truncate" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</p>
+                </div>`).join('')
+            : '<div class="col-span-full text-xs text-center py-2" style="color:#9ca3af">Henüz klasör yok</div>';
+    } catch {
+        foldersEl.innerHTML = '<div class="col-span-full text-xs text-center py-2" style="color:#9ca3af">Yüklenemedi</div>';
+    }
+
+    // Dosyalar
+    try {
+        const res = await fetch('/api/system/files', { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const files = data.files || [];
+        filesEl.innerHTML = files.length
+            ? files.map(f => `
+                <div class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 text-xs" style="border:1px solid #f3f4f6">
+                    <i class="fas ${getFileIcon(f.file_type)} flex-shrink-0 w-4 text-center" style="color:#9ca3af"></i>
+                    <a href="javascript:void(0)"
+                       onclick="previewFile('${escapeHtml(f.file_url)}','${escapeHtml(f.file_name)}','${f.file_type||''}')"
+                       class="flex-1 truncate text-primary hover:underline" title="${escapeHtml(f.file_name)}">${escapeHtml(f.file_name)}</a>
+                </div>`).join('')
+            : '<div class="text-xs text-center py-2" style="color:#9ca3af">Ana dizinde dosya yok</div>';
+    } catch {
+        filesEl.innerHTML = '<div class="text-xs text-center py-2" style="color:#9ca3af">Yüklenemedi</div>';
+    }
+}
+function switchToSystemFolder(folderId, folderName) {
+    const filter = document.getElementById('institutionFilter');
+    if (!filter) return;
+    if ([...filter.options].some(o => o.value === '__system__')) {
+        filter.value = '__system__';
+        filter.dispatchEvent(new Event('change'));
+        setTimeout(() => adminOpenFolder(folderId, folderName), 200);
+    }
+}
+function switchToSystemScope() {
+    const filter = document.getElementById('institutionFilter');
+    if (!filter) return;
+    if ([...filter.options].some(o => o.value === '__system__')) {
+        filter.value = '__system__';
+        filter.dispatchEvent(new Event('change'));
+    }
+}
+function openSystemFolderAdd() {
+    openAdminFolderModal();
+    setTimeout(() => {
+        const sel = document.getElementById('adminFolderInstitution');
+        if (sel) { sel.value = '__system__'; sel.dispatchEvent(new Event('change')); }
+    }, 50);
+}
+function openSystemFileAdd() {
+    openAdminFileModal();
+    setTimeout(() => {
+        const sel = document.getElementById('adminFileInstitution');
+        if (sel) { sel.value = '__system__'; sel.dispatchEvent(new Event('change')); }
+    }, 50);
+}
 
 // Kurum filtresi değiştiğinde
 // Kurum filtresi değiştiğinde - Bu kısım da düzeltilmeli
@@ -2950,7 +3064,7 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
             });
         }
         const result = await res.json();
-        if (res.ok) { showToast('Dosya başarıyla yüklendi!', 'success'); closeAdminFileModal(); loadAdminFiles(); loadAdminFolders(adminCurrentFolderId); loadAdminInstitutions(); }
+        if (res.ok) { showToast('Dosya başarıyla yüklendi!', 'success'); closeAdminFileModal(); loadAdminFiles(); loadAdminFolders(adminCurrentFolderId); loadAdminInstitutions(); loadSystemPanel(); }
         else showToast(result.error || 'İşlem başarısız oldu!', 'error');
     } catch(err) {
         showToast(err.message || 'Bir hata oluştu.', 'error');
@@ -4225,7 +4339,7 @@ async function loadRequests() {
             const statusLabel = SUBMISSION_STATUS_LABELS[r.status]    || r.status;
             const statusColor = SUBMISSION_STATUS_COLORS[r.status]    || 'bg-gray-100 text-gray-700';
             const msg = r.message ? (r.message.length > 60 ? r.message.slice(0, 60) + '…' : r.message) : '-';
-            const note = r.admin_note ? `<span title="${escapeHtml(r.admin_note)}" class="ml-1 text-gray-400 cursor-help">??</span>` : '';
+            const note = r.admin_note ? `<span title="${escapeHtml(r.admin_note)}" class="ml-1 text-gray-400 cursor-help"><i class="fas fa-info-circle text-xs"></i></span>` : '';
             return `<tr class="hover:bg-gray-50">
                 <td class="text-xs text-gray-500 whitespace-nowrap">${date}</td>
                 <td><span class="text-xs px-2 py-0.5 rounded-full font-medium ${typeColor}">${typeLabel}</span></td>
