@@ -3777,6 +3777,59 @@ app.get('/api/system/files', async (c) => {
   });
 });
 
+app.get('/api/system/folders', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const db = c.env.DB;
+  const root = await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
+  const parentId = c.req.query('parent_id') ? Number(c.req.query('parent_id')) : root.id;
+
+  const rows = await db.prepare(`
+    WITH RECURSIVE folder_tree(root_id, node_id) AS (
+      SELECT col.id, col.id
+      FROM collections col
+      WHERE col.scope_type = 'system'
+        AND col.scope_id = ?
+        AND col.kind = 'folder'
+        AND col.is_active = 1
+        AND col.parent_id = ?
+      UNION ALL
+      SELECT ft.root_id, child.id
+      FROM collections child
+      JOIN folder_tree ft ON child.parent_id = ft.node_id
+      WHERE child.kind = 'folder' AND child.is_active = 1
+    )
+    SELECT
+      col.id,
+      col.name AS folder_name,
+      col.parent_id AS parent_folder_id,
+      col.is_public,
+      col.created_at,
+      (
+        SELECT COUNT(DISTINCT ft2.node_id) - 1
+        FROM folder_tree ft2
+        WHERE ft2.root_id = col.id
+      ) AS subfolder_count,
+      (
+        SELECT COUNT(cf.id)
+        FROM folder_tree ft2
+        JOIN collection_files cf ON cf.collection_id = ft2.node_id
+        WHERE ft2.root_id = col.id AND cf.is_active = 1
+      ) AS file_count
+    FROM collections col
+    WHERE col.scope_type = 'system'
+      AND col.scope_id = ?
+      AND col.kind = 'folder'
+      AND col.is_active = 1
+      AND col.parent_id = ?
+    ORDER BY col.sort_order, col.name
+  `).bind(auth.user.user_id, parentId, auth.user.user_id, parentId).all();
+
+  return c.json({ root_id: root.id, folders: rows.results || [] });
+});
+
 app.post('/api/system/file', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;

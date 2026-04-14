@@ -2509,7 +2509,7 @@ function updateAdminBreadcrumb() {
     const bc = document.getElementById('adminBreadcrumb');
     if (!bc) return;
     const instId = document.getElementById('institutionFilter')?.value;
-    const instName = instId && instId !== 'all' ? escapeHtml(instId) : 'Tüm Kurumlar';
+    const instName = instId === '__system__' ? 'Merkezi Dosyalar' : (instId && instId !== 'all' ? escapeHtml(instId) : 'Tüm Kurumlar');
     let html = `<span class="cursor-pointer hover:text-primary" onclick="adminGoRoot()">${instName}</span>`;
     adminFolderStack.forEach((f, index) => {
         const isLast = index === adminFolderStack.length - 1;
@@ -2779,19 +2779,29 @@ async function loadSystemPanel() {
 
     // Klasörler
     try {
-        const res = await fetch('/api/collections?scope_type=system&scope_id=self', { credentials: 'include' });
+        const res = await fetch('/api/system/folders', { credentials: 'include' });
         if (!res.ok) throw new Error();
-        const cols = await res.json();
-        const root = (cols || []).find(c => c.kind === 'root');
-        adminSystemRootCollectionId = root ? Number(root.id) : adminSystemRootCollectionId;
-        const folders = (cols || []).filter(c => c.kind === 'folder' && Number(c.parent_id) === adminSystemRootCollectionId);
+        const data = await res.json();
+        if (data.root_id) adminSystemRootCollectionId = data.root_id;
+        const folders = data.folders || [];
         foldersEl.innerHTML = folders.length
-            ? folders.map(f => `
-                <div class="border border-gray-200 rounded-lg p-2 cursor-pointer hover:bg-yellow-50 text-center group relative"
-                     onclick="switchToSystemFolder(${f.id},'${escapeHtml(f.name)}')">
-                    <i class="fas fa-folder text-2xl text-yellow-500 mb-0.5 block"></i>
-                    <p class="text-xs truncate" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</p>
-                </div>`).join('')
+            ? folders.map(f => {
+                const total = (f.subfolder_count || 0) + (f.file_count || 0);
+                const countBadge = total > 0 ? `<span class="text-xs ml-0.5" style="color:#9ca3af">(${total})</span>` : '';
+                return `
+                <div class="border border-gray-200 rounded-lg p-2 hover:bg-yellow-50 text-center group relative" style="position:relative">
+                    <div class="cursor-pointer" onclick="switchToSystemFolder(${f.id},'${escapeHtml(f.folder_name)}')">
+                        <i class="fas fa-folder text-2xl text-yellow-500 mb-0.5 block"></i>
+                        <p class="text-xs truncate" title="${escapeHtml(f.folder_name)}">${escapeHtml(f.folder_name)}${countBadge}</p>
+                    </div>
+                    <button onclick="event.stopPropagation();openSendToInstitutionsModal('folder',${f.id},'${escapeHtml(f.folder_name)}')"
+                            class="mt-1 w-full text-xs px-1 py-0.5 rounded"
+                            style="background:#e0f2fe;color:#0369a1;border:none;cursor:pointer"
+                            title="Kurumlara gönder">
+                        <i class="fas fa-paper-plane mr-0.5"></i>Gönder
+                    </button>
+                </div>`;
+              }).join('')
             : '<div class="col-span-full text-xs text-center py-2" style="color:#9ca3af">Henüz klasör yok</div>';
     } catch {
         foldersEl.innerHTML = '<div class="col-span-full text-xs text-center py-2" style="color:#9ca3af">Yüklenemedi</div>';
@@ -2810,6 +2820,12 @@ async function loadSystemPanel() {
                     <a href="javascript:void(0)"
                        onclick="previewFile('${escapeHtml(f.file_url)}','${escapeHtml(f.file_name)}','${f.file_type||''}')"
                        class="flex-1 truncate text-primary hover:underline" title="${escapeHtml(f.file_name)}">${escapeHtml(f.file_name)}</a>
+                    <button onclick="openSendToInstitutionsModal('file',${f.source_file_id},'${escapeHtml(f.file_name)}')"
+                            class="flex-shrink-0 text-xs px-1.5 py-0.5 rounded"
+                            style="background:#e0f2fe;color:#0369a1;border:none;cursor:pointer"
+                            title="Kurumlara gönder">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
                 </div>`).join('')
             : '<div class="text-xs text-center py-2" style="color:#9ca3af">Ana dizinde dosya yok</div>';
     } catch {
@@ -2819,33 +2835,271 @@ async function loadSystemPanel() {
 function switchToSystemFolder(folderId, folderName) {
     const filter = document.getElementById('institutionFilter');
     if (!filter) return;
-    if ([...filter.options].some(o => o.value === '__system__')) {
+    if (filter.value === '__system__') {
+        // Zaten sistem kapsamında — doğrudan klasöre gir
+        adminOpenFolder(folderId, folderName);
+    } else {
         filter.value = '__system__';
         filter.dispatchEvent(new Event('change'));
-        setTimeout(() => adminOpenFolder(folderId, folderName), 200);
+        // change handler async yükleme başlatır; bitmesini bekle
+        setTimeout(() => adminOpenFolder(folderId, folderName), 350);
     }
 }
 function switchToSystemScope() {
     const filter = document.getElementById('institutionFilter');
     if (!filter) return;
-    if ([...filter.options].some(o => o.value === '__system__')) {
+    if (filter.value !== '__system__') {
         filter.value = '__system__';
         filter.dispatchEvent(new Event('change'));
     }
 }
 function openSystemFolderAdd() {
+    // Filtre __system__ değilse önce oraya geç, sonra modal aç
+    const filter = document.getElementById('institutionFilter');
+    if (filter && filter.value !== '__system__') {
+        filter.value = '__system__';
+        filter.dispatchEvent(new Event('change'));
+        setTimeout(openSystemFolderAdd, 350);
+        return;
+    }
     openAdminFolderModal();
-    setTimeout(() => {
-        const sel = document.getElementById('adminFolderInstitution');
-        if (sel) { sel.value = '__system__'; sel.dispatchEvent(new Event('change')); }
-    }, 50);
+    // openAdminFolderModal isAdminSystemScope() = true olduğundan __system__ seçer
 }
 function openSystemFileAdd() {
+    const filter = document.getElementById('institutionFilter');
+    if (filter && filter.value !== '__system__') {
+        filter.value = '__system__';
+        filter.dispatchEvent(new Event('change'));
+        setTimeout(openSystemFileAdd, 350);
+        return;
+    }
     openAdminFileModal();
-    setTimeout(() => {
-        const sel = document.getElementById('adminFileInstitution');
-        if (sel) { sel.value = '__system__'; sel.dispatchEvent(new Event('change')); }
-    }, 50);
+}
+
+// ====================== KURUMLARA GÖNDER ======================
+
+let _sendSource = null;        // { type: 'file'|'folder', id, name }
+let _sendSelections = [];      // [{ instId, instName, collectionId, collectionName }]
+
+async function openSendToInstitutionsModal(type, id, name) {
+    _sendSource = { type, id, name };
+    _sendSelections = [];
+
+    document.getElementById('sendModalTitle').textContent =
+        (type === 'folder' ? 'Klasör: ' : 'Dosya: ') + name;
+    document.getElementById('sendInstFolderRows').innerHTML = '';
+    document.getElementById('sendToInstitutionsModal').classList.remove('hidden');
+
+    // Kurum listesini doldur
+    const listEl = document.getElementById('sendInstList');
+    const insts = (_allInstitutionOptions || []).filter(o => o.value !== '__system__' && o.id);
+    if (!insts.length) {
+        listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">Kurum bulunamadı</p>';
+        return;
+    }
+    listEl.innerHTML = insts.map(o => `
+        <label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white cursor-pointer text-sm">
+            <input type="checkbox" value="${o.id}" data-name="${escapeHtml(o.text)}"
+                   class="send-inst-cb" onchange="onSendInstCheck(this)">
+            <span>${escapeHtml(o.text)}</span>
+        </label>`).join('');
+}
+
+async function onSendInstCheck(cb) {
+    const instId  = cb.value;
+    const instName = cb.dataset.name;
+    const rowId   = `sendFolderRow_${instId}`;
+    const existing = document.getElementById(rowId);
+
+    if (!cb.checked) {
+        if (existing) existing.remove();
+        return;
+    }
+
+    // Satır ekle — yükleniyor
+    const rowsEl = document.getElementById('sendInstFolderRows');
+    const row = document.createElement('div');
+    row.id = rowId;
+    row.className = 'flex items-center gap-2 text-sm';
+    row.innerHTML = `
+        <span class="font-medium text-gray-700 w-36 truncate flex-shrink-0">${escapeHtml(instName)}</span>
+        <select id="sendFolder_${instId}" class="flex-1 border rounded px-2 py-1 text-sm">
+            <option value="">Kök klasör</option>
+        </select>`;
+    rowsEl.appendChild(row);
+
+    // Klasörleri yükle
+    try {
+        const res = await fetch(`/api/institution/${instId}/folders`, { credentials: 'include' });
+        const folders = res.ok ? (await res.json()) : [];
+        const sel = document.getElementById(`sendFolder_${instId}`);
+        if (sel && folders.length) {
+            sel.innerHTML = '<option value="">Kök klasör</option>' +
+                folders.map(f => `<option value="${f.id}" data-name="${escapeHtml(f.folder_name)}">${escapeHtml(f.folder_name)}</option>`).join('');
+        }
+    } catch { /* keep root option */ }
+}
+
+function openSendConfirmStep() {
+    const checked = [...document.querySelectorAll('.send-inst-cb:checked')];
+    if (!checked.length) {
+        showToast('En az bir kurum seçin.', 'warning');
+        return;
+    }
+
+    _sendSelections = checked.map(cb => {
+        const instId   = cb.value;
+        const instName = cb.dataset.name;
+        const sel      = document.getElementById(`sendFolder_${instId}`);
+        const collId   = sel ? sel.value : '';
+        const collName = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].dataset.name || '' : '';
+        return { instId, instName, collectionId: collId, collectionName: collName };
+    });
+
+    // Özet
+    const summaryEl = document.getElementById('sendConfirmSummary');
+    summaryEl.innerHTML = `
+        <p class="text-sm text-gray-600 mb-2">
+            <strong>${escapeHtml(_sendSource.name)}</strong> aşağıdaki kurumlara gönderilecek:
+        </p>
+        <ul class="space-y-1">` +
+        _sendSelections.map(s => `
+            <li class="flex items-center gap-1 text-sm">
+                <i class="fas fa-arrow-right text-blue-400 text-xs"></i>
+                <span class="font-medium">${escapeHtml(s.instName)}</span>
+                ${s.collectionName ? `<span class="text-gray-400">→ ${escapeHtml(s.collectionName)}</span>` : ''}
+            </li>`).join('') +
+        '</ul>';
+
+    document.getElementById('sendDuplicateWarning').classList.add('hidden');
+    document.getElementById('sendToInstitutionsModal').classList.add('hidden');
+    document.getElementById('sendConfirmModal').classList.remove('hidden');
+}
+
+function backToSendStep1() {
+    document.getElementById('sendConfirmModal').classList.add('hidden');
+    document.getElementById('sendToInstitutionsModal').classList.remove('hidden');
+}
+
+function closeSendModal() {
+    document.getElementById('sendToInstitutionsModal').classList.add('hidden');
+    _sendSource = null;
+    _sendSelections = [];
+}
+
+function closeSendConfirmModal() {
+    document.getElementById('sendConfirmModal').classList.add('hidden');
+    _sendSource = null;
+    _sendSelections = [];
+}
+
+async function executeSend() {
+    if (!_sendSource || !_sendSelections.length) return;
+
+    const btn = document.getElementById('sendConfirmBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Gönderiliyor...';
+
+    let dupFound  = false;
+    let failCount = 0;
+
+    for (const sel of _sendSelections) {
+        try {
+            if (_sendSource.type === 'file') {
+                const res = await sendFileToInstitution(_sendSource.id, sel.instId, sel.collectionId || null);
+                if (res && res.deduplicated) dupFound = true;
+            } else {
+                // Klasör — recursive kopyala
+                const dups = await sendFolderRecursive(_sendSource.id, sel.instId, sel.collectionId || null, _sendSource.name);
+                if (dups) dupFound = true;
+            }
+        } catch(e) {
+            console.error('Gönderme hatası:', sel.instName, e);
+            failCount++;
+        }
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Gönder';
+
+    if (failCount > 0) {
+        showToast(`${failCount} kuruma gönderme başarısız oldu.`, 'error');
+    } else if (dupFound) {
+        document.getElementById('sendDuplicateWarning').classList.remove('hidden');
+        showToast('Gönderildi (bazı dosyalar zaten mevcuttu, atlandı).', 'warning');
+    } else {
+        showToast('Başarıyla gönderildi!', 'success');
+        closeSendConfirmModal();
+    }
+}
+
+async function sendFileToInstitution(sourceFileId, instId, targetCollectionId) {
+    const body = { source_file_id: sourceFileId };
+    if (targetCollectionId) body.folder_id = Number(targetCollectionId);
+
+    const res = await fetch(`/api/institution/${instId}/file`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+
+    if (res.status === 409) return { deduplicated: true };
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Dosya gönderilemedi');
+    }
+    const data = await res.json().catch(() => ({}));
+    return data;
+}
+
+// Recursive folder send: creates folder structure in target institution, copies files
+// folderName is passed in to avoid extra API calls on recursion
+async function sendFolderRecursive(systemFolderId, instId, parentCollectionId, folderName) {
+    let dupFound = false;
+
+    // 1) Hedef kurumda klasörü oluştur
+    const newFolderRes = await fetch(`/api/institution/${instId}/folder`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            folder_name: folderName || 'Klasör',
+            parent_folder_id: parentCollectionId ? Number(parentCollectionId) : null,
+            is_public: true
+        })
+    });
+
+    let newFolderId = null;
+    if (newFolderRes.ok) {
+        const nf = await newFolderRes.json().catch(() => ({}));
+        newFolderId = nf.id ?? null;
+    }
+
+    // 2) Sistem klasörünün dosyalarını al
+    const filesRes = await fetch(`/api/system/files?collection_id=${systemFolderId}`, { credentials: 'include' });
+    const filesData = filesRes.ok ? await filesRes.json() : {};
+    const files = filesData.files || [];
+
+    // 3) Dosyaları kopyala
+    for (const f of files) {
+        try {
+            const r = await sendFileToInstitution(f.source_file_id, instId, newFolderId);
+            if (r && r.deduplicated) dupFound = true;
+        } catch(e) { console.error('Dosya kopyalanamadı:', f.file_name, e); }
+    }
+
+    // 4) Alt klasörleri recursive işle
+    const subRes = await fetch(`/api/system/folders?parent_id=${systemFolderId}`, { credentials: 'include' });
+    const subData = subRes.ok ? await subRes.json() : {};
+    const subFolders = subData.folders || [];
+
+    for (const sub of subFolders) {
+        const subDup = await sendFolderRecursive(sub.id, instId, newFolderId, sub.folder_name);
+        if (subDup) dupFound = true;
+    }
+
+    return dupFound;
 }
 
 // Kurum filtresi değiştiğinde
@@ -3139,17 +3393,16 @@ window.showToast = function(message, type = 'info') {
     };
     
     const icons = {
-        success: '?',
-        error: '?',
-        warning: '??',
-        info: '??'
+        success: '<i class="fas fa-check-circle"></i>',
+        error:   '<i class="fas fa-times-circle"></i>',
+        warning: '<i class="fas fa-exclamation-triangle"></i>',
+        info:    '<i class="fas fa-info-circle"></i>'
     };
-    
+
     const styleClass = borderColors[type] || borderColors.info;
     toast.className = toast.className + ' ' + styleClass;
-    
-    // SADECE BİR İKON (emoji)
-    toast.innerHTML = `${icons[type] || '??'} ${message}`;
+
+    toast.innerHTML = `${icons[type] || '<i class="fas fa-bell"></i>'} ${message}`;
     document.body.appendChild(toast);
     
     setTimeout(() => toast.classList.remove('translate-x-full'), 10);
@@ -5059,6 +5312,71 @@ document.addEventListener('click', function(e) {
             <button onclick="closeCoverCropModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
             <button id="coverCropApplyBtn" onclick="applyCoverCrop()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 flex-1">
                 <i class="fas fa-crop-alt mr-2"></i>Uygula ve Kaydet
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Kurumlara Gönder — Adım 1: Kurum + Klasör Seçimi            -->
+<!-- ============================================================ -->
+<div id="sendToInstitutionsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
+            <div>
+                <h3 class="font-semibold text-gray-900">Kurumlara Gönder</h3>
+                <p id="sendModalTitle" class="text-sm text-gray-500 mt-0.5"></p>
+            </div>
+            <button onclick="closeSendModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            <!-- Kurum listesi -->
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase mb-2">Kurumları Seç</p>
+                <div id="sendInstList" class="space-y-1 max-h-48 overflow-y-auto border rounded-xl p-2 bg-gray-50">
+                    <p class="text-xs text-gray-400 text-center py-2">Yükleniyor...</p>
+                </div>
+            </div>
+
+            <!-- Seçili kurumlar için klasör seçiciler -->
+            <div id="sendInstFolderRows" class="space-y-2"></div>
+        </div>
+
+        <div class="flex gap-3 px-5 py-4 border-t flex-shrink-0">
+            <button onclick="closeSendModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
+            <button onclick="openSendConfirmStep()" class="btn btn-primary flex-1">
+                İleri <i class="fas fa-arrow-right ml-1"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Kurumlara Gönder — Adım 2: Onay                             -->
+<!-- ============================================================ -->
+<div id="sendConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
+            <h3 class="font-semibold text-gray-900">Gönderimi Onayla</h3>
+            <button onclick="closeSendConfirmModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-5 py-4">
+            <div id="sendConfirmSummary" class="space-y-2 mb-3"></div>
+            <div id="sendDuplicateWarning" class="hidden rounded-lg px-3 py-2 text-sm" style="background:#fef3c7;color:#92400e">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                Bazı dosyalar zaten mevcut — bu dosyalar atlanacak, üzerine yazılmayacak.
+            </div>
+        </div>
+
+        <div class="flex gap-3 px-5 py-4 border-t flex-shrink-0">
+            <button onclick="backToSendStep1()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">
+                <i class="fas fa-arrow-left mr-1"></i> Geri
+            </button>
+            <button onclick="closeSendConfirmModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
+            <button id="sendConfirmBtn" onclick="executeSend()" class="btn btn-primary flex-1">
+                <i class="fas fa-paper-plane mr-1"></i> Gönder
             </button>
         </div>
     </div>
