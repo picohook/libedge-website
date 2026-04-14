@@ -19,3 +19,10 @@ Thumbs.dbgit
 
 .wrangler/cache/
 .wrangler/state/
+
+# Python virtual environment
+venv/
+
+# HuggingFace cache
+huggingface/
+.cache/
