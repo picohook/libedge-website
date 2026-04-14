@@ -2591,16 +2591,16 @@ app.post('/api/institution/:id/folder', async (c) => {
 
   const db = c.env.DB;
   const institution = await getInstitutionByIdentifier(db, c.req.param('id'));
-  if (!institution) return c.json({ error: 'Kurum bulunamadi' }, 404);
+  if (!institution) return c.json({ error: 'Kurum bulunamadı' }, 404);
   if (!canManageInstitutionScope(auth.user, institution)) {
-    return c.json({ error: 'Sadece kendi kurumunuza klasor ekleyebilirsiniz' }, 403);
+    return c.json({ error: 'Sadece kendi kurumunuza klasör ekleyebilirsiniz' }, 403);
   }
 
   const { folder_name, parent_folder_id, is_public } = await c.req.json();
-  if (!folder_name?.trim()) return c.json({ error: 'Klasor adi bos olamaz' }, 400);
+  if (!folder_name?.trim()) return c.json({ error: 'Klasör adı boş olamaz' }, 400);
 
   const parentCollection = await getInstitutionCollectionOrRoot(db, institution.id, parent_folder_id || null, auth.user.user_id);
-  if (!parentCollection) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+  if (!parentCollection) return c.json({ error: 'Hedef klasör bulunamadı' }, 404);
 
   const result = await db.prepare(`
     INSERT INTO collections (parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by)
@@ -2632,7 +2632,7 @@ app.delete('/api/institution/folder/:id', async (c) => {
       AND col.is_active = 1
   `).bind(folderId).first();
 
-  if (!folder) return c.json({ error: 'Klasor bulunamadi' }, 404);
+  if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
   if (!canManageInstitutionScope(auth.user, { id: folder.institution_id, name: folder.institution_name })) {
     return c.json({ error: 'Yetkisiz' }, 403);
   }
@@ -2698,7 +2698,7 @@ app.put('/api/institution/folder/:id', async (c) => {
   const folderId = Number(c.req.param('id'));
   const db = c.env.DB;
   const { folder_name } = await c.req.json();
-  if (!folder_name?.trim()) return c.json({ error: 'Klasor adi bos olamaz' }, 400);
+  if (!folder_name?.trim()) return c.json({ error: 'Klasör adı boş olamaz' }, 400);
 
   const folder = await db.prepare(`
     SELECT
@@ -2713,7 +2713,7 @@ app.put('/api/institution/folder/:id', async (c) => {
       AND col.is_active = 1
   `).bind(folderId).first();
 
-  if (!folder) return c.json({ error: 'Klasor bulunamadi' }, 404);
+  if (!folder) return c.json({ error: 'Klasör bulunamadı' }, 404);
   if (!canManageInstitutionScope(auth.user, { id: folder.institution_id, name: folder.institution_name })) {
     return c.json({ error: 'Yetkisiz' }, 403);
   }
@@ -2731,14 +2731,14 @@ app.post('/api/institution/:id/file', async (c) => {
 
   const db = c.env.DB;
   const institution = await getInstitutionByIdentifier(db, c.req.param('id'));
-  if (!institution) return c.json({ error: 'Kurum bulunamadi' }, 404);
+  if (!institution) return c.json({ error: 'Kurum bulunamadı' }, 404);
   if (!canManageInstitutionScope(auth.user, institution)) {
     return c.json({ error: 'Yetkisiz' }, 403);
   }
 
   const { file_name, file_url, category, folder_id, is_public, source_file_id } = await c.req.json();
   const targetCollection = await getInstitutionCollectionOrRoot(db, institution.id, folder_id || null, auth.user.user_id);
-  if (!targetCollection) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+  if (!targetCollection) return c.json({ error: 'Hedef klasör bulunamadı' }, 404);
 
   let stored = null;
   if (source_file_id) {
@@ -2749,7 +2749,7 @@ app.post('/api/institution/:id/file', async (c) => {
   }
 
   if (!stored) {
-    return c.json({ error: 'Yalnizca sistemde yuklenmis dosyalar eklenebilir' }, 400);
+    return c.json({ error: 'Yalnızca sistemde yüklenmiş dosyalar eklenebilir' }, 400);
   }
 
   const existingRef = await db.prepare(`

@@ -2668,7 +2668,7 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
     if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
 
     let res;
-    if (isAdminSystemScope()) {
+    if (isAdminSystemScope() || institutionId === '__system__') {
         res = await fetch(`${API_BASE}/api/collections`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
             body: JSON.stringify({
@@ -2718,6 +2718,9 @@ async function loadAdminFileFolders(institutionId) {
 }
 document.getElementById('adminFileInstitution')?.addEventListener('change', function() {
     loadAdminFileFolders(this.value);
+});
+document.getElementById('adminFolderInstitution')?.addEventListener('change', function() {
+    if (this.value === '__system__') loadAdminFileFolders('__system__');
 });
 
 // Kurum filtresi değiştiğinde
@@ -2914,7 +2917,7 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
         if (!fileName) fileName = fileUrl.split('/').pop()?.split('?')[0] || 'Dosya';
 
         let res;
-        if (isAdminSystemScope()) {
+        if (isAdminSystemScope() || institutionId === '__system__') {
             const sysPayload = {
                 folder_id: document.getElementById('adminFileFolderSelect').value || adminSystemRootCollectionId || null,
                 display_name: fileName,
