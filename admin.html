@@ -1979,7 +1979,7 @@ function filterInstitutionOptions(query) {
     const systemOption = currentAdmin?.role === 'super_admin'
         ? '<option value="__system__">Merkezi Dosyalar</option>'
         : '';
-    filterSelect.innerHTML = systemOption + '<option value="all">Tim Kurumlar</option>' +
+    filterSelect.innerHTML = systemOption + '<option value="all">Tüm Kurumlar</option>' +
         filtered.map(o => `<option value="${escapeHtml(o.value)}" data-institution-id="${escapeHtml(o.id)}">${escapeHtml(o.text)}</option>`).join('');
     if ([...filterSelect.options].some(o => o.value === selectedValue)) {
         filterSelect.value = selectedValue;
@@ -2062,26 +2062,26 @@ async function loadAdminInstitutions() {
                 text: i.name,
                 id: i.id
             }));
-        instFilter.innerHTML = '<option value="">Tüm Kurumlar</option>' +
+        filterSelect.innerHTML = '<option value="all">Tüm Kurumlar</option>' +
                 institutions.map(i => `<option value="${escapeHtml(i.name)}" data-institution-id="${i.id}">${escapeHtml(i.name)}</option>`).join('');
             filterSelect.disabled = false;
-            filterSelect.value = '__system__';
+            filterSelect.value = 'all';
             if (searchEl) searchEl.classList.remove('hidden');
             
         } else if (user.role === 'admin') {
-            // Admin: Sadece yetkili oldulu kurumlar
+            // Admin: Sadece yetkili olduğu kurumlar
             if (adminInstitutions.length > 1) {
-                // Birden fazla kurum yetkisi varsa - "Tum Kurumlar" GlSTER
+                // Birden fazla kurum yetkisi varsa - "Tüm Kurumlar" GÖSTER
                 _allInstitutionOptions = adminInstitutions.map(inst => ({
                     value: inst,
                     text: inst,
                     id: ''
                 }));
-                filterSelect.innerHTML = '<option value="all">Tom Kurumlar</option>' +
+                filterSelect.innerHTML = '<option value="all">Tüm Kurumlar</option>' +
                     adminInstitutions.map(inst => `<option value="${escapeHtml(inst)}">${escapeHtml(inst)}</option>`).join('');
                 filterSelect.disabled = false;
                 if (searchEl) searchEl.classList.remove('hidden');
-                console.log(`${adminInstitutions.length} kurum yetkisi var, "Tum Kurumlar" gosteriliyor`);
+                console.log(`${adminInstitutions.length} kurum yetkisi var, "Tüm Kurumlar" gösteriliyor`);
                 
             } else if (adminInstitutions.length === 1) {
                 // Tek kurum yetkisi varsa - "T m Kurumlar" G"STERME
@@ -2092,11 +2092,11 @@ async function loadAdminInstitutions() {
                 }];
                 filterSelect.innerHTML = `<option value="${escapeHtml(adminInstitutions[0])}">${escapeHtml(adminInstitutions[0])}</option>`;
                 filterSelect.disabled = false;
-                console.log('Tek kurum yetkisi, "Tum Kurumlar" gosterilmiyor');
+                console.log('Tek kurum yetkisi, "Tüm Kurumlar" gösterilmiyor');
                 
             } else {
-                // Hik kurum yetkisi yok
-                filterSelect.innerHTML = '<option value="">? Kurum bulunamad;</option>';
+                // Hiç kurum yetkisi yok
+                filterSelect.innerHTML = '<option value="">❌ Kurum bulunamadı</option>';
                 filterSelect.disabled = true;
             }
         }
@@ -2390,12 +2390,12 @@ async function loadAdminFiles() {
                 <div class="flex items-center gap-2 ml-2">
                     <button class="text-slate-500 hover:text-slate-700 transition js-admin-move-file"
                         data-file-id="${file.id}" data-file-name="${escapeHtml(file.file_name)}"
-                        title="Tasi">
+                        title="Taşı">
                         <i class="fas fa-folder-open"></i>
                     </button>
                     <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})"
                         class="text-blue-500 hover:text-blue-700 transition"
-                        title="${file.is_public ? 'Yonetici gorunurlugune al' : 'Herkese acik yap'}">
+                        title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
                         <i class="fas ${file.is_public ? 'fa-eye-slash' : 'fa-eye'}"></i>
                     </button>
                     <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
@@ -2471,21 +2471,21 @@ async function toggleAdminFilePublic(fileId, currentStatus) {
         credentials: 'include', body: JSON.stringify({ is_public: !currentStatus })
     });
     if (res.ok) { showToast('Görünürlük başarıyla güncellendi!', 'success'); loadAdminFiles(); }
-    else showToast('wTlem baİares z oldu!', 'error');
+    else showToast('İşlem başarısız oldu!', 'error');
 }
 
 async function deleteAdminFile(fileId) {
     if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
     const res = await fetch(isAdminSystemScope() ? `${API_BASE}/api/system/file/${fileId}` : `${API_BASE}/api/institution/file/${fileId}`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); }
-    else showToast('wTlem baİares z oldu!', 'error');
+    else showToast('İşlem başarısız oldu!', 'error');
 }
 
 async function deleteAdminFolder(folderId) {
     if (!confirm('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?')) return;
     const res = await fetch(isAdminSystemScope() ? `${API_BASE}/api/collections/${folderId}` : `${API_BASE}/api/institution/folder/${folderId}`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadAdminFolders(adminCurrentFolderId); loadAdminFiles(); }
-    else showToast('wTlem baİares z oldu!', 'error');
+    else showToast('İşlem başarısız oldu!', 'error');
 }
 
 // Klasör yeniden adlandırma
@@ -2575,7 +2575,7 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
             })
         });
     } else {
-        if (!institutionId) { showToast('Lntfen bir kurum se'in.', 'warning'); return; }
+        if (!institutionId) { showToast('Lütfen bir kurum seçin.', 'warning'); return; }
         res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(institutionId)}/folder`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
             body: JSON.stringify({ folder_name: folderName, parent_folder_id: adminCurrentFolderId, is_public: isPublic })
@@ -2618,14 +2618,14 @@ document.getElementById('adminFileInstitution')?.addEventListener('change', func
 // Kurum filtresi değiştiğinde - Bu kısım da düzeltilmeli
 document.getElementById('institutionFilter')?.addEventListener('change', function() {
     const selectedValue = this.value;
-    
+    adminCurrentFolderId = null;
+    adminFolderStack = [];
+    document.getElementById('adminBackBtn')?.classList.add('hidden');
+    updateAdminBreadcrumb();
+
     if (selectedValue === 'all') {
         loadAllAdminFiles();
     } else {
-        adminCurrentFolderId = null;
-        adminFolderStack = [];
-        document.getElementById('adminBackBtn')?.classList.add('hidden');
-        updateAdminBreadcrumb();
         loadAdminFolders(null);
         loadAdminFiles();
     }
@@ -2641,7 +2641,7 @@ async function loadAllAdminFiles() {
         const files = await res.json();
 
         if (!files || files.length === 0) {
-            container.innerHTML = '<div class="text-center py-8 text-gray-400">?? Hi  dosya bulunamad<</div>';
+            container.innerHTML = '<div class="text-center py-8 text-gray-400">📭 Hiç dosya bulunamadı</div>';
             return;
         }
 
@@ -2659,12 +2659,12 @@ async function loadAllAdminFiles() {
                     <button class="text-slate-500 hover:text-slate-700 transition js-admin-move-file"
                         data-file-id="${file.id}" data-file-name="${escapeHtml(file.file_name)}"
                         data-institution-id="${file.institution_id}"
-                        title="Tasi">
+                        title="Taşı">
                         <i class="fas fa-folder-open"></i>
                     </button>
                     <button onclick="toggleAdminFilePublic(${file.id}, ${file.is_public})"
                         class="text-blue-500 hover:text-blue-700 transition"
-                        title="${file.is_public ? 'Yonetici gorunurlugune al' : 'Herkese acik yap'}">
+                        title="${file.is_public ? 'Yönetici görünürlüğüne al' : 'Herkese açık yap'}">
                         <i class="fas ${file.is_public ? 'fa-eye-slash' : 'fa-eye'}"></i>
                     </button>
                     <button onclick="deleteAdminFile(${file.id})" class="text-red-500 hover:text-red-700">
@@ -2767,7 +2767,7 @@ function closeAdminFileModal() {
 document.getElementById('adminFileForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const institutionId = document.getElementById('adminFileInstitution').value;
-    if (!institutionId && !isAdminSystemScope()) { showToast('L'tfen bir kurum se;in.', 'warning'); return; }
+    if (!institutionId && !isAdminSystemScope()) { showToast('Lütfen bir kurum seçin.', 'warning'); return; }
 
     const btn = document.getElementById('adminFileSubmitBtn');
     btn.disabled = true; btn.textContent = 'Kaydediliyor...';
