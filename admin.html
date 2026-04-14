@@ -2046,6 +2046,7 @@ async function loadAdminFolders(parentId = null) {
             throw new Error(`HTTP ${res.status}: ${errText}`);
         }
         const data = await res.json();
+        console.log('📁 system/folders response:', JSON.stringify(data));
         if (data.root_id && adminSystemRootCollectionId == null) adminSystemRootCollectionId = data.root_id;
         const folders = data.folders || [];
 
