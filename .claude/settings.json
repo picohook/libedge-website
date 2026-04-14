@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node fix-encoding.js)"
+      "Bash(node fix-encoding.js)",
+      "Bash(python3 -)",
+      "Bash(python -)",
+      "Bash(where python:*)",
+      "Bash(\"C:\\\\Users\\\\OWNER\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -)",
+      "Bash(C:/Users/OWNER/AppData/Local/Programs/Python/Python313/python.exe -c ':*)",
+      "Bash(C:/Users/OWNER/AppData/Local/Programs/Python/Python313/python.exe --version)"
     ]
   }
 }

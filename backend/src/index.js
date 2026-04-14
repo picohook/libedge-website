@@ -1953,12 +1953,14 @@ app.delete('/api/admin/user/:id', async (c) => {
     return c.json({ error: 'Sadece kendi kurumunuzdaki kullanıcıları silebilirsiniz' }, 403);
   }
   
-  if (currentUserId == id && adminRole === 'super_admin') {
+  if (String(currentUserId) === String(id) && adminRole === 'super_admin') {
     return c.json({ error: 'Super admin kendini silemez' }, 400);
   }
-  
+
   const db = c.env.DB;
-  
+
+  await ensureNewsletterTable(db);
+  await db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(id).run();
   await db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id).run();
   await db.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
   
