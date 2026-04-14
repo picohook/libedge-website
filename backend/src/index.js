@@ -3490,20 +3490,6 @@ app.get('/api/system/folders', async (c) => {
   const parentId = c.req.query('parent_id') ? Number(c.req.query('parent_id')) : root.id;
 
   const rows = await db.prepare(`
-    WITH RECURSIVE folder_tree(root_id, node_id) AS (
-      SELECT col.id, col.id
-      FROM collections col
-      WHERE col.scope_type = 'system'
-        AND col.scope_id = ?
-        AND col.kind = 'folder'
-        AND col.is_active = 1
-        AND col.parent_id = ?
-      UNION ALL
-      SELECT ft.root_id, child.id
-      FROM collections child
-      JOIN folder_tree ft ON child.parent_id = ft.node_id
-      WHERE child.kind = 'folder' AND child.is_active = 1
-    )
     SELECT
       col.id,
       col.name AS folder_name,
@@ -3511,24 +3497,23 @@ app.get('/api/system/folders', async (c) => {
       col.is_public,
       col.created_at,
       (
-        SELECT COUNT(DISTINCT ft2.node_id) - 1
-        FROM folder_tree ft2
-        WHERE ft2.root_id = col.id
+        SELECT COUNT(*)
+        FROM collections sub
+        WHERE sub.parent_id = col.id AND sub.kind = 'folder' AND sub.is_active = 1
       ) AS subfolder_count,
       (
-        SELECT COUNT(cf.id)
-        FROM folder_tree ft2
-        JOIN collection_files cf ON cf.collection_id = ft2.node_id
-        WHERE ft2.root_id = col.id AND cf.is_active = 1
+        SELECT COUNT(*)
+        FROM collection_files cf
+        WHERE cf.collection_id = col.id AND cf.is_active = 1
       ) AS file_count
     FROM collections col
     WHERE col.scope_type = 'system'
-      AND col.scope_id = ?
+      AND CAST(col.scope_id AS TEXT) = CAST(? AS TEXT)
       AND col.kind = 'folder'
       AND col.is_active = 1
       AND col.parent_id = ?
     ORDER BY col.sort_order, col.name
-  `).bind(auth.user.user_id, parentId, auth.user.user_id, parentId).all();
+  `).bind(auth.user.user_id, parentId).all();
 
   return c.json({ root_id: root.id, folders: rows.results || [] });
 });

@@ -2038,8 +2038,8 @@ async function loadAdminFolders(parentId = null) {
     if (!container) return;
 
     try {
-        const urlParent = parentId != null ? `&parent_id=${parentId}` : '';
-        const res = await fetch(`${API_BASE}/api/system/folders?dummy=1${urlParent}`, { credentials: 'include' });
+        const urlParent = parentId != null ? `?parent_id=${parentId}` : '';
+        const res = await fetch(`${API_BASE}/api/system/folders${urlParent}`, { credentials: 'include' });
         if (!res.ok) throw new Error(`${res.status}`);
         const data = await res.json();
         if (data.root_id && adminSystemRootCollectionId == null) adminSystemRootCollectionId = data.root_id;
