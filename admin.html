@@ -402,7 +402,7 @@
         <form id="adminFolderForm">
             <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Kurum</label>
-                <select id="adminFolderInstitution" class="w-full border p-2 rounded" required>
+                <select id="adminFolderInstitution" class="w-full border p-2 rounded">
                     <option value="">Kurum Seçin</option>
                 </select>
             </div>
@@ -460,7 +460,7 @@
             <!-- Ortak: kurum + klasör -->
             <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Kurum</label>
-                <select id="adminFileInstitution" class="w-full border p-2 rounded" required>
+                <select id="adminFileInstitution" class="w-full border p-2 rounded">
                     <option value="">Kurum Seçin</option>
                 </select>
             </div>
@@ -2127,6 +2127,9 @@ async function loadAdminInstitutions() {
         const selectOpts = (user.role === 'admin' ? adminInstitutions : institutions.map(i => i.name))
             .map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
         
+        const systemOpt = user.role === 'super_admin'
+            ? '<option value="__system__">Merkezi Dosyalar</option>'
+            : '';
         ['adminFileInstitution', 'adminFolderInstitution'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
@@ -2137,12 +2140,13 @@ async function loadAdminInstitutions() {
                     el.disabled = true;
                 } else {
                     // Çoklu kurum veya super admin
-                    el.innerHTML = '<option value="">Kurum Seçin</option>' + selectOpts;
+                    el.innerHTML = '<option value="">Kurum Seçin</option>' + systemOpt + selectOpts;
                     el.disabled = false;
-                    
+
                     // Varsayılan olarak mevcut filtredeki kurumu seç
-                    if (filterSelect.value && filterSelect.value !== 'all') {
-                        el.value = filterSelect.value;
+                    const currentFilter = filterSelect.value;
+                    if (currentFilter && currentFilter !== 'all') {
+                        el.value = currentFilter;
                     }
                 }
             }
