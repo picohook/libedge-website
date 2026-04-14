@@ -3491,6 +3491,16 @@ app.get('/api/system/folders', async (c) => {
   const root = await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
   const parentId = c.req.query('parent_id') ? Number(c.req.query('parent_id')) : root.id;
 
+  // Daha önce parent_id=null ile oluşturulmuş orphan klasörleri root'a bağla
+  await db.prepare(`
+    UPDATE collections SET parent_id = ?
+    WHERE scope_type = 'system'
+      AND CAST(scope_id AS TEXT) = CAST(? AS TEXT)
+      AND kind = 'folder'
+      AND parent_id IS NULL
+      AND is_active = 1
+  `).bind(root.id, auth.user.user_id).run();
+
   const rows = await db.prepare(`
     SELECT
       col.id,
