@@ -2377,30 +2377,68 @@ app.get('/api/institution/:id/folders', async (c) => {
 
     const publicFilter = canManage ? '' : 'AND col.is_public = 1';
     const cfPublicFilter = canManage ? '' : 'AND cf.is_public = 1';
-    const result = await db.prepare(`
-      SELECT
-        col.id,
-        col.scope_id AS institution_id,
-        col.name AS folder_name,
-        col.parent_id AS parent_folder_id,
-        col.is_public,
-        col.created_by,
-        col.created_at,
-        (SELECT COUNT(*) FROM collections sub
-         WHERE sub.parent_id = col.id AND sub.kind = 'folder' AND sub.is_active = 1) AS subfolder_count,
-        (SELECT COUNT(*) FROM collection_files cf
-         WHERE cf.collection_id = col.id AND cf.is_active = 1 ${cfPublicFilter}) AS file_count
-      FROM collections col
-      WHERE col.scope_type = 'institution'
-        AND col.scope_id = ?
-        AND col.kind = 'folder'
-        AND col.is_active = 1
-        AND col.parent_id = ?
-        ${publicFilter}
-      ORDER BY col.sort_order, col.name
-    `).bind(institution.id, parentCollectionId).all();
 
-    return c.json(result.results || []);
+    // Tüm kurum klasörlerini tek sorguda çek
+    const allFolderRows = await db.prepare(`
+      SELECT id, name AS folder_name, parent_id AS parent_folder_id,
+             is_public, created_by, created_at
+      FROM collections col
+      WHERE col.scope_type = 'institution' AND col.scope_id = ?
+        AND col.kind = 'folder' AND col.is_active = 1 ${publicFilter}
+      ORDER BY col.sort_order, col.name
+    `).bind(institution.id).all();
+
+    // Doğrudan dosya sayıları
+    const fileCountRows = await db.prepare(`
+      SELECT cf.collection_id, COUNT(*) AS cnt
+      FROM collection_files cf
+      JOIN collections col ON col.id = cf.collection_id
+      WHERE col.scope_type = 'institution' AND col.scope_id = ?
+        AND cf.is_active = 1 ${cfPublicFilter}
+      GROUP BY cf.collection_id
+    `).bind(institution.id).all();
+
+    const directFileCounts = {};
+    for (const r of fileCountRows.results || []) {
+      directFileCounts[r.collection_id] = Number(r.cnt);
+    }
+
+    // Bellek içi ağaç ve recursive sayım
+    const allFolders = allFolderRows.results || [];
+    const folderMap = {};
+    for (const f of allFolders) {
+      folderMap[f.id] = { ...f, institution_id: institution.id, _directFiles: directFileCounts[f.id] || 0, _children: [] };
+    }
+    for (const f of allFolders) {
+      if (f.parent_folder_id && folderMap[f.parent_folder_id]) {
+        folderMap[f.parent_folder_id]._children.push(f.id);
+      }
+    }
+    function recursiveCounts(id) {
+      const node = folderMap[id];
+      if (!node) return 0;
+      let files = node._directFiles;
+      for (const childId of node._children) files += recursiveCounts(childId);
+      node._totalFiles = files;
+      return files;
+    }
+    for (const f of allFolders) recursiveCounts(f.id);
+
+    const result = allFolders
+      .filter(f => f.parent_folder_id === parentCollectionId)
+      .map(f => ({
+        id: f.id,
+        institution_id: institution.id,
+        folder_name: f.folder_name,
+        parent_folder_id: f.parent_folder_id,
+        is_public: f.is_public,
+        created_by: f.created_by,
+        created_at: f.created_at,
+        subfolder_count: folderMap[f.id]._children.length,
+        file_count: folderMap[f.id]._totalFiles || 0,
+      }));
+
+    return c.json(result);
   } catch (err) {
     console.error('Klasor sorgu hatasi:', err);
     return c.json({ error: err.message }, 500);
@@ -3477,33 +3515,66 @@ app.get('/api/system/folders', async (c) => {
       AND is_active = 1
   `).bind(root.id, auth.user.user_id).run();
 
-  const rows = await db.prepare(`
-    SELECT
-      col.id,
-      col.name AS folder_name,
-      col.parent_id AS parent_folder_id,
-      col.is_public,
-      col.created_at,
-      (
-        SELECT COUNT(*)
-        FROM collections sub
-        WHERE sub.parent_id = col.id AND sub.kind = 'folder' AND sub.is_active = 1
-      ) AS subfolder_count,
-      (
-        SELECT COUNT(*)
-        FROM collection_files cf
-        WHERE cf.collection_id = col.id AND cf.is_active = 1
-      ) AS file_count
-    FROM collections col
-    WHERE col.scope_type = 'system'
-      AND col.scope_id = ?
-      AND col.kind = 'folder'
-      AND col.is_active = 1
-      AND col.parent_id = ?
-    ORDER BY col.sort_order, col.name
-  `).bind(auth.user.user_id, parentId).all();
+  // Tüm scope klasörlerini tek sorguda çek
+  const allFolderRows = await db.prepare(`
+    SELECT id, name AS folder_name, parent_id AS parent_folder_id, is_public, created_at
+    FROM collections
+    WHERE scope_type = 'system' AND scope_id = ? AND kind = 'folder' AND is_active = 1
+    ORDER BY sort_order, name
+  `).bind(auth.user.user_id).all();
 
-  return c.json({ root_id: root.id, folders: rows.results || [] });
+  // Her koleksiyon için doğrudan dosya sayısını tek sorguda çek
+  const fileCountRows = await db.prepare(`
+    SELECT cf.collection_id, COUNT(*) AS cnt
+    FROM collection_files cf
+    JOIN collections col ON col.id = cf.collection_id
+    WHERE col.scope_type = 'system' AND col.scope_id = ? AND cf.is_active = 1
+    GROUP BY cf.collection_id
+  `).bind(auth.user.user_id).all();
+
+  const directFileCounts = {};
+  for (const r of fileCountRows.results || []) {
+    directFileCounts[r.collection_id] = Number(r.cnt);
+  }
+
+  // Bellek içi ağaç oluştur, recursive dosya sayısını hesapla
+  const allFolders = allFolderRows.results || [];
+  const folderMap = {};
+  for (const f of allFolders) {
+    folderMap[f.id] = { ...f, _directFiles: directFileCounts[f.id] || 0, _children: [] };
+  }
+  for (const f of allFolders) {
+    if (f.parent_folder_id && folderMap[f.parent_folder_id]) {
+      folderMap[f.parent_folder_id]._children.push(f.id);
+    }
+  }
+
+  function recursiveCounts(id) {
+    const node = folderMap[id];
+    if (!node) return { files: 0 };
+    let files = node._directFiles;
+    for (const childId of node._children) {
+      files += recursiveCounts(childId).files;
+    }
+    node._totalFiles = files;
+    return { files };
+  }
+  for (const f of allFolders) recursiveCounts(f.id);
+
+  // Sadece istenen parent seviyesini döndür
+  const folders = allFolders
+    .filter(f => f.parent_folder_id === parentId)
+    .map(f => ({
+      id: f.id,
+      folder_name: f.folder_name,
+      parent_folder_id: f.parent_folder_id,
+      is_public: f.is_public,
+      created_at: f.created_at,
+      subfolder_count: folderMap[f.id]._children.length,
+      file_count: folderMap[f.id]._totalFiles || 0,
+    }));
+
+  return c.json({ root_id: root.id, folders });
 });
 
 app.post('/api/system/file', async (c) => {

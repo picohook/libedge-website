@@ -2873,8 +2873,9 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
         }
         if (!fileName) fileName = fileUrl.split('/').pop()?.split('?')[0] || 'Dosya';
 
+        const _selFolder = document.getElementById('adminFileFolderSelect').value;
         const sysPayload = {
-            folder_id: document.getElementById('adminFileFolderSelect').value || adminSystemRootCollectionId || null,
+            folder_id: _selFolder ? Number(_selFolder) : null,
             display_name: fileName,
             category: document.getElementById('adminFileCategory').value
         };
