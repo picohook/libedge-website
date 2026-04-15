@@ -2066,8 +2066,14 @@ async function loadAdminFolders(parentId = null) {
         const folders = data.folders || [];
 
         container.innerHTML = folders.length ? folders.map(f => {
-            const total = (f.subfolder_count || 0) + (f.file_count || 0);
-            const badge = total > 0 ? `<span class="text-xs text-gray-400">(${total})</span>` : '';
+            const subCount  = f.subfolder_count || 0;
+            const fileCount = f.file_count || 0;
+            const badgeParts = [];
+            if (subCount  > 0) badgeParts.push(`<i class="fas fa-folder text-yellow-400" style="font-size:9px"></i>${subCount}`);
+            if (fileCount > 0) badgeParts.push(`<i class="fas fa-file text-gray-400" style="font-size:9px"></i>${fileCount}`);
+            const badge = badgeParts.length
+                ? `<span class="text-xs text-gray-400 inline-flex items-center gap-1 ml-0.5">${badgeParts.join('<span class="opacity-30">·</span>')}</span>`
+                : '';
             const selCb = `<input type="checkbox" class="folder-select-cb absolute top-1 left-1 hidden"
                 data-type="folder" data-id="${f.id}" data-name="${escapeHtml(f.folder_name)}"
                 onclick="event.stopPropagation();updateSelectionCount()">`;
@@ -2304,7 +2310,7 @@ async function toggleAdminFilePublic(fileId, currentStatus) {
 async function deleteAdminFile(fileId) {
     if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
     const res = await fetch(`${API_BASE}/api/system/file/${fileId}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); }
+    if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); loadAdminFolders(adminCurrentFolderId); }
     else showToast('İşlem başarısız oldu!', 'error');
 }
 
