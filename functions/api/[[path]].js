@@ -28,12 +28,18 @@ export async function onRequest(context) {
     body,
   }));
 
-  // Backend cookie'lerini (authToken + refreshToken) olduğu gibi geçir.
-  // Proxy cookie yönetimine karışmıyor — set-cookie silinmiyor.
-  const newHeaders = new Headers(response.headers);
-  newHeaders.set('Content-Security-Policy',
+  // new Headers(response.headers) merges duplicate set-cookie lines into one,
+  // breaking browser cookie parsing. Pass the original Headers object to the
+  // Response constructor so CF Workers copies all set-cookie entries individually,
+  // then mutate only the CSP header on the resulting mutable Headers instance.
+  const newResponse = new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+  newResponse.headers.set('Content-Security-Policy',
     "default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://; frame-src 'self';"
   );
 
-  return new Response(response.body, { status: response.status, headers: newHeaders });
+  return newResponse;
 }
