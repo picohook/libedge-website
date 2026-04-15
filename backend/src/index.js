@@ -2652,6 +2652,61 @@ app.post('/api/institution/:id/send-to-users', async (c) => {
   }
 });
 
+// Merkezi Dosyalar → Kişilere Gönder (super_admin)
+app.post('/api/system/send-to-users', async (c) => {
+  try {
+    const auth = await requireAuth(c);
+    if (auth.response) return auth.response;
+    if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+    const db = c.env.DB;
+    const { file_ids, user_ids } = await c.req.json();
+    if (!Array.isArray(file_ids) || !file_ids.length) return c.json({ error: 'Dosya seçilmedi' }, 400);
+    if (!Array.isArray(user_ids) || !user_ids.length) return c.json({ error: 'Kullanıcı seçilmedi' }, 400);
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS user_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        type TEXT NOT NULL DEFAULT 'info',
+        title TEXT NOT NULL,
+        body TEXT,
+        ref_id INTEGER,
+        ref_type TEXT,
+        is_read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `).run();
+
+    const now = new Date().toISOString();
+    let sent = 0;
+    for (const userId of user_ids) {
+      for (const fileId of file_ids) {
+        const cf = await db.prepare(
+          `SELECT cf.id, COALESCE(cf.display_name, f.original_name) AS name
+           FROM collection_files cf JOIN files f ON f.id = cf.file_id
+           WHERE cf.id = ? AND cf.is_active = 1 LIMIT 1`
+        ).bind(fileId).first();
+        if (!cf) continue;
+        await db.prepare(`
+          INSERT OR IGNORE INTO user_notifications (user_id, type, title, body, ref_id, ref_type, created_at, is_read)
+          VALUES (?, 'file_shared', ?, ?, ?, 'collection_file', ?, 0)
+        `).bind(
+          userId,
+          `Dosya paylaşıldı: ${cf.name}`,
+          `${auth.user.full_name || 'Yönetici'} bir dosyayı sizinle paylaştı.`,
+          cf.id, now
+        ).run();
+        sent++;
+      }
+    }
+    return c.json({ success: true, sent });
+  } catch(e) {
+    console.error('/api/system/send-to-users error:', e);
+    return c.json({ error: e.message || 'Sunucu hatası' }, 500);
+  }
+});
+
 app.post('/api/institution/:id/folder', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
@@ -2767,8 +2822,13 @@ app.put('/api/institution/folder/:id', async (c) => {
 
   const folderId = Number(c.req.param('id'));
   const db = c.env.DB;
-  const { folder_name } = await c.req.json();
-  if (!folder_name?.trim()) return c.json({ error: 'Klasör adı boş olamaz' }, 400);
+  const body = await c.req.json();
+  const { folder_name, parent_folder_id } = body;
+
+  // En az bir güncelleme alanı gelmeli
+  if (!folder_name?.trim() && parent_folder_id === undefined) {
+    return c.json({ error: 'Güncellenecek alan yok' }, 400);
+  }
 
   const folder = await db.prepare(`
     SELECT
@@ -2788,7 +2848,29 @@ app.put('/api/institution/folder/:id', async (c) => {
     return c.json({ error: 'Yetkisiz' }, 403);
   }
 
-  await db.prepare(`UPDATE collections SET name = ? WHERE id = ?`).bind(folder_name.trim(), folderId).run();
+  if (folder_name?.trim()) {
+    await db.prepare(`UPDATE collections SET name = ? WHERE id = ?`).bind(folder_name.trim(), folderId).run();
+  }
+  if (parent_folder_id !== undefined) {
+    // null = kök (parent = kurumun root collection'ı)
+    let newParentId = null;
+    if (parent_folder_id) {
+      // Hedef klasörün aynı kuruma ait olduğunu doğrula
+      const target = await db.prepare(`
+        SELECT id FROM collections WHERE id = ? AND scope_id = ? AND scope_type = 'institution' AND is_active = 1
+      `).bind(Number(parent_folder_id), folder.institution_id).first();
+      if (!target) return c.json({ error: 'Hedef klasör bulunamadı' }, 404);
+      newParentId = target.id;
+    } else {
+      // Kök: kurumun root collection'ını bul
+      const root = await db.prepare(`
+        SELECT id FROM collections WHERE scope_id = ? AND scope_type = 'institution' AND kind = 'root' AND is_active = 1
+      `).bind(folder.institution_id).first();
+      if (root) newParentId = root.id;
+    }
+    await db.prepare(`UPDATE collections SET parent_id = ? WHERE id = ?`).bind(newParentId, folderId).run();
+  }
+
   return c.json({ success: true });
 });
 
