@@ -3334,27 +3334,25 @@ function instFilesRender(folderFilter, fileFilter) {
         : _ift.files;
 
     // Klasörler
-    if (folders.length) {
-        foldersEl.innerHTML = folders.map(f => `
-            <div class="bg-white border rounded-xl p-3 hover:bg-yellow-50 cursor-pointer group relative transition-colors
-                        ${isSelect ? 'select-mode' : ''}"
-                 onclick="${isSelect ? `instFolderToggleCb(this,event)` : `instFilesOpenFolder(${f.id},'${escapeHtml(f.folder_name).replace(/'/g,"\\'")}',event)`}">
-                ${isSelect ? `<input type="checkbox" class="ift-folder-cb absolute top-2 left-2 w-4 h-4" data-id="${f.id}" data-type="folder" onclick="event.stopPropagation();instFilesUpdateSelCount()">` : ''}
-                <div class="flex flex-col items-center gap-1 pt-1">
-                    <i class="fas fa-folder text-3xl text-yellow-400"></i>
-                    <p class="text-xs font-medium text-center truncate w-full" title="${escapeHtml(f.folder_name)}">${escapeHtml(f.folder_name)}</p>
-                </div>
-                ${!isSelect ? `
-                <div class="absolute top-1 right-1 hidden group-hover:flex gap-0.5">
-                    <button type="button" onclick="instFilesRenameFolder(${f.id},'${escapeHtml(f.folder_name).replace(/'/g,"\\'")}',event)"
-                            class="text-gray-400 hover:text-blue-500 text-xs p-1" title="Yeniden Adlandır"><i class="fas fa-pencil-alt"></i></button>
-                    <button type="button" onclick="instFilesDeleteFolder(${f.id},'${escapeHtml(f.folder_name).replace(/'/g,"\\'")}',event)"
-                            class="text-gray-400 hover:text-red-500 text-xs p-1" title="Sil"><i class="fas fa-trash"></i></button>
-                </div>` : ''}
-            </div>`).join('');
-    } else {
-        foldersEl.innerHTML = '';
-    }
+    foldersEl.innerHTML = folders.map(f => {
+        const safeName = escapeHtml(f.folder_name).replace(/'/g, "\\'");
+        return `
+        <div class="bg-white border rounded-xl p-3 hover:bg-yellow-50 cursor-pointer relative transition-colors"
+             onclick="${isSelect ? `instFolderToggleCb(this,event)` : `instFilesOpenFolder(${f.id},'${safeName}',event)`}">
+            ${isSelect ? `<input type="checkbox" class="ift-folder-cb absolute top-2 left-2 w-4 h-4" data-id="${f.id}" onclick="event.stopPropagation();instFilesUpdateSelCount()">` : ''}
+            <div class="flex flex-col items-center gap-1 ${isSelect ? 'pt-3' : ''}">
+                <i class="fas fa-folder text-3xl text-yellow-400"></i>
+                <p class="text-xs font-medium text-center truncate w-full" title="${escapeHtml(f.folder_name)}">${escapeHtml(f.folder_name)}</p>
+            </div>
+            ${!isSelect ? `
+            <div class="absolute top-1 right-1 flex gap-0.5">
+                <button type="button" onclick="instFilesRenameFolder(${f.id},'${safeName}',event)"
+                        class="text-gray-300 hover:text-blue-500 text-xs p-1" title="Yeniden Adlandır"><i class="fas fa-pencil-alt"></i></button>
+                <button type="button" onclick="instFilesDeleteFolder(${f.id},'${safeName}',event)"
+                        class="text-gray-300 hover:text-red-500 text-xs p-1" title="Sil"><i class="fas fa-trash"></i></button>
+            </div>` : ''}
+        </div>`;
+    }).join('');
 
     // Dosyalar
     if (!files.length && !folders.length) {
@@ -3364,22 +3362,26 @@ function instFilesRender(folderFilter, fileFilter) {
     if (!files.length) { filesEl.innerHTML = ''; return; }
 
     filesEl.innerHTML = files.map(f => {
-        const name = f.display_name || f.file_name || f.original_name || 'Dosya';
-        const ext  = (f.file_type || f.extension || '').toLowerCase();
-        const url  = f.file_url || (f.file_key ? `/api/files/${f.file_key}` : '');
-        const cat  = f.category || 'other';
+        const name    = f.display_name || f.file_name || f.original_name || 'Dosya';
+        const ext     = (f.file_type || f.extension || '').toLowerCase();
+        const url     = f.file_url || (f.file_key ? `/api/files/${f.file_key}` : '');
+        const safeName = escapeHtml(name).replace(/'/g, "\\'");
         return `
-        <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50 group relative">
-            ${isSelect ? `<input type="checkbox" class="ift-file-cb w-4 h-4 flex-shrink-0" data-id="${f.id}" data-name="${escapeHtml(name)}" data-url="${escapeHtml(url)}" onclick="instFilesUpdateSelCount()">` : ''}
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50">
+            ${isSelect ? `<input type="checkbox" class="ift-file-cb w-4 h-4 flex-shrink-0" data-id="${f.id}" data-name="${escapeHtml(name)}" onclick="instFilesUpdateSelCount()">` : ''}
             <i class="fas ${getFileIcon(ext)} text-gray-400 flex-shrink-0 w-4 text-center"></i>
             <a href="javascript:void(0)"
                onclick="previewFile('${escapeHtml(url)}','${escapeHtml(name)}','${escapeHtml(ext)}')"
-               class="flex-1 text-sm text-indigo-600 hover:underline truncate" title="${escapeHtml(name)}">${escapeHtml(name)}</a>
-            <span class="text-xs text-gray-300 flex-shrink-0">${ext.toUpperCase()}</span>
+               class="flex-1 text-sm text-indigo-600 hover:underline truncate min-w-0" title="${escapeHtml(name)}">${escapeHtml(name)}</a>
+            <span class="text-xs text-gray-300 flex-shrink-0 uppercase">${ext}</span>
             ${!isSelect ? `
-            <div class="hidden group-hover:flex gap-0.5 flex-shrink-0">
-                <button type="button" onclick="instFilesDeleteFile(${f.id},'${escapeHtml(name).replace(/'/g,"\\'")}',event)"
-                        class="text-gray-400 hover:text-red-500 text-xs p-1" title="Sil"><i class="fas fa-trash"></i></button>
+            <div class="flex gap-0.5 flex-shrink-0 ml-1">
+                <button type="button" onclick="instFilesRenameFile(${f.id},'${safeName}',event)"
+                        class="text-gray-300 hover:text-blue-500 text-xs px-1.5 py-1 rounded hover:bg-blue-50" title="Yeniden Adlandır"><i class="fas fa-pencil-alt"></i></button>
+                <button type="button" onclick="instFilesMoveFile(${f.id},'${safeName}',event)"
+                        class="text-gray-300 hover:text-green-600 text-xs px-1.5 py-1 rounded hover:bg-green-50" title="Taşı"><i class="fas fa-arrows-alt"></i></button>
+                <button type="button" onclick="instFilesDeleteFile(${f.id},'${safeName}',event)"
+                        class="text-gray-300 hover:text-red-500 text-xs px-1.5 py-1 rounded hover:bg-red-50" title="Sil"><i class="fas fa-trash"></i></button>
             </div>` : ''}
         </div>`;
     }).join('');
@@ -3502,6 +3504,72 @@ async function instFilesDeleteFile(id, name, event) {
         const res = await fetch(`${API_BASE}/api/institution/file/${id}`, { method: 'DELETE', credentials: 'include' });
         if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || 'Silinemedi');
         showToast('Dosya silindi.', 'success');
+        instFilesLoad();
+    } catch(err) { showToast(err.message, 'error'); }
+}
+
+function instFilesRenameFile(id, currentName, event) {
+    if (event) event.stopPropagation();
+    document.getElementById('instFilesFileRenameId').value = id;
+    document.getElementById('instFilesFileRenameName').value = currentName;
+    document.getElementById('instFilesFileRenameModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('instFilesFileRenameName').focus(), 50);
+}
+function instFilesCloseFileRenameModal() {
+    document.getElementById('instFilesFileRenameModal').classList.add('hidden');
+}
+document.getElementById('instFilesFileRenameForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id   = document.getElementById('instFilesFileRenameId').value;
+    const name = document.getElementById('instFilesFileRenameName').value.trim();
+    if (!name) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/file/${id}`, {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_name: name })
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Yeniden adlandırılamadı');
+        showToast('Dosya adı güncellendi.', 'success');
+        instFilesCloseFileRenameModal();
+        instFilesLoad();
+    } catch(err) { showToast(err.message, 'error'); }
+});
+
+async function instFilesMoveFile(id, name, event) {
+    if (event) event.stopPropagation();
+    document.getElementById('instFilesMoveId').value = id;
+    const sel = document.getElementById('instFilesMoveFolder');
+    sel.innerHTML = '<option value="">Ana dizin (kök)</option>';
+    document.getElementById('instFilesMoveModal').classList.remove('hidden');
+    // Klasörleri yükle (flat liste)
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/${_ift.instId}/folders`, { credentials: 'include' });
+        const folders = res.ok ? await res.json() : [];
+        if (folders.length) {
+            sel.innerHTML += folders.map(f =>
+                `<option value="${f.id}" ${f.id === _ift.folderId ? 'disabled' : ''}>${escapeHtml(f.folder_name)}</option>`
+            ).join('');
+        }
+    } catch { /* keep root only */ }
+}
+function instFilesCloseMoveModal() {
+    document.getElementById('instFilesMoveModal').classList.add('hidden');
+}
+async function instFilesExecuteMove() {
+    const id       = document.getElementById('instFilesMoveId').value;
+    const folderId = document.getElementById('instFilesMoveFolder').value;
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/file/${id}`, {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_id: folderId ? Number(folderId) : null })
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Taşınamadı');
+        showToast('Dosya taşındı.', 'success');
+        instFilesCloseMoveModal();
         instFilesLoad();
     } catch(err) { showToast(err.message, 'error'); }
 }
@@ -5520,6 +5588,39 @@ async function moveAdminFileRef(refId, fileName) {
                 <button type="submit" class="btn btn-primary">Kaydet</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Kurum Dosyaları Tab — Dosya Yeniden Adlandır Modal -->
+<div id="instFilesFileRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+        <h3 class="text-base font-semibold mb-4">Dosyayı Yeniden Adlandır</h3>
+        <form id="instFilesFileRenameForm">
+            <input type="hidden" id="instFilesFileRenameId">
+            <input type="text" id="instFilesFileRenameName" class="w-full border p-2 rounded mb-4 text-sm" required>
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="instFilesCloseFileRenameModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
+                <button type="submit" class="btn btn-primary">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Kurum Dosyaları Tab — Dosya Taşı Modal -->
+<div id="instFilesMoveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+        <h3 class="text-base font-semibold mb-4">Dosyayı Taşı</h3>
+        <input type="hidden" id="instFilesMoveId">
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Hedef Klasör</label>
+            <select id="instFilesMoveFolder" class="w-full border p-2 rounded text-sm">
+                <option value="">Ana dizin (kök)</option>
+            </select>
+        </div>
+        <div class="flex gap-2 justify-end">
+            <button type="button" onclick="instFilesCloseMoveModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
+            <button type="button" onclick="instFilesExecuteMove()" class="btn btn-primary">Taşı</button>
+        </div>
     </div>
 </div>
 
