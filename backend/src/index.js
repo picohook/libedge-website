@@ -421,9 +421,17 @@ async function isAdmin(c) {
 }
 
 const MANAGED_FILE_EXTENSIONS = new Set([
-  'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg',
+  // Görseller
+  'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'bmp', 'tiff', 'tif',
+  // Belgeler
   'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-  'zip', 'txt', 'csv'
+  'odt', 'ods', 'odp', 'rtf', 'txt', 'csv', 'md',
+  // Arşivler
+  'zip', 'rar', '7z', 'tar', 'gz',
+  // Ses / Video
+  'mp3', 'mp4', 'wav', 'ogg', 'webm', 'avi', 'mov', 'mkv',
+  // Veri / Kod
+  'json', 'xml', 'html', 'htm',
 ]);
 
 function normalizeExtension(fileName = '', fallback = 'bin') {

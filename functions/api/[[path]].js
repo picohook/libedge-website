@@ -15,7 +15,12 @@ export async function onRequest(context) {
     }
   }
 
-  const body = !['GET', 'HEAD'].includes(request.method) ? request.body : null;
+  let body = null;
+  if (!['GET', 'HEAD'].includes(request.method)) {
+    // arrayBuffer ile tamamen belleğe al — ReadableStream olarak iletmek
+    // Pages Function'da multipart/form-data sınırlarını bozabilir.
+    body = await request.arrayBuffer();
+  }
 
   const response = await fetch(new Request(targetUrl, {
     method: request.method,
