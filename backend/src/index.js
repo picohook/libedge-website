@@ -3,6 +3,7 @@ console.log("HONO VERSION LOADED");
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { setCookie } from 'hono/cookie';
+import { sign, verify } from 'hono/jwt';
 
 const app = new Hono();
 
@@ -30,64 +31,8 @@ app.use('*', cors({
 }));
 
 // ====================== TOKEN HELPERS ======================
-
-function b64urlEncode(str) {
-  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
-
-function b64urlDecode(str) {
-  str = str.replace(/-/g, '+').replace(/_/g, '/');
-  while (str.length % 4) str += '=';
-  return atob(str);
-}
-
-async function signToken(payload, secret) {
-  const header  = b64urlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body    = b64urlEncode(unescape(encodeURIComponent(JSON.stringify(payload))));
-  const data    = `${header}.${body}`;
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const sigBuffer = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
-  const sig = b64urlEncode(String.fromCharCode(...new Uint8Array(sigBuffer)));
-
-  return `${data}.${sig}`;
-}
-
-async function verifyToken(token, secret) {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-
-    const [header, payload, signature] = parts;
-    const data   = `${header}.${payload}`;
-
-    const key = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify']
-    );
-
-    const sigBytes = Uint8Array.from(b64urlDecode(signature), c => c.charCodeAt(0));
-    const valid    = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(data));
-    if (!valid) return null;
-
-    const decoded = JSON.parse(decodeURIComponent(escape(b64urlDecode(payload))));
-    if (decoded.exp * 1000 < Date.now()) return null;
-
-    return decoded;
-  } catch (e) {
-    console.error('verifyToken error:', e);
-    return null;
-  }
-}
+// hono/jwt: sign() and verify() replace manual HS256 implementation.
+// verify() throws on invalid signature or expired token (exp checked automatically).
 
 // ====================== 🆕 AUTH MIDDLEWARE (Cookie tabanlı) ======================
 
@@ -97,11 +42,12 @@ async function requireAuth(c) {
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
     const secret = c.env.JWT_SECRET;
-    const payload = await verifyToken(token, secret);
-    if (!payload) {
+    try {
+      const payload = await verify(token, secret);
+      return { user: payload, token };
+    } catch {
       return { response: c.json({ error: 'Geçersiz token' }, 401) };
     }
-    return { user: payload, token };
   }
 
   // Mevcut cookie kontrolü (main branch için - dokunma)
@@ -115,11 +61,12 @@ async function requireAuth(c) {
   }
   const token = tokenMatch[1];
   const secret = c.env.JWT_SECRET;
-  const payload = await verifyToken(token, secret);
-  if (!payload) {
+  try {
+    const payload = await verify(token, secret);
+    return { user: payload, token };
+  } catch {
     return { response: c.json({ error: 'Geçersiz veya süresi dolmuş oturum' }, 401) };
   }
-  return { user: payload, token };
 }
 // 🆕 Yardımcı: Mevcut kullanıcıyı al (middleware sonrası kullanılır)
 async function getCurrentUser(c) {
@@ -135,8 +82,12 @@ async function getOptionalAuth(c) {
 
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
-    const payload = await verifyToken(token, secret);
-    return payload ? { user: payload, token } : null;
+    try {
+      const payload = await verify(token, secret);
+      return { user: payload, token };
+    } catch {
+      return null;
+    }
   }
 
   if (!cookieHeader) return null;
@@ -144,8 +95,12 @@ async function getOptionalAuth(c) {
   if (!tokenMatch) return null;
 
   const token = tokenMatch[1];
-  const payload = await verifyToken(token, secret);
-  return payload ? { user: payload, token } : null;
+  try {
+    const payload = await verify(token, secret);
+    return { user: payload, token };
+  } catch {
+    return null;
+  }
 }
 
 async function ensureNewsletterTable(db) {
@@ -961,8 +916,8 @@ app.post('/api/auth/login', async (c) => {
     };
     
     const secret = c.env.JWT_SECRET;
-    const accessToken = await signToken(accessTokenPayload, secret);
-    const refreshToken = await signToken(refreshTokenPayload, secret);
+    const accessToken = await sign(accessTokenPayload, secret);
+    const refreshToken = await sign(refreshTokenPayload, secret);
 
     // Access Token: Cookie ile (httpOnly)
     setCookie(c, 'authToken', accessToken, {
@@ -1047,8 +1002,12 @@ app.post('/api/auth/refresh', async (c) => {
   
   const refreshToken = refreshTokenMatch[1];
   const secret = c.env.JWT_SECRET;
-  const refreshPayload = await verifyToken(refreshToken, secret);
-  
+  let refreshPayload;
+  try {
+    refreshPayload = await verify(refreshToken, secret);
+  } catch {
+    return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
+  }
   if (!refreshPayload || refreshPayload.type !== 'refresh') {
     return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
   }
@@ -1084,8 +1043,8 @@ app.post('/api/auth/refresh', async (c) => {
     exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
   };
   
-  const newAccessToken = await signToken(newAccessPayload, secret);
-  const newRefreshToken = await signToken(newRefreshPayload, secret);
+  const newAccessToken = await sign(newAccessPayload, secret);
+  const newRefreshToken = await sign(newRefreshPayload, secret);
   
   setCookie(c, 'authToken', newAccessToken, {
     httpOnly: true,
