@@ -133,11 +133,19 @@ document.addEventListener('DOMContentLoaded', function() {
     initHeaderInteractions();
 });
 
+// Case A: header loaded after auth was already done
 document.addEventListener('header:ready', function() {
     initTranslateButtonSync();
     initHeaderInteractions();
 
     if (window.authInitialized && typeof window.updateAuthUI === 'function') {
+        window.updateAuthUI(!!window.currentUser);
+    }
+});
+
+// Case B: auth finished after header was already mounted
+document.addEventListener('auth:ready', function() {
+    if (typeof window.updateAuthUI === 'function') {
         window.updateAuthUI(!!window.currentUser);
     }
 });

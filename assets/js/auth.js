@@ -327,6 +327,7 @@ async function checkAuth() {
             showAuthLoading(false);
             updateAuthUI(isLoggedIn);
             authCheckPromise = null;
+            document.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: currentUser } }));
         }
     })();
 
