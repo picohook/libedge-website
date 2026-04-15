@@ -3495,7 +3495,7 @@ app.get('/api/system/folders', async (c) => {
   await db.prepare(`
     UPDATE collections SET parent_id = ?
     WHERE scope_type = 'system'
-      AND CAST(scope_id AS TEXT) = CAST(? AS TEXT)
+      AND scope_id = ?
       AND kind = 'folder'
       AND parent_id IS NULL
       AND is_active = 1
@@ -3520,7 +3520,7 @@ app.get('/api/system/folders', async (c) => {
       ) AS file_count
     FROM collections col
     WHERE col.scope_type = 'system'
-      AND CAST(col.scope_id AS TEXT) = CAST(? AS TEXT)
+      AND col.scope_id = ?
       AND col.kind = 'folder'
       AND col.is_active = 1
       AND col.parent_id = ?

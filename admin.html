@@ -2040,13 +2040,8 @@ async function loadAdminFolders(parentId = null) {
     try {
         const urlParent = parentId != null ? `?parent_id=${parentId}` : '';
         const res = await fetch(`${API_BASE}/api/system/folders${urlParent}`, { credentials: 'include' });
-        if (!res.ok) {
-            const errText = await res.text().catch(() => '');
-            console.error('loadAdminFolders HTTP', res.status, errText);
-            throw new Error(`HTTP ${res.status}: ${errText}`);
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        console.log('📁 system/folders response:', JSON.stringify(data));
         if (data.root_id && adminSystemRootCollectionId == null) adminSystemRootCollectionId = data.root_id;
         const folders = data.folders || [];
 
@@ -2076,7 +2071,7 @@ async function loadAdminFolders(parentId = null) {
         }).join('') : '<div class="col-span-full text-center text-gray-400 py-4">Henüz klasör yok</div>';
     } catch (err) {
         console.error('loadAdminFolders error:', err);
-        container.innerHTML = `<div class="col-span-full text-center text-red-400 py-4">Klasörler yüklenemedi<br><span class="text-xs text-gray-400">${err.message}</span></div>`;
+        container.innerHTML = '<div class="col-span-full text-center text-red-400 py-4">Klasörler yüklenemedi</div>';
     }
 }
 
