@@ -43,7 +43,7 @@ async function requireAuth(c) {
     const token = authHeader.slice(7);
     const secret = c.env.JWT_SECRET;
     try {
-      const payload = await verify(token, secret);
+      const payload = await verify(token, secret, 'HS256');
       return { user: payload, token };
     } catch {
       return { response: c.json({ error: 'Geçersiz token' }, 401) };
@@ -62,7 +62,7 @@ async function requireAuth(c) {
   const token = tokenMatch[1];
   const secret = c.env.JWT_SECRET;
   try {
-    const payload = await verify(token, secret);
+    const payload = await verify(token, secret, 'HS256');
     return { user: payload, token };
   } catch {
     return { response: c.json({ error: 'Geçersiz veya süresi dolmuş oturum' }, 401) };
@@ -83,7 +83,7 @@ async function getOptionalAuth(c) {
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
     try {
-      const payload = await verify(token, secret);
+      const payload = await verify(token, secret, 'HS256');
       return { user: payload, token };
     } catch {
       return null;
@@ -96,7 +96,7 @@ async function getOptionalAuth(c) {
 
   const token = tokenMatch[1];
   try {
-    const payload = await verify(token, secret);
+    const payload = await verify(token, secret, 'HS256');
     return { user: payload, token };
   } catch {
     return null;
