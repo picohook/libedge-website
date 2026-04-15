@@ -3548,6 +3548,7 @@ let _iftSendUsers = [];  // tüm kullanıcılar (arama için)
 async function instFilesOpenSendToUsersModal() {
     const fileChecks = [...document.querySelectorAll('.ift-file-cb:checked')];
     if (!fileChecks.length) { showToast('Gönderilecek dosya seçin.', 'warning'); return; }
+    if (!_ift.instId) { showToast('Kurum bilgisi yüklenemedi.', 'error'); return; }
 
     const count = fileChecks.length;
     document.getElementById('instFilesSendItemLabel').textContent =

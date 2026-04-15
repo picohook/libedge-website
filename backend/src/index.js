@@ -2565,6 +2565,7 @@ app.post('/api/files/upload', handleManagedUpload);
 
 // Kurum kullanıcılarını listele (admin kendi kurumunu, super_admin hepsini görebilir)
 app.get('/api/institution/:id/users', async (c) => {
+  try {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
@@ -2579,10 +2580,11 @@ app.get('/api/institution/:id/users', async (c) => {
   const rows = await db.prepare(`
     SELECT id, full_name, email, role, created_at
     FROM users
-    WHERE institution = ? AND role != 'super_admin' AND is_active = 1
+    WHERE (institution_id = ? OR institution = ?) AND role != 'super_admin'
     ORDER BY full_name
-  `).bind(institution.name).all();
+  `).bind(institution.id, institution.name).all();
   return c.json(rows.results || []);
+  } catch(e) { console.error('/api/institution/:id/users error:', e); return c.json({ error: e.message }, 500); }
 });
 
 // Kişilere Gönder: dosyaları seçilen kullanıcılara bildirim olarak işaretle
