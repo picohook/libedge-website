@@ -4045,63 +4045,75 @@ app.get('/api/user/files', async (c) => {
   if (auth.response) return auth.response;
 
   const db = c.env.DB;
-  const collectionId = c.req.query('collection_id');
-  const root = await ensureUserRootCollection(db, auth.user.user_id);
-  const targetCollectionId = collectionId ? Number(collectionId) : root.id;
-  const targetCollection = await getUserCollection(db, targetCollectionId, auth.user.user_id);
-  if (!targetCollection) return c.json({ error: 'Klasor bulunamadi' }, 404);
+  let requestedCollectionId = c.req.query('collection_id');
+  let targetCollectionId = null;
 
-  const collectionsResult = await db.prepare(`
-    SELECT id, user_id, parent_id, name, created_at, sort_order
-    FROM user_collections
-    WHERE user_id = ?
-    ORDER BY parent_id, sort_order, name
-  `).bind(auth.user.user_id).all();
-  const baseCollections = collectionsResult.results || [];
-
-  const fileCountRows = await db.prepare(`
-    SELECT uc.id AS collection_id, COUNT(ucf.id) AS file_count
-    FROM user_collections uc
-    LEFT JOIN user_collection_files ucf ON ucf.collection_id = uc.id
-    WHERE uc.user_id = ?
-    GROUP BY uc.id
-  `).bind(auth.user.user_id).all();
-  const directFileCountMap = new Map((fileCountRows.results || []).map((row) => [Number(row.collection_id), Number(row.file_count || 0)]));
-
-  const childrenMap = new Map();
-  baseCollections.forEach((collection) => {
-    const key = collection.parent_id == null ? 0 : Number(collection.parent_id);
-    if (!childrenMap.has(key)) childrenMap.set(key, []);
-    childrenMap.get(key).push(collection);
-  });
-
-  const aggregateCache = new Map();
-  function computeUserCollectionAggregate(collectionId) {
-    const id = Number(collectionId);
-    if (aggregateCache.has(id)) return aggregateCache.get(id);
-
-    const children = childrenMap.get(id) || [];
-    let folderCount = children.length;
-    let fileCount = Number(directFileCountMap.get(id) || 0);
-
-    children.forEach((child) => {
-      const childAgg = computeUserCollectionAggregate(child.id);
-      folderCount += childAgg.child_folder_count;
-      fileCount += childAgg.file_count;
-    });
-
-    const aggregate = { child_folder_count: folderCount, file_count: fileCount };
-    aggregateCache.set(id, aggregate);
-    return aggregate;
+  // 1. Eğer collection_id belirtilmişse, onu kullan
+  if (requestedCollectionId) {
+    targetCollectionId = Number(requestedCollectionId);
+    
+    // Klasörün kullanıcıya ait olduğunu doğrula
+    const collection = await db.prepare(`
+      SELECT id FROM user_collections 
+      WHERE id = ? AND user_id = ?
+    `).bind(targetCollectionId, auth.user.user_id).first();
+    
+    if (!collection) {
+      return c.json({ error: 'Bu klasöre erişim yetkiniz yok' }, 403);
+    }
+  } else {
+    // 2. Kullanıcının son ziyaret ettiği klasörü bul (session veya cookie'den)
+    //    Basit çözüm: dosyası olan ilk klasörü bul
+    const firstFolderWithFiles = await db.prepare(`
+      SELECT uc.id
+      FROM user_collections uc
+      WHERE uc.user_id = ?
+        AND EXISTS (
+          SELECT 1 FROM user_collection_files ucf 
+          WHERE ucf.collection_id = uc.id
+        )
+      ORDER BY uc.id ASC
+      LIMIT 1
+    `).bind(auth.user.user_id).first();
+    
+    if (firstFolderWithFiles) {
+      targetCollectionId = firstFolderWithFiles.id;
+    } else {
+      // 3. Hiç dosya yoksa root klasörü bul
+      const root = await db.prepare(`
+        SELECT id FROM user_collections 
+        WHERE user_id = ? AND parent_id IS NULL LIMIT 1
+      `).bind(auth.user.user_id).first();
+      
+      if (root) {
+        targetCollectionId = root.id;
+      } else {
+        return c.json({ error: 'Klasör bulunamadı' }, 404);
+      }
+    }
   }
 
-  const collections = {
-    results: baseCollections.map((collection) => ({
-      ...collection,
-      ...computeUserCollectionAggregate(collection.id)
-    }))
-  };
+  // Tüm kullanıcı klasörlerini getir (ana ekran için)
+  const allCollections = await db.prepare(`
+    SELECT 
+      id, 
+      user_id, 
+      parent_id, 
+      name, 
+      created_at, 
+      sort_order,
+      (
+        SELECT COUNT(*) FROM user_collections WHERE parent_id = uc.id
+      ) as child_folder_count,
+      (
+        SELECT COUNT(*) FROM user_collection_files WHERE collection_id = uc.id
+      ) as file_count
+    FROM user_collections uc
+    WHERE user_id = ?
+    ORDER BY sort_order, name
+  `).bind(auth.user.user_id).all();
 
+  // Seçili klasördeki dosyaları getir
   const files = await db.prepare(`
     SELECT
       ucf.id,
@@ -4124,9 +4136,13 @@ app.get('/api/user/files', async (c) => {
     LEFT JOIN users sender ON sender.id = fs.from_user_id
     WHERE ucf.collection_id = ?
     ORDER BY ucf.added_at DESC, ucf.id DESC
-  `).bind(targetCollection.id).all();
+  `).bind(targetCollectionId).all();
 
-  return c.json({ files: files.results || [], collections: collections.results || [], current_collection_id: targetCollection.id });
+  return c.json({ 
+    files: files.results || [], 
+    collections: allCollections.results || [],
+    current_collection_id: targetCollectionId
+  });
 });
 
 app.patch('/api/user/files/:id/read', async (c) => {
