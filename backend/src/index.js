@@ -2563,6 +2563,70 @@ async function handleManagedUpload(c) {
 app.post('/api/upload', handleManagedUpload);
 app.post('/api/files/upload', handleManagedUpload);
 
+// Kurum kullanıcılarını listele (admin kendi kurumunu, super_admin hepsini görebilir)
+app.get('/api/institution/:id/users', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+  const db = c.env.DB;
+  const institution = await getInstitutionByIdentifier(db, c.req.param('id'));
+  if (!institution) return c.json({ error: 'Kurum bulunamadı' }, 404);
+  if (!canManageInstitutionScope(auth.user, institution)) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+  const rows = await db.prepare(`
+    SELECT id, full_name, email, role, created_at
+    FROM users
+    WHERE institution = ? AND role != 'super_admin' AND is_active = 1
+    ORDER BY full_name
+  `).bind(institution.name).all();
+  return c.json(rows.results || []);
+});
+
+// Kişilere Gönder: dosyaları seçilen kullanıcılara bildirim olarak işaretle
+app.post('/api/institution/:id/send-to-users', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin' && auth.user.role !== 'admin') {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+  const db = c.env.DB;
+  const institution = await getInstitutionByIdentifier(db, c.req.param('id'));
+  if (!institution) return c.json({ error: 'Kurum bulunamadı' }, 404);
+  if (!canManageInstitutionScope(auth.user, institution)) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const { file_ids, user_ids } = await c.req.json();
+  if (!Array.isArray(file_ids) || !file_ids.length) return c.json({ error: 'Dosya seçilmedi' }, 400);
+  if (!Array.isArray(user_ids) || !user_ids.length)  return c.json({ error: 'Kullanıcı seçilmedi' }, 400);
+
+  // Her kullanıcı × dosya kombinasyonu için bildirim kaydı oluştur
+  const now = new Date().toISOString();
+  let sent = 0;
+  for (const userId of user_ids) {
+    for (const fileId of file_ids) {
+      // collection_file kaydının var olduğunu doğrula, başlığı al
+      const cf = await db.prepare(
+        `SELECT cf.id, COALESCE(cf.display_name, f.original_name) AS name
+         FROM collection_files cf JOIN files f ON f.id = cf.file_id
+         WHERE cf.id = ? AND cf.is_active = 1 LIMIT 1`
+      ).bind(fileId).first();
+      if (!cf) continue;
+
+      await db.prepare(`
+        INSERT OR IGNORE INTO user_notifications (user_id, type, title, body, ref_id, ref_type, created_at, is_read)
+        VALUES (?, 'file_shared', ?, ?, ?, 'collection_file', ?, 0)
+      `).bind(userId, `Dosya paylaşıldı: ${cf.name}`, `${auth.user.full_name || 'Yöneticiniz'} bir dosyayı sizinle paylaştı.`, cf.id, now).run();
+      sent++;
+    }
+  }
+
+  return c.json({ success: true, sent });
+});
+
 app.post('/api/institution/:id/folder', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;

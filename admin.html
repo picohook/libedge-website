@@ -83,6 +83,7 @@
                 <a href="#" class="sidebar-link" data-tab="requests" id="requestsTab"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
                 <a href="#" class="sidebar-link" data-tab="institutions" id="institutionsTab"><i class="fas fa-building w-5"></i><span>Kurumlar</span></a>
                 <a href="#" class="sidebar-link" data-tab="my-institution" id="myInstitutionTab" style="display:none"><i class="fas fa-university w-5"></i><span>Kurumum</span></a>
+                <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
                 <a href="#" class="sidebar-link" data-tab="announcements" id="announcementsTab"><i class="fas fa-bullhorn w-5"></i><span>Duyurular</span></a>
             </nav>
             <div class="absolute bottom-6 left-6">
@@ -422,6 +423,74 @@
     </div>
 </div>
 
+<!-- ===================== TAB: KURUM DOSYALARI (admin) ===================== -->
+<div id="tab-inst-files" class="tab-content hidden">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <!-- Üst bar -->
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h3 class="text-lg font-semibold flex items-center gap-2">
+                    <i class="fas fa-folder-open text-indigo-500"></i> Kurum Dosyaları
+                </h3>
+                <div id="instFilesBc" class="text-sm text-gray-500 mt-1"></div>
+            </div>
+            <div class="flex gap-2 flex-wrap items-center">
+                <button id="instFilesBackBtn" onclick="instFilesTabGoBack()" class="btn bg-gray-200 text-gray-700 hidden">
+                    <i class="fas fa-arrow-left mr-1"></i> Geri
+                </button>
+                <button id="instFilesSelectModeBtn" onclick="instFilesToggleSelectMode()" class="btn bg-gray-100 text-gray-600 text-sm border">
+                    <i class="fas fa-check-square mr-1"></i> Seçim Modu
+                </button>
+                <button onclick="instFilesOpenFolderModal()" class="btn bg-yellow-600 text-white">
+                    <i class="fas fa-folder-plus mr-1"></i> Klasör Ekle
+                </button>
+            </div>
+        </div>
+
+        <!-- Arama -->
+        <div class="flex items-center gap-2 mb-3 flex-wrap">
+            <div class="relative flex-1 min-w-[160px] max-w-xs">
+                <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                <input id="instFilesSearch" type="text" placeholder="Klasör veya dosya ara..."
+                       class="w-full border rounded pl-7 pr-2 py-1.5 text-sm bg-white"
+                       oninput="instFilesFilterContent(this.value)">
+            </div>
+            <!-- Seçim modu kontrolleri -->
+            <div id="instFilesSelectControls" class="hidden flex gap-1 text-xs">
+                <button type="button" onclick="instFilesSelectAll()" class="px-2 py-1.5 border rounded bg-blue-50 text-blue-700">
+                    <i class="fas fa-check-double mr-1"></i>Tümünü Seç
+                </button>
+                <button type="button" onclick="instFilesClearSelections()" class="px-2 py-1.5 border rounded bg-gray-50 text-gray-600">
+                    <i class="fas fa-times mr-1"></i>Kaldır
+                </button>
+                <span id="instFilesSelectionCounter" class="px-2 py-1.5 text-gray-500 font-medium"></span>
+            </div>
+        </div>
+
+        <!-- Klasörler grid -->
+        <div id="instFilesFoldersList" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-4"></div>
+
+        <!-- Dosyalar listesi -->
+        <div id="instFilesFilesList" class="space-y-2">
+            <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-gray-300 text-2xl"></i></div>
+        </div>
+    </div>
+
+    <!-- Seçim modu — sabit alt çubuk -->
+    <div id="instFilesSelectionBar" class="fixed bottom-0 left-0 right-0 z-40 px-6 py-3 flex items-center justify-between hidden"
+         style="background:#1e1b4b;color:white">
+        <span id="instFilesSelectionBarCount" class="text-sm font-medium"></span>
+        <div class="flex gap-2">
+            <button type="button" onclick="instFilesOpenSendToUsersModal()" class="btn text-sm px-4 py-2" style="background:#4f46e5;color:white">
+                <i class="fas fa-paper-plane mr-1"></i> Kişilere Gönder
+            </button>
+            <button type="button" onclick="instFilesToggleSelectMode()" class="btn text-sm px-3 py-2 bg-transparent border border-white/40 text-white">
+                İptal
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Kurum Dosyaları Slide-Over Panel -->
 <div id="instFilesOverlay" class="hidden fixed inset-0 bg-black bg-opacity-30 z-40" onclick="closeInstFilesPanel()"></div>
 <div id="instFilesPanel" class="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col transform translate-x-full transition-transform duration-300">
@@ -743,24 +812,6 @@
                 </div>
             </div>
 
-            <!-- Kurum Dosyaları -->
-            <div class="bg-white rounded-xl shadow-sm p-6">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-base font-semibold">Kurum Dosyaları</h3>
-                    <div class="flex gap-2">
-                        <button onclick="openMyInstFolderModal()" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 flex items-center gap-1">
-                            <i class="fas fa-folder-plus text-yellow-500"></i><span>Klasör</span>
-                        </button>
-                        <button onclick="openMyInstFileModal()" class="text-sm bg-indigo-600 text-white rounded-lg px-3 py-1.5 hover:bg-indigo-700 flex items-center gap-1">
-                            <i class="fas fa-plus"></i><span>Dosya Ekle</span>
-                        </button>
-                    </div>
-                </div>
-                <div id="myInstFilesBreadcrumb" class="text-sm text-gray-500 mb-3 pb-2 border-b hidden"></div>
-                <div id="myInstFilesBody">
-                    <div class="text-center py-8 text-gray-300"><i class="fas fa-spinner fa-spin text-2xl"></i></div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -1463,6 +1514,7 @@ async function checkAdminAuth() {
         }
         if (isAdmin) {
             show('myInstitutionTab');
+            show('instFilesTab');
         }
         return true;
     } catch (err) {
@@ -2030,6 +2082,8 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 loadInstitutions();
             } else if (tab === 'my-institution') {
                 loadMyInstitution();
+            } else if (tab === 'inst-files') {
+                loadInstFilesTab();
             } else if (tab === 'announcements') {
                 loadAnnouncements();
             } else if (tab === 'requests') {
@@ -3202,13 +3256,6 @@ async function loadMyInstitution() {
                 <td class="text-gray-400 text-xs">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td>
             </tr>`).join('');
 
-        // Kurum Dosyaları panelini başlat
-        _myInstFiles.instId   = inst.id;
-        _myInstFiles.instName = inst.name || 'Kurum';
-        _myInstFiles.folderId = null;
-        _myInstFiles.folderStack = [];
-        loadMyInstFiles();
-
     } catch (e) {
         console.error('loadMyInstitution error:', e);
         errEl.textContent = 'Kurum bilgileri yüklenemedi: ' + e.message;
@@ -3216,249 +3263,366 @@ async function loadMyInstitution() {
     }
 }
 
-// ====================== KURUMUM - DOSYA YÖNETİMİ ======================
+// ====================== TAB: KURUM DOSYALARI (admin) ======================
 
-let _myInstFiles = { instId: null, instName: '', folderId: null, folderStack: [] };
+let _ift = {               // inst-files-tab state
+    instId: null,
+    folderId: null,
+    folderStack: [],
+    folders: [],           // raw data for filter
+    files: [],
+    selectMode: false,
+};
 
-async function loadMyInstFiles() {
-    const { instId, instName, folderId, folderStack } = _myInstFiles;
-    const body = document.getElementById('myInstFilesBody');
-    const bcEl = document.getElementById('myInstFilesBreadcrumb');
-    if (!body) return;
-    if (!instId) {
-        body.innerHTML = '<div class="text-center py-6 text-gray-300">Kurum bilgisi yüklenemedi</div>';
-        return;
-    }
-
-    body.innerHTML = '<div class="text-center py-8 text-gray-300"><i class="fas fa-spinner fa-spin text-2xl"></i></div>';
-
-    // Breadcrumb
-    if (folderStack.length > 0) {
-        let bc = `<button onclick="myInstGoRoot()" class="text-indigo-600 hover:underline">${escapeHtml(instName)}</button>`;
-        folderStack.forEach((f, i) => {
-            const isLast = i === folderStack.length - 1;
-            bc += isLast
-                ? ` / <span class="font-medium text-gray-700">${escapeHtml(f.name)}</span>`
-                : ` / <button onclick="myInstGoToDepth(${i})" class="text-indigo-600 hover:underline">${escapeHtml(f.name)}</button>`;
-        });
-        bcEl.innerHTML = `<button onclick="myInstGoBack()" class="mr-2 text-gray-400 hover:text-gray-600"><i class="fas fa-arrow-left"></i></button>${bc}`;
-        bcEl.classList.remove('hidden');
-    } else {
-        bcEl.classList.add('hidden');
-    }
-
-    try {
-        const parentParam = folderId ? `?parent=${folderId}` : '';
-        const fileUrl = folderId
-            ? `${API_BASE}/api/institution/folder/${folderId}/files`
-            : `${API_BASE}/api/institution/${instId}/files`;
-
-        const [fRes, fiRes] = await Promise.all([
-            fetch(`${API_BASE}/api/institution/${instId}/folders${parentParam}`, { credentials: 'include' }),
-            fetch(fileUrl, { credentials: 'include' })
-        ]);
-        const folders = fRes.ok ? await fRes.json() : [];
-        const files   = fiRes.ok ? await fiRes.json() : [];
-
-        if (!folders.length && !files.length) {
-            body.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-folder-open text-3xl mb-2 opacity-40 block"></i>Bu konumda içerik yok</div>';
+// Çağrı noktası: tab açılınca + inst id lazım
+async function loadInstFilesTab() {
+    if (!_ift.instId) {
+        // instId'yi /api/admin/my-institution'dan al
+        try {
+            const r = await fetch(`${API_BASE}/api/admin/my-institution`, { credentials: 'include' });
+            if (!r.ok) throw new Error();
+            const d = await r.json();
+            _ift.instId = d.id;
+        } catch {
+            document.getElementById('instFilesFilesList').innerHTML =
+                '<p class="text-center text-red-400 py-8">Kurum bilgisi alınamadı.</p>';
             return;
         }
+    }
+    _ift.folderId = null;
+    _ift.folderStack = [];
+    instFilesUpdateBackBtn();
+    await instFilesLoad();
+}
 
-        let html = '';
+async function instFilesLoad() {
+    const foldersEl = document.getElementById('instFilesFoldersList');
+    const filesEl   = document.getElementById('instFilesFilesList');
+    foldersEl.innerHTML = '';
+    filesEl.innerHTML   = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-gray-300 text-2xl"></i></div>';
+    instFilesUpdateBreadcrumb();
 
-        if (folders.length) {
-            html += '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">';
-            html += folders.map(f => `
-                <div class="border rounded-lg p-3 hover:bg-yellow-50 cursor-pointer group relative">
-                    <div onclick="myInstOpenFolder(${f.id},'${escapeHtml(f.folder_name).replace(/'/g,"\\'")}')">
-                        <i class="fas fa-folder text-2xl text-yellow-500 mb-1 block text-center"></i>
-                        <p class="text-xs font-medium truncate text-center" title="${escapeHtml(f.folder_name)}">${escapeHtml(f.folder_name)}</p>
-                    </div>
-                    <button onclick="deleteMyInstFolder(${f.id},'${escapeHtml(f.folder_name).replace(/'/g,"\\'")}');event.stopPropagation()"
-                            class="absolute top-1 right-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 text-xs p-1" title="Sil">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>`).join('');
-            html += '</div>';
-        }
+    try {
+        const parentParam = _ift.folderId ? `?parent=${_ift.folderId}` : '';
+        const fileUrl = _ift.folderId
+            ? `${API_BASE}/api/institution/folder/${_ift.folderId}/files`
+            : `${API_BASE}/api/institution/${_ift.instId}/files`;
 
-        if (files.length) {
-            html += '<div class="space-y-1">';
-            html += files.map(f => {
-                const name = f.display_name || f.file_name || f.original_name || 'Dosya';
-                const ext  = (f.file_type || f.extension || '').toLowerCase();
-                const url  = f.file_url || (f.file_key ? `/api/files/${f.file_key}` : '');
-                return `
-                <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50 group">
-                    <i class="fas ${getFileIcon(ext)} text-gray-400 flex-shrink-0 w-4 text-center"></i>
-                    <a href="javascript:void(0)"
-                       onclick="previewFile('${escapeHtml(url)}','${escapeHtml(name)}','${escapeHtml(ext)}')"
-                       class="flex-1 text-sm text-indigo-600 hover:underline truncate" title="${escapeHtml(name)}">${escapeHtml(name)}</a>
-                    <span class="text-xs text-gray-400 flex-shrink-0">${ext.toUpperCase()}</span>
-                    <button onclick="deleteMyInstFile(${f.id},'${escapeHtml(name).replace(/'/g,"\\'")}');event.stopPropagation()"
-                            class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 text-xs ml-1 flex-shrink-0" title="Sil">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>`;
-            }).join('');
-            html += '</div>';
-        }
-
-        body.innerHTML = html;
+        const [fRes, fiRes] = await Promise.all([
+            fetch(`${API_BASE}/api/institution/${_ift.instId}/folders${parentParam}`, { credentials: 'include' }),
+            fetch(fileUrl, { credentials: 'include' })
+        ]);
+        _ift.folders = fRes.ok  ? (await fRes.json())  : [];
+        _ift.files   = fiRes.ok ? (await fiRes.json()) : [];
+        instFilesRender();
     } catch (err) {
-        body.innerHTML = '<div class="text-center py-8 text-red-400">Yüklenirken hata oluştu</div>';
-        console.error('loadMyInstFiles error:', err);
+        filesEl.innerHTML = '<p class="text-center text-red-400 py-8">Yüklenirken hata oluştu.</p>';
+        console.error('instFilesLoad error:', err);
     }
 }
 
-function myInstOpenFolder(id, name) {
-    _myInstFiles.folderStack.push({ id, name });
-    _myInstFiles.folderId = id;
-    loadMyInstFiles();
-}
-function myInstGoBack() {
-    _myInstFiles.folderStack.pop();
-    _myInstFiles.folderId = _myInstFiles.folderStack.length
-        ? _myInstFiles.folderStack[_myInstFiles.folderStack.length - 1].id : null;
-    loadMyInstFiles();
-}
-function myInstGoRoot() {
-    _myInstFiles.folderStack = [];
-    _myInstFiles.folderId = null;
-    loadMyInstFiles();
-}
-function myInstGoToDepth(index) {
-    _myInstFiles.folderStack = _myInstFiles.folderStack.slice(0, index + 1);
-    _myInstFiles.folderId = _myInstFiles.folderStack[index]?.id ?? null;
-    loadMyInstFiles();
+function instFilesRender(folderFilter, fileFilter) {
+    const foldersEl = document.getElementById('instFilesFoldersList');
+    const filesEl   = document.getElementById('instFilesFilesList');
+    const isSelect  = _ift.selectMode;
+
+    const folders = folderFilter
+        ? _ift.folders.filter(f => f.folder_name?.toLowerCase().includes(folderFilter))
+        : _ift.folders;
+    const files = fileFilter
+        ? _ift.files.filter(f => (f.display_name || f.file_name || '').toLowerCase().includes(fileFilter))
+        : _ift.files;
+
+    // Klasörler
+    if (folders.length) {
+        foldersEl.innerHTML = folders.map(f => `
+            <div class="bg-white border rounded-xl p-3 hover:bg-yellow-50 cursor-pointer group relative transition-colors
+                        ${isSelect ? 'select-mode' : ''}"
+                 onclick="${isSelect ? `instFolderToggleCb(this,event)` : `instFilesOpenFolder(${f.id},'${escapeHtml(f.folder_name).replace(/'/g,"\\'")}',event)`}">
+                ${isSelect ? `<input type="checkbox" class="ift-folder-cb absolute top-2 left-2 w-4 h-4" data-id="${f.id}" data-type="folder" onclick="event.stopPropagation();instFilesUpdateSelCount()">` : ''}
+                <div class="flex flex-col items-center gap-1 pt-1">
+                    <i class="fas fa-folder text-3xl text-yellow-400"></i>
+                    <p class="text-xs font-medium text-center truncate w-full" title="${escapeHtml(f.folder_name)}">${escapeHtml(f.folder_name)}</p>
+                </div>
+                ${!isSelect ? `
+                <div class="absolute top-1 right-1 hidden group-hover:flex gap-0.5">
+                    <button type="button" onclick="instFilesRenameFolder(${f.id},'${escapeHtml(f.folder_name).replace(/'/g,"\\'")}',event)"
+                            class="text-gray-400 hover:text-blue-500 text-xs p-1" title="Yeniden Adlandır"><i class="fas fa-pencil-alt"></i></button>
+                    <button type="button" onclick="instFilesDeleteFolder(${f.id},'${escapeHtml(f.folder_name).replace(/'/g,"\\'")}',event)"
+                            class="text-gray-400 hover:text-red-500 text-xs p-1" title="Sil"><i class="fas fa-trash"></i></button>
+                </div>` : ''}
+            </div>`).join('');
+    } else {
+        foldersEl.innerHTML = '';
+    }
+
+    // Dosyalar
+    if (!files.length && !folders.length) {
+        filesEl.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fas fa-folder-open text-3xl opacity-30 block mb-2"></i>Bu konumda içerik yok</div>';
+        return;
+    }
+    if (!files.length) { filesEl.innerHTML = ''; return; }
+
+    filesEl.innerHTML = files.map(f => {
+        const name = f.display_name || f.file_name || f.original_name || 'Dosya';
+        const ext  = (f.file_type || f.extension || '').toLowerCase();
+        const url  = f.file_url || (f.file_key ? `/api/files/${f.file_key}` : '');
+        const cat  = f.category || 'other';
+        return `
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50 group relative">
+            ${isSelect ? `<input type="checkbox" class="ift-file-cb w-4 h-4 flex-shrink-0" data-id="${f.id}" data-name="${escapeHtml(name)}" data-url="${escapeHtml(url)}" onclick="instFilesUpdateSelCount()">` : ''}
+            <i class="fas ${getFileIcon(ext)} text-gray-400 flex-shrink-0 w-4 text-center"></i>
+            <a href="javascript:void(0)"
+               onclick="previewFile('${escapeHtml(url)}','${escapeHtml(name)}','${escapeHtml(ext)}')"
+               class="flex-1 text-sm text-indigo-600 hover:underline truncate" title="${escapeHtml(name)}">${escapeHtml(name)}</a>
+            <span class="text-xs text-gray-300 flex-shrink-0">${ext.toUpperCase()}</span>
+            ${!isSelect ? `
+            <div class="hidden group-hover:flex gap-0.5 flex-shrink-0">
+                <button type="button" onclick="instFilesDeleteFile(${f.id},'${escapeHtml(name).replace(/'/g,"\\'")}',event)"
+                        class="text-gray-400 hover:text-red-500 text-xs p-1" title="Sil"><i class="fas fa-trash"></i></button>
+            </div>` : ''}
+        </div>`;
+    }).join('');
 }
 
-async function deleteMyInstFolder(id, name) {
-    if (!confirm(`"${name}" klasörünü ve içindeki tüm dosyaları silmek istediğinizden emin misiniz?`)) return;
+// ---- Navigasyon ----
+function instFilesOpenFolder(id, name, event) {
+    if (event) event.stopPropagation();
+    _ift.folderStack.push({ id, name });
+    _ift.folderId = id;
+    instFilesUpdateBackBtn();
+    instFilesLoad();
+}
+function instFilesTabGoBack() {
+    _ift.folderStack.pop();
+    _ift.folderId = _ift.folderStack.length ? _ift.folderStack[_ift.folderStack.length - 1].id : null;
+    instFilesUpdateBackBtn();
+    instFilesLoad();
+}
+function instFilesUpdateBackBtn() {
+    document.getElementById('instFilesBackBtn')?.classList.toggle('hidden', !_ift.folderId);
+}
+function instFilesUpdateBreadcrumb() {
+    const el = document.getElementById('instFilesBc');
+    if (!el) return;
+    if (!_ift.folderStack.length) { el.textContent = ''; return; }
+    el.innerHTML = _ift.folderStack.map((f, i) =>
+        i < _ift.folderStack.length - 1
+            ? `<span class="cursor-pointer text-indigo-600 hover:underline" onclick="instFilesBcGoTo(${i})">${escapeHtml(f.name)}</span> /`
+            : `<span class="font-medium text-gray-700">${escapeHtml(f.name)}</span>`
+    ).join(' ');
+}
+function instFilesBcGoTo(index) {
+    _ift.folderStack = _ift.folderStack.slice(0, index + 1);
+    _ift.folderId = _ift.folderStack[index].id;
+    instFilesUpdateBackBtn();
+    instFilesLoad();
+}
+
+// ---- Arama/filtre ----
+function instFilesFilterContent(val) {
+    const v = val.toLowerCase();
+    instFilesRender(v || null, v || null);
+}
+
+// ---- Klasör CRUD ----
+function instFilesOpenFolderModal() {
+    document.getElementById('instFilesFolderName').value = '';
+    document.getElementById('instFilesFolderPublic').checked = false;
+    document.getElementById('instFilesFolderModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('instFilesFolderName').focus(), 50);
+}
+function instFilesCloseFolderModal() {
+    document.getElementById('instFilesFolderModal').classList.add('hidden');
+}
+document.getElementById('instFilesFolderForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('instFilesFolderName').value.trim();
+    if (!name) return;
+    const isPublic = document.getElementById('instFilesFolderPublic').checked;
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/${_ift.instId}/folder`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_name: name, parent_folder_id: _ift.folderId || null, is_public: isPublic })
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Klasör oluşturulamadı');
+        showToast('Klasör oluşturuldu.', 'success');
+        instFilesCloseFolderModal();
+        instFilesLoad();
+    } catch(err) { showToast(err.message, 'error'); }
+});
+
+function instFilesRenameFolder(id, currentName, event) {
+    if (event) event.stopPropagation();
+    document.getElementById('instFilesRenameId').value = id;
+    document.getElementById('instFilesRenameName').value = currentName;
+    document.getElementById('instFilesRenameModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('instFilesRenameName').focus(), 50);
+}
+function instFilesCloseRenameModal() {
+    document.getElementById('instFilesRenameModal').classList.add('hidden');
+}
+document.getElementById('instFilesRenameForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id   = document.getElementById('instFilesRenameId').value;
+    const name = document.getElementById('instFilesRenameName').value.trim();
+    if (!name) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/institution/folder/${id}`, {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_name: name })
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Yeniden adlandırılamadı');
+        showToast('Klasör adı güncellendi.', 'success');
+        instFilesCloseRenameModal();
+        instFilesLoad();
+    } catch(err) { showToast(err.message, 'error'); }
+});
+
+async function instFilesDeleteFolder(id, name, event) {
+    if (event) event.stopPropagation();
+    if (!confirm(`"${name}" klasörünü ve içindekileri silmek istediğinizden emin misiniz?`)) return;
     try {
         const res = await fetch(`${API_BASE}/api/institution/folder/${id}`, { method: 'DELETE', credentials: 'include' });
-        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Silinemedi');
+        if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || 'Silinemedi');
         showToast('Klasör silindi.', 'success');
-        loadMyInstFiles();
-    } catch(e) { showToast(e.message, 'error'); }
+        instFilesLoad();
+    } catch(err) { showToast(err.message, 'error'); }
 }
 
-async function deleteMyInstFile(id, name) {
+// ---- Dosya CRUD ----
+async function instFilesDeleteFile(id, name, event) {
+    if (event) event.stopPropagation();
     if (!confirm(`"${name}" dosyasını silmek istediğinizden emin misiniz?`)) return;
     try {
         const res = await fetch(`${API_BASE}/api/institution/file/${id}`, { method: 'DELETE', credentials: 'include' });
-        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Silinemedi');
+        if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || 'Silinemedi');
         showToast('Dosya silindi.', 'success');
-        loadMyInstFiles();
-    } catch(e) { showToast(e.message, 'error'); }
+        instFilesLoad();
+    } catch(err) { showToast(err.message, 'error'); }
 }
 
-function openMyInstFolderModal() {
-    document.getElementById('myInstFolderName').value = '';
-    document.getElementById('myInstFolderModal').classList.remove('hidden');
-    setTimeout(() => document.getElementById('myInstFolderName').focus(), 50);
+// ---- Seçim modu ----
+function instFilesToggleSelectMode() {
+    _ift.selectMode = !_ift.selectMode;
+    const btn = document.getElementById('instFilesSelectModeBtn');
+    const bar = document.getElementById('instFilesSelectionBar');
+    const ctrl = document.getElementById('instFilesSelectControls');
+    if (_ift.selectMode) {
+        btn.innerHTML = '<i class="fas fa-times mr-1"></i> İptal';
+        bar.classList.remove('hidden');
+        ctrl.classList.remove('hidden');
+    } else {
+        btn.innerHTML = '<i class="fas fa-check-square mr-1"></i> Seçim Modu';
+        bar.classList.add('hidden');
+        ctrl.classList.add('hidden');
+    }
+    instFilesRender();
 }
-function closeMyInstFolderModal() {
-    document.getElementById('myInstFolderModal').classList.add('hidden');
+function instFilesUpdateSelCount() {
+    const n = document.querySelectorAll('.ift-file-cb:checked,.ift-folder-cb:checked').length;
+    document.getElementById('instFilesSelectionCounter').textContent = n ? `${n} seçili` : '';
+    document.getElementById('instFilesSelectionBarCount').textContent = `${n} öğe seçildi`;
+}
+function instFilesSelectAll() {
+    document.querySelectorAll('.ift-file-cb,.ift-folder-cb').forEach(cb => cb.checked = true);
+    instFilesUpdateSelCount();
+}
+function instFilesClearSelections() {
+    document.querySelectorAll('.ift-file-cb,.ift-folder-cb').forEach(cb => cb.checked = false);
+    instFilesUpdateSelCount();
+}
+function instFolderToggleCb(el, event) {
+    if (event) event.stopPropagation();
+    const cb = el.querySelector('.ift-folder-cb');
+    if (cb) { cb.checked = !cb.checked; instFilesUpdateSelCount(); }
 }
 
-document.getElementById('myInstFolderForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('myInstFolderName').value.trim();
-    if (!name) return;
-    const { instId, folderId } = _myInstFiles;
+// ---- Kişilere Gönder ----
+let _iftSendUsers = [];  // tüm kullanıcılar (arama için)
+
+async function instFilesOpenSendToUsersModal() {
+    const fileChecks = [...document.querySelectorAll('.ift-file-cb:checked')];
+    if (!fileChecks.length) { showToast('Gönderilecek dosya seçin.', 'warning'); return; }
+
+    const count = fileChecks.length;
+    document.getElementById('instFilesSendItemLabel').textContent =
+        `${count} dosya seçildi. Göndermek istediğiniz kişileri işaretleyin:`;
+    document.getElementById('instFilesSendUserSearch').value = '';
+    document.getElementById('instFilesSendModal').classList.remove('hidden');
+
+    // Kurum kullanıcılarını yükle
+    const listEl = document.getElementById('instFilesSendUserList');
+    listEl.innerHTML = '<p class="text-gray-400 text-sm text-center py-4"><i class="fas fa-spinner fa-spin mr-1"></i>Yükleniyor...</p>';
     try {
-        const res = await fetch(`${API_BASE}/api/institution/${instId}/folder`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folder_name: name, parent_folder_id: folderId || null, is_public: false })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Klasör oluşturulamadı');
-        showToast('Klasör oluşturuldu.', 'success');
-        closeMyInstFolderModal();
-        loadMyInstFiles();
-    } catch(e) { showToast(e.message, 'error'); }
-});
-
-function openMyInstFileModal() {
-    document.getElementById('myInstFileForm').reset();
-    document.getElementById('myInstFileProgress').classList.add('hidden');
-    document.getElementById('myInstFileProgressBar').style.width = '0%';
-    document.getElementById('myInstFileModal').classList.remove('hidden');
-}
-function closeMyInstFileModal() {
-    document.getElementById('myInstFileModal').classList.add('hidden');
+        const res = await fetch(`${API_BASE}/api/institution/${_ift.instId}/users`, { credentials: 'include' });
+        _iftSendUsers = res.ok ? (await res.json()) : [];
+        instFilesRenderSendUsers(_iftSendUsers);
+    } catch {
+        listEl.innerHTML = '<p class="text-red-400 text-sm text-center py-4">Kullanıcılar yüklenemedi.</p>';
+    }
 }
 
-document.getElementById('myInstFileForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fileInput = document.getElementById('myInstFileInput');
-    const file = fileInput.files[0];
-    if (!file) { showToast('Lütfen bir dosya seçin.', 'warning'); return; }
+function instFilesRenderSendUsers(users) {
+    const listEl = document.getElementById('instFilesSendUserList');
+    if (!users.length) {
+        listEl.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Kullanıcı bulunamadı.</p>';
+        return;
+    }
+    listEl.innerHTML = users.map(u => `
+        <label class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input type="checkbox" class="ift-send-user-cb w-4 h-4" value="${u.id}" data-name="${escapeHtml(u.full_name || u.email)}">
+            <div>
+                <p class="text-sm font-medium text-gray-800">${escapeHtml(u.full_name || '—')}</p>
+                <p class="text-xs text-gray-400">${escapeHtml(u.email)}</p>
+            </div>
+        </label>`).join('');
+}
 
-    const btn = document.getElementById('myInstFileSubmitBtn');
+function instFilesFilterSendUsers(val) {
+    const v = val.toLowerCase();
+    const filtered = _iftSendUsers.filter(u =>
+        (u.full_name || '').toLowerCase().includes(v) || (u.email || '').toLowerCase().includes(v));
+    instFilesRenderSendUsers(filtered);
+}
+
+function instFilesCloseSendModal() {
+    document.getElementById('instFilesSendModal').classList.add('hidden');
+}
+
+async function instFilesExecuteSend() {
+    const userIds = [...document.querySelectorAll('.ift-send-user-cb:checked')].map(cb => cb.value);
+    if (!userIds.length) { showToast('En az bir kişi seçin.', 'warning'); return; }
+
+    const fileIds = [...document.querySelectorAll('.ift-file-cb:checked')].map(cb => Number(cb.dataset.id));
+    const btn = document.getElementById('instFilesSendConfirmBtn');
     btn.disabled = true;
-    btn.textContent = 'Yükleniyor...';
-    const progressEl = document.getElementById('myInstFileProgress');
-    const progressBar = document.getElementById('myInstFileProgressBar');
-    const progressText = document.getElementById('myInstFileProgressText');
-    progressEl.classList.remove('hidden');
-    progressBar.style.width = '40%';
-    progressText.textContent = 'Dosya yükleniyor...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Gönderiliyor...';
 
     try {
-        // 1. Dosyayı yükle
-        const fd = new FormData();
-        fd.append('file', file);
-        const uploadRes = await fetch(`${API_BASE}/api/upload`, {
-            method: 'POST', credentials: 'include', body: fd
-        });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok) throw new Error(uploadData.error || 'Yükleme başarısız');
-
-        progressBar.style.width = '80%';
-        progressText.textContent = 'Kuruma ekleniyor...';
-
-        // 2. Kuruma bağla
-        const displayName = document.getElementById('myInstFileDisplayName').value.trim()
-            || file.name.replace(/\.[^.]+$/, '');
-        const category = document.getElementById('myInstFileCategory').value;
-        const { instId, folderId } = _myInstFiles;
-
-        const addRes = await fetch(`${API_BASE}/api/institution/${instId}/file`, {
-            method: 'POST',
-            credentials: 'include',
+        const res = await fetch(`${API_BASE}/api/institution/${_ift.instId}/send-to-users`, {
+            method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                source_file_id: uploadData.file_id,
-                file_name: displayName,
-                category,
-                folder_id: folderId || null,
-                is_public: false
-            })
+            body: JSON.stringify({ file_ids: fileIds, user_ids: userIds })
         });
-        const addData = await addRes.json();
-        if (!addRes.ok) throw new Error(addData.error || 'Dosya eklenemedi');
-
-        progressBar.style.width = '100%';
-        showToast(addData.deduplicated ? 'Dosya zaten mevcuttu, bilgiler güncellendi.' : 'Dosya başarıyla eklendi!', 'success');
-        closeMyInstFileModal();
-        loadMyInstFiles();
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Gönderilemedi');
+        showToast(`${fileIds.length} dosya ${userIds.length} kişiye gönderildi.`, 'success');
+        instFilesCloseSendModal();
+        instFilesToggleSelectMode();
     } catch(err) {
         showToast(err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Yükle & Ekle';
-        progressEl.classList.add('hidden');
+        btn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i> Gönder';
     }
-});
+}
 
-// ====================== KURUMUM - DOMAIN GÜNCELLEME (BAŞARI MESAJI DÜZELTİLMİŞ) ======================
-
-// ====================== KURUMUM - DOMAIN GÜNCELLEME (ÇALIŞAN VERSİYON) ======================
+// ====================== KURUMUM - DOMAIN GÜNCELLEME ======================
 
 const form = document.getElementById('myInstitutionForm');
 const submitBtn = form.querySelector('button[type="submit"]');
@@ -5324,61 +5488,61 @@ async function moveAdminFileRef(refId, fileName) {
     </div>
 </div>
 
-<!-- Kurum Admini: Yeni Klasör Modalı -->
-<div id="myInstFolderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+<!-- Kurum Dosyaları Tab — Klasör Ekle Modal -->
+<div id="instFilesFolderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
         <h3 class="text-base font-semibold mb-4">Yeni Klasör</h3>
-        <form id="myInstFolderForm">
-            <input type="text" id="myInstFolderName" placeholder="Klasör adı" class="w-full border p-2 rounded mb-4" required>
+        <form id="instFilesFolderForm">
+            <input type="text" id="instFilesFolderName" placeholder="Klasör adı" class="w-full border p-2 rounded mb-3 text-sm" required>
+            <div class="mb-4">
+                <label class="text-sm text-gray-600 flex items-center gap-2">
+                    <input type="checkbox" id="instFilesFolderPublic"> Herkese açık
+                </label>
+            </div>
             <div class="flex gap-2 justify-end">
-                <button type="button" onclick="closeMyInstFolderModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
+                <button type="button" onclick="instFilesCloseFolderModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
                 <button type="submit" class="btn btn-primary">Oluştur</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Kurum Admini: Dosya Ekle Modalı -->
-<div id="myInstFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-base font-semibold">Dosya Ekle</h3>
-            <button onclick="closeMyInstFileModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-        </div>
-        <form id="myInstFileForm">
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Dosya <span class="text-red-500">*</span></label>
-                <input type="file" id="myInstFileInput" class="w-full border p-2 rounded text-sm" required>
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Görünen Ad</label>
-                <input type="text" id="myInstFileDisplayName" placeholder="Boş bırakırsanız dosya adı kullanılır" class="w-full border p-2 rounded text-sm">
-            </div>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                <select id="myInstFileCategory" class="w-full border p-2 rounded text-sm">
-                    <option value="other">Diğer</option>
-                    <option value="book">Kitap</option>
-                    <option value="article">Makale</option>
-                    <option value="report">Rapor</option>
-                    <option value="presentation">Sunum</option>
-                    <option value="video">Video</option>
-                    <option value="audio">Ses</option>
-                    <option value="image">Görsel</option>
-                    <option value="data">Veri</option>
-                </select>
-            </div>
-            <div id="myInstFileProgress" class="hidden mb-3">
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div id="myInstFileProgressBar" class="bg-indigo-600 h-2 rounded-full transition-all" style="width:0%"></div>
-                </div>
-                <p id="myInstFileProgressText" class="text-xs text-gray-400 mt-1">Yükleniyor...</p>
-            </div>
+<!-- Kurum Dosyaları Tab — Klasör Yeniden Adlandır Modal -->
+<div id="instFilesRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+        <h3 class="text-base font-semibold mb-4">Klasörü Yeniden Adlandır</h3>
+        <form id="instFilesRenameForm">
+            <input type="hidden" id="instFilesRenameId">
+            <input type="text" id="instFilesRenameName" class="w-full border p-2 rounded mb-4 text-sm" required>
             <div class="flex gap-2 justify-end">
-                <button type="button" onclick="closeMyInstFileModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
-                <button type="submit" id="myInstFileSubmitBtn" class="btn btn-primary">Yükle & Ekle</button>
+                <button type="button" onclick="instFilesCloseRenameModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
+                <button type="submit" class="btn btn-primary">Kaydet</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Kurum Dosyaları Tab — Kişilere Gönder Modal -->
+<div id="instFilesSendModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
+            <h3 class="font-semibold text-gray-900">Kişilere Gönder</h3>
+            <button type="button" onclick="instFilesCloseSendModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="px-5 py-3 border-b flex-shrink-0">
+            <p id="instFilesSendItemLabel" class="text-sm text-gray-600 mb-2"></p>
+            <input type="text" id="instFilesSendUserSearch" placeholder="Kullanıcı ara..."
+                   class="w-full border rounded px-3 py-1.5 text-sm" oninput="instFilesFilterSendUsers(this.value)">
+        </div>
+        <div id="instFilesSendUserList" class="flex-1 overflow-y-auto px-5 py-3 space-y-1">
+            <p class="text-gray-400 text-sm text-center py-4"><i class="fas fa-spinner fa-spin mr-1"></i>Yükleniyor...</p>
+        </div>
+        <div class="flex gap-3 px-5 py-4 border-t flex-shrink-0">
+            <button type="button" onclick="instFilesCloseSendModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
+            <button type="button" id="instFilesSendConfirmBtn" onclick="instFilesExecuteSend()" class="btn btn-primary flex-1">
+                <i class="fas fa-paper-plane mr-1"></i> Gönder
+            </button>
+        </div>
     </div>
 </div>
 
