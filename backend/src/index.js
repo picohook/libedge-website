@@ -2653,57 +2653,146 @@ app.post('/api/institution/:id/send-to-users', async (c) => {
 });
 
 // Merkezi Dosyalar → Kişilere Gönder (super_admin)
+// ====================== MERKEZİ DOSYALARDAN KİŞİLERE GÖNDER (DÜZELTİLMİŞ) ======================
 app.post('/api/system/send-to-users', async (c) => {
   try {
     const auth = await requireAuth(c);
     if (auth.response) return auth.response;
-    if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+    if (auth.user.role !== 'super_admin') {
+      return c.json({ error: 'Yetkisiz' }, 403);
+    }
 
     const db = c.env.DB;
     const { file_ids, user_ids } = await c.req.json();
-    if (!Array.isArray(file_ids) || !file_ids.length) return c.json({ error: 'Dosya seçilmedi' }, 400);
-    if (!Array.isArray(user_ids) || !user_ids.length) return c.json({ error: 'Kullanıcı seçilmedi' }, 400);
+
+    if (!Array.isArray(file_ids) || !file_ids.length) {
+      return c.json({ error: 'Dosya seçilmedi' }, 400);
+    }
+    if (!Array.isArray(user_ids) || !user_ids.length) {
+      return c.json({ error: 'Kullanıcı seçilmedi' }, 400);
+    }
+
+    // Tabloların varlığını garanti et
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS user_collections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        parent_id INTEGER,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        sort_order INTEGER DEFAULT 0,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `).run();
 
     await db.prepare(`
-      CREATE TABLE IF NOT EXISTS user_notifications (
+      CREATE TABLE IF NOT EXISTS user_collection_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        collection_id INTEGER NOT NULL,
+        file_id INTEGER NOT NULL,
+        share_id INTEGER,
+        display_name TEXT,
+        is_read INTEGER DEFAULT 0,
+        added_at TEXT NOT NULL DEFAULT (datetime('now')),
+        sort_order INTEGER DEFAULT 0,
+        FOREIGN KEY (collection_id) REFERENCES user_collections(id) ON DELETE CASCADE,
+        FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+      )
+    `).run();
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         type TEXT NOT NULL DEFAULT 'info',
         title TEXT NOT NULL,
-        body TEXT,
-        ref_id INTEGER,
-        ref_type TEXT,
+        content TEXT,
+        data TEXT,
         is_read INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `).run();
 
-    const now = new Date().toISOString();
     let sent = 0;
+    const now = new Date().toISOString();
+
     for (const userId of user_ids) {
-      for (const fileId of file_ids) {
-        const cf = await db.prepare(
-          `SELECT cf.id, COALESCE(cf.display_name, f.original_name) AS name
-           FROM collection_files cf JOIN files f ON f.id = cf.file_id
-           WHERE cf.id = ? AND cf.is_active = 1 LIMIT 1`
-        ).bind(fileId).first();
-        if (!cf) continue;
+      // 1. Kullanıcının root klasörünü bul (yoksa oluştur)
+      let userRoot = await db.prepare(`
+        SELECT id FROM user_collections WHERE user_id = ? AND parent_id IS NULL LIMIT 1
+      `).bind(userId).first();
+
+      if (!userRoot) {
+        const insertRoot = await db.prepare(`
+          INSERT INTO user_collections (user_id, parent_id, name, sort_order)
+          VALUES (?, NULL, '__root__', 0)
+        `).bind(userId).run();
+        userRoot = { id: insertRoot.meta.last_row_id };
+      }
+
+      for (const fileId of file_ids.map(Number)) {
+        // 2. Dosya bilgilerini al (display_name veya original_name)
+        const fileInfo = await db.prepare(`
+          SELECT
+            f.id as file_id,
+            COALESCE(cf.display_name, f.original_name) as display_name,
+            f.file_key,
+            f.mime_type,
+            f.file_size
+          FROM collection_files cf
+          JOIN files f ON f.id = cf.file_id
+          WHERE cf.id = ? AND cf.is_active = 1
+          LIMIT 1
+        `).bind(fileId).first();
+
+        if (!fileInfo) {
+          console.log(`Dosya bulunamadı: ${fileId}`);
+          continue;
+        }
+
+        // 3. Aynı dosya daha önce bu kullanıcıya paylaşılmış mı kontrol et
+        const existing = await db.prepare(`
+          SELECT id FROM user_collection_files
+          WHERE collection_id = ? AND file_id = ?
+        `).bind(userRoot.id, fileInfo.file_id).first();
+
+        if (existing) {
+          console.log(`Dosya zaten paylaşılmış: user=${userId}, file=${fileInfo.file_id}`);
+          continue;
+        }
+
+        // 4. Kullanıcının klasörüne dosya kaydını ekle
+        const insertFile = await db.prepare(`
+          INSERT INTO user_collection_files (collection_id, file_id, display_name, is_read, added_at)
+          VALUES (?, ?, ?, 0, ?)
+        `).bind(userRoot.id, fileInfo.file_id, fileInfo.display_name, now).run();
+
+        // 5. Bildirim oluştur
         await db.prepare(`
-          INSERT OR IGNORE INTO user_notifications (user_id, type, title, body, ref_id, ref_type, created_at, is_read)
-          VALUES (?, 'file_shared', ?, ?, ?, 'collection_file', ?, 0)
+          INSERT INTO notifications (user_id, type, title, content, is_read, created_at)
+          VALUES (?, 'file_shared', ?, ?, 0, ?)
         `).bind(
           userId,
-          `Dosya paylaşıldı: ${cf.name}`,
-          `${auth.user.full_name || 'Yönetici'} bir dosyayı sizinle paylaştı.`,
-          cf.id, now
+          `Yeni dosya paylaşıldı: ${fileInfo.display_name}`,
+          `${auth.user.full_name || 'Yönetici'} tarafından sizinle bir dosya paylaşıldı. "Kurum Dosyaları" bölümünden inceleyebilirsiniz.`,
+          now
         ).run();
+
         sent++;
       }
     }
-    return c.json({ success: true, sent });
-  } catch(e) {
-    console.error('/api/system/send-to-users error:', e);
-    return c.json({ error: e.message || 'Sunucu hatası' }, 500);
+
+    return c.json({
+      success: true,
+      sent,
+      message: `${sent} dosya ${user_ids.length} kullanıcıya paylaşıldı.`
+    });
+
+  } catch (error) {
+    console.error('System send-to-users error:', error);
+    return c.json({
+      error: error.message || 'Dosya paylaşılırken bir hata oluştu.'
+    }, 500);
   }
 });
 
