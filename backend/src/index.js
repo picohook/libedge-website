@@ -2774,6 +2774,8 @@ app.post('/api/institution/:id/file', async (c) => {
   `).bind(targetCollection.id, stored.id).first();
 
   if (existingRef) {
+    await db.prepare(`UPDATE collection_files SET display_name = ?, category = ? WHERE id = ?`)
+      .bind(file_name?.trim() || stored.original_name, category || 'other', existingRef.id).run();
     return c.json({ success: true, id: existingRef.id, deduplicated: true });
   }
 
@@ -3046,7 +3048,11 @@ app.post('/api/files/use', async (c) => {
     WHERE collection_id = ? AND file_id = ? AND is_active = 1
     LIMIT 1
   `).bind(collection.id, stored.id).first();
-  if (existing) return c.json({ success: true, id: existing.id, deduplicated: true });
+  if (existing) {
+    await db.prepare(`UPDATE collection_files SET display_name = ?, category = ? WHERE id = ?`)
+      .bind(display_name?.trim() || stored.original_name, category || 'other', existing.id).run();
+    return c.json({ success: true, id: existing.id, deduplicated: true });
+  }
 
   const result = await db.prepare(`
     INSERT INTO collection_files (collection_id, file_id, display_name, category, is_public, is_active, sort_order, added_by, added_at)
@@ -3297,7 +3303,11 @@ app.post('/api/collections/:id/files', async (c) => {
     WHERE collection_id = ? AND file_id = ? AND is_active = 1
     LIMIT 1
   `).bind(collection.id, stored.id).first();
-  if (existing) return c.json({ success: true, id: existing.id, deduplicated: true });
+  if (existing) {
+    await db.prepare(`UPDATE collection_files SET display_name = ?, category = ? WHERE id = ?`)
+      .bind(display_name?.trim() || stored.original_name, category || 'other', existing.id).run();
+    return c.json({ success: true, id: existing.id, deduplicated: true });
+  }
 
   const result = await db.prepare(`
     INSERT INTO collection_files (collection_id, file_id, display_name, category, is_public, is_active, sort_order, added_by, added_at)
@@ -3605,7 +3615,13 @@ app.post('/api/system/file', async (c) => {
     WHERE collection_id = ? AND file_id = ? AND is_active = 1
     LIMIT 1
   `).bind(targetCollection.id, stored.id).first();
-  if (existing) return c.json({ success: true, id: existing.id, deduplicated: true });
+  if (existing) {
+    // Upload endpoint creates a placeholder record with category='other'.
+    // Always apply the user's chosen display_name and category on form submission.
+    await db.prepare(`UPDATE collection_files SET display_name = ?, category = ? WHERE id = ?`)
+      .bind(display_name?.trim() || stored.original_name, category || 'other', existing.id).run();
+    return c.json({ success: true, id: existing.id, deduplicated: true });
+  }
 
   if (Number(targetCollection.id) !== Number(root.id)) {
     const existingRootRef = await db.prepare(`
