@@ -422,6 +422,25 @@
     </div>
 </div>
 
+<!-- Kurum Dosyaları Slide-Over Panel -->
+<div id="instFilesOverlay" class="hidden fixed inset-0 bg-black bg-opacity-30 z-40" onclick="closeInstFilesPanel()"></div>
+<div id="instFilesPanel" class="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col transform translate-x-full transition-transform duration-300">
+    <!-- Başlık -->
+    <div class="flex items-center justify-between px-5 py-4 border-b bg-gray-50 flex-shrink-0">
+        <div>
+            <p class="text-xs text-gray-400 uppercase font-semibold">Kurum Dosyaları</p>
+            <h3 id="instFilesPanelTitle" class="font-semibold text-gray-800 truncate"></h3>
+        </div>
+        <button onclick="closeInstFilesPanel()" class="text-gray-400 hover:text-gray-600 text-xl ml-4"><i class="fas fa-times"></i></button>
+    </div>
+    <!-- Breadcrumb -->
+    <div id="instFilesBreadcrumb" class="px-5 py-2 text-sm text-gray-500 border-b bg-white flex-shrink-0 hidden"></div>
+    <!-- İçerik -->
+    <div id="instFilesBody" class="flex-1 overflow-y-auto px-4 py-3">
+        <div class="text-center py-12"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>
+    </div>
+</div>
+
 <!-- Klasör Ekle Modal -->
 <div id="adminFolderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-md">
@@ -3357,7 +3376,11 @@ function renderInstitutions(institutions) {
             <td class="px-4 py-2">${escapeHtml(inst.domain || '-')}</td>
             <td class="px-4 py-2">${inst.user_count ?? '-'}</td>
             <td class="px-4 py-2">${inst.file_count ?? '-'}</td>
-            <td class="px-4 py-2 flex gap-2">
+            <td class="px-4 py-2 flex gap-2 items-center">
+                <button onclick="openInstFilesPanel(${inst.id},'${escapeHtml(inst.displayName || inst.name)}')"
+                    class="text-purple-600 hover:text-purple-800" title="Dosyaları Gör">
+                    <i class="fas fa-folder-open"></i>
+                </button>
                 ${inst.source === 'airtable' ?
                     `<button onclick="editAirtableAccount('${inst.id}', '${escapeHtml(inst.displayName)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(inst.category || '')}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>` :
                     `<button onclick="openEditInstitutionModal(${inst.id}, '${escapeHtml(inst.name)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(normalizeCategory(inst.category || ''))}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>
@@ -3384,6 +3407,130 @@ async function deleteInstitution(id, name) {
     } catch (err) {
         showToast('Bağlantı hatası!', 'error');
     }
+}
+
+// ====================== KURUM DOSYALARI PANELİ ======================
+let _instFilesState = { instId: null, instName: '', folderId: null, folderStack: [] };
+
+function openInstFilesPanel(instId, instName) {
+    _instFilesState = { instId, instName, folderId: null, folderStack: [] };
+    document.getElementById('instFilesPanelTitle').textContent = instName;
+    document.getElementById('instFilesBreadcrumb').classList.add('hidden');
+    document.getElementById('instFilesOverlay').classList.remove('hidden');
+    const panel = document.getElementById('instFilesPanel');
+    panel.classList.remove('hidden');
+    requestAnimationFrame(() => panel.classList.remove('translate-x-full'));
+    loadInstFilesPanel();
+}
+
+function closeInstFilesPanel() {
+    const panel = document.getElementById('instFilesPanel');
+    panel.classList.add('translate-x-full');
+    setTimeout(() => {
+        panel.classList.add('hidden');
+        document.getElementById('instFilesOverlay').classList.add('hidden');
+    }, 300);
+}
+
+function instFilesOpenFolder(folderId, folderName) {
+    _instFilesState.folderStack.push({ id: _instFilesState.folderId, name: folderName });
+    _instFilesState.folderId = folderId;
+    loadInstFilesPanel();
+}
+
+function instFilesGoBack() {
+    const prev = _instFilesState.folderStack.pop();
+    _instFilesState.folderId = prev ? prev.id : null;
+    loadInstFilesPanel();
+}
+
+function instFilesGoRoot() {
+    _instFilesState.folderStack = [];
+    _instFilesState.folderId = null;
+    loadInstFilesPanel();
+}
+
+async function loadInstFilesPanel() {
+    const { instId, instName, folderId, folderStack } = _instFilesState;
+    const body = document.getElementById('instFilesBody');
+    const bcEl = document.getElementById('instFilesBreadcrumb');
+    body.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>';
+
+    // Breadcrumb
+    if (folderStack.length > 0) {
+        let bc = `<span class="cursor-pointer text-primary hover:underline" onclick="instFilesGoRoot()">${escapeHtml(instName)}</span>`;
+        folderStack.forEach((f, i) => {
+            const isLast = i === folderStack.length - 1;
+            bc += isLast
+                ? ` / <span class="font-medium text-gray-700">${escapeHtml(f.name)}</span>`
+                : ` / <span class="cursor-pointer text-primary hover:underline" onclick="instFilesGoToDepth(${i})">${escapeHtml(f.name)}</span>`;
+        });
+        bcEl.innerHTML = `<button onclick="instFilesGoBack()" class="mr-2 text-gray-400 hover:text-gray-700"><i class="fas fa-arrow-left"></i></button>${bc}`;
+        bcEl.classList.remove('hidden');
+    } else {
+        bcEl.classList.add('hidden');
+    }
+
+    try {
+        // Klasörler — pass parent param so backend filters correctly
+        const parentParam = folderId ? `?parent=${folderId}` : '';
+        const fRes = await fetch(`${API_BASE}/api/institution/${instId}/folders${parentParam}`, { credentials: 'include' });
+        const folders = fRes.ok ? await fRes.json() : [];
+
+        // Dosyalar
+        const fileUrl = folderId
+            ? `${API_BASE}/api/institution/folder/${folderId}/files`
+            : `${API_BASE}/api/institution/${instId}/files`;
+        const fiRes = await fetch(fileUrl, { credentials: 'include' });
+        const files = fiRes.ok ? await fiRes.json() : [];
+
+        if (!folders.length && !files.length) {
+            body.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-folder-open text-4xl mb-2 opacity-40 block"></i>Bu konumda içerik yok</div>';
+            return;
+        }
+
+        let html = '';
+
+        if (folders.length) {
+            html += '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">';
+            html += folders.map(f => `
+                <div class="border rounded-lg p-3 hover:bg-yellow-50 cursor-pointer text-center"
+                     onclick="instFilesOpenFolder(${f.id},'${escapeHtml(f.folder_name)}')">
+                    <i class="fas fa-folder text-2xl text-yellow-500 mb-1 block"></i>
+                    <p class="text-xs font-medium truncate" title="${escapeHtml(f.folder_name)}">${escapeHtml(f.folder_name)}</p>
+                </div>`).join('');
+            html += '</div>';
+        }
+
+        if (files.length) {
+            html += '<div class="space-y-1">';
+            html += files.map(f => {
+                const name = f.display_name || f.file_name || f.original_name || 'Dosya';
+                const type = f.file_type || f.extension || '';
+                const url  = f.file_url || (f.file_key ? `/api/files/${f.file_key}` : '');
+                return `
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50">
+                    <i class="fas ${getFileIcon(type)} text-gray-400 flex-shrink-0 w-4 text-center"></i>
+                    <a href="javascript:void(0)"
+                       onclick="previewFile('${escapeHtml(url)}','${escapeHtml(name)}','${escapeHtml(type)}')"
+                       class="flex-1 text-sm text-primary hover:underline truncate">${escapeHtml(name)}</a>
+                    <span class="text-xs text-gray-400 flex-shrink-0">${type.toUpperCase()}</span>
+                </div>`;
+            }).join('');
+            html += '</div>';
+        }
+
+        body.innerHTML = html;
+    } catch (err) {
+        body.innerHTML = '<div class="text-center py-12 text-red-400">Yüklenirken hata oluştu</div>';
+        console.error('instFilesPanel error:', err);
+    }
+}
+
+function instFilesGoToDepth(index) {
+    _instFilesState.folderStack = _instFilesState.folderStack.slice(0, index + 1);
+    _instFilesState.folderId = _instFilesState.folderStack[index]?.id ?? null;
+    loadInstFilesPanel();
 }
 
 function filterInstitutions() {

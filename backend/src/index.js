@@ -2375,24 +2375,9 @@ app.get('/api/institution/:id/folders', async (c) => {
     const root = await ensureInstitutionRootCollection(db, institution.id);
     const parentCollectionId = parentId && parentId !== 'null' ? Number(parentId) : root.id;
 
+    const publicFilter = canManage ? '' : 'AND col.is_public = 1';
+    const cfPublicFilter = canManage ? '' : 'AND cf.is_public = 1';
     const result = await db.prepare(`
-      WITH RECURSIVE folder_tree(root_id, node_id) AS (
-        SELECT col.id, col.id
-        FROM collections col
-        WHERE col.scope_type = 'institution'
-          AND col.scope_id = ?
-          AND col.kind = 'folder'
-          AND col.is_active = 1
-          AND col.parent_id = ?
-          ${canManage ? '' : 'AND col.is_public = 1'}
-        UNION ALL
-        SELECT ft.root_id, child.id
-        FROM collections child
-        JOIN folder_tree ft ON child.parent_id = ft.node_id
-        WHERE child.kind = 'folder'
-          AND child.is_active = 1
-          ${canManage ? '' : 'AND child.is_public = 1'}
-      )
       SELECT
         col.id,
         col.scope_id AS institution_id,
@@ -2401,28 +2386,19 @@ app.get('/api/institution/:id/folders', async (c) => {
         col.is_public,
         col.created_by,
         col.created_at,
-        (
-          SELECT COUNT(DISTINCT ft2.node_id) - 1
-          FROM folder_tree ft2
-          WHERE ft2.root_id = col.id
-        ) AS subfolder_count,
-        (
-          SELECT COUNT(cf.id)
-          FROM folder_tree ft2
-          JOIN collection_files cf ON cf.collection_id = ft2.node_id
-          WHERE ft2.root_id = col.id
-            AND cf.is_active = 1
-            ${canManage ? '' : 'AND cf.is_public = 1'}
-        ) AS file_count
+        (SELECT COUNT(*) FROM collections sub
+         WHERE sub.parent_id = col.id AND sub.kind = 'folder' AND sub.is_active = 1) AS subfolder_count,
+        (SELECT COUNT(*) FROM collection_files cf
+         WHERE cf.collection_id = col.id AND cf.is_active = 1 ${cfPublicFilter}) AS file_count
       FROM collections col
       WHERE col.scope_type = 'institution'
         AND col.scope_id = ?
         AND col.kind = 'folder'
         AND col.is_active = 1
         AND col.parent_id = ?
-        ${canManage ? '' : 'AND col.is_public = 1'}
+        ${publicFilter}
       ORDER BY col.sort_order, col.name
-    `).bind(institution.id, parentCollectionId, institution.id, parentCollectionId).all();
+    `).bind(institution.id, parentCollectionId).all();
 
     return c.json(result.results || []);
   } catch (err) {
