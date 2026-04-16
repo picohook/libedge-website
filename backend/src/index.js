@@ -212,6 +212,10 @@ async function ensureAnnouncementColumns(db) {
   if (!existing.has('ai_image_prompt')) {
     await db.prepare(`ALTER TABLE announcements ADD COLUMN ai_image_prompt TEXT`).run();
   }
+  // 🆕 Yeni sütun
+  if (!existing.has('scheduled_publish_at')) {
+    await db.prepare(`ALTER TABLE announcements ADD COLUMN scheduled_publish_at TEXT`).run();
+  }
 }
 
 function cleanAnnouncementText(value) {
@@ -4646,6 +4650,37 @@ app.delete('/api/admin/announcements/:id', async (c) => {
     return c.json({ error: err.message }, 500);
   }
 });
+
+// index.js - Yeni endpoint: Taslağı hemen yayınla
+// Diğer app.post('/api/admin/announcements/...') endpoint'lerinin yanına ekleyin
+
+app.post('/api/admin/announcements/:id/publish', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const id = c.req.param('id');
+
+  try {
+    await ensureAnnouncementColumns(db);
+    
+    const result = await db.prepare(`
+      UPDATE announcements
+      SET is_published = 1, 
+          scheduled_publish_at = NULL,
+          published_at = COALESCE(published_at, CURRENT_TIMESTAMP),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND is_published = 0
+    `).bind(id).run();
+    
+    if (result.meta?.changes === 0) {
+      return c.json({ error: 'Duyuru bulunamadı veya zaten yayında' }, 404);
+    }
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('Publish announcement error:', err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
 // ====================== DESTEK TALEPLERİ ======================
 
 // Kullanıcı: yeni talep oluştur
