@@ -212,14 +212,20 @@ async function ensureAnnouncementColumns(db) {
   if (!existing.has('ai_image_prompt')) {
     await db.prepare(`ALTER TABLE announcements ADD COLUMN ai_image_prompt TEXT`).run();
   }
-  // 🆕 Yeni sütun
-  if (!existing.has('scheduled_publish_at')) {
-    await db.prepare(`ALTER TABLE announcements ADD COLUMN scheduled_publish_at TEXT`).run();
-  }
 }
 
 function cleanAnnouncementText(value) {
   return String(value || '').trim();
+}
+
+function parseAnnouncementPublishAt(value) {
+  const raw = cleanAnnouncementText(value);
+  if (!raw) return null;
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  return parsed.toISOString();
 }
 
 function getPollinationsKey(env) {
@@ -4475,8 +4481,8 @@ app.get('/api/announcements', async (c) => {
     const rows = await db.prepare(`
       SELECT id, title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, published_at
       FROM announcements
-      WHERE is_published = 1 
-      AND (scheduled_publish_at IS NULL OR datetime(scheduled_publish_at) <= datetime('now'))
+      WHERE is_published = 1
+        AND datetime(COALESCE(published_at, CURRENT_TIMESTAMP)) <= CURRENT_TIMESTAMP
       ORDER BY published_at DESC
     `).all();
     const announcements = (rows.results || []).map(row => ({
@@ -4575,7 +4581,6 @@ app.post('/api/admin/announcements', async (c) => {
   const auth = await requireAuth(c);
   const db = c.env.DB;
   const body = await c.req.json();
-  
   const title = cleanAnnouncementText(body.title);
   const summary = cleanAnnouncementText(body.summary);
   const fullContent = cleanAnnouncementText(body.full_content);
@@ -4587,34 +4592,20 @@ app.post('/api/admin/announcements', async (c) => {
   const category = cleanAnnouncementText(body.category) || 'general';
   const priority = cleanAnnouncementText(body.priority) || 'medium';
   const isPublished = body.is_published ? 1 : 0;
-  const scheduledPublishAt = body.scheduled_publish_at || null;
+  const publishAt = parseAnnouncementPublishAt(body.published_at);
 
   if (!title) return c.json({ error: 'Başlık zorunludur' }, 400);
+  if (cleanAnnouncementText(body.published_at) && !publishAt) {
+    return c.json({ error: 'Yayın tarihi geçersiz' }, 400);
+  }
 
   try {
     await ensureAnnouncementColumns(db);
-    
-    // scheduled_publish_at varsa ve gelecekte ise is_published = 0 yap
-    let finalIsPublished = isPublished;
-    if (scheduledPublishAt && new Date(scheduledPublishAt) > new Date()) {
-      finalIsPublished = 0;
-    }
 
     const result = await db.prepare(`
-      INSERT INTO announcements (
-        title, summary, full_content, title_en, summary_en, full_content_en, 
-        cover_image_url, ai_image_prompt, category, priority, is_published, 
-        scheduled_publish_at, published_at, updated_at, created_by
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-              CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END, 
-              CURRENT_TIMESTAMP, ?)
-    `).bind(
-      title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null,
-      coverImageUrl || null, aiImagePrompt || null, category, priority, finalIsPublished,
-      scheduledPublishAt, finalIsPublished, auth.user.user_id
-    ).run();
-    
+      INSERT INTO announcements (title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, is_published, published_at, updated_at, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? IS NOT NULL THEN ? ELSE CURRENT_TIMESTAMP END, CURRENT_TIMESTAMP, ?)
+    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, publishAt, publishAt, auth.user.user_id).run();
     return c.json({ success: true, id: result.meta?.last_row_id });
   } catch (err) {
     console.error('Create announcement error:', err);
@@ -4638,17 +4629,27 @@ app.put('/api/admin/announcements/:id', async (c) => {
   const category = cleanAnnouncementText(body.category) || 'general';
   const priority = cleanAnnouncementText(body.priority) || 'medium';
   const isPublished = body.is_published ? 1 : 0;
+  const publishAt = parseAnnouncementPublishAt(body.published_at);
 
   if (!title) return c.json({ error: 'Başlık zorunludur' }, 400);
+  if (cleanAnnouncementText(body.published_at) && !publishAt) {
+    return c.json({ error: 'Yayın tarihi geçersiz' }, 400);
+  }
 
   try {
     await ensureAnnouncementColumns(db);
 
     const result = await db.prepare(`
       UPDATE announcements
-      SET title = ?, summary = ?, full_content = ?, title_en = ?, summary_en = ?, full_content_en = ?, cover_image_url = ?, ai_image_prompt = ?, category = ?, priority = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
+      SET title = ?, summary = ?, full_content = ?, title_en = ?, summary_en = ?, full_content_en = ?, cover_image_url = ?, ai_image_prompt = ?, category = ?, priority = ?, is_published = ?,
+          published_at = CASE
+            WHEN ? IS NOT NULL THEN ?
+            WHEN ? = 1 THEN COALESCE(published_at, CURRENT_TIMESTAMP)
+            ELSE published_at
+          END,
+          updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, id).run();
+    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, publishAt, publishAt, isPublished, id).run();
     if (result.meta?.changes === 0) return c.json({ error: 'Duyuru bulunamadı' }, 404);
     return c.json({ success: true });
   } catch (err) {
@@ -4667,36 +4668,6 @@ app.delete('/api/admin/announcements/:id', async (c) => {
     return c.json({ success: true });
   } catch (err) {
     console.error('Delete announcement error:', err);
-    return c.json({ error: err.message }, 500);
-  }
-});
-
-// index.js - Yeni endpoint: Taslağı hemen yayınla
-// Diğer app.post('/api/admin/announcements/...') endpoint'lerinin yanına ekleyin
-
-app.post('/api/admin/announcements/:id/publish', async (c) => {
-  if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const db = c.env.DB;
-  const id = c.req.param('id');
-
-  try {
-    await ensureAnnouncementColumns(db);
-    
-    const result = await db.prepare(`
-      UPDATE announcements
-      SET is_published = 1, 
-          scheduled_publish_at = NULL,
-          published_at = COALESCE(published_at, CURRENT_TIMESTAMP),
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND is_published = 0
-    `).bind(id).run();
-    
-    if (result.meta?.changes === 0) {
-      return c.json({ error: 'Duyuru bulunamadı veya zaten yayında' }, 404);
-    }
-    return c.json({ success: true });
-  } catch (err) {
-    console.error('Publish announcement error:', err);
     return c.json({ error: err.message }, 500);
   }
 });
