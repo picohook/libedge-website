@@ -144,6 +144,15 @@ function randomPassword(length = 24) {
 }
 
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function cleanAnnouncementText(value) {
   return String(value || '').trim();
 }
@@ -1362,12 +1371,12 @@ app.post('/form', async (c) => {
             to: ["info@libedge.com.tr", email],
             subject,
             html: `
-              <h3>${subject}</h3>
-              <p><b>Ad:</b> ${name}</p>
-              <p><b>Email:</b> ${email}</p>
-              ${formType === "contact" ? `<p><b>Telefon:</b> ${data.phone || "-"}</p>` : ""}
-              ${formType === "contact" ? `<p><b>Konu:</b> ${data.subject || "-"}</p>` : ""}
-              <p><b>Mesaj:</b> ${message || (formType === "newsletter" ? "Newsletter subscription request" : "-")}</p>
+              <h3>${escapeHtml(subject)}</h3>
+              <p><b>Ad:</b> ${escapeHtml(name)}</p>
+              <p><b>Email:</b> ${escapeHtml(email)}</p>
+              ${formType === "contact" ? `<p><b>Telefon:</b> ${escapeHtml(data.phone || "-")}</p>` : ""}
+              ${formType === "contact" ? `<p><b>Konu:</b> ${escapeHtml(data.subject || "-")}</p>` : ""}
+              <p><b>Mesaj:</b> ${escapeHtml(message || (formType === "newsletter" ? "Newsletter subscription request" : "-"))}</p>
             `
           })
         });
