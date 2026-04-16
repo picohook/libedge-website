@@ -103,32 +103,6 @@ async function getOptionalAuth(c) {
   }
 }
 
-async function ensureNewsletterTable(db) {
-  await db.prepare(`
-    CREATE TABLE IF NOT EXISTS newsletter_subscriptions (
-      id              INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id         INTEGER UNIQUE,
-      email           TEXT NOT NULL UNIQUE,
-      status          TEXT NOT NULL DEFAULT 'active',
-      source          TEXT NOT NULL DEFAULT 'guest',
-      subscribed_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-      unsubscribed_at DATETIME,
-      created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `).run();
-
-  await db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_newsletter_status
-    ON newsletter_subscriptions(status)
-  `).run();
-
-  await db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_newsletter_user_status
-    ON newsletter_subscriptions(user_id, status)
-  `).run();
-}
 
 function splitFullName(fullName) {
   const cleaned = String(fullName || '').trim().replace(/\s+/g, ' ');
@@ -178,44 +152,6 @@ function randomPassword(length = 24) {
   return Array.from(bytes, byte => alphabet[byte % alphabet.length]).join('');
 }
 
-async function ensureUserContactColumns(db) {
-  const columns = await db.prepare(`PRAGMA table_info(users)`).all();
-  const existing = new Set((columns.results || []).map(column => column.name));
-
-  if (!existing.has('first_name')) {
-    await db.prepare(`ALTER TABLE users ADD COLUMN first_name TEXT`).run();
-  }
-  if (!existing.has('last_name')) {
-    await db.prepare(`ALTER TABLE users ADD COLUMN last_name TEXT`).run();
-  }
-  if (!existing.has('title')) {
-    await db.prepare(`ALTER TABLE users ADD COLUMN title TEXT`).run();
-  }
-}
-
-async function ensureAnnouncementColumns(db) {
-  const columns = await db.prepare(`PRAGMA table_info(announcements)`).all();
-  const existing = new Set((columns.results || []).map(column => column.name));
-
-  if (!existing.has('cover_image_url')) {
-    await db.prepare(`ALTER TABLE announcements ADD COLUMN cover_image_url TEXT`).run();
-  }
-  if (!existing.has('title_en')) {
-    await db.prepare(`ALTER TABLE announcements ADD COLUMN title_en TEXT`).run();
-  }
-  if (!existing.has('summary_en')) {
-    await db.prepare(`ALTER TABLE announcements ADD COLUMN summary_en TEXT`).run();
-  }
-  if (!existing.has('full_content_en')) {
-    await db.prepare(`ALTER TABLE announcements ADD COLUMN full_content_en TEXT`).run();
-  }
-  if (!existing.has('ai_image_prompt')) {
-    await db.prepare(`ALTER TABLE announcements ADD COLUMN ai_image_prompt TEXT`).run();
-  }
-  if (!existing.has('scheduled_publish_at')) {
-    await db.prepare(`ALTER TABLE announcements ADD COLUMN scheduled_publish_at TEXT`).run();
-  }
-}
 
 function cleanAnnouncementText(value) {
   return String(value || '').trim();
@@ -1153,7 +1089,7 @@ app.post('/api/user/update', async (c) => {
   const userId = auth.user.user_id;
   const { full_name, institution, new_password } = await c.req.json();
   const db = c.env.DB;
-  await ensureUserContactColumns(db);
+
   const profileFields = normalizeUserProfileFields({ full_name });
 
   if (new_password) {
@@ -1179,7 +1115,7 @@ app.delete('/api/user/delete', async (c) => {
   const userId = auth.user.user_id;
   const db = c.env.DB;
   
-  await ensureNewsletterTable(db);
+
   await db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM subscriptions WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
@@ -1283,7 +1219,7 @@ app.get('/api/newsletter/status', async (c) => {
   if (auth.response) return auth.response;
 
   const db = c.env.DB;
-  await ensureNewsletterTable(db);
+
   const subscription = await db.prepare(`
     SELECT id, email, status, subscribed_at, unsubscribed_at, updated_at
     FROM newsletter_subscriptions
@@ -1311,7 +1247,7 @@ app.post('/api/newsletter/subscribe', async (c) => {
     }
 
     const db = c.env.DB;
-    await ensureNewsletterTable(db);
+  
     const existing = await db.prepare(`
       SELECT id, user_id, email, status
       FROM newsletter_subscriptions
@@ -1361,7 +1297,7 @@ app.delete('/api/newsletter/subscribe', async (c) => {
   if (auth.response) return auth.response;
 
   const db = c.env.DB;
-  await ensureNewsletterTable(db);
+
   await db.prepare(`
     UPDATE newsletter_subscriptions
     SET status = 'inactive', unsubscribed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
@@ -1377,7 +1313,7 @@ app.post('/api/auth/register', async (c) => {
   try {
     const { email, password, full_name, institution } = await c.req.json();
     const db = c.env.DB;
-    await ensureUserContactColumns(db);
+  
 
     if (!email || !password) {
       return c.json({ success: false, error: 'E-posta ve şifre zorunludur.' }, 400);
@@ -1482,7 +1418,7 @@ app.get('/api/admin/users', async (c) => {
   if (!await canListUsers(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   const role = await getUserRole(c);
-  await ensureUserContactColumns(db);
+
 
   let users;
   if (role === 'super_admin') {
@@ -1526,7 +1462,7 @@ app.get('/api/admin/dashboard', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
 
   const db = c.env.DB;
-  await ensureUserContactColumns(db);
+
 
   const role = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
@@ -1795,7 +1731,7 @@ app.post('/api/admin/user', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const { email, password, full_name, first_name, last_name, title, institution, institution_id, role } = await c.req.json();
   const db = c.env.DB;
-  await ensureUserContactColumns(db);
+
   const adminRole = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
@@ -1862,7 +1798,7 @@ app.put('/api/admin/user/:id', async (c) => {
   const id = c.req.param('id');
   const { email, password, full_name, first_name, last_name, title, institution, institution_id, role } = await c.req.json();
   const db = c.env.DB;
-  await ensureUserContactColumns(db);
+
   const adminRole = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
@@ -1936,7 +1872,7 @@ app.delete('/api/admin/user/:id', async (c) => {
 
   const db = c.env.DB;
 
-  await ensureNewsletterTable(db);
+
   await db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(id).run();
   await db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id).run();
   await db.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
@@ -4476,7 +4412,7 @@ app.get('/api/_legacy/files/*', (c) => c.json({ error: 'Kaldırıldı' }, 410));
 app.get('/api/announcements', async (c) => {
   const db = c.env.DB;
   try {
-    await ensureAnnouncementColumns(db);
+
 
     // Zamanı gelen planlı duyuruları otomatik yayınla
     await db.prepare(`
@@ -4522,7 +4458,7 @@ app.get('/api/admin/announcements', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   try {
-    await ensureAnnouncementColumns(db);
+
 
     // Zamanı gelen planlı duyuruları otomatik yayınla
     await db.prepare(`
@@ -4644,7 +4580,7 @@ app.post('/api/admin/announcements', async (c) => {
   }
 
   try {
-    await ensureAnnouncementColumns(db);
+
 
     const result = await db.prepare(`
       INSERT INTO announcements (title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, is_published, published_at, scheduled_publish_at, updated_at, created_by)
@@ -4685,7 +4621,7 @@ app.put('/api/admin/announcements/:id', async (c) => {
   }
 
   try {
-    await ensureAnnouncementColumns(db);
+
 
     const result = await db.prepare(`
       UPDATE announcements
@@ -4712,7 +4648,7 @@ app.delete('/api/admin/announcements/:id', async (c) => {
   const db = c.env.DB;
   const id = c.req.param('id');
   try {
-    await ensureAnnouncementColumns(db);
+
     await db.prepare(`DELETE FROM announcements WHERE id = ?`).bind(id).run();
     return c.json({ success: true });
   } catch (err) {
@@ -5295,7 +5231,7 @@ async function resolveInstitutionForContact(db, contact) {
 
 async function buildAirtableUserSyncChanges(c, { restrictToAdminInstitution = true } = {}) {
     const db = c.env.DB;
-    await ensureUserContactColumns(db);
+  
 
     const accounts = await fetchAirtableAccounts(c.env);
     const accountMap = new Map(accounts.map(account => [account.airtable_id, account.name]));
@@ -5538,7 +5474,7 @@ app.post('/api/admin/sync/airtable-contacts-to-users', async (c) => {
 
     try {
         const db = c.env.DB;
-        await ensureUserContactColumns(db);
+      
         const { changes } = await c.req.json();
         if (!Array.isArray(changes) || changes.length === 0) return c.json({ error: 'Uygulanacak değişiklik yok' }, 400);
 
