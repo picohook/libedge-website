@@ -289,6 +289,7 @@
                             <th>E-posta</th>
                             <th>Kurum</th>
                             <th>Rol</th>
+                            <th>Kayıt Tarihi</th>
                             <th>Son Giriş</th>
                             <th>İşlem</th>
                         </tr>
@@ -4040,7 +4041,7 @@ let allInstitutions = [];
 
 async function loadInstitutions() {
     const tbody = document.getElementById('institutionsList');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Yükleniyor...</td</tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Yükleniyor...</td></tr>';
     
     try {
         const d1Res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
@@ -4056,7 +4057,7 @@ async function loadInstitutions() {
         
     } catch (err) {
         console.error('loadInstitutions error:', err);
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-4">Yüklenirken hata oluştu</td</tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-4">Yüklenirken hata oluştu</td></tr>';
     }
 }
 
@@ -4064,7 +4065,7 @@ function renderInstitutions(institutions) {
     const tbody = document.getElementById('institutionsList');
     
     if (institutions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">Kurum bulunamadı</td</tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">Kurum bulunamadı</td></tr>';
         return;
     }
     
@@ -4781,18 +4782,18 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileVie
 // ====================== DUYURU YÖNETİMİ ======================
 
 const categoryMap = {
-    'urgent': '?? Acil',
-    'new-product': '?? Yeni rrnn',
-    'product-update': '?? Gnncelleme',
-    'event': '?? Etkinlik',
-    'maintenance': '?? Bakmm',
-    'general': '?? Genel'
+    'urgent': 'Acil',
+    'new-product': 'Yeni Ürün',
+    'product-update': 'Güncelleme',
+    'event': 'Etkinlik',
+    'maintenance': 'Bakım',
+    'general': 'Genel'
 };
 
 const priorityMap = {
-    'high': '?? Ykksek',
-    'medium': '?? Orta',
-    'low': '?? Dşükk'
+    'high': 'Yüksek',
+    'medium': 'Orta',
+    'low': 'Düşük'
 };
 
 // ====================== TALEPLER ======================
