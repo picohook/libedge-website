@@ -1065,7 +1065,8 @@
 
 <!-- Announcement Modal -->
 <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-2xl">
+    <div class="bg-white rounded-2xl w-full max-w-5xl max-h-[92vh] shadow-2xl flex flex-col overflow-hidden">
+        <div class="p-6 border-b border-gray-100">
         <div class="flex items-start justify-between gap-4 mb-5">
             <div>
                 <h3 id="announcementModalTitle" class="text-2xl font-bold text-gray-900">Yeni Duyuru</h3>
@@ -1075,12 +1076,14 @@
                 <i class="fas fa-times"></i>
             </button>
         </div>
+        </div>
 
-        <form id="announcementForm" class="pb-28">
+        <form id="announcementForm" class="flex flex-col min-h-0">
             <input type="hidden" id="announcementId">
             <input type="hidden" id="announcementAiImagePrompt">
             <input type="hidden" id="announcementSubmitIntent" value="published">
 
+            <div class="flex-1 overflow-y-auto p-6 min-h-0">
             <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
                 <div>
                     <div class="bg-gray-50 border border-gray-200 rounded-2xl p-5 mb-5">
@@ -1237,8 +1240,9 @@
                     </div>
                 </div>
             </div>
+            </div>
 
-            <div class="sticky bottom-0 -mx-6 mt-6 bg-white/95 backdrop-blur border-t border-gray-200 px-6 pt-4 pb-6 z-20">
+            <div class="shrink-0 bg-white/95 backdrop-blur border-t border-gray-200 px-6 pt-4 pb-6">
                 <div id="announcementFooterScheduleWrap" class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
                     <label class="block text-sm font-medium text-amber-900 mb-1">Planlı Yayın Tarihi</label>
                     <input type="datetime-local" id="announcementPublishAt" class="w-full border p-3 rounded-xl bg-white">
@@ -5210,13 +5214,15 @@ function getAnnouncementPublishPayload() {
 }
 
 function getAnnouncementPreviewModel() {
-    const mode = document.getElementById('announcementSubmitIntent').value;
+    const submitIntent = document.getElementById('announcementSubmitIntent').value;
+    const scheduleVisible = !document.getElementById('announcementFooterScheduleWrap').classList.contains('hidden');
     const category = document.getElementById('announcementCategory').value;
     const priority = document.getElementById('announcementPriority').value;
     const title = document.getElementById('announcementTitle').value.trim() || 'Duyuru başlığı';
     const summary = document.getElementById('announcementSummary').value.trim() || 'Kısa özet burada görünecek.';
     const publishAt = document.getElementById('announcementPublishAt').value;
     const imageUrl = document.getElementById('announcementCoverImage').value.trim();
+    const mode = scheduleVisible ? 'scheduled' : submitIntent;
 
     return { mode, category, priority, title, summary, publishAt, imageUrl };
 }
@@ -5284,6 +5290,7 @@ function submitAnnouncement(intent) {
     document.getElementById('announcementSubmitIntent').value = intent;
     toggleAnnouncementScheduleFields(intent === 'scheduled');
     if (intent === 'published') {
+        document.getElementById('announcementSubmitIntent').value = 'published';
         document.getElementById('announcementPublishAt').required = false;
     }
     document.getElementById('announcementForm').requestSubmit();
@@ -5295,6 +5302,7 @@ function handleScheduledAnnouncementAction() {
     document.getElementById('announcementSubmitIntent').value = 'scheduled';
 
     if (wrap.classList.contains('hidden')) {
+        document.getElementById('announcementSubmitIntent').value = 'scheduled';
         toggleAnnouncementScheduleFields(true);
         setTimeout(() => input.focus(), 30);
         showToast('Planlı yayın için tarih seçin, sonra aynı butona tekrar basın.', 'info');
