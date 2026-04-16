@@ -5045,6 +5045,8 @@ async function saveSubmission() {
     }
 }
 
+// ====================== DUYURU YÖNETİMİ FONKSİYONLARI ======================
+
 async function loadAnnouncements() {
     const container = document.getElementById('announcementsList');
     if (!container) return;
@@ -5074,7 +5076,7 @@ async function loadAnnouncements() {
             let statusBadge = '';
             if (!a.is_published) {
                 if (a.scheduled_publish_at && new Date(a.scheduled_publish_at) > new Date()) {
-                    statusBadge = `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full ml-2">⏰ Zamanlı: ${new Date(a.scheduled_publish_at).toLocaleDateString('tr-TR')}</span>`;
+                    statusBadge = `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full ml-2">⏰ Zamanlı</span>`;
                 } else {
                     statusBadge = '<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full ml-2 font-bold">📝 TASLAK</span>';
                 }
@@ -5122,6 +5124,88 @@ async function loadAnnouncements() {
         console.error('loadAnnouncements error:', err);
         container.innerHTML = '<p class="col-span-full text-center text-red-500 py-8">Yüklenirken hata oluştu</p>';
     }
+}
+
+function openAnnouncementModal() {
+    document.getElementById('announcementModalTitle').textContent = 'Yeni Duyuru';
+    resetAnnouncementForm();
+    document.getElementById('announcementModal').classList.remove('hidden');
+}
+
+function resetAnnouncementForm() {
+    const safeSetValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    };
+    
+    safeSetValue('announcementId', '');
+    safeSetValue('announcementAiImagePrompt', '');
+    safeSetValue('announcementImageCustomPrompt', '');
+    safeSetValue('announcementImageModel', 'flux');
+    safeSetValue('announcementTitle', '');
+    safeSetValue('announcementCategory', 'general');
+    safeSetValue('announcementPriority', 'medium');
+    safeSetValue('announcementSummary', '');
+    safeSetValue('announcementFullContent', '');
+    safeSetValue('announcementTitleEn', '');
+    safeSetValue('announcementSummaryEn', '');
+    safeSetValue('announcementFullContentEn', '');
+    safeSetValue('announcementCoverImage', '');
+    safeSetValue('isPublishedInput', '0');
+    safeSetValue('isScheduledMode', '0');
+    
+    const container = document.getElementById('scheduledPublishContainer');
+    if (container) container.classList.add('hidden');
+    
+    const uploadLabel = document.getElementById('announcementUploadLabel');
+    if (uploadLabel) uploadLabel.textContent = 'JPG, PNG veya WEBP seçin';
+    
+    const publishedCheckbox = document.getElementById('announcementPublished');
+    if (publishedCheckbox) publishedCheckbox.checked = true;
+    
+    updateAnnouncementCoverPreview();
+}
+
+function closeAnnouncementModal() {
+    document.getElementById('announcementModal').classList.add('hidden');
+}
+
+async function editAnnouncement(id) {
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.announcements || []);
+        const a = list.find(x => x.id === id);
+        if (!a) { showToast('Duyuru bulunamadı', 'error'); return; }
+        document.getElementById('announcementModalTitle').textContent = 'Duyuruyu Düzenle';
+        fillAnnouncementForm(a);
+        document.getElementById('announcementModal').classList.remove('hidden');
+    } catch (err) {
+        showToast('Duyuru bilgileri alınamadı', 'error');
+    }
+}
+
+function fillAnnouncementForm(a) {
+    document.getElementById('announcementId').value = a.id || '';
+    document.getElementById('announcementAiImagePrompt').value = a.ai_image_prompt || '';
+    document.getElementById('announcementTitle').value = a.title || '';
+    document.getElementById('announcementCategory').value = a.category || 'general';
+    document.getElementById('announcementPriority').value = a.priority || 'medium';
+    document.getElementById('announcementSummary').value = a.summary || '';
+    document.getElementById('announcementFullContent').value = a.full_content || '';
+    document.getElementById('announcementTitleEn').value = a.title_en || '';
+    document.getElementById('announcementSummaryEn').value = a.summary_en || '';
+    document.getElementById('announcementFullContentEn').value = a.full_content_en || '';
+    document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
+    document.getElementById('announcementPublished').checked = !!a.is_published;
+    updateAnnouncementCoverPreview();
+}
+
+async function deleteAnnouncement(id) {
+    if (!confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
+    const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, { method: 'DELETE', credentials: 'include' });
+    if (res.ok) { showToast('Duyuru silindi', 'success'); loadAnnouncements(); }
+    else showToast('İşlem başarısız oldu', 'error');
 }
 
 async function publishAnnouncementNow(id) {
