@@ -4575,6 +4575,7 @@ app.post('/api/admin/announcements', async (c) => {
   const auth = await requireAuth(c);
   const db = c.env.DB;
   const body = await c.req.json();
+  
   const title = cleanAnnouncementText(body.title);
   const summary = cleanAnnouncementText(body.summary);
   const fullContent = cleanAnnouncementText(body.full_content);
@@ -4586,16 +4587,34 @@ app.post('/api/admin/announcements', async (c) => {
   const category = cleanAnnouncementText(body.category) || 'general';
   const priority = cleanAnnouncementText(body.priority) || 'medium';
   const isPublished = body.is_published ? 1 : 0;
+  const scheduledPublishAt = body.scheduled_publish_at || null;
 
   if (!title) return c.json({ error: 'Başlık zorunludur' }, 400);
 
   try {
     await ensureAnnouncementColumns(db);
+    
+    // scheduled_publish_at varsa ve gelecekte ise is_published = 0 yap
+    let finalIsPublished = isPublished;
+    if (scheduledPublishAt && new Date(scheduledPublishAt) > new Date()) {
+      finalIsPublished = 0;
+    }
 
     const result = await db.prepare(`
-      INSERT INTO announcements (title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, is_published, published_at, updated_at, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
-    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, auth.user.user_id).run();
+      INSERT INTO announcements (
+        title, summary, full_content, title_en, summary_en, full_content_en, 
+        cover_image_url, ai_image_prompt, category, priority, is_published, 
+        scheduled_publish_at, published_at, updated_at, created_by
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+              CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END, 
+              CURRENT_TIMESTAMP, ?)
+    `).bind(
+      title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null,
+      coverImageUrl || null, aiImagePrompt || null, category, priority, finalIsPublished,
+      scheduledPublishAt, finalIsPublished, auth.user.user_id
+    ).run();
+    
     return c.json({ success: true, id: result.meta?.last_row_id });
   } catch (err) {
     console.error('Create announcement error:', err);
