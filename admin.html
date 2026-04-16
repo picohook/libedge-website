@@ -1235,10 +1235,21 @@
                 </div>
             </div>
 
-            <div class="flex gap-3 mt-6">
-                <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
-                <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 flex-1">İptal</button>
-            </div>
+<div class="flex gap-3 mt-6">
+  <button type="button" onclick="openAnnouncementPreview()" class="btn bg-gray-100 text-gray-700 hover:bg-gray-200">
+    <i class="fas fa-eye mr-2"></i>Önizleme
+  </button>
+  <button type="button" onclick="saveAnnouncementAsDraft()" class="btn bg-amber-500 text-white hover:bg-amber-600 flex-1">
+    <i class="fas fa-save mr-2"></i>Taslak Kaydet
+  </button>
+  <button type="submit" class="btn btn-primary flex-1">
+    <i class="fas fa-paper-plane mr-2"></i>Yayınla
+  </button>
+  <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 text-gray-700 hover:bg-gray-400">
+    İptal
+  </button>
+</div>
+<input type="hidden" id="isPublishedInput" value="0">
         </form>
     </div>
 </div>
