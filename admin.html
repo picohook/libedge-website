@@ -1128,10 +1128,26 @@
                         <div class="mb-3">
                             <label class="block text-sm font-medium text-gray-700 mb-1">İçerik</label>
                             <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
+                            <!-- Yayın Durumu ve Zamanlama -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 mt-4">
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Yayın Durumu</label>
+    <select id="announcementPublishStatus" class="w-full border p-3 rounded-xl" onchange="toggleScheduledPublish()">
+      <option value="draft">📝 Taslak (Yayında Değil)</option>
+      <option value="published">🚀 Hemen Yayınla</option>
+      <option value="scheduled">⏰ Zamanlı Yayınla</option>
+    </select>
+  </div>
+  <div id="scheduledPublishContainer" class="hidden">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Yayınlanma Tarihi</label>
+    <input type="datetime-local" id="announcementScheduledPublishAt" class="w-full border p-3 rounded-xl">
+    <p class="text-xs text-gray-400 mt-1">Belirtilen tarihte duyuru otomatik yayınlanacaktır.</p>
+  </div>
+</div>
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <input type="checkbox" id="announcementPublished" checked class="rounded">
+                            <input type="checkbox" id="announcementPublished" checked class="rounded" style="display:none">
                             <label for="announcementPublished" class="text-sm text-gray-700">Yayında</label>
                         </div>
                     </div>
