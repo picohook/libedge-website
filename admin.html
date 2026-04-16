@@ -289,7 +289,7 @@
                             <th>E-posta</th>
                             <th>Kurum</th>
                             <th>Rol</th>
-                            <th>Kay>t Tarihi</th>
+                            <th>Kayıt Tarihi</th>
                             <th>Son Giriş</th>
                             <th>İşlem</th>
                         </tr>
@@ -1288,7 +1288,7 @@
         <h3 class="text-xl font-bold mb-4">Kurum Ekle</h3>
         <form id="institutionForm">
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Ad-</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı-</label>
                 <input type="text" id="institutionName" placeholder="Örn: Ankara Üniversitesi" class="w-full border p-2 rounded" required>
             </div>
             <div class="mb-3">
@@ -1302,7 +1302,7 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
                 <input type="text" id="institutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
-                <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgnlle ay rin</p>
+                <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgülle ayırın</p>
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
@@ -1319,7 +1319,7 @@
         <form id="editInstitutionForm">
             <input type="hidden" id="editInstitutionId">
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Ad-</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı-</label>
                 <input type="text" id="editInstitutionName" class="w-full border p-2 rounded bg-gray-50" required>
             </div>
             <div class="mb-3">
@@ -5045,7 +5045,7 @@ async function saveSubmission() {
     }
 }
 
-// ====================== DUYURU YÖNETİMİ FONKSİYONLARI ======================
+// ====================== DUYURU YÖNETİMİ - TEMİZ VERSİYON ======================
 
 async function loadAnnouncements() {
     const container = document.getElementById('announcementsList');
@@ -5064,12 +5064,8 @@ async function loadAnnouncements() {
         }
 
         const localCategoryMap = {
-            urgent: 'Acil',
-            'new-product': 'Yeni Ürün',
-            'product-update': 'Güncelleme',
-            event: 'Etkinlik',
-            maintenance: 'Bakım',
-            general: 'Genel'
+            urgent: 'Acil', 'new-product': 'Yeni Ürün', 'product-update': 'Güncelleme',
+            event: 'Etkinlik', 'maintenance': 'Bakım', general: 'Genel'
         };
 
         container.innerHTML = list.map(a => {
@@ -5198,6 +5194,17 @@ function fillAnnouncementForm(a) {
     document.getElementById('announcementFullContentEn').value = a.full_content_en || '';
     document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
     document.getElementById('announcementPublished').checked = !!a.is_published;
+    
+    // Zamanlı yayın tarihi varsa container'ı göster
+    if (a.scheduled_publish_at && !a.is_published) {
+        const container = document.getElementById('scheduledPublishContainer');
+        if (container) container.classList.remove('hidden');
+        const dateInput = document.getElementById('announcementScheduledPublishAt');
+        if (dateInput && a.scheduled_publish_at) {
+            dateInput.value = a.scheduled_publish_at.slice(0, 16);
+        }
+    }
+    
     updateAnnouncementCoverPreview();
 }
 
@@ -5224,419 +5231,167 @@ async function publishAnnouncementNow(id) {
     }
 }
 
-function resetAnnouncementForm() {
-    document.getElementById('announcementId').value = '';
-    document.getElementById('announcementAiImagePrompt').value = '';
-    document.getElementById('announcementImageCustomPrompt').value = '';
-    document.getElementById('announcementImageModel').value = 'flux';
-    document.getElementById('announcementUploadLabel').textContent = 'JPG, PNG veya WEBP seçin';
-    document.getElementById('announcementTitle').value = '';
-    document.getElementById('announcementCategory').value = 'general';
-    document.getElementById('announcementPriority').value = 'medium';
-    document.getElementById('announcementSummary').value = '';
-    document.getElementById('announcementFullContent').value = '';
-    document.getElementById('announcementTitleEn').value = '';
-    document.getElementById('announcementSummaryEn').value = '';
-    document.getElementById('announcementFullContentEn').value = '';
-    document.getElementById('announcementCoverImage').value = '';
-    document.getElementById('announcementPublished').checked = true;
-    updateAnnouncementCoverPreview();
-}
-
-function fillAnnouncementForm(a) {
-    document.getElementById('announcementId').value = a.id || '';
-    document.getElementById('announcementAiImagePrompt').value = a.ai_image_prompt || '';
-    document.getElementById('announcementTitle').value = a.title || '';
-    document.getElementById('announcementCategory').value = a.category || 'general';
-    document.getElementById('announcementPriority').value = a.priority || 'medium';
-    document.getElementById('announcementSummary').value = a.summary || '';
-    document.getElementById('announcementFullContent').value = a.full_content || '';
-    document.getElementById('announcementTitleEn').value = a.title_en || '';
-    document.getElementById('announcementSummaryEn').value = a.summary_en || '';
-    document.getElementById('announcementFullContentEn').value = a.full_content_en || '';
-    document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
-    document.getElementById('announcementPublished').checked = !!a.is_published;
-    updateAnnouncementCoverPreview();
-}
-
-function updateAnnouncementCoverPreview() {
-    const url = document.getElementById('announcementCoverImage').value.trim();
-    const previewWrapper = document.getElementById('announcementCoverPreviewWrapper');
-    const promptBox = document.getElementById('announcementImagePromptBox');
-    const prompt = document.getElementById('announcementAiImagePrompt').value.trim();
-
-    if (url) {
-        previewWrapper.classList.remove('hidden');
-        // Resolve relative paths to absolute for <img src>
-        const src = url.startsWith('http') ? url : window.location.origin + url;
-        previewWrapper.innerHTML = `
-            <button type="button" onclick="clearAnnouncementImage()" title="Gmrseli kaldlr"
-                class="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow">
-                <i class="fas fa-times text-xs"></i>
-            </button>
-            <div id="announcementImgSpinner" class="w-full h-56 flex items-center justify-center bg-slate-50 text-slate-400">
-                <i class="fas fa-spinner fa-spin text-2xl"></i>
-            </div>`;
-        const img = new Image();
-        img.className = 'w-full h-56 object-cover';
-        img.alt = 'Duyuru kapak önizleme';
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-            const spinner = document.getElementById('announcementImgSpinner');
-            if (spinner) spinner.replaceWith(img);
-            // Add crop button after image loads
-            const cropBtn = document.createElement('button');
-            cropBtn.type = 'button';
-            cropBtn.className = 'absolute bottom-2 right-2 btn bg-white/90 text-gray-700 hover:bg-white text-xs shadow border border-gray-200';
-            cropBtn.innerHTML = '<i class="fas fa-crop-alt mr-1"></i>Kırp';
-            cropBtn.onclick = () => openCoverCropModal(src, null);
-            previewWrapper.appendChild(cropBtn);
-        };
-        img.onerror = () => {
-            const spinner = document.getElementById('announcementImgSpinner');
-            if (spinner) spinner.innerHTML = '<i class="fas fa-exclamation-circle mr-2"></i>Görsel yüklenemedi';
-        };
-        img.src = src;
-    } else {
-        previewWrapper.classList.add('hidden');
-        previewWrapper.innerHTML = '';
-    }
-
-    if (prompt) {
-        promptBox.textContent = `AI prompt: ${prompt}`;
-        promptBox.classList.remove('hidden');
-    } else {
-        promptBox.textContent = '';
-        promptBox.classList.add('hidden');
-    }
-}
-
-function clearAnnouncementImage() {
-    document.getElementById('announcementCoverImage').value = '';
-    document.getElementById('announcementAiImagePrompt').value = '';
-    document.getElementById('announcementImageCustomPrompt').value = '';
-    document.getElementById('announcementUploadLabel').textContent = 'JPG, PNG veya WEBP seçin';
-    updateAnnouncementCoverPreview();
-}
-
-function setAnnouncementActionLoading(buttonId, loading, idleHtml, loadingHtml) {
-    const button = document.getElementById(buttonId);
-    if (!button) return;
-    button.disabled = loading;
-    button.innerHTML = loading ? loadingHtml : idleHtml;
-}
-
-async function callAnnouncementAiEndpoint(path, payload) {
-    const res = await fetch(`${API_BASE}${path}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-        throw new Error(data.error || 'AI işlemi başarısız oldu');
-    }
-    return data;
-}
-
-async function generateAnnouncementImage() {
-    const title = document.getElementById('announcementTitle').value.trim();
-    const summary = document.getElementById('announcementSummary').value.trim();
-    const model = document.getElementById('announcementImageModel').value;
-    const custom_prompt = document.getElementById('announcementImageCustomPrompt').value.trim();
-
-    if (!title && !custom_prompt) {
-        showToast('Önce duyuru başlığını veya bir prompt girin', 'warning');
-        return;
-    }
-
-    setAnnouncementActionLoading('announcementImageBtn', true, '<i class="fas fa-image mr-2"></i>AI Görsel Üret', '<i class="fas fa-spinner fa-spin mr-2"></i>Üretiliyor...');
-
-    try {
-        const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/image', { title, summary, model, custom_prompt });
-        const imageUrl = data.image_url || '';
-        document.getElementById('announcementAiImagePrompt').value = data.prompt || '';
-
-        // Fetch image as blob to avoid CORS issues in Cropper
-        showToast(`Görsel üretildi, kırpma ekranı açılıyor…`, 'info');
-        const imgRes = await fetch(imageUrl);
-        if (!imgRes.ok) throw new Error('Görsel indirilemedi');
-        const blob = await imgRes.blob();
-        const localUrl = URL.createObjectURL(blob);
-        openCoverCropModal(localUrl, blob);
-    } catch (err) {
-        showToast(err.message || 'Görsel üretilemedi', 'error');
-    } finally {
-        setAnnouncementActionLoading('announcementImageBtn', false, '<i class="fas fa-image mr-2"></i>AI Görsel Üret', '<i class="fas fa-spinner fa-spin mr-2"></i>Üretiliyor...');
-    }
-}
-
-function uploadAnnouncementImage() {
-    const input = document.getElementById('announcementImageFile');
-    const file = input.files[0];
-    if (!file) return;
-
-    const label = document.getElementById('announcementUploadLabel');
-    label.textContent = file.name;
-    input.value = '';
-
-    // Open crop modal with local file — upload happens after crop
-    const reader = new FileReader();
-    reader.onload = (e) => openCoverCropModal(e.target.result, file);
-    reader.readAsDataURL(file);
-}
-
-async function polishAnnouncementContent() {
-    const title = document.getElementById('announcementTitle').value.trim();
-    const summary = document.getElementById('announcementSummary').value.trim();
-    const full_content = document.getElementById('announcementFullContent').value.trim();
-
-    if (!title && !summary && !full_content) {
-        showToast('Önce düzenlenecek bir içerik girin', 'warning');
-        return;
-    }
-
-    setAnnouncementActionLoading('announcementPolishBtn', true, '<i class="fas fa-magic mr-2"></i>AI ile Profesyonelleştir', '<i class="fas fa-spinner fa-spin mr-2"></i>Düzenleniyor...');
-
-    try {
-        const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/polish', { title, summary, full_content, source_lang: 'tr' });
-        const announcement = data.announcement || {};
-        document.getElementById('announcementTitle').value = announcement.title || title;
-        document.getElementById('announcementSummary').value = announcement.summary || summary;
-        document.getElementById('announcementFullContent').value = announcement.full_content || full_content;
-        showToast('İçerik daha profesyonel hale getirildi', 'success');
-    } catch (err) {
-        showToast(err.message || 'İçerik düzenlenemedi', 'error');
-    } finally {
-        setAnnouncementActionLoading('announcementPolishBtn', false, '<i class="fas fa-magic mr-2"></i>AI ile Profesyonelleştir', '<i class="fas fa-spinner fa-spin mr-2"></i>Düzenleniyor...');
-    }
-}
-
-async function translateAnnouncementContent() {
-    const title = document.getElementById('announcementTitle').value.trim();
-    const summary = document.getElementById('announcementSummary').value.trim();
-    const full_content = document.getElementById('announcementFullContent').value.trim();
-
-    if (!title && !summary && !full_content) {
-        showToast('Önce Türkçe içerik girin', 'warning');
-        return;
-    }
-
-    setAnnouncementActionLoading('announcementTranslateBtn', true, '<i class="fas fa-language mr-2"></i>TR to EN Çevir', '<i class="fas fa-spinner fa-spin mr-2"></i>Çevriliyor...');
-
-    try {
-        const data = await callAnnouncementAiEndpoint('/api/admin/announcements/ai/translate', {
-            title,
-            summary,
-            full_content,
-            source_lang: 'tr',
-            target_lang: 'english'
-        });
-        const announcement = data.announcement || {};
-        document.getElementById('announcementTitleEn').value = announcement.title || '';
-        document.getElementById('announcementSummaryEn').value = announcement.summary || '';
-        document.getElementById('announcementFullContentEn').value = announcement.full_content || '';
-        showToast('İngilizce versiyon hazırlandı', 'success');
-    } catch (err) {
-        showToast(err.message || 'Çeviri yapılamadı', 'error');
-    } finally {
-        setAnnouncementActionLoading('announcementTranslateBtn', false, '<i class="fas fa-language mr-2"></i>TR to EN Çevir', '<i class="fas fa-spinner fa-spin mr-2"></i>Çevriliyor...');
-    }
-}
-
-function openAnnouncementModal() {
-    document.getElementById('announcementModalTitle').textContent = 'Yeni Duyuru';
-    resetAnnouncementForm();
-    document.getElementById('announcementModal').classList.remove('hidden');
-}
-
-async function editAnnouncement(id) {
-    try {
-        const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.announcements || []);
-        const a = list.find(x => x.id === id);
-        if (!a) { showToast('Duyuru bulunamadı', 'error'); return; }
-        document.getElementById('announcementModalTitle').textContent = 'Duyuruyu Düzenle';
-        fillAnnouncementForm(a);
-        document.getElementById('announcementModal').classList.remove('hidden');
-    } catch (err) {
-        showToast('Duyuru bilgileri alınamadı', 'error');
-    }
-}
-
-function closeAnnouncementModal() {
-    document.getElementById('announcementModal').classList.add('hidden');
-}
-
-async function deleteAnnouncement(id) {
-    if (!confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
-    const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Duyuru silindi', 'success'); loadAnnouncements(); }
-    else showToast('İşlem başarısız oldu', 'error');
-}
-
-// ÖNCE: Eski listener'ları temizle (güvenli yol)
+// ====================== FORM SUBMIT ======================
+// Eski listener'ları temizle
 const oldForm = document.getElementById('announcementForm');
-const newForm = oldForm.cloneNode(true);
-oldForm.parentNode.replaceChild(newForm, oldForm);
-
-newForm.addEventListener('submit', async function(e) {
-  e.preventDefault();
-  
-  const id = document.getElementById('announcementId').value;
-  const isScheduledMode = document.getElementById('isScheduledMode')?.value === '1';
-  
-  let isPublished = document.getElementById('isPublishedInput')?.value === '1' ? 1 : 0;
-  let scheduledPublishAt = null;
-  
-  if (isScheduledMode) {
-    isPublished = 0;
-    let rawDate = document.getElementById('announcementScheduledPublishAt')?.value;
-    if (!rawDate) {
-      showToast('Lütfen önce "Zamanlı Yayınla" butonuna tıklayıp bir tarih seçin!', 'warning');
-      document.getElementById('isScheduledMode').value = '0';
-      document.getElementById('scheduledPublishContainer').classList.add('hidden');
-      return;
-    }
-    scheduledPublishAt = rawDate + ':00';
-    console.log('Gönderilen tarih:', scheduledPublishAt);
-  }
-  
-  const payload = {
-    title: document.getElementById('announcementTitle').value.trim(),
-    category: document.getElementById('announcementCategory').value,
-    priority: document.getElementById('announcementPriority').value,
-    summary: document.getElementById('announcementSummary').value.trim(),
-    full_content: document.getElementById('announcementFullContent').value.trim(),
-    title_en: document.getElementById('announcementTitleEn').value.trim(),
-    summary_en: document.getElementById('announcementSummaryEn').value.trim(),
-    full_content_en: document.getElementById('announcementFullContentEn').value.trim(),
-    cover_image_url: document.getElementById('announcementCoverImage').value.trim(),
-    ai_image_prompt: document.getElementById('announcementAiImagePrompt').value.trim(),
-    is_published: isPublished,
-    scheduled_publish_at: scheduledPublishAt
-  };
-  
-  const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
-  const method = id ? 'PUT' : 'POST';
-  
-  const res = await fetch(url, {
-    method, credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  
-  if (res.ok) {
-    const msg = id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu';
-    if (isScheduledMode && scheduledPublishAt) {
-      const date = new Date(scheduledPublishAt).toLocaleString('tr-TR');
-      showToast(`${msg} - ${date} tarihinde yayınlanacak.`, 'success');
-    } else if (isPublished === 1) {
-      showToast(`${msg} ve yayınlandı!`, 'success');
-    } else {
-      showToast(`${msg} (Taslak olarak kaydedildi)`, 'success');
-    }
-    closeAnnouncementModal();
-    loadAnnouncements();
-  } else {
-    const data = await res.json().catch(() => ({}));
-    showToast(data.error || 'İşlem başarısız oldu', 'error');
-  }
-});
-
-function openAnnouncementPreview() {
-  const title = document.getElementById('announcementTitle')?.value || '';
-  const content = document.getElementById('announcementFullContent')?.value || '';
-  const summary = document.getElementById('announcementSummary')?.value || '';
-  const category = document.getElementById('announcementCategory')?.value || 'general';
-  const coverImageUrl = document.getElementById('announcementCoverImage')?.value || '';
-  
-  const categoryLabels = {
-    urgent: 'Acil', 'new-product': 'Yeni Ürün', 'product-update': 'Güncelleme',
-    event: 'Etkinlik', 'maintenance': 'Bakım', 'general': 'Genel'
-  };
-  
-  let coverHtml = '';
-  if (coverImageUrl) {
-    coverHtml = `<div class="mb-6 overflow-hidden rounded-2xl border border-gray-100">
-                   <img src="${escapeHtml(coverImageUrl)}" alt="${escapeHtml(title)}" class="w-full max-h-[26rem] object-cover">
-                 </div>`;
-  }
-  
-  const previewHtml = `
-    ${coverHtml}
-    <div class="mb-4">
-      <span class="inline-block bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
-        ${categoryLabels[category] || category}
-      </span>
-    </div>
-    <h1 class="text-3xl font-bold text-primary mb-4">${escapeHtml(title)}</h1>
-    ${summary ? `<p class="text-gray-600 text-lg italic mb-6 border-l-4 border-primary pl-4">${escapeHtml(summary)}</p>` : ''}
-    <div class="prose max-w-none text-gray-700 leading-relaxed">
-      ${marked.parse(content || 'İçerik bulunmuyor.')}
-    </div>
-  `;
-  
-  const previewContent = document.getElementById('previewContent');
-  if (previewContent) previewContent.innerHTML = previewHtml;
-  
-  const previewModal = document.getElementById('previewModal');
-  if (previewModal) {
-    previewModal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-  }
+if (oldForm) {
+    const newForm = oldForm.cloneNode(true);
+    oldForm.parentNode.replaceChild(newForm, oldForm);
+    
+    newForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById('announcementId').value;
+        const isScheduledMode = document.getElementById('isScheduledMode')?.value === '1';
+        
+        let isPublished = document.getElementById('isPublishedInput')?.value === '1' ? 1 : 0;
+        let scheduledPublishAt = null;
+        
+        if (isScheduledMode) {
+            isPublished = 0;
+            const rawDate = document.getElementById('announcementScheduledPublishAt')?.value;
+            if (!rawDate) {
+                showToast('Lütfen önce "Zamanlı Yayınla" butonuna tıklayıp bir tarih seçin!', 'warning');
+                document.getElementById('isScheduledMode').value = '0';
+                document.getElementById('scheduledPublishContainer')?.classList.add('hidden');
+                return;
+            }
+            scheduledPublishAt = rawDate + ':00';
+        }
+        
+        const payload = {
+            title: document.getElementById('announcementTitle')?.value.trim() || '',
+            category: document.getElementById('announcementCategory')?.value || 'general',
+            priority: document.getElementById('announcementPriority')?.value || 'medium',
+            summary: document.getElementById('announcementSummary')?.value.trim() || '',
+            full_content: document.getElementById('announcementFullContent')?.value.trim() || '',
+            title_en: document.getElementById('announcementTitleEn')?.value.trim() || '',
+            summary_en: document.getElementById('announcementSummaryEn')?.value.trim() || '',
+            full_content_en: document.getElementById('announcementFullContentEn')?.value.trim() || '',
+            cover_image_url: document.getElementById('announcementCoverImage')?.value.trim() || '',
+            ai_image_prompt: document.getElementById('announcementAiImagePrompt')?.value.trim() || '',
+            is_published: isPublished,
+            scheduled_publish_at: scheduledPublishAt
+        };
+        
+        const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
+        const method = id ? 'PUT' : 'POST';
+        
+        try {
+            const res = await fetch(url, {
+                method, credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (res.ok) {
+                const msg = id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu';
+                if (isScheduledMode && scheduledPublishAt) {
+                    const date = new Date(scheduledPublishAt).toLocaleString('tr-TR');
+                    showToast(`${msg} - ${date} tarihinde yayınlanacak.`, 'success');
+                } else if (isPublished === 1) {
+                    showToast(`${msg} ve yayınlandı!`, 'success');
+                } else {
+                    showToast(`${msg} (Taslak olarak kaydedildi)`, 'success');
+                }
+                closeAnnouncementModal();
+                loadAnnouncements();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                showToast(data.error || 'İşlem başarısız oldu', 'error');
+            }
+        } catch(err) {
+            showToast('Bağlantı hatası: ' + err.message, 'error');
+        }
+    });
 }
+
+// ====================== BUTON FONKSİYONLARI ======================
 
 function saveAsDraft() {
-  document.getElementById('isPublishedInput').value = '0';
-  document.getElementById('isScheduledMode').value = '0';
-  document.getElementById('scheduledPublishContainer').classList.add('hidden');
-  document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
+    document.getElementById('isPublishedInput').value = '0';
+    document.getElementById('isScheduledMode').value = '0';
+    document.getElementById('scheduledPublishContainer')?.classList.add('hidden');
+    document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
 }
 
 function publishNow() {
-  document.getElementById('isPublishedInput').value = '1';
-  document.getElementById('isScheduledMode').value = '0';
-  document.getElementById('scheduledPublishContainer').classList.add('hidden');
-  document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
+    document.getElementById('isPublishedInput').value = '1';
+    document.getElementById('isScheduledMode').value = '0';
+    document.getElementById('scheduledPublishContainer')?.classList.add('hidden');
+    document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
 }
 
 function showScheduledPublish() {
-  // Container'ı göster
-  const container = document.getElementById('scheduledPublishContainer');
-  if (container) container.classList.remove('hidden');
-  
-  // Hidden alanları ayarla
-  document.getElementById('isPublishedInput').value = '0';
-  document.getElementById('isScheduledMode').value = '1';
-  
-  // Tarih inputuna odaklan
-  const dateInput = document.getElementById('announcementScheduledPublishAt');
-  if (dateInput) {
-    dateInput.focus();
-    // showPicker sadece Chrome'da çalışır, try-catch ile koruyalım
-    try {
-      if (dateInput.showPicker) dateInput.showPicker();
-    } catch(e) { /* ignore */ }
-  }
-  
-  showToast('Lütfen yayınlanma tarihini seçin ve "Yayınla" butonuna basın.', 'info');
-}
-
-function closePreviewModal() {
-  const previewModal = document.getElementById('previewModal');
-  if (previewModal) previewModal.classList.add('hidden');
-  document.body.style.overflow = '';
+    const container = document.getElementById('scheduledPublishContainer');
+    if (container) container.classList.remove('hidden');
+    
+    document.getElementById('isPublishedInput').value = '0';
+    document.getElementById('isScheduledMode').value = '1';
+    
+    const dateInput = document.getElementById('announcementScheduledPublishAt');
+    if (dateInput) {
+        dateInput.focus();
+        try { if (dateInput.showPicker) dateInput.showPicker(); } catch(e) {}
+    }
+    
+    showToast('Lütfen yayınlanma tarihini seçin ve "Yayınla" butonuna basın.', 'info');
 }
 
 function cancelScheduledPublish() {
-  document.getElementById('scheduledPublishContainer').classList.add('hidden');
-  document.getElementById('isScheduledMode').value = '0';
-  document.getElementById('announcementScheduledPublishAt').value = '';
-  showToast('Zamanlı yayın iptal edildi.', 'info');
+    document.getElementById('scheduledPublishContainer')?.classList.add('hidden');
+    document.getElementById('isScheduledMode').value = '0';
+    document.getElementById('announcementScheduledPublishAt').value = '';
+    showToast('Zamanlı yayın iptal edildi.', 'info');
+}
+
+function openAnnouncementPreview() {
+    const title = document.getElementById('announcementTitle')?.value || '';
+    const content = document.getElementById('announcementFullContent')?.value || '';
+    const summary = document.getElementById('announcementSummary')?.value || '';
+    const category = document.getElementById('announcementCategory')?.value || 'general';
+    const coverImageUrl = document.getElementById('announcementCoverImage')?.value || '';
+    
+    const categoryLabels = {
+        urgent: 'Acil', 'new-product': 'Yeni Ürün', 'product-update': 'Güncelleme',
+        event: 'Etkinlik', 'maintenance': 'Bakım', 'general': 'Genel'
+    };
+    
+    let coverHtml = '';
+    if (coverImageUrl) {
+        coverHtml = `<div class="mb-6 overflow-hidden rounded-2xl border border-gray-100">
+                       <img src="${escapeHtml(coverImageUrl)}" alt="${escapeHtml(title)}" class="w-full max-h-[26rem] object-cover">
+                     </div>`;
+    }
+    
+    const previewHtml = `
+        ${coverHtml}
+        <div class="mb-4">
+            <span class="inline-block bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
+                ${categoryLabels[category] || category}
+            </span>
+        </div>
+        <h1 class="text-3xl font-bold text-primary mb-4">${escapeHtml(title)}</h1>
+        ${summary ? `<p class="text-gray-600 text-lg italic mb-6 border-l-4 border-primary pl-4">${escapeHtml(summary)}</p>` : ''}
+        <div class="prose max-w-none text-gray-700 leading-relaxed">
+            ${marked.parse(content || 'İçerik bulunmuyor.')}
+        </div>
+    `;
+    
+    const previewContent = document.getElementById('previewContent');
+    if (previewContent) previewContent.innerHTML = previewHtml;
+    
+    const previewModal = document.getElementById('previewModal');
+    if (previewModal) {
+        previewModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closePreviewModal() {
+    const previewModal = document.getElementById('previewModal');
+    if (previewModal) previewModal.classList.add('hidden');
+    document.body.style.overflow = '';
 }
 
 function editAirtableAccount(id, name, domain, category, status) {
