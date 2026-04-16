@@ -1245,7 +1245,7 @@
                     <p class="text-xs text-amber-700 mt-2">Bu tarih gelene kadar duyuru public sayfada görünmez.</p>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <button type="button" onclick="document.getElementById('announcementPreviewTitle').scrollIntoView({ behavior: 'smooth', block: 'center' })" class="btn bg-slate-100 text-slate-700 sm:w-auto">
+                    <button type="button" onclick="openAnnouncementPreviewModal()" class="btn bg-slate-100 text-slate-700 sm:w-auto">
                         <i class="fas fa-eye mr-2"></i>Önizleme
                     </button>
                     <button type="button" onclick="submitAnnouncement('draft')" class="btn bg-slate-700 text-white hover:bg-slate-800 flex-1">Taslak Kaydet</button>
@@ -1255,6 +1255,35 @@
                 </div>
             </div>
         </form>
+    </div>
+</div>
+
+<div id="announcementPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[60]">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
+        <div class="flex items-center justify-between gap-4 mb-4">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Duyuru Önizleme</h3>
+                <p class="text-sm text-gray-500">Public kart görünümüne yakın hızlı kontrol ekranı</p>
+            </div>
+            <button type="button" onclick="closeAnnouncementPreviewModal()" class="text-gray-400 hover:text-gray-600 text-xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
+            <div id="announcementPreviewModalImage" class="h-64 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-slate-400 text-4xl">
+                <i class="fas fa-image"></i>
+            </div>
+            <div class="p-6">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <span id="announcementPreviewModalStatus" class="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700">Taslak</span>
+                    <span id="announcementPreviewModalCategory" class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">Genel</span>
+                    <span id="announcementPreviewModalPriority" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">Orta</span>
+                </div>
+                <h4 id="announcementPreviewModalTitle" class="text-2xl font-bold text-gray-900 mb-2">Duyuru başlığı</h4>
+                <p id="announcementPreviewModalDate" class="text-sm text-gray-500 mb-4">Yayın tarihi seçilmedi</p>
+                <p id="announcementPreviewModalSummary" class="text-base text-gray-700 whitespace-pre-line">Kısa özet burada görünecek.</p>
+            </div>
+        </div>
     </div>
 </div>
 <!-- Institution Modal -->
@@ -5167,16 +5196,29 @@ function toggleAnnouncementScheduleFields(show) {
 function getAnnouncementPublishPayload() {
     const mode = document.getElementById('announcementSubmitIntent').value;
     const rawPublishAt = document.getElementById('announcementPublishAt').value;
+    const isoPublishAt = rawPublishAt ? new Date(rawPublishAt).toISOString() : null;
 
     if (mode === 'draft') {
-        return { is_published: 0, published_at: rawPublishAt || null };
+        return { is_published: 0, published_at: isoPublishAt };
     }
 
     if (mode === 'scheduled') {
-        return { is_published: 1, published_at: rawPublishAt || null };
+        return { is_published: 1, published_at: isoPublishAt };
     }
 
     return { is_published: 1, published_at: new Date().toISOString() };
+}
+
+function getAnnouncementPreviewModel() {
+    const mode = document.getElementById('announcementSubmitIntent').value;
+    const category = document.getElementById('announcementCategory').value;
+    const priority = document.getElementById('announcementPriority').value;
+    const title = document.getElementById('announcementTitle').value.trim() || 'Duyuru başlığı';
+    const summary = document.getElementById('announcementSummary').value.trim() || 'Kısa özet burada görünecek.';
+    const publishAt = document.getElementById('announcementPublishAt').value;
+    const imageUrl = document.getElementById('announcementCoverImage').value.trim();
+
+    return { mode, category, priority, title, summary, publishAt, imageUrl };
 }
 
 function updateAnnouncementLivePreview() {
@@ -5199,13 +5241,7 @@ function updateAnnouncementLivePreview() {
         low: 'bg-emerald-100 text-emerald-700'
     };
 
-    const mode = document.getElementById('announcementSubmitIntent').value;
-    const title = document.getElementById('announcementTitle').value.trim() || 'Duyuru başlığı';
-    const summary = document.getElementById('announcementSummary').value.trim() || 'Kısa özet burada görünecek.';
-    const category = document.getElementById('announcementCategory').value;
-    const priority = document.getElementById('announcementPriority').value;
-    const publishAt = document.getElementById('announcementPublishAt').value;
-    const imageUrl = document.getElementById('announcementCoverImage').value.trim();
+    const { mode, category, priority, title, summary, publishAt, imageUrl } = getAnnouncementPreviewModel();
 
     document.getElementById('announcementPreviewTitle').textContent = title;
     document.getElementById('announcementPreviewSummary').textContent = summary;
@@ -5247,6 +5283,9 @@ function updateAnnouncementLivePreview() {
 function submitAnnouncement(intent) {
     document.getElementById('announcementSubmitIntent').value = intent;
     toggleAnnouncementScheduleFields(intent === 'scheduled');
+    if (intent === 'published') {
+        document.getElementById('announcementPublishAt').required = false;
+    }
     document.getElementById('announcementForm').requestSubmit();
 }
 
@@ -5268,7 +5307,76 @@ function handleScheduledAnnouncementAction() {
         return;
     }
 
+    if (new Date(input.value).getTime() <= Date.now()) {
+        input.focus();
+        showToast('Planlı yayın için ileri bir tarih seçin.', 'warning');
+        return;
+    }
+
     document.getElementById('announcementForm').requestSubmit();
+}
+
+function openAnnouncementPreviewModal() {
+    const categoryMap = {
+        urgent: 'Acil',
+        'new-product': 'Yeni Ürün',
+        'product-update': 'Güncelleme',
+        event: 'Etkinlik',
+        maintenance: 'Bakım',
+        general: 'Genel'
+    };
+    const priorityMap = {
+        high: { label: 'Yüksek', cls: 'bg-red-100 text-red-700' },
+        medium: { label: 'Orta', cls: 'bg-amber-100 text-amber-700' },
+        low: { label: 'Düşük', cls: 'bg-emerald-100 text-emerald-700' }
+    };
+
+    const { mode, category, priority, title, summary, publishAt, imageUrl } = getAnnouncementPreviewModel();
+    const statusMap = {
+        draft: { label: 'Taslak', cls: 'bg-slate-100 text-slate-700' },
+        scheduled: { label: 'Planlı', cls: 'bg-amber-100 text-amber-700' },
+        published: { label: 'Yayında', cls: 'bg-emerald-100 text-emerald-700' }
+    };
+
+    const status = statusMap[mode] || statusMap.draft;
+    const priorityInfo = priorityMap[priority] || priorityMap.medium;
+
+    const modal = document.getElementById('announcementPreviewModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    const statusEl = document.getElementById('announcementPreviewModalStatus');
+    statusEl.className = `text-xs px-2 py-1 rounded-full ${status.cls}`;
+    statusEl.textContent = status.label;
+
+    const categoryEl = document.getElementById('announcementPreviewModalCategory');
+    categoryEl.textContent = categoryMap[category] || 'Genel';
+
+    const priorityEl = document.getElementById('announcementPreviewModalPriority');
+    priorityEl.className = `text-xs px-2 py-1 rounded-full ${priorityInfo.cls}`;
+    priorityEl.textContent = priorityInfo.label;
+
+    document.getElementById('announcementPreviewModalTitle').textContent = title;
+    document.getElementById('announcementPreviewModalSummary').textContent = summary;
+    document.getElementById('announcementPreviewModalDate').textContent = mode === 'scheduled'
+        ? (publishAt ? `Planlı yayın: ${new Date(publishAt).toLocaleString('tr-TR')}` : 'Yayın tarihi seçilmedi')
+        : mode === 'published'
+            ? 'Kaydedildiğinde hemen yayına alınır'
+            : 'Taslak olarak saklanır';
+
+    const imageEl = document.getElementById('announcementPreviewModalImage');
+    if (imageUrl) {
+        const src = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
+        imageEl.innerHTML = `<img src="${escapeHtml(src)}" alt="Duyuru önizleme" class="w-full h-full object-cover">`;
+    } else {
+        imageEl.innerHTML = '<i class="fas fa-image"></i>';
+    }
+}
+
+function closeAnnouncementPreviewModal() {
+    const modal = document.getElementById('announcementPreviewModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
 }
 
 function updateAnnouncementCoverPreview() {
@@ -5516,6 +5624,19 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
     e.preventDefault();
     const id = document.getElementById('announcementId').value;
     const submitIntent = document.getElementById('announcementSubmitIntent').value;
+    const rawPublishAt = document.getElementById('announcementPublishAt').value;
+
+    if (submitIntent === 'scheduled') {
+        if (!rawPublishAt) {
+            showToast('Lütfen planlı yayın tarihi seçin.', 'warning');
+            return;
+        }
+        if (new Date(rawPublishAt).getTime() <= Date.now()) {
+            showToast('Planlı yayın için ileri bir tarih seçin.', 'warning');
+            return;
+        }
+    }
+
     const publishPayload = getAnnouncementPublishPayload();
     const payload = {
         title: document.getElementById('announcementTitle').value.trim(),
