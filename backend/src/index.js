@@ -4475,7 +4475,8 @@ app.get('/api/announcements', async (c) => {
     const rows = await db.prepare(`
       SELECT id, title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, published_at
       FROM announcements
-      WHERE is_published = 1
+      WHERE is_published = 1 
+      AND (scheduled_publish_at IS NULL OR datetime(scheduled_publish_at) <= datetime('now'))
       ORDER BY published_at DESC
     `).all();
     const announcements = (rows.results || []).map(row => ({
@@ -4680,7 +4681,6 @@ app.post('/api/admin/announcements/:id/publish', async (c) => {
     return c.json({ error: err.message }, 500);
   }
 });
-
 // ====================== DESTEK TALEPLERİ ======================
 
 // Kullanıcı: yeni talep oluştur
