@@ -5047,6 +5047,8 @@ async function saveSubmission() {
 
 async function loadAnnouncements() {
     const container = document.getElementById('announcementsList');
+    if (!container) return;
+    
     container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">Yükleniyor...</p>';
 
     try {
@@ -5068,13 +5070,18 @@ async function loadAnnouncements() {
             general: 'Genel'
         };
 
-        const localPriorityMap = {
-            high: '<span class="text-red-600">Yüksek</span>',
-            medium: '<span class="text-yellow-600">Orta</span>',
-            low: '<span class="text-green-600">Düşük</span>'
-        };
-
         container.innerHTML = list.map(a => {
+            let statusBadge = '';
+            if (!a.is_published) {
+                if (a.scheduled_publish_at && new Date(a.scheduled_publish_at) > new Date()) {
+                    statusBadge = `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full ml-2">⏰ Zamanlı: ${new Date(a.scheduled_publish_at).toLocaleDateString('tr-TR')}</span>`;
+                } else {
+                    statusBadge = '<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full ml-2 font-bold">📝 TASLAK</span>';
+                }
+            } else {
+                statusBadge = '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full ml-2">✅ Yayında</span>';
+            }
+            
             const previewImage = a.cover_image_url
                 ? `<img src="${escapeHtml(a.cover_image_url)}" alt="${escapeHtml(a.title || 'Duyuru görseli')}" class="w-full h-40 object-cover">`
                 : '<div class="w-full h-40 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-3xl text-slate-400"><i class="fas fa-image"></i></div>';
@@ -5088,10 +5095,8 @@ async function loadAnnouncements() {
                                 <span class="text-xs ${a.category === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} px-2 py-0.5 rounded-full">
                                     ${localCategoryMap[a.category] || a.category}
                                 </span>
-                                <span class="text-xs ${a.priority === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-600'} px-2 py-0.5 rounded-full">
-                                    ${localPriorityMap[a.priority] || a.priority}
-                                </span>
-                                ${a.title_en || a.summary_en || a.full_content_en ? '<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">EN hazır</span>' : ''}
+                                ${statusBadge}
+                                ${a.title_en || a.summary_en || a.full_content_en ? '<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">EN</span>' : ''}
                             </div>
                             <div class="flex gap-1">
                                 <button onclick="editAnnouncement(${a.id})" class="text-blue-500 hover:text-blue-700 p-1" title="Düzenle">
@@ -5100,12 +5105,14 @@ async function loadAnnouncements() {
                                 <button onclick="deleteAnnouncement(${a.id})" class="text-red-500 hover:text-red-700 p-1" title="Sil">
                                     <i class="fas fa-trash"></i>
                                 </button>
+                                ${!a.is_published ? `<button onclick="publishAnnouncementNow(${a.id})" class="text-green-600 hover:text-green-800 p-1" title="Hemen Yayınla">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>` : ''}
                             </div>
                         </div>
                         <h4 class="font-semibold text-gray-800 mb-1">${escapeHtml(a.title)}</h4>
-                        <p class="text-xs text-gray-500 mb-2">${new Date(a.published_at).toLocaleDateString('tr-TR')}</p>
+                        <p class="text-xs text-gray-500 mb-2">${new Date(a.published_at || a.created_at).toLocaleDateString('tr-TR')}</p>
                         <p class="text-sm text-gray-600 line-clamp-2">${escapeHtml((a.summary || '').substring(0, 120))}${(a.summary || '').length > 120 ? '…' : ''}</p>
-                        ${!a.is_published ? '<div class="mt-3 text-xs text-gray-400 italic">Taslak</div>' : ''}
                     </div>
                 </div>
             `;
@@ -5114,6 +5121,22 @@ async function loadAnnouncements() {
     } catch (err) {
         console.error('loadAnnouncements error:', err);
         container.innerHTML = '<p class="col-span-full text-center text-red-500 py-8">Yüklenirken hata oluştu</p>';
+    }
+}
+
+async function publishAnnouncementNow(id) {
+    if (!confirm('Bu duyuruyu hemen yayınlamak istediğinize emin misiniz?')) return;
+    
+    const res = await fetch(`${API_BASE}/api/admin/announcements/${id}/publish`, {
+        method: 'POST',
+        credentials: 'include'
+    });
+    
+    if (res.ok) {
+        showToast('Duyuru hemen yayınlandı!', 'success');
+        loadAnnouncements();
+    } else {
+        showToast('Yayınlama başarısız oldu!', 'error');
     }
 }
 
@@ -5512,24 +5535,13 @@ function showScheduledPublish() {
   const dateInput = document.getElementById('announcementScheduledPublishAt');
   if (dateInput) {
     dateInput.focus();
-    dateInput.showPicker(); // Native date picker'ı açar (Chrome/Edge)
+    // showPicker sadece Chrome'da çalışır, try-catch ile koruyalım
+    try {
+      if (dateInput.showPicker) dateInput.showPicker();
+    } catch(e) { /* ignore */ }
   }
-}
   
-  // Input'a değeri ata
-  const dateInput = document.getElementById('announcementScheduledPublishAt');
-  if (dateInput) dateInput.value = formattedDate;
-  
-  // Hidden alanları ayarla
-  document.getElementById('isPublishedInput').value = '0';
-  document.getElementById('isScheduledMode').value = '1';
-  
-  // Container'ı göster (isteğe bağlı)
-  const container = document.getElementById('scheduledPublishContainer');
-  if (container) container.classList.remove('hidden');
-  
-  // Form'u hemen submit et
-  document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
+  showToast('Lütfen yayınlanma tarihini seçin ve "Yayınla" butonuna basın.', 'info');
 }
 
 function closePreviewModal() {
