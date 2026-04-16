@@ -1067,11 +1067,10 @@ app.post('/api/user/avatar', async (c) => {
 
     const arrayBuffer = await file.arrayBuffer();
     await bucket.put(key, arrayBuffer, {
-      httpMetadata: { contentType: file.type, cacheControl: 'public, max-age=31536000' }
+      httpMetadata: { contentType: file.type, cacheControl: 'no-cache, no-store' }
     });
 
-    // Cache busting için timestamp ekle
-    const avatarUrl = `${r2PublicUrl}/${key}?t=${Date.now()}`;
+    const avatarUrl = `${r2PublicUrl}/${key}`;
 
     await db.prepare(`UPDATE users SET avatar_url = ? WHERE id = ?`).bind(avatarUrl, userId).run();
 

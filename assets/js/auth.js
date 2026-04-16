@@ -361,7 +361,8 @@ function updateAuthUI(isLoggedIn) {
 
         if (userAvatar) {
             if (currentUser.avatar_url) {
-                userAvatar.innerHTML = `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover rounded-full">`;
+                const avatarSrc = `${currentUser.avatar_url}?v=${Date.now()}`;
+                userAvatar.innerHTML = `<img src="${avatarSrc}" class="w-full h-full object-cover rounded-full">`;
                 userAvatar.className = 'w-7 h-7 rounded-full overflow-hidden flex items-center justify-center';
                 const img = userAvatar.querySelector('img');
                 if (img) {
@@ -375,7 +376,8 @@ function updateAuthUI(isLoggedIn) {
 
         if (dropdownAvatar) {
             if (currentUser.avatar_url) {
-                dropdownAvatar.innerHTML = `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover rounded-full">`;
+                const avatarSrc = `${currentUser.avatar_url}?v=${Date.now()}`;
+                dropdownAvatar.innerHTML = `<img src="${avatarSrc}" class="w-full h-full object-cover rounded-full">`;
                 dropdownAvatar.className = 'w-12 h-12 rounded-full overflow-hidden flex items-center justify-center';
                 const img = dropdownAvatar.querySelector('img');
                 if (img) {
