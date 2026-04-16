@@ -5473,7 +5473,130 @@ async function applyCoverCrop() {
     }, 'image/jpeg', 0.92);
 }
 
-// ====================== DOSYA TA IMA ======================
+function updateAnnouncementCoverPreview() {
+    const url = document.getElementById('announcementCoverImage')?.value.trim();
+    const previewWrapper = document.getElementById('announcementCoverPreviewWrapper');
+    const promptBox = document.getElementById('announcementImagePromptBox');
+    const prompt = document.getElementById('announcementAiImagePrompt')?.value.trim();
+
+    if (!previewWrapper) return;
+
+    if (url) {
+        previewWrapper.classList.remove('hidden');
+        const src = url.startsWith('http') ? url : window.location.origin + url;
+        previewWrapper.innerHTML = `
+            <button type="button" onclick="clearAnnouncementImage()" title="Görseli kaldır"
+                class="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+            <div id="announcementImgSpinner" class="w-full h-56 flex items-center justify-center bg-slate-50 text-slate-400">
+                <i class="fas fa-spinner fa-spin text-2xl"></i>
+            </div>`;
+        const img = new Image();
+        img.className = 'w-full h-56 object-cover';
+        img.alt = 'Duyuru kapak önizleme';
+        img.onload = () => {
+            const spinner = document.getElementById('announcementImgSpinner');
+            if (spinner) spinner.replaceWith(img);
+            const cropBtn = document.createElement('button');
+            cropBtn.type = 'button';
+            cropBtn.className = 'absolute bottom-2 right-2 btn bg-white/90 text-gray-700 hover:bg-white text-xs shadow border border-gray-200';
+            cropBtn.innerHTML = '<i class="fas fa-crop-alt mr-1"></i>Kırp';
+            cropBtn.onclick = () => openCoverCropModal(src, null);
+            previewWrapper.appendChild(cropBtn);
+        };
+        img.onerror = () => {
+            const spinner = document.getElementById('announcementImgSpinner');
+            if (spinner) spinner.innerHTML = '<i class="fas fa-exclamation-circle mr-2"></i>Görsel yüklenemedi';
+        };
+        img.src = src;
+    } else {
+        previewWrapper.classList.add('hidden');
+        previewWrapper.innerHTML = '';
+    }
+
+    if (promptBox) {
+        if (prompt) {
+            promptBox.textContent = `AI prompt: ${prompt}`;
+            promptBox.classList.remove('hidden');
+        } else {
+            promptBox.textContent = '';
+            promptBox.classList.add('hidden');
+        }
+    }
+}
+
+function clearAnnouncementImage() {
+    document.getElementById('announcementCoverImage').value = '';
+    document.getElementById('announcementAiImagePrompt').value = '';
+    document.getElementById('announcementImageCustomPrompt').value = '';
+    const uploadLabel = document.getElementById('announcementUploadLabel');
+    if (uploadLabel) uploadLabel.textContent = 'JPG, PNG veya WEBP seçin';
+    updateAnnouncementCoverPreview();
+}
+
+let _coverCropper = null;
+
+function openCoverCropModal(src, blob) {
+    const modal = document.getElementById('coverCropModal');
+    const img = document.getElementById('coverCropImage');
+    if (!modal || !img) return;
+
+    if (_coverCropper) { _coverCropper.destroy(); _coverCropper = null; }
+    img.src = src;
+    modal.classList.remove('hidden');
+    img.onload = () => {
+        _coverCropper = new Cropper(img, {
+            aspectRatio: 1200 / 630,
+            viewMode: 1,
+            autoCropArea: 0.85,
+            background: false,
+            movable: true,
+            zoomable: true,
+            rotatable: false,
+            scalable: false,
+        });
+    };
+}
+
+function closeCoverCropModal() {
+    if (_coverCropper) { _coverCropper.destroy(); _coverCropper = null; }
+    document.getElementById('coverCropModal')?.classList.add('hidden');
+}
+
+async function applyCoverCrop() {
+    if (!_coverCropper) return;
+    const canvas = _coverCropper.getCroppedCanvas({ width: 1200, height: 630, imageSmoothingQuality: 'high' });
+    const btn = document.getElementById('coverCropApplyBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor…';
+    }
+
+    canvas.toBlob(async (blob) => {
+        try {
+            const formData = new FormData();
+            formData.append('file', blob, 'cover.jpg');
+            const res = await fetch(`${API_BASE}/api/upload`, { method: 'POST', credentials: 'include', body: formData });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Yükleme başarısız');
+            document.getElementById('announcementCoverImage').value = data.url || '';
+            document.getElementById('announcementAiImagePrompt').value = '';
+            updateAnnouncementCoverPreview();
+            closeCoverCropModal();
+            showToast('Görsel kırpıldı ve yüklendi', 'success');
+        } catch (err) {
+            showToast(err.message || 'Yükleme hatası', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-crop-alt mr-2"></i>Uygula ve Kaydet';
+            }
+        }
+    }, 'image/jpeg', 0.92);
+}
+
+// ====================== DOSYA TAŞIMA ======================
 let adminMoveModalState = {
     refId: null, fileName: '', selectedTargetId: null,
     currentCollectionId: null, folders: [], search: ''
