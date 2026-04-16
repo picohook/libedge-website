@@ -5045,7 +5045,9 @@ async function saveSubmission() {
     }
 }
 
-// ====================== DUYURU YÖNETİMİ - TEMİZ VERSİYON ======================
+// ====================== DUYURU YÖNETİMİ - TAMAMEN YENİ ======================
+
+let coverCropper = null;
 
 async function loadAnnouncements() {
     const container = document.getElementById('announcementsList');
@@ -5072,7 +5074,7 @@ async function loadAnnouncements() {
             let statusBadge = '';
             if (!a.is_published) {
                 if (a.scheduled_publish_at && new Date(a.scheduled_publish_at) > new Date()) {
-                    statusBadge = `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full ml-2">⏰ Zamanlı</span>`;
+                    statusBadge = '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full ml-2">⏰ Zamanlı</span>';
                 } else {
                     statusBadge = '<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full ml-2 font-bold">📝 TASLAK</span>';
                 }
@@ -5094,7 +5096,6 @@ async function loadAnnouncements() {
                                     ${localCategoryMap[a.category] || a.category}
                                 </span>
                                 ${statusBadge}
-                                ${a.title_en || a.summary_en || a.full_content_en ? '<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">EN</span>' : ''}
                             </div>
                             <div class="flex gap-1">
                                 <button onclick="editAnnouncement(${a.id})" class="text-blue-500 hover:text-blue-700 p-1" title="Düzenle">
@@ -5103,14 +5104,11 @@ async function loadAnnouncements() {
                                 <button onclick="deleteAnnouncement(${a.id})" class="text-red-500 hover:text-red-700 p-1" title="Sil">
                                     <i class="fas fa-trash"></i>
                                 </button>
-                                ${!a.is_published ? `<button onclick="publishAnnouncementNow(${a.id})" class="text-green-600 hover:text-green-800 p-1" title="Hemen Yayınla">
-                                    <i class="fas fa-paper-plane"></i>
-                                </button>` : ''}
                             </div>
                         </div>
                         <h4 class="font-semibold text-gray-800 mb-1">${escapeHtml(a.title)}</h4>
                         <p class="text-xs text-gray-500 mb-2">${new Date(a.published_at || a.created_at).toLocaleDateString('tr-TR')}</p>
-                        <p class="text-sm text-gray-600 line-clamp-2">${escapeHtml((a.summary || '').substring(0, 120))}${(a.summary || '').length > 120 ? '…' : ''}</p>
+                        <p class="text-sm text-gray-600 line-clamp-2">${escapeHtml((a.summary || '').substring(0, 120))}</p>
                     </div>
                 </div>
             `;
@@ -5129,26 +5127,23 @@ function openAnnouncementModal() {
 }
 
 function resetAnnouncementForm() {
-    const safeSetValue = (id, value) => {
-        const el = document.getElementById(id);
-        if (el) el.value = value;
-    };
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     
-    safeSetValue('announcementId', '');
-    safeSetValue('announcementAiImagePrompt', '');
-    safeSetValue('announcementImageCustomPrompt', '');
-    safeSetValue('announcementImageModel', 'flux');
-    safeSetValue('announcementTitle', '');
-    safeSetValue('announcementCategory', 'general');
-    safeSetValue('announcementPriority', 'medium');
-    safeSetValue('announcementSummary', '');
-    safeSetValue('announcementFullContent', '');
-    safeSetValue('announcementTitleEn', '');
-    safeSetValue('announcementSummaryEn', '');
-    safeSetValue('announcementFullContentEn', '');
-    safeSetValue('announcementCoverImage', '');
-    safeSetValue('isPublishedInput', '0');
-    safeSetValue('isScheduledMode', '0');
+    setVal('announcementId', '');
+    setVal('announcementAiImagePrompt', '');
+    setVal('announcementImageCustomPrompt', '');
+    setVal('announcementImageModel', 'flux');
+    setVal('announcementTitle', '');
+    setVal('announcementCategory', 'general');
+    setVal('announcementPriority', 'medium');
+    setVal('announcementSummary', '');
+    setVal('announcementFullContent', '');
+    setVal('announcementTitleEn', '');
+    setVal('announcementSummaryEn', '');
+    setVal('announcementFullContentEn', '');
+    setVal('announcementCoverImage', '');
+    setVal('isPublishedInput', '0');
+    setVal('isScheduledMode', '0');
     
     const container = document.getElementById('scheduledPublishContainer');
     if (container) container.classList.add('hidden');
@@ -5159,7 +5154,12 @@ function resetAnnouncementForm() {
     const publishedCheckbox = document.getElementById('announcementPublished');
     if (publishedCheckbox) publishedCheckbox.checked = true;
     
-    updateAnnouncementCoverPreview();
+    // Cover preview wrapper'ı temizle
+    const previewWrapper = document.getElementById('announcementCoverPreviewWrapper');
+    if (previewWrapper) {
+        previewWrapper.classList.add('hidden');
+        previewWrapper.innerHTML = '';
+    }
 }
 
 function closeAnnouncementModal() {
@@ -5171,41 +5171,34 @@ async function editAnnouncement(id) {
         const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.announcements || []);
-        const a = list.find(x => x.id === id);
+        const a = list.find(x => x.id == id);
         if (!a) { showToast('Duyuru bulunamadı', 'error'); return; }
+        
         document.getElementById('announcementModalTitle').textContent = 'Duyuruyu Düzenle';
-        fillAnnouncementForm(a);
+        document.getElementById('announcementId').value = a.id || '';
+        document.getElementById('announcementAiImagePrompt').value = a.ai_image_prompt || '';
+        document.getElementById('announcementTitle').value = a.title || '';
+        document.getElementById('announcementCategory').value = a.category || 'general';
+        document.getElementById('announcementPriority').value = a.priority || 'medium';
+        document.getElementById('announcementSummary').value = a.summary || '';
+        document.getElementById('announcementFullContent').value = a.full_content || '';
+        document.getElementById('announcementTitleEn').value = a.title_en || '';
+        document.getElementById('announcementSummaryEn').value = a.summary_en || '';
+        document.getElementById('announcementFullContentEn').value = a.full_content_en || '';
+        document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
+        document.getElementById('announcementPublished').checked = !!a.is_published;
+        
+        // Cover preview
+        const previewWrapper = document.getElementById('announcementCoverPreviewWrapper');
+        if (previewWrapper && a.cover_image_url) {
+            previewWrapper.classList.remove('hidden');
+            previewWrapper.innerHTML = `<img src="${a.cover_image_url}" class="w-full h-56 object-cover">`;
+        }
+        
         document.getElementById('announcementModal').classList.remove('hidden');
     } catch (err) {
         showToast('Duyuru bilgileri alınamadı', 'error');
     }
-}
-
-function fillAnnouncementForm(a) {
-    document.getElementById('announcementId').value = a.id || '';
-    document.getElementById('announcementAiImagePrompt').value = a.ai_image_prompt || '';
-    document.getElementById('announcementTitle').value = a.title || '';
-    document.getElementById('announcementCategory').value = a.category || 'general';
-    document.getElementById('announcementPriority').value = a.priority || 'medium';
-    document.getElementById('announcementSummary').value = a.summary || '';
-    document.getElementById('announcementFullContent').value = a.full_content || '';
-    document.getElementById('announcementTitleEn').value = a.title_en || '';
-    document.getElementById('announcementSummaryEn').value = a.summary_en || '';
-    document.getElementById('announcementFullContentEn').value = a.full_content_en || '';
-    document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
-    document.getElementById('announcementPublished').checked = !!a.is_published;
-    
-    // Zamanlı yayın tarihi varsa container'ı göster
-    if (a.scheduled_publish_at && !a.is_published) {
-        const container = document.getElementById('scheduledPublishContainer');
-        if (container) container.classList.remove('hidden');
-        const dateInput = document.getElementById('announcementScheduledPublishAt');
-        if (dateInput && a.scheduled_publish_at) {
-            dateInput.value = a.scheduled_publish_at.slice(0, 16);
-        }
-    }
-    
-    updateAnnouncementCoverPreview();
 }
 
 async function deleteAnnouncement(id) {
@@ -5215,30 +5208,14 @@ async function deleteAnnouncement(id) {
     else showToast('İşlem başarısız oldu', 'error');
 }
 
-async function publishAnnouncementNow(id) {
-    if (!confirm('Bu duyuruyu hemen yayınlamak istediğinize emin misiniz?')) return;
-    
-    const res = await fetch(`${API_BASE}/api/admin/announcements/${id}/publish`, {
-        method: 'POST',
-        credentials: 'include'
-    });
-    
-    if (res.ok) {
-        showToast('Duyuru hemen yayınlandı!', 'success');
-        loadAnnouncements();
-    } else {
-        showToast('Yayınlama başarısız oldu!', 'error');
-    }
-}
-
 // ====================== FORM SUBMIT ======================
-// Eski listener'ları temizle
-const oldForm = document.getElementById('announcementForm');
-if (oldForm) {
-    const newForm = oldForm.cloneNode(true);
-    oldForm.parentNode.replaceChild(newForm, oldForm);
+const announcementForm = document.getElementById('announcementForm');
+if (announcementForm) {
+    // Eski listener'ları temizle
+    const freshForm = announcementForm.cloneNode(true);
+    announcementForm.parentNode.replaceChild(freshForm, announcementForm);
     
-    newForm.addEventListener('submit', async function(e) {
+    freshForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const id = document.getElementById('announcementId').value;
@@ -5364,6 +5341,11 @@ function openAnnouncementPreview() {
                      </div>`;
     }
     
+    let parsedContent = content || 'İçerik bulunmuyor.';
+    if (typeof marked !== 'undefined' && marked.parse) {
+        parsedContent = marked.parse(content);
+    }
+    
     const previewHtml = `
         ${coverHtml}
         <div class="mb-4">
@@ -5374,7 +5356,7 @@ function openAnnouncementPreview() {
         <h1 class="text-3xl font-bold text-primary mb-4">${escapeHtml(title)}</h1>
         ${summary ? `<p class="text-gray-600 text-lg italic mb-6 border-l-4 border-primary pl-4">${escapeHtml(summary)}</p>` : ''}
         <div class="prose max-w-none text-gray-700 leading-relaxed">
-            ${marked.parse(content || 'İçerik bulunmuyor.')}
+            ${parsedContent}
         </div>
     `;
     
