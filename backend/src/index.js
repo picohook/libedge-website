@@ -212,6 +212,9 @@ async function ensureAnnouncementColumns(db) {
   if (!existing.has('ai_image_prompt')) {
     await db.prepare(`ALTER TABLE announcements ADD COLUMN ai_image_prompt TEXT`).run();
   }
+  if (!existing.has('scheduled_publish_at')) {
+    await db.prepare(`ALTER TABLE announcements ADD COLUMN scheduled_publish_at TEXT`).run();
+  }
 }
 
 function cleanAnnouncementText(value) {
@@ -4479,10 +4482,13 @@ app.get('/api/announcements', async (c) => {
     await ensureAnnouncementColumns(db);
 
     const rows = await db.prepare(`
-      SELECT id, title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, published_at
+      SELECT id, title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, published_at, scheduled_publish_at
       FROM announcements
       WHERE is_published = 1
-        AND datetime(COALESCE(published_at, CURRENT_TIMESTAMP)) <= CURRENT_TIMESTAMP
+        AND (
+          scheduled_publish_at IS NULL
+          OR datetime(scheduled_publish_at) <= CURRENT_TIMESTAMP
+        )
       ORDER BY published_at DESC
     `).all();
     const announcements = (rows.results || []).map(row => ({
@@ -4498,7 +4504,8 @@ app.get('/api/announcements', async (c) => {
       category: row.category,
       priority: row.priority,
       date: row.published_at,
-      published_at: row.published_at
+      published_at: row.published_at,
+      scheduled_publish_at: row.scheduled_publish_at
     }));
     return c.json(announcements);
   } catch (err) {
@@ -4593,19 +4600,23 @@ app.post('/api/admin/announcements', async (c) => {
   const priority = cleanAnnouncementText(body.priority) || 'medium';
   const isPublished = body.is_published ? 1 : 0;
   const publishAt = parseAnnouncementPublishAt(body.published_at);
+  const scheduledPublishAt = parseAnnouncementPublishAt(body.scheduled_publish_at);
 
   if (!title) return c.json({ error: 'Başlık zorunludur' }, 400);
   if (cleanAnnouncementText(body.published_at) && !publishAt) {
     return c.json({ error: 'Yayın tarihi geçersiz' }, 400);
+  }
+  if (cleanAnnouncementText(body.scheduled_publish_at) && !scheduledPublishAt) {
+    return c.json({ error: 'Planlı yayın tarihi geçersiz' }, 400);
   }
 
   try {
     await ensureAnnouncementColumns(db);
 
     const result = await db.prepare(`
-      INSERT INTO announcements (title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, is_published, published_at, updated_at, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? IS NOT NULL THEN ? ELSE CURRENT_TIMESTAMP END, CURRENT_TIMESTAMP, ?)
-    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, publishAt, publishAt, auth.user.user_id).run();
+      INSERT INTO announcements (title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, is_published, published_at, scheduled_publish_at, updated_at, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? IS NOT NULL THEN ? ELSE CURRENT_TIMESTAMP END, ?, CURRENT_TIMESTAMP, ?)
+    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, publishAt, publishAt, scheduledPublishAt, auth.user.user_id).run();
     return c.json({ success: true, id: result.meta?.last_row_id });
   } catch (err) {
     console.error('Create announcement error:', err);
@@ -4630,10 +4641,14 @@ app.put('/api/admin/announcements/:id', async (c) => {
   const priority = cleanAnnouncementText(body.priority) || 'medium';
   const isPublished = body.is_published ? 1 : 0;
   const publishAt = parseAnnouncementPublishAt(body.published_at);
+  const scheduledPublishAt = parseAnnouncementPublishAt(body.scheduled_publish_at);
 
   if (!title) return c.json({ error: 'Başlık zorunludur' }, 400);
   if (cleanAnnouncementText(body.published_at) && !publishAt) {
     return c.json({ error: 'Yayın tarihi geçersiz' }, 400);
+  }
+  if (cleanAnnouncementText(body.scheduled_publish_at) && !scheduledPublishAt) {
+    return c.json({ error: 'Planlı yayın tarihi geçersiz' }, 400);
   }
 
   try {
@@ -4647,9 +4662,10 @@ app.put('/api/admin/announcements/:id', async (c) => {
             WHEN ? = 1 THEN COALESCE(published_at, CURRENT_TIMESTAMP)
             ELSE published_at
           END,
+          scheduled_publish_at = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, publishAt, publishAt, isPublished, id).run();
+    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, publishAt, publishAt, isPublished, scheduledPublishAt, id).run();
     if (result.meta?.changes === 0) return c.json({ error: 'Duyuru bulunamadı' }, 404);
     return c.json({ success: true });
   } catch (err) {
