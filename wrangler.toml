@@ -17,7 +17,7 @@ bucket_name = "libedge-files"
 # KV Binding (default env)
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "36237237597442bbb7c00ab9b6ee821f"
 
 # JWT_SECRET: npx wrangler secret put JWT_SECRET
 # R2_PUBLIC_URL: npx wrangler secret put R2_PUBLIC_URL
@@ -39,7 +39,7 @@ bucket_name = "libedge-files-staging"
 
 [[env.staging.kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "556d17f88a7a48e381e5ffed1d150536"
 
 # Production environment
 [env.production]
@@ -56,4 +56,4 @@ bucket_name = "libedge-files"
 
 [[env.production.kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "5640d9b898c54a96bdd9e361e1c6f593"
