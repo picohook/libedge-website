@@ -1066,193 +1066,200 @@
 
 <!-- Announcement Modal -->
 <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-2xl">
-        <div class="flex items-start justify-between gap-4 mb-5">
-            <div>
-                <h3 id="announcementModalTitle" class="text-2xl font-bold text-gray-900">Yeni Duyuru</h3>
-                <p class="text-sm text-gray-500 mt-1">Kapak görseli, AI destekli metin düzenleme ve İngilizce içerik alanları tek formda yönetilir.</p>
-            </div>
-            <button type="button" onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600 text-xl" aria-label="Modali kapat">
-                <i class="fas fa-times"></i>
-            </button>
+  <div class="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[85vh] shadow-2xl flex flex-col">
+    <!-- Başlık kısmı - sabit -->
+    <div class="flex-shrink-0">
+      <div class="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <h3 id="announcementModalTitle" class="text-2xl font-bold text-gray-900">Yeni Duyuru</h3>
+          <p class="text-sm text-gray-500 mt-1">Kapak görseli, AI destekli metin düzenleme ve İngilizce içerik alanları tek formda yönetilir.</p>
         </div>
+        <button type="button" onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600 text-xl">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
 
-        <form id="announcementForm">
-            <input type="hidden" id="announcementId">
-            <input type="hidden" id="announcementAiImagePrompt">
+    <form id="announcementForm" class="flex flex-col flex-1 min-h-0">
+      <input type="hidden" id="announcementId">
+      <input type="hidden" id="announcementAiImagePrompt">
 
-            <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
+      <!-- İçerik kısmı - scroll yapan alan -->
+      <div class="flex-1 overflow-y-auto">
+        <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
+          <!-- SOL TARAF - ANA İÇERİK -->
+          <div>
+            <div class="bg-gray-50 border border-gray-200 rounded-2xl p-5 mb-5">
+              <div class="flex items-center justify-between gap-3 mb-4">
                 <div>
-                    <div class="bg-gray-50 border border-gray-200 rounded-2xl p-5 mb-5">
-                        <div class="flex items-center justify-between gap-3 mb-4">
-                            <div>
-                                <h4 class="font-semibold text-gray-900">Ana İçerik</h4>
-                                <p class="text-xs text-gray-500">Türkçe duyuru içeriği ve yayın ayarları</p>
-                            </div>
-                            <button type="button" id="announcementPolishBtn" onclick="polishAnnouncementContent()" class="btn btn-primary whitespace-nowrap">
-                                <i class="fas fa-magic mr-2"></i>AI ile Profesyonelleştir
-                            </button>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Başlık</label>
-                            <input type="text" id="announcementTitle" placeholder="Duyuru başlığı" class="w-full border p-3 rounded-xl" required>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                                <select id="announcementCategory" class="w-full border p-3 rounded-xl">
-                                    <option value="general">Genel</option>
-                                    <option value="urgent">Acil</option>
-                                    <option value="new-product">Yeni Ürün</option>
-                                    <option value="product-update">Güncelleme</option>
-                                    <option value="event">Etkinlik</option>
-                                    <option value="maintenance">Bakım</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Öncelik</label>
-                                <select id="announcementPriority" class="w-full border p-3 rounded-xl">
-                                    <option value="medium">Orta</option>
-                                    <option value="high">Yüksek</option>
-                        <option value="low">Düşük</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Özet</label>
-                            <textarea id="announcementSummary" rows="3" placeholder="Kısa özet (liste görünümünde gösterilir)" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">İçerik</label>
-                            <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
-                            <!-- Yayın Durumu ve Zamanlama -->
-<!-- Zamanlı Yayın için Tarih Seçici (başlangıçta gizli) -->
-<div id="scheduledPublishContainer" class="hidden mb-4">
-  <label class="block text-sm font-medium text-gray-700 mb-1">Yayınlanma Tarihi</label>
-  <div class="flex gap-2">
-    <input type="datetime-local" id="announcementScheduledPublishAt" class="flex-1 border p-3 rounded-xl">
-    <button type="button" onclick="cancelScheduledPublish()" class="btn bg-gray-300 text-gray-700 px-4">
-      İptal
-    </button>
-  </div>
-  <p class="text-xs text-gray-400 mt-1">Tarih seçtikten sonra "Yayınla" butonuna basın.</p>
-</div>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="announcementPublished" checked class="rounded" style="display:none">
-                            <label for="announcementPublished" class="text-sm text-gray-700">Yayında</label>
-                        </div>
-                    </div>
-
-                    <div class="bg-white border border-gray-200 rounded-2xl p-5">
-                        <div class="flex items-center justify-between gap-3 mb-4">
-                            <div>
-                                <h4 class="font-semibold text-gray-900">İngilizce Versiyon</h4>
-                                <p class="text-xs text-gray-500">Public sayfadaki EN görünüm bu alanlardan beslenir.</p>
-                            </div>
-                            <button type="button" id="announcementTranslateBtn" onclick="translateAnnouncementContent()" class="btn bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap">
-                                <i class="fas fa-language mr-2"></i>TR to EN Çevir
-                            </button>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">English Title</label>
-                            <input type="text" id="announcementTitleEn" placeholder="English title" class="w-full border p-3 rounded-xl">
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">English Summary</label>
-                            <textarea id="announcementSummaryEn" rows="3" placeholder="Short English summary" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">English Content</label>
-                            <textarea id="announcementFullContentEn" rows="8" placeholder="Full English content (Markdown supported)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
-                        </div>
-                    </div>
+                  <h4 class="font-semibold text-gray-900">Ana İçerik</h4>
+                  <p class="text-xs text-gray-500">Türkçe duyuru içeriği ve yayın ayarları</p>
                 </div>
+                <button type="button" id="announcementPolishBtn" onclick="polishAnnouncementContent()" class="btn btn-primary whitespace-nowrap">
+                  <i class="fas fa-magic mr-2"></i>AI ile Profesyonelleştir
+                </button>
+              </div>
 
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Başlık</label>
+                <input type="text" id="announcementTitle" placeholder="Duyuru başlığı" class="w-full border p-3 rounded-xl" required>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                 <div>
-                    <div class="bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-5 sticky top-4 space-y-4">
-                        <h4 class="font-semibold text-gray-900">Kapak Görseli</h4>
-
-                        <!-- AI Görsel Üret -->
-                        <div class="bg-white rounded-xl border border-indigo-100 p-4 space-y-3">
-                            <p class="text-xs font-medium text-indigo-700 uppercase tracking-wide"><i class="fas fa-sparkles mr-1"></i>AI ile Üret</p>
-                            <div>
-                                <label class="block text-xs text-gray-600 mb-1">Model</label>
-                                <select id="announcementImageModel" class="w-full border p-2 rounded-lg text-sm">
-                                    <option value="flux">Flux — Genel amaçlı</option>
-                                    <option value="flux-realism">Flux Realism — Gerçekçi fotoğraf</option>
-                                    <option value="flux-3d">Flux 3D — 3D / render görünümü</option>
-                                    <option value="flux-anime">Flux Anime — İllüstrasyon tarzı</option>
-                                    <option value="turbo">Turbo — Hızlı (düşük kalite)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-600 mb-1">Prompt <span class="text-gray-400">(boş bırakılırsa başlık+özetden otomatik)</span></label>
-                                <textarea id="announcementImageCustomPrompt" rows="2" placeholder="Örn: futuristic library with glowing screens, blue tones, no text…" class="w-full border p-2 rounded-lg text-sm resize-none"></textarea>
-                            </div>
-                            <button type="button" id="announcementImageBtn" onclick="generateAnnouncementImage()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 w-full">
-                                <i class="fas fa-image mr-2"></i>AI Görsel Üret
-                            </button>
-                        </div>
-
-                        <!-- Kendi görselini yükle -->
-                        <div class="bg-white rounded-xl border border-green-100 p-4 space-y-2">
-                            <p class="text-xs font-medium text-green-700 uppercase tracking-wide"><i class="fas fa-upload mr-1"></i>Dosyadan Yükle</p>
-                            <label class="flex items-center gap-2 cursor-pointer border-2 border-dashed border-green-200 rounded-xl p-3 hover:bg-green-50 transition-colors">
-                                <i class="fas fa-cloud-upload-alt text-green-500 text-lg"></i>
-                                <span id="announcementUploadLabel" class="text-sm text-gray-500">JPG, PNG veya WEBP seçin</span>
-                                <input type="file" id="announcementImageFile" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="uploadAnnouncementImage()">
-                            </label>
-                            <div id="announcementUploadProgress" class="hidden text-xs text-green-600"><i class="fas fa-spinner fa-spin mr-1"></i>Yükleniyor…</div>
-                        </div>
-
-                        <!-- Mevcut görsel / önizleme -->
-                        <div id="announcementCoverPreviewWrapper" class="hidden rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm relative">
-                            <button type="button" onclick="clearAnnouncementImage()" title="Görseli kaldır"
-                                class="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow">
-                                <i class="fas fa-times text-xs"></i>
-                            </button>
-                        </div>
-
-                        <div id="announcementImagePromptBox" class="hidden text-xs text-gray-500 bg-white/80 border border-white rounded-xl px-3 py-2"></div>
-
-                        <!-- Hidden field — relative veya absolute URL -->
-                        <input type="hidden" id="announcementCoverImage">
-
-                        <p class="text-xs text-gray-400"><i class="fas fa-circle-info mr-1"></i>İngilizce alanlar boş kalırsa public sayfa Türkçe içeriğe geri düşer.</p>
-                    </div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                  <select id="announcementCategory" class="w-full border p-3 rounded-xl">
+                    <option value="general">Genel</option>
+                    <option value="urgent">Acil</option>
+                    <option value="new-product">Yeni Ürün</option>
+                    <option value="product-update">Güncelleme</option>
+                    <option value="event">Etkinlik</option>
+                    <option value="maintenance">Bakım</option>
+                  </select>
                 </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Öncelik</label>
+                  <select id="announcementPriority" class="w-full border p-3 rounded-xl">
+                    <option value="medium">Orta</option>
+                    <option value="high">Yüksek</option>
+                    <option value="low">Düşük</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Özet</label>
+                <textarea id="announcementSummary" rows="3" placeholder="Kısa özet (liste görünümünde gösterilir)" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
+              </div>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">İçerik</label>
+                <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
+
+                <!-- Zamanlı Yayın için Tarih Seçici (başlangıçta gizli) -->
+                <div id="scheduledPublishContainer" class="hidden mb-4 mt-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Yayınlanma Tarihi</label>
+                  <div class="flex gap-2">
+                    <input type="datetime-local" id="announcementScheduledPublishAt" class="flex-1 border p-3 rounded-xl">
+                    <button type="button" onclick="cancelScheduledPublish()" class="btn bg-gray-300 text-gray-700 px-4">
+                      İptal
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-400 mt-1">Tarih seçtikten sonra "Yayınla" butonuna basın.</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <input type="checkbox" id="announcementPublished" checked class="rounded" style="display:none">
+                <label for="announcementPublished" class="text-sm text-gray-700">Yayında</label>
+              </div>
             </div>
 
-<div class="flex gap-3 mt-6">
-  <button type="button" onclick="openAnnouncementPreview()" class="btn bg-gray-100 text-gray-700 hover:bg-gray-200">
-    <i class="fas fa-eye mr-2"></i>Önizleme
-  </button>
-  <button type="button" onclick="saveAsDraft()" class="btn bg-amber-500 text-white hover:bg-amber-600">
-    <i class="fas fa-save mr-2"></i>Taslak Kaydet
-  </button>
-  <button type="button" onclick="publishNow()" class="btn btn-primary">
-    <i class="fas fa-paper-plane mr-2"></i>Yayınla
-  </button>
-  <button type="button" onclick="showScheduledPublish()" class="btn bg-blue-500 text-white hover:bg-blue-600">
-    <i class="fas fa-calendar-alt mr-2"></i>Zamanlı Yayınla
-  </button>
-  <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 text-gray-700 hover:bg-gray-400">
-    İptal
-  </button>
+            <div class="bg-white border border-gray-200 rounded-2xl p-5">
+              <div class="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <h4 class="font-semibold text-gray-900">İngilizce Versiyon</h4>
+                  <p class="text-xs text-gray-500">Public sayfadaki EN görünüm bu alanlardan beslenir.</p>
+                </div>
+                <button type="button" id="announcementTranslateBtn" onclick="translateAnnouncementContent()" class="btn bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap">
+                  <i class="fas fa-language mr-2"></i>TR to EN Çevir
+                </button>
+              </div>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">English Title</label>
+                <input type="text" id="announcementTitleEn" placeholder="English title" class="w-full border p-3 rounded-xl">
+              </div>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">English Summary</label>
+                <textarea id="announcementSummaryEn" rows="3" placeholder="Short English summary" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">English Content</label>
+                <textarea id="announcementFullContentEn" rows="8" placeholder="Full English content (Markdown supported)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- SAĞ TARAF - KAPAK GÖRSELİ -->
+          <div>
+            <div class="bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-5 sticky top-4 space-y-4">
+              <h4 class="font-semibold text-gray-900">Kapak Görseli</h4>
+
+              <div class="bg-white rounded-xl border border-indigo-100 p-4 space-y-3">
+                <p class="text-xs font-medium text-indigo-700 uppercase tracking-wide"><i class="fas fa-sparkles mr-1"></i>AI ile Üret</p>
+                <div>
+                  <label class="block text-xs text-gray-600 mb-1">Model</label>
+                  <select id="announcementImageModel" class="w-full border p-2 rounded-lg text-sm">
+                    <option value="flux">Flux — Genel amaçlı</option>
+                    <option value="flux-realism">Flux Realism — Gerçekçi fotoğraf</option>
+                    <option value="flux-3d">Flux 3D — 3D / render görünümü</option>
+                    <option value="flux-anime">Flux Anime — İllüstrasyon tarzı</option>
+                    <option value="turbo">Turbo — Hızlı (düşük kalite)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-600 mb-1">Prompt <span class="text-gray-400">(boş bırakılırsa başlık+özetden otomatik)</span></label>
+                  <textarea id="announcementImageCustomPrompt" rows="2" placeholder="Örn: futuristic library with glowing screens, blue tones, no text…" class="w-full border p-2 rounded-lg text-sm resize-none"></textarea>
+                </div>
+                <button type="button" id="announcementImageBtn" onclick="generateAnnouncementImage()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 w-full">
+                  <i class="fas fa-image mr-2"></i>AI Görsel Üret
+                </button>
+              </div>
+
+              <div class="bg-white rounded-xl border border-green-100 p-4 space-y-2">
+                <p class="text-xs font-medium text-green-700 uppercase tracking-wide"><i class="fas fa-upload mr-1"></i>Dosyadan Yükle</p>
+                <label class="flex items-center gap-2 cursor-pointer border-2 border-dashed border-green-200 rounded-xl p-3 hover:bg-green-50 transition-colors">
+                  <i class="fas fa-cloud-upload-alt text-green-500 text-lg"></i>
+                  <span id="announcementUploadLabel" class="text-sm text-gray-500">JPG, PNG veya WEBP seçin</span>
+                  <input type="file" id="announcementImageFile" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="uploadAnnouncementImage()">
+                </label>
+                <div id="announcementUploadProgress" class="hidden text-xs text-green-600"><i class="fas fa-spinner fa-spin mr-1"></i>Yükleniyor…</div>
+              </div>
+
+              <div id="announcementCoverPreviewWrapper" class="hidden rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm relative">
+                <button type="button" onclick="clearAnnouncementImage()" title="Görseli kaldır"
+                  class="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow">
+                  <i class="fas fa-times text-xs"></i>
+                </button>
+              </div>
+
+              <div id="announcementImagePromptBox" class="hidden text-xs text-gray-500 bg-white/80 border border-white rounded-xl px-3 py-2"></div>
+
+              <input type="hidden" id="announcementCoverImage">
+
+              <p class="text-xs text-gray-400"><i class="fas fa-circle-info mr-1"></i>İngilizce alanlar boş kalırsa public sayfa Türkçe içeriğe geri düşer.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Butonlar - sabit alt çubuk -->
+      <div class="sticky bottom-0 bg-white border-t -mx-6 px-6 py-4 mt-6 flex gap-3 flex-wrap" style="margin-bottom: -1.5rem; z-index: 20;">
+        <button type="button" onclick="openAnnouncementPreview()" class="btn bg-gray-100 text-gray-700 hover:bg-gray-200">
+          <i class="fas fa-eye mr-2"></i>Önizleme
+        </button>
+        <button type="button" onclick="saveAsDraft()" class="btn bg-amber-500 text-white hover:bg-amber-600">
+          <i class="fas fa-save mr-2"></i>Taslak Kaydet
+        </button>
+        <button type="button" onclick="publishNow()" class="btn btn-primary">
+          <i class="fas fa-paper-plane mr-2"></i>Yayınla
+        </button>
+        <button type="button" onclick="showScheduledPublish()" class="btn bg-blue-500 text-white hover:bg-blue-600">
+          <i class="fas fa-calendar-alt mr-2"></i>Zamanlı Yayınla
+        </button>
+        <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 text-gray-700 hover:bg-gray-400">
+          İptal
+        </button>
+      </div>
+
+      <input type="hidden" id="isPublishedInput" value="0">
+      <input type="hidden" id="isScheduledMode" value="0">
+    </form>
+  </div>
 </div>
-<input type="hidden" id="isPublishedInput" value="0">
-<input type="hidden" id="isScheduledMode" value="0">
-        </form>
-    </div>
 </div>
 
 <!-- Önizleme Modal'ı -->
@@ -5369,7 +5376,6 @@ const oldForm = document.getElementById('announcementForm');
 const newForm = oldForm.cloneNode(true);
 oldForm.parentNode.replaceChild(newForm, oldForm);
 
-// YENİ listener
 newForm.addEventListener('submit', async function(e) {
   e.preventDefault();
   
@@ -5383,7 +5389,8 @@ newForm.addEventListener('submit', async function(e) {
     isPublished = 0;
     scheduledPublishAt = document.getElementById('announcementScheduledPublishAt')?.value;
     if (!scheduledPublishAt) {
-      showToast('Zamanlı yayın için tarih seçmelisiniz!', 'warning');
+      showToast('Zamanlı yayın için önce "Zamanlı Yayınla" butonuna tıklayıp tarih seçmelisiniz!', 'warning');
+      // Modu sıfırla
       document.getElementById('isScheduledMode').value = '0';
       document.getElementById('scheduledPublishContainer').classList.add('hidden');
       return;
