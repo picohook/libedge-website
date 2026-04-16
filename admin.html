@@ -1242,6 +1242,27 @@
         </form>
     </div>
 </div>
+
+<!-- Önizleme Modal'ı -->
+<div id="previewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xl font-bold text-gray-900">
+        <i class="fas fa-eye mr-2 text-primary"></i>Duyuru Önizleme
+      </h3>
+      <button onclick="closePreviewModal()" class="text-gray-400 hover:text-gray-600 text-xl">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div id="previewContent" class="prose max-w-none">
+      <p class="text-gray-400 text-center py-8">Önizlenecek içerik yok.</p>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="closePreviewModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">Kapat</button>
+    </div>
+  </div>
+</div>
+
 <!-- Institution Modal -->
 <div id="institutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-md">
