@@ -1558,9 +1558,9 @@ async function submitMoveModal() {
     });
 
     if (res.ok) {
-        showToast('Dosya ta\u015f\u0131nd\u0131.', 'success');
+        showToast('Dosya taşındı.', 'success');
         closeMoveModal();
-        loadFolders(currentFolderId); // hem klas\u00f6r say\u0131lar\u0131n\u0131 hem dosya listesini g\u00fcnceller
+        loadFolders(currentFolderId); // hem klasör sayılarını hem dosya listesini günceller
     } else {
         const data = await res.json().catch(() => ({}));
         showToast(data.error || 'Dosya taşınamadı.', 'error');
@@ -2034,7 +2034,7 @@ async function moveInstitutionFileRef(refId, institutionId, fileName) {
         search: ''
     };
 
-    document.getElementById('moveModalSubtitle').textContent = 'Dosyay\u0131 kurum klas\u00f6rleri aras\u0131nda ta\u015f\u0131.';
+    document.getElementById('moveModalSubtitle').textContent = 'Dosyayı kurum klasörleri arasında taşı.';
     const searchInput = document.getElementById('moveModalSearch');
     if (searchInput) searchInput.value = '';
     renderMoveModalFolders();
@@ -2279,9 +2279,9 @@ function updateHeaderAvatar(avatarUrl) {
 }
 
 // ====================== TALEPLERİM (form_submissions) ======================
-const SUBMISSION_TYPE_LABELS = { trial: 'Deneme Eri\u015fimi', suggest: '\u00dcr\u00fcn \u00d6nerisi', contact: '\u0130leti\u015fim' };
+const SUBMISSION_TYPE_LABELS = { trial: 'Deneme Erişimi', suggest: 'Ürün Önerisi', contact: 'İletişim' };
 const SUBMISSION_TYPE_COLORS_P = { trial: 'bg-blue-100 text-blue-700', suggest: 'bg-purple-100 text-purple-700', contact: 'bg-gray-100 text-gray-600' };
-const SUBMISSION_STATUS_LABELS_P = { pending: 'Bekliyor', reviewing: '\u0130nceleniyor', responded: 'Yan\u0131tland\u0131', completed: 'Tamamland\u0131' };
+const SUBMISSION_STATUS_LABELS_P = { pending: 'Bekliyor', reviewing: 'İnceleniyor', responded: 'Yanıtlandı', completed: 'Tamamlandı' };
 const SUBMISSION_STATUS_COLORS_P = { pending: 'bg-yellow-100 text-yellow-700', reviewing: 'bg-blue-100 text-blue-700', responded: 'bg-green-100 text-green-700', completed: 'bg-gray-100 text-gray-500' };
 
 async function loadUserSubmissions() {
@@ -2297,7 +2297,7 @@ async function loadUserSubmissions() {
 
         const data = await res.json();
         if (!data.length) {
-            el.innerHTML = '<p class="text-gray-400 text-sm">Hen\u00fcz g\u00f6nderilmi\u015f talebiniz yok.</p>';
+            el.innerHTML = '<p class="text-gray-400 text-sm">Henüz gönderilmiş talebiniz yok.</p>';
             return;
         }
 
@@ -2315,13 +2315,13 @@ async function loadUserSubmissions() {
                 <p class="text-xs text-gray-400 shrink-0">${new Date(s.submitted_at).toLocaleDateString('tr-TR')}</p>
             </div>`).join('');
     } catch (err) {
-        el.innerHTML = '<p class="text-gray-400 text-sm">Talepler y\u00fcklenemedi.</p>';
+        el.innerHTML = '<p class="text-gray-400 text-sm">Talepler yüklenemedi.</p>';
     }
 }
 
-const TICKET_STATUS_LABELS = { open: '\u0041\u00e7\u0131k', in_progress: '\u0130\u015flemde', resolved: '\u00c7\u00f6z\u00fcld\u00fc', closed: 'Kapat\u0131ld\u0131' };
+const TICKET_STATUS_LABELS = { open: 'Açık', in_progress: 'İşlemde', resolved: 'Çözüldü', closed: 'Kapatıldı' };
 const TICKET_STATUS_COLORS = { open: 'bg-red-100 text-red-700', in_progress: 'bg-yellow-100 text-yellow-800', resolved: 'bg-green-100 text-green-700', closed: 'bg-gray-100 text-gray-500' };
-const TICKET_PRIORITY_LABELS = { low: 'D\u00fc\u015f\u00fck', normal: 'Normal', high: 'Y\u00fcksek', urgent: 'Acil' };
+const TICKET_PRIORITY_LABELS = { low: 'Düşük', normal: 'Normal', high: 'Yüksek', urgent: 'Acil' };
 let currentTicketId = null;
 
 function renderTicketAttachment(url) {
@@ -2337,7 +2337,7 @@ async function loadMyTickets() {
     const el = document.getElementById('ticketList');
     if (!el) return;
 
-    el.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Y\u00fckleniyor...</p>';
+    el.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p>';
     closeTicketDetail();
 
     try {
@@ -2345,7 +2345,7 @@ async function loadMyTickets() {
         const data = await res.json();
 
         if (!Array.isArray(data) || data.length === 0) {
-            el.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Hen\u00fcz destek talebiniz yok.</p>';
+            el.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">Henüz destek talebiniz yok.</p>';
             return;
         }
 
@@ -2373,7 +2373,7 @@ async function openTicketDetail(id) {
     if (!detail || !repliesEl) return;
 
     detail.classList.remove('hidden');
-    repliesEl.innerHTML = '<p class="text-gray-400 text-sm">Y\u00fckleniyor...</p>';
+    repliesEl.innerHTML = '<p class="text-gray-400 text-sm">Yükleniyor...</p>';
     document.getElementById('ticketReplyText').value = '';
     const ticketReplyFile = document.getElementById('ticketReplyFile');
     if (ticketReplyFile) ticketReplyFile.value = '';
@@ -2393,12 +2393,12 @@ async function openTicketDetail(id) {
 
         const thread = [{ message: t.message, is_admin: 0, author_name: 'Siz', created_at: t.created_at, attachment_url: t.attachment_url || '' }, ...(t.replies || [])];
         repliesEl.innerHTML = thread.length === 0
-            ? '<p class="text-gray-400 text-sm text-center py-2">Hen\u00fcz mesaj bulunmuyor.</p>'
+            ? '<p class="text-gray-400 text-sm text-center py-2">Henüz mesaj bulunmuyor.</p>'
             : thread.map((r) => `
                 <div class="flex gap-2 ${r.is_admin ? 'justify-end' : ''}">
                     <div class="max-w-xs rounded-xl px-3 py-2 text-sm ${r.is_admin ? 'bg-indigo-100 text-indigo-900' : 'bg-white border text-gray-800'}">
                         <p class="font-semibold text-xs mb-1 opacity-60">${r.is_admin ? 'Destek Ekibi' : escapeHtml(r.author_name || 'Siz')}</p>
-                        ${r.message ? `<p>${escapeHtml(r.message)}</p>` : '<p class="italic opacity-60">Dosya payla\u015f\u0131ld\u0131.</p>'}
+                        ${r.message ? `<p>${escapeHtml(r.message)}</p>` : '<p class="italic opacity-60">Dosya paylaşıldı.</p>'}
                         ${renderTicketAttachment(r.attachment_url)}
                         <p class="text-xs opacity-40 mt-1">${new Date(r.created_at).toLocaleString('tr-TR')}</p>
                     </div>
@@ -2427,7 +2427,7 @@ async function sendTicketReply() {
     const file = fileEl?.files?.[0] || null;
 
     if (!message && !file) {
-        showToast('Yan\u0131t veya dosya gerekli.', 'warning');
+        showToast('Yanıt veya dosya gerekli.', 'warning');
         return;
     }
 
@@ -2442,11 +2442,11 @@ async function sendTicketReply() {
             body: formData
         });
 
-        if (!res.ok) throw new Error((await res.json()).error || 'Yan\u0131t g\u00f6nderilemedi');
+        if (!res.ok) throw new Error((await res.json()).error || 'Yanıt gönderilemedi');
 
         messageEl.value = '';
         if (fileEl) fileEl.value = '';
-        showToast('Yan\u0131t g\u00f6nderildi.', 'success');
+        showToast('Yanıt gönderildi.', 'success');
         await openTicketDetail(currentTicketId);
         await loadMyTickets();
     } catch (err) {
@@ -2473,7 +2473,7 @@ async function submitNewTicket(e) {
     const btn = document.getElementById('newTicketSubmitBtn');
 
     btn.disabled = true;
-    btn.textContent = 'G\u00f6nderiliyor...';
+    btn.textContent = 'Gönderiliyor...';
 
     try {
         const res = await fetch('/api/support/tickets', {
@@ -2483,16 +2483,16 @@ async function submitNewTicket(e) {
             body: JSON.stringify({ subject, message, priority })
         });
 
-        if (!res.ok) throw new Error((await res.json()).error || 'Talep g\u00f6nderilemedi');
+        if (!res.ok) throw new Error((await res.json()).error || 'Talep gönderilemedi');
 
         closeNewTicketModal();
-        showToast('Destek talebi olu\u015fturuldu.', 'success');
+        showToast('Destek talebi oluşturuldu.', 'success');
         await loadMyTickets();
     } catch (err) {
         showToast(err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'G\u00f6nder';
+        btn.textContent = 'Gönder';
     }
 }
 

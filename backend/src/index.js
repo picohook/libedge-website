@@ -2336,8 +2336,8 @@ app.get('/api/institution/:id/files', async (c) => {
 
     return c.json(result.results || []);
   } catch (err) {
-    console.error('Root dosyalari sorgu hatasi:', err);
-    return c.json({ error: 'Dosyalar alinamadi' }, 500);
+    console.error('Root dosyaları sorgu hatası:', err);
+    return c.json({ error: 'Dosyalar alınamadı' }, 500);
   }
 });
 
@@ -2420,7 +2420,7 @@ app.get('/api/institution/:id/folders', async (c) => {
 
     return c.json(result);
   } catch (err) {
-    console.error('Klasor sorgu hatasi:', err);
+    console.error('Klasör sorgu hatası:', err);
     return c.json({ error: err.message }, 500);
   }
 });
@@ -2447,7 +2447,7 @@ app.get('/api/institution/folder/:id/files', async (c) => {
     `).bind(folderId).first();
 
     if (!folder) {
-      return c.json({ error: 'Klasor bulunamadi' }, 404);
+      return c.json({ error: 'Klasör bulunamadı' }, 404);
     }
 
     const auth = await getOptionalAuth(c);
@@ -2485,7 +2485,7 @@ app.get('/api/institution/folder/:id/files', async (c) => {
   } catch (error) {
     console.error('Folder files endpoint error:', error);
     return c.json({
-      error: 'Dosyalar yuklenirken bir hata olustu',
+      error: 'Dosyalar yüklenirken bir hata oluştu',
       details: error.message
     }, 500);
   }
@@ -2513,20 +2513,20 @@ app.get('/api/institution/folder/:id', async (c) => {
     `).bind(folderId).first();
 
     if (!folder) {
-      return c.json({ error: 'Klasor bulunamadi' }, 404);
+      return c.json({ error: 'Klasör bulunamadı' }, 404);
     }
 
     const auth = await getOptionalAuth(c);
     const canManage = canManageInstitutionScope(auth?.user, { id: folder.institution_id, name: folder.institution_name });
     if (!canManage && folder.is_public !== 1) {
-      return c.json({ error: 'Bu klasore erisim yetkiniz yok' }, 403);
+      return c.json({ error: 'Bu klasöre erişim yetkiniz yok' }, 403);
     }
 
     return c.json(folder);
   } catch (error) {
     console.error('Folder detail endpoint error:', error);
     return c.json({
-      error: 'Klasor bilgisi yuklenirken bir hata olustu',
+      error: 'Klasör bilgisi yüklenirken bir hata oluştu',
       details: error.message
     }, 500);
   }
@@ -2536,13 +2536,13 @@ async function handleManagedUpload(c) {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   if (auth.user.role !== 'super_admin') {
-    return c.json({ error: 'Sadece Super Admin dosya yukleyebilir' }, 403);
+    return c.json({ error: 'Sadece Super Admin dosya yükleyebilir' }, 403);
   }
 
   const formData = await c.req.formData();
   const file = formData.get('file');
   if (!file || typeof file === 'string') {
-    return c.json({ error: 'Dosya bulunamadi' }, 400);
+    return c.json({ error: 'Dosya bulunamadı' }, 400);
   }
 
   try {
@@ -2569,7 +2569,7 @@ async function handleManagedUpload(c) {
       size: stored.file_size
     });
   } catch (error) {
-    return c.json({ error: error.message || 'Yukleme basarisiz' }, 400);
+    return c.json({ error: error.message || 'Yükleme başarısız' }, 400);
   }
 }
 
@@ -3059,7 +3059,7 @@ app.put('/api/institution/file/:id', async (c) => {
       AND col.is_active = 1
   `).bind(refId).first();
 
-  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!ref) return c.json({ error: 'Dosya bulunamadı' }, 404);
   if (!canManageInstitutionScope(auth.user, { id: ref.institution_id, name: ref.institution_name })) {
     return c.json({ error: 'Yetkisiz' }, 403);
   }
@@ -3068,7 +3068,7 @@ app.put('/api/institution/file/:id', async (c) => {
   let nextCollectionId = ref.collection_id;
   if (folder_id !== undefined) {
     const targetCollection = await getInstitutionCollectionOrRoot(db, ref.institution_id, folder_id || null, auth.user.user_id);
-    if (!targetCollection) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+    if (!targetCollection) return c.json({ error: 'Hedef klasör bulunamadı' }, 404);
     nextCollectionId = targetCollection.id;
   }
 
@@ -3077,7 +3077,7 @@ app.put('/api/institution/file/:id', async (c) => {
     const nextStored = source_file_id
       ? await getStoredFileById(db, source_file_id)
       : await getStoredFileByKey(db, extractManagedFileKey(file_url, c.env.R2_PUBLIC_URL));
-    if (!nextStored) return c.json({ error: 'Kaynak dosya bulunamadi' }, 404);
+    if (!nextStored) return c.json({ error: 'Kaynak dosya bulunamadı' }, 404);
     nextFileId = nextStored.id;
   }
 
@@ -3126,7 +3126,7 @@ app.delete('/api/institution/file/:id', async (c) => {
       AND col.is_active = 1
   `).bind(refId).first();
 
-  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!ref) return c.json({ error: 'Dosya bulunamadı' }, 404);
   if (!canManageInstitutionScope(auth.user, { id: ref.institution_id, name: ref.institution_name })) {
     return c.json({ error: 'Yetkisiz' }, 403);
   }
@@ -3274,13 +3274,13 @@ app.post('/api/files/use', async (c) => {
 
   const db = c.env.DB;
   const collection = await getActiveCollection(db, Number(collection_id));
-  if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
-  if (collection.scope_type !== 'institution') return c.json({ error: 'Yalnizca kurum klasorleri destekleniyor' }, 400);
+  if (!collection) return c.json({ error: 'Koleksiyon bulunamadı' }, 404);
+  if (collection.scope_type !== 'institution') return c.json({ error: 'Yalnızca kurum klasörleri destekleniyor' }, 400);
   const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(collection.scope_id).first();
   if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
 
   const stored = await getStoredFileById(db, Number(file_id));
-  if (!stored) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!stored) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   const existing = await db.prepare(`
     SELECT id
@@ -3321,7 +3321,7 @@ app.post('/api/files/bulk-add', async (c) => {
 
   const db = c.env.DB;
   const stored = await getStoredFileById(db, Number(file_id));
-  if (!stored) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!stored) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   const targetCollectionIds = new Set();
   for (const id of Array.isArray(collection_ids) ? collection_ids : []) {
@@ -3447,7 +3447,7 @@ app.post('/api/collections', async (c) => {
 
   const db = c.env.DB;
   const { parent_id, name, scope_type, scope_id, kind, is_public } = await c.req.json();
-  if (!name?.trim()) return c.json({ error: 'Koleksiyon adi zorunlu' }, 400);
+  if (!name?.trim()) return c.json({ error: 'Koleksiyon adı zorunlu' }, 400);
   if (!['institution', 'system'].includes(scope_type)) {
     return c.json({ error: 'Desteklenmeyen scope_type' }, 400);
   }
@@ -3462,7 +3462,7 @@ app.post('/api/collections', async (c) => {
   } else {
     effectiveScopeId = auth.user.role === 'admin' ? auth.user.institution_id : scope_id;
     const institution = await db.prepare(`SELECT id, name FROM institutions WHERE id = ?`).bind(Number(effectiveScopeId)).first();
-    if (!institution) return c.json({ error: 'Kurum bulunamadi' }, 404);
+    if (!institution) return c.json({ error: 'Kurum bulunamadı' }, 404);
     if (!canManageInstitutionScope(auth.user, institution)) return c.json({ error: 'Yetkisiz' }, 403);
   }
 
@@ -3483,7 +3483,7 @@ app.put('/api/collections/:id', async (c) => {
 
   const db = c.env.DB;
   const collection = await getActiveCollection(db, Number(c.req.param('id')));
-  if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
+  if (!collection) return c.json({ error: 'Koleksiyon bulunamadı' }, 404);
   if (!canManageCollectionScope(auth.user, collection)) return c.json({ error: 'Yetkisiz' }, 403);
 
   const { name, is_public, sort_order } = await c.req.json();
@@ -3508,8 +3508,8 @@ app.delete('/api/collections/:id', async (c) => {
 
   const db = c.env.DB;
   const collection = await getActiveCollection(db, Number(c.req.param('id')));
-  if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
-  if (collection.kind !== 'folder') return c.json({ error: 'Yalnizca folder silinebilir' }, 400);
+  if (!collection) return c.json({ error: 'Koleksiyon bulunamadı' }, 404);
+  if (collection.kind !== 'folder') return c.json({ error: 'Yalnızca klasör silinebilir' }, 400);
   if (!canManageCollectionScope(auth.user, collection)) return c.json({ error: 'Yetkisiz' }, 403);
 
   await c.env.DB.prepare(`UPDATE collections SET is_active = 0 WHERE id = ?`).bind(collection.id).run();
@@ -3530,12 +3530,12 @@ app.post('/api/collections/:id/files', async (c) => {
 
   const db = c.env.DB;
   const collection = await getActiveCollection(db, Number(c.req.param('id')));
-  if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
+  if (!collection) return c.json({ error: 'Koleksiyon bulunamadı' }, 404);
   if (!['institution', 'system'].includes(collection.scope_type)) return c.json({ error: 'Desteklenmeyen scope' }, 400);
   if (!canManageCollectionScope(auth.user, collection)) return c.json({ error: 'Yetkisiz' }, 403);
 
   const stored = await getStoredFileById(db, Number(file_id));
-  if (!stored) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!stored) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   const existing = await db.prepare(`
     SELECT id
@@ -3575,7 +3575,7 @@ app.delete('/api/collections/:id/files/:fileId', async (c) => {
   const fileId = Number(c.req.param('fileId'));
   const db = c.env.DB;
   const collection = await getActiveCollection(db, collectionId);
-  if (!collection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
+  if (!collection) return c.json({ error: 'Koleksiyon bulunamadı' }, 404);
   if (!canManageCollectionScope(auth.user, collection)) return c.json({ error: 'Yetkisiz' }, 403);
 
   await db.prepare(`
@@ -3666,7 +3666,7 @@ app.patch('/api/collection_files/:id/move', async (c) => {
     LEFT JOIN institutions i ON i.id = col.scope_id
     WHERE cf.id = ? AND cf.is_active = 1 AND col.is_active = 1
   `).bind(refId).first();
-  if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
+  if (!ref) return c.json({ error: 'Dosya referansı bulunamadı' }, 404);
   // Kaynak dosyanın kurumunu da kontrol et
   if (!canManageCollectionScope(auth.user, {
     scope_type: ref.scope_type,
@@ -3675,7 +3675,7 @@ app.patch('/api/collection_files/:id/move', async (c) => {
   })) return c.json({ error: 'Yetkisiz' }, 403);
 
   const target = await getActiveCollection(db, Number(target_collection_id));
-  if (!target) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+  if (!target) return c.json({ error: 'Hedef klasör bulunamadı' }, 404);
   if (String(target.scope_type) !== String(ref.scope_type) || String(target.scope_id) !== String(ref.scope_id)) {
     return c.json({ error: 'Farkli alanlar arasi tasima yapilamaz' }, 400);
   }
@@ -3700,7 +3700,7 @@ app.patch('/api/collection_files/:id/rename', async (c) => {
     JOIN collections col ON col.id = cf.collection_id
     WHERE cf.id = ? AND cf.is_active = 1 AND col.is_active = 1
   `).bind(refId).first();
-  if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
+  if (!ref) return c.json({ error: 'Dosya referansı bulunamadı' }, 404);
   if (!canManageCollectionScope(auth.user, ref)) return c.json({ error: 'Yetkisiz' }, 403);
 
   await db.prepare(`UPDATE collection_files SET display_name = ? WHERE id = ?`).bind(String(display_name).trim(), refId).run();
@@ -3716,7 +3716,7 @@ app.get('/api/system/files', async (c) => {
   const root = await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
   const requestedCollectionId = c.req.query('collection_id');
   const targetCollection = await getSystemCollectionOrRoot(db, auth.user.user_id, requestedCollectionId || null, auth.user.user_id);
-  if (!targetCollection) return c.json({ error: 'Koleksiyon bulunamadi' }, 404);
+  if (!targetCollection) return c.json({ error: 'Koleksiyon bulunamadı' }, 404);
 
   const rows = await db.prepare(`
     SELECT
@@ -3838,7 +3838,7 @@ app.post('/api/system/file', async (c) => {
   const db = c.env.DB;
   const root = await ensureSystemRootCollection(db, auth.user.user_id, auth.user.user_id);
   const targetCollection = await getSystemCollectionOrRoot(db, auth.user.user_id, folder_id || null, auth.user.user_id);
-  if (!targetCollection) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+  if (!targetCollection) return c.json({ error: 'Hedef klasör bulunamadı' }, 404);
 
   let stored = null;
   if (file_id) {
@@ -3847,7 +3847,7 @@ app.post('/api/system/file', async (c) => {
     const fileKey = extractManagedFileKey(file_url, c.env.R2_PUBLIC_URL);
     if (fileKey) stored = await getStoredFileByKey(db, fileKey);
   }
-  if (!stored) return c.json({ error: 'Yalnizca sisteme yuklenmis dosyalar eklenebilir' }, 400);
+  if (!stored) return c.json({ error: 'Yalnızca sisteme yüklenmiş dosyalar eklenebilir' }, 400);
 
   const existing = await db.prepare(`
     SELECT id
@@ -3926,7 +3926,7 @@ app.put('/api/system/file/:id', async (c) => {
     JOIN collections col ON col.id = cf.collection_id
     WHERE cf.id = ? AND cf.is_active = 1 AND col.is_active = 1
   `).bind(refId).first();
-  if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
+  if (!ref) return c.json({ error: 'Dosya referansı bulunamadı' }, 404);
 
   const { is_public, display_name, category } = await c.req.json();
   const updates = [];
@@ -3934,7 +3934,7 @@ app.put('/api/system/file/:id', async (c) => {
   if (is_public !== undefined) { updates.push('is_public = ?'); binds.push(is_public ? 1 : 0); }
   if (display_name !== undefined) { updates.push('display_name = ?'); binds.push(display_name); }
   if (category !== undefined) { updates.push('category = ?'); binds.push(category); }
-  if (!updates.length) return c.json({ error: 'Guncelleme alani yok' }, 400);
+  if (!updates.length) return c.json({ error: 'Güncelleme alanı yok' }, 400);
 
   binds.push(refId);
   await db.prepare(`UPDATE collection_files SET ${updates.join(', ')} WHERE id = ?`).bind(...binds).run();
@@ -3954,7 +3954,7 @@ app.delete('/api/system/file/:id', async (c) => {
     JOIN collections col ON col.id = cf.collection_id
     WHERE cf.id = ? AND cf.is_active = 1 AND col.is_active = 1
   `).bind(refId).first();
-  if (!ref) return c.json({ error: 'Dosya referansi bulunamadi' }, 404);
+  if (!ref) return c.json({ error: 'Dosya referansı bulunamadı' }, 404);
   if (!canManageCollectionScope(auth.user, ref)) return c.json({ error: 'Yetkisiz' }, 403);
 
   await db.prepare(`UPDATE collection_files SET is_active = 0 WHERE id = ?`).bind(refId).run();
@@ -3982,7 +3982,7 @@ app.post('/api/files/share', async (c) => {
 
   const db = c.env.DB;
   const resolvedRecipients = await resolveShareRecipients(db, auth.user, recipients);
-  if (!resolvedRecipients.length) return c.json({ error: 'Gecerli alici bulunamadi' }, 400);
+  if (!resolvedRecipients.length) return c.json({ error: 'Geçerli alıcı bulunamadı' }, 400);
 
   const shareIds = [];
   let recipientCount = 0;
@@ -4047,7 +4047,7 @@ app.post('/api/files/share', async (c) => {
   }
 
   if (!validFileCount) {
-    return c.json({ error: 'Paylasilabilir dosya bulunamadi' }, 400);
+    return c.json({ error: 'Paylaşılabilir dosya bulunamadı' }, 400);
   }
 
   return c.json({ success: true, share_ids: shareIds, recipient_count: recipientCount });
@@ -4169,7 +4169,7 @@ app.patch('/api/user/files/:id/read', async (c) => {
     JOIN user_collections uc ON uc.id = ucf.collection_id
     WHERE ucf.id = ? AND uc.user_id = ?
   `).bind(refId, auth.user.user_id).first();
-  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!ref) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   await db.prepare(`UPDATE user_collection_files SET is_read = 1 WHERE id = ?`).bind(refId).run();
   if (ref.share_id) {
@@ -4189,7 +4189,7 @@ app.patch('/api/user/files/:id/move', async (c) => {
   const { target_collection_id } = await c.req.json();
   const db = c.env.DB;
   const target = await getUserCollection(db, Number(target_collection_id), auth.user.user_id);
-  if (!target) return c.json({ error: 'Hedef klasor bulunamadi' }, 404);
+  if (!target) return c.json({ error: 'Hedef klasör bulunamadı' }, 404);
 
   const ref = await db.prepare(`
     SELECT ucf.id
@@ -4197,7 +4197,7 @@ app.patch('/api/user/files/:id/move', async (c) => {
     JOIN user_collections uc ON uc.id = ucf.collection_id
     WHERE ucf.id = ? AND uc.user_id = ?
   `).bind(refId, auth.user.user_id).first();
-  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!ref) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   await db.prepare(`UPDATE user_collection_files SET collection_id = ? WHERE id = ?`).bind(target.id, refId).run();
   return c.json({ success: true });
@@ -4216,7 +4216,7 @@ app.patch('/api/user/files/:id/rename', async (c) => {
     JOIN user_collections uc ON uc.id = ucf.collection_id
     WHERE ucf.id = ? AND uc.user_id = ?
   `).bind(refId, auth.user.user_id).first();
-  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!ref) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   await db.prepare(`UPDATE user_collection_files SET display_name = ? WHERE id = ?`).bind(String(display_name).trim(), refId).run();
   return c.json({ success: true });
@@ -4233,7 +4233,7 @@ app.delete('/api/user/files/:id', async (c) => {
     JOIN user_collections uc ON uc.id = ucf.collection_id
     WHERE ucf.id = ? AND uc.user_id = ?
   `).bind(refId, auth.user.user_id).first();
-  if (!ref) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!ref) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   await db.prepare(`DELETE FROM user_collection_files WHERE id = ?`).bind(refId).run();
   return c.json({ success: true });
@@ -4243,12 +4243,12 @@ app.post('/api/user/collections', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   const { name, parent_id } = await c.req.json();
-  if (!String(name || '').trim()) return c.json({ error: 'Klasor adi zorunlu' }, 400);
+  if (!String(name || '').trim()) return c.json({ error: 'Klasör adı zorunlu' }, 400);
   const db = c.env.DB;
 
   if (parent_id) {
     const parent = await getUserCollection(db, Number(parent_id), auth.user.user_id);
-    if (!parent) return c.json({ error: 'Ust klasor bulunamadi' }, 404);
+    if (!parent) return c.json({ error: 'Üst klasör bulunamadı' }, 404);
   }
 
   const result = await db.prepare(`
@@ -4263,10 +4263,10 @@ app.put('/api/user/collections/:id', async (c) => {
   if (auth.response) return auth.response;
   const collectionId = Number(c.req.param('id'));
   const { name } = await c.req.json();
-  if (!String(name || '').trim()) return c.json({ error: 'Klasor adi zorunlu' }, 400);
+  if (!String(name || '').trim()) return c.json({ error: 'Klasör adı zorunlu' }, 400);
   const db = c.env.DB;
   const collection = await getUserCollection(db, collectionId, auth.user.user_id);
-  if (!collection) return c.json({ error: 'Klasor bulunamadi' }, 404);
+  if (!collection) return c.json({ error: 'Klasör bulunamadı' }, 404);
 
   await db.prepare(`UPDATE user_collections SET name = ? WHERE id = ?`).bind(String(name).trim(), collectionId).run();
   return c.json({ success: true });
@@ -4278,8 +4278,8 @@ app.delete('/api/user/collections/:id', async (c) => {
   const collectionId = Number(c.req.param('id'));
   const db = c.env.DB;
   const collection = await getUserCollection(db, collectionId, auth.user.user_id);
-  if (!collection) return c.json({ error: 'Klasor bulunamadi' }, 404);
-  if (!collection.parent_id) return c.json({ error: 'Kok klasor silinemez' }, 400);
+  if (!collection) return c.json({ error: 'Klasör bulunamadı' }, 404);
+  if (!collection.parent_id) return c.json({ error: 'Kök klasör silinemez' }, 400);
 
   await db.prepare(`DELETE FROM user_collection_files WHERE collection_id = ?`).bind(collectionId).run();
   await db.prepare(`DELETE FROM user_collections WHERE id = ?`).bind(collectionId).run();
@@ -4420,7 +4420,7 @@ app.get('/api/files/*', async (c) => {
   if (!bucket) return c.json({ error: 'R2 bucket bagli degil' }, 500);
 
   const key = c.req.path.replace('/api/files/', '');
-  if (!key) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!key) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   const db = c.env.DB;
   const stored = await getStoredFileByKey(db, key);
@@ -4441,24 +4441,24 @@ app.get('/api/files/*', async (c) => {
   if (refs.length > 0 && !hasPublicReference) {
     const auth = await requireAuth(c);
     if (auth.response) {
-      return c.json({ error: 'Bu dosyaya erisim yetkiniz yok' }, 403);
+      return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
     }
 
     if (auth.user.role !== 'super_admin') {
       if (auth.user.role !== 'admin') {
-        return c.json({ error: 'Bu dosyaya erisim yetkiniz yok' }, 403);
+        return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
       }
 
       const adminInstitutionId = auth.user.institution_id;
       const matchesInstitution = refs.some(row => String(row.institution_id) === String(adminInstitutionId || ''));
       if (!matchesInstitution) {
-        return c.json({ error: 'Bu dosyaya erisim yetkiniz yok' }, 403);
+        return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
       }
     }
   }
 
   const object = await bucket.get(key);
-  if (!object) return c.json({ error: 'Dosya bulunamadi' }, 404);
+  if (!object) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   const headers = new Headers();
   object.writeHttpMetadata(headers);

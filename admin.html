@@ -1296,7 +1296,7 @@
         <h3 class="text-xl font-bold mb-4">Kurum Ekle</h3>
         <form id="institutionForm">
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Ad-</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı</label>
                 <input type="text" id="institutionName" placeholder="Örn: Ankara Üniversitesi" class="w-full border p-2 rounded" required>
             </div>
             <div class="mb-3">
@@ -1327,7 +1327,7 @@
         <form id="editInstitutionForm">
             <input type="hidden" id="editInstitutionId">
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Ad-</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı</label>
                 <input type="text" id="editInstitutionName" class="w-full border p-2 rounded bg-gray-50" required>
             </div>
             <div class="mb-3">
@@ -2321,7 +2321,7 @@ function handleFileClick(event, refId, name, sourceFileId) {
         const cb = event.currentTarget.querySelector('.file-select-cb');
         if (cb && event.target !== cb) { cb.checked = !cb.checked; updateSelectionCount(); }
     }
-}// Klasrr navigasyon
+}// Klasör navigasyon
 function adminOpenFolder(folderId, folderName) {
     adminFolderStack.push({ id: folderId, name: folderName });
     adminCurrentFolderId = folderId;
@@ -4811,9 +4811,9 @@ const priorityMap = {
 // ====================== TALEPLER ======================
 const SUBMISSION_TYPE_LABELS = { trial: 'Deneme', suggest: 'Öneri', contact: 'İletişim' };
 // ====================== DESTEK TALEPLERİ ======================
-const SUPPORT_STATUS_LABELS = { open: '\u0041\u00e7\u0131k', in_progress: '\u0130\u015flemde', resolved: '\u00c7\u00f6z\u00fcld\u00fc', closed: 'Kapat\u0131ld\u0131' };
+const SUPPORT_STATUS_LABELS = { open: 'Açık', in_progress: 'İşlemde', resolved: 'Çözüldü', closed: 'Kapatıldı' };
 const SUPPORT_STATUS_COLORS = { open: 'bg-red-100 text-red-700', in_progress: 'bg-yellow-100 text-yellow-800', resolved: 'bg-green-100 text-green-700', closed: 'bg-gray-100 text-gray-500' };
-const SUPPORT_PRIORITY_LABELS = { low: 'D\u00fc\u015f\u00fck', normal: 'Normal', high: 'Y\u00fcksek', urgent: 'Acil' };
+const SUPPORT_PRIORITY_LABELS = { low: 'Düşük', normal: 'Normal', high: 'Yüksek', urgent: 'Acil' };
 const SUPPORT_PRIORITY_COLORS = { low: 'bg-slate-100 text-slate-700', normal: 'bg-blue-100 text-blue-700', high: 'bg-orange-100 text-orange-700', urgent: 'bg-red-100 text-red-700' };
 
 function renderSupportAttachment(url) {
@@ -4831,7 +4831,7 @@ async function loadSupport() {
     const tbody = document.getElementById('supportTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Y\u00fckleniyor...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Yükleniyor...</td></tr>';
     const status = document.getElementById('supportStatusFilter')?.value || '';
     const priority = document.getElementById('supportPriorityFilter')?.value || '';
     const params = new URLSearchParams();
@@ -4843,7 +4843,7 @@ async function loadSupport() {
         const data = await res.json();
 
         if (!Array.isArray(data) || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-gray-400">Hen\u00fcz destek talebi yok.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-gray-400">Henüz destek talebi yok.</td></tr>';
             return;
         }
 
@@ -4876,7 +4876,7 @@ async function openSupportModal(id) {
     if (!modal || !repliesEl) return;
 
     modal.classList.remove('hidden');
-    repliesEl.innerHTML = '<p class="text-gray-400 text-sm">Y\u00fckleniyor...</p>';
+    repliesEl.innerHTML = '<p class="text-gray-400 text-sm">Yükleniyor...</p>';
     document.getElementById('supportReplyText').value = '';
     const replyFile = document.getElementById('supportReplyFile');
     if (replyFile) replyFile.value = '';
@@ -4893,14 +4893,14 @@ async function openSupportModal(id) {
         document.getElementById('supportModalStatus').value = t.status || 'open';
         document.getElementById('supportModalPriority').value = t.priority || 'normal';
 
-        const thread = [{ message: t.message, is_admin: 0, author_name: t.user_name || 'Kullan\u0131c\u0131', created_at: t.created_at, attachment_url: t.attachment_url || '' }, ...(t.replies || [])];
+        const thread = [{ message: t.message, is_admin: 0, author_name: t.user_name || 'Kullanıcı', created_at: t.created_at, attachment_url: t.attachment_url || '' }, ...(t.replies || [])];
         repliesEl.innerHTML = thread.length === 0
-            ? '<p class="text-gray-400 text-sm text-center py-2">Hen\u00fcz yan\u0131t yok.</p>'
+            ? '<p class="text-gray-400 text-sm text-center py-2">Henüz yanıt yok.</p>'
             : thread.map((r) => `
                 <div class="flex gap-2 ${r.is_admin ? 'justify-end' : ''}">
                     <div class="max-w-xs rounded-xl px-3 py-2 text-sm ${r.is_admin ? 'bg-indigo-100 text-indigo-900' : 'bg-white border text-gray-800'}">
-                        <p class="font-semibold text-xs mb-1 opacity-60">${r.is_admin ? 'Admin' : escapeHtml(r.author_name || 'Kullan\u0131c\u0131')}</p>
-                        ${r.message ? `<p>${escapeHtml(r.message)}</p>` : '<p class="italic opacity-60">Dosya payla\u015f\u0131ld\u0131.</p>'}
+                        <p class="font-semibold text-xs mb-1 opacity-60">${r.is_admin ? 'Admin' : escapeHtml(r.author_name || 'Kullanıcı')}</p>
+                        ${r.message ? `<p>${escapeHtml(r.message)}</p>` : '<p class="italic opacity-60">Dosya paylaşıldı.</p>'}
                         ${renderSupportAttachment(r.attachment_url)}
                         <p class="text-xs opacity-40 mt-1">${new Date(r.created_at).toLocaleString('tr-TR')}</p>
                     </div>
@@ -4934,9 +4934,9 @@ async function saveSupportTicket() {
             body: JSON.stringify({ status, priority })
         });
 
-        if (!res.ok) throw new Error((await res.json()).error || 'G\u00fcncelleme ba\u015far\u0131s\u0131z');
+        if (!res.ok) throw new Error((await res.json()).error || 'Güncelleme başarısız');
 
-        showToast('Talep g\u00fcncellendi.', 'success');
+        showToast('Talep güncellendi.', 'success');
         await loadSupport();
     } catch (err) {
         showToast(err.message, 'error');
@@ -4952,7 +4952,7 @@ async function sendSupportReply() {
     const file = fileEl?.files?.[0] || null;
 
     if (!message && !file) {
-        showToast('Yan\u0131t veya dosya gerekli.', 'warning');
+        showToast('Yanıt veya dosya gerekli.', 'warning');
         return;
     }
 
@@ -4967,11 +4967,11 @@ async function sendSupportReply() {
             body: formData
         });
 
-        if (!res.ok) throw new Error((await res.json()).error || 'Yan\u0131t g\u00f6nderilemedi');
+        if (!res.ok) throw new Error((await res.json()).error || 'Yanıt gönderilemedi');
 
         messageEl.value = '';
         if (fileEl) fileEl.value = '';
-        showToast('Yan\u0131t g\u00f6nderildi.', 'success');
+        showToast('Yanıt gönderildi.', 'success');
         await openSupportModal(currentSupportTicketId);
         await loadSupport();
     } catch (err) {
@@ -5776,8 +5776,8 @@ let adminMoveModalState = {
 function normalizeSearchText(value) {
     return String(value || '').toLocaleLowerCase('tr-TR')
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/\u0131/g, 'i').replace(/\u015f/g, 's').replace(/\u011f/g, 'g')
-        .replace(/\u00e7/g, 'c').replace(/\u00f6/g, 'o').replace(/\u00fc/g, 'u');
+        .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+        .replace(/ç/g, 'c').replace(/ö/g, 'o').replace(/ü/g, 'u');
 }
 
 function buildAdminMoveTree(folders, parentId, depth) {
@@ -5820,8 +5820,8 @@ function renderAdminMoveModalFolders() {
     const visible = !query ? items : items.filter(item => normalizeSearchText(item.name).includes(query));
 
     if (status) status.textContent = query
-        ? `${visible.length} e\u015fle\u015fme / ${items.length} klas\u00f6r`
-        : `${items.length} klas\u00f6r`;
+        ? `${visible.length} eşleşme / ${items.length} klasör`
+        : `${items.length} klasör`;
 
     if (pathInfo) {
         const currentPath = getAdminFolderPathLabel(adminMoveModalState.currentCollectionId);
@@ -5834,7 +5834,7 @@ function renderAdminMoveModalFolders() {
     }
 
     if (!visible.length) {
-        list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klas\u00f6r bulunamad\u0131.</div>';
+        list.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center">Klasör bulunamadı.</div>';
         confirmBtn.disabled = true;
         return;
     }
@@ -5870,8 +5870,8 @@ function closeAdminMoveModal() {
 
 async function submitAdminMoveModal() {
     if (!adminMoveModalState.refId || !adminMoveModalState.selectedTargetId) return;
-    const targetName = adminMoveModalState.folders.find(f => Number(f.id) === adminMoveModalState.selectedTargetId)?.name || 'se\u00e7ilen klas\u00f6r';
-    if (!confirm(`"${adminMoveModalState.fileName || 'Dosya'}" \u2192 "${targetName}" klas\u00f6r\u00fcne ta\u015f\u0131?`)) return;
+    const targetName = adminMoveModalState.folders.find(f => Number(f.id) === adminMoveModalState.selectedTargetId)?.name || 'seçilen klasör';
+    if (!confirm(`"${adminMoveModalState.fileName || 'Dosya'}" → "${targetName}" klasörüne taşı?`)) return;
 
     const res = await fetch(`${API_BASE}/api/collection_files/${adminMoveModalState.refId}/move`, {
         method: 'PATCH',
@@ -5881,13 +5881,13 @@ async function submitAdminMoveModal() {
     });
 
     if (res.ok) {
-        showToast('Dosya ta\u015f\u0131nd\u0131.', 'success');
+        showToast('Dosya taşındı.', 'success');
         closeAdminMoveModal();
         loadAdminFolders(adminCurrentFolderId);
         loadAdminFiles();
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Dosya ta\u015f\u0131namad\u0131.', 'error');
+        showToast(data.error || 'Dosya taşınamadı.', 'error');
     }
 }
 
@@ -5901,7 +5901,7 @@ async function moveAdminFileRef(refId, fileName) {
     const allFolders = [...rootEntry, ...subfolders.map(f => ({ ...f, name: f.folder_name }))];
 
     if (!allFolders.length) {
-        showToast('Ta\u015f\u0131nabilecek klas\u00f6r bulunamad\u0131.', 'warning');
+        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
         return;
     }
 
@@ -5917,7 +5917,7 @@ async function moveAdminFileRef(refId, fileName) {
     const s = document.getElementById('adminMoveModalSearch');
     if (s) s.value = '';
     document.getElementById('adminMoveModalSubtitle').textContent =
-        `"${fileName || 'Dosya'}" i\u00e7in hedef klas\u00f6r se\u00e7in`;
+        `"${fileName || 'Dosya'}" için hedef klasör seçin`;
     renderAdminMoveModalFolders();
     document.getElementById('adminMoveModal')?.classList.remove('hidden');
 }
