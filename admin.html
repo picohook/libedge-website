@@ -5497,16 +5497,25 @@ function publishNow() {
 }
 
 function showScheduledPublish() {
-  // Container'ı göster
-  const container = document.getElementById('scheduledPublishContainer');
-  if (container) container.classList.remove('hidden');
+  const dateTime = prompt('Yayınlanma tarihini girin (YYYY-MM-DD HH:MM):\nÖrnek: 2025-12-31 14:30');
+  if (!dateTime) return;
+  
+  const formattedDate = dateTime.replace(' ', 'T') + ':00';
+  
+  // Input'a değeri ata
+  const dateInput = document.getElementById('announcementScheduledPublishAt');
+  if (dateInput) dateInput.value = formattedDate;
   
   // Hidden alanları ayarla
   document.getElementById('isPublishedInput').value = '0';
   document.getElementById('isScheduledMode').value = '1';
   
-  // Kullanıcıya bilgi ver
-  showToast('Lütfen yayınlanma tarihini seçin ve "Yayınla" butonuna basın.', 'info');
+  // Container'ı göster (isteğe bağlı)
+  const container = document.getElementById('scheduledPublishContainer');
+  if (container) container.classList.remove('hidden');
+  
+  // Form'u hemen submit et
+  document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
 }
 
 function closePreviewModal() {
