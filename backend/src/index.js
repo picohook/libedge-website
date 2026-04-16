@@ -4481,15 +4481,20 @@ app.get('/api/announcements', async (c) => {
   try {
     await ensureAnnouncementColumns(db);
 
+    // Zamanı gelen planlı duyuruları otomatik yayınla
+    await db.prepare(`
+      UPDATE announcements
+      SET is_published = 1, updated_at = CURRENT_TIMESTAMP
+      WHERE is_published = 0
+        AND scheduled_publish_at IS NOT NULL
+        AND datetime(scheduled_publish_at) <= CURRENT_TIMESTAMP
+    `).run();
+
     const rows = await db.prepare(`
       SELECT id, title, summary, full_content, title_en, summary_en, full_content_en, cover_image_url, ai_image_prompt, category, priority, published_at, scheduled_publish_at
       FROM announcements
       WHERE is_published = 1
-        AND (
-          scheduled_publish_at IS NULL
-          OR datetime(scheduled_publish_at) <= CURRENT_TIMESTAMP
-        )
-      ORDER BY published_at DESC
+      ORDER BY COALESCE(published_at, scheduled_publish_at) DESC
     `).all();
     const announcements = (rows.results || []).map(row => ({
       id: row.id,
@@ -4520,11 +4525,20 @@ app.get('/api/admin/announcements', async (c) => {
   try {
     await ensureAnnouncementColumns(db);
 
+    // Zamanı gelen planlı duyuruları otomatik yayınla
+    await db.prepare(`
+      UPDATE announcements
+      SET is_published = 1, updated_at = CURRENT_TIMESTAMP
+      WHERE is_published = 0
+        AND scheduled_publish_at IS NOT NULL
+        AND datetime(scheduled_publish_at) <= CURRENT_TIMESTAMP
+    `).run();
+
     const rows = await db.prepare(`
       SELECT a.*, u.full_name as author_name
       FROM announcements a
       LEFT JOIN users u ON a.created_by = u.id
-      ORDER BY a.published_at DESC
+      ORDER BY COALESCE(a.scheduled_publish_at, a.published_at, a.updated_at) DESC
     `).all();
     return c.json(rows.results || []);
   } catch (err) {

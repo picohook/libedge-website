@@ -978,11 +978,19 @@
     <!-- Announcements Tab -->
     <div id="tab-announcements" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
                 <h3 class="text-lg font-semibold">Duyurular</h3>
-                <button onclick="openAnnouncementModal()" class="btn btn-primary">
-                    <i class="fas fa-plus mr-2"></i>Yeni Duyuru
-                </button>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <div class="flex gap-1 text-sm">
+                        <button class="ann-filter-btn bg-indigo-600 text-white px-3 py-1 rounded-lg" data-f="all" onclick="setAnnouncementFilter('all')">Tümü</button>
+                        <button class="ann-filter-btn bg-gray-100 text-gray-600 px-3 py-1 rounded-lg" data-f="published" onclick="setAnnouncementFilter('published')">Yayında</button>
+                        <button class="ann-filter-btn bg-gray-100 text-gray-600 px-3 py-1 rounded-lg" data-f="scheduled" onclick="setAnnouncementFilter('scheduled')">Planlı</button>
+                        <button class="ann-filter-btn bg-gray-100 text-gray-600 px-3 py-1 rounded-lg" data-f="draft" onclick="setAnnouncementFilter('draft')">Taslak</button>
+                    </div>
+                    <button onclick="openAnnouncementModal()" class="btn btn-primary">
+                        <i class="fas fa-plus mr-2"></i>Yeni Duyuru
+                    </button>
+                </div>
             </div>
             <div id="announcementsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <p class="col-span-full text-center text-gray-400 py-8">Yükleniyor...</p>
@@ -5053,6 +5061,19 @@ async function saveSubmission() {
     }
 }
 
+let _announcementFilter = 'all'; // 'all' | 'draft' | 'scheduled' | 'published'
+
+function setAnnouncementFilter(f) {
+    _announcementFilter = f;
+    document.querySelectorAll('.ann-filter-btn').forEach(b => {
+        b.classList.toggle('bg-indigo-600', b.dataset.f === f);
+        b.classList.toggle('text-white', b.dataset.f === f);
+        b.classList.toggle('bg-gray-100', b.dataset.f !== f);
+        b.classList.toggle('text-gray-600', b.dataset.f !== f);
+    });
+    loadAnnouncements();
+}
+
 async function loadAnnouncements() {
     const container = document.getElementById('announcementsList');
     container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">Yükleniyor...</p>';
@@ -5060,7 +5081,17 @@ async function loadAnnouncements() {
     try {
         const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
         const data = await res.json();
-        const list = data.announcements || data || [];
+        const rawList = data.announcements || data || [];
+
+        // Filtrele
+        const list = rawList.filter(a => {
+            const sd = a.scheduled_publish_at ? new Date(a.scheduled_publish_at) : null;
+            const isSched = !a.is_published && sd && sd.getTime() > Date.now();
+            if (_announcementFilter === 'scheduled') return isSched;
+            if (_announcementFilter === 'draft')     return !a.is_published && !isSched;
+            if (_announcementFilter === 'published') return !!a.is_published;
+            return true;
+        });
 
         if (!list.length) {
             container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">Henüz duyuru yok</p>';
@@ -5084,18 +5115,19 @@ async function loadAnnouncements() {
 
         container.innerHTML = list.map(a => {
             const scheduledDate = a.scheduled_publish_at ? new Date(a.scheduled_publish_at) : null;
-            const isScheduled = !!a.is_published && scheduledDate && scheduledDate.getTime() > Date.now();
-            const statusBadge = !a.is_published
-                ? '<span class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">Taslak</span>'
+            // Yeni model: planlı = is_published=0 + scheduled_publish_at gelecekte
+            const isScheduled = !a.is_published && scheduledDate && scheduledDate.getTime() > Date.now();
+            const statusBadge = a.is_published
+                ? '<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Yayında</span>'
                 : isScheduled
                     ? '<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Planlı</span>'
-                    : '<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Yayında</span>';
+                    : '<span class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">Taslak</span>';
             const previewImage = a.cover_image_url
                 ? `<img src="${escapeHtml(a.cover_image_url)}" alt="${escapeHtml(a.title || 'Duyuru görseli')}" class="w-full h-40 object-cover">`
                 : '<div class="w-full h-40 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-3xl text-slate-400"><i class="fas fa-image"></i></div>';
 
             return `
-                <div class="border rounded-2xl overflow-hidden hover:shadow-md transition ${a.is_published ? 'bg-white' : 'bg-gray-50 opacity-80'}">
+                <div class="border rounded-2xl overflow-hidden hover:shadow-md transition ${a.is_published ? 'bg-white' : isScheduled ? 'bg-amber-50' : 'bg-gray-50 opacity-80'}">
                     ${previewImage}
                     <div class="p-4">
                         <div class="flex justify-between items-start mb-2 gap-2">
@@ -5158,8 +5190,9 @@ function resetAnnouncementForm() {
 
 function fillAnnouncementForm(a) {
     const scheduledDate = a.scheduled_publish_at ? new Date(a.scheduled_publish_at) : null;
-    const isScheduled = !!a.is_published && scheduledDate && scheduledDate.getTime() > Date.now();
-    const intent = !a.is_published ? 'draft' : (isScheduled ? 'scheduled' : 'published');
+    // Yeni model: planlı → is_published=0 ve scheduled_publish_at gelecekte
+    const isScheduled = !a.is_published && scheduledDate && scheduledDate.getTime() > Date.now();
+    const intent = isScheduled ? 'scheduled' : (!a.is_published ? 'draft' : 'published');
 
     document.getElementById('announcementId').value = a.id || '';
     document.getElementById('announcementAiImagePrompt').value = a.ai_image_prompt || '';
@@ -5174,7 +5207,10 @@ function fillAnnouncementForm(a) {
     document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
     document.getElementById('announcementPublished').value = a.is_published ? '1' : '0';
     document.getElementById('announcementSubmitIntent').value = intent;
-    document.getElementById('announcementPublishAt').value = formatDateTimeLocal(a.scheduled_publish_at || a.published_at);
+    // Planlı ise sadece scheduled_publish_at göster; yoksa tarihi gösterme
+    document.getElementById('announcementPublishAt').value = isScheduled
+        ? formatDateTimeLocal(a.scheduled_publish_at)
+        : '';
     toggleAnnouncementScheduleFields(intent === 'scheduled');
     updateAnnouncementCoverPreview();
     updateAnnouncementLivePreview();
@@ -5213,7 +5249,8 @@ function getAnnouncementPublishPayload() {
     }
 
     if (mode === 'scheduled') {
-        return { is_published: 1, published_at: isoPublishAt };
+        // is_published=0: henüz yayınlanmadı; published_at=planlanan tarih (sıralama için)
+        return { is_published: 0, published_at: isoPublishAt };
     }
 
     return { is_published: 1, published_at: new Date().toISOString() };
