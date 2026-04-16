@@ -1076,9 +1076,10 @@
             </button>
         </div>
 
-        <form id="announcementForm" class="pb-24">
+        <form id="announcementForm" class="pb-28">
             <input type="hidden" id="announcementId">
             <input type="hidden" id="announcementAiImagePrompt">
+            <input type="hidden" id="announcementSubmitIntent" value="published">
 
             <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
                 <div>
@@ -1130,28 +1131,7 @@
                             <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
                         </div>
 
-                        <div class="hidden">
-                            <input type="checkbox" id="announcementPublished" checked class="rounded">
-                            <label for="announcementPublished" class="text-sm text-gray-700">Yayında</label>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Yayın Modu</label>
-                                <select id="announcementPublishMode" class="w-full border p-3 rounded-xl">
-                                    <option value="published">Hemen Yayınla</option>
-                                    <option value="scheduled">Planla</option>
-                                    <option value="draft">Taslak Kaydet</option>
-                                </select>
-                            </div>
-                            <div id="announcementScheduleField" class="hidden">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Yayın Tarihi</label>
-                                <input type="datetime-local" id="announcementPublishAt" class="w-full border p-3 rounded-xl">
-                            </div>
-                        </div>
-                        <p id="announcementScheduleHint" class="hidden text-xs text-amber-600 mt-2">
-                            Planlı duyuru seçilen tarih gelene kadar public sayfada görünmez.
-                        </p>
+                        <input type="hidden" id="announcementPublished" value="1">
                     </div>
 
                     <div class="bg-white border border-gray-200 rounded-2xl p-5">
@@ -1258,12 +1238,19 @@
                 </div>
             </div>
 
-            <div class="sticky bottom-0 mt-6 bg-white/95 backdrop-blur border-t border-gray-200 pt-4">
+            <div class="sticky bottom-0 -mx-6 mt-6 bg-white/95 backdrop-blur border-t border-gray-200 px-6 pt-4 pb-6 z-20">
+                <div id="announcementFooterScheduleWrap" class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <label class="block text-sm font-medium text-amber-900 mb-1">Planlı Yayın Tarihi</label>
+                    <input type="datetime-local" id="announcementPublishAt" class="w-full border p-3 rounded-xl bg-white">
+                    <p class="text-xs text-amber-700 mt-2">Bu tarih gelene kadar duyuru public sayfada görünmez.</p>
+                </div>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <button type="button" onclick="document.getElementById('announcementPreviewTitle').scrollIntoView({ behavior: 'smooth', block: 'center' })" class="btn bg-slate-100 text-slate-700 sm:w-auto">
                         <i class="fas fa-eye mr-2"></i>Önizleme
                     </button>
-                    <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
+                    <button type="button" onclick="submitAnnouncement('draft')" class="btn bg-slate-700 text-white hover:bg-slate-800 flex-1">Taslak Kaydet</button>
+                    <button type="button" onclick="handleScheduledAnnouncementAction()" class="btn bg-amber-500 text-white hover:bg-amber-600 flex-1">Zamanlı Yayınla</button>
+                    <button type="button" onclick="submitAnnouncement('published')" class="btn btn-primary flex-1">Şimdi Yayınla</button>
                     <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 flex-1">İptal</button>
                 </div>
             </div>
@@ -5128,10 +5115,10 @@ function resetAnnouncementForm() {
     document.getElementById('announcementSummaryEn').value = '';
     document.getElementById('announcementFullContentEn').value = '';
     document.getElementById('announcementCoverImage').value = '';
-    document.getElementById('announcementPublished').checked = true;
-    document.getElementById('announcementPublishMode').value = 'published';
+    document.getElementById('announcementPublished').value = '1';
+    document.getElementById('announcementSubmitIntent').value = 'published';
     document.getElementById('announcementPublishAt').value = '';
-    toggleAnnouncementScheduleFields();
+    toggleAnnouncementScheduleFields(false);
     updateAnnouncementCoverPreview();
     updateAnnouncementLivePreview();
 }
@@ -5139,7 +5126,7 @@ function resetAnnouncementForm() {
 function fillAnnouncementForm(a) {
     const publishDate = a.published_at ? new Date(a.published_at) : null;
     const isScheduled = !!a.is_published && publishDate && publishDate.getTime() > Date.now();
-    const mode = !a.is_published ? 'draft' : (isScheduled ? 'scheduled' : 'published');
+    const intent = !a.is_published ? 'draft' : (isScheduled ? 'scheduled' : 'published');
 
     document.getElementById('announcementId').value = a.id || '';
     document.getElementById('announcementAiImagePrompt').value = a.ai_image_prompt || '';
@@ -5152,10 +5139,10 @@ function fillAnnouncementForm(a) {
     document.getElementById('announcementSummaryEn').value = a.summary_en || '';
     document.getElementById('announcementFullContentEn').value = a.full_content_en || '';
     document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
-    document.getElementById('announcementPublished').checked = !!a.is_published;
-    document.getElementById('announcementPublishMode').value = mode;
+    document.getElementById('announcementPublished').value = a.is_published ? '1' : '0';
+    document.getElementById('announcementSubmitIntent').value = intent;
     document.getElementById('announcementPublishAt').value = formatDateTimeLocal(a.published_at);
-    toggleAnnouncementScheduleFields();
+    toggleAnnouncementScheduleFields(intent === 'scheduled');
     updateAnnouncementCoverPreview();
     updateAnnouncementLivePreview();
 }
@@ -5168,28 +5155,17 @@ function formatDateTimeLocal(value) {
     return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}T${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
 }
 
-function toggleAnnouncementScheduleFields() {
-    const mode = document.getElementById('announcementPublishMode').value;
-    const scheduleField = document.getElementById('announcementScheduleField');
-    const scheduleHint = document.getElementById('announcementScheduleHint');
+function toggleAnnouncementScheduleFields(show) {
+    const scheduleField = document.getElementById('announcementFooterScheduleWrap');
     const publishAtInput = document.getElementById('announcementPublishAt');
-    const publishedCheckbox = document.getElementById('announcementPublished');
-
-    const isScheduled = mode === 'scheduled';
-    scheduleField.classList.toggle('hidden', !isScheduled);
-    scheduleHint.classList.toggle('hidden', !isScheduled);
-    publishAtInput.required = isScheduled;
-    publishedCheckbox.checked = mode !== 'draft';
-
-    if (!isScheduled && mode === 'draft') {
-        publishAtInput.required = false;
-    }
+    scheduleField.classList.toggle('hidden', !show);
+    publishAtInput.required = !!show;
 
     updateAnnouncementLivePreview();
 }
 
 function getAnnouncementPublishPayload() {
-    const mode = document.getElementById('announcementPublishMode').value;
+    const mode = document.getElementById('announcementSubmitIntent').value;
     const rawPublishAt = document.getElementById('announcementPublishAt').value;
 
     if (mode === 'draft') {
@@ -5223,7 +5199,7 @@ function updateAnnouncementLivePreview() {
         low: 'bg-emerald-100 text-emerald-700'
     };
 
-    const mode = document.getElementById('announcementPublishMode').value;
+    const mode = document.getElementById('announcementSubmitIntent').value;
     const title = document.getElementById('announcementTitle').value.trim() || 'Duyuru başlığı';
     const summary = document.getElementById('announcementSummary').value.trim() || 'Kısa özet burada görünecek.';
     const category = document.getElementById('announcementCategory').value;
@@ -5266,6 +5242,33 @@ function updateAnnouncementLivePreview() {
         previewImage.innerHTML = '<i class="fas fa-image"></i>';
         previewImage.className = 'h-40 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-slate-400 text-3xl';
     }
+}
+
+function submitAnnouncement(intent) {
+    document.getElementById('announcementSubmitIntent').value = intent;
+    toggleAnnouncementScheduleFields(intent === 'scheduled');
+    document.getElementById('announcementForm').requestSubmit();
+}
+
+function handleScheduledAnnouncementAction() {
+    const input = document.getElementById('announcementPublishAt');
+    const wrap = document.getElementById('announcementFooterScheduleWrap');
+    document.getElementById('announcementSubmitIntent').value = 'scheduled';
+
+    if (wrap.classList.contains('hidden')) {
+        toggleAnnouncementScheduleFields(true);
+        setTimeout(() => input.focus(), 30);
+        showToast('Planlı yayın için tarih seçin, sonra aynı butona tekrar basın.', 'info');
+        return;
+    }
+
+    if (!input.value) {
+        input.focus();
+        showToast('Lütfen planlı yayın tarihi seçin.', 'warning');
+        return;
+    }
+
+    document.getElementById('announcementForm').requestSubmit();
 }
 
 function updateAnnouncementCoverPreview() {
@@ -5500,11 +5503,6 @@ function bindAnnouncementFormInteractions() {
         el.addEventListener('change', updateAnnouncementLivePreview);
     });
 
-    const modeEl = document.getElementById('announcementPublishMode');
-    if (modeEl && modeEl.dataset.previewBound !== 'true') {
-        modeEl.dataset.previewBound = 'true';
-        modeEl.addEventListener('change', toggleAnnouncementScheduleFields);
-    }
 }
 
 async function deleteAnnouncement(id) {
@@ -5517,6 +5515,7 @@ async function deleteAnnouncement(id) {
 document.getElementById('announcementForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     const id = document.getElementById('announcementId').value;
+    const submitIntent = document.getElementById('announcementSubmitIntent').value;
     const publishPayload = getAnnouncementPublishPayload();
     const payload = {
         title: document.getElementById('announcementTitle').value.trim(),
@@ -5540,7 +5539,12 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
         body: JSON.stringify(payload)
     });
     if (res.ok) {
-        showToast(id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu', 'success');
+        const successMessage = submitIntent === 'draft'
+            ? 'Duyuru taslak olarak kaydedildi'
+            : submitIntent === 'scheduled'
+                ? 'Duyuru planlandı'
+                : 'Duyuru yayınlandı';
+        showToast(successMessage, 'success');
         closeAnnouncementModal();
         loadAnnouncements();
     } else {
@@ -5550,7 +5554,7 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
 });
 
 bindAnnouncementFormInteractions();
-toggleAnnouncementScheduleFields();
+toggleAnnouncementScheduleFields(false);
 updateAnnouncementLivePreview();
 let currentAirtableId = null;
 
