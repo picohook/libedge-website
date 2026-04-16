@@ -1115,7 +1115,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Öncelik</label>
                                 <select id="announcementPriority" class="w-full border p-3 rounded-xl">
                                     <option value="medium">Orta</option>
-                                    <option value="high">Ynksek</option>
+                                    <option value="high">Yüksek</option>
                         <option value="low">Düşük</option>
                                 </select>
                             </div>
@@ -1130,20 +1130,11 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">İçerik</label>
                             <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
                             <!-- Yayın Durumu ve Zamanlama -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 mt-4">
-  <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">Yayın Durumu</label>
-    <select id="announcementPublishStatus" class="w-full border p-3 rounded-xl" onchange="toggleScheduledPublish()">
-      <option value="draft">📝 Taslak (Yayında Değil)</option>
-      <option value="published">🚀 Hemen Yayınla</option>
-      <option value="scheduled">⏰ Zamanlı Yayınla</option>
-    </select>
-  </div>
-  <div id="scheduledPublishContainer" class="hidden">
-    <label class="block text-sm font-medium text-gray-700 mb-1">Yayınlanma Tarihi</label>
-    <input type="datetime-local" id="announcementScheduledPublishAt" class="w-full border p-3 rounded-xl">
-    <p class="text-xs text-gray-400 mt-1">Belirtilen tarihte duyuru otomatik yayınlanacaktır.</p>
-  </div>
+<!-- Zamanlı Yayın için Tarih Seçici (başlangıçta gizli) -->
+<div id="scheduledPublishContainer" class="hidden mb-4">
+  <label class="block text-sm font-medium text-gray-700 mb-1">Yayınlanma Tarihi</label>
+  <input type="datetime-local" id="announcementScheduledPublishAt" class="w-full border p-3 rounded-xl">
+  <p class="text-xs text-gray-400 mt-1">Belirtilen tarihte duyuru otomatik yayınlanacaktır.</p>
 </div>
                         </div>
 
@@ -1240,17 +1231,21 @@
   <button type="button" onclick="openAnnouncementPreview()" class="btn bg-gray-100 text-gray-700 hover:bg-gray-200">
     <i class="fas fa-eye mr-2"></i>Önizleme
   </button>
-  <button type="button" onclick="saveAnnouncementAsDraft()" class="btn bg-amber-500 text-white hover:bg-amber-600 flex-1">
+  <button type="button" onclick="saveAsDraft()" class="btn bg-amber-500 text-white hover:bg-amber-600">
     <i class="fas fa-save mr-2"></i>Taslak Kaydet
   </button>
-  <button type="submit" class="btn btn-primary flex-1">
+  <button type="button" onclick="publishNow()" class="btn btn-primary">
     <i class="fas fa-paper-plane mr-2"></i>Yayınla
+  </button>
+  <button type="button" onclick="showScheduledPublish()" class="btn bg-blue-500 text-white hover:bg-blue-600">
+    <i class="fas fa-calendar-alt mr-2"></i>Zamanlı Yayınla
   </button>
   <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 text-gray-700 hover:bg-gray-400">
     İptal
   </button>
 </div>
 <input type="hidden" id="isPublishedInput" value="0">
+<input type="hidden" id="isScheduledMode" value="0">
         </form>
     </div>
 </div>
@@ -5383,80 +5378,66 @@ async function deleteAnnouncement(id) {
 }
 
 document.getElementById('announcementForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const id = document.getElementById('announcementId').value;
-    const publishStatus = document.getElementById('announcementPublishStatus')?.value || 'draft';
-    
-    let isPublished = 0;
-    let scheduledPublishAt = null;
-    
-    if (publishStatus === 'published') {
-        isPublished = 1;
-    } else if (publishStatus === 'scheduled') {
-        isPublished = 0;
-        scheduledPublishAt = document.getElementById('announcementScheduledPublishAt')?.value;
-        if (!scheduledPublishAt) {
-            showToast('Zamanlı yayın için bir tarih seçmelisiniz!', 'warning');
-            return;
-        }
+  e.preventDefault();
+  
+  const id = document.getElementById('announcementId').value;
+  const isScheduledMode = document.getElementById('isScheduledMode')?.value === '1';
+  
+  let isPublished = document.getElementById('isPublishedInput')?.value === '1' ? 1 : 0;
+  let scheduledPublishAt = null;
+  
+  if (isScheduledMode) {
+    isPublished = 0;
+    scheduledPublishAt = document.getElementById('announcementScheduledPublishAt')?.value;
+    if (!scheduledPublishAt) {
+      showToast('Zamanlı yayın için bir tarih seçmelisiniz!', 'warning');
+      return;
     }
-    
-    const payload = {
-        title: document.getElementById('announcementTitle').value.trim(),
-        category: document.getElementById('announcementCategory').value,
-        priority: document.getElementById('announcementPriority').value,
-        summary: document.getElementById('announcementSummary').value.trim(),
-        full_content: document.getElementById('announcementFullContent').value.trim(),
-        title_en: document.getElementById('announcementTitleEn').value.trim(),
-        summary_en: document.getElementById('announcementSummaryEn').value.trim(),
-        full_content_en: document.getElementById('announcementFullContentEn').value.trim(),
-        cover_image_url: document.getElementById('announcementCoverImage').value.trim(),
-        ai_image_prompt: document.getElementById('announcementAiImagePrompt').value.trim(),
-        is_published: isPublished,
-        scheduled_publish_at: scheduledPublishAt
-    };
-    
-    const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
-    const method = id ? 'PUT' : 'POST';
-    
-    const res = await fetch(url, {
-        method, credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-    
-    if (res.ok) {
-        const msg = id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu';
-        if (publishStatus === 'scheduled' && scheduledPublishAt) {
-            const date = new Date(scheduledPublishAt).toLocaleString('tr-TR');
-            showToast(`${msg} - ${date} tarihinde yayınlanacak.`, 'success');
-        } else if (isPublished === 1) {
-            showToast(`${msg} ve yayınlandı!`, 'success');
-        } else {
-            showToast(`${msg} (Taslak olarak kaydedildi)`, 'success');
-        }
-        closeAnnouncementModal();
-        loadAnnouncements();
+  }
+  
+  const payload = {
+    title: document.getElementById('announcementTitle').value.trim(),
+    category: document.getElementById('announcementCategory').value,
+    priority: document.getElementById('announcementPriority').value,
+    summary: document.getElementById('announcementSummary').value.trim(),
+    full_content: document.getElementById('announcementFullContent').value.trim(),
+    title_en: document.getElementById('announcementTitleEn').value.trim(),
+    summary_en: document.getElementById('announcementSummaryEn').value.trim(),
+    full_content_en: document.getElementById('announcementFullContentEn').value.trim(),
+    cover_image_url: document.getElementById('announcementCoverImage').value.trim(),
+    ai_image_prompt: document.getElementById('announcementAiImagePrompt').value.trim(),
+    is_published: isPublished,
+    scheduled_publish_at: scheduledPublishAt
+  };
+  
+  const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
+  const method = id ? 'PUT' : 'POST';
+  
+  const res = await fetch(url, {
+    method, credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  
+  if (res.ok) {
+    const msg = id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu';
+    if (isScheduledMode && scheduledPublishAt) {
+      const date = new Date(scheduledPublishAt).toLocaleString('tr-TR');
+      showToast(`${msg} - ${date} tarihinde yayınlanacak.`, 'success');
+    } else if (isPublished === 1) {
+      showToast(`${msg} ve yayınlandı!`, 'success');
     } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'İşlem başarısız oldu', 'error');
+      showToast(`${msg} (Taslak olarak kaydedildi)`, 'success');
     }
+    closeAnnouncementModal();
+    loadAnnouncements();
+  } else {
+    const data = await res.json().catch(() => ({}));
+    showToast(data.error || 'İşlem başarısız oldu', 'error');
+  }
 });
 
-function toggleScheduledPublish() {
-  const statusEl = document.getElementById('announcementPublishStatus');
-  const container = document.getElementById('scheduledPublishContainer');
-  if (statusEl && container) {
-    container.classList.toggle('hidden', statusEl.value !== 'scheduled');
-  }
 
-}function saveAnnouncementAsDraft() {
-  const isPublishedInput = document.getElementById('isPublishedInput');
-  if (isPublishedInput) isPublishedInput.value = '0';
-  const form = document.getElementById('announcementForm');
-  if (form) form.dispatchEvent(new Event('submit'));
-}
 
 function openAnnouncementPreview() {
   const title = document.getElementById('announcementTitle')?.value || '';
@@ -5500,6 +5481,27 @@ function openAnnouncementPreview() {
     document.body.style.overflow = 'hidden';
   }
 }
+
+function saveAsDraft() {
+  document.getElementById('isPublishedInput').value = '0';
+  document.getElementById('isScheduledMode').value = '0';
+  document.getElementById('scheduledPublishContainer').classList.add('hidden');
+  document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
+}
+
+function publishNow() {
+  document.getElementById('isPublishedInput').value = '1';
+  document.getElementById('isScheduledMode').value = '0';
+  document.getElementById('scheduledPublishContainer').classList.add('hidden');
+  document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
+}
+
+function showScheduledPublish() {
+  document.getElementById('isPublishedInput').value = '0';
+  document.getElementById('isScheduledMode').value = '1';
+  document.getElementById('scheduledPublishContainer').classList.remove('hidden');
+}
+
 
 function closePreviewModal() {
   const previewModal = document.getElementById('previewModal');
