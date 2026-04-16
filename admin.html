@@ -5382,8 +5382,32 @@ async function deleteAnnouncement(id) {
     else showToast('İşlem başarısız oldu', 'error');
 }
 
-document.getElementById('announcementForm').addEventListener('submit', async function(e) {
-  e.preventDefault();  
+// ÖNCE: Eski listener'ları temizle (güvenli yol)
+const oldForm = document.getElementById('announcementForm');
+const newForm = oldForm.cloneNode(true);
+oldForm.parentNode.replaceChild(newForm, oldForm);
+
+// YENİ listener
+newForm.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const id = document.getElementById('announcementId').value;
+  const isScheduledMode = document.getElementById('isScheduledMode')?.value === '1';
+  
+  let isPublished = document.getElementById('isPublishedInput')?.value === '1' ? 1 : 0;
+  let scheduledPublishAt = null;
+  
+  if (isScheduledMode) {
+    isPublished = 0;
+    scheduledPublishAt = document.getElementById('announcementScheduledPublishAt')?.value;
+    if (!scheduledPublishAt) {
+      showToast('Zamanlı yayın için tarih seçmelisiniz!', 'warning');
+      document.getElementById('isScheduledMode').value = '0';
+      document.getElementById('scheduledPublishContainer').classList.add('hidden');
+      return;
+    }
+  }
+  
   const payload = {
     title: document.getElementById('announcementTitle').value.trim(),
     category: document.getElementById('announcementCategory').value,
@@ -5425,8 +5449,6 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
     showToast(data.error || 'İşlem başarısız oldu', 'error');
   }
 });
-
-
 
 function openAnnouncementPreview() {
   const title = document.getElementById('announcementTitle')?.value || '';
