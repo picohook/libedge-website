@@ -760,30 +760,27 @@ async function resolveShareRecipients(db, actor, recipients = []) {
 }
 
 // ====================== RATE LIMITING ======================
-const rateLimitStore = new Map();
+// Fixed-window rate limiting via Cloudflare KV (RATE_LIMIT_KV binding).
+// KV is shared across all Worker instances so this actually works.
+async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10, windowSeconds = 300) {
+  if (!kv) return { isLimited: false, remaining: maxRequests, resetTime: Date.now() + windowSeconds * 1000 };
 
-function getRateLimitKey(endpoint, identifier) {
-  return `${endpoint}:${identifier}`;
-}
-
-function checkRateLimit(endpoint, identifier, maxRequests = 10, windowSeconds = 300) {
-  const key = getRateLimitKey(endpoint, identifier);
+  const key = `rl:${endpoint}:${identifier}`;
   const now = Date.now();
-  const record = rateLimitStore.get(key) || { count: 0, resetTime: now + windowSeconds * 1000 };
-  
-  if (now > record.resetTime) {
-    // Window expired, reset
-    record.count = 1;
-    record.resetTime = now + windowSeconds * 1000;
+
+  const raw = await kv.get(key);
+  let record = raw ? JSON.parse(raw) : null;
+
+  if (!record || now > record.resetTime) {
+    record = { count: 1, resetTime: now + windowSeconds * 1000 };
   } else {
     record.count++;
   }
-  
-  rateLimitStore.set(key, record);
-  
-  const remaining = Math.max(0, maxRequests - record.count);
+
+  await kv.put(key, JSON.stringify(record), { expirationTtl: windowSeconds });
+
   const isLimited = record.count > maxRequests;
-  
+  const remaining = Math.max(0, maxRequests - record.count);
   return { isLimited, remaining, resetTime: record.resetTime };
 }
 
@@ -993,7 +990,7 @@ app.post('/api/auth/logout', async (c) => {
 app.post('/api/auth/refresh', async (c) => {
   // Rate limiting: 10 requests per 5 minutes
   const identifier = c.req.header('x-forwarded-for') || c.req.header('cf-connecting-ip') || 'unknown';
-  const rateLimitCheck = checkRateLimit('refresh', identifier, 10, 300);
+  const rateLimitCheck = await checkRateLimit(c.env.RATE_LIMIT_KV, 'refresh', identifier, 10, 300);
   
   if (rateLimitCheck.isLimited) {
     c.header('Retry-After', Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000).toString());

@@ -14,6 +14,11 @@ migrations_dir = "migrations"
 binding = "FILES_BUCKET"
 bucket_name = "libedge-files"
 
+# KV Binding (default env)
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
 # JWT_SECRET: npx wrangler secret put JWT_SECRET
 # R2_PUBLIC_URL: npx wrangler secret put R2_PUBLIC_URL
 # AIRTABLE_PAT: npx wrangler secret put AIRTABLE_PAT
@@ -32,6 +37,10 @@ database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
 binding = "FILES_BUCKET"
 bucket_name = "libedge-files-staging"
 
+[[env.staging.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
 # Production environment
 [env.production]
 name = "form-handler-prod"
@@ -44,3 +53,7 @@ database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
 [[env.production.r2_buckets]]
 binding = "FILES_BUCKET"
 bucket_name = "libedge-files"
+
+[[env.production.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
