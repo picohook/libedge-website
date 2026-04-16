@@ -1142,7 +1142,7 @@
                             <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
                         </div>
 
-                        <input type="hidden" id="announcementPublished" value="1">
+
                     </div>
 
                     <div class="bg-white border border-gray-200 rounded-2xl p-5">
@@ -5180,7 +5180,6 @@ function resetAnnouncementForm() {
     document.getElementById('announcementSummaryEn').value = '';
     document.getElementById('announcementFullContentEn').value = '';
     document.getElementById('announcementCoverImage').value = '';
-    document.getElementById('announcementPublished').value = '1';
     document.getElementById('announcementSubmitIntent').value = 'published';
     document.getElementById('announcementPublishAt').value = '';
     toggleAnnouncementScheduleFields(false);
@@ -5205,7 +5204,6 @@ function fillAnnouncementForm(a) {
     document.getElementById('announcementSummaryEn').value = a.summary_en || '';
     document.getElementById('announcementFullContentEn').value = a.full_content_en || '';
     document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
-    document.getElementById('announcementPublished').value = a.is_published ? '1' : '0';
     document.getElementById('announcementSubmitIntent').value = intent;
     // Planlı ise sadece scheduled_publish_at göster; yoksa tarihi gösterme
     document.getElementById('announcementPublishAt').value = isScheduled
@@ -5245,12 +5243,12 @@ function getAnnouncementPublishPayload() {
     const isoPublishAt = rawPublishAt ? new Date(rawPublishAt).toISOString() : null;
 
     if (mode === 'draft') {
-        return { is_published: 0, published_at: isoPublishAt };
+        return { is_published: 0, scheduled_publish_at: null, published_at: null };
     }
 
     if (mode === 'scheduled') {
-        // is_published=0: henüz yayınlanmadı; published_at=planlanan tarih (sıralama için)
-        return { is_published: 0, published_at: isoPublishAt };
+        // is_published=0: henüz yayınlanmadı; scheduled_publish_at=planlanan zaman
+        return { is_published: 0, scheduled_publish_at: isoPublishAt, published_at: null };
     }
 
     return { is_published: 1, published_at: new Date().toISOString() };
@@ -5332,10 +5330,6 @@ function updateAnnouncementLivePreview() {
 function submitAnnouncement(intent) {
     document.getElementById('announcementSubmitIntent').value = intent;
     toggleAnnouncementScheduleFields(intent === 'scheduled');
-    if (intent === 'published') {
-        document.getElementById('announcementSubmitIntent').value = 'published';
-        document.getElementById('announcementPublishAt').required = false;
-    }
     document.getElementById('announcementForm').requestSubmit();
 }
 

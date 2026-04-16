@@ -4484,7 +4484,9 @@ app.get('/api/announcements', async (c) => {
     // Zamanı gelen planlı duyuruları otomatik yayınla
     await db.prepare(`
       UPDATE announcements
-      SET is_published = 1, updated_at = CURRENT_TIMESTAMP
+      SET is_published = 1,
+          published_at = scheduled_publish_at,
+          updated_at = CURRENT_TIMESTAMP
       WHERE is_published = 0
         AND scheduled_publish_at IS NOT NULL
         AND datetime(scheduled_publish_at) <= CURRENT_TIMESTAMP
@@ -4528,7 +4530,9 @@ app.get('/api/admin/announcements', async (c) => {
     // Zamanı gelen planlı duyuruları otomatik yayınla
     await db.prepare(`
       UPDATE announcements
-      SET is_published = 1, updated_at = CURRENT_TIMESTAMP
+      SET is_published = 1,
+          published_at = scheduled_publish_at,
+          updated_at = CURRENT_TIMESTAMP
       WHERE is_published = 0
         AND scheduled_publish_at IS NOT NULL
         AND datetime(scheduled_publish_at) <= CURRENT_TIMESTAMP
