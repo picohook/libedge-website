@@ -1272,7 +1272,7 @@ async function renameUserFolder(folderId, currentName) {
 }
 
 async function deleteUserFolder(folderId, folderName) {
-    if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\nİçindeki dosyalar da silinecektir.`)) return;
+    if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\İçindeki dosyalar da silinecektir.`)) return;
     const res = await fetch(`${API_BASE}/api/user/collections/${folderId}`, {
         method: 'DELETE',
         credentials: 'include'
@@ -1305,7 +1305,7 @@ async function renameSystemFolder(folderId, currentName) {
 }
 
 async function deleteSystemFolder(folderId, folderName) {
-    if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\nİçindeki dosyalar da silinecektir.`)) return;
+    if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\İçindeki dosyalar da silinecektir.`)) return;
     const res = await fetch(`${API_BASE}/api/collections/${folderId}`, {
         method: 'DELETE',
         credentials: 'include'
