@@ -2,7 +2,7 @@ console.log("HONO VERSION LOADED");
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { setCookie } from 'hono/cookie';
+import { getCookie, setCookie } from 'hono/cookie';
 import { sign, verify } from 'hono/jwt';
 
 const app = new Hono();
@@ -50,16 +50,10 @@ async function requireAuth(c) {
     }
   }
 
-  // Mevcut cookie kontrolü (main branch için - dokunma)
-  const cookieHeader = c.req.header('Cookie');
-  if (!cookieHeader) {
+  const token = getCookie(c, 'authToken');
+  if (!token) {
     return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
   }
-  const tokenMatch = cookieHeader.match(/authToken=([^;]+)/);
-  if (!tokenMatch) {
-    return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
-  }
-  const token = tokenMatch[1];
   const secret = c.env.JWT_SECRET;
   try {
     const payload = await verify(token, secret, 'HS256');
@@ -77,7 +71,6 @@ async function getCurrentUser(c) {
 
 async function getOptionalAuth(c) {
   const authHeader = c.req.header('Authorization');
-  const cookieHeader = c.req.header('Cookie');
   const secret = c.env.JWT_SECRET;
 
   if (authHeader?.startsWith('Bearer ')) {
@@ -90,11 +83,9 @@ async function getOptionalAuth(c) {
     }
   }
 
-  if (!cookieHeader) return null;
-  const tokenMatch = cookieHeader.match(/authToken=([^;]+)/);
-  if (!tokenMatch) return null;
+  const token = getCookie(c, 'authToken');
+  if (!token) return null;
 
-  const token = tokenMatch[1];
   try {
     const payload = await verify(token, secret, 'HS256');
     return { user: payload, token };
@@ -936,17 +927,10 @@ app.post('/api/auth/refresh', async (c) => {
     }, 429);
   }
   
-  // Refresh Token'ı cookie'den al
-  const cookieHeader = c.req.header('Cookie');
-  if (!cookieHeader) {
+  const refreshToken = getCookie(c, 'refreshToken');
+  if (!refreshToken) {
     return c.json({ error: 'Refresh token bulunamadı' }, 401);
   }
-  const refreshTokenMatch = cookieHeader.match(/refreshToken=([^;]+)/);
-  if (!refreshTokenMatch) {
-    return c.json({ error: 'Refresh token bulunamadı' }, 401);
-  }
-  
-  const refreshToken = refreshTokenMatch[1];
   const secret = c.env.JWT_SECRET;
   let refreshPayload;
   try {
