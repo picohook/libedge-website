@@ -4825,12 +4825,31 @@ app.get('/api/admin/support/tickets', async (c) => {
   const role = await getUserRole(c);
   const isSA = role === 'super_admin';
   const instId = await getUserInstitutionId(c);
-  const status = c.req.query('status') || '';
-  const priority = c.req.query('priority') || '';
+  const VALID_STATUSES   = new Set(['open', 'in_progress', 'resolved', 'closed']);
+  const VALID_PRIORITIES = new Set(['low', 'medium', 'high', 'urgent']);
 
-  let where = isSA ? '1=1' : `t.institution_id = ${instId ? Number(instId) : 0}`;
-  if (status) where += ` AND t.status = '${status.replace(/'/g, '')}'`;
-  if (priority) where += ` AND t.priority = '${priority.replace(/'/g, '')}'`;
+  const statusParam   = c.req.query('status')   || '';
+  const priorityParam = c.req.query('priority')  || '';
+  const status   = VALID_STATUSES.has(statusParam)   ? statusParam   : '';
+  const priority = VALID_PRIORITIES.has(priorityParam) ? priorityParam : '';
+
+  const conditions = [];
+  const bindings   = [];
+
+  if (!isSA) {
+    conditions.push('t.institution_id = ?');
+    bindings.push(instId ? Number(instId) : 0);
+  }
+  if (status) {
+    conditions.push('t.status = ?');
+    bindings.push(status);
+  }
+  if (priority) {
+    conditions.push('t.priority = ?');
+    bindings.push(priority);
+  }
+
+  const where = conditions.length ? conditions.join(' AND ') : '1=1';
 
   const rows = await db.prepare(
     `SELECT t.id, t.subject, t.status, t.priority, t.created_at, t.updated_at,
@@ -4848,7 +4867,7 @@ app.get('/api/admin/support/tickets', async (c) => {
      JOIN users u ON t.user_id = u.id
      LEFT JOIN institutions i ON t.institution_id = i.id
      WHERE ${where} ORDER BY t.updated_at DESC`
-  ).all();
+  ).bind(...bindings).all();
   return c.json(rows.results || []);
 });
 
