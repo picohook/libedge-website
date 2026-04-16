@@ -289,7 +289,6 @@
                             <th>E-posta</th>
                             <th>Kurum</th>
                             <th>Rol</th>
-                            <th>Kayıt Tarihi</th>
                             <th>Son Giriş</th>
                             <th>İşlem</th>
                         </tr>
@@ -1066,200 +1065,196 @@
 
 <!-- Announcement Modal -->
 <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-  <div class="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[85vh] shadow-2xl flex flex-col">
-    <!-- Başlık kısmı - sabit -->
-    <div class="flex-shrink-0">
-      <div class="flex items-start justify-between gap-4 mb-5">
-        <div>
-          <h3 id="announcementModalTitle" class="text-2xl font-bold text-gray-900">Yeni Duyuru</h3>
-          <p class="text-sm text-gray-500 mt-1">Kapak görseli, AI destekli metin düzenleme ve İngilizce içerik alanları tek formda yönetilir.</p>
+    <div class="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-2xl">
+        <div class="flex items-start justify-between gap-4 mb-5">
+            <div>
+                <h3 id="announcementModalTitle" class="text-2xl font-bold text-gray-900">Yeni Duyuru</h3>
+                <p class="text-sm text-gray-500 mt-1">Kapak görseli, AI destekli metin düzenleme ve İngilizce içerik alanları tek formda yönetilir.</p>
+            </div>
+            <button type="button" onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600 text-xl" aria-label="Modalı kapat">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        <button type="button" onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600 text-xl">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
+
+        <form id="announcementForm">
+            <input type="hidden" id="announcementId">
+            <input type="hidden" id="announcementAiImagePrompt">
+
+            <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
+                <div>
+                    <div class="bg-gray-50 border border-gray-200 rounded-2xl p-5 mb-5">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h4 class="font-semibold text-gray-900">Ana İçerik</h4>
+                                <p class="text-xs text-gray-500">Türkçe duyuru içeriği ve yayın ayarları</p>
+                            </div>
+                            <button type="button" id="announcementPolishBtn" onclick="polishAnnouncementContent()" class="btn btn-primary whitespace-nowrap">
+                                <i class="fas fa-magic mr-2"></i>AI ile Profesyonelleştir
+                            </button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Başlık</label>
+                            <input type="text" id="announcementTitle" placeholder="Duyuru başlığı" class="w-full border p-3 rounded-xl" required>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                                <select id="announcementCategory" class="w-full border p-3 rounded-xl">
+                                    <option value="general">Genel</option>
+                                    <option value="urgent">Acil</option>
+                                    <option value="new-product">Yeni Ürün</option>
+                                    <option value="product-update">Güncelleme</option>
+                                    <option value="event">Etkinlik</option>
+                                    <option value="maintenance">Bakım</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Öncelik</label>
+                                <select id="announcementPriority" class="w-full border p-3 rounded-xl">
+                                    <option value="medium">Orta</option>
+                                    <option value="high">Yüksek</option>
+                                    <option value="low">Düşük</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Özet</label>
+                            <textarea id="announcementSummary" rows="3" placeholder="Kısa özet (liste görünümünde gösterilir)" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">İçerik</label>
+                            <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
+                            <!-- Yayın Durumu ve Zamanlama -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 mt-4">
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Yayın Durumu</label>
+    <select id="announcementPublishStatus" class="w-full border p-3 rounded-xl" onchange="toggleScheduledPublish()">
+      <option value="draft">📝 Taslak (Yayında Değil)</option>
+      <option value="published">🚀 Hemen Yayınla</option>
+      <option value="scheduled">⏰ Zamanlı Yayınla</option>
+    </select>
+  </div>
+  <div id="scheduledPublishContainer" class="hidden">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Yayınlanma Tarihi</label>
+    <input type="datetime-local" id="announcementScheduledPublishAt" class="w-full border p-3 rounded-xl">
+    <p class="text-xs text-gray-400 mt-1">Belirtilen tarihte duyuru otomatik yayınlanacaktır.</p>
+  </div>
+</div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="announcementPublished" checked class="rounded" style="display:none">
+                            <label for="announcementPublished" class="text-sm text-gray-700">Yayında</label>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-2xl p-5">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h4 class="font-semibold text-gray-900">İngilizce Versiyon</h4>
+                                <p class="text-xs text-gray-500">Public sayfadaki EN görünüm bu alanlardan beslenir.</p>
+                            </div>
+                            <button type="button" id="announcementTranslateBtn" onclick="translateAnnouncementContent()" class="btn bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap">
+                                <i class="fas fa-language mr-2"></i>TR to EN Çevir
+                            </button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">English Title</label>
+                            <input type="text" id="announcementTitleEn" placeholder="English title" class="w-full border p-3 rounded-xl">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">English Summary</label>
+                            <textarea id="announcementSummaryEn" rows="3" placeholder="Short English summary" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">English Content</label>
+                            <textarea id="announcementFullContentEn" rows="8" placeholder="Full English content (Markdown supported)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-5 sticky top-4 space-y-4">
+                        <h4 class="font-semibold text-gray-900">Kapak Görseli</h4>
+
+                        <!-- AI Görsel Üret -->
+                        <div class="bg-white rounded-xl border border-indigo-100 p-4 space-y-3">
+                            <p class="text-xs font-medium text-indigo-700 uppercase tracking-wide"><i class="fas fa-sparkles mr-1"></i>AI ile Üret</p>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Model</label>
+                                <select id="announcementImageModel" class="w-full border p-2 rounded-lg text-sm">
+                                    <option value="flux">Flux — Genel amaçlı</option>
+                                    <option value="flux-realism">Flux Realism — Gerçekçi fotoğraf</option>
+                                    <option value="flux-3d">Flux 3D — 3D / render görünümü</option>
+                                    <option value="flux-anime">Flux Anime — İllüstrasyon tarzı</option>
+                                    <option value="turbo">Turbo — Hızlı (düşük kalite)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Prompt <span class="text-gray-400">(boş bırakılırsa başlık+özetden otomatik)</span></label>
+                                <textarea id="announcementImageCustomPrompt" rows="2" placeholder="Örn: futuristic library with glowing screens, blue tones, no text…" class="w-full border p-2 rounded-lg text-sm resize-none"></textarea>
+                            </div>
+                            <button type="button" id="announcementImageBtn" onclick="generateAnnouncementImage()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 w-full">
+                                <i class="fas fa-image mr-2"></i>AI Görsel Üret
+                            </button>
+                        </div>
+
+                        <!-- Kendi görselini yükle -->
+                        <div class="bg-white rounded-xl border border-green-100 p-4 space-y-2">
+                            <p class="text-xs font-medium text-green-700 uppercase tracking-wide"><i class="fas fa-upload mr-1"></i>Dosyadan Yükle</p>
+                            <label class="flex items-center gap-2 cursor-pointer border-2 border-dashed border-green-200 rounded-xl p-3 hover:bg-green-50 transition-colors">
+                                <i class="fas fa-cloud-upload-alt text-green-500 text-lg"></i>
+                                <span id="announcementUploadLabel" class="text-sm text-gray-500">JPG, PNG veya WEBP seçin</span>
+                                <input type="file" id="announcementImageFile" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="uploadAnnouncementImage()">
+                            </label>
+                            <div id="announcementUploadProgress" class="hidden text-xs text-green-600"><i class="fas fa-spinner fa-spin mr-1"></i>Yükleniyor…</div>
+                        </div>
+
+                        <!-- Mevcut görsel / önizleme -->
+                        <div id="announcementCoverPreviewWrapper" class="hidden rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm relative">
+                            <button type="button" onclick="clearAnnouncementImage()" title="Görseli kaldır"
+                                class="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow">
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
+                        </div>
+
+                        <div id="announcementImagePromptBox" class="hidden text-xs text-gray-500 bg-white/80 border border-white rounded-xl px-3 py-2"></div>
+
+                        <!-- Hidden field — relative veya absolute URL -->
+                        <input type="hidden" id="announcementCoverImage">
+
+                        <p class="text-xs text-gray-400"><i class="fas fa-circle-info mr-1"></i>İngilizce alanlar boş kalırsa public sayfa Türkçe içeriğe geri düşer.</p>
+                    </div>
+                </div>
+            </div>
+
+<input type="hidden" id="isPublishedInput" value="1">
+<input type="hidden" id="isScheduledMode" value="0">
+            
+<div class="flex gap-3 mt-6">
+  <button type="button" onclick="openAnnouncementPreview()" class="btn bg-gray-100 text-gray-700 hover:bg-gray-200">
+    <i class="fas fa-eye mr-2"></i>Önizleme
+  </button>
+  <button type="button" onclick="saveAnnouncementAsDraft()" class="btn bg-amber-500 text-white hover:bg-amber-600 flex-1">
+    <i class="fas fa-save mr-2"></i>Taslak Kaydet
+  </button>
+  <button type="submit" class="btn btn-primary flex-1">
+    <i class="fas fa-paper-plane mr-2"></i>Yayınla
+  </button>
+  <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 text-gray-700 hover:bg-gray-400">
+    İptal
+  </button>
+</div>
+<input type="hidden" id="isPublishedInput" value="0">
+        </form>
     </div>
-
-    <form id="announcementForm" class="flex flex-col flex-1 min-h-0">
-      <input type="hidden" id="announcementId">
-      <input type="hidden" id="announcementAiImagePrompt">
-
-      <!-- İçerik kısmı - scroll yapan alan -->
-      <div class="flex-1 overflow-y-auto">
-        <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
-          <!-- SOL TARAF - ANA İÇERİK -->
-          <div>
-            <div class="bg-gray-50 border border-gray-200 rounded-2xl p-5 mb-5">
-              <div class="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h4 class="font-semibold text-gray-900">Ana İçerik</h4>
-                  <p class="text-xs text-gray-500">Türkçe duyuru içeriği ve yayın ayarları</p>
-                </div>
-                <button type="button" id="announcementPolishBtn" onclick="polishAnnouncementContent()" class="btn btn-primary whitespace-nowrap">
-                  <i class="fas fa-magic mr-2"></i>AI ile Profesyonelleştir
-                </button>
-              </div>
-
-              <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Başlık</label>
-                <input type="text" id="announcementTitle" placeholder="Duyuru başlığı" class="w-full border p-3 rounded-xl" required>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                  <select id="announcementCategory" class="w-full border p-3 rounded-xl">
-                    <option value="general">Genel</option>
-                    <option value="urgent">Acil</option>
-                    <option value="new-product">Yeni Ürün</option>
-                    <option value="product-update">Güncelleme</option>
-                    <option value="event">Etkinlik</option>
-                    <option value="maintenance">Bakım</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Öncelik</label>
-                  <select id="announcementPriority" class="w-full border p-3 rounded-xl">
-                    <option value="medium">Orta</option>
-                    <option value="high">Yüksek</option>
-                    <option value="low">Düşük</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Özet</label>
-                <textarea id="announcementSummary" rows="3" placeholder="Kısa özet (liste görünümünde gösterilir)" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
-              </div>
-
-              <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">İçerik</label>
-                <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
-
-                <!-- Zamanlı Yayın için Tarih Seçici (başlangıçta gizli) -->
-<div id="scheduledPublishContainer" class="hidden mb-4">
-  <label class="block text-sm font-medium text-gray-700 mb-1">Yayınlanma Tarihi</label>
-  <div class="flex gap-2">
-    <input type="datetime-local" id="announcementScheduledPublishAt" class="flex-1 border p-3 rounded-xl">
-    <button type="button" onclick="cancelScheduledPublish()" class="btn bg-gray-300 text-gray-700 px-4">
-      İptal
-    </button>
-  </div>
-  <p class="text-xs text-gray-400 mt-1">Tarih seçtikten sonra "Yayınla" butonuna basın.</p>
-</div>
-              </div>
-
-              <div class="flex items-center gap-2">
-                <input type="checkbox" id="announcementPublished" checked class="rounded" style="display:none">
-                <label for="announcementPublished" class="text-sm text-gray-700">Yayında</label>
-              </div>
-            </div>
-
-            <div class="bg-white border border-gray-200 rounded-2xl p-5">
-              <div class="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h4 class="font-semibold text-gray-900">İngilizce Versiyon</h4>
-                  <p class="text-xs text-gray-500">Public sayfadaki EN görünüm bu alanlardan beslenir.</p>
-                </div>
-                <button type="button" id="announcementTranslateBtn" onclick="translateAnnouncementContent()" class="btn bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap">
-                  <i class="fas fa-language mr-2"></i>TR to EN Çevir
-                </button>
-              </div>
-
-              <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">English Title</label>
-                <input type="text" id="announcementTitleEn" placeholder="English title" class="w-full border p-3 rounded-xl">
-              </div>
-
-              <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">English Summary</label>
-                <textarea id="announcementSummaryEn" rows="3" placeholder="Short English summary" class="w-full border p-3 rounded-xl text-sm resize-y"></textarea>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">English Content</label>
-                <textarea id="announcementFullContentEn" rows="8" placeholder="Full English content (Markdown supported)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
-              </div>
-            </div>
-          </div>
-
-          <!-- SAĞ TARAF - KAPAK GÖRSELİ -->
-          <div>
-            <div class="bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-5 sticky top-4 space-y-4">
-              <h4 class="font-semibold text-gray-900">Kapak Görseli</h4>
-
-              <div class="bg-white rounded-xl border border-indigo-100 p-4 space-y-3">
-                <p class="text-xs font-medium text-indigo-700 uppercase tracking-wide"><i class="fas fa-sparkles mr-1"></i>AI ile Üret</p>
-                <div>
-                  <label class="block text-xs text-gray-600 mb-1">Model</label>
-                  <select id="announcementImageModel" class="w-full border p-2 rounded-lg text-sm">
-                    <option value="flux">Flux — Genel amaçlı</option>
-                    <option value="flux-realism">Flux Realism — Gerçekçi fotoğraf</option>
-                    <option value="flux-3d">Flux 3D — 3D / render görünümü</option>
-                    <option value="flux-anime">Flux Anime — İllüstrasyon tarzı</option>
-                    <option value="turbo">Turbo — Hızlı (düşük kalite)</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-xs text-gray-600 mb-1">Prompt <span class="text-gray-400">(boş bırakılırsa başlık+özetden otomatik)</span></label>
-                  <textarea id="announcementImageCustomPrompt" rows="2" placeholder="Örn: futuristic library with glowing screens, blue tones, no text…" class="w-full border p-2 rounded-lg text-sm resize-none"></textarea>
-                </div>
-                <button type="button" id="announcementImageBtn" onclick="generateAnnouncementImage()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 w-full">
-                  <i class="fas fa-image mr-2"></i>AI Görsel Üret
-                </button>
-              </div>
-
-              <div class="bg-white rounded-xl border border-green-100 p-4 space-y-2">
-                <p class="text-xs font-medium text-green-700 uppercase tracking-wide"><i class="fas fa-upload mr-1"></i>Dosyadan Yükle</p>
-                <label class="flex items-center gap-2 cursor-pointer border-2 border-dashed border-green-200 rounded-xl p-3 hover:bg-green-50 transition-colors">
-                  <i class="fas fa-cloud-upload-alt text-green-500 text-lg"></i>
-                  <span id="announcementUploadLabel" class="text-sm text-gray-500">JPG, PNG veya WEBP seçin</span>
-                  <input type="file" id="announcementImageFile" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="uploadAnnouncementImage()">
-                </label>
-                <div id="announcementUploadProgress" class="hidden text-xs text-green-600"><i class="fas fa-spinner fa-spin mr-1"></i>Yükleniyor…</div>
-              </div>
-
-              <div id="announcementCoverPreviewWrapper" class="hidden rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm relative">
-                <button type="button" onclick="clearAnnouncementImage()" title="Görseli kaldır"
-                  class="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow">
-                  <i class="fas fa-times text-xs"></i>
-                </button>
-              </div>
-
-              <div id="announcementImagePromptBox" class="hidden text-xs text-gray-500 bg-white/80 border border-white rounded-xl px-3 py-2"></div>
-
-              <input type="hidden" id="announcementCoverImage">
-
-              <p class="text-xs text-gray-400"><i class="fas fa-circle-info mr-1"></i>İngilizce alanlar boş kalırsa public sayfa Türkçe içeriğe geri düşer.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Butonlar - sabit alt çubuk -->
-      <div class="sticky bottom-0 bg-white border-t -mx-6 px-6 py-4 mt-6 flex gap-3 flex-wrap" style="margin-bottom: -1.5rem; z-index: 20;">
-        <button type="button" onclick="openAnnouncementPreview()" class="btn bg-gray-100 text-gray-700 hover:bg-gray-200">
-          <i class="fas fa-eye mr-2"></i>Önizleme
-        </button>
-        <button type="button" onclick="saveAsDraft()" class="btn bg-amber-500 text-white hover:bg-amber-600">
-          <i class="fas fa-save mr-2"></i>Taslak Kaydet
-        </button>
-        <button type="button" onclick="publishNow()" class="btn btn-primary">
-          <i class="fas fa-paper-plane mr-2"></i>Yayınla
-        </button>
-        <button type="button" onclick="showScheduledPublish()" class="btn bg-blue-500 text-white hover:bg-blue-600">
-          <i class="fas fa-calendar-alt mr-2"></i>Zamanlı Yayınla
-        </button>
-        <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 text-gray-700 hover:bg-gray-400">
-          İptal
-        </button>
-      </div>
-
-      <input type="hidden" id="isPublishedInput" value="0">
-      <input type="hidden" id="isScheduledMode" value="0">
-    </form>
-  </div>
-</div>
 </div>
 
 <!-- Önizleme Modal'ı -->
@@ -1288,7 +1283,7 @@
         <h3 class="text-xl font-bold mb-4">Kurum Ekle</h3>
         <form id="institutionForm">
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı-</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Ad-</label>
                 <input type="text" id="institutionName" placeholder="Örn: Ankara Üniversitesi" class="w-full border p-2 rounded" required>
             </div>
             <div class="mb-3">
@@ -1302,7 +1297,7 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
                 <input type="text" id="institutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
-                <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgülle ayırın</p>
+                <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgnlle ay rin</p>
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
@@ -1319,7 +1314,7 @@
         <form id="editInstitutionForm">
             <input type="hidden" id="editInstitutionId">
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Adı-</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum Ad-</label>
                 <input type="text" id="editInstitutionName" class="w-full border p-2 rounded bg-gray-50" required>
             </div>
             <div class="mb-3">
@@ -5045,121 +5040,67 @@ async function saveSubmission() {
     }
 }
 
-// ====================== DUYURU YÖNETİMİ - TAMAMEN YENİ ======================
-
-let coverCropper = null;
+// ====================== DUYURU YÖNETİMİ ======================
 
 async function loadAnnouncements() {
     const container = document.getElementById('announcementsList');
     if (!container) return;
-    
     container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">Yükleniyor...</p>';
-
     try {
         const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
         const data = await res.json();
         const list = data.announcements || data || [];
-
         if (!list.length) {
             container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-8">Henüz duyuru yok</p>';
             return;
         }
-
-        const localCategoryMap = {
-            urgent: 'Acil', 'new-product': 'Yeni Ürün', 'product-update': 'Güncelleme',
-            event: 'Etkinlik', 'maintenance': 'Bakım', general: 'Genel'
-        };
-
+        const catMap = { urgent: 'Acil', 'new-product': 'Yeni Ürün', 'product-update': 'Güncelleme', event: 'Etkinlik', maintenance: 'Bakım', general: 'Genel' };
         container.innerHTML = list.map(a => {
             let statusBadge = '';
             if (!a.is_published) {
-                if (a.scheduled_publish_at && new Date(a.scheduled_publish_at) > new Date()) {
-                    statusBadge = '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full ml-2">⏰ Zamanlı</span>';
-                } else {
-                    statusBadge = '<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full ml-2 font-bold">📝 TASLAK</span>';
-                }
+                statusBadge = '<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full ml-2 font-bold">TASLAK</span>';
             } else {
-                statusBadge = '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full ml-2">✅ Yayında</span>';
+                statusBadge = '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full ml-2">Yayında</span>';
             }
-            
-            const previewImage = a.cover_image_url
-                ? `<img src="${escapeHtml(a.cover_image_url)}" alt="${escapeHtml(a.title || 'Duyuru görseli')}" class="w-full h-40 object-cover">`
-                : '<div class="w-full h-40 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-3xl text-slate-400"><i class="fas fa-image"></i></div>';
-
+            const img = a.cover_image_url ? `<img src="${a.cover_image_url}" class="w-full h-40 object-cover">` : '<div class="w-full h-40 bg-slate-100 flex items-center justify-center"><i class="fas fa-image text-3xl text-slate-300"></i></div>';
             return `
-                <div class="border rounded-2xl overflow-hidden hover:shadow-md transition ${a.is_published ? 'bg-white' : 'bg-gray-50 opacity-80'}">
-                    ${previewImage}
+                <div class="border rounded-2xl overflow-hidden hover:shadow-md">
+                    ${img}
                     <div class="p-4">
-                        <div class="flex justify-between items-start mb-2 gap-2">
-                            <div class="flex gap-1 flex-wrap">
-                                <span class="text-xs ${a.category === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} px-2 py-0.5 rounded-full">
-                                    ${localCategoryMap[a.category] || a.category}
-                                </span>
-                                ${statusBadge}
-                            </div>
-                            <div class="flex gap-1">
-                                <button onclick="editAnnouncement(${a.id})" class="text-blue-500 hover:text-blue-700 p-1" title="Düzenle">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button onclick="deleteAnnouncement(${a.id})" class="text-red-500 hover:text-red-700 p-1" title="Sil">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${catMap[a.category] || a.category}</span>
+                            ${statusBadge}
                         </div>
-                        <h4 class="font-semibold text-gray-800 mb-1">${escapeHtml(a.title)}</h4>
-                        <p class="text-xs text-gray-500 mb-2">${new Date(a.published_at || a.created_at).toLocaleDateString('tr-TR')}</p>
-                        <p class="text-sm text-gray-600 line-clamp-2">${escapeHtml((a.summary || '').substring(0, 120))}</p>
+                        <h4 class="font-semibold">${escapeHtml(a.title)}</h4>
+                        <p class="text-xs text-gray-500 mt-1">${new Date(a.published_at || a.created_at).toLocaleDateString('tr-TR')}</p>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="editAnnouncement(${a.id})" class="text-blue-500 text-sm"><i class="fas fa-edit"></i> Düzenle</button>
+                            <button onclick="deleteAnnouncement(${a.id})" class="text-red-500 text-sm"><i class="fas fa-trash"></i> Sil</button>
+                        </div>
                     </div>
                 </div>
             `;
         }).join('');
-
-    } catch (err) {
-        console.error('loadAnnouncements error:', err);
-        container.innerHTML = '<p class="col-span-full text-center text-red-500 py-8">Yüklenirken hata oluştu</p>';
-    }
+    } catch(e) { container.innerHTML = '<p class="text-center text-red-500 py-8">Hata oluştu</p>'; }
 }
 
 function openAnnouncementModal() {
-    document.getElementById('announcementModalTitle').textContent = 'Yeni Duyuru';
-    resetAnnouncementForm();
+    document.getElementById('announcementModalTitle').innerHTML = 'Yeni Duyuru';
+    document.getElementById('announcementId').value = '';
+    document.getElementById('announcementTitle').value = '';
+    document.getElementById('announcementCategory').value = 'general';
+    document.getElementById('announcementPriority').value = 'medium';
+    document.getElementById('announcementSummary').value = '';
+    document.getElementById('announcementFullContent').value = '';
+    document.getElementById('announcementTitleEn').value = '';
+    document.getElementById('announcementSummaryEn').value = '';
+    document.getElementById('announcementFullContentEn').value = '';
+    document.getElementById('announcementCoverImage').value = '';
+    document.getElementById('announcementPublished').checked = true;
+    document.getElementById('isPublishedInput').value = '1';
+    document.getElementById('isScheduledMode').value = '0';
+    document.getElementById('scheduledPublishContainer').classList.add('hidden');
     document.getElementById('announcementModal').classList.remove('hidden');
-}
-
-function resetAnnouncementForm() {
-    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-    
-    setVal('announcementId', '');
-    setVal('announcementAiImagePrompt', '');
-    setVal('announcementImageCustomPrompt', '');
-    setVal('announcementImageModel', 'flux');
-    setVal('announcementTitle', '');
-    setVal('announcementCategory', 'general');
-    setVal('announcementPriority', 'medium');
-    setVal('announcementSummary', '');
-    setVal('announcementFullContent', '');
-    setVal('announcementTitleEn', '');
-    setVal('announcementSummaryEn', '');
-    setVal('announcementFullContentEn', '');
-    setVal('announcementCoverImage', '');
-    setVal('isPublishedInput', '0');
-    setVal('isScheduledMode', '0');
-    
-    const container = document.getElementById('scheduledPublishContainer');
-    if (container) container.classList.add('hidden');
-    
-    const uploadLabel = document.getElementById('announcementUploadLabel');
-    if (uploadLabel) uploadLabel.textContent = 'JPG, PNG veya WEBP seçin';
-    
-    const publishedCheckbox = document.getElementById('announcementPublished');
-    if (publishedCheckbox) publishedCheckbox.checked = true;
-    
-    // Cover preview wrapper'ı temizle
-    const previewWrapper = document.getElementById('announcementCoverPreviewWrapper');
-    if (previewWrapper) {
-        previewWrapper.classList.add('hidden');
-        previewWrapper.innerHTML = '';
-    }
 }
 
 function closeAnnouncementModal() {
@@ -5170,13 +5111,11 @@ async function editAnnouncement(id) {
     try {
         const res = await fetch(`${API_BASE}/api/admin/announcements`, { credentials: 'include' });
         const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.announcements || []);
+        const list = data.announcements || data || [];
         const a = list.find(x => x.id == id);
-        if (!a) { showToast('Duyuru bulunamadı', 'error'); return; }
-        
-        document.getElementById('announcementModalTitle').textContent = 'Duyuruyu Düzenle';
-        document.getElementById('announcementId').value = a.id || '';
-        document.getElementById('announcementAiImagePrompt').value = a.ai_image_prompt || '';
+        if (!a) return;
+        document.getElementById('announcementModalTitle').innerHTML = 'Duyuruyu Düzenle';
+        document.getElementById('announcementId').value = a.id;
         document.getElementById('announcementTitle').value = a.title || '';
         document.getElementById('announcementCategory').value = a.category || 'general';
         document.getElementById('announcementPriority').value = a.priority || 'medium';
@@ -5187,55 +5126,37 @@ async function editAnnouncement(id) {
         document.getElementById('announcementFullContentEn').value = a.full_content_en || '';
         document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
         document.getElementById('announcementPublished').checked = !!a.is_published;
-        
-        // Cover preview
-        const previewWrapper = document.getElementById('announcementCoverPreviewWrapper');
-        if (previewWrapper && a.cover_image_url) {
-            previewWrapper.classList.remove('hidden');
-            previewWrapper.innerHTML = `<img src="${a.cover_image_url}" class="w-full h-56 object-cover">`;
-        }
-        
+        document.getElementById('isPublishedInput').value = a.is_published ? '1' : '0';
+        document.getElementById('isScheduledMode').value = '0';
+        document.getElementById('scheduledPublishContainer').classList.add('hidden');
         document.getElementById('announcementModal').classList.remove('hidden');
-    } catch (err) {
-        showToast('Duyuru bilgileri alınamadı', 'error');
-    }
+    } catch(e) { showToast('Hata', 'error'); }
 }
 
 async function deleteAnnouncement(id) {
     if (!confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
     const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { showToast('Duyuru silindi', 'success'); loadAnnouncements(); }
-    else showToast('İşlem başarısız oldu', 'error');
+    else showToast('Silme hatası', 'error');
 }
 
-// ====================== FORM SUBMIT ======================
+// Form submit
 const announcementForm = document.getElementById('announcementForm');
 if (announcementForm) {
-    // Eski listener'ları temizle
     const freshForm = announcementForm.cloneNode(true);
     announcementForm.parentNode.replaceChild(freshForm, announcementForm);
-    
     freshForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
         const id = document.getElementById('announcementId').value;
-        const isScheduledMode = document.getElementById('isScheduledMode')?.value === '1';
-        
+        const isScheduled = document.getElementById('isScheduledMode')?.value === '1';
         let isPublished = document.getElementById('isPublishedInput')?.value === '1' ? 1 : 0;
-        let scheduledPublishAt = null;
-        
-        if (isScheduledMode) {
+        let scheduledAt = null;
+        if (isScheduled) {
             isPublished = 0;
-            const rawDate = document.getElementById('announcementScheduledPublishAt')?.value;
-            if (!rawDate) {
-                showToast('Lütfen önce "Zamanlı Yayınla" butonuna tıklayıp bir tarih seçin!', 'warning');
-                document.getElementById('isScheduledMode').value = '0';
-                document.getElementById('scheduledPublishContainer')?.classList.add('hidden');
-                return;
-            }
-            scheduledPublishAt = rawDate + ':00';
+            scheduledAt = document.getElementById('announcementScheduledPublishAt')?.value;
+            if (!scheduledAt) { showToast('Lütfen tarih seçin', 'warning'); return; }
+            scheduledAt += ':00';
         }
-        
         const payload = {
             title: document.getElementById('announcementTitle')?.value.trim() || '',
             category: document.getElementById('announcementCategory')?.value || 'general',
@@ -5246,134 +5167,70 @@ if (announcementForm) {
             summary_en: document.getElementById('announcementSummaryEn')?.value.trim() || '',
             full_content_en: document.getElementById('announcementFullContentEn')?.value.trim() || '',
             cover_image_url: document.getElementById('announcementCoverImage')?.value.trim() || '',
-            ai_image_prompt: document.getElementById('announcementAiImagePrompt')?.value.trim() || '',
+            ai_image_prompt: '',
             is_published: isPublished,
-            scheduled_publish_at: scheduledPublishAt
+            scheduled_publish_at: scheduledAt
         };
-        
-        const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
-        const method = id ? 'PUT' : 'POST';
-        
-        try {
-            const res = await fetch(url, {
-                method, credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            
-            if (res.ok) {
-                const msg = id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu';
-                if (isScheduledMode && scheduledPublishAt) {
-                    const date = new Date(scheduledPublishAt).toLocaleString('tr-TR');
-                    showToast(`${msg} - ${date} tarihinde yayınlanacak.`, 'success');
-                } else if (isPublished === 1) {
-                    showToast(`${msg} ve yayınlandı!`, 'success');
-                } else {
-                    showToast(`${msg} (Taslak olarak kaydedildi)`, 'success');
-                }
-                closeAnnouncementModal();
-                loadAnnouncements();
-            } else {
-                const data = await res.json().catch(() => ({}));
-                showToast(data.error || 'İşlem başarısız oldu', 'error');
-            }
-        } catch(err) {
-            showToast('Bağlantı hatası: ' + err.message, 'error');
+        const res = await fetch(id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`, {
+            method: id ? 'PUT' : 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            showToast(id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu', 'success');
+            closeAnnouncementModal();
+            loadAnnouncements();
+        } else {
+            showToast('Hata', 'error');
         }
     });
 }
 
-// ====================== BUTON FONKSİYONLARI ======================
-
+// Buton fonksiyonları
 function saveAsDraft() {
     document.getElementById('isPublishedInput').value = '0';
     document.getElementById('isScheduledMode').value = '0';
-    document.getElementById('scheduledPublishContainer')?.classList.add('hidden');
+    document.getElementById('scheduledPublishContainer').classList.add('hidden');
     document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
 }
 
 function publishNow() {
     document.getElementById('isPublishedInput').value = '1';
     document.getElementById('isScheduledMode').value = '0';
-    document.getElementById('scheduledPublishContainer')?.classList.add('hidden');
+    document.getElementById('scheduledPublishContainer').classList.add('hidden');
     document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
 }
 
 function showScheduledPublish() {
-    const container = document.getElementById('scheduledPublishContainer');
-    if (container) container.classList.remove('hidden');
-    
+    document.getElementById('scheduledPublishContainer').classList.remove('hidden');
     document.getElementById('isPublishedInput').value = '0';
     document.getElementById('isScheduledMode').value = '1';
-    
-    const dateInput = document.getElementById('announcementScheduledPublishAt');
-    if (dateInput) {
-        dateInput.focus();
-        try { if (dateInput.showPicker) dateInput.showPicker(); } catch(e) {}
-    }
-    
-    showToast('Lütfen yayınlanma tarihini seçin ve "Yayınla" butonuna basın.', 'info');
+    showToast('Tarih seçip "Yayınla" butonuna basın', 'info');
 }
 
 function cancelScheduledPublish() {
-    document.getElementById('scheduledPublishContainer')?.classList.add('hidden');
+    document.getElementById('scheduledPublishContainer').classList.add('hidden');
     document.getElementById('isScheduledMode').value = '0';
     document.getElementById('announcementScheduledPublishAt').value = '';
-    showToast('Zamanlı yayın iptal edildi.', 'info');
 }
 
 function openAnnouncementPreview() {
     const title = document.getElementById('announcementTitle')?.value || '';
     const content = document.getElementById('announcementFullContent')?.value || '';
-    const summary = document.getElementById('announcementSummary')?.value || '';
-    const category = document.getElementById('announcementCategory')?.value || 'general';
-    const coverImageUrl = document.getElementById('announcementCoverImage')?.value || '';
-    
-    const categoryLabels = {
-        urgent: 'Acil', 'new-product': 'Yeni Ürün', 'product-update': 'Güncelleme',
-        event: 'Etkinlik', 'maintenance': 'Bakım', 'general': 'Genel'
-    };
-    
-    let coverHtml = '';
-    if (coverImageUrl) {
-        coverHtml = `<div class="mb-6 overflow-hidden rounded-2xl border border-gray-100">
-                       <img src="${escapeHtml(coverImageUrl)}" alt="${escapeHtml(title)}" class="w-full max-h-[26rem] object-cover">
-                     </div>`;
+    const modal = document.getElementById('previewModal');
+    const body = document.getElementById('previewContent');
+    if (body) {
+        let html = `<h1 class="text-2xl font-bold mb-4">${escapeHtml(title)}</h1>`;
+        if (typeof marked !== 'undefined') html += marked.parse(content || 'İçerik yok');
+        else html += `<p>${escapeHtml(content)}</p>`;
+        body.innerHTML = html;
     }
-    
-    let parsedContent = content || 'İçerik bulunmuyor.';
-    if (typeof marked !== 'undefined' && marked.parse) {
-        parsedContent = marked.parse(content);
-    }
-    
-    const previewHtml = `
-        ${coverHtml}
-        <div class="mb-4">
-            <span class="inline-block bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
-                ${categoryLabels[category] || category}
-            </span>
-        </div>
-        <h1 class="text-3xl font-bold text-primary mb-4">${escapeHtml(title)}</h1>
-        ${summary ? `<p class="text-gray-600 text-lg italic mb-6 border-l-4 border-primary pl-4">${escapeHtml(summary)}</p>` : ''}
-        <div class="prose max-w-none text-gray-700 leading-relaxed">
-            ${parsedContent}
-        </div>
-    `;
-    
-    const previewContent = document.getElementById('previewContent');
-    if (previewContent) previewContent.innerHTML = previewHtml;
-    
-    const previewModal = document.getElementById('previewModal');
-    if (previewModal) {
-        previewModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
+    if (modal) modal.classList.remove('hidden');
 }
 
 function closePreviewModal() {
-    const previewModal = document.getElementById('previewModal');
-    if (previewModal) previewModal.classList.add('hidden');
-    document.body.style.overflow = '';
+    document.getElementById('previewModal')?.classList.add('hidden');
 }
 
 function editAirtableAccount(id, name, domain, category, status) {
@@ -5451,129 +5308,6 @@ async function applyCoverCrop() {
         } finally {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-crop-alt mr-2"></i>Uygula ve Kaydet';
-        }
-    }, 'image/jpeg', 0.92);
-}
-
-function updateAnnouncementCoverPreview() {
-    const url = document.getElementById('announcementCoverImage')?.value.trim();
-    const previewWrapper = document.getElementById('announcementCoverPreviewWrapper');
-    const promptBox = document.getElementById('announcementImagePromptBox');
-    const prompt = document.getElementById('announcementAiImagePrompt')?.value.trim();
-
-    if (!previewWrapper) return;
-
-    if (url) {
-        previewWrapper.classList.remove('hidden');
-        const src = url.startsWith('http') ? url : window.location.origin + url;
-        previewWrapper.innerHTML = `
-            <button type="button" onclick="clearAnnouncementImage()" title="Görseli kaldır"
-                class="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow">
-                <i class="fas fa-times text-xs"></i>
-            </button>
-            <div id="announcementImgSpinner" class="w-full h-56 flex items-center justify-center bg-slate-50 text-slate-400">
-                <i class="fas fa-spinner fa-spin text-2xl"></i>
-            </div>`;
-        const img = new Image();
-        img.className = 'w-full h-56 object-cover';
-        img.alt = 'Duyuru kapak önizleme';
-        img.onload = () => {
-            const spinner = document.getElementById('announcementImgSpinner');
-            if (spinner) spinner.replaceWith(img);
-            const cropBtn = document.createElement('button');
-            cropBtn.type = 'button';
-            cropBtn.className = 'absolute bottom-2 right-2 btn bg-white/90 text-gray-700 hover:bg-white text-xs shadow border border-gray-200';
-            cropBtn.innerHTML = '<i class="fas fa-crop-alt mr-1"></i>Kırp';
-            cropBtn.onclick = () => openCoverCropModal(src, null);
-            previewWrapper.appendChild(cropBtn);
-        };
-        img.onerror = () => {
-            const spinner = document.getElementById('announcementImgSpinner');
-            if (spinner) spinner.innerHTML = '<i class="fas fa-exclamation-circle mr-2"></i>Görsel yüklenemedi';
-        };
-        img.src = src;
-    } else {
-        previewWrapper.classList.add('hidden');
-        previewWrapper.innerHTML = '';
-    }
-
-    if (promptBox) {
-        if (prompt) {
-            promptBox.textContent = `AI prompt: ${prompt}`;
-            promptBox.classList.remove('hidden');
-        } else {
-            promptBox.textContent = '';
-            promptBox.classList.add('hidden');
-        }
-    }
-}
-
-function clearAnnouncementImage() {
-    document.getElementById('announcementCoverImage').value = '';
-    document.getElementById('announcementAiImagePrompt').value = '';
-    document.getElementById('announcementImageCustomPrompt').value = '';
-    const uploadLabel = document.getElementById('announcementUploadLabel');
-    if (uploadLabel) uploadLabel.textContent = 'JPG, PNG veya WEBP seçin';
-    updateAnnouncementCoverPreview();
-}
-
-let _coverCropper = null;
-
-function openCoverCropModal(src, blob) {
-    const modal = document.getElementById('coverCropModal');
-    const img = document.getElementById('coverCropImage');
-    if (!modal || !img) return;
-
-    if (_coverCropper) { _coverCropper.destroy(); _coverCropper = null; }
-    img.src = src;
-    modal.classList.remove('hidden');
-    img.onload = () => {
-        _coverCropper = new Cropper(img, {
-            aspectRatio: 1200 / 630,
-            viewMode: 1,
-            autoCropArea: 0.85,
-            background: false,
-            movable: true,
-            zoomable: true,
-            rotatable: false,
-            scalable: false,
-        });
-    };
-}
-
-function closeCoverCropModal() {
-    if (_coverCropper) { _coverCropper.destroy(); _coverCropper = null; }
-    document.getElementById('coverCropModal')?.classList.add('hidden');
-}
-
-async function applyCoverCrop() {
-    if (!_coverCropper) return;
-    const canvas = _coverCropper.getCroppedCanvas({ width: 1200, height: 630, imageSmoothingQuality: 'high' });
-    const btn = document.getElementById('coverCropApplyBtn');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor…';
-    }
-
-    canvas.toBlob(async (blob) => {
-        try {
-            const formData = new FormData();
-            formData.append('file', blob, 'cover.jpg');
-            const res = await fetch(`${API_BASE}/api/upload`, { method: 'POST', credentials: 'include', body: formData });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Yükleme başarısız');
-            document.getElementById('announcementCoverImage').value = data.url || '';
-            document.getElementById('announcementAiImagePrompt').value = '';
-            updateAnnouncementCoverPreview();
-            closeCoverCropModal();
-            showToast('Görsel kırpıldı ve yüklendi', 'success');
-        } catch (err) {
-            showToast(err.message || 'Yükleme hatası', 'error');
-        } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-crop-alt mr-2"></i>Uygula ve Kaydet';
-            }
         }
     }, 'image/jpeg', 0.92);
 }
