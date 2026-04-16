@@ -1137,16 +1137,16 @@
                 <textarea id="announcementFullContent" rows="8" placeholder="Tam içerik (Markdown destekli)" class="w-full border p-3 rounded-xl font-mono text-sm resize-y"></textarea>
 
                 <!-- Zamanlı Yayın için Tarih Seçici (başlangıçta gizli) -->
-                <div id="scheduledPublishContainer" class="hidden mb-4 mt-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Yayınlanma Tarihi</label>
-                  <div class="flex gap-2">
-                    <input type="datetime-local" id="announcementScheduledPublishAt" class="flex-1 border p-3 rounded-xl">
-                    <button type="button" onclick="cancelScheduledPublish()" class="btn bg-gray-300 text-gray-700 px-4">
-                      İptal
-                    </button>
-                  </div>
-                  <p class="text-xs text-gray-400 mt-1">Tarih seçtikten sonra "Yayınla" butonuna basın.</p>
-                </div>
+<div id="scheduledPublishContainer" class="hidden mb-4">
+  <label class="block text-sm font-medium text-gray-700 mb-1">Yayınlanma Tarihi</label>
+  <div class="flex gap-2">
+    <input type="datetime-local" id="announcementScheduledPublishAt" class="flex-1 border p-3 rounded-xl">
+    <button type="button" onclick="cancelScheduledPublish()" class="btn bg-gray-300 text-gray-700 px-4">
+      İptal
+    </button>
+  </div>
+  <p class="text-xs text-gray-400 mt-1">Tarih seçtikten sonra "Yayınla" butonuna basın.</p>
+</div>
               </div>
 
               <div class="flex items-center gap-2">
@@ -5385,17 +5385,20 @@ newForm.addEventListener('submit', async function(e) {
   let isPublished = document.getElementById('isPublishedInput')?.value === '1' ? 1 : 0;
   let scheduledPublishAt = null;
   
-  if (isScheduledMode) {
-    isPublished = 0;
-    scheduledPublishAt = document.getElementById('announcementScheduledPublishAt')?.value;
-    if (!scheduledPublishAt) {
-      showToast('Zamanlı yayın için önce "Zamanlı Yayınla" butonuna tıklayıp tarih seçmelisiniz!', 'warning');
-      // Modu sıfırla
-      document.getElementById('isScheduledMode').value = '0';
-      document.getElementById('scheduledPublishContainer').classList.add('hidden');
-      return;
-    }
+if (isScheduledMode) {
+  isPublished = 0;
+  let rawDate = document.getElementById('announcementScheduledPublishAt')?.value;
+  if (!rawDate) {
+    showToast('Lütfen önce "Zamanlı Yayınla" butonuna tıklayıp bir tarih seçin!', 'warning');
+    document.getElementById('isScheduledMode').value = '0';
+    document.getElementById('scheduledPublishContainer').classList.add('hidden');
+    return;
   }
+  // rawDate format: "2025-12-31T14:30" -> backend "2025-12-31T14:30:00" bekliyor olabilir
+  scheduledPublishAt = rawDate + ':00';
+  console.log('Gönderilen tarih:', scheduledPublishAt);
+}
+}
   
   const payload = {
     title: document.getElementById('announcementTitle').value.trim(),
@@ -5497,10 +5500,21 @@ function publishNow() {
 }
 
 function showScheduledPublish() {
-  const dateTime = prompt('Yayınlanma tarihini girin (YYYY-MM-DD HH:MM):\nÖrnek: 2025-12-31 14:30');
-  if (!dateTime) return;
+  // Container'ı göster
+  const container = document.getElementById('scheduledPublishContainer');
+  if (container) container.classList.remove('hidden');
   
-  const formattedDate = dateTime.replace(' ', 'T') + ':00';
+  // Hidden alanları ayarla
+  document.getElementById('isPublishedInput').value = '0';
+  document.getElementById('isScheduledMode').value = '1';
+  
+  // Tarih inputuna odaklan
+  const dateInput = document.getElementById('announcementScheduledPublishAt');
+  if (dateInput) {
+    dateInput.focus();
+    dateInput.showPicker(); // Native date picker'ı açar (Chrome/Edge)
+  }
+}
   
   // Input'a değeri ata
   const dateInput = document.getElementById('announcementScheduledPublishAt');
