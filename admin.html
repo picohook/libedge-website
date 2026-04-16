@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
@@ -5094,6 +5094,24 @@ function fillAnnouncementForm(a) {
     document.getElementById('announcementCoverImage').value = a.cover_image_url || '';
     document.getElementById('announcementPublished').checked = !!a.is_published;
     updateAnnouncementCoverPreview();
+
+// Yayın durumunu ayarla
+const publishStatusSelect = document.getElementById('announcementPublishStatus');
+if (publishStatusSelect) {
+  if (a.is_published) {
+    publishStatusSelect.value = 'published';
+  } else if (a.scheduled_publish_at && new Date(a.scheduled_publish_at) > new Date()) {
+    publishStatusSelect.value = 'scheduled';
+    const scheduledInput = document.getElementById('announcementScheduledPublishAt');
+    if (scheduledInput && a.scheduled_publish_at) {
+      scheduledInput.value = a.scheduled_publish_at.slice(0, 16);
+    }
+    const container = document.getElementById('scheduledPublishContainer');
+    if (container) container.classList.remove('hidden');
+  } else {
+    publishStatusSelect.value = 'draft';
+  }
+}
 }
 
 function updateAnnouncementCoverPreview() {
@@ -5317,7 +5335,24 @@ async function deleteAnnouncement(id) {
 
 document.getElementById('announcementForm').addEventListener('submit', async function(e) {
     e.preventDefault();
+    
     const id = document.getElementById('announcementId').value;
+    const publishStatus = document.getElementById('announcementPublishStatus')?.value || 'draft';
+    
+    let isPublished = 0;
+    let scheduledPublishAt = null;
+    
+    if (publishStatus === 'published') {
+        isPublished = 1;
+    } else if (publishStatus === 'scheduled') {
+        isPublished = 0;
+        scheduledPublishAt = document.getElementById('announcementScheduledPublishAt')?.value;
+        if (!scheduledPublishAt) {
+            showToast('Zamanlı yayın için bir tarih seçmelisiniz!', 'warning');
+            return;
+        }
+    }
+    
     const payload = {
         title: document.getElementById('announcementTitle').value.trim(),
         category: document.getElementById('announcementCategory').value,
@@ -5329,17 +5364,29 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
         full_content_en: document.getElementById('announcementFullContentEn').value.trim(),
         cover_image_url: document.getElementById('announcementCoverImage').value.trim(),
         ai_image_prompt: document.getElementById('announcementAiImagePrompt').value.trim(),
-        is_published: document.getElementById('announcementPublished').checked ? 1 : 0
+        is_published: isPublished,
+        scheduled_publish_at: scheduledPublishAt
     };
+    
     const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
     const method = id ? 'PUT' : 'POST';
+    
     const res = await fetch(url, {
         method, credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
+    
     if (res.ok) {
-        showToast(id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu', 'success');
+        const msg = id ? 'Duyuru güncellendi' : 'Duyuru oluşturuldu';
+        if (publishStatus === 'scheduled' && scheduledPublishAt) {
+            const date = new Date(scheduledPublishAt).toLocaleString('tr-TR');
+            showToast(`${msg} - ${date} tarihinde yayınlanacak.`, 'success');
+        } else if (isPublished === 1) {
+            showToast(`${msg} ve yayınlandı!`, 'success');
+        } else {
+            showToast(`${msg} (Taslak olarak kaydedildi)`, 'success');
+        }
         closeAnnouncementModal();
         loadAnnouncements();
     } else {
@@ -5347,7 +5394,70 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
         showToast(data.error || 'İşlem başarısız oldu', 'error');
     }
 });
-let currentAirtableId = null;
+
+function toggleScheduledPublish() {
+  const statusEl = document.getElementById('announcementPublishStatus');
+  const container = document.getElementById('scheduledPublishContainer');
+  if (statusEl && container) {
+    container.classList.toggle('hidden', statusEl.value !== 'scheduled');
+  }
+
+}function saveAnnouncementAsDraft() {
+  const isPublishedInput = document.getElementById('isPublishedInput');
+  if (isPublishedInput) isPublishedInput.value = '0';
+  const form = document.getElementById('announcementForm');
+  if (form) form.dispatchEvent(new Event('submit'));
+}
+
+function openAnnouncementPreview() {
+  const title = document.getElementById('announcementTitle')?.value || '';
+  const content = document.getElementById('announcementFullContent')?.value || '';
+  const summary = document.getElementById('announcementSummary')?.value || '';
+  const category = document.getElementById('announcementCategory')?.value || 'general';
+  const coverImageUrl = document.getElementById('announcementCoverImage')?.value || '';
+  
+  const categoryLabels = {
+    urgent: 'Acil', 'new-product': 'Yeni Ürün', 'product-update': 'Güncelleme',
+    event: 'Etkinlik', 'maintenance': 'Bakım', 'general': 'Genel'
+  };
+  
+  let coverHtml = '';
+  if (coverImageUrl) {
+    coverHtml = `<div class="mb-6 overflow-hidden rounded-2xl border border-gray-100">
+                   <img src="${escapeHtml(coverImageUrl)}" alt="${escapeHtml(title)}" class="w-full max-h-[26rem] object-cover">
+                 </div>`;
+  }
+  
+  const previewHtml = `
+    ${coverHtml}
+    <div class="mb-4">
+      <span class="inline-block bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
+        ${categoryLabels[category] || category}
+      </span>
+    </div>
+    <h1 class="text-3xl font-bold text-primary mb-4">${escapeHtml(title)}</h1>
+    ${summary ? `<p class="text-gray-600 text-lg italic mb-6 border-l-4 border-primary pl-4">${escapeHtml(summary)}</p>` : ''}
+    <div class="prose max-w-none text-gray-700 leading-relaxed">
+      ${marked.parse(content || 'İçerik bulunmuyor.')}
+    </div>
+  `;
+  
+  const previewContent = document.getElementById('previewContent');
+  if (previewContent) previewContent.innerHTML = previewHtml;
+  
+  const previewModal = document.getElementById('previewModal');
+  if (previewModal) {
+    previewModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closePreviewModal() {
+  const previewModal = document.getElementById('previewModal');
+  if (previewModal) previewModal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
 
 function editAirtableAccount(id, name, domain, category, status) {
     currentAirtableId = id;
