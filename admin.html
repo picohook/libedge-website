@@ -5492,20 +5492,18 @@ newForm.addEventListener('submit', async function(e) {
   let isPublished = document.getElementById('isPublishedInput')?.value === '1' ? 1 : 0;
   let scheduledPublishAt = null;
   
-if (isScheduledMode) {
-  isPublished = 0;
-  let rawDate = document.getElementById('announcementScheduledPublishAt')?.value;
-  if (!rawDate) {
-    showToast('Lütfen önce "Zamanlı Yayınla" butonuna tıklayıp bir tarih seçin!', 'warning');
-    document.getElementById('isScheduledMode').value = '0';
-    document.getElementById('scheduledPublishContainer').classList.add('hidden');
-    return;
+  if (isScheduledMode) {
+    isPublished = 0;
+    let rawDate = document.getElementById('announcementScheduledPublishAt')?.value;
+    if (!rawDate) {
+      showToast('Lütfen önce "Zamanlı Yayınla" butonuna tıklayıp bir tarih seçin!', 'warning');
+      document.getElementById('isScheduledMode').value = '0';
+      document.getElementById('scheduledPublishContainer').classList.add('hidden');
+      return;
+    }
+    scheduledPublishAt = rawDate + ':00';
+    console.log('Gönderilen tarih:', scheduledPublishAt);
   }
-  // rawDate format: "2025-12-31T14:30" -> backend "2025-12-31T14:30:00" bekliyor olabilir
-  scheduledPublishAt = rawDate + ':00';
-  console.log('Gönderilen tarih:', scheduledPublishAt);
-}
-}
   
   const payload = {
     title: document.getElementById('announcementTitle').value.trim(),
