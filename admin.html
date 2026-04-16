@@ -5497,9 +5497,17 @@ function publishNow() {
 }
 
 function showScheduledPublish() {
+  const dateTime = prompt('Yayınlanma tarihini girin (YYYY-MM-DD HH:MM):\nÖrnek: 2025-12-31 14:30');
+  if (!dateTime) return;
+  
+  const formattedDate = dateTime.replace(' ', 'T') + ':00';
+  document.getElementById('announcementScheduledPublishAt').value = formattedDate;
   document.getElementById('isPublishedInput').value = '0';
   document.getElementById('isScheduledMode').value = '1';
   document.getElementById('scheduledPublishContainer').classList.remove('hidden');
+  
+  // Form'u hemen submit et
+  document.getElementById('announcementForm').dispatchEvent(new Event('submit'));
 }
 
 
