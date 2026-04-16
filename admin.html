@@ -1253,7 +1253,7 @@
                         <i class="fas fa-eye mr-2"></i>Önizleme
                     </button>
                     <button type="button" onclick="submitAnnouncement('draft')" class="btn bg-slate-700 text-white hover:bg-slate-800 flex-1">Taslak Kaydet</button>
-                    <button type="button" onclick="handleScheduledAnnouncementAction()" class="btn bg-amber-500 text-white hover:bg-amber-600 flex-1">Zamanlı Yayınla</button>
+                    <button type="button" id="scheduledPublishBtn" onclick="handleScheduledAnnouncementAction()" class="btn bg-amber-500 text-white hover:bg-amber-600 flex-1"><i class="fas fa-clock mr-1"></i>Zamanlı Yayınla</button>
                     <button type="button" onclick="submitAnnouncement('published')" class="btn btn-primary flex-1">Şimdi Yayınla</button>
                     <button type="button" onclick="closeAnnouncementModal()" class="btn bg-gray-300 flex-1">İptal</button>
                 </div>
@@ -5191,8 +5191,14 @@ function formatDateTimeLocal(value) {
 function toggleAnnouncementScheduleFields(show) {
     const scheduleField = document.getElementById('announcementFooterScheduleWrap');
     const publishAtInput = document.getElementById('announcementPublishAt');
+    const btn = document.getElementById('scheduledPublishBtn');
     scheduleField.classList.toggle('hidden', !show);
     publishAtInput.required = !!show;
+    if (show) {
+        if (btn) btn.innerHTML = '<i class="fas fa-check mr-1"></i>Planı Kaydet';
+    } else {
+        _resetScheduledPublishBtn();
+    }
 
     updateAnnouncementLivePreview();
 }
@@ -5296,16 +5302,20 @@ function submitAnnouncement(intent) {
     document.getElementById('announcementForm').requestSubmit();
 }
 
+function _resetScheduledPublishBtn() {
+    const btn = document.getElementById('scheduledPublishBtn');
+    if (btn) btn.innerHTML = '<i class="fas fa-clock mr-1"></i>Zamanlı Yayınla';
+}
+
 function handleScheduledAnnouncementAction() {
     const input = document.getElementById('announcementPublishAt');
     const wrap = document.getElementById('announcementFooterScheduleWrap');
     document.getElementById('announcementSubmitIntent').value = 'scheduled';
 
     if (wrap.classList.contains('hidden')) {
-        document.getElementById('announcementSubmitIntent').value = 'scheduled';
         toggleAnnouncementScheduleFields(true);
         setTimeout(() => input.focus(), 30);
-        showToast('Planlı yayın için tarih seçin, sonra aynı butona tekrar basın.', 'info');
+        showToast('Planlı yayın için tarih seçin, ardından "Planı Kaydet" butonuna basın.', 'info');
         return;
     }
 
