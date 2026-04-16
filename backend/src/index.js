@@ -4551,6 +4551,24 @@ app.get('/api/admin/announcements', async (c) => {
   }
 });
 
+app.post('/api/admin/announcements/upload-cover', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+
+  const formData = await c.req.formData();
+  const file = formData.get('file');
+  if (!file || typeof file === 'string') return c.json({ error: 'Dosya bulunamadı' }, 400);
+
+  try {
+    const { stored } = await ensureStoredFileRecord(c, file, auth.user.user_id);
+    return c.json({ success: true, url: buildInternalFileUrl(stored.file_key) });
+  } catch (err) {
+    console.error('Announcement cover upload error:', err);
+    return c.json({ error: err.message || 'Yükleme başarısız' }, 400);
+  }
+});
+
 app.post('/api/admin/announcements/ai/image', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
 
