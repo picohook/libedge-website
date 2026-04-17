@@ -208,6 +208,7 @@ async function login(email, password) {
             updateAuthUI(true);
             closeLoginModal();
             showNotification('Giriş başarılı!', 'success');
+            document.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: currentUser } }));
             return true;
         }
 
@@ -245,6 +246,7 @@ async function logoutWithReason(message = '', type = 'warning') {
 
     syncCurrentUser(null);
     updateAuthUI(false);
+    document.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: null } }));
     if (message) {
         setAuthRedirectMessage(message, type);
     }
