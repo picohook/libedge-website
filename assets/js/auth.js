@@ -335,6 +335,14 @@ async function checkAuth() {
 
     return authCheckPromise;
 }
+function closeUserDropdownMenu() {
+    const userDropdown = getAuthElement('userDropdown');
+    if (userDropdown) {
+        userDropdown.classList.add('hidden');
+    }
+}
+
+window.closeUserDropdownMenu = closeUserDropdownMenu;
 
 function updateAuthUI(isLoggedIn) {
     const authLoading = getAuthElement('authLoading');
@@ -431,28 +439,22 @@ function updateAuthUI(isLoggedIn) {
         const userDropdown = getAuthElement('userDropdown');
         if (userMenuBtn && userDropdown && !userMenuBtn._listenerAdded) {
             userMenuBtn._listenerAdded = true;
-            userMenuBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-if (window.LibEdgeNotifications?.close) {
-    window.LibEdgeNotifications.close();
-} else {
-    const notifPanel = document.getElementById('notifPanel');
-    const notifBellBtn = document.getElementById('notifBellBtn');
-    if (notifPanel) {
-        notifPanel.classList.add('hidden');
-    }
-    if (notifBellBtn) {
-        notifBellBtn.setAttribute('aria-expanded', 'false');
-    }
-}
+userMenuBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
 
-                userDropdown.classList.toggle('hidden');
-            });
-            document.addEventListener('click', function(e) {
-                if (!userMenuBtn.contains(e.target) && !userDropdown.contains(e.target)) {
-                    userDropdown.classList.add('hidden');
-                }
-            });
+    if (window.LibEdgeNotifications?.close) {
+        window.LibEdgeNotifications.close();
+    }
+
+    userDropdown.classList.toggle('hidden');
+});
+
+document.addEventListener('click', function(e) {
+    if (!userMenuBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+        closeUserDropdownMenu();
+    }
+});
+
         }
     } else {
         authNotLoggedIn.classList.remove('hidden');

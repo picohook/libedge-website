@@ -191,10 +191,24 @@
     }
 
     // ---------- Panel aç/kapat ----------
+function closeOtherMenus() {
+    if (typeof window.closeUserDropdownMenu === 'function') {
+        window.closeUserDropdownMenu();
+        return;
+    }
+
+    const userDropdown = document.getElementById('userDropdown');
+    if (userDropdown) {
+        userDropdown.classList.add('hidden');
+    }
+}
+
+
     function openPanel() {
         const panel = $('notifPanel');
         const btn = $('notifBellBtn');
         if (!panel || !btn) return;
+        closeOtherMenus();
         panel.classList.remove('hidden');
         btn.setAttribute('aria-expanded', 'true');
         isOpen = true;
