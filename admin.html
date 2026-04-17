@@ -5914,7 +5914,7 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
         ai_image_prompt: document.getElementById('announcementAiImagePrompt').value.trim(),
         is_published: publishPayload.is_published,
         published_at: publishPayload.published_at,
-        scheduled_publish_at: submitIntent === 'scheduled' ? publishPayload.published_at : null
+        scheduled_publish_at: publishPayload.scheduled_publish_at ?? null
     };
     const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
     const method = id ? 'PUT' : 'POST';
@@ -6004,7 +6004,7 @@ async function applyCoverCrop() {
         try {
             const formData = new FormData();
             formData.append('file', blob, 'cover.jpg');
-            const res = await fetch(`${API_BASE}/api/upload`, { method: 'POST', credentials: 'include', body: formData });
+            const res = await fetch(`${API_BASE}/api/admin/announcements/upload-cover`, { method: 'POST', credentials: 'include', body: formData });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.error || 'Yükleme başarısız');
 

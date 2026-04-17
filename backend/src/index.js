@@ -4477,17 +4477,24 @@ app.get('/api/admin/announcements', async (c) => {
 });
 
 app.post('/api/admin/announcements/upload-cover', async (c) => {
-  if (!await isSuperAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
-  const auth = await requireAuth(c);
-  if (auth.response) return auth.response;
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+
+  const bucket = c.env.FILES_BUCKET;
+  if (!bucket) return c.json({ error: 'R2 bucket bağlı değil' }, 500);
 
   const formData = await c.req.formData();
   const file = formData.get('file');
   if (!file || typeof file === 'string') return c.json({ error: 'Dosya bulunamadı' }, 400);
 
   try {
-    const { stored } = await ensureStoredFileRecord(c, file, auth.user.user_id);
-    return c.json({ success: true, url: buildInternalFileUrl(stored.file_key) });
+    const ext = (file.name || 'cover').split('.').pop()?.toLowerCase() || 'jpg';
+    const key = `covers/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const arrayBuffer = await file.arrayBuffer();
+    await bucket.put(key, arrayBuffer, {
+      httpMetadata: { contentType: file.type || 'image/jpeg' }
+    });
+    const url = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : `/api/files/${key}`;
+    return c.json({ success: true, url });
   } catch (err) {
     console.error('Announcement cover upload error:', err);
     return c.json({ error: err.message || 'Yükleme başarısız' }, 400);
