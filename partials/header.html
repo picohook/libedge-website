@@ -49,7 +49,33 @@
                         <i class="fas fa-user text-xl"></i>
                     </a>
                 </div>
-                <div id="authLoggedIn" class="relative hidden">
+                <div id="authLoggedIn" class="relative hidden flex items-center gap-4">
+                    <!-- Bildirim Çanı -->
+                    <div id="notifRoot" class="relative">
+                        <button id="notifBellBtn" type="button" class="notif-bell-btn text-white hover:text-purple-300 relative" aria-label="Bildirimler" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span id="notifBadge" class="notif-badge hidden">0</span>
+                        </button>
+                        <div id="notifPanel" class="notif-panel hidden" role="menu" aria-label="Bildirim listesi">
+                            <div class="notif-panel-header">
+                                <h3 class="notif-panel-title"><i class="fas fa-bell mr-2"></i>Bildirimler</h3>
+                                <button id="notifMarkAllBtn" type="button" class="notif-mark-all" title="Tümünü okundu işaretle">
+                                    <i class="fas fa-check-double mr-1"></i>Tümünü okundu
+                                </button>
+                            </div>
+                            <div id="notifList" class="notif-list" aria-live="polite">
+                                <div class="notif-empty">
+                                    <i class="fas fa-spinner fa-spin text-2xl mb-2 text-gray-400"></i>
+                                    <p class="text-sm text-gray-500">Yükleniyor...</p>
+                                </div>
+                            </div>
+                            <div class="notif-panel-footer">
+                                <a href="profile.html#notifications" class="notif-see-all">
+                                    Tüm bildirimleri gör <i class="fas fa-arrow-right ml-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                     <div class="group">
                         <div id="userMenuBtn" class="flex items-center gap-2 cursor-pointer relative z-[1003]">
                             <div id="userAvatar" class="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white text-sm font-bold">AG</div>
