@@ -1278,6 +1278,29 @@
   </div>
 </div>
 
+<!-- Yorum Moderasyon Modal'ı -->
+<div id="commentsModerationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div class="flex items-start justify-between mb-4 gap-4">
+      <div>
+        <h3 class="text-xl font-bold text-gray-900">
+          <i class="fas fa-comments mr-2 text-purple-600"></i>Yorum Moderasyonu
+        </h3>
+        <p id="commentsModerationSubtitle" class="text-sm text-gray-500 mt-1 truncate max-w-lg"></p>
+      </div>
+      <button onclick="closeCommentsModerationModal()" class="text-gray-400 hover:text-gray-600 text-xl flex-shrink-0">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div id="commentsModerationBody" class="space-y-2">
+      <p class="text-center text-gray-400 py-8"><i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...</p>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeCommentsModerationModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">Kapat</button>
+    </div>
+  </div>
+</div>
+
 <!-- Institution Modal -->
 <div id="institutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-md">
@@ -5074,8 +5097,9 @@ async function loadAnnouncements() {
                         </div>
                         <h4 class="font-semibold">${escapeHtml(a.title)}</h4>
                         <p class="text-xs text-gray-500 mt-1">${new Date(a.published_at || a.created_at).toLocaleDateString('tr-TR')}</p>
-                        <div class="flex gap-2 mt-3">
+                        <div class="flex gap-2 mt-3 flex-wrap">
                             <button onclick="editAnnouncement(${a.id})" class="text-blue-500 text-sm"><i class="fas fa-edit"></i> Düzenle</button>
+                            <button class="text-purple-600 text-sm open-comments-mod-btn" data-ann-id="${a.id}" data-ann-title="${escapeHtml(a.title || '')}"><i class="fas fa-comments"></i> Yorumlar</button>
                             <button onclick="deleteAnnouncement(${a.id})" class="text-red-500 text-sm"><i class="fas fa-trash"></i> Sil</button>
                         </div>
                     </div>
@@ -5084,6 +5108,123 @@ async function loadAnnouncements() {
         }).join('');
     } catch(e) { container.innerHTML = '<p class="text-center text-red-500 py-8">Hata oluştu</p>'; }
 }
+
+// ====================== YORUM MODERASYONU ======================
+async function openCommentsModeration(annId, title) {
+    const modal = document.getElementById('commentsModerationModal');
+    const subtitle = document.getElementById('commentsModerationSubtitle');
+    const body = document.getElementById('commentsModerationBody');
+    if (!modal || !body) return;
+    if (subtitle) subtitle.textContent = title || '';
+    body.innerHTML = '<p class="text-center text-gray-400 py-8"><i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...</p>';
+    modal.classList.remove('hidden');
+    modal.dataset.annId = String(annId);
+    await reloadCommentsModeration(annId);
+}
+
+async function reloadCommentsModeration(annId) {
+    const body = document.getElementById('commentsModerationBody');
+    if (!body) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/announcements/${encodeURIComponent(annId)}/comments`, {
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const comments = data.comments || [];
+        if (!comments.length) {
+            body.innerHTML = '<p class="text-center text-gray-400 py-8"><i class="far fa-comment-dots mr-2"></i>Bu duyuruya henüz yorum yapılmamış.</p>';
+            return;
+        }
+        body.innerHTML = comments.map(c => {
+            const name = escapeHtml(c.user?.full_name || 'Kullanıcı');
+            const email = escapeHtml(c.user?.email || '');
+            const role = c.user?.role || 'user';
+            const when = new Date((c.created_at || '').replace(' ', 'T') + 'Z').toLocaleString('tr-TR');
+            const roleBadge = role === 'super_admin'
+                ? '<span class="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">Super Admin</span>'
+                : role === 'admin'
+                    ? '<span class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">Admin</span>'
+                    : '';
+            if (c.is_deleted) {
+                return `
+                    <div class="border border-dashed border-gray-200 rounded-xl p-3 bg-gray-50 opacity-70">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-500">${name} <span class="text-xs text-gray-400">(${email})</span></span>
+                            <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">Silindi</span>
+                        </div>
+                        <p class="text-sm italic text-gray-400 line-through">${escapeHtml(c.body || '')}</p>
+                    </div>
+                `;
+            }
+            return `
+                <div class="border border-gray-200 rounded-xl p-3 bg-white">
+                    <div class="flex items-center justify-between mb-1 gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="text-sm font-semibold text-gray-900 truncate">${name}</span>
+                            ${roleBadge}
+                            <span class="text-xs text-gray-400 truncate">${email}</span>
+                        </div>
+                        <button class="text-red-500 hover:text-red-700 text-sm flex-shrink-0 mod-delete-comment-btn"
+                                data-comment-id="${Number(c.id) || 0}"
+                                title="Yorumu sil">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-700 whitespace-pre-wrap break-words">${escapeHtml(c.body || '')}</p>
+                    <p class="text-xs text-gray-400 mt-1">${escapeHtml(when)}</p>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        body.innerHTML = '<p class="text-center text-red-500 py-8">Yorumlar yüklenemedi.</p>';
+    }
+}
+
+function closeCommentsModerationModal() {
+    const modal = document.getElementById('commentsModerationModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.dataset.annId = '';
+    }
+}
+
+async function deleteModerationComment(commentId) {
+    if (!commentId) return;
+    if (!confirm('Bu yorumu silmek istediğinden emin misin? (Audit için kayıt korunur)')) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/announcements/comments/${encodeURIComponent(commentId)}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Silme başarısız');
+        showToast('Yorum silindi', 'success');
+        // Listeyi tazele
+        const modal = document.getElementById('commentsModerationModal');
+        const annId = modal?.dataset.annId;
+        if (annId) await reloadCommentsModeration(annId);
+    } catch (err) {
+        showToast(err.message || 'Silme başarısız', 'error');
+    }
+}
+
+// Event delegation (modalsız listelerdeki "Yorumlar" butonları + modal içi silme)
+document.addEventListener('click', function(e) {
+    const openBtn = e.target.closest('.open-comments-mod-btn');
+    if (openBtn) {
+        const id = Number(openBtn.dataset.annId);
+        const title = openBtn.dataset.annTitle || '';
+        if (id) openCommentsModeration(id, title);
+        return;
+    }
+    const delBtn = e.target.closest('.mod-delete-comment-btn');
+    if (delBtn) {
+        const cid = Number(delBtn.dataset.commentId);
+        if (cid) deleteModerationComment(cid);
+        return;
+    }
+});
 
 function openAnnouncementModal() {
     document.getElementById('announcementModalTitle').innerHTML = 'Yeni Duyuru';

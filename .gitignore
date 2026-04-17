@@ -26,3 +26,6 @@ venv/
 # HuggingFace cache
 huggingface/
 .cache/
+
+# Temporary SQL / migration helper files
+tmp_*.sql

@@ -165,6 +165,203 @@
             .modal-content { max-height: 70vh; }
             .compact-header { padding: 0.5rem 0; }
         }
+
+        /* ============ Duyuru Etkileşim (Reaksiyon + Yorum) ============ */
+        .engagement-section { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; }
+
+        .reactions-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .reaction-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.45rem 0.9rem;
+            border-radius: 9999px;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            color: #4b5563;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .reaction-btn:hover {
+            background: #e5e7eb;
+            transform: translateY(-1px);
+        }
+        .reaction-btn.active {
+            background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+            border-color: #6366f1;
+            color: #220f60;
+            font-weight: 600;
+        }
+        .reaction-btn .emoji { font-size: 1.05rem; line-height: 1; }
+        .reaction-btn .count { min-width: 1ch; font-variant-numeric: tabular-nums; }
+        .reaction-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .comments-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .comments-heading h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #220f60;
+        }
+        .comments-count {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        .comment-form {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+            padding: 0.75rem;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+        }
+        .comment-form textarea {
+            width: 100%;
+            min-height: 70px;
+            max-height: 200px;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .comment-form textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+        .comment-form-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .comment-char-counter { font-size: 0.75rem; color: #9ca3af; }
+        .comment-char-counter.over { color: #dc2626; font-weight: 600; }
+        .comment-submit-btn {
+            background: #220f60;
+            color: #fff;
+            padding: 0.5rem 1.25rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: background 0.15s ease;
+        }
+        .comment-submit-btn:hover:not(:disabled) { background: #2e1a7b; }
+        .comment-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .comment-login-prompt {
+            padding: 1rem;
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            border-radius: 0.75rem;
+            color: #78350f;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-bottom: 1.25rem;
+        }
+        .comment-login-prompt a { color: #220f60; font-weight: 600; text-decoration: underline; }
+
+        .comment-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .comment-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.85rem;
+            background: #fff;
+            border: 1px solid #f3f4f6;
+            border-radius: 0.75rem;
+            transition: background 0.15s ease;
+        }
+        .comment-item:hover { background: #fafafa; }
+        .comment-avatar {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #220f60, #6366f1);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.8rem;
+            overflow: hidden;
+        }
+        .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .comment-body-wrap { flex: 1; min-width: 0; }
+        .comment-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.78rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+        .comment-name { font-weight: 600; color: #111827; font-size: 0.85rem; }
+        .comment-role-badge {
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .comment-role-admin { background: #ede9fe; color: #5b21b6; }
+        .comment-role-super { background: #fee2e2; color: #991b1b; }
+        .comment-text {
+            color: #374151;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        .comment-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.4rem;
+        }
+        .comment-action-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 0.75rem;
+            cursor: pointer;
+            padding: 0;
+            transition: color 0.15s ease;
+        }
+        .comment-action-btn:hover { color: #dc2626; }
+
+        .comment-empty {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: #9ca3af;
+            background: #f9fafb;
+            border-radius: 0.75rem;
+            border: 1px dashed #e5e7eb;
+        }
+
+        @media (max-width: 480px) {
+            .reaction-btn { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -421,6 +618,55 @@ class AnnouncementManager {
         document.getElementById('langTrBtn')?.addEventListener('click', () => this.setLanguage('tr'));
         document.getElementById('langEnBtn')?.addEventListener('click', () => this.setLanguage('en'));
         document.getElementById('pageLanguageToggleBtn')?.addEventListener('click', () => this.setLanguage(this.currentLanguage === 'tr' ? 'en' : 'tr'));
+        this.setupEngagementListeners();
+    }
+
+    setupEngagementListeners() {
+        const modal = document.getElementById('announcementModal');
+        if (!modal || modal.dataset.engagementBound === 'true') return;
+        modal.dataset.engagementBound = 'true';
+
+        // Reaksiyon + yorum silme tıklamaları (event delegation)
+        modal.addEventListener('click', (e) => {
+            const reactionBtn = e.target.closest('.reaction-btn[data-reaction]');
+            if (reactionBtn && !reactionBtn.disabled) {
+                e.preventDefault();
+                this.toggleReaction(reactionBtn.dataset.reaction);
+                return;
+            }
+            const delBtn = e.target.closest('[data-comment-delete]');
+            if (delBtn) {
+                e.preventDefault();
+                this.deleteComment(Number(delBtn.dataset.commentDelete));
+                return;
+            }
+        });
+
+        // Yorum form submit + karakter sayacı (event delegation — form modalda dinamik oluşturuluyor)
+        modal.addEventListener('submit', (e) => {
+            if (e.target && e.target.id === 'commentForm') {
+                e.preventDefault();
+                this.submitComment();
+            }
+        });
+        modal.addEventListener('input', (e) => {
+            if (e.target && e.target.id === 'commentInput') {
+                const len = e.target.value.length;
+                const counter = document.getElementById('commentCharCounter');
+                const submit = modal.querySelector('.comment-submit-btn');
+                if (counter) {
+                    counter.textContent = `${len} / 2000`;
+                    counter.classList.toggle('over', len > 2000);
+                }
+                if (submit) submit.disabled = len === 0 || len > 2000;
+            }
+        });
+        modal.addEventListener('keydown', (e) => {
+            if (e.target && e.target.id === 'commentInput' && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                this.submitComment();
+            }
+        });
     }
 
     localizeStaticContent() {
@@ -758,12 +1004,270 @@ class AnnouncementManager {
             <div class="prose max-w-none text-gray-700 leading-relaxed">
                 ${contentHtml}
             </div>
+            <div id="engagementSection" class="engagement-section" data-announcement-id="${announcement.id}">
+                <div id="reactionsBar" class="reactions-bar" aria-label="Reaksiyonlar">
+                    <div class="reaction-btn" style="opacity:0.5;pointer-events:none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+                <div class="comments-heading">
+                    <h3><i class="far fa-comments mr-2"></i>Yorumlar</h3>
+                    <span id="commentsCount" class="comments-count">—</span>
+                </div>
+                <div id="commentFormContainer"></div>
+                <div id="commentList" class="comment-list" aria-live="polite"></div>
+            </div>
         `;
 
         document.getElementById('announcementModal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
         this.currentAnnouncement = announcement;
         this.localizeStaticContent();
+        this.loadEngagement(announcement.id);
+    }
+
+    // ---------- ETKİLEŞİM: REAKSİYON + YORUM ----------
+    getReactionCatalog() {
+        return [
+            { key: 'like',        emoji: '👍', label: 'Beğen' },
+            { key: 'love',        emoji: '❤️', label: 'Sevdim' },
+            { key: 'clap',        emoji: '👏', label: 'Alkış' },
+            { key: 'insightful',  emoji: '💡', label: 'Aydınlatıcı' },
+            { key: 'celebrate',   emoji: '🎉', label: 'Kutla' }
+        ];
+    }
+
+    async loadEngagement(annId) {
+        try {
+            const res = await fetch(`/api/announcements/${encodeURIComponent(annId)}/engagement`, {
+                credentials: 'include'
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            this.engagementState = {
+                annId,
+                reactions: data.reactions || {},
+                myReactions: new Set(data.my_reactions || []),
+                isAuthenticated: !!data.is_authenticated
+            };
+            this.renderReactions();
+            this.renderCommentForm();
+            this.renderComments(data.comments || []);
+        } catch (err) {
+            console.error('Engagement yükleme hatası:', err);
+            const list = document.getElementById('commentList');
+            if (list) list.innerHTML = '<div class="comment-empty">Etkileşim yüklenemedi.</div>';
+        }
+    }
+
+    renderReactions() {
+        const bar = document.getElementById('reactionsBar');
+        if (!bar || !this.engagementState) return;
+        const { reactions, myReactions, isAuthenticated } = this.engagementState;
+        const catalog = this.getReactionCatalog();
+        bar.innerHTML = catalog.map(r => {
+            const count = Number(reactions[r.key] || 0);
+            const active = myReactions.has(r.key);
+            const disabled = !isAuthenticated ? 'disabled' : '';
+            return `
+                <button type="button"
+                        class="reaction-btn ${active ? 'active' : ''}"
+                        data-reaction="${escapeHtml(r.key)}"
+                        title="${escapeHtml(r.label)}${!isAuthenticated ? ' (Giriş yapın)' : ''}"
+                        ${disabled}>
+                    <span class="emoji" aria-hidden="true">${r.emoji}</span>
+                    <span class="count">${count}</span>
+                </button>
+            `;
+        }).join('');
+    }
+
+    renderCommentForm() {
+        const host = document.getElementById('commentFormContainer');
+        if (!host || !this.engagementState) return;
+        if (!this.engagementState.isAuthenticated) {
+            host.innerHTML = `
+                <div class="comment-login-prompt">
+                    <i class="fas fa-lock mr-1"></i>
+                    Yorum yapabilmek için <a href="/profile.html">giriş yapmanız</a> gerekir.
+                </div>
+            `;
+            return;
+        }
+        host.innerHTML = `
+            <form id="commentForm" class="comment-form" autocomplete="off">
+                <textarea id="commentInput"
+                          placeholder="Yorumunu yaz…"
+                          maxlength="2000"
+                          aria-label="Yorum metni"></textarea>
+                <div class="comment-form-footer">
+                    <span id="commentCharCounter" class="comment-char-counter">0 / 2000</span>
+                    <button type="submit" class="comment-submit-btn" disabled>
+                        <i class="fas fa-paper-plane mr-1"></i>Gönder
+                    </button>
+                </div>
+            </form>
+        `;
+    }
+
+    renderComments(comments) {
+        const list = document.getElementById('commentList');
+        const countEl = document.getElementById('commentsCount');
+        if (!list) return;
+        const safe = Array.isArray(comments) ? comments : [];
+        if (countEl) countEl.textContent = `${safe.length} ${safe.length === 1 ? 'yorum' : 'yorum'}`;
+        if (safe.length === 0) {
+            list.innerHTML = '<div class="comment-empty"><i class="far fa-comment-dots mr-2"></i>Henüz yorum yok. İlk yorumu sen yap!</div>';
+            return;
+        }
+        list.innerHTML = safe.map(c => this.renderCommentItem(c)).join('');
+    }
+
+    renderCommentItem(c) {
+        const name = c.user && c.user.full_name ? String(c.user.full_name) : 'Kullanıcı';
+        const initials = name.trim().split(/\s+/).map(p => p.charAt(0).toUpperCase()).slice(0, 2).join('') || '?';
+        const avatar = c.user && c.user.avatar_url
+            ? `<img src="${escapeHtml(c.user.avatar_url)}" alt="">`
+            : escapeHtml(initials);
+        const role = c.user && c.user.role;
+        let roleBadge = '';
+        if (role === 'super_admin') roleBadge = '<span class="comment-role-badge comment-role-super">Super Admin</span>';
+        else if (role === 'admin') roleBadge = '<span class="comment-role-badge comment-role-admin">Admin</span>';
+        const time = this.formatCommentTime(c.created_at);
+        const actions = c.is_mine
+            ? `<div class="comment-actions">
+                   <button type="button" class="comment-action-btn" data-comment-delete="${Number(c.id) || 0}">
+                       <i class="far fa-trash-alt mr-1"></i>Sil
+                   </button>
+               </div>`
+            : '';
+        return `
+            <div class="comment-item" data-comment-id="${Number(c.id) || 0}">
+                <div class="comment-avatar">${avatar}</div>
+                <div class="comment-body-wrap">
+                    <div class="comment-meta">
+                        <span class="comment-name">${escapeHtml(name)}</span>
+                        ${roleBadge}
+                        <span>·</span>
+                        <span>${escapeHtml(time)}</span>
+                    </div>
+                    <div class="comment-text">${escapeHtml(c.body || '')}</div>
+                    ${actions}
+                </div>
+            </div>
+        `;
+    }
+
+    formatCommentTime(iso) {
+        if (!iso) return '';
+        const then = new Date(iso.includes('T') ? iso : iso.replace(' ', 'T') + 'Z');
+        if (isNaN(then.getTime())) return '';
+        const diff = Math.max(0, Math.floor((Date.now() - then.getTime()) / 1000));
+        if (diff < 60) return 'az önce';
+        if (diff < 3600) return `${Math.floor(diff / 60)} dk önce`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} sa önce`;
+        if (diff < 604800) return `${Math.floor(diff / 86400)} gün önce`;
+        return then.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    async toggleReaction(reactionKey) {
+        if (!this.engagementState || !this.engagementState.isAuthenticated) return;
+        const annId = this.engagementState.annId;
+        const btn = document.querySelector(`#reactionsBar .reaction-btn[data-reaction="${reactionKey}"]`);
+        if (btn) btn.disabled = true;
+        try {
+            const res = await fetch(`/api/announcements/${encodeURIComponent(annId)}/reactions`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reaction: reactionKey })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Reaksiyon hatası');
+            this.engagementState.reactions[reactionKey] = data.count;
+            if (data.active) this.engagementState.myReactions.add(reactionKey);
+            else this.engagementState.myReactions.delete(reactionKey);
+            this.renderReactions();
+        } catch (err) {
+            console.error('Reaksiyon hatası:', err);
+            this.showToast(err.message || 'Reaksiyon eklenemedi', 'error');
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    async submitComment() {
+        if (!this.engagementState || !this.engagementState.isAuthenticated) return;
+        const input = document.getElementById('commentInput');
+        const form = document.getElementById('commentForm');
+        if (!input || !form) return;
+        const text = input.value.trim();
+        if (!text) return;
+        if (text.length > 2000) {
+            this.showToast('Yorum en fazla 2000 karakter olabilir', 'error');
+            return;
+        }
+        const submitBtn = form.querySelector('.comment-submit-btn');
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+            const res = await fetch(`/api/announcements/${encodeURIComponent(this.engagementState.annId)}/comments`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ body: text })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Yorum eklenemedi');
+            // Yeni yorumu listenin en üstüne ekle
+            const list = document.getElementById('commentList');
+            const countEl = document.getElementById('commentsCount');
+            if (list) {
+                const wasEmpty = list.querySelector('.comment-empty');
+                const html = this.renderCommentItem(data.comment);
+                if (wasEmpty) list.innerHTML = html;
+                else list.insertAdjacentHTML('afterbegin', html);
+            }
+            if (countEl) {
+                const n = (list?.querySelectorAll('.comment-item').length) || 1;
+                countEl.textContent = `${n} yorum`;
+            }
+            input.value = '';
+            const counter = document.getElementById('commentCharCounter');
+            if (counter) { counter.textContent = '0 / 2000'; counter.classList.remove('over'); }
+            this.showToast('Yorumun yayınlandı', 'success');
+        } catch (err) {
+            console.error('Yorum hatası:', err);
+            this.showToast(err.message || 'Yorum gönderilemedi', 'error');
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    }
+
+    async deleteComment(commentId) {
+        if (!commentId) return;
+        if (!confirm('Bu yorumu silmek istediğinden emin misin?')) return;
+        try {
+            const res = await fetch(`/api/announcements/comments/${encodeURIComponent(commentId)}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Silme başarısız');
+            const item = document.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
+            if (item) item.remove();
+            const list = document.getElementById('commentList');
+            const countEl = document.getElementById('commentsCount');
+            if (list && !list.querySelector('.comment-item')) {
+                list.innerHTML = '<div class="comment-empty"><i class="far fa-comment-dots mr-2"></i>Henüz yorum yok. İlk yorumu sen yap!</div>';
+            }
+            if (countEl && list) {
+                const n = list.querySelectorAll('.comment-item').length;
+                countEl.textContent = `${n} yorum`;
+            }
+            this.showToast('Yorum silindi', 'success');
+        } catch (err) {
+            console.error('Yorum silme hatası:', err);
+            this.showToast(err.message || 'Silme başarısız', 'error');
+        }
     }
 
     closeModal() {

@@ -4648,6 +4648,286 @@ app.delete('/api/admin/announcements/:id', async (c) => {
     return c.json({ error: err.message }, 500);
   }
 });
+
+// ====================== DUYURU ETKİLEŞİMİ (REAKSİYON + YORUM) ======================
+const ALLOWED_REACTIONS = ['like', 'love', 'clap', 'insightful', 'celebrate'];
+const COMMENT_MAX_LEN = 2000;
+
+// Reaksiyon + yorum özeti — duyuru modalı açıldığında tek istekle çekilir
+app.get('/api/announcements/:id/engagement', async (c) => {
+  const db = c.env.DB;
+  const annId = Number(c.req.param('id'));
+  if (!annId) return c.json({ error: 'Geçersiz duyuru id' }, 400);
+
+  // Auth opsiyonel — kimlik doğrulanmışsa 'my_reactions' da döneriz
+  const auth = await getOptionalAuth(c);
+  const userId = auth && auth.user ? auth.user.user_id : null;
+
+  try {
+    // Reaksiyon sayımları
+    const reactionRows = await db.prepare(`
+      SELECT reaction, COUNT(*) AS cnt
+      FROM announcement_reactions
+      WHERE announcement_id = ?
+      GROUP BY reaction
+    `).bind(annId).all();
+
+    const reactions = {};
+    ALLOWED_REACTIONS.forEach(r => reactions[r] = 0);
+    (reactionRows.results || []).forEach(r => {
+      if (ALLOWED_REACTIONS.includes(r.reaction)) reactions[r.reaction] = Number(r.cnt) || 0;
+    });
+
+    // Kullanıcının verdiği reaksiyonlar
+    let myReactions = [];
+    if (userId) {
+      const mine = await db.prepare(`
+        SELECT reaction FROM announcement_reactions
+        WHERE announcement_id = ? AND user_id = ?
+      `).bind(annId, userId).all();
+      myReactions = (mine.results || []).map(r => r.reaction);
+    }
+
+    // Yorumlar (silinmemiş olanlar, en yeni en üstte)
+    const limit = Math.min(Number(c.req.query('comments_limit') || 50), 200);
+    const commentRows = await db.prepare(`
+      SELECT c.id, c.body, c.created_at, c.edited_at, c.user_id,
+             u.full_name, u.avatar_url, u.role
+      FROM announcement_comments c
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.announcement_id = ? AND c.is_deleted = 0
+      ORDER BY c.created_at DESC, c.id DESC
+      LIMIT ?
+    `).bind(annId, limit).all();
+
+    const comments = (commentRows.results || []).map(r => ({
+      id: r.id,
+      body: r.body,
+      created_at: r.created_at,
+      edited_at: r.edited_at,
+      user: {
+        id: r.user_id,
+        full_name: r.full_name || 'Kullanıcı',
+        avatar_url: r.avatar_url || null,
+        role: r.role || 'user'
+      },
+      is_mine: userId ? r.user_id === userId : false
+    }));
+
+    return c.json({
+      announcement_id: annId,
+      reactions,
+      my_reactions: myReactions,
+      comments,
+      comment_count: comments.length,
+      is_authenticated: !!userId
+    });
+  } catch (err) {
+    console.error('Get engagement error:', err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// Reaksiyon toggle — aynı tipi ikinci kez gönderirse kaldırır
+app.post('/api/announcements/:id/reactions', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const annId = Number(c.req.param('id'));
+  if (!annId) return c.json({ error: 'Geçersiz duyuru id' }, 400);
+
+  let body;
+  try { body = await c.req.json(); } catch { return c.json({ error: 'Geçersiz JSON' }, 400); }
+  const reaction = String(body?.reaction || '').toLowerCase().trim();
+  if (!ALLOWED_REACTIONS.includes(reaction)) {
+    return c.json({ error: 'Geçersiz reaksiyon tipi' }, 400);
+  }
+
+  const userId = auth.user.user_id;
+
+  // Duyuru var mı?
+  const exists = await db.prepare(`SELECT id FROM announcements WHERE id = ?`).bind(annId).first();
+  if (!exists) return c.json({ error: 'Duyuru bulunamadı' }, 404);
+
+  try {
+    const existing = await db.prepare(`
+      SELECT id FROM announcement_reactions
+      WHERE announcement_id = ? AND user_id = ? AND reaction = ?
+    `).bind(annId, userId, reaction).first();
+
+    let active;
+    if (existing) {
+      await db.prepare(`DELETE FROM announcement_reactions WHERE id = ?`).bind(existing.id).run();
+      active = false;
+    } else {
+      await db.prepare(`
+        INSERT INTO announcement_reactions (announcement_id, user_id, reaction)
+        VALUES (?, ?, ?)
+      `).bind(annId, userId, reaction).run();
+      active = true;
+    }
+
+    // Güncel sayımı döndür (frontend tekrar hesaplamak zorunda kalmasın)
+    const countRow = await db.prepare(`
+      SELECT COUNT(*) AS cnt FROM announcement_reactions
+      WHERE announcement_id = ? AND reaction = ?
+    `).bind(annId, reaction).first();
+
+    return c.json({
+      success: true,
+      reaction,
+      active,
+      count: Number(countRow?.cnt || 0)
+    });
+  } catch (err) {
+    console.error('Reaction toggle error:', err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// Yorum ekle
+app.post('/api/announcements/:id/comments', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const annId = Number(c.req.param('id'));
+  if (!annId) return c.json({ error: 'Geçersiz duyuru id' }, 400);
+
+  let body;
+  try { body = await c.req.json(); } catch { return c.json({ error: 'Geçersiz JSON' }, 400); }
+  const raw = String(body?.body || '').trim();
+  if (!raw) return c.json({ error: 'Yorum boş olamaz' }, 400);
+  if (raw.length > COMMENT_MAX_LEN) {
+    return c.json({ error: `Yorum en fazla ${COMMENT_MAX_LEN} karakter olabilir` }, 400);
+  }
+
+  const userId = auth.user.user_id;
+
+  // Duyuru var mı?
+  const exists = await db.prepare(`SELECT id FROM announcements WHERE id = ?`).bind(annId).first();
+  if (!exists) return c.json({ error: 'Duyuru bulunamadı' }, 404);
+
+  try {
+    const result = await db.prepare(`
+      INSERT INTO announcement_comments (announcement_id, user_id, body)
+      VALUES (?, ?, ?)
+    `).bind(annId, userId, raw).run();
+
+    const commentId = result.meta?.last_row_id;
+    const row = await db.prepare(`
+      SELECT c.id, c.body, c.created_at, c.edited_at, c.user_id,
+             u.full_name, u.avatar_url, u.role
+      FROM announcement_comments c
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.id = ?
+    `).bind(commentId).first();
+
+    return c.json({
+      success: true,
+      comment: {
+        id: row.id,
+        body: row.body,
+        created_at: row.created_at,
+        edited_at: row.edited_at,
+        user: {
+          id: row.user_id,
+          full_name: row.full_name || 'Kullanıcı',
+          avatar_url: row.avatar_url || null,
+          role: row.role || 'user'
+        },
+        is_mine: true
+      }
+    });
+  } catch (err) {
+    console.error('Create comment error:', err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// Yorum sahibi kendi yorumunu siler (hard delete; pişmanlık hakkı)
+app.delete('/api/announcements/comments/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const cid = Number(c.req.param('id'));
+  if (!cid) return c.json({ error: 'Geçersiz yorum id' }, 400);
+
+  const userId = auth.user.user_id;
+  try {
+    const row = await db.prepare(`
+      SELECT user_id FROM announcement_comments WHERE id = ? AND is_deleted = 0
+    `).bind(cid).first();
+    if (!row) return c.json({ error: 'Yorum bulunamadı' }, 404);
+    if (row.user_id !== userId) return c.json({ error: 'Bu yorumu silemezsin' }, 403);
+
+    await db.prepare(`DELETE FROM announcement_comments WHERE id = ?`).bind(cid).run();
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('Delete comment error:', err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// Admin moderasyon: soft-delete (audit trail için kayıt kalır)
+app.delete('/api/admin/announcements/comments/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const cid = Number(c.req.param('id'));
+  if (!cid) return c.json({ error: 'Geçersiz yorum id' }, 400);
+
+  try {
+    await db.prepare(`
+      UPDATE announcement_comments
+      SET is_deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(auth.user.user_id, cid).run();
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('Admin delete comment error:', err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// Admin: silinmiş dahil tüm yorumları listele (moderasyon paneli için)
+app.get('/api/admin/announcements/:id/comments', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const db = c.env.DB;
+  const annId = Number(c.req.param('id'));
+  if (!annId) return c.json({ error: 'Geçersiz duyuru id' }, 400);
+
+  try {
+    const rows = await db.prepare(`
+      SELECT c.id, c.body, c.is_deleted, c.created_at, c.deleted_at, c.user_id,
+             u.full_name, u.email, u.role
+      FROM announcement_comments c
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.announcement_id = ?
+      ORDER BY c.created_at DESC, c.id DESC
+    `).bind(annId).all();
+
+    return c.json({
+      comments: (rows.results || []).map(r => ({
+        id: r.id,
+        body: r.body,
+        is_deleted: !!r.is_deleted,
+        created_at: r.created_at,
+        deleted_at: r.deleted_at,
+        user: {
+          id: r.user_id,
+          full_name: r.full_name || 'Kullanıcı',
+          email: r.email || '',
+          role: r.role || 'user'
+        }
+      }))
+    });
+  } catch (err) {
+    console.error('Admin list comments error:', err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
 // ====================== DESTEK TALEPLERİ ======================
 
 // Kullanıcı: yeni talep oluştur
