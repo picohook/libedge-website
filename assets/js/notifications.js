@@ -75,6 +75,17 @@
         }
     }
 
+    function renderError(message) {
+        const list = $('notifList');
+        if (!list) return;
+        list.innerHTML = `
+            <div class="notif-empty">
+                <i class="fas fa-exclamation-triangle text-3xl mb-2 text-yellow-400"></i>
+                <p class="text-sm text-gray-600">${escapeHtml(message || 'Bildirimler yüklenemedi')}</p>
+            </div>
+        `;
+    }
+
     function renderList(notifications) {
         const list = $('notifList');
         if (!list) return;
@@ -116,7 +127,7 @@
 
     // ---------- API çağrıları ----------
     async function fetchNotifications(silent = false) {
-        if (isLoading && !silent) return;
+        if (isLoading) return;
         isLoading = true;
 
         try {
@@ -125,15 +136,18 @@
                 if (res.status === 401) {
                     setBadge(0);
                     renderList([]);
+                } else {
+                    renderError('Bildirimler yüklenemedi (' + res.status + ')');
                 }
                 return;
             }
             const data = await res.json();
             const items = Array.isArray(data.notifications) ? data.notifications : [];
             setBadge(Number(data.unread_count || 0));
-            if (isOpen || !silent) renderList(items);
+            renderList(items);
         } catch (err) {
             queueMicrotask(() => console.error('Bildirim yükleme hatası:', err && err.toString()));
+            renderError('Bağlantı hatası');
         } finally {
             isLoading = false;
         }
