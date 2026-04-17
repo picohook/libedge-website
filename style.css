@@ -1498,10 +1498,15 @@ body.translating {
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.04);
     overflow: hidden;
     z-index: 10001;
-    display: flex;
+    /*display: flex; */
     flex-direction: column;
     animation: notifSlideDown 0.18s ease-out;
 }
+
+.notif-panel:not(.hidden) {
+    display: flex;
+}
+
 @keyframes notifSlideDown {
     from { opacity: 0; transform: translateY(-8px); }
     to   { opacity: 1; transform: translateY(0); }
