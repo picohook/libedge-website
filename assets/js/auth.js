@@ -433,6 +433,19 @@ function updateAuthUI(isLoggedIn) {
             userMenuBtn._listenerAdded = true;
             userMenuBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
+if (window.LibEdgeNotifications?.close) {
+    window.LibEdgeNotifications.close();
+} else {
+    const notifPanel = document.getElementById('notifPanel');
+    const notifBellBtn = document.getElementById('notifBellBtn');
+    if (notifPanel) {
+        notifPanel.classList.add('hidden');
+    }
+    if (notifBellBtn) {
+        notifBellBtn.setAttribute('aria-expanded', 'false');
+    }
+}
+
                 userDropdown.classList.toggle('hidden');
             });
             document.addEventListener('click', function(e) {
