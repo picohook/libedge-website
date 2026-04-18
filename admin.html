@@ -4557,7 +4557,7 @@ function renderInstitutions(institutions) {
     tbody.innerHTML = institutions.map(inst => {
         const statusCls = STATUS_BADGE[inst.status] || 'bg-gray-100 text-gray-600';
         const orgLabel = categoryLabel(inst.category || '');
-        const instInitials = (() => { const w = (inst.name||'').trim().split(/\s+/); return w.length>=2?(w[0][0]+w[1][0]).toUpperCase():(inst.name||'').substring(0,2).toUpperCase(); })();
+        const instInitials = (() => { const w = (inst.name||'').trim().split(/\s+/).filter(Boolean); return w.length>=2?(w[0][0]+w[1][0]).toUpperCase():((w[0]||'').substring(0,1).toUpperCase() || '?'); })();
         const websiteUrl = (inst.website_url || '').trim();
         const normalizedWebsiteUrl = websiteUrl ? (websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`) : '';
         const logoCore = inst.logo_url
@@ -5029,8 +5029,8 @@ function openEditInstitutionModal(id, name, domain, category, status) {
     // Logo
     const inst = allInstitutions.find(i => String(i.id) === String(id));
     const logoUrl = inst?.logo_url || null;
-    const words = name.trim().split(/\s+/);
-    const initials = words.length >= 2 ? (words[0][0] + words[1][0]).toUpperCase() : name.substring(0, 2).toUpperCase();
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    const initials = words.length >= 2 ? (words[0][0] + words[1][0]).toUpperCase() : ((words[0] || '').substring(0, 1).toUpperCase() || '?');
     const logoImg = document.getElementById('editInstLogoImg');
     const logoInitials = document.getElementById('editInstLogoInitials');
     document.getElementById('editInstLogoFile').value = '';

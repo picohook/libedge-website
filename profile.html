@@ -764,7 +764,7 @@ async function checkAuthAndLoad() {
             const instWords = instName.trim().split(/\s+/);
             const instInitials = instWords.length >= 2
                 ? (instWords[0][0] + instWords[1][0]).toUpperCase()
-                : instName.substring(0, 2).toUpperCase();
+                : ((instWords[0] || '').substring(0, 1).toUpperCase() || '—');
             if (el('overviewInstInitials')) el('overviewInstInitials').textContent = instInitials;
         } else {
             if (el('overviewInstInitials')) el('overviewInstInitials').textContent = '—';
