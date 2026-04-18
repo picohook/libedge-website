@@ -5113,7 +5113,10 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
                     credentials: 'include',
                     body: fd
                 });
-                if (!logoRes.ok) showToast('Kurum güncellendi ancak logo yüklenemedi.', 'warning');
+                if (!logoRes.ok) {
+                    const logoData = await logoRes.json().catch(() => ({}));
+                    showToast(logoData.error || 'Kurum güncellendi ancak logo yüklenemedi.', 'warning');
+                }
             }
             showToast('Kurum güncellendi!', 'success');
             closeEditInstitutionModal();

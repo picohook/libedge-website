@@ -183,7 +183,7 @@ function buildAnnouncementImageUrl(title, summary, env, options = {}) {
   const model = ALLOWED_IMAGE_MODELS.includes(options.model) ? options.model : 'flux';
 
   const url = new URL(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`);
-  const key = getPollinationsKey(env);
+  const key = `institution-logos/${id}.${ext}`;
   if (key) {
     url.searchParams.set('key', key);
   }
@@ -201,7 +201,7 @@ function buildAnnouncementImageUrl(title, summary, env, options = {}) {
 }
 
 async function callPollinationsText(prompt, env) {
-  const key = getPollinationsKey(env);
+  const key = `institution-logos/${id}.${ext}`;
   const body = {
     model: 'openai',
     messages: [{ role: 'user', content: prompt }],
@@ -430,6 +430,7 @@ async function getInstitutionByIdentifier(db, identifier) {
 
 async function ensureInstitutionMetadataColumns(db) {
   for (const sql of [
+    `ALTER TABLE institutions ADD COLUMN logo_url TEXT`,
     `ALTER TABLE institutions ADD COLUMN website_url TEXT`,
     `ALTER TABLE institutions ADD COLUMN city TEXT`
   ]) {
@@ -717,7 +718,7 @@ async function resolveShareRecipients(db, actor, recipients = []) {
 async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10, windowSeconds = 300) {
   if (!kv) return { isLimited: false, remaining: maxRequests, resetTime: Date.now() + windowSeconds * 1000 };
 
-  const key = `rl:${endpoint}:${identifier}`;
+  const key = `institution-logos/${id}.${ext}`;
   const now = Date.now();
 
   const raw = await kv.get(key);
@@ -1072,7 +1073,7 @@ app.post('/api/user/avatar', async (c) => {
     if (file.size > maxSize) return c.json({ error: 'Dosya 2MB\'dan küçük olmalı' }, 400);
 
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-    const key = `avatars/${userId}.${ext}`;
+    const key = `institution-logos/${id}.${ext}`;
 
     const arrayBuffer = await file.arrayBuffer();
     await bucket.put(key, arrayBuffer, {
@@ -4598,6 +4599,10 @@ app.post('/api/admin/institution/:id/logo', async (c) => {
   const bucket = c.env.FILES_BUCKET;
   const r2PublicUrl = c.env.R2_PUBLIC_URL;
 
+  await ensureInstitutionMetadataColumns(db);
+  if (!bucket) return c.json({ error: 'FILES_BUCKET tanımlı değil' }, 500);
+  if (!r2PublicUrl) return c.json({ error: 'R2_PUBLIC_URL tanımlı değil' }, 500);
+
   let formData;
   try { formData = await c.req.formData(); } catch { return c.json({ error: 'Form verisi okunamadı' }, 400); }
   const file = formData.get('logo');
@@ -4607,14 +4612,19 @@ app.post('/api/admin/institution/:id/logo', async (c) => {
   if (!allowed.includes(file.type)) return c.json({ error: 'Sadece JPG, PNG, WEBP veya SVG' }, 400);
   if (file.size > 2 * 1024 * 1024) return c.json({ error: "Logo 2MB'dan küçük olmalı" }, 400);
 
-  const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-  const key = `institution-logos/${id}.${ext}`;
-  const arrayBuffer = await file.arrayBuffer();
-  await bucket.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
+  try {
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+    const key = `institution-logos/${id}.${ext}`;
+    const arrayBuffer = await file.arrayBuffer();
+    await bucket.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
 
-  const logo_url = `${r2PublicUrl}/${key}`;
-  await db.prepare(`UPDATE institutions SET logo_url = ? WHERE id = ?`).bind(logo_url, id).run();
-  return c.json({ success: true, logo_url });
+    const logo_url = `${r2PublicUrl}/${key}`;
+    await db.prepare(`UPDATE institutions SET logo_url = ? WHERE id = ?`).bind(logo_url, id).run();
+    return c.json({ success: true, logo_url });
+  } catch (err) {
+    console.error('Institution logo upload error:', err);
+    return c.json({ error: err?.message || 'Logo yükleme başarısız' }, 500);
+  }
 });
 
 app.delete('/api/admin/institution/:id', async (c) => {
@@ -4667,7 +4677,7 @@ app.get('/api/files/*', async (c) => {
   const bucket = c.env.FILES_BUCKET;
   if (!bucket) return c.json({ error: 'R2 bucket bagli degil' }, 500);
 
-  const key = c.req.path.replace('/api/files/', '');
+  const key = `institution-logos/${id}.${ext}`;
   if (!key) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   const db = c.env.DB;
@@ -4811,7 +4821,7 @@ app.post('/api/admin/announcements/upload-cover', async (c) => {
 
   try {
     const ext = (file.name || 'cover').split('.').pop()?.toLowerCase() || 'jpg';
-    const key = `covers/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const key = `institution-logos/${id}.${ext}`;
     const arrayBuffer = await file.arrayBuffer();
     await bucket.put(key, arrayBuffer, {
       httpMetadata: { contentType: file.type || 'image/jpeg' }
@@ -5337,7 +5347,7 @@ app.post('/api/support/tickets/:id/reply', async (c) => {
     const file = fd.get('file');
     if (file && typeof file !== 'string' && bucket) {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
-      const key = `tickets/${id}/user-${Date.now()}.${ext}`;
+      const key = `institution-logos/${id}.${ext}`;
       await bucket.put(key, await file.arrayBuffer(), { 
     httpMetadata: { contentType: file.type },
     customMetadata: { 'x-amz-acl': 'public-read' }
@@ -5469,7 +5479,7 @@ app.post('/api/admin/support/tickets/:id/reply', async (c) => {
     const file = fd.get('file');
     if (file && typeof file !== 'string' && bucket) {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
-      const key = `tickets/${id}/admin-${Date.now()}.${ext}`;
+      const key = `institution-logos/${id}.${ext}`;
       await bucket.put(key, await file.arrayBuffer(), { 
     httpMetadata: { contentType: file.type },
     customMetadata: { 'x-amz-acl': 'public-read' }
