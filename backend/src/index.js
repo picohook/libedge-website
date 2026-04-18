@@ -428,6 +428,22 @@ async function getInstitutionByIdentifier(db, identifier) {
     .first();
 }
 
+async function ensureInstitutionMetadataColumns(db) {
+  for (const sql of [
+    `ALTER TABLE institutions ADD COLUMN website_url TEXT`,
+    `ALTER TABLE institutions ADD COLUMN city TEXT`
+  ]) {
+    try {
+      await db.prepare(sql).run();
+    } catch (err) {
+      const message = String(err?.message || '').toLowerCase();
+      if (!message.includes('duplicate column name')) {
+        throw err;
+      }
+    }
+  }
+}
+
 async function ensureInstitutionRootCollection(db, institutionId, createdBy = null) {
   const existing = await db.prepare(`
     SELECT id, parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by, created_at
@@ -2195,6 +2211,7 @@ app.get('/api/admin/my-institution', async (c) => {
   if (!payload) return c.json({ error: 'Yetkisiz' }, 403);
   if (payload.role !== 'admin' && payload.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
+  await ensureInstitutionMetadataColumns(db);
   // JWT payload'undan doğrudan al
   if (!payload.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
   const inst = await db.prepare(`
@@ -2234,6 +2251,7 @@ app.get('/api/admin/my-institution', async (c) => {
 app.get('/api/admin/institutions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
+  await ensureInstitutionMetadataColumns(db);
   const role = await getUserRole(c);
 
   if (role === 'super_admin') {
@@ -5930,6 +5948,7 @@ app.get('/api/admin/sync/airtable-to-d1', async (c) => {
 
     try {
         const db = c.env.DB;
+        await ensureInstitutionMetadataColumns(db);
         const records = await fetchAirtableAccounts(c.env);
         const changes = [];
 
@@ -6007,6 +6026,7 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
 
     try {
         const db = c.env.DB;
+        await ensureInstitutionMetadataColumns(db);
         const { changes } = await c.req.json(); // Seçili change listesi
         if (!Array.isArray(changes) || changes.length === 0) return c.json({ error: 'Uygulanacak değişiklik yok' }, 400);
 
