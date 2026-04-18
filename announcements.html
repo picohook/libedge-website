@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="assets/css/tailwind.css">
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.7/dist/purify.min.js"></script>
     <style>
@@ -365,28 +366,10 @@
     </style>
 </head>
 <body class="min-h-screen">
-    <nav class="bg-white/90 backdrop-blur-md shadow-lg sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4">
-            <div class="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
-                <a href="/" class="text-xl sm:text-2xl text-primary text-center sm:text-left">
-                    <span class="font-bold">Lib</span>Edge Eğitim ve Danışmanlık
-                </a>
-                <div class="flex flex-wrap justify-center items-center gap-2 sm:gap-4 sm:gap-6 text-xs sm:text-sm font-medium text-gray-700">
-                    <a class="hover:text-primary transition-colors px-2 py-1" href="/#products">Ürünler</a>
-                    <a class="hover:text-primary transition-colors px-2 py-1" href="/#brochures">Broşürler</a>
-                    <a class="hover:text-primary transition-colors px-2 py-1" href="/#contact">İletişim</a>
-                    <a class="text-primary font-semibold relative px-2 py-1" href="/announcements.html">
-                        Duyurular
-                        <span class="notification-dot absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                    </a>
-                    <button id="pageLanguageToggleBtn" class="bg-primary text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-opacity-90 transition-all text-xs sm:text-sm">English</button>
-                </div>
-            </div>
-        </div>
-    </nav>
+    <div id="site-header"></div>
 
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        <div class="text-center mb-8 compact-header">
+    <div class="max-w-7xl mx-auto px-4 pt-6 pb-8">
+        <div class="text-center mb-6 compact-header">
             <h1 id="announcementsHeroTitle" class="text-4xl font-bold text-primary mb-2">
                 <i class="fas fa-bullhorn mr-2"></i>Duyurular
             </h1>
@@ -1482,6 +1465,10 @@ document.addEventListener('keydown', (e) => {
 
 
 </script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/header.js"></script>
+<script src="assets/js/header-controller.js"></script>
+<script src="assets/js/notifications.js"></script>
 </body>
 </html>
 
