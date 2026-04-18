@@ -447,15 +447,7 @@ function updateAuthUI(isLoggedIn) {
             dropdownRole.classList.remove('hidden');
         }
 
-        if (dropdownInstitution) {
-            if (currentUser.institution) {
-                const instSpan = dropdownInstitution.querySelector('span');
-                if (instSpan) instSpan.textContent = currentUser.institution;
-                dropdownInstitution.classList.remove('hidden');
-            } else {
-                dropdownInstitution.classList.add('hidden');
-            }
-        }
+        if (dropdownInstitution) dropdownInstitution.classList.add('hidden');
 
         if (adminMenuLink) {
             const canSeeAdmin = currentUser.role === 'admin' || currentUser.role === 'super_admin';
