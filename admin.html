@@ -1145,6 +1145,8 @@
                         <th class="px-3 py-2 text-left">Kurum</th>
                         <th class="px-3 py-2 text-left">Organization</th>
                         <th class="px-3 py-2 text-left">Status</th>
+                        <th class="px-3 py-2 text-left">Website</th>
+                        <th class="px-3 py-2 text-left">Şehir</th>
                         <th class="px-3 py-2 text-left">Domain</th>
                         <th class="px-3 py-2 text-left text-gray-400">Önceki</th>
                     </tr>
@@ -4943,7 +4945,7 @@ function renderSyncPreview(changes, total) {
 
     document.getElementById('syncPreviewRows').innerHTML = changes.map((ch, i) => {
         const beforeText = ch.before
-            ? `${ch.before.name || '-'} / ${ch.before.category || '-'} / ${ch.before.status || '-'}`
+            ? `${ch.before.name || '-'} / ${ch.before.category || '-'} / ${ch.before.status || '-'} / ${ch.before.website_url || '-'} / ${ch.before.city || '-'} / ${ch.before.domain || '-'}`
             : '';
         return `<tr class="border-t border-gray-100">
             <td class="px-3 py-2"><input type="checkbox" class="sync-chk" data-idx="${i}" checked></td>
@@ -4951,6 +4953,8 @@ function renderSyncPreview(changes, total) {
             <td class="px-3 py-2 font-medium">${escapeHtml(ch.name)}</td>
             <td class="px-3 py-2">${escapeHtml(ch.category || '-')}</td>
             <td class="px-3 py-2">${escapeHtml(ch.status || '-')}</td>
+            <td class="px-3 py-2">${escapeHtml(ch.website_url || '-')}</td>
+            <td class="px-3 py-2">${escapeHtml(ch.city || '-')}</td>
             <td class="px-3 py-2">${escapeHtml(ch.domain || '-')}</td>
             <td class="px-3 py-2 text-gray-400 text-xs">${escapeHtml(beforeText)}</td>
         </tr>`;
