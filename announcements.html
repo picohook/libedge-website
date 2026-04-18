@@ -1469,6 +1469,13 @@ document.addEventListener('keydown', (e) => {
 <script src="assets/js/header.js"></script>
 <script src="assets/js/header-controller.js"></script>
 <script src="assets/js/notifications.js"></script>
+<script>
+document.addEventListener('header:ready', () => {
+    if (typeof window.checkAuth === 'function') {
+        window.checkAuth();
+    }
+});
+</script>
 </body>
 </html>
 
