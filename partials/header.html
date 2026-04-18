@@ -1,4 +1,4 @@
-<header class="bg-primary text-white py-6 px-4">
+﻿<header class="bg-primary text-white py-6 px-4">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center relative">
         <div class="flex flex-wrap items-center space-x-4 mb-2 sm:mb-0">
             <div class="flex items-center">
@@ -269,3 +269,69 @@
         </div>
     </div>
 </nav>
+
+<!-- ====================== AUTH MODALS ====================== -->
+
+<!-- Login Modal -->
+<div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
+        <button onclick="closeLoginModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+        </button>
+        <h2 class="text-2xl font-bold mb-4 text-primary translatable">Giriş Yap</h2>
+        <form id="loginForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1 translatable">E-posta Adresi</label>
+                <input type="email" id="loginEmail" placeholder="ornek@email.com" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-primary" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1 translatable">Şifre</label>
+                <input type="password" id="loginPassword" name="password" placeholder="••••••" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-primary" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-opacity-90 transition translatable">Giriş Yap</button>
+        </form>
+        <p class="mt-4 text-center text-sm text-gray-600">
+            Hesabınız yok mu?
+            <button onclick="openRegisterModal()" class="text-primary font-semibold hover:underline translatable">Kayıt Ol</button>
+        </p>
+    </div>
+</div>
+
+<!-- Register Modal -->
+<div id="registerModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg max-h-[90vh] overflow-y-auto">
+        <button onclick="closeRegisterModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+        </button>
+        <h2 class="text-2xl font-bold mb-4 text-primary translatable">Kayıt Ol</h2>
+        <form id="registerForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1 translatable">Ad Soyad</label>
+                <input type="text" id="regFullName" placeholder="Ahmet Yılmaz" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-primary" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1 translatable">E-posta Adresi</label>
+                <input type="email" id="regEmail" placeholder="ornek@email.com" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-primary" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1 translatable">Şifre</label>
+                <input type="password" id="regPassword" name="new-password" placeholder="En az 6 karakter" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-primary" autocomplete="new-password" required>
+                <p class="text-xs text-gray-500 mt-1 translatable">Şifreniz en az 6 karakter olmalıdır.</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1 translatable">Kurum Adı (İsteğe bağlı)</label>
+                <input type="text" id="regInstitution" placeholder="Üniversite / Kurum" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-primary">
+            </div>
+            <button type="submit" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-opacity-90 transition translatable">Kayıt Ol</button>
+        </form>
+        <p class="mt-4 text-center text-sm text-gray-600">
+            Zaten hesabınız var mı?
+            <button onclick="closeRegisterModal(); openLoginModal();" class="text-primary font-semibold hover:underline translatable">Giriş Yap</button>
+        </p>
+    </div>
+</div>
+
+<!-- User Badge (kullanıcı bilgisi için) -->
+<div id="userBadge" class="fixed bottom-4 left-4 bg-white shadow-lg rounded-lg p-2 hidden z-50">
+    <!-- Dinamik olarak doldurulacak -->
+</div>
