@@ -17,6 +17,12 @@ function getInitials(name) {
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
+function formatInstitutionLabel(name) {
+    const value = String(name || '').trim();
+    if (!value) return '';
+    return value.replace(/\bUNIVERSITY\b/gi, 'UNI');
+}
+
 
 function applyAvatarFallback(container, initials, avatarColor, sizeClass, textClass) {
     if (!container) return;
@@ -463,10 +469,21 @@ function updateAuthUI(isLoggedIn) {
         const instLabel = currentUser.institution_name || currentUser.institution || null;
         if (dropdownInstSection && instLabel) {
             dropdownInstSection.classList.remove('hidden');
-            if (dropdownInstName) dropdownInstName.textContent = instLabel;
+            if (dropdownInstName) dropdownInstName.textContent = formatInstitutionLabel(instLabel);
             if (dropdownInstInitials) {
                 dropdownInstInitials.textContent = '';
                 dropdownInstInitials.classList.add('hidden');
+            }
+            const instDomain = String(currentUser.institution_domain || '').split(',')[0].trim();
+            if (instDomain) {
+                const instUrl = instDomain.startsWith('http') ? instDomain : `https://${instDomain}`;
+                dropdownInstSection.href = instUrl;
+                dropdownInstSection.dataset.url = instUrl;
+                dropdownInstSection.style.pointerEvents = '';
+            } else {
+                dropdownInstSection.href = '#';
+                dropdownInstSection.dataset.url = '';
+                dropdownInstSection.style.pointerEvents = 'none';
             }
             if (currentUser.institution_logo_url && dropdownInstLogoImg) {
                 dropdownInstLogoImg.src = currentUser.institution_logo_url;
@@ -475,6 +492,8 @@ function updateAuthUI(isLoggedIn) {
                     dropdownInstLogoImg.classList.add('hidden');
                 };
             }
+        } else if (dropdownInstSection) {
+            dropdownInstSection.classList.add('hidden');
         }
 
         const userBadge = document.getElementById('userBadge');
