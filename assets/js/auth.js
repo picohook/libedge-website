@@ -63,6 +63,32 @@ function showAuthLoading(show) {
     }
 }
 
+function bindAuthForms() {
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm && loginForm.dataset.authBound !== 'true') {
+        loginForm.dataset.authBound = 'true';
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail')?.value || '';
+            const password = document.getElementById('loginPassword')?.value || '';
+            await login(email, password);
+        });
+    }
+
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm && registerForm.dataset.authBound !== 'true') {
+        registerForm.dataset.authBound = 'true';
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('regFullName')?.value || '';
+            const email = document.getElementById('regEmail')?.value || '';
+            const password = document.getElementById('regPassword')?.value || '';
+            const institution = document.getElementById('regInstitution')?.value || '';
+            await register(fullName, email, password, institution);
+        });
+    }
+}
+
 async function waitForAuth(timeoutMs = 10000) {
     if (authInitialized && !isAuthChecking) {
         return currentUser;
@@ -468,5 +494,8 @@ window.checkAuth = checkAuth;
 window.updateAuthUI = updateAuthUI;
 window.login = login;
 window.logout = logout;
+
+document.addEventListener('DOMContentLoaded', bindAuthForms);
+document.addEventListener('header:ready', bindAuthForms);
 
 consumeAuthRedirectMessage();
