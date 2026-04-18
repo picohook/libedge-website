@@ -335,6 +335,9 @@ async function checkAuth() {
                     email: user.email,
                     full_name: user.full_name,
                     institution: user.institution,
+                    institution_id: user.institution_id || null,
+                    institution_name: user.institution_name || null,
+                    institution_logo_url: user.institution_logo_url || null,
                     role: user.role,
                     avatar_url: user.avatar_url || null
                 });
@@ -456,6 +459,31 @@ function updateAuthUI(isLoggedIn) {
         if (adminMenuLink) {
             const canSeeAdmin = currentUser.role === 'admin' || currentUser.role === 'super_admin';
             adminMenuLink.classList.toggle('hidden', !canSeeAdmin);
+        }
+
+        // Kurum kartı — dropdown alt kısmı
+        const dropdownInstSection = getAuthElement('dropdownInstSection');
+        const dropdownInstName = getAuthElement('dropdownInstName');
+        const dropdownInstLogoImg = getAuthElement('dropdownInstLogoImg');
+        const dropdownInstInitials = getAuthElement('dropdownInstInitials');
+        const instLabel = currentUser.institution_name || currentUser.institution || null;
+        if (dropdownInstSection && instLabel) {
+            dropdownInstSection.classList.remove('hidden');
+            if (dropdownInstName) dropdownInstName.textContent = instLabel;
+            const words = instLabel.trim().split(/\s+/);
+            const instInits = words.length >= 2
+                ? (words[0][0] + words[1][0]).toUpperCase()
+                : instLabel.substring(0, 2).toUpperCase();
+            if (dropdownInstInitials) dropdownInstInitials.textContent = instInits;
+            if (currentUser.institution_logo_url && dropdownInstLogoImg) {
+                dropdownInstLogoImg.src = currentUser.institution_logo_url;
+                dropdownInstLogoImg.classList.remove('hidden');
+                if (dropdownInstInitials) dropdownInstInitials.classList.add('hidden');
+                dropdownInstLogoImg.onerror = () => {
+                    dropdownInstLogoImg.classList.add('hidden');
+                    if (dropdownInstInitials) dropdownInstInitials.classList.remove('hidden');
+                };
+            }
         }
 
         const userBadge = document.getElementById('userBadge');

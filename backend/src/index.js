@@ -1019,7 +1019,7 @@ app.get('/api/user/profile', async (c) => {
   
   const user = await db.prepare(`
     SELECT u.id, u.email, u.full_name, u.institution, u.institution_id, u.role, u.created_at, u.avatar_url,
-           i.name as institution_name
+           i.name as institution_name, i.logo_url as institution_logo_url
     FROM users u
     LEFT JOIN institutions i ON u.institution_id = i.id
     WHERE u.id = ?
@@ -2238,7 +2238,7 @@ app.get('/api/admin/institutions', async (c) => {
 
   if (role === 'super_admin') {
     const institutions = await db.prepare(`
-      SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
+      SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at, inst.logo_url,
         (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count
       FROM institutions inst ORDER BY inst.name
     `).all();
@@ -2253,13 +2253,13 @@ app.get('/api/admin/institutions', async (c) => {
     let inst;
     if (adminInstitutionId) {
       inst = await db.prepare(`
-        SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
+        SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at, inst.logo_url,
           (SELECT COUNT(*) FROM users WHERE institution = inst.name AND role != 'super_admin') as user_count
         FROM institutions inst WHERE inst.id = ?
       `).bind(adminInstitutionId).first();
     } else if (adminInstitution) {
       inst = await db.prepare(`
-        SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at,
+        SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at, inst.logo_url,
           (SELECT COUNT(*) FROM users WHERE institution = inst.name AND role != 'super_admin') as user_count
         FROM institutions inst WHERE inst.name = ?
       `).bind(adminInstitution).first();
@@ -4571,6 +4571,32 @@ app.put('/api/admin/institution/:id', async (c) => {
   }
 
   return c.json({ success: true });
+});
+
+app.post('/api/admin/institution/:id/logo', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const id = c.req.param('id');
+  const db = c.env.DB;
+  const bucket = c.env.FILES_BUCKET;
+  const r2PublicUrl = c.env.R2_PUBLIC_URL;
+
+  let formData;
+  try { formData = await c.req.formData(); } catch { return c.json({ error: 'Form verisi okunamadı' }, 400); }
+  const file = formData.get('logo');
+  if (!file || typeof file === 'string') return c.json({ error: 'Logo dosyası gerekli' }, 400);
+
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+  if (!allowed.includes(file.type)) return c.json({ error: 'Sadece JPG, PNG, WEBP veya SVG' }, 400);
+  if (file.size > 2 * 1024 * 1024) return c.json({ error: "Logo 2MB'dan küçük olmalı" }, 400);
+
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+  const key = `institution-logos/${id}.${ext}`;
+  const arrayBuffer = await file.arrayBuffer();
+  await bucket.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
+
+  const logo_url = `${r2PublicUrl}/${key}`;
+  await db.prepare(`UPDATE institutions SET logo_url = ? WHERE id = ?`).bind(logo_url, id).run();
+  return c.json({ success: true, logo_url });
 });
 
 app.delete('/api/admin/institution/:id', async (c) => {
