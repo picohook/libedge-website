@@ -3070,6 +3070,134 @@ app.delete('/api/institution/file/:id', async (c) => {
   return c.json({ success: true });
 });
 
+// ====================== ATOMIK KLASÖR PAYLAŞIMI ======================
+// Sistem klasörünü (ve alt ağacını) bir kuruma tek seferde, atomik olarak bağlar.
+// sendFolderRecursive (admin.html) yerine geçer; N×M API çağrısını 1'e indirir.
+app.post('/api/admin/folder-share', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const db = c.env.DB;
+  const body = await c.req.json().catch(() => ({}));
+  const { source_collection_id, institution_id, target_collection_id } = body;
+
+  if (!source_collection_id || !institution_id) {
+    return c.json({ error: 'source_collection_id ve institution_id zorunlu' }, 400);
+  }
+
+  // Kaynak klasör sistem klasörü olmak zorunda
+  const sourceFolder = await db.prepare(`
+    SELECT id, name FROM collections
+    WHERE id = ? AND scope_type = 'system' AND kind = 'folder' AND is_active = 1
+  `).bind(Number(source_collection_id)).first();
+  if (!sourceFolder) return c.json({ error: 'Kaynak sistem klasörü bulunamadı' }, 404);
+
+  // Hedef kurum
+  const institution = await getInstitutionByIdentifier(db, institution_id);
+  if (!institution) return c.json({ error: 'Kurum bulunamadı' }, 404);
+
+  // Hedef üst klasör (belirtilmemişse kurum root'u)
+  const parentCollection = await getInstitutionCollectionOrRoot(
+    db, institution.id, target_collection_id ? Number(target_collection_id) : null, auth.user.user_id
+  );
+  if (!parentCollection) return c.json({ error: 'Hedef klasör bulunamadı' }, 404);
+
+  // Hata anında cleanup için oluşturulan ID'leri takip et
+  const createdCollectionIds = [];
+  const createdFileRefIds = [];
+  const stats = { folders_created: 0, files_linked: 0, duplicates_skipped: 0 };
+
+  try {
+    // BFS: sistem klasör ağacını gez, kurumda karşılıklarını oluştur
+    const queue = [{
+      systemCollectionId: sourceFolder.id,
+      parentInstCollId: parentCollection.id,
+      folderName: sourceFolder.name
+    }];
+
+    while (queue.length > 0) {
+      const { systemCollectionId, parentInstCollId, folderName } = queue.shift();
+
+      // Kurumda klasörü oluştur
+      const folderResult = await db.prepare(`
+        INSERT INTO collections (parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by)
+        VALUES (?, ?, 'institution', ?, 'folder', 1, 1, 0, ?)
+      `).bind(parentInstCollId, folderName, institution.id, auth.user.user_id).run();
+
+      const newCollId = Number(folderResult.meta?.last_row_id);
+      createdCollectionIds.push(newCollId);
+      stats.folders_created++;
+
+      // Sistem klasöründeki dosyaları al
+      const filesInFolder = await db.prepare(`
+        SELECT cf.file_id,
+               COALESCE(cf.display_name, f.original_name) AS display_name,
+               cf.category,
+               cf.is_public
+        FROM collection_files cf
+        JOIN files f ON f.id = cf.file_id
+        WHERE cf.collection_id = ? AND cf.is_active = 1
+      `).bind(systemCollectionId).all();
+
+      // Dosyaları yeni kurum klasörüne referans olarak bağla
+      for (const fileRef of (filesInFolder.results || [])) {
+        // Aynı dosya zaten varsa atla
+        const existing = await db.prepare(`
+          SELECT id FROM collection_files
+          WHERE collection_id = ? AND file_id = ? AND is_active = 1
+          LIMIT 1
+        `).bind(newCollId, fileRef.file_id).first();
+
+        if (existing) { stats.duplicates_skipped++; continue; }
+
+        const refResult = await db.prepare(`
+          INSERT INTO collection_files (collection_id, file_id, display_name, category, is_public, is_active, sort_order, added_by, added_at)
+          VALUES (?, ?, ?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP)
+        `).bind(
+          newCollId, fileRef.file_id, fileRef.display_name,
+          fileRef.category || 'other', fileRef.is_public ? 1 : 0, auth.user.user_id
+        ).run();
+
+        createdFileRefIds.push(Number(refResult.meta?.last_row_id));
+        stats.files_linked++;
+      }
+
+      // Alt klasörleri kuyruğa ekle
+      const subfolders = await db.prepare(`
+        SELECT id, name FROM collections
+        WHERE parent_id = ? AND kind = 'folder' AND is_active = 1
+        ORDER BY sort_order, name
+      `).bind(systemCollectionId).all();
+
+      for (const sub of (subfolders.results || [])) {
+        queue.push({ systemCollectionId: sub.id, parentInstCollId: newCollId, folderName: sub.name });
+      }
+    }
+
+    return c.json({ success: true, stats });
+
+  } catch (err) {
+    console.error('folder-share error:', err);
+
+    // Rollback: oluşturulan kayıtları geri al
+    try {
+      if (createdFileRefIds.length) {
+        const ph = createdFileRefIds.map(() => '?').join(',');
+        await db.prepare(`DELETE FROM collection_files WHERE id IN (${ph})`).bind(...createdFileRefIds).run();
+      }
+      if (createdCollectionIds.length) {
+        const ph = createdCollectionIds.map(() => '?').join(',');
+        await db.prepare(`UPDATE collections SET is_active = 0 WHERE id IN (${ph})`).bind(...createdCollectionIds).run();
+      }
+    } catch (cleanupErr) {
+      console.error('folder-share cleanup error:', cleanupErr);
+    }
+
+    return c.json({ error: err.message || 'Klasör paylaşımı başarısız' }, 500);
+  }
+});
+
 app.get('/api/_legacy/institution/:id/files', (c) => c.json({ error: 'Kaldırıldı' }, 410));
 
 // ====================== KURUM KLASÖRLERİNİ GETİR (DÜZELTİLMİŞ) ======================

@@ -2910,9 +2910,20 @@ async function executeSend() {
                     const res = await sendFileToInstitution(item.id, sel.instId, sel.collectionId || null);
                     if (res && res.deduplicated) dupFound = true;
                 } else {
-                    // Klasör — recursive kopyala
-                    const dups = await sendFolderRecursive(item.id, sel.instId, sel.collectionId || null, item.name);
-                    if (dups) dupFound = true;
+                    // Klasör — backend'de atomik olarak paylaş
+                    const res = await fetch(`${API_BASE}/api/admin/folder-share`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            source_collection_id: item.id,
+                            institution_id: sel.instId,
+                            target_collection_id: sel.collectionId ? Number(sel.collectionId) : null
+                        })
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || 'Klasör gönderilemedi');
+                    if ((data.stats?.duplicates_skipped || 0) > 0) dupFound = true;
                 }
             } catch(e) {
                 console.error('Gönderme hatası:', item.name, sel.instName, e);
@@ -2955,54 +2966,6 @@ async function sendFileToInstitution(sourceFileId, instId, targetCollectionId) {
     return data;
 }
 
-// Recursive folder send: creates folder structure in target institution, copies files
-// folderName is passed in to avoid extra API calls on recursion
-async function sendFolderRecursive(systemFolderId, instId, parentCollectionId, folderName) {
-    let dupFound = false;
-
-    // 1) Hedef kurumda klasörü oluştur
-    const newFolderRes = await fetch(`/api/institution/${instId}/folder`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            folder_name: folderName || 'Klasör',
-            parent_folder_id: parentCollectionId ? Number(parentCollectionId) : null,
-            is_public: true
-        })
-    });
-
-    let newFolderId = null;
-    if (newFolderRes.ok) {
-        const nf = await newFolderRes.json().catch(() => ({}));
-        newFolderId = nf.id ?? null;
-    }
-
-    // 2) Sistem klasörünün dosyalarını al
-    const filesRes = await fetch(`/api/system/files?collection_id=${systemFolderId}`, { credentials: 'include' });
-    const filesData = filesRes.ok ? await filesRes.json() : {};
-    const files = filesData.files || [];
-
-    // 3) Dosyaları kopyala
-    for (const f of files) {
-        try {
-            const r = await sendFileToInstitution(f.source_file_id, instId, newFolderId);
-            if (r && r.deduplicated) dupFound = true;
-        } catch(e) { console.error('Dosya kopyalanamadı:', f.file_name, e); }
-    }
-
-    // 4) Alt klasörleri recursive işle
-    const subRes = await fetch(`/api/system/folders?parent_id=${systemFolderId}`, { credentials: 'include' });
-    const subData = subRes.ok ? await subRes.json() : {};
-    const subFolders = subData.folders || [];
-
-    for (const sub of subFolders) {
-        const subDup = await sendFolderRecursive(sub.id, instId, newFolderId, sub.folder_name);
-        if (subDup) dupFound = true;
-    }
-
-    return dupFound;
-}
 
 
 
