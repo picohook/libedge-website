@@ -1775,14 +1775,35 @@ app.get('/api/admin/dashboard', async (c) => {
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 10);
 
+  // Dönemden bağımsız toplam sayılar (delta için)
+  const totalUsersRow = await db.prepare(`
+    SELECT COUNT(*) as count FROM users u ${userScope.clause}
+  `).bind(...userScope.bindings).first();
+
+  const totalInstitutionsRow = await db.prepare(`
+    SELECT COUNT(*) as count FROM institutions i ${institutionScope.clause}
+  `).bind(...institutionScope.bindings).first();
+
+  const publishedAnnouncementsRow = await db.prepare(`
+    SELECT COUNT(*) as count FROM announcements WHERE is_published = 1
+  `).first();
+
+  const draftAnnouncementsRow = await db.prepare(`
+    SELECT COUNT(*) as count FROM announcements WHERE is_published = 0
+  `).first();
+
   const stats = {
     users: userCountRow?.count || 0,
+    total_users: totalUsersRow?.count || 0,
     active_subscriptions: (activeIndividualRow?.count || 0) + (activeInstitutionRow?.count || 0),
     trial_requests: trialRequestsRow?.count || 0,
     institutions: institutionsCountRow?.count || 0,
+    total_institutions: totalInstitutionsRow?.count || 0,
     pending_requests: pendingRequestsRow?.count || 0,
     today_registrations: todayRegistrationsRow?.count || 0,
-    active_institution_subscriptions: activeInstitutionRow?.count || 0
+    active_institution_subscriptions: activeInstitutionRow?.count || 0,
+    published_announcements: publishedAnnouncementsRow?.count || 0,
+    draft_announcements: draftAnnouncementsRow?.count || 0
   };
 
   const actions = [

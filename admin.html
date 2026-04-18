@@ -123,11 +123,12 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7 gap-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
             <div class="stat-card flex justify-between items-start">
                 <div>
                     <p class="text-gray-500 text-sm">Toplam Kullanıcı</p>
                     <p id="statUsers" class="text-2xl font-bold">0</p>
+                    <p id="statUsersDelta" class="text-xs text-green-600 mt-0.5 hidden"></p>
                 </div>
                 <i class="fas fa-users text-3xl text-violet-600 opacity-50"></i>
             </div>
@@ -135,8 +136,32 @@
                 <div>
                     <p class="text-gray-500 text-sm">Aktif Abonelik</p>
                     <p id="statSubscriptions" class="text-2xl font-bold">0</p>
+                    <p class="text-xs text-gray-400 mt-0.5"><span id="statInstitutionSubscriptions">0</span> kurum</p>
                 </div>
                 <i class="fas fa-ticket-alt text-3xl text-green-500 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Kurum Sayısı</p>
+                    <p id="statInstitutions" class="text-2xl font-bold">0</p>
+                    <p id="statInstitutionsDelta" class="text-xs text-green-600 mt-0.5 hidden"></p>
+                </div>
+                <i class="fas fa-building text-3xl text-blue-500 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Yayındaki Duyurular</p>
+                    <p id="statPublishedAnnouncements" class="text-2xl font-bold">0</p>
+                    <p id="statDraftAnnouncements" class="text-xs text-gray-400 mt-0.5">0 taslak</p>
+                </div>
+                <i class="fas fa-bullhorn text-3xl text-amber-500 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Bekleyen Talep</p>
+                    <p id="statPendingRequests" class="text-2xl font-bold">0</p>
+                </div>
+                <i class="fas fa-inbox text-3xl text-red-400 opacity-50"></i>
             </div>
             <div class="stat-card flex justify-between items-start">
                 <div>
@@ -147,31 +172,10 @@
             </div>
             <div class="stat-card flex justify-between items-start">
                 <div>
-                    <p class="text-gray-500 text-sm">Kurum Sayısı</p>
-                    <p id="statInstitutions" class="text-2xl font-bold">0</p>
-                </div>
-                <i class="fas fa-building text-3xl text-blue-500 opacity-50"></i>
-            </div>
-            <div class="stat-card flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm">Bekleyen Talep</p>
-                    <p id="statPendingRequests" class="text-2xl font-bold">0</p>
-                </div>
-                <i class="fas fa-inbox text-3xl text-amber-500 opacity-50"></i>
-            </div>
-            <div class="stat-card flex justify-between items-start">
-                <div>
                     <p id="statRegistrationsLabel" class="text-gray-500 text-sm">Dönem Kayıt</p>
                     <p id="statTodayRegistrations" class="text-2xl font-bold">0</p>
                 </div>
                 <i class="fas fa-user-clock text-3xl text-indigo-500 opacity-50"></i>
-            </div>
-            <div class="stat-card flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm">Aktif Kurum Aboneliği</p>
-                    <p id="statInstitutionSubscriptions" class="text-2xl font-bold">0</p>
-                </div>
-                <i class="fas fa-building-circle-check text-3xl text-emerald-500 opacity-50"></i>
             </div>
         </div>
 
@@ -1896,22 +1900,35 @@ document.addEventListener('click', function(e) {
         const visibleItems = (items || []).filter(item => item.count > 0 || item.key === 'pending_requests');
 
         if (!visibleItems.length) {
-            container.innerHTML = '<div class="text-sm text-gray-400">Şu an aksiyon gerektiren kritik konu yok.</div>';
+            container.innerHTML = '<div class="text-sm text-gray-400 flex items-center gap-2"><i class="fas fa-check-circle text-green-400"></i> Şu an aksiyon gerektiren kritik konu yok.</div>';
             return;
         }
 
-        container.innerHTML = visibleItems.map(item => `
-            <button type="button" ${item.tab ? `onclick="goToAdminTab('${item.tab}')"` : 'disabled'}
-                class="w-full text-left border rounded-xl px-4 py-3 transition ${item.tab ? 'hover:border-primary hover:bg-gray-50' : 'opacity-70 cursor-not-allowed'}">
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <p class="font-medium text-gray-800">${escapeHtml(item.label)}</p>
-                        <p class="text-xs text-gray-500 mt-1">${escapeHtml(item.description || '')}</p>
+        const urgency = {
+            expiring_subscriptions:    { border: 'border-amber-200', bg: 'bg-amber-50',  badge: 'bg-amber-100 text-amber-700',  icon: 'fas fa-clock text-amber-500' },
+            pending_requests:          { border: 'border-red-200',   bg: 'bg-red-50',    badge: 'bg-red-100 text-red-700',      icon: 'fas fa-inbox text-red-500' },
+            users_without_institution: { border: 'border-gray-200',  bg: 'bg-gray-50',   badge: 'bg-gray-100 text-gray-600',    icon: 'fas fa-user-slash text-gray-400' },
+        };
+        const neutral = { border: 'border-gray-100', bg: 'bg-white', badge: 'bg-gray-100 text-gray-400', icon: 'fas fa-info-circle text-gray-300' };
+
+        container.innerHTML = visibleItems.map(item => {
+            const isZero = item.count === 0;
+            const u = isZero ? neutral : (urgency[item.key] || neutral);
+            return `
+            <button type="button" ${item.tab && !isZero ? `onclick="goToAdminTab('${item.tab}')"` : 'disabled'}
+                class="w-full text-left border ${u.border} ${u.bg} rounded-xl px-4 py-3 transition ${item.tab && !isZero ? 'hover:opacity-80 cursor-pointer' : 'opacity-60 cursor-default'}">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <i class="${u.icon} flex-shrink-0 w-4 text-center"></i>
+                        <div class="min-w-0">
+                            <p class="font-medium text-gray-800 text-sm leading-snug">${escapeHtml(item.label)}</p>
+                            <p class="text-xs text-gray-400 truncate">${escapeHtml(item.description || '')}</p>
+                        </div>
                     </div>
-                    <span class="min-w-[2rem] text-center px-2 py-1 rounded-full bg-red-50 text-red-700 text-sm font-semibold">${item.count}</span>
+                    <span class="flex-shrink-0 min-w-[2rem] text-center px-2.5 py-1 rounded-full ${u.badge} text-sm font-bold">${item.count}</span>
                 </div>
-            </button>
-        `).join('');
+            </button>`;
+        }).join('');
     }
 
     function renderDashboardActivity(items) {
@@ -1955,15 +1972,47 @@ document.addEventListener('click', function(e) {
             const stats = data.stats || {};
             const activePeriodLabel = data.period?.label || fallbackLabel;
 
-            document.getElementById('statUsers').textContent = stats.users || 0;
-            
+            const periodKey = data.period?.key || 'all';
+
+            // Kullanıcı — toplam + delta
+            document.getElementById('statUsers').textContent = stats.total_users ?? stats.users ?? 0;
+            const usersDeltaEl = document.getElementById('statUsersDelta');
+            if (usersDeltaEl) {
+                if (periodKey !== 'all' && stats.users > 0) {
+                    usersDeltaEl.textContent = `+${stats.users} ${activePeriodLabel}`;
+                    usersDeltaEl.classList.remove('hidden');
+                } else {
+                    usersDeltaEl.classList.add('hidden');
+                }
+            }
+
+            // Abonelikler
             document.getElementById('statSubscriptions').textContent = stats.active_subscriptions || 0;
+            document.getElementById('statInstitutionSubscriptions').textContent = stats.active_institution_subscriptions || 0;
+
+            // Kurum — toplam + delta
+            document.getElementById('statInstitutions').textContent = stats.total_institutions ?? stats.institutions ?? 0;
+            const instDeltaEl = document.getElementById('statInstitutionsDelta');
+            if (instDeltaEl) {
+                if (periodKey !== 'all' && stats.institutions > 0) {
+                    instDeltaEl.textContent = `+${stats.institutions} ${activePeriodLabel}`;
+                    instDeltaEl.classList.remove('hidden');
+                } else {
+                    instDeltaEl.classList.add('hidden');
+                }
+            }
+
+            // Duyurular
+            const pubAnEl = document.getElementById('statPublishedAnnouncements');
+            const draftAnEl = document.getElementById('statDraftAnnouncements');
+            if (pubAnEl) pubAnEl.textContent = stats.published_announcements ?? 0;
+            if (draftAnEl) draftAnEl.textContent = `${stats.draft_announcements ?? 0} taslak`;
+
+            // Diğerleri
             document.getElementById('statTrials').textContent = stats.trial_requests || 0;
             document.getElementById('statPendingRequests').textContent = stats.pending_requests || 0;
             document.getElementById('statTodayRegistrations').textContent = stats.today_registrations || 0;
-            document.getElementById('statInstitutionSubscriptions').textContent = stats.active_institution_subscriptions || 0;
-            
-            document.getElementById('statInstitutions').textContent = stats.institutions || 0;
+
             if (summaryEl) summaryEl.textContent = `${activePeriodLabel} görünümü`;
             if (registrationsLabelEl) registrationsLabelEl.textContent = `${activePeriodLabel} Kaydı`;
             
