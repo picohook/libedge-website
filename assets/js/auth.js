@@ -418,13 +418,13 @@ function updateAuthUI(isLoggedIn) {
             if (currentUser.avatar_url) {
                 const avatarSrc = `${currentUser.avatar_url}?v=${Date.now()}`;
                 dropdownAvatar.innerHTML = `<img src="${avatarSrc}" class="w-full h-full object-cover rounded-full">`;
-                dropdownAvatar.className = 'w-12 h-12 rounded-full overflow-hidden flex items-center justify-center';
+                dropdownAvatar.className = 'w-[50px] h-[50px] rounded-full overflow-hidden flex items-center justify-center';
                 const img = dropdownAvatar.querySelector('img');
                 if (img) {
-                    img.onerror = () => applyAvatarFallback(dropdownAvatar, initials, avatarColor, 'w-12 h-12', 'text-lg');
+                    img.onerror = () => applyAvatarFallback(dropdownAvatar, initials, avatarColor, 'w-[50px] h-[50px]', 'text-lg');
                 }
             } else {
-                applyAvatarFallback(dropdownAvatar, initials, avatarColor, 'w-12 h-12', 'text-lg');
+                applyAvatarFallback(dropdownAvatar, initials, avatarColor, 'w-[50px] h-[50px]', 'text-lg');
             }
         }
         if (dropdownName) dropdownName.textContent = fullName;
