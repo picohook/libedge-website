@@ -751,13 +751,9 @@ async function checkAuthAndLoad() {
             el('overviewInstitutionText') && (el('overviewInstitutionText').textContent = instName);
             el('overviewInstitutionBadge') && el('overviewInstitutionBadge').classList.remove('hidden');
             // Kurum kartı baş harfleri
-            const instWords = instName.trim().split(/\s+/);
-            const instInitials = instWords.length >= 2
-                ? (instWords[0][0] + instWords[1][0]).toUpperCase()
-                : ((instWords[0] || '').substring(0, 1).toUpperCase() || '—');
-            if (el('overviewInstInitials')) el('overviewInstInitials').textContent = instInitials;
+            if (el('overviewInstInitials')) { el('overviewInstInitials').textContent = ''; el('overviewInstInitials').classList.add('hidden'); }
         } else {
-            if (el('overviewInstInitials')) el('overviewInstInitials').textContent = '—';
+            if (el('overviewInstInitials')) { el('overviewInstInitials').textContent = ''; el('overviewInstInitials').classList.add('hidden'); }
         }
         // Domain varsa kurum kartını tıklanabilir yap
         if (user.institution_domain) {
@@ -780,7 +776,7 @@ async function checkAuthAndLoad() {
                 el('overviewInstInitials')?.classList.add('hidden');
                 logoImg.onerror = () => {
                     logoImg.classList.add('hidden');
-                    el('overviewInstInitials')?.classList.remove('hidden');
+                    el('overviewInstInitials')?.classList.add('hidden');
                 };
             }
         }

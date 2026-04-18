@@ -1,4 +1,4 @@
-// ====================== AUTH YARDIMCILARI ======================
+﻿// ====================== AUTH YARDIMCILARI ======================
 function getAvatarColor(name) {
     const colors = ['avatar-purple', 'avatar-blue', 'avatar-green', 'avatar-orange', 'avatar-pink', 'avatar-cyan'];
     if (!name) return colors[0];
@@ -11,11 +11,12 @@ function getAvatarColor(name) {
 }
 
 function getInitials(name) {
-    if (!name || name === 'Kullanıcı') return '👤';
+    if (!name || name === 'KullanÄ±cÄ±') return 'ğŸ‘¤';
     const parts = name.trim().split(' ');
     if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
+
 
 function applyAvatarFallback(container, initials, avatarColor, sizeClass, textClass) {
     if (!container) return;
@@ -463,18 +464,15 @@ function updateAuthUI(isLoggedIn) {
         if (dropdownInstSection && instLabel) {
             dropdownInstSection.classList.remove('hidden');
             if (dropdownInstName) dropdownInstName.textContent = instLabel;
-            const words = instLabel.trim().split(/\s+/).filter(Boolean);
-            const instInits = words.length >= 2
-                ? (words[0][0] + words[1][0]).toUpperCase()
-                : (words[0]?.[0] || instLabel.substring(0, 1)).toUpperCase();
-            if (dropdownInstInitials) dropdownInstInitials.textContent = instInits;
+            if (dropdownInstInitials) {
+                dropdownInstInitials.textContent = '';
+                dropdownInstInitials.classList.add('hidden');
+            }
             if (currentUser.institution_logo_url && dropdownInstLogoImg) {
                 dropdownInstLogoImg.src = currentUser.institution_logo_url;
                 dropdownInstLogoImg.classList.remove('hidden');
-                if (dropdownInstInitials) dropdownInstInitials.classList.add('hidden');
                 dropdownInstLogoImg.onerror = () => {
                     dropdownInstLogoImg.classList.add('hidden');
-                    if (dropdownInstInitials) dropdownInstInitials.classList.remove('hidden');
                 };
             }
         }

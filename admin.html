@@ -4556,13 +4556,13 @@ function renderInstitutions(institutions) {
     tbody.innerHTML = institutions.map(inst => {
         const statusCls = STATUS_BADGE[inst.status] || 'bg-gray-100 text-gray-600';
         const orgLabel = categoryLabel(inst.category || '');
-        const instInitials = (() => { const w = (inst.name||'').trim().split(/\s+/).filter(Boolean); return w.length>=2?(w[0][0]+w[1][0]).toUpperCase():((w[0]||'').substring(0,1).toUpperCase() || '?'); })();
+        const instInitials = '';
         const websiteUrl = (inst.website_url || '').trim();
         const normalizedWebsiteUrl = websiteUrl ? (websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`) : '';
         const logoCore = inst.logo_url
             ? `<img src="${escapeHtml(inst.logo_url)}" alt="" class="w-7 h-7 object-contain rounded flex-shrink-0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-              + `<span class="w-7 h-7 rounded bg-blue-100 text-blue-700 text-xs font-bold hidden items-center justify-center flex-shrink-0">${instInitials}</span>`
-            : `<span class="inline-flex w-7 h-7 rounded bg-blue-100 text-blue-700 text-xs font-bold items-center justify-center flex-shrink-0">${instInitials}</span>`;
+              + `<span class="w-7 h-7 rounded bg-blue-100 hidden items-center justify-center flex-shrink-0"></span>`
+            : `<span class="inline-flex w-7 h-7 rounded bg-blue-100 items-center justify-center flex-shrink-0"></span>`;
         const logoHtml = normalizedWebsiteUrl
             ? `<a href="${escapeHtml(normalizedWebsiteUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex" title="Kurum websitesini aç">${logoCore}</a>`
             : logoCore;
@@ -5028,7 +5028,7 @@ function openEditInstitutionModal(id, name, domain, category, status) {
     const inst = allInstitutions.find(i => String(i.id) === String(id));
     const logoUrl = inst?.logo_url || null;
     const words = name.trim().split(/\s+/).filter(Boolean);
-    const initials = words.length >= 2 ? (words[0][0] + words[1][0]).toUpperCase() : ((words[0] || '').substring(0, 1).toUpperCase() || '?');
+    const initials = '';
     const logoImg = document.getElementById('editInstLogoImg');
     const logoInitials = document.getElementById('editInstLogoInitials');
     document.getElementById('editInstLogoFile').value = '';
@@ -5036,12 +5036,12 @@ function openEditInstitutionModal(id, name, domain, category, status) {
         logoImg.src = logoUrl;
         logoImg.classList.remove('hidden');
         logoInitials.classList.add('hidden');
-        logoImg.onerror = () => { logoImg.classList.add('hidden'); logoInitials.classList.remove('hidden'); };
+        logoImg.onerror = () => { logoImg.classList.add('hidden'); logoInitials.classList.add('hidden'); };
     } else {
         logoImg.src = '';
         logoImg.classList.add('hidden');
-        logoInitials.textContent = initials;
-        logoInitials.classList.remove('hidden');
+        logoInitials.textContent = '';
+        logoInitials.classList.add('hidden');
     }
 
     document.getElementById('editInstitutionModal').classList.remove('hidden');
