@@ -191,17 +191,17 @@
                         <p class="font-semibold text-gray-800">Kullanıcı Ekle</p>
                         <p class="text-xs text-gray-500 mt-1">Yeni kullanıcı oluştur</p>
                     </button>
-                    <button type="button" onclick="openInstitutionModalFromDashboard()" class="text-left border border-blue-100 bg-blue-50 hover:bg-blue-100 rounded-xl px-4 py-4 transition">
+                    <button id="dashboardAddInstBtn" type="button" onclick="openInstitutionModalFromDashboard()" class="text-left border border-blue-100 bg-blue-50 hover:bg-blue-100 rounded-xl px-4 py-4 transition">
                         <div class="text-blue-700 text-lg mb-2"><i class="fas fa-building-medical"></i></div>
                         <p class="font-semibold text-gray-800">Kurum Ekle</p>
                         <p class="text-xs text-gray-500 mt-1">Yeni kurum kaydı aç</p>
                     </button>
-                    <button type="button" onclick="openAnnouncementModalFromDashboard()" class="text-left border border-amber-100 bg-amber-50 hover:bg-amber-100 rounded-xl px-4 py-4 transition">
+                    <button id="dashboardAddAnnouncementBtn" type="button" onclick="openAnnouncementModalFromDashboard()" class="text-left border border-amber-100 bg-amber-50 hover:bg-amber-100 rounded-xl px-4 py-4 transition">
                         <div class="text-amber-700 text-lg mb-2"><i class="fas fa-bullhorn"></i></div>
                         <p class="font-semibold text-gray-800">Duyuru Oluştur</p>
                         <p class="text-xs text-gray-500 mt-1">Yeni duyuru yayınla</p>
                     </button>
-                    <button type="button" onclick="runDashboardAirtableSync()" class="text-left border border-emerald-100 bg-emerald-50 hover:bg-emerald-100 rounded-xl px-4 py-4 transition">
+                    <button id="dashboardAirtableSyncBtn" type="button" onclick="runDashboardAirtableSync()" class="text-left border border-emerald-100 bg-emerald-50 hover:bg-emerald-100 rounded-xl px-4 py-4 transition">
                         <div class="text-emerald-700 text-lg mb-2"><i class="fas fa-arrows-rotate"></i></div>
                         <p class="font-semibold text-gray-800">Airtable Sync</p>
                         <p class="text-xs text-gray-500 mt-1">Kaynak verileri senkronize et</p>
@@ -1728,6 +1728,9 @@ async function checkAdminAuth() {
             hide('announcementsTab');
             hide('filesTab');
             hide('settingsTab');
+            hide('dashboardAddInstBtn');
+            hide('dashboardAddAnnouncementBtn');
+            hide('dashboardAirtableSyncBtn');
         }
         if (isSuperAdmin) {
             const instSubBtn = document.getElementById('addInstSubscriptionBtn');
@@ -2249,8 +2252,11 @@ document.addEventListener('click', function(e) {
         const statusLabel = s => s.status === 'active' ? 'Aktif' : s.status === 'trial' ? 'Deneme' : 'Süresi Doldu';
         const statusClass = s => s.status === 'active' ? 'bg-green-100 text-green-800' : s.status === 'trial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
 
-        document.getElementById('subscriptionsList').innerHTML = subs.length ? subs.map(s => `
-            <tr>
+        document.getElementById('subscriptionsList').innerHTML = subs.length ? subs.map(s => {
+            const daysLeft = s.end_date ? Math.ceil((new Date(s.end_date) - new Date()) / 86400000) : null;
+            const rowClass = daysLeft !== null && daysLeft <= 7 ? 'bg-red-50' : daysLeft !== null && daysLeft <= 30 ? 'bg-amber-50' : '';
+            return `
+            <tr class="${rowClass}">
                 <td class="px-4 py-2">${s.id}</td>
                 <td class="px-4 py-2">
                     ${s.type === 'institution'
@@ -2266,7 +2272,7 @@ document.addEventListener('click', function(e) {
                     <button onclick="deleteSubscription(${s.id}, '${s.type}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
-        `).join('') : '<tr><td colspan="8" class="text-center py-4 text-gray-400">Henüz abonelik yok</td></tr>';
+        `; }).join('') : '<tr><td colspan="8" class="text-center py-4 text-gray-400">Henüz abonelik yok</td></tr>';
     }
 
     // Escape HTML helper (XSS koruması ve Türkçe karakter sorunu için)
@@ -3938,6 +3944,7 @@ function instFilesRender(folderFilter, fileFilter) {
         const safeName = escapeHtml(name).replace(/'/g, "\\'");
         const safeUrl  = escapeHtml(url);
         const safeExt  = escapeHtml(ext);
+        const isNew   = f.added_at && (Date.now() - new Date(f.added_at).getTime()) < 7 * 86400000;
         return `
         <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 selectable-row gap-2"
              onclick="${isSelect ? `instFileToggleCb(this,event)` : ''}">
@@ -3946,7 +3953,7 @@ function instFilesRender(folderFilter, fileFilter) {
             <div class="flex-1 min-w-0">
                 <a href="javascript:void(0)"
                    onclick="event.stopPropagation();previewFile('${safeUrl}','${escapeHtml(name)}','${safeExt}')"
-                   class="font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(name)}</a>
+                   class="font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(name)}${isNew ? ' <span class="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded-full font-normal align-middle ml-1">Yeni</span>' : ''}</a>
                 <span class="text-xs text-gray-400 uppercase">${ext}</span>
             </div>
             ${!isSelect ? `

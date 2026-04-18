@@ -4335,6 +4335,33 @@ app.get('/api/user/files', async (c) => {
   });
 });
 
+app.get('/api/user/shared-with-me', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const db = c.env.DB;
+  const files = await db.prepare(`
+    SELECT
+      ucf.id,
+      COALESCE(ucf.display_name, f.original_name) AS file_name,
+      '/api/files/' || f.file_key AS file_url,
+      f.extension AS file_type,
+      ucf.added_at,
+      ucf.is_read,
+      fs.message AS share_message,
+      sender.full_name AS shared_by_name
+    FROM user_collection_files ucf
+    JOIN user_collections uc ON uc.id = ucf.collection_id
+    JOIN files f ON f.id = ucf.file_id
+    LEFT JOIN file_shares fs ON fs.id = ucf.share_id
+    LEFT JOIN users sender ON sender.id = fs.from_user_id
+    WHERE uc.user_id = ?
+      AND ucf.share_id IS NOT NULL
+    ORDER BY ucf.added_at DESC
+    LIMIT 30
+  `).bind(auth.user.user_id).all();
+  return c.json(files.results || []);
+});
+
 app.patch('/api/user/files/:id/read', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;

@@ -162,39 +162,71 @@
             
             <!-- Genel Bakış Tab -->
             <div id="tab-overview" class="tab-content">
+                <!-- Profil Hero -->
                 <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Hoş Geldiniz!</h2>
-                    <p class="text-gray-600" id="welcomeMessage"></p>
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+                        <div class="relative w-16 h-16 flex-shrink-0 cursor-pointer group" onclick="document.getElementById('avatarFileInput').click()">
+                            <div id="overviewAvatarWrap" class="w-16 h-16 bg-primary rounded-full flex items-center justify-center overflow-hidden">
+                                <span id="overviewAvatarInitials" class="text-white text-xl font-bold"></span>
+                                <img id="overviewAvatarImg" src="" alt="Avatar" class="w-full h-full object-cover hidden">
+                            </div>
+                            <div class="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="fas fa-camera text-white text-sm"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h2 id="overviewName" class="text-xl font-bold text-gray-900">-</h2>
+                            <p id="overviewEmail" class="text-sm text-gray-500 mb-2">-</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span id="overviewInstitutionBadge" class="hidden inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full"><i class="fas fa-building text-[10px]"></i><span id="overviewInstitutionText"></span></span>
+                                <span id="overviewRoleBadge" class="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full"><i class="fas fa-user-shield text-[10px]"></i><span id="overviewRoleText"></span></span>
+                                <span id="overviewSinceBadge" class="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full"><i class="fas fa-calendar-alt text-[10px]"></i><span id="overviewSinceText"></span></span>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 w-full sm:w-auto">
+                            <div class="grid grid-cols-2 gap-3 text-center">
+                                <div class="bg-green-50 rounded-xl px-4 py-3">
+                                    <p id="overviewSubCount" class="text-2xl font-bold text-green-700">-</p>
+                                    <p class="text-xs text-green-600 mt-0.5">Aktif Abonelik</p>
+                                </div>
+                                <div class="bg-indigo-50 rounded-xl px-4 py-3">
+                                    <p id="overviewNewFiles" class="text-2xl font-bold text-indigo-700">-</p>
+                                    <p class="text-xs text-indigo-600 mt-0.5">Yeni Dosya</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div class="bg-white rounded-xl shadow-sm p-6">
+                <div class="grid grid-cols-1 xl:grid-cols-5 gap-6 mb-6">
+                    <!-- Yeni Gelenler -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 xl:col-span-3">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold text-gray-800">Hesap Bilgileri</h3>
-                            <i class="fas fa-user-circle text-2xl text-primary"></i>
+                            <h3 class="text-lg font-semibold">Bana Yeni Gelenler</h3>
+                            <span id="newFilesCount" class="hidden text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold"></span>
                         </div>
-                        <div class="space-y-3">
-                            <div><p class="text-sm text-gray-500">Ad Soyad</p><p id="infoFullName" class="font-medium">-</p></div>
-                            <div><p class="text-sm text-gray-500">E-posta</p><p id="infoEmail" class="font-medium">-</p></div>
-                            <div><p class="text-sm text-gray-500">Kurum</p><p id="infoInstitution" class="font-medium">-</p></div>
-                            <div><p class="text-sm text-gray-500">Üyelik Tarihi</p><p id="infoCreatedAt" class="font-medium">-</p></div>
+                        <div id="sharedWithMeList" class="space-y-2">
+                            <p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-sm p-6">
+                    <!-- Erişimlerim -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 xl:col-span-2">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold text-gray-800">Aktif Abonelikler</h3>
-                            <i class="fas fa-check-circle text-2xl text-green-500"></i>
+                            <h3 class="text-lg font-semibold">Erişimlerim</h3>
+                            <i class="fas fa-check-circle text-xl text-green-500"></i>
                         </div>
-                        <div id="activeSubscriptionsList" class="space-y-3"><p class="text-gray-500 text-sm">Yükleniyor...</p></div>
+                        <div id="activeSubscriptionsList" class="space-y-2">
+                            <p class="text-gray-500 text-sm">Yükleniyor...</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Taleplerim (form_submissions) -->
+                <!-- Taleplerim -->
                 <div class="bg-white rounded-xl shadow-sm p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-semibold text-gray-800">Taleplerim</h3>
-                        <i class="fas fa-envelope text-2xl text-primary"></i>
+                        <i class="fas fa-envelope text-xl text-primary"></i>
                     </div>
                     <div id="userSubmissionsList" class="space-y-2">
                         <p class="text-gray-400 text-sm">Yükleniyor...</p>
@@ -227,7 +259,7 @@
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Hesap Ayarları</h2>
                     <form id="profileUpdateForm" class="space-y-4">
                         <div><label class="block text-sm font-medium text-gray-700 mb-1">Ad Soyad</label><input type="text" id="settingsFullName" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"></div>
-                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Kurum</label><input type="text" id="settingsInstitution" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Kurum <span class="text-xs text-gray-400 font-normal">(yönetici tarafından atanır)</span></label><p id="settingsInstitution" class="w-full border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 text-gray-500 text-sm min-h-[42px]">-</p></div>
                         <div><label class="block text-sm font-medium text-gray-700 mb-1">Yeni Şifre</label><input type="password" id="newPassword" name="new-password" placeholder="Değiştirmek istemiyorsanız boş bırakın" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent" autocomplete="new-password"></div>
                         <div id="passwordStrength" class="text-xs text-gray-500"></div>
                         <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">Bilgileri Güncelle</button>
@@ -706,23 +738,35 @@ async function checkAuthAndLoad() {
         window.currentUser = user;
 
         const el = (id) => document.getElementById(id);
+
+        // Sidebar
         if (el('profileName')) el('profileName').textContent = user.full_name || 'Kullanıcı';
         if (el('profileEmail')) el('profileEmail').textContent = user.email;
-        if (el('infoFullName')) el('infoFullName').textContent = user.full_name || '-';
-        if (el('infoEmail')) el('infoEmail').textContent = user.email || '-';
-        if (el('infoInstitution')) el('infoInstitution').textContent = user.institution_name || user.institution || '-';
-        if (el('infoCreatedAt')) el('infoCreatedAt').textContent = user.created_at
-            ? new Date(user.created_at).toLocaleDateString('tr-TR') : '-';
-        if (el('welcomeMessage')) el('welcomeMessage').textContent =
-            `Hoş geldiniz, ${user.full_name || 'Kullanıcı'}! Hesap bilgilerinizi ve aboneliklerinizi buradan yönetebilirsiniz.`;
+
+        // Hero — Genel Bakış
+        if (el('overviewName')) el('overviewName').textContent = user.full_name || 'Kullanıcı';
+        if (el('overviewEmail')) el('overviewEmail').textContent = user.email || '-';
+        const instName = user.institution_name || user.institution || null;
+        if (instName) {
+            el('overviewInstitutionText') && (el('overviewInstitutionText').textContent = instName);
+            el('overviewInstitutionBadge') && el('overviewInstitutionBadge').classList.remove('hidden');
+        }
+        const roleLabel = { super_admin: 'Super Admin', admin: 'Kurum Yöneticisi', user: 'Kullanıcı' };
+        if (el('overviewRoleText')) el('overviewRoleText').textContent = roleLabel[user.role] || 'Kullanıcı';
+        if (el('overviewSinceText')) el('overviewSinceText').textContent = user.created_at
+            ? 'Üye ' + new Date(user.created_at).toLocaleDateString('tr-TR') : '';
+
+        // Hesap Ayarları form
         if (el('settingsFullName')) el('settingsFullName').value = user.full_name || '';
-        if (el('settingsInstitution')) el('settingsInstitution').value = user.institution || '';
+        if (el('settingsInstitution')) el('settingsInstitution').textContent = instName || 'Atanmamış';
+
         setProfileAvatar(user.avatar_url, user.full_name);
         updateFileTabMode();
         await loadSubscriptions();
         await loadNewsletterSubscription();
         await loadNotifications();
         loadUserSubmissions();
+        loadSharedWithMe();
     } catch (err) {
         console.error('checkAuthAndLoad error:', err);
         window.location.href = 'index.html';
@@ -744,31 +788,57 @@ async function loadSubscriptions() {
         if (data.subscriptions?.length > 0) {
             const activeSubs = data.subscriptions.filter(s => s.status === 'active' || s.status === 'trial');
 
-            activeEl.innerHTML = activeSubs.length ? activeSubs.map(sub => `
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            // Hero sayacı
+            const overviewSubCount = document.getElementById('overviewSubCount');
+            if (overviewSubCount) overviewSubCount.textContent = activeSubs.length;
+
+            // Genel Bakış — Erişimlerim kartı
+            activeEl.innerHTML = activeSubs.length ? activeSubs.map(sub => {
+                const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
+                const expiry = daysLeft !== null
+                    ? (daysLeft <= 0 ? '<span class="text-red-500 text-xs">Süresi doldu</span>'
+                        : daysLeft <= 7 ? `<span class="text-red-500 text-xs font-medium">${daysLeft} gün kaldı</span>`
+                        : daysLeft <= 30 ? `<span class="text-amber-600 text-xs font-medium">${daysLeft} gün kaldı</span>`
+                        : `<span class="text-gray-400 text-xs">${new Date(sub.end_date).toLocaleDateString('tr-TR')}</span>`)
+                    : '';
+                return `
+                <div class="flex justify-between items-center p-3 rounded-lg border ${daysLeft !== null && daysLeft <= 7 ? 'border-red-200 bg-red-50' : daysLeft !== null && daysLeft <= 30 ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}">
                     <div>
-                        <p class="font-medium">${getProductName(sub.product_slug)}</p>
-                        <p class="text-xs text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
+                        <p class="font-medium text-sm">${getProductName(sub.product_slug)}</p>
+                        ${expiry}
                     </div>
                     <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : 'badge-trial'}">
                         ${sub.status === 'active' ? 'Aktif' : 'Deneme'}
                     </span>
-                </div>
-            `).join('') : '<p class="text-gray-500 text-sm">Aktif aboneliğiniz yok.</p>';
+                </div>`; }).join('')
+            : '<p class="text-gray-500 text-sm">Aktif aboneliğiniz yok.</p>';
 
-            allEl.innerHTML = data.subscriptions.map(sub => `
-                <div class="flex justify-between items-center p-4 border border-gray-100 rounded-lg">
+            // Aboneliklerim sekmesi
+            allEl.innerHTML = data.subscriptions.map(sub => {
+                const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
+                const borderClass = daysLeft !== null && daysLeft <= 7 ? 'border-red-200 bg-red-50'
+                    : daysLeft !== null && daysLeft <= 30 ? 'border-amber-200 bg-amber-50'
+                    : 'border-gray-100';
+                const expiry = sub.end_date
+                    ? (daysLeft <= 0 ? '<p class="text-xs text-red-600 font-medium">Süresi doldu</p>'
+                        : daysLeft <= 7 ? `<p class="text-xs text-red-600 font-medium">${daysLeft} gün kaldı · ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>`
+                        : daysLeft <= 30 ? `<p class="text-xs text-amber-600 font-medium">${daysLeft} gün kaldı · ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>`
+                        : `<p class="text-sm text-gray-500">Bitiş: ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>`)
+                    : '';
+                return `
+                <div class="flex justify-between items-center p-4 border ${borderClass} rounded-lg">
                     <div>
                         <p class="font-semibold">${getProductName(sub.product_slug)}</p>
                         <p class="text-sm text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
-                        ${sub.end_date ? `<p class="text-sm text-gray-500">Bitiş: ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>` : ''}
+                        ${expiry}
                     </div>
                     <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : sub.status === 'trial' ? 'badge-trial' : 'badge-expired'}">
                         ${sub.status === 'active' ? 'Aktif' : sub.status === 'trial' ? 'Deneme' : 'Süresi Doldu'}
                     </span>
-                </div>
-            `).join('');
+                </div>`; }).join('');
         } else {
+            const overviewSubCount = document.getElementById('overviewSubCount');
+            if (overviewSubCount) overviewSubCount.textContent = '0';
             activeEl.innerHTML = '<p class="text-gray-500 text-sm">Aktif aboneliğiniz yok.</p>';
             allEl.innerHTML = '<p class="text-gray-500 text-center py-8">Henüz aboneliğiniz bulunmuyor.</p>';
         }
@@ -2055,7 +2125,6 @@ document.getElementById('profileUpdateForm')?.addEventListener('submit', async (
     e.preventDefault();
     const data = {
         full_name: document.getElementById('settingsFullName').value,
-        institution: document.getElementById('settingsInstitution').value,
         new_password: document.getElementById('newPassword').value
     };
     const res = await fetch(`${API_BASE}/api/user/update`, {
@@ -2159,26 +2228,40 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
 let _cropper = null;
 
 function setProfileAvatar(avatarUrl, fullName) {
+    const name = fullName || '';
+    const parts = name.trim().split(' ');
+    const initText = parts.length >= 2
+        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        : (parts[0]?.[0] || '?').toUpperCase();
+
+    // Sidebar avatar
     const img = document.getElementById('profileAvatarImg');
     const initials = document.getElementById('profileAvatarInitials');
     const showInitials = () => {
-        const name = fullName || '';
-        const parts = name.trim().split(' ');
-        initials.textContent = parts.length >= 2
-            ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-            : (parts[0][0] || '?').toUpperCase();
-        img.classList.add('hidden');
-        initials.classList.remove('hidden');
-        img.removeAttribute('src');
+        if (initials) initials.textContent = initText;
+        if (img) { img.classList.add('hidden'); img.removeAttribute('src'); }
+        if (initials) initials.classList.remove('hidden');
     };
-
     if (avatarUrl) {
-        img.onerror = () => showInitials();
-        img.src = avatarUrl;
-        img.classList.remove('hidden');
-        initials.classList.add('hidden');
+        if (img) { img.onerror = () => showInitials(); img.src = avatarUrl; img.classList.remove('hidden'); }
+        if (initials) initials.classList.add('hidden');
     } else {
         showInitials();
+    }
+
+    // Overview hero avatar
+    const oImg = document.getElementById('overviewAvatarImg');
+    const oInit = document.getElementById('overviewAvatarInitials');
+    const showOInitials = () => {
+        if (oInit) oInit.textContent = initText;
+        if (oImg) { oImg.classList.add('hidden'); oImg.removeAttribute('src'); }
+        if (oInit) oInit.classList.remove('hidden');
+    };
+    if (avatarUrl) {
+        if (oImg) { oImg.onerror = () => showOInitials(); oImg.src = avatarUrl; oImg.classList.remove('hidden'); }
+        if (oInit) oInit.classList.add('hidden');
+    } else {
+        showOInitials();
     }
 }
 
@@ -2284,6 +2367,55 @@ const SUBMISSION_TYPE_LABELS = { trial: 'Deneme Erişimi', suggest: 'Ürün Öne
 const SUBMISSION_TYPE_COLORS_P = { trial: 'bg-blue-100 text-blue-700', suggest: 'bg-purple-100 text-purple-700', contact: 'bg-gray-100 text-gray-600' };
 const SUBMISSION_STATUS_LABELS_P = { pending: 'Bekliyor', reviewing: 'İnceleniyor', responded: 'Yanıtlandı', completed: 'Tamamlandı' };
 const SUBMISSION_STATUS_COLORS_P = { pending: 'bg-yellow-100 text-yellow-700', reviewing: 'bg-blue-100 text-blue-700', responded: 'bg-green-100 text-green-700', completed: 'bg-gray-100 text-gray-500' };
+
+async function loadSharedWithMe() {
+    const listEl = document.getElementById('sharedWithMeList');
+    const countEl = document.getElementById('newFilesCount');
+    const overviewNewFiles = document.getElementById('overviewNewFiles');
+    if (!listEl) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/user/shared-with-me`, { credentials: 'include' });
+        if (!res.ok) throw new Error(res.status);
+        const files = await res.json();
+
+        const unread = files.filter(f => !f.is_read);
+        if (overviewNewFiles) overviewNewFiles.textContent = unread.length;
+        if (countEl) {
+            if (unread.length) {
+                countEl.textContent = `${unread.length} yeni`;
+                countEl.classList.remove('hidden');
+            } else {
+                countEl.classList.add('hidden');
+            }
+        }
+
+        if (!files.length) {
+            listEl.innerHTML = `<div class="text-center py-8 text-gray-400"><i class="fas fa-inbox text-3xl opacity-30 block mb-2"></i>Henüz paylaşılan dosya yok</div>`;
+            return;
+        }
+
+        listEl.innerHTML = files.map(f => {
+            const ext = (f.file_type || '').toLowerCase();
+            const isNew = !f.is_read;
+            const date = f.added_at ? new Date(f.added_at).toLocaleDateString('tr-TR') : '-';
+            return `
+            <div class="flex items-center gap-3 p-3 rounded-lg border ${isNew ? 'border-indigo-100 bg-indigo-50' : 'border-gray-100'} hover:bg-gray-50 transition">
+                <i class="fas ${getFileIcon(ext)} ${isNew ? 'text-indigo-400' : 'text-gray-400'} w-4 text-center flex-shrink-0"></i>
+                <div class="flex-1 min-w-0">
+                    <a href="${escapeHtml(f.file_url)}" target="_blank" rel="noopener"
+                       class="font-medium text-sm text-gray-800 hover:text-primary truncate block">${escapeHtml(f.file_name)}</a>
+                    <p class="text-xs text-gray-400">${f.shared_by_name ? escapeHtml(f.shared_by_name) + ' · ' : ''}${date}</p>
+                </div>
+                ${isNew ? '<span class="flex-shrink-0 text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">Yeni</span>' : ''}
+            </div>`;
+        }).join('');
+    } catch (err) {
+        console.error('sharedWithMe error:', err);
+        if (overviewNewFiles) overviewNewFiles.textContent = '0';
+        listEl.innerHTML = `<p class="text-sm text-gray-400 text-center py-6">Yüklenemedi</p>`;
+    }
+}
 
 async function loadUserSubmissions() {
     const el = document.getElementById('userSubmissionsList');
