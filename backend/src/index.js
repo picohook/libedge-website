@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { getCookie, setCookie } from 'hono/cookie';
 import { sign, verify } from 'hono/jwt';
+import { INSTITUTION_LOCAL_LOGO_MAP } from './institution-logo-map.js';
 
 const app = new Hono();
 
@@ -443,6 +444,21 @@ async function ensureInstitutionMetadataColumns(db) {
       }
     }
   }
+}
+
+function getInstitutionLocalLogoUrl(institutionId) {
+  if (institutionId === null || institutionId === undefined) return null;
+  return INSTITUTION_LOCAL_LOGO_MAP[String(institutionId)] || null;
+}
+
+function withInstitutionLogoFallback(row, idKey = 'id', logoKey = 'logo_url') {
+  if (!row || row[logoKey]) return row;
+  const fallbackLogoUrl = getInstitutionLocalLogoUrl(row[idKey]);
+  if (!fallbackLogoUrl) return row;
+  return {
+    ...row,
+    [logoKey]: fallbackLogoUrl
+  };
 }
 
 async function ensureInstitutionRootCollection(db, institutionId, createdBy = null) {
@@ -1045,7 +1061,7 @@ app.get('/api/user/profile', async (c) => {
   if (!user) {
     return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
   }
-  return c.json(user);
+  return c.json(withInstitutionLogoFallback(user, 'institution_id', 'institution_logo_url'));
 });
 
 app.post('/api/user/avatar', async (c) => {
@@ -2216,7 +2232,7 @@ app.get('/api/admin/my-institution', async (c) => {
   // JWT payload'undan doğrudan al
   if (!payload.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
   const inst = await db.prepare(`
-    SELECT id, name, domain, website_url, city, category,
+    SELECT id, name, domain, website_url, city, category, logo_url,
       (SELECT COUNT(*) FROM users WHERE institution = name AND role != 'super_admin') as user_count
     FROM institutions WHERE name = ?
   `).bind(payload.institution).first();
@@ -2241,7 +2257,7 @@ app.get('/api/admin/my-institution', async (c) => {
   `).bind(inst.id).first();
 
   return c.json({
-    ...inst,
+    ...withInstitutionLogoFallback(inst),
     file_count: await getInstitutionFileCount(db, inst.id),
     active_subscriptions: subRows.results || [],
     recent_users: recentUsers.results || [],
@@ -2263,6 +2279,7 @@ app.get('/api/admin/institutions', async (c) => {
     `).all();
     const rows = institutions.results || [];
     for (const row of rows) {
+      row.logo_url = row.logo_url || getInstitutionLocalLogoUrl(row.id);
       row.file_count = await getInstitutionFileCount(db, row.id);
     }
     return c.json(rows);
@@ -2284,6 +2301,7 @@ app.get('/api/admin/institutions', async (c) => {
       `).bind(adminInstitution).first();
     }
     if (inst) {
+      inst.logo_url = inst.logo_url || getInstitutionLocalLogoUrl(inst.id);
       inst.file_count = await getInstitutionFileCount(db, inst.id);
     }
     return c.json(inst ? [inst] : []);
