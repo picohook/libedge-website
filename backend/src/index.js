@@ -1,4 +1,4 @@
-console.log("HONO VERSION LOADED");
+﻿console.log("HONO VERSION LOADED");
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -2198,7 +2198,7 @@ app.get('/api/admin/my-institution', async (c) => {
   // JWT payload'undan doğrudan al
   if (!payload.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
   const inst = await db.prepare(`
-    SELECT id, name, domain, category,
+    SELECT id, name, domain, website_url, city, category,
       (SELECT COUNT(*) FROM users WHERE institution = name AND role != 'super_admin') as user_count
     FROM institutions WHERE name = ?
   `).bind(payload.institution).first();
@@ -2238,7 +2238,7 @@ app.get('/api/admin/institutions', async (c) => {
 
   if (role === 'super_admin') {
     const institutions = await db.prepare(`
-      SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at, inst.logo_url,
+      SELECT inst.id, inst.name, inst.domain, inst.website_url, inst.city, inst.category, inst.status, inst.created_at, inst.logo_url,
         (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count
       FROM institutions inst ORDER BY inst.name
     `).all();
@@ -2253,13 +2253,13 @@ app.get('/api/admin/institutions', async (c) => {
     let inst;
     if (adminInstitutionId) {
       inst = await db.prepare(`
-        SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at, inst.logo_url,
+        SELECT inst.id, inst.name, inst.domain, inst.website_url, inst.city, inst.category, inst.status, inst.created_at, inst.logo_url,
           (SELECT COUNT(*) FROM users WHERE institution = inst.name AND role != 'super_admin') as user_count
         FROM institutions inst WHERE inst.id = ?
       `).bind(adminInstitutionId).first();
     } else if (adminInstitution) {
       inst = await db.prepare(`
-        SELECT inst.id, inst.name, inst.domain, inst.category, inst.status, inst.created_at, inst.logo_url,
+        SELECT inst.id, inst.name, inst.domain, inst.website_url, inst.city, inst.category, inst.status, inst.created_at, inst.logo_url,
           (SELECT COUNT(*) FROM users WHERE institution = inst.name AND role != 'super_admin') as user_count
         FROM institutions inst WHERE inst.name = ?
       `).bind(adminInstitution).first();
@@ -5723,6 +5723,8 @@ async function fetchAirtableAccounts(env) {
         airtable_id: r.id,
         name: r.fields['Account Name'] || '',
         domain: r.fields['Domain'] || '',
+        website_url: r.fields['Website'] || r.fields['Website URL'] || r.fields['Web Site'] || '',
+        city: r.fields['City'] || r.fields['Sehir'] || r.fields['Şehir'] || '',
         category: Array.isArray(r.fields['Organization']) ? r.fields['Organization'][0] : (r.fields['Organization'] || ''),
         status: Array.isArray(r.fields['Status']) ? r.fields['Status'][0] : (r.fields['Status'] || ''),
     }));
@@ -5935,27 +5937,30 @@ app.get('/api/admin/sync/airtable-to-d1', async (c) => {
             if (!rec.name) continue;
 
             const existing = await db.prepare(
-                `SELECT id, name, domain, category, status FROM institutions WHERE airtable_id = ?`
+                `SELECT id, name, domain, website_url, city, category, status FROM institutions WHERE airtable_id = ?`
             ).bind(rec.airtable_id).first();
 
             if (existing) {
                 // Değişiklik var mı? (null ve '' aynı kabul et)
                 const norm = v => v || '';
                 if (norm(existing.name) !== norm(rec.name) || norm(existing.domain) !== norm(rec.domain) ||
+                    norm(existing.website_url) !== norm(rec.website_url) || norm(existing.city) !== norm(rec.city) ||
                     norm(existing.category) !== norm(rec.category) || norm(existing.status) !== norm(rec.status)) {
                     changes.push({
                         action: 'update',
                         airtable_id: rec.airtable_id,
                         name: rec.name,
                         domain: rec.domain,
+                        website_url: rec.website_url,
+                        city: rec.city,
                         category: rec.category,
                         status: rec.status,
-                        before: { name: existing.name, domain: existing.domain, category: existing.category, status: existing.status }
+                        before: { name: existing.name, domain: existing.domain, website_url: existing.website_url, city: existing.city, category: existing.category, status: existing.status }
                     });
                 }
             } else {
                 const nameConflict = await db.prepare(
-                    `SELECT id, name, domain, category, status FROM institutions WHERE name = ?`
+                    `SELECT id, name, domain, website_url, city, category, status FROM institutions WHERE name = ?`
                 ).bind(rec.name).first();
 
                 if (nameConflict) {
@@ -5964,9 +5969,11 @@ app.get('/api/admin/sync/airtable-to-d1', async (c) => {
                         airtable_id: rec.airtable_id,
                         name: rec.name,
                         domain: rec.domain,
+                        website_url: rec.website_url,
+                        city: rec.city,
                         category: rec.category,
                         status: rec.status,
-                        before: { name: nameConflict.name, domain: nameConflict.domain, category: nameConflict.category, status: nameConflict.status }
+                        before: { name: nameConflict.name, domain: nameConflict.domain, website_url: nameConflict.website_url, city: nameConflict.city, category: nameConflict.category, status: nameConflict.status }
                     });
                 } else {
                     changes.push({
@@ -5974,6 +5981,8 @@ app.get('/api/admin/sync/airtable-to-d1', async (c) => {
                         airtable_id: rec.airtable_id,
                         name: rec.name,
                         domain: rec.domain,
+                        website_url: rec.website_url,
+                        city: rec.city,
                         category: rec.category,
                         status: rec.status,
                         before: null
@@ -6004,23 +6013,23 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
         let created = 0, updated = 0;
 
         for (const ch of changes) {
-            const { action, airtable_id, name, domain, category, status } = ch;
+            const { action, airtable_id, name, domain, website_url, city, category, status } = ch;
             if (!name || !airtable_id) continue;
 
             if (action === 'update') {
                 await db.prepare(
-                    `UPDATE institutions SET name = ?, domain = ?, category = ?, status = ? WHERE airtable_id = ?`
-                ).bind(name, domain, category, status, airtable_id).run();
+                    `UPDATE institutions SET name = ?, domain = ?, website_url = ?, city = ?, category = ?, status = ? WHERE airtable_id = ?`
+                ).bind(name, domain, website_url || null, city || null, category, status, airtable_id).run();
                 updated++;
             } else if (action === 'link') {
                 await db.prepare(
-                    `UPDATE institutions SET domain = ?, category = ?, status = ?, airtable_id = ? WHERE name = ?`
-                ).bind(domain, category, status, airtable_id, name).run();
+                    `UPDATE institutions SET domain = ?, website_url = ?, city = ?, category = ?, status = ?, airtable_id = ? WHERE name = ?`
+                ).bind(domain, website_url || null, city || null, category, status, airtable_id, name).run();
                 updated++;
             } else if (action === 'create') {
                 await db.prepare(
-                    `INSERT INTO institutions (name, domain, category, status, airtable_id) VALUES (?, ?, ?, ?, ?)`
-                ).bind(name, domain, category, status, airtable_id).run();
+                    `INSERT INTO institutions (name, domain, website_url, city, category, status, airtable_id) VALUES (?, ?, ?, ?, ?, ?, ?)`
+                ).bind(name, domain, website_url || null, city || null, category, status, airtable_id).run();
                 created++;
             }
         }

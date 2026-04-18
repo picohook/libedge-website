@@ -471,10 +471,10 @@ function updateAuthUI(isLoggedIn) {
         if (dropdownInstSection && instLabel) {
             dropdownInstSection.classList.remove('hidden');
             if (dropdownInstName) dropdownInstName.textContent = instLabel;
-            const words = instLabel.trim().split(/\s+/);
+            const words = instLabel.trim().split(/\s+/).filter(Boolean);
             const instInits = words.length >= 2
                 ? (words[0][0] + words[1][0]).toUpperCase()
-                : instLabel.substring(0, 2).toUpperCase();
+                : (words[0]?.[0] || instLabel.substring(0, 1)).toUpperCase();
             if (dropdownInstInitials) dropdownInstInitials.textContent = instInits;
             if (currentUser.institution_logo_url && dropdownInstLogoImg) {
                 dropdownInstLogoImg.src = currentUser.institution_logo_url;

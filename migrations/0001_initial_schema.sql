@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS institutions (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   name        TEXT UNIQUE,
   domain      TEXT,
+  website_url TEXT,
+  city        TEXT,
   category    TEXT DEFAULT 'University',
   airtable_id TEXT,
   status      TEXT DEFAULT 'Active',

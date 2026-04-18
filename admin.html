@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
@@ -822,7 +822,7 @@
             </div>
             <!-- Filtreler -->
             <div class="flex flex-wrap gap-2 mb-4">
-                <input type="text" id="institutionSearchInput" placeholder="Kurum ara..."
+                <input type="text" id="institutionSearchInput" placeholder="Kurum, website veya şehir ara..."
                        class="border rounded px-3 py-1.5 text-sm flex-1 min-w-[200px]" oninput="filterInstitutions()">
                 <select id="institutionOrgFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterInstitutions()">
                     <option value="">Tüm Organization</option>
@@ -849,6 +849,8 @@
                             <th>Kurum Adı</th>
                             <th>Organization</th>
                             <th>Status</th>
+                            <th>Website</th>
+                            <th>Şehir</th>
                             <th>Domain</th>
                             <th>Kullanıcı Sayısı</th>
                             <th>Dosya Sayısı</th>
@@ -856,7 +858,7 @@
                         </tr>
                     </thead>
                     <tbody id="institutionsList">
-                        <tr><td colspan="5" class="text-center py-4">Yükleniyor...</td></tr>
+                        <tr><td colspan="9" class="text-center py-4">Yükleniyor...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -4546,7 +4548,7 @@ function renderInstitutions(institutions) {
     const tbody = document.getElementById('institutionsList');
     
     if (institutions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">Kurum bulunamadı</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">Kurum bulunamadı</td></tr>';
         return;
     }
     
@@ -4554,15 +4556,22 @@ function renderInstitutions(institutions) {
         const statusCls = STATUS_BADGE[inst.status] || 'bg-gray-100 text-gray-600';
         const orgLabel = categoryLabel(inst.category || '');
         const instInitials = (() => { const w = (inst.name||'').trim().split(/\s+/); return w.length>=2?(w[0][0]+w[1][0]).toUpperCase():(inst.name||'').substring(0,2).toUpperCase(); })();
-        const logoHtml = inst.logo_url
+        const websiteUrl = (inst.website_url || '').trim();
+        const normalizedWebsiteUrl = websiteUrl ? (websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`) : '';
+        const logoCore = inst.logo_url
             ? `<img src="${escapeHtml(inst.logo_url)}" alt="" class="w-7 h-7 object-contain rounded flex-shrink-0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
               + `<span class="w-7 h-7 rounded bg-blue-100 text-blue-700 text-xs font-bold hidden items-center justify-center flex-shrink-0">${instInitials}</span>`
             : `<span class="inline-flex w-7 h-7 rounded bg-blue-100 text-blue-700 text-xs font-bold items-center justify-center flex-shrink-0">${instInitials}</span>`;
+        const logoHtml = normalizedWebsiteUrl
+            ? `<a href="${escapeHtml(normalizedWebsiteUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex" title="Kurum websitesini aç">${logoCore}</a>`
+            : logoCore;
         return `
         <tr>
             <td class="px-4 py-2"><div class="flex items-center gap-2">${logoHtml}<span>${escapeHtml(inst.displayName || inst.name)}</span></div></td>
             <td class="px-4 py-2">${orgLabel ? `<span class="px-2 py-0.5 rounded text-xs font-medium ${CATEGORY_BADGE[inst.category] || 'bg-gray-100 text-gray-700'}">${escapeHtml(orgLabel)}</span>` : '-'}</td>
             <td class="px-4 py-2">${inst.status ? `<span class="px-2 py-0.5 rounded text-xs font-medium ${statusCls}">${escapeHtml(inst.status)}</span>` : '-'}</td>
+            <td class="px-4 py-2">${normalizedWebsiteUrl ? `<a href="${escapeHtml(normalizedWebsiteUrl)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">${escapeHtml(websiteUrl)}</a>` : '-'}</td>
+            <td class="px-4 py-2">${escapeHtml(inst.city || '-')}</td>
             <td class="px-4 py-2">${escapeHtml(inst.domain || '-')}</td>
             <td class="px-4 py-2">${inst.user_count ?? '-'}</td>
             <td class="px-4 py-2">${inst.file_count ?? '-'}</td>
@@ -4788,7 +4797,8 @@ function filterInstitutions() {
     const filtered = allInstitutions.filter(inst => {
         const matchSearch = !searchTerm ||
             (inst.displayName || inst.name || '').toLowerCase().includes(searchTerm) ||
-            (inst.domain || '').toLowerCase().includes(searchTerm);
+            (inst.domain || '').toLowerCase().includes(searchTerm) ||
+            (inst.city || '').toLowerCase().includes(searchTerm);
         const matchOrg = !orgFilter || (inst.category || '') === orgFilter;
         const matchStatus = !statusFilter || (inst.status || '') === statusFilter;
         return matchSearch && matchOrg && matchStatus;
@@ -6719,7 +6729,7 @@ async function moveAdminFileRef(refId, fileName) {
                 <p class="text-xs font-semibold text-gray-500 uppercase mb-2">Kurumları Seç</p>
                 <div class="relative mb-2">
                     <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    <input id="sendInstSearch" type="text" placeholder="Kurum ara..."
+                    <input id="sendInstSearch" type="text" placeholder="Kurum, website veya şehir ara..."
                            class="w-full border rounded-lg pl-7 pr-3 py-1.5 text-sm bg-white"
                            oninput="filterSendInstList(this.value)">
                 </div>
