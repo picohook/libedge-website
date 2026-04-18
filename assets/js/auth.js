@@ -346,6 +346,7 @@ async function checkAuth() {
                     institution_name: user.institution_name || null,
                     institution_logo_url: user.institution_logo_url || null,
                     institution_domain: user.institution_domain || null,
+                    institution_website_url: user.institution_website_url || null,
                     role: user.role,
                     avatar_url: user.avatar_url || null
                 });
@@ -474,9 +475,11 @@ function updateAuthUI(isLoggedIn) {
                 dropdownInstInitials.textContent = '';
                 dropdownInstInitials.classList.add('hidden');
             }
+            const instWebsite = String(currentUser.institution_website_url || '').trim();
             const instDomain = String(currentUser.institution_domain || '').split(',')[0].trim();
-            if (instDomain) {
-                const instUrl = instDomain.startsWith('http') ? instDomain : `https://${instDomain}`;
+            const rawInstUrl = instWebsite || instDomain;
+            if (rawInstUrl) {
+                const instUrl = rawInstUrl.startsWith('http') ? rawInstUrl : `https://${rawInstUrl}`;
                 dropdownInstSection.href = instUrl;
                 dropdownInstSection.dataset.url = instUrl;
                 dropdownInstSection.style.pointerEvents = '';
