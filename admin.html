@@ -349,7 +349,7 @@
                 <h3 class="text-lg font-semibold flex items-center gap-2">
                     <i class="fas fa-server text-purple-600"></i> Merkezi Dosyalar
                 </h3>
-                <div id="adminBreadcrumb" class="text-xs text-gray-400 mt-0.5 flex items-center gap-0.5"></div>
+                <div id="adminBreadcrumb" class="text-xs text-gray-400 mt-0.5 flex items-center gap-0.5 min-w-0 overflow-hidden max-w-full flex-wrap"></div>
             </div>
             <div class="flex gap-2 flex-wrap items-center">
                 <button id="adminBackBtn" onclick="adminGoBack()" class="btn bg-gray-200 text-gray-700 hidden">
@@ -369,7 +369,7 @@
 
         <!-- Aktif klasör konum bandı -->
         <div id="adminLocationBanner"
-             class="hidden mb-3 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 flex items-center gap-1">
+             class="hidden mb-3 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 flex items-center gap-1 min-w-0 overflow-hidden">
         </div>
 
         <!-- Arama ve sıralama -->
@@ -2414,7 +2414,7 @@ function updateAdminBreadcrumb() {
     const banner = document.getElementById('adminLocationBanner');
     if (banner) {
         const currentName = adminFolderStack[adminFolderStack.length - 1]?.name || '';
-        banner.innerHTML = `<i class="fas fa-folder-open text-yellow-500 mr-1.5"></i><span class="font-medium">${escapeHtml(currentName)}</span> klasöründesiniz`;
+        banner.innerHTML = `<i class="fas fa-folder-open text-yellow-500 flex-shrink-0 mr-1.5"></i><span class="font-medium truncate min-w-0">${escapeHtml(currentName)}</span><span class="flex-shrink-0 ml-1">klasöründesiniz</span>`;
         banner.classList.remove('hidden');
     }
 }
@@ -3050,8 +3050,11 @@ async function executeSend() {
         const parts = [];
         if (sendSummary.folders > 0) parts.push(`${sendSummary.folders} klasör`);
         if (sendSummary.files   > 0) parts.push(`${sendSummary.files} dosya`);
-        const instList = [...sendSummary.institutions].join(', ');
-        const dupeNote = sendSummary.dupes > 0 ? ` · ${sendSummary.dupes} zaten mevcuttu, atlandı` : '';
+        const insts = [...sendSummary.institutions];
+        const instList = insts.length <= 2
+            ? insts.join(', ')
+            : `${insts[0]} ve ${insts.length - 1} kurum daha`;
+        const dupeNote = sendSummary.dupes > 0 ? ` · ${sendSummary.dupes} atlandı` : '';
         showToast(`${parts.join(', ')} → ${instList} gönderildi${dupeNote}`, 'success');
         if (sendSummary.dupes > 0) document.getElementById('sendDuplicateWarning').classList.remove('hidden');
         else closeSendConfirmModal();
@@ -3216,9 +3219,12 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
         });
         const result = await res.json();
         if (res.ok) {
-            const pathStr = adminFolderStack.length
-                ? 'Merkezi Dosyalar › ' + adminFolderStack.map(f => f.name).join(' › ')
-                : 'Merkezi Dosyalar (kök)';
+            const stack = adminFolderStack;
+            const pathStr = stack.length === 0
+                ? 'Merkezi Dosyalar'
+                : stack.length <= 2
+                    ? 'Merkezi Dosyalar › ' + stack.map(f => f.name).join(' › ')
+                    : '… › ' + stack.slice(-2).map(f => f.name).join(' › ');
             showToast(`"${fileName}" → ${pathStr} içine eklendi`, 'success');
             closeAdminFileModal(); loadAdminFiles(); loadAdminFolders(adminCurrentFolderId);
         }
@@ -3274,7 +3280,7 @@ window.showToast = function(message, type = 'info') {
     if (existingToast) existingToast.remove();
     
     const toast = document.createElement('div');
-    toast.className = 'toast-notification fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 transform translate-x-full flex items-center gap-2 border-l-4';
+    toast.className = 'toast-notification fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 transform translate-x-full flex items-start gap-2 border-l-4 max-w-[min(420px,calc(100vw-40px))] break-words';
     
     const borderColors = {
         success: 'border-green-500 bg-white text-green-700',
