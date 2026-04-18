@@ -338,6 +338,7 @@ async function checkAuth() {
                     institution_id: user.institution_id || null,
                     institution_name: user.institution_name || null,
                     institution_logo_url: user.institution_logo_url || null,
+                    institution_domain: user.institution_domain || null,
                     role: user.role,
                     avatar_url: user.avatar_url || null
                 });

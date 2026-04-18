@@ -1019,7 +1019,7 @@ app.get('/api/user/profile', async (c) => {
   
   const user = await db.prepare(`
     SELECT u.id, u.email, u.full_name, u.institution, u.institution_id, u.role, u.created_at, u.avatar_url,
-           i.name as institution_name, i.logo_url as institution_logo_url
+           i.name as institution_name, i.logo_url as institution_logo_url, i.domain as institution_domain
     FROM users u
     LEFT JOIN institutions i ON u.institution_id = i.id
     WHERE u.id = ?

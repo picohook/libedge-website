@@ -186,10 +186,13 @@
                             </div>
                         </div>
                         <!-- Kurum logosu -->
-                        <div id="overviewInstCard" class="flex-shrink-0 w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center overflow-hidden border border-blue-100" title="Kurumunuz">
+                        <a id="overviewInstCard" href="#" target="_blank" rel="noopener"
+                           class="flex-shrink-0 w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center overflow-hidden border border-blue-100 hover:border-blue-300 transition-colors"
+                           title="Kurumun web sitesine git" onclick="return !!this.dataset.url"
+                           style="pointer-events:none">
                             <img id="overviewInstLogo" src="" alt="" class="w-full h-full object-contain p-1.5 hidden">
                             <span id="overviewInstInitials" class="text-blue-600 text-base font-bold select-none leading-none text-center px-1"></span>
-                        </div>
+                        </a>
                         <div class="flex-shrink-0 w-full sm:w-auto">
                             <div class="grid grid-cols-2 gap-3 text-center">
                                 <div class="bg-green-50 rounded-xl px-4 py-3">
@@ -766,6 +769,18 @@ async function checkAuthAndLoad() {
         } else {
             if (el('overviewInstInitials')) el('overviewInstInitials').textContent = '—';
         }
+        // Domain varsa kurum kartını tıklanabilir yap
+        if (user.institution_domain) {
+            const instCard = el('overviewInstCard');
+            if (instCard) {
+                const domain = user.institution_domain.split(',')[0].trim();
+                const url = domain.startsWith('http') ? domain : `https://${domain}`;
+                instCard.href = url;
+                instCard.dataset.url = url;
+                instCard.style.pointerEvents = '';
+            }
+        }
+
         // Logo varsa göster, yoksa baş harfler kalır
         if (user.institution_logo_url) {
             const logoImg = el('overviewInstLogo');
