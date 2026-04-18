@@ -1994,9 +1994,12 @@ document.addEventListener('click', function(e) {
         try {
             const res = await fetch(url, { credentials: 'include' });
             if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
+                const rawText = await res.text().catch(() => '');
+                let errMsg = `HTTP ${res.status}`;
+                try { const j = JSON.parse(rawText); if (j.error) errMsg = j.error; } catch {}
+                console.error('user files panel error:', res.status, rawText);
                 document.getElementById('userFilesBody').innerHTML =
-                    `<p class="text-red-500 text-center py-8">${escapeHtml(err.error || 'Yüklenemedi')}</p>`;
+                    `<p class="text-red-500 text-center py-8">${escapeHtml(errMsg)}</p>`;
                 return;
             }
             const data = await res.json();

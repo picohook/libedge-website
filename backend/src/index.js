@@ -1453,99 +1453,104 @@ app.get('/api/admin/users', async (c) => {
 // ====================== KULLANICI DOSYA GÖRÜNTÜLEME (ADMIN) ======================
 
 app.get('/api/admin/users/:id/files', async (c) => {
-  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  try {
+    if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
 
-  const targetUserId = Number(c.req.param('id'));
-  if (!targetUserId) return c.json({ error: 'Geçersiz kullanıcı ID' }, 400);
+    const targetUserId = Number(c.req.param('id'));
+    if (!targetUserId) return c.json({ error: 'Geçersiz kullanıcı ID' }, 400);
 
-  const db = c.env.DB;
-  const role = await getUserRole(c);
+    const db = c.env.DB;
+    const role = await getUserRole(c);
 
-  // Hedef kullanıcıyı doğrula
-  const targetUser = await db.prepare(`
-    SELECT u.id, u.email, u.full_name, u.institution_id, u.institution
-    FROM users u WHERE u.id = ?
-  `).bind(targetUserId).first();
-
-  if (!targetUser) return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
-
-  // admin yalnızca kendi kurumundaki kullanıcıları görebilir
-  if (role === 'admin') {
-    const adminInstId = await getUserInstitutionId(c);
-    const adminInst   = await getUserInstitution(c);
-    const sameById    = adminInstId && String(targetUser.institution_id) === String(adminInstId);
-    const sameByName  = adminInst   && targetUser.institution === adminInst;
-    if (!sameById && !sameByName) {
-      return c.json({ error: 'Bu kullanıcıya erişim yetkiniz yok' }, 403);
-    }
-  }
-
-  const requestedCollectionId = c.req.query('collection_id');
-  let targetCollectionId = null;
-
-  if (requestedCollectionId) {
-    // Klasörün bu kullanıcıya ait olduğunu doğrula
-    const col = await db.prepare(`
-      SELECT id FROM user_collections WHERE id = ? AND user_id = ?
-    `).bind(Number(requestedCollectionId), targetUserId).first();
-    if (!col) return c.json({ error: 'Klasör bulunamadı' }, 404);
-    targetCollectionId = col.id;
-  } else {
-    // Kök koleksiyon
-    const root = await db.prepare(`
-      SELECT id FROM user_collections WHERE user_id = ? AND parent_id IS NULL LIMIT 1
+    // Hedef kullanıcıyı doğrula
+    const targetUser = await db.prepare(`
+      SELECT u.id, u.email, u.full_name, u.institution_id, u.institution
+      FROM users u WHERE u.id = ?
     `).bind(targetUserId).first();
-    if (root) {
-      targetCollectionId = root.id;
-    } else {
-      // Hiç koleksiyon yoksa boş döndür
-      return c.json({
-        user: { id: targetUser.id, full_name: targetUser.full_name, email: targetUser.email },
-        collections: [],
-        files: [],
-        current_collection_id: null
-      });
+
+    if (!targetUser) return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
+
+    // admin yalnızca kendi kurumundaki kullanıcıları görebilir
+    if (role === 'admin') {
+      const adminInstId = await getUserInstitutionId(c);
+      const adminInst   = await getUserInstitution(c);
+      const sameById    = adminInstId && String(targetUser.institution_id) === String(adminInstId);
+      const sameByName  = adminInst   && targetUser.institution === adminInst;
+      if (!sameById && !sameByName) {
+        return c.json({ error: 'Bu kullanıcıya erişim yetkiniz yok' }, 403);
+      }
     }
+
+    const requestedCollectionId = c.req.query('collection_id');
+    let targetCollectionId = null;
+
+    if (requestedCollectionId) {
+      // Klasörün bu kullanıcıya ait olduğunu doğrula
+      const col = await db.prepare(`
+        SELECT id FROM user_collections WHERE id = ? AND user_id = ?
+      `).bind(Number(requestedCollectionId), targetUserId).first();
+      if (!col) return c.json({ error: 'Klasör bulunamadı' }, 404);
+      targetCollectionId = col.id;
+    } else {
+      // Kök koleksiyon (parent_id IS NULL)
+      const root = await db.prepare(`
+        SELECT id FROM user_collections WHERE user_id = ? AND parent_id IS NULL LIMIT 1
+      `).bind(targetUserId).first();
+      if (root) {
+        targetCollectionId = root.id;
+      } else {
+        // Hiç koleksiyon yoksa boş döndür
+        return c.json({
+          user: { id: targetUser.id, full_name: targetUser.full_name, email: targetUser.email },
+          collections: [],
+          files: [],
+          current_collection_id: null
+        });
+      }
+    }
+
+    // Tüm klasörleri getir (breadcrumb + navigasyon için)
+    const allCollections = await db.prepare(`
+      SELECT id, parent_id, name, created_at, sort_order,
+        (SELECT COUNT(*) FROM user_collections sub WHERE sub.parent_id = uc.id) AS child_folder_count,
+        (SELECT COUNT(*) FROM user_collection_files ucf2 WHERE ucf2.collection_id = uc.id) AS file_count
+      FROM user_collections uc
+      WHERE uc.user_id = ?
+      ORDER BY uc.sort_order, uc.name
+    `).bind(targetUserId).all();
+
+    // Seçili klasördeki dosyaları getir
+    const files = await db.prepare(`
+      SELECT
+        ucf.id,
+        ucf.collection_id,
+        COALESCE(ucf.display_name, f.original_name) AS file_name,
+        '/api/files/' || f.file_key AS file_url,
+        f.id AS file_id,
+        f.file_size,
+        f.mime_type,
+        f.extension AS file_type,
+        ucf.is_read,
+        ucf.added_at,
+        sender.full_name AS shared_by_name
+      FROM user_collection_files ucf
+      JOIN files f ON f.id = ucf.file_id
+      LEFT JOIN file_shares fs ON fs.id = ucf.share_id
+      LEFT JOIN users sender ON sender.id = fs.from_user_id
+      WHERE ucf.collection_id = ?
+      ORDER BY ucf.added_at DESC, ucf.id DESC
+    `).bind(targetCollectionId).all();
+
+    return c.json({
+      user: { id: targetUser.id, full_name: targetUser.full_name, email: targetUser.email },
+      collections: allCollections.results || [],
+      files: files.results || [],
+      current_collection_id: targetCollectionId
+    });
+  } catch (err) {
+    console.error('admin/users/:id/files error:', err);
+    return c.json({ error: 'Sunucu hatası: ' + (err?.message || String(err)) }, 500);
   }
-
-  // Tüm klasörleri getir (breadcrumb + navigasyon için)
-  const allCollections = await db.prepare(`
-    SELECT id, parent_id, name, created_at, sort_order,
-      (SELECT COUNT(*) FROM user_collections WHERE parent_id = uc.id) AS child_folder_count,
-      (SELECT COUNT(*) FROM user_collection_files WHERE collection_id = uc.id) AS file_count
-    FROM user_collections uc
-    WHERE user_id = ?
-    ORDER BY sort_order, name
-  `).bind(targetUserId).all();
-
-  // Seçili klasördeki dosyaları getir
-  const files = await db.prepare(`
-    SELECT
-      ucf.id,
-      ucf.collection_id,
-      COALESCE(ucf.display_name, f.original_name) AS file_name,
-      '/api/files/' || f.file_key AS file_url,
-      f.id AS file_id,
-      f.file_size,
-      f.mime_type,
-      f.extension AS file_type,
-      ucf.is_read,
-      ucf.added_at,
-      sender.full_name AS shared_by_name
-    FROM user_collection_files ucf
-    JOIN files f ON f.id = ucf.file_id
-    LEFT JOIN file_shares fs ON fs.id = ucf.share_id
-    LEFT JOIN users sender ON sender.id = fs.from_user_id
-    WHERE ucf.collection_id = ?
-    ORDER BY ucf.added_at DESC, ucf.id DESC
-  `).bind(targetCollectionId).all();
-
-  return c.json({
-    user: { id: targetUser.id, full_name: targetUser.full_name, email: targetUser.email },
-    collections: allCollections.results || [],
-    files: files.results || [],
-    current_collection_id: targetCollectionId
-  });
 });
 
 app.get('/api/admin/dashboard', async (c) => {
