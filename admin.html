@@ -538,6 +538,28 @@
     </div>
 </div>
 
+<!-- Kullanıcı Dosyaları Slide-Over Panel -->
+<div id="userFilesOverlay" class="hidden fixed inset-0 bg-black bg-opacity-30 z-40" onclick="closeUserFilesPanel()"></div>
+<div id="userFilesPanel" class="fixed top-0 right-0 h-full w-full max-w-xl bg-white shadow-2xl z-50 flex flex-col transform translate-x-full transition-transform duration-300">
+    <div class="flex items-center justify-between px-5 py-4 border-b bg-gray-50 flex-shrink-0">
+        <div class="min-w-0">
+            <p class="text-xs text-gray-400 uppercase font-semibold">Kullanıcı Dosyaları</p>
+            <h3 id="userFilesPanelTitle" class="font-semibold text-gray-800 truncate"></h3>
+        </div>
+        <button onclick="closeUserFilesPanel()" class="text-gray-400 hover:text-gray-600 text-xl ml-4 flex-shrink-0"><i class="fas fa-times"></i></button>
+    </div>
+    <!-- Breadcrumb -->
+    <div id="userFilesBreadcrumb" class="hidden px-4 pt-3 pb-1 text-xs text-gray-500 flex items-center gap-1 flex-wrap min-w-0 overflow-hidden"></div>
+    <!-- Arama -->
+    <div class="px-4 py-2 border-b flex-shrink-0">
+        <input type="text" id="userFilesSearch" placeholder="Dosya ara..." oninput="_userFilesFilter()"
+               class="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300">
+    </div>
+    <div id="userFilesBody" class="flex-1 overflow-y-auto px-4 py-3">
+        <div class="text-center py-12"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>
+    </div>
+</div>
+
 <!-- Klasör Ekle Modal -->
 <div id="adminFolderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-md">
@@ -1908,6 +1930,7 @@ document.addEventListener('click', function(e) {
                 <td class="px-4 py-2 text-gray-500 text-sm">${timeAgo(u.last_login)}</td>
                 <td class="px-4 py-2">
                     <button class="text-blue-600 mr-2 edit-user-btn" data-user-id="${u.id}"><i class="fas fa-edit"></i></button>
+                    <button class="text-indigo-500 hover:text-indigo-700 mr-2" onclick="openUserFilesPanel(${u.id},'${escapeHtml(u.full_name || u.email)}')" title="Dosyaları Gör"><i class="fas fa-folder-open"></i></button>
                     ${isSuper && u.role !== 'super_admin' ? `<button class="text-green-600 mr-2 set-role-btn" data-user-id="${u.id}" data-new-role="${escapeHtml(u.role === 'admin' ? 'user' : 'admin')}" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}"><i class="fas fa-user-shield"></i></button>` : ''}
                     <button class="text-red-600 delete-user-btn" data-user-id="${u.id}"><i class="fas fa-trash"></i></button>
                 </td>
@@ -1942,6 +1965,158 @@ document.addEventListener('click', function(e) {
 
         filterUsers();
     }
+
+    // ---- Kullanıcı Dosyaları Panel ----
+    let _ufState = { userId: null, collections: [], files: [], currentId: null };
+
+    window.openUserFilesPanel = function(userId, userName) {
+        _ufState = { userId, collections: [], files: [], currentId: null };
+        document.getElementById('userFilesPanelTitle').textContent = userName;
+        document.getElementById('userFilesSearch').value = '';
+        document.getElementById('userFilesBreadcrumb').classList.add('hidden');
+        document.getElementById('userFilesBody').innerHTML =
+            '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>';
+        document.getElementById('userFilesOverlay').classList.remove('hidden');
+        const panel = document.getElementById('userFilesPanel');
+        panel.classList.remove('translate-x-full');
+        _loadUserFilesPanel(userId, null);
+    };
+
+    window.closeUserFilesPanel = function() {
+        document.getElementById('userFilesPanel').classList.add('translate-x-full');
+        document.getElementById('userFilesOverlay').classList.add('hidden');
+    };
+
+    async function _loadUserFilesPanel(userId, collectionId) {
+        const url = collectionId
+            ? `${API_BASE}/api/admin/users/${userId}/files?collection_id=${collectionId}`
+            : `${API_BASE}/api/admin/users/${userId}/files`;
+        try {
+            const res = await fetch(url, { credentials: 'include' });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                document.getElementById('userFilesBody').innerHTML =
+                    `<p class="text-red-500 text-center py-8">${escapeHtml(err.error || 'Yüklenemedi')}</p>`;
+                return;
+            }
+            const data = await res.json();
+            _ufState.collections = data.collections || [];
+            _ufState.files = data.files || [];
+            _ufState.currentId = data.current_collection_id;
+            _renderUserFilesPanel();
+        } catch (e) {
+            document.getElementById('userFilesBody').innerHTML =
+                '<p class="text-red-500 text-center py-8">Bir hata oluştu.</p>';
+        }
+    }
+    window._loadUserFilesPanel = _loadUserFilesPanel;
+
+    window._userFilesOpenFolder = function(id, name) {
+        document.getElementById('userFilesSearch').value = '';
+        _loadUserFilesPanel(_ufState.userId, id);
+    };
+
+    window._userFilesFilter = function() {
+        _renderUserFilesPanel();
+    };
+
+    function _getUserFilesAncestors(collections, currentId) {
+        const map = {};
+        for (const c of collections) map[c.id] = c;
+        const path = [];
+        let cur = map[currentId];
+        while (cur) {
+            path.unshift(cur);
+            cur = cur.parent_id ? map[cur.parent_id] : null;
+        }
+        return path;
+    }
+
+    function _renderUserFilesPanel() {
+        const q = (document.getElementById('userFilesSearch')?.value || '').toLowerCase();
+        const { collections, files, currentId } = _ufState;
+
+        // Breadcrumb
+        const bc = document.getElementById('userFilesBreadcrumb');
+        const ancestors = _getUserFilesAncestors(collections, currentId);
+        if (ancestors.length > 0) {
+            const parts = ancestors.map((a, i) => {
+                const isLast = i === ancestors.length - 1;
+                const label = escapeHtml(a.name);
+                if (isLast) return `<span class="font-medium text-gray-700">${label}</span>`;
+                return `<button class="hover:underline text-indigo-500" onclick="_userFilesOpenFolder(${a.id},'${label}')">${label}</button>
+                        <i class="fas fa-chevron-right text-gray-300 text-[10px]"></i>`;
+            });
+            bc.innerHTML = `<button class="hover:underline text-indigo-500" onclick="_loadUserFilesPanel(${_ufState.userId},null)">Tümü</button>
+                            <i class="fas fa-chevron-right text-gray-300 text-[10px]"></i>${parts.join('')}`;
+            bc.classList.remove('hidden');
+        } else {
+            bc.classList.add('hidden');
+        }
+
+        // Alt klasörler (search yokken göster)
+        const childFolders = q ? [] : collections.filter(c => c.parent_id === currentId);
+
+        // Dosyalar (arama uygula)
+        const filteredFiles = q
+            ? files.filter(f => f.file_name.toLowerCase().includes(q))
+            : files;
+
+        const body = document.getElementById('userFilesBody');
+        if (!childFolders.length && !filteredFiles.length) {
+            body.innerHTML = `<div class="text-center py-12 text-gray-400">
+                <i class="fas fa-folder-open text-4xl mb-3 opacity-40"></i>
+                <p>${q ? 'Eşleşen dosya bulunamadı.' : 'Bu klasörde henüz dosya yok.'}</p>
+            </div>`;
+            return;
+        }
+
+        let html = '';
+
+        // Klasörler
+        if (childFolders.length) {
+            html += '<div class="grid grid-cols-2 gap-2 mb-3">' + childFolders.map(f => `
+                <button onclick="_userFilesOpenFolder(${f.id},'${escapeHtml(f.name)}')"
+                        class="flex items-center gap-2 p-2.5 border border-gray-100 rounded-lg hover:bg-indigo-50 hover:border-indigo-200 transition text-left">
+                    <i class="fas fa-folder text-yellow-400 text-lg flex-shrink-0"></i>
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-700 truncate">${escapeHtml(f.name)}</p>
+                        <p class="text-xs text-gray-400">${f.file_count || 0} dosya</p>
+                    </div>
+                </button>`).join('') + '</div>';
+        }
+
+        // Dosyalar
+        if (filteredFiles.length) {
+            html += '<div class="space-y-1">' + filteredFiles.map(file => {
+                const ext = escapeHtml(file.file_type || '');
+                const icon = _ufFileIcon(file.file_type);
+                const size = typeof file.file_size === 'number' ? formatFileSize(file.file_size) : '';
+                const date = file.added_at ? new Date(file.added_at).toLocaleDateString('tr-TR') : '';
+                const sharedBy = file.shared_by_name ? `<span>${escapeHtml(file.shared_by_name)} tarafından</span>` : '';
+                return `
+                <div class="flex items-center p-2.5 border border-gray-100 rounded-lg hover:bg-gray-50 gap-2">
+                    <i class="fas ${icon} flex-shrink-0 w-4 text-center"></i>
+                    <div class="flex-1 min-w-0">
+                        <a href="${escapeHtml(file.file_url)}" target="_blank" rel="noopener"
+                           class="text-sm font-medium text-indigo-600 hover:underline truncate block">${escapeHtml(file.file_name)}</a>
+                        <div class="flex flex-wrap gap-2 mt-0.5 text-xs text-gray-400">
+                            ${size ? `<span>${size}</span>` : ''}${ext ? `<span>${ext.toUpperCase()}</span>` : ''}
+                            ${sharedBy}${date ? `<span>${date}</span>` : ''}
+                        </div>
+                    </div>
+                    ${!file.is_read ? '<span class="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" title="Okunmadı"></span>' : ''}
+                </div>`;
+            }).join('') + '</div>';
+        }
+
+        body.innerHTML = html;
+    }
+
+    function _ufFileIcon(fileType) {
+        return getFileIcon(fileType);
+    }
+    // ---- Kullanıcı Dosyaları Panel sonu ----
 
     // Abonelikleri listele
     async function loadSubscriptions() {
