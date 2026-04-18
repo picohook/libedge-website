@@ -165,17 +165,31 @@
                 <!-- Profil Hero -->
                 <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                        <div id="overviewInstCard" class="flex-shrink-0 w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center overflow-hidden" title="Kurumunuz">
-                            <img id="overviewInstLogo" src="" alt="" class="w-full h-full object-contain p-2 hidden">
-                            <span id="overviewInstInitials" class="text-blue-700 text-xl font-bold select-none">?</span>
+                        <!-- Sol: Kullanıcı avatarı -->
+                        <div class="relative w-16 h-16 flex-shrink-0 cursor-pointer group" onclick="document.getElementById('avatarFileInput').click()">
+                            <div id="overviewAvatarWrap" class="w-16 h-16 bg-primary rounded-full flex items-center justify-center overflow-hidden">
+                                <span id="overviewAvatarInitials" class="text-white text-xl font-bold"></span>
+                                <img id="overviewAvatarImg" src="" alt="Avatar" class="w-full h-full object-cover hidden">
+                            </div>
+                            <div class="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="fas fa-camera text-white text-sm"></i>
+                            </div>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <h2 id="overviewName" class="text-xl font-bold text-gray-900">-</h2>
-                            <p id="overviewEmail" class="text-sm text-gray-500 mb-2">-</p>
-                            <div class="flex flex-wrap gap-2">
-                                <span id="overviewInstitutionBadge" class="hidden inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full"><i class="fas fa-building text-[10px]"></i><span id="overviewInstitutionText"></span></span>
-                                <span id="overviewRoleBadge" class="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full"><i class="fas fa-user-shield text-[10px]"></i><span id="overviewRoleText"></span></span>
-                                <span id="overviewSinceBadge" class="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full"><i class="fas fa-calendar-alt text-[10px]"></i><span id="overviewSinceText"></span></span>
+                        <!-- Orta: İsim, e-posta, rozetler + sağda kurum logosu -->
+                        <div class="flex-1 min-w-0 flex items-start gap-3">
+                            <div class="flex-1 min-w-0">
+                                <h2 id="overviewName" class="text-xl font-bold text-gray-900">-</h2>
+                                <p id="overviewEmail" class="text-sm text-gray-500 mb-2">-</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <span id="overviewInstitutionBadge" class="hidden inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full"><i class="fas fa-building text-[10px]"></i><span id="overviewInstitutionText"></span></span>
+                                    <span id="overviewRoleBadge" class="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full"><i class="fas fa-user-shield text-[10px]"></i><span id="overviewRoleText"></span></span>
+                                    <span id="overviewSinceBadge" class="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full"><i class="fas fa-calendar-alt text-[10px]"></i><span id="overviewSinceText"></span></span>
+                                </div>
+                            </div>
+                            <!-- Sağ: Kurum logosu -->
+                            <div id="overviewInstCard" class="flex-shrink-0 w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center overflow-hidden border border-blue-100" title="Kurumunuz">
+                                <img id="overviewInstLogo" src="" alt="" class="w-full h-full object-contain p-1.5 hidden">
+                                <span id="overviewInstInitials" class="text-blue-600 text-base font-bold select-none leading-none text-center px-1"></span>
                             </div>
                         </div>
                         <div class="flex-shrink-0 w-full sm:w-auto">
@@ -2250,21 +2264,23 @@ function setProfileAvatar(avatarUrl, fullName) {
         ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
         : (parts[0]?.[0] || '?').toUpperCase();
 
-    // Sidebar avatar
-    const img = document.getElementById('profileAvatarImg');
-    const initials = document.getElementById('profileAvatarInitials');
-    const showInitials = () => {
-        if (initials) initials.textContent = initText;
-        if (img) { img.classList.add('hidden'); img.removeAttribute('src'); }
-        if (initials) initials.classList.remove('hidden');
+    const applyAvatar = (imgId, initialsId) => {
+        const img = document.getElementById(imgId);
+        const initials = document.getElementById(initialsId);
+        const showInits = () => {
+            if (initials) { initials.textContent = initText; initials.classList.remove('hidden'); }
+            if (img) { img.classList.add('hidden'); img.removeAttribute('src'); }
+        };
+        if (avatarUrl) {
+            if (img) { img.onerror = () => showInits(); img.src = avatarUrl; img.classList.remove('hidden'); }
+            if (initials) initials.classList.add('hidden');
+        } else {
+            showInits();
+        }
     };
-    if (avatarUrl) {
-        if (img) { img.onerror = () => showInitials(); img.src = avatarUrl; img.classList.remove('hidden'); }
-        if (initials) initials.classList.add('hidden');
-    } else {
-        showInitials();
-    }
 
+    applyAvatar('profileAvatarImg', 'profileAvatarInitials');   // sidebar
+    applyAvatar('overviewAvatarImg', 'overviewAvatarInitials'); // hero
 }
 
 function onAvatarFileSelected(input) {
