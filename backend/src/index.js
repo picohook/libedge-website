@@ -5723,7 +5723,7 @@ async function fetchAirtableAccounts(env) {
         airtable_id: r.id,
         name: r.fields['Account Name'] || '',
         domain: r.fields['Domain'] || '',
-        website_url: r.fields['Website'] || r.fields['Website URL'] || r.fields['Web Site'] || '',
+        website_url: r.fields['Company website'] || r.fields['Website'] || r.fields['Website URL'] || r.fields['Web Site'] || '',
         city: r.fields['City'] || r.fields['Sehir'] || r.fields['Şehir'] || '',
         category: Array.isArray(r.fields['Organization']) ? r.fields['Organization'][0] : (r.fields['Organization'] || ''),
         status: Array.isArray(r.fields['Status']) ? r.fields['Status'][0] : (r.fields['Status'] || ''),
