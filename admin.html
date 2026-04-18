@@ -75,16 +75,17 @@
             </div>
             <nav class="space-y-1">
                 <a href="#" class="sidebar-link active" data-tab="dashboard"><i class="fas fa-chart-line w-5"></i><span>Dashboard</span></a>
-                <a href="#" class="sidebar-link" data-tab="users"><i class="fas fa-users w-5"></i><span>Kullanıcılar</span></a>
-                <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-ticket-alt w-5"></i><span>Abonelikler</span></a>
-                <a href="#" class="sidebar-link" data-tab="files" id="filesTab"><i class="fas fa-folder-open w-5"></i><span>Merkezi Dosyalar</span></a>
-                <a href="#" class="sidebar-link" data-tab="support" id="supportTab"><i class="fas fa-headset w-5"></i><span>Destek Talepleri</span></a>
-                <a href="#" class="sidebar-link" data-tab="products" id="productsTab"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
-                <a href="#" class="sidebar-link" data-tab="requests" id="requestsTab"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
                 <a href="#" class="sidebar-link" data-tab="institutions" id="institutionsTab"><i class="fas fa-building w-5"></i><span>Kurumlar</span></a>
                 <a href="#" class="sidebar-link" data-tab="my-institution" id="myInstitutionTab" style="display:none"><i class="fas fa-university w-5"></i><span>Kurumum</span></a>
-                <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
+                <a href="#" class="sidebar-link" data-tab="users"><i class="fas fa-users w-5"></i><span>Kullanıcılar</span></a>
+                <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-ticket-alt w-5"></i><span>Abonelikler</span></a>
+                <a href="#" class="sidebar-link" data-tab="requests" id="requestsTab"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
+                <a href="#" class="sidebar-link" data-tab="support" id="supportTab"><i class="fas fa-headset w-5"></i><span>Destek Talepleri</span></a>
                 <a href="#" class="sidebar-link" data-tab="announcements" id="announcementsTab"><i class="fas fa-bullhorn w-5"></i><span>Duyurular</span></a>
+                <a href="#" class="sidebar-link" data-tab="files" id="filesTab"><i class="fas fa-folder-open w-5"></i><span>Merkezi Dosyalar</span></a>
+                <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
+                <a href="#" class="sidebar-link" data-tab="products" id="productsTab"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
+                <a href="#" class="sidebar-link" data-tab="settings" id="settingsTab"><i class="fas fa-cog w-5"></i><span>Ayarlar</span></a>
             </nav>
             <div class="absolute bottom-6 left-6">
                 <a href="index.html" class="sidebar-link-exit"><i class="fas fa-arrow-left w-5"></i><span>Siteye Dön</span></a>
@@ -725,6 +726,75 @@
                     </thead>
                     <tbody id="productsList"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="tab-settings" class="tab-content hidden">
+        <div class="max-w-3xl space-y-6">
+            <!-- Sistem Bilgisi -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-base font-semibold text-gray-800 mb-1">Sistem Bilgisi</h3>
+                <p class="text-sm text-gray-400 mb-4">Ortam ve uygulama bilgileri</p>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-400 mb-0.5">Uygulama</p>
+                        <p class="font-medium text-gray-700">LibEdge Admin</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-400 mb-0.5">Ortam</p>
+                        <p class="font-medium text-gray-700" id="settingsEnvLabel">—</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-400 mb-0.5">API Base</p>
+                        <p class="font-medium text-gray-700 font-mono text-xs" id="settingsApiBase">—</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-400 mb-0.5">Giriş Yapan</p>
+                        <p class="font-medium text-gray-700" id="settingsCurrentUser">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Planlanan Ayarlar -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-base font-semibold text-gray-800 mb-1">Yapılandırma</h3>
+                <p class="text-sm text-gray-400 mb-4">Aşağıdaki ayarlar ilerleyen sürümlerde eklenecektir</p>
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3 p-3 border border-dashed border-gray-200 rounded-lg opacity-50">
+                        <i class="fas fa-envelope text-indigo-400 mt-0.5 w-4"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Bildirim Şablonları</p>
+                            <p class="text-xs text-gray-400">Kullanıcıya gönderilen e-posta ve sistem bildirimi metinleri</p>
+                        </div>
+                        <span class="ml-auto text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Yakında</span>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 border border-dashed border-gray-200 rounded-lg opacity-50">
+                        <i class="fas fa-shield-alt text-indigo-400 mt-0.5 w-4"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">İzin Verilen Domain'ler</p>
+                            <p class="text-xs text-gray-400">Kayıt açık olan e-posta domain'leri</p>
+                        </div>
+                        <span class="ml-auto text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Yakında</span>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 border border-dashed border-gray-200 rounded-lg opacity-50">
+                        <i class="fas fa-clock text-indigo-400 mt-0.5 w-4"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Oturum Süresi</p>
+                            <p class="text-xs text-gray-400">JWT erişim ve yenileme token süreleri</p>
+                        </div>
+                        <span class="ml-auto text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Yakında</span>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 border border-dashed border-gray-200 rounded-lg opacity-50">
+                        <i class="fas fa-hdd text-indigo-400 mt-0.5 w-4"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Depolama Kotaları</p>
+                            <p class="text-xs text-gray-400">Kurum ve kullanıcı başına maksimum dosya boyutu</p>
+                        </div>
+                        <span class="ml-auto text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Yakında</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1653,6 +1723,7 @@ async function checkAdminAuth() {
             hide('institutionsTab');
             hide('announcementsTab');
             hide('filesTab');
+            hide('settingsTab');
         }
         if (isSuperAdmin) {
             const instSubBtn = document.getElementById('addInstSubscriptionBtn');
@@ -2392,10 +2463,23 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 loadRequests();
             } else if (tab === 'support') {
                 loadSupport();
+            } else if (tab === 'settings') {
+                _loadSettingsTab();
             }
         }
     });
 });
+function _loadSettingsTab() {
+    const hostname = window.location.hostname;
+    const env = hostname.includes('staging') || hostname.includes('localhost') || hostname === '127.0.0.1'
+        ? 'Staging / Geliştirme'
+        : 'Production';
+    const el = (id) => document.getElementById(id);
+    if (el('settingsEnvLabel')) el('settingsEnvLabel').textContent = env;
+    if (el('settingsApiBase'))  el('settingsApiBase').textContent  = window.API_BASE || '(aynı origin)';
+    if (el('settingsCurrentUser')) el('settingsCurrentUser').textContent = currentAdmin?.full_name || currentAdmin?.email || '—';
+}
+
 // ====================== ADMIN DOSYA & KLASÖR YÖNETİMİ ======================
 
 let adminCurrentFolderId = null;
