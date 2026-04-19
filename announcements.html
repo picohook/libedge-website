@@ -1474,6 +1474,33 @@ document.addEventListener('header:ready', () => {
     if (typeof window.checkAuth === 'function') {
         window.checkAuth();
     }
+
+    // Header translateBtn'ı AnnouncementManager'a bağla
+    const translateBtn = document.getElementById('translateBtn');
+    const translateText = document.getElementById('translateText');
+
+    if (translateBtn && announcementManager) {
+        const mgr = announcementManager;
+
+        // Global language storage ile senkronize başlat
+        const globalLang = localStorage.getItem('language');
+        if (globalLang && globalLang !== mgr.currentLanguage) {
+            mgr.setLanguage(globalLang);
+        }
+
+        // Buton görünümünü güncelle
+        const syncBtn = () => {
+            if (translateText) translateText.textContent = mgr.currentLanguage === 'tr' ? 'English' : 'Türkçe';
+        };
+        syncBtn();
+
+        translateBtn.addEventListener('click', () => {
+            const next = mgr.currentLanguage === 'tr' ? 'en' : 'tr';
+            mgr.setLanguage(next);
+            localStorage.setItem('language', next); // global ile senkron
+            syncBtn();
+        });
+    }
 });
 </script>
 </body>
