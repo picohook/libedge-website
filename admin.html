@@ -850,13 +850,13 @@
                 <table class="w-full">
                     <thead>
                         <tr>
-                            <th>Kurum Adı</th>
+                            <th class="cursor-pointer select-none" onclick="sortInstitutions('name')">Kurum Adı <span id="instSort_name" class="text-gray-400">↕</span></th>
                             <th>Organization</th>
                             <th>Status</th>
-                            <th>Şehir</th>
+                            <th class="cursor-pointer select-none" onclick="sortInstitutions('city')">Şehir <span id="instSort_city" class="text-gray-400">↕</span></th>
                             <th>Domain</th>
-                            <th>Kullanıcı Sayısı</th>
-                            <th>Dosya Sayısı</th>
+                            <th class="cursor-pointer select-none" onclick="sortInstitutions('user_count')">Kullanıcı <span id="instSort_user_count" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortInstitutions('file_count')">Dosya <span id="instSort_file_count" class="text-gray-400">↕</span></th>
                             <th>İşlem</th>
                         </tr>
                     </thead>
@@ -4825,12 +4825,32 @@ function instFilesGoToDepth(index) {
     loadInstFilesPanel();
 }
 
+let _instSortKey = 'name';
+let _instSortAsc = true;
+
+function sortInstitutions(key) {
+    if (_instSortKey === key) {
+        _instSortAsc = !_instSortAsc;
+    } else {
+        _instSortKey = key;
+        _instSortAsc = key === 'name' || key === 'city'; // sayısal alanlar için büyükten küçüğe başla
+    }
+    // İkon güncelle
+    ['name', 'city', 'user_count', 'file_count'].forEach(k => {
+        const el = document.getElementById(`instSort_${k}`);
+        if (!el) return;
+        el.textContent = k !== _instSortKey ? '↕' : (_instSortAsc ? '↑' : '↓');
+        el.className = k === _instSortKey ? 'text-primary' : 'text-gray-400';
+    });
+    filterInstitutions();
+}
+
 function filterInstitutions() {
     const searchTerm = document.getElementById('institutionSearchInput').value.toLowerCase();
     const orgFilter = document.getElementById('institutionOrgFilter').value;
     const statusFilter = document.getElementById('institutionStatusFilter').value;
 
-    const filtered = allInstitutions.filter(inst => {
+    let filtered = allInstitutions.filter(inst => {
         const matchSearch = !searchTerm ||
             (inst.displayName || inst.name || '').toLowerCase().includes(searchTerm) ||
             (inst.domain || '').toLowerCase().includes(searchTerm) ||
@@ -4838,6 +4858,23 @@ function filterInstitutions() {
         const matchOrg = !orgFilter || (inst.category || '') === orgFilter;
         const matchStatus = !statusFilter || (inst.status || '') === statusFilter;
         return matchSearch && matchOrg && matchStatus;
+    });
+
+    filtered.sort((a, b) => {
+        let av, bv;
+        if (_instSortKey === 'name') {
+            av = (a.displayName || a.name || '').toLowerCase();
+            bv = (b.displayName || b.name || '').toLowerCase();
+        } else if (_instSortKey === 'city') {
+            av = (a.city || '').toLowerCase();
+            bv = (b.city || '').toLowerCase();
+        } else {
+            av = a[_instSortKey] ?? -1;
+            bv = b[_instSortKey] ?? -1;
+        }
+        if (av < bv) return _instSortAsc ? -1 : 1;
+        if (av > bv) return _instSortAsc ? 1 : -1;
+        return 0;
     });
 
     renderInstitutions(filtered);
