@@ -1,8 +1,19 @@
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  // Never silently fall back to staging in live traffic.
-  const workerBase = env.WORKER_BASE_URL || 'https://form-handler.agursel.workers.dev';
+  const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  const workerBase = env.WORKER_BASE_URL || (isLocal ? 'http://127.0.0.1:8787' : '');
+  if (!workerBase) {
+    return new Response(JSON.stringify({
+      error: 'WORKER_BASE_URL tanımlı değil',
+      code: 500
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8'
+      }
+    });
+  }
   const targetUrl = `${workerBase}/api${url.pathname.replace('/api', '')}${url.search}`;
   const headers = new Headers(request.headers);
 

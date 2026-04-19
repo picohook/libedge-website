@@ -2,6 +2,10 @@ name = "form-handler"
 main = "backend/src/index.js"
 compatibility_date = "2026-03-01"
 
+[vars]
+ENVIRONMENT = "default"
+WORKER_NAME = "form-handler"
+
 # D1 Binding (default env)
 [[d1_databases]]
 binding = "DB"
@@ -28,6 +32,10 @@ id = "36237237597442bbb7c00ab9b6ee821f"
 [env.staging]
 name = "form-handler-staging"
 
+[env.staging.vars]
+ENVIRONMENT = "staging"
+WORKER_NAME = "form-handler-staging"
+
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "libedge-db"
@@ -45,10 +53,14 @@ id = "556d17f88a7a48e381e5ffed1d150536"
 [env.production]
 name = "form-handler-prod"
 
+[env.production.vars]
+ENVIRONMENT = "production"
+WORKER_NAME = "form-handler-prod"
+
 [[env.production.d1_databases]]
 binding = "DB"
-database_name = "libedge-db"
-database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
+database_name = "libedge-db-production"
+database_id = "64e57edf-8163-4495-8874-fec00485b2ff"
 
 [[env.production.r2_buckets]]
 binding = "FILES_BUCKET"

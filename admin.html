@@ -2908,15 +2908,35 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
         }
     });
 });
-function _loadSettingsTab() {
-    const hostname = window.location.hostname;
-    const env = hostname.includes('staging') || hostname.includes('localhost') || hostname === '127.0.0.1'
-        ? 'Staging / Geliştirme'
-        : 'Production';
+async function _loadSettingsTab() {
     const el = (id) => document.getElementById(id);
-    if (el('settingsEnvLabel')) el('settingsEnvLabel').textContent = env;
     if (el('settingsApiBase'))  el('settingsApiBase').textContent  = window.API_BASE || '(aynı origin)';
     if (el('settingsCurrentUser')) el('settingsCurrentUser').textContent = currentAdmin?.full_name || currentAdmin?.email || '—';
+    if (el('settingsEnvLabel')) el('settingsEnvLabel').textContent = 'Yükleniyor...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/runtime-info`, { credentials: 'include' });
+        if (!res.ok) throw new Error('runtime info failed');
+        const info = await res.json();
+        const labelMap = {
+            staging: 'Staging',
+            production: 'Production',
+            default: 'Default',
+            development: 'Development'
+        };
+        if (el('settingsEnvLabel')) {
+            const envLabel = labelMap[info.environment] || info.environment || 'Unknown';
+            const workerLabel = info.worker_name ? ` (${info.worker_name})` : '';
+            el('settingsEnvLabel').textContent = `${envLabel}${workerLabel}`;
+        }
+    } catch (err) {
+        console.error('runtime info load failed', err);
+        const hostname = window.location.hostname;
+        const fallback = hostname.includes('staging') || hostname.includes('localhost') || hostname === '127.0.0.1'
+            ? 'Staging / Geliştirme'
+            : 'Production?';
+        if (el('settingsEnvLabel')) el('settingsEnvLabel').textContent = fallback;
+    }
 }
 
 // ====================== ADMIN DOSYA & KLASÖR YÖNETİMİ ======================

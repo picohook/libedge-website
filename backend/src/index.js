@@ -2324,6 +2324,16 @@ app.get('/api/admin/products', async (c) => {
   return c.json(rows.results || []);
 });
 
+app.get('/api/admin/runtime-info', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  return c.json({
+    environment: c.env?.ENVIRONMENT || 'unknown',
+    worker_name: c.env?.WORKER_NAME || 'unknown',
+    api_base: '',
+    has_worker_base_url: !!c.env?.WORKER_BASE_URL
+  });
+});
+
 app.put('/api/admin/product/:slug', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const slug = String(c.req.param('slug') || '').trim();

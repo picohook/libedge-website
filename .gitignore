@@ -1,4 +1,4 @@
-# Node.js
+﻿# Node.js
 node_modules/
 package-lock.json
 
@@ -29,3 +29,7 @@ huggingface/
 
 # Temporary SQL / migration helper files
 tmp_*.sql
+# Local backup / deploy helper artifacts
+backups/
+.tmp_profile_update.js
+institution-logos
