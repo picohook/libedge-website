@@ -2480,6 +2480,43 @@ app.post('/api/admin/subscription', async (c) => {
   return c.json({ success: true });
 });
 
+app.put('/api/admin/subscription/:id', async (c) => {
+  if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
+  const id = Number(c.req.param('id'));
+  if (!id) return c.json({ error: 'Geçersiz abonelik id' }, 400);
+
+  const { user_id, product_slug, status, end_date } = await c.req.json();
+  const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
+  const role = await getUserRole(c);
+  const adminInstitution = await getUserInstitution(c);
+  const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
+  if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
+
+  const existing = await db.prepare(`
+    SELECT s.id, u.institution
+    FROM subscriptions s
+    LEFT JOIN users u ON s.user_id = u.id
+    WHERE s.id = ?
+  `).bind(id).first();
+  if (!existing) return c.json({ error: 'Abonelik bulunamadı' }, 404);
+
+  if (role === 'admin') {
+    const targetUser = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(user_id).first();
+    if (!targetUser || targetUser.institution !== adminInstitution || existing.institution !== adminInstitution) {
+      return c.json({ error: 'Sadece kendi kurumunuzdaki kullanıcı aboneliklerini düzenleyebilirsiniz' }, 403);
+    }
+  }
+
+  await db.prepare(`
+    UPDATE subscriptions
+    SET user_id = ?, product_slug = ?, status = ?, end_date = ?
+    WHERE id = ?
+  `).bind(user_id, product_slug, status || 'active', end_date || null, id).run();
+
+  return c.json({ success: true });
+});
+
 app.delete('/api/admin/subscription/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const id = c.req.param('id');

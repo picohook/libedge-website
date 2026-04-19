@@ -2514,7 +2514,9 @@ document.addEventListener('click', function(e) {
                   <td class="px-4 py-2">${new Date(s.start_date).toLocaleDateString('tr-TR')}</td>
                     <td class="px-4 py-2">${s.end_date ? new Date(s.end_date).toLocaleDateString('tr-TR') : '-'}</td>
                     <td class="px-4 py-2">
-                      ${s.type === 'institution' ? `<button onclick="editInstitutionSubscription(${s.id})" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>` : ''}
+                      ${s.type === 'institution'
+                        ? `<button onclick="editInstitutionSubscription(${s.id})" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>`
+                        : `<button onclick="editSubscription(${s.id})" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>`}
                       <button onclick="deleteSubscription(${s.id}, '${s.type}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
@@ -2600,11 +2602,24 @@ function composeFullName(firstName, lastName) {
         }
     }
 
+    let editingSubscriptionId = null;
     let editingInstSubscriptionId = null;
 
     // Abonelik modal işlemleri
-    function openSubscriptionModal() { loadUserSelect(); document.getElementById('subscriptionModal').classList.remove('hidden'); }
-    function closeSubscriptionModal() { document.getElementById('subscriptionModal').classList.add('hidden'); document.getElementById('subscriptionForm').reset(); }
+    function openSubscriptionModal() {
+        editingSubscriptionId = null;
+        loadUserSelect();
+        document.querySelector('#subscriptionModal h3').textContent = 'Bireysel Abonelik Ekle';
+        document.getElementById('subUserId').disabled = false;
+        document.getElementById('subscriptionModal').classList.remove('hidden');
+    }
+    function closeSubscriptionModal() {
+        document.getElementById('subscriptionModal').classList.add('hidden');
+        document.getElementById('subscriptionForm').reset();
+        document.querySelector('#subscriptionModal h3').textContent = 'Bireysel Abonelik Ekle';
+        document.getElementById('subUserId').disabled = false;
+        editingSubscriptionId = null;
+    }
     async function openInstSubscriptionModal() {
         const sel = document.getElementById('instSubInstitutionId');
         editingInstSubscriptionId = null;
@@ -2617,6 +2632,7 @@ function composeFullName(firstName, lastName) {
             }
         } catch (e) { console.error(e); }
         document.querySelector('#instSubscriptionModal h3').textContent = 'Kurum Aboneliği Ekle';
+        document.getElementById('instSubInstitutionId').disabled = false;
         document.getElementById('instSubscriptionModal').classList.remove('hidden');
     }
     function closeInstSubscriptionModal() {
@@ -2624,6 +2640,37 @@ function composeFullName(firstName, lastName) {
         document.getElementById('instSubscriptionForm').reset();
         editingInstSubscriptionId = null;
         document.querySelector('#instSubscriptionModal h3').textContent = 'Kurum Aboneliği Ekle';
+        document.getElementById('instSubInstitutionId').disabled = false;
+    }
+    async function editSubscription(id) {
+        try {
+            const [usersRes, subRes] = await Promise.all([
+                fetch(`${API_BASE}/api/admin/users`, { credentials: 'include' }),
+                fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' })
+            ]);
+            if (!usersRes.ok || !subRes.ok) throw new Error('load failed');
+
+            const users = await usersRes.json();
+            const subs = await subRes.json();
+            const subscription = subs.find(s => s.type === 'individual' && Number(s.id) === Number(id));
+            if (!subscription) {
+                showToast('Bireysel abonelik bulunamadı.', 'error');
+                return;
+            }
+
+            document.getElementById('subUserId').innerHTML = '<option value="">Kullanıcı Seçin</option>' + users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name || u.email)}</option>`).join('');
+            editingSubscriptionId = id;
+            document.querySelector('#subscriptionModal h3').textContent = 'Bireysel Aboneliği Düzenle';
+            document.getElementById('subUserId').value = subscription.user_id || '';
+            document.getElementById('subUserId').disabled = true;
+            document.getElementById('subProduct').value = subscription.product_slug || '';
+            document.getElementById('subStatus').value = subscription.status || 'active';
+            document.getElementById('subEndDate').value = subscription.end_date ? String(subscription.end_date).slice(0, 10) : '';
+            document.getElementById('subscriptionModal').classList.remove('hidden');
+        } catch (e) {
+            console.error(e);
+            showToast('Bireysel abonelik yüklenemedi.', 'error');
+        }
     }
     async function editInstitutionSubscription(id) {
         const sel = document.getElementById('instSubInstitutionId');
@@ -2648,6 +2695,7 @@ function composeFullName(firstName, lastName) {
             editingInstSubscriptionId = id;
             document.querySelector('#instSubscriptionModal h3').textContent = 'Kurum Aboneliğini Düzenle';
             document.getElementById('instSubInstitutionId').value = subscription.institution_id || '';
+            document.getElementById('instSubInstitutionId').disabled = true;
             document.getElementById('instSubProduct').value = subscription.product_slug || '';
             document.getElementById('instSubStatus').value = subscription.status || 'active';
             document.getElementById('instSubEndDate').value = subscription.end_date ? String(subscription.end_date).slice(0, 10) : '';
@@ -2720,8 +2768,12 @@ function composeFullName(firstName, lastName) {
 
     document.getElementById('subscriptionForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const res = await fetch(`${API_BASE}/api/admin/subscription`, {
-            method: 'POST',
+        const isEditing = !!editingSubscriptionId;
+        const url = isEditing
+            ? `${API_BASE}/api/admin/subscription/${editingSubscriptionId}`
+            : `${API_BASE}/api/admin/subscription`;
+        const res = await fetch(url, {
+            method: isEditing ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             body: JSON.stringify({
@@ -2731,8 +2783,11 @@ function composeFullName(firstName, lastName) {
                 end_date: document.getElementById('subEndDate').value || null
             })
         });
-        if (res.ok) showToast('Abonelik başarıyla eklendi!', 'success');
-        else showToast('stlem bamarasaz oldu!', 'error');
+        if (res.ok) showToast(isEditing ? 'Abonelik başarıyla güncellendi!' : 'Abonelik başarıyla eklendi!', 'success');
+        else {
+            const body = await res.json().catch(() => ({}));
+            showToast(body.error || 'İşlem başarısız oldu!', 'error');
+        }
         closeSubscriptionModal();
         loadSubscriptions();
         loadDashboard();
