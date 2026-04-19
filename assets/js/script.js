@@ -634,10 +634,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 const resolved = enText || (originalText && translations[originalText]);
                 if (resolved) {
                     element.dataset.originalText = originalText;
-                    element.textContent = resolved;
+                    const icon = element.querySelector('i');
+                    if (icon) {
+                        element.innerHTML = icon.outerHTML + resolved;
+                    } else {
+                        element.textContent = resolved;
+                    }
                 }
             } else if (element.dataset.originalText) {
-                element.textContent = element.dataset.originalText;
+                const icon = element.querySelector('i');
+                if (icon) {
+                    element.innerHTML = icon.outerHTML + element.dataset.originalText;
+                } else {
+                    element.textContent = element.dataset.originalText;
+                }
                 delete element.dataset.originalText;
             }
 

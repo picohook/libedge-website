@@ -149,6 +149,20 @@ window.closeRegisterModal = function() {
     }
 };
 
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (typeof window.closeLoginModal === 'function') window.closeLoginModal();
+    if (typeof window.closeRegisterModal === 'function') window.closeRegisterModal();
+    if (typeof window.closeModal === 'function') window.closeModal();
+    if (typeof window.closeSuggestionModal === 'function') window.closeSuggestionModal();
+    // Profil/admin gibi diğer sayfalardaki açık modallar
+    document.querySelectorAll('.fixed.inset-0:not(.hidden)').forEach(m => {
+        if (m.id === 'loginModal' || m.id === 'registerModal') return; // zaten yukarıda kapatıldı
+        m.classList.add('hidden');
+        document.body.classList.remove('no-scroll');
+    });
+});
+
 function showNotification(message, type) {
     if (typeof window.showToast === 'function') {
         window.showToast(message, type || 'info');
