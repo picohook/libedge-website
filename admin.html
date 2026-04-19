@@ -1139,6 +1139,28 @@
             <span class="text-gray-300">|</span>
             <button type="button" onclick="selectAllSyncChanges(false)" class="text-xs text-blue-600 hover:underline">Tümünü Kaldır</button>
         </div>
+        <div class="flex gap-2 mb-3 flex-shrink-0 flex-wrap">
+            <input type="text" id="syncPreviewSearch" oninput="renderSyncPreview(_syncChanges, _syncTotal, _institutionSyncMode)" placeholder="Kurum, website, şehir ara..." class="border rounded px-3 py-2 text-sm flex-1 min-w-[220px]">
+            <select id="syncPreviewActionFilter" onchange="renderSyncPreview(_syncChanges, _syncTotal, _institutionSyncMode)" class="border rounded px-3 py-2 text-sm w-44">
+                <option value="">Tüm İşlemler</option>
+                <option value="create">Ekle</option>
+                <option value="update">Güncelle</option>
+                <option value="link">Eşleştir</option>
+            </select>
+            <select id="syncPreviewFieldFilter" onchange="renderSyncPreview(_syncChanges, _syncTotal, _institutionSyncMode)" class="border rounded px-3 py-2 text-sm w-44">
+                <option value="">Tüm Alanlar</option>
+                <option value="name">Ad</option>
+                <option value="domain">Domain</option>
+                <option value="website_url">Website</option>
+                <option value="city">Şehir</option>
+                <option value="category">Organization</option>
+                <option value="status">Status</option>
+            </select>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-600 px-3 py-2 border rounded">
+                <input type="checkbox" id="syncPreviewSelectedOnly" onchange="renderSyncPreview(_syncChanges, _syncTotal, _institutionSyncMode)">
+                Sadece seçili
+            </label>
+        </div>
         <div class="overflow-y-auto flex-1 border rounded">
             <table class="w-full text-sm">
                 <thead class="sticky top-0 bg-gray-50 z-10">
@@ -1175,6 +1197,14 @@
             <button type="button" onclick="selectAllUserSyncChanges(true)" class="text-xs text-blue-600 hover:underline">Tümünü Seç</button>
             <span class="text-gray-300">|</span>
             <button type="button" onclick="selectAllUserSyncChanges(false)" class="text-xs text-blue-600 hover:underline">Tümünü Kaldır</button>
+        </div>
+        <div class="flex gap-2 mb-3 flex-shrink-0 flex-wrap">
+            <input type="text" id="userSyncPreviewSearch" oninput="renderUserSyncPreview(_userSyncChanges, _userSyncTotal)" placeholder="Ad, e-posta, kurum ara..." class="border rounded px-3 py-2 text-sm flex-1 min-w-[220px]">
+            <select id="userSyncPreviewActionFilter" onchange="renderUserSyncPreview(_userSyncChanges, _userSyncTotal)" class="border rounded px-3 py-2 text-sm w-44">
+                <option value="">Tüm İşlemler</option>
+                <option value="create">Ekle</option>
+                <option value="update">Güncelle</option>
+            </select>
         </div>
         <div class="overflow-y-auto flex-1 border rounded">
             <table class="w-full text-sm">
@@ -4813,7 +4843,11 @@ function filterInstitutions() {
     renderInstitutions(filtered);
 }
 let _syncChanges = [];
+let _syncTotal = 0;
+let _syncSelection = new Set();
 let _userSyncChanges = [];
+let _userSyncTotal = 0;
+let _userSyncSelection = new Set();
 let _institutionSyncMode = 'airtable-to-d1';
 
 function getInstitutionSyncConfig(mode = _institutionSyncMode) {
@@ -4860,6 +4894,16 @@ async function runInstitutionSyncPreview(mode) {
         }
 
         _syncChanges = data.changes;
+        _syncTotal = data.total;
+        _syncSelection = new Set(data.changes.map((_, idx) => idx));
+        const searchEl = document.getElementById('syncPreviewSearch');
+        const actionEl = document.getElementById('syncPreviewActionFilter');
+        const fieldEl = document.getElementById('syncPreviewFieldFilter');
+        const selectedOnlyEl = document.getElementById('syncPreviewSelectedOnly');
+        if (searchEl) searchEl.value = '';
+        if (actionEl) actionEl.value = '';
+        if (fieldEl) fieldEl.value = '';
+        if (selectedOnlyEl) selectedOnlyEl.checked = false;
         renderSyncPreview(data.changes, data.total, mode);
         document.getElementById('syncPreviewModal').classList.remove('hidden');
     } catch (err) {
@@ -4878,6 +4922,15 @@ function syncD1ToAirtable() {
     return runInstitutionSyncPreview('d1-to-airtable');
 }
 
+function getInstitutionSyncChangedFields(change) {
+    const fields = ['name', 'domain', 'website_url', 'city', 'category', 'status'];
+    const norm = (value) => String(value || '').trim();
+    if (!change?.before) {
+        return fields.filter(field => norm(change?.[field]));
+    }
+    return fields.filter(field => norm(change.before?.[field]) !== norm(change?.[field]));
+}
+
 async function syncAirtableContactsToUsers() {
     const btn = document.getElementById('syncContactsBtn');
     btn.disabled = true;
@@ -4894,6 +4947,12 @@ async function syncAirtableContactsToUsers() {
         }
 
         _userSyncChanges = data.changes;
+        _userSyncTotal = data.total;
+        _userSyncSelection = new Set(data.changes.map((_, idx) => idx));
+        const searchEl = document.getElementById('userSyncPreviewSearch');
+        const actionEl = document.getElementById('userSyncPreviewActionFilter');
+        if (searchEl) searchEl.value = '';
+        if (actionEl) actionEl.value = '';
         renderUserSyncPreview(data.changes, data.total);
         document.getElementById('userSyncPreviewModal').classList.remove('hidden');
     } catch (err) {
@@ -4907,11 +4966,26 @@ async function syncAirtableContactsToUsers() {
 function renderUserSyncPreview(changes, total) {
     const actionLabel = { create: 'Ekle', update: 'Güncelle' };
     const actionCls = { create: 'bg-green-100 text-green-800', update: 'bg-blue-100 text-blue-800' };
+    const searchTerm = (document.getElementById('userSyncPreviewSearch')?.value || '').toLowerCase();
+    const actionFilter = document.getElementById('userSyncPreviewActionFilter')?.value || '';
+    const visibleChanges = changes
+        .map((ch, i) => ({ ch, i }))
+        .filter(({ ch }) => {
+            const haystack = [
+                ch.full_name || composeFullName(ch.first_name, ch.last_name) || '',
+                ch.email || '',
+                ch.institution || ch.account_name || '',
+                ch.title || ''
+            ].join(' ').toLowerCase();
+            const matchSearch = !searchTerm || haystack.includes(searchTerm);
+            const matchAction = !actionFilter || ch.action === actionFilter;
+            return matchSearch && matchAction;
+        });
 
     document.getElementById('userSyncPreviewSummary').textContent =
-        `${total} contact çekildi — ${changes.length} değişiklik`;
+        `${total} contact çekildi — ${changes.length} değişiklik, ${visibleChanges.length} görünür`;
 
-    document.getElementById('userSyncPreviewRows').innerHTML = changes.map((ch, i) => {
+    document.getElementById('userSyncPreviewRows').innerHTML = visibleChanges.length ? visibleChanges.map(({ ch, i }) => {
         const beforeText = ch.before
             ? `${ch.before.full_name || '-'} / ${ch.before.title || '-'} / ${ch.before.institution || '-'}`
             : '';
@@ -4920,7 +4994,7 @@ function renderUserSyncPreview(changes, total) {
             : ch.email;
 
         return `<tr class="border-t border-gray-100">
-            <td class="px-3 py-2"><input type="checkbox" class="user-sync-chk" data-idx="${i}" checked></td>
+            <td class="px-3 py-2"><input type="checkbox" class="user-sync-chk" data-idx="${i}" ${_userSyncSelection.has(i) ? 'checked' : ''}></td>
             <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs font-medium ${actionCls[ch.action]}">${actionLabel[ch.action]}</span></td>
             <td class="px-3 py-2 font-medium">${escapeHtml(ch.full_name || composeFullName(ch.first_name, ch.last_name) || '-')}</td>
             <td class="px-3 py-2">${escapeHtml(emailText)}</td>
@@ -4928,13 +5002,25 @@ function renderUserSyncPreview(changes, total) {
             <td class="px-3 py-2">${escapeHtml(ch.institution || ch.account_name || '-')}</td>
             <td class="px-3 py-2 text-gray-400 text-xs">${escapeHtml(beforeText)}</td>
         </tr>`;
-    }).join('');
+    }).join('') : '<tr><td colspan="7" class="px-3 py-8 text-center text-gray-400">Filtreye uygun değişiklik yok</td></tr>';
 
-    document.getElementById('userSyncSelectAll').checked = true;
+    document.querySelectorAll('.user-sync-chk').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const idx = parseInt(this.dataset.idx);
+            if (this.checked) _userSyncSelection.add(idx);
+            else _userSyncSelection.delete(idx);
+        });
+    });
+    document.getElementById('userSyncSelectAll').checked = visibleChanges.length > 0 && visibleChanges.every(({ i }) => _userSyncSelection.has(i));
 }
 
 function selectAllUserSyncChanges(checked) {
-    document.querySelectorAll('.user-sync-chk').forEach(cb => cb.checked = checked);
+    document.querySelectorAll('.user-sync-chk').forEach(cb => {
+        cb.checked = checked;
+        const idx = parseInt(cb.dataset.idx);
+        if (checked) _userSyncSelection.add(idx);
+        else _userSyncSelection.delete(idx);
+    });
     document.getElementById('userSyncSelectAll').checked = checked;
 }
 
@@ -4943,8 +5029,7 @@ function closeUserSyncPreviewModal() {
 }
 
 async function applyUserSyncChanges() {
-    const selected = [...document.querySelectorAll('.user-sync-chk:checked')]
-        .map(cb => _userSyncChanges[parseInt(cb.dataset.idx)]);
+    const selected = [..._userSyncSelection].sort((a, b) => a - b).map(idx => _userSyncChanges[idx]).filter(Boolean);
 
     if (selected.length === 0) {
         showToast('Hiç değişiklik seçilmedi.', 'error');
@@ -4981,17 +5066,39 @@ function renderSyncPreview(changes, total, mode = _institutionSyncMode) {
     const actionLabel = { create: 'Ekle', update: 'Güncelle', link: 'Eşleştir' };
     const actionCls   = { create: 'bg-green-100 text-green-800', update: 'bg-blue-100 text-blue-800', link: 'bg-yellow-100 text-yellow-800' };
     const cfg = getInstitutionSyncConfig(mode);
+    const searchTerm = (document.getElementById('syncPreviewSearch')?.value || '').toLowerCase();
+    const actionFilter = document.getElementById('syncPreviewActionFilter')?.value || '';
+    const fieldFilter = document.getElementById('syncPreviewFieldFilter')?.value || '';
+    const selectedOnly = !!document.getElementById('syncPreviewSelectedOnly')?.checked;
+    const visibleChanges = changes
+        .map((ch, i) => ({ ch, i }))
+        .filter(({ ch, i }) => {
+            const haystack = [
+                ch.name || '',
+                ch.website_url || '',
+                ch.city || '',
+                ch.domain || '',
+                ch.category || '',
+                ch.status || ''
+            ].join(' ').toLowerCase();
+            const matchSearch = !searchTerm || haystack.includes(searchTerm);
+            const matchAction = !actionFilter || ch.action === actionFilter;
+            const changedFields = getInstitutionSyncChangedFields(ch);
+            const matchField = !fieldFilter || changedFields.includes(fieldFilter);
+            const matchSelected = !selectedOnly || _syncSelection.has(i);
+            return matchSearch && matchAction && matchField && matchSelected;
+        });
 
     document.getElementById('syncPreviewTitle').textContent = cfg.modalTitle;
     document.getElementById('syncPreviewSummary').textContent =
-        `${total} kurum incelendi — ${changes.length} değişiklik`;
+        `${total} kurum incelendi — ${changes.length} değişiklik, ${visibleChanges.length} görünür`;
 
-    document.getElementById('syncPreviewRows').innerHTML = changes.map((ch, i) => {
+    document.getElementById('syncPreviewRows').innerHTML = visibleChanges.length ? visibleChanges.map(({ ch, i }) => {
         const beforeText = ch.before
             ? `${ch.before.name || '-'} / ${ch.before.category || '-'} / ${ch.before.status || '-'} / ${ch.before.website_url || '-'} / ${ch.before.city || '-'} / ${ch.before.domain || '-'}`
             : '';
         return `<tr class="border-t border-gray-100">
-            <td class="px-3 py-2"><input type="checkbox" class="sync-chk" data-idx="${i}" checked></td>
+            <td class="px-3 py-2"><input type="checkbox" class="sync-chk" data-idx="${i}" ${_syncSelection.has(i) ? 'checked' : ''}></td>
             <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs font-medium ${actionCls[ch.action]}">${actionLabel[ch.action]}</span></td>
             <td class="px-3 py-2 font-medium">${escapeHtml(ch.name)}</td>
             <td class="px-3 py-2">${escapeHtml(ch.category || '-')}</td>
@@ -5001,13 +5108,25 @@ function renderSyncPreview(changes, total, mode = _institutionSyncMode) {
             <td class="px-3 py-2">${escapeHtml(ch.domain || '-')}</td>
             <td class="px-3 py-2 text-gray-400 text-xs">${escapeHtml(beforeText)}</td>
         </tr>`;
-    }).join('');
+    }).join('') : '<tr><td colspan="9" class="px-3 py-8 text-center text-gray-400">Filtreye uygun değişiklik yok</td></tr>';
 
-    document.getElementById('syncSelectAll').checked = true;
+    document.querySelectorAll('.sync-chk').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const idx = parseInt(this.dataset.idx);
+            if (this.checked) _syncSelection.add(idx);
+            else _syncSelection.delete(idx);
+        });
+    });
+    document.getElementById('syncSelectAll').checked = visibleChanges.length > 0 && visibleChanges.every(({ i }) => _syncSelection.has(i));
 }
 
 function selectAllSyncChanges(checked) {
-    document.querySelectorAll('.sync-chk').forEach(cb => cb.checked = checked);
+    document.querySelectorAll('.sync-chk').forEach(cb => {
+        cb.checked = checked;
+        const idx = parseInt(cb.dataset.idx);
+        if (checked) _syncSelection.add(idx);
+        else _syncSelection.delete(idx);
+    });
     document.getElementById('syncSelectAll').checked = checked;
 }
 
@@ -5016,8 +5135,7 @@ function closeSyncPreviewModal() {
 }
 
 async function applySyncChanges() {
-    const selected = [...document.querySelectorAll('.sync-chk:checked')]
-        .map(cb => _syncChanges[parseInt(cb.dataset.idx)]);
+    const selected = [..._syncSelection].sort((a, b) => a - b).map(idx => _syncChanges[idx]).filter(Boolean);
 
     if (selected.length === 0) { showToast('Hiç değişiklik seçilmedi.', 'error'); return; }
 
@@ -6927,6 +7045,8 @@ async function moveAdminFileRef(refId, fileName) {
 
 </body>
 </html>
+
+
 
 
 
