@@ -563,7 +563,25 @@ async function ensureInstitutionMetadataColumns(db) {
   }
 }
 
-
+async function ensureInstitutionSubscriptionAccessColumns(db) {
+  for (const sql of [
+    'ALTER TABLE institution_subscriptions ADD COLUMN access_type TEXT',
+    'ALTER TABLE institution_subscriptions ADD COLUMN access_url TEXT',
+    'ALTER TABLE institution_subscriptions ADD COLUMN requires_institution_email INTEGER DEFAULT 0',
+    'ALTER TABLE institution_subscriptions ADD COLUMN requires_vpn INTEGER DEFAULT 0',
+    'ALTER TABLE institution_subscriptions ADD COLUMN access_notes_tr TEXT',
+    'ALTER TABLE institution_subscriptions ADD COLUMN access_notes_en TEXT'
+  ]) {
+    try {
+      await db.prepare(sql).run();
+    } catch (err) {
+      const message = String(err?.message || '').toLowerCase();
+      if (!message.includes('duplicate column name')) {
+        throw err;
+      }
+    }
+  }
+}
 async function ensureInstitutionRootCollection(db, institutionId, createdBy = null) {
   const existing = await db.prepare(`
     SELECT id, parent_id, name, scope_type, scope_id, kind, is_public, is_active, sort_order, created_by, created_at
@@ -1268,7 +1286,9 @@ app.get('/api/subscription/check', async (c) => {
   if (auth.response) return auth.response;
   
   const userId = auth.user.user_id;
+  const institutionId = auth.user.institution_id;
   const db = c.env.DB;
+  await ensureInstitutionSubscriptionAccessColumns(db);
   
   const sub = await db.prepare(`
     SELECT * FROM subscriptions 
@@ -1277,7 +1297,20 @@ app.get('/api/subscription/check', async (c) => {
       AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
   `).bind(userId, product).first();
 
-  return c.json({ hasAccess: !!sub, status: sub ? sub.status : null });
+  let institutionSub = null;
+  if (institutionId) {
+    institutionSub = await db.prepare(`
+      SELECT id, product_slug, status, access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en
+      FROM institution_subscriptions
+      WHERE institution_id = ? AND product_slug = ?
+        AND status IN ('trial', 'active')
+        AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
+      LIMIT 1
+    `).bind(institutionId, product).first();
+  }
+
+  const effective = institutionSub || sub || null;
+  return c.json({ hasAccess: !!effective, status: effective ? effective.status : null, access: effective || null });
 });
 
 app.get('/api/subscription/list', async (c) => {
@@ -1287,6 +1320,7 @@ app.get('/api/subscription/list', async (c) => {
   const userId = auth.user.user_id;
   const institutionId = auth.user.institution_id;
   const db = c.env.DB;
+  await ensureInstitutionSubscriptionAccessColumns(db);
 
   const individual = await db.prepare(`
     SELECT id, product_slug, status, start_date, end_date, created_at, 'individual' as source
@@ -1296,7 +1330,8 @@ app.get('/api/subscription/list', async (c) => {
   let instSubs = [];
   if (institutionId) {
     const instRes = await db.prepare(`
-      SELECT id, product_slug, status, start_date, end_date, created_at, 'institution' as source
+      SELECT id, product_slug, status, start_date, end_date, created_at, 'institution' as source,
+             access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en
       FROM institution_subscriptions
       WHERE institution_id = ? AND status IN ('active','trial')
         AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
@@ -1320,6 +1355,7 @@ app.get('/api/user/subscriptions', async (c) => {
   const userId = auth.user.user_id;
   const institutionId = auth.user.institution_id;
   const db = c.env.DB;
+  await ensureInstitutionSubscriptionAccessColumns(db);
 
   const individual = await db.prepare(`
     SELECT id, product_slug, status, start_date, end_date, 'individual' as source
@@ -1331,7 +1367,8 @@ app.get('/api/user/subscriptions', async (c) => {
   let instSubs = [];
   if (institutionId) {
     const instRes = await db.prepare(`
-      SELECT id, product_slug, status, start_date, end_date, 'institution' as source
+      SELECT id, product_slug, status, start_date, end_date, 'institution' as source,
+             access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en
       FROM institution_subscriptions
       WHERE institution_id = ? AND status IN ('active','trial')
         AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
@@ -2151,6 +2188,7 @@ app.post('/api/admin/set-role/:id', async (c) => {
 app.get('/api/admin/subscriptions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
+  await ensureInstitutionSubscriptionAccessColumns(db);
   const role = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
@@ -2189,6 +2227,7 @@ app.get('/api/admin/subscriptions', async (c) => {
     if (role === 'super_admin') {
       const institutional = await db.prepare(`
         SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
+               is2.access_type, is2.access_url, is2.requires_institution_email, is2.requires_vpn, is2.access_notes_tr, is2.access_notes_en,
                i.name as subject_name, i.name as institution_name, NULL as user_id
         FROM institution_subscriptions is2 LEFT JOIN institutions i ON is2.institution_id = i.id ORDER BY is2.id DESC
       `).all();
@@ -2196,6 +2235,7 @@ app.get('/api/admin/subscriptions', async (c) => {
     } else if (adminInstitutionId) {
       const institutional = await db.prepare(`
         SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
+               is2.access_type, is2.access_url, is2.requires_institution_email, is2.requires_vpn, is2.access_notes_tr, is2.access_notes_en,
                i.name as subject_name, i.name as institution_name, NULL as user_id
         FROM institution_subscriptions is2 LEFT JOIN institutions i ON is2.institution_id = i.id
         WHERE is2.institution_id = ? ORDER BY is2.id DESC
@@ -2253,13 +2293,30 @@ app.delete('/api/admin/subscription/:id', async (c) => {
 app.post('/api/admin/institution-subscription', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const auth = await requireAuth(c);
-  const { institution_id, product_slug, status, end_date } = await c.req.json();
+  const { institution_id, product_slug, status, end_date, access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
   if (!institution_id || !product_slug) return c.json({ error: 'institution_id ve product_slug zorunlu' }, 400);
   const db = c.env.DB;
+  await ensureInstitutionSubscriptionAccessColumns(db);
+  const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
   await db.prepare(`
-    INSERT INTO institution_subscriptions (institution_id, product_slug, status, end_date, created_by)
-    VALUES (?, ?, ?, ?, ?)
-  `).bind(parseInt(institution_id), product_slug, status || 'active', end_date || null, auth.user.user_id).run();
+    INSERT INTO institution_subscriptions (
+      institution_id, product_slug, status, end_date, created_by,
+      access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    parseInt(institution_id),
+    product_slug,
+    status || 'active',
+    end_date || null,
+    auth.user.user_id,
+    validAccessTypes.includes(access_type) ? access_type : null,
+    String(access_url || '').trim() || null,
+    requires_institution_email ? 1 : 0,
+    requires_vpn ? 1 : 0,
+    String(access_notes_tr || '').trim() || null,
+    String(access_notes_en || '').trim() || null
+  ).run();
   return c.json({ success: true });
 });
 
@@ -2272,6 +2329,7 @@ app.get('/api/admin/institution/:id/subscriptions', async (c) => {
     if (adminInstId !== institutionId) return c.json({ error: 'Sadece kendi kurumunuzu görebilirsiniz' }, 403);
   }
   const db = c.env.DB;
+  await ensureInstitutionSubscriptionAccessColumns(db);
   const subs = await db.prepare(`
     SELECT is2.*, i.name as institution_name
     FROM institution_subscriptions is2
@@ -2339,6 +2397,7 @@ app.get('/api/admin/my-institution', async (c) => {
   if (payload.role !== 'admin' && payload.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   await ensureInstitutionMetadataColumns(db);
+  await ensureInstitutionSubscriptionAccessColumns(db);
   // JWT payload'undan doğrudan al
   if (!payload.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
   const inst = await db.prepare(`
@@ -2349,7 +2408,8 @@ app.get('/api/admin/my-institution', async (c) => {
   if (!inst) return c.json({ error: 'Kurum bulunamadı' }, 404);
 
   const subRows = await db.prepare(`
-    SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date
+    SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date,
+           is2.access_type, is2.access_url, is2.requires_institution_email, is2.requires_vpn, is2.access_notes_tr, is2.access_notes_en
     FROM institution_subscriptions is2
     WHERE is2.institution_id = ? AND is2.status = 'active'
     ORDER BY is2.end_date ASC
@@ -6529,6 +6589,11 @@ app.onError((err, c) => {
 app.notFound((c) => c.json({ error: 'Endpoint bulunamadı', code: 404 }, 404));
 
 export default app;
+
+
+
+
+
 
 
 

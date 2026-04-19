@@ -331,6 +331,7 @@
                             <th>Tip</th>
                             <th>Kullanıcı / Kurum</th>
                             <th>Ürün</th>
+                            <th>Erişim</th>
                             <th>Durum</th>
                             <th>Başlangıç</th>
                             <th>Bitiş</th>
@@ -339,7 +340,7 @@
                     </thead>
                     <tbody id="subscriptionsList">
                         <tr>
-                            <td colspan="8" class="text-center py-4">Yükleniyor...</td>
+                            <td colspan="9" class="text-center py-4">Yükleniyor...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1734,6 +1735,41 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Bitiş Tarihi</label>
                 <input type="date" id="instSubEndDate" class="w-full border p-2 rounded">
             </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Erişim Tipi</label>
+                <select id="instSubAccessType" class="w-full border p-2 rounded">
+                    <option value="">Seçin</option>
+                    <option value="direct">Doğrudan Link</option>
+                    <option value="ip">IP Erişimi</option>
+                    <option value="proxy">Proxy / EZproxy</option>
+                    <option value="sso">SSO</option>
+                    <option value="institution_link">Kuruma Özel Link</option>
+                    <option value="email_password_external">Kurum E-posta + Harici Şifre</option>
+                    <option value="mixed">Karma</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Erişim URL</label>
+                <input type="url" id="instSubAccessUrl" placeholder="https://..." class="w-full border p-2 rounded">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" id="instSubRequiresEmail" class="rounded">
+                    Kurum e-postası gerekli
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" id="instSubRequiresVpn" class="rounded">
+                    VPN / Kampüs ağı gerekli
+                </label>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Erişim Notu (TR)</label>
+                <textarea id="instSubAccessNotesTr" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Örn: Kurum e-postanız ve Lecturio şifrenizle giriş yapın."></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Erişim Notu (EN)</label>
+                <textarea id="instSubAccessNotesEn" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Optional English note"></textarea>
+            </div>
             <div class="flex gap-2">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
                 <button type="button" onclick="closeInstSubscriptionModal()" class="btn bg-gray-300 flex-1">İptal</button>
@@ -1894,8 +1930,18 @@ document.addEventListener('click', function(e) {
         { slug: 'wiley-journals', name: 'Wiley Dergiler', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)' },
         { slug: 'wiley-books', name: 'Wiley Kitaplar', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)' },
         { slug: 'klasik-muzik', name: 'Klasik Müzik Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' },
-        { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' }
-    ];
+          { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' }
+      ];
+
+    const accessTypeLabels = {
+        direct: 'Doğrudan Link',
+        ip: 'IP Erişimi',
+        proxy: 'Proxy / EZproxy',
+        sso: 'SSO',
+        institution_link: 'Kuruma Özel Link',
+        email_password_external: 'Kurum E-posta + Harici Şifre',
+        mixed: 'Karma'
+    };
 
     // Ürünleri yükle
     function loadProducts() {
@@ -2307,6 +2353,14 @@ document.addEventListener('click', function(e) {
         const res = await fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' });
         const subs = await res.json();
         const getProductName = (slug) => products.find(p => p.slug === slug)?.name || slug;
+        const getAccessLabel = (s) => {
+            if (s.type !== 'institution') return '-';
+            const parts = [];
+            parts.push(accessTypeLabels[s.access_type] || (s.access_type || 'Tanımsız'));
+            if (s.requires_institution_email) parts.push('Kurum e-postası');
+            if (s.requires_vpn) parts.push('VPN');
+            return parts.join(' • ');
+        };
         const statusLabel = s => s.status === 'active' ? 'Aktif' : s.status === 'trial' ? 'Deneme' : 'Süresi Doldu';
         const statusClass = s => s.status === 'active' ? 'bg-green-100 text-green-800' : s.status === 'trial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
 
@@ -2320,18 +2374,22 @@ document.addEventListener('click', function(e) {
                     ${s.type === 'institution'
                         ? '<span class="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800"><i class="fas fa-building mr-1"></i>Kurum</span>'
                         : '<span class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700"><i class="fas fa-user mr-1"></i>Bireysel</span>'}
-                </td>
-                <td class="px-4 py-2">${escapeHtml(s.subject_name || s.institution_name || '-')}</td>
-                <td class="px-4 py-2">${getProductName(s.product_slug)}</td>
-                <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${statusClass(s)}">${statusLabel(s)}</span></td>
-                <td class="px-4 py-2">${new Date(s.start_date).toLocaleDateString('tr-TR')}</td>
-                <td class="px-4 py-2">${s.end_date ? new Date(s.end_date).toLocaleDateString('tr-TR') : '-'}</td>
-                <td class="px-4 py-2">
-                    <button onclick="deleteSubscription(${s.id}, '${s.type}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `; }).join('') : '<tr><td colspan="8" class="text-center py-4 text-gray-400">Henüz abonelik yok</td></tr>';
-    }
+                  </td>
+                  <td class="px-4 py-2">${escapeHtml(s.subject_name || s.institution_name || '-')}</td>
+                  <td class="px-4 py-2">${getProductName(s.product_slug)}</td>
+                  <td class="px-4 py-2 text-sm">
+                      <div>${escapeHtml(getAccessLabel(s))}</div>
+                      ${s.access_url ? `<a href="${escapeHtml(s.access_url)}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 hover:underline break-all">${escapeHtml(s.access_url)}</a>` : ''}
+                  </td>
+                  <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${statusClass(s)}">${statusLabel(s)}</span></td>
+                  <td class="px-4 py-2">${new Date(s.start_date).toLocaleDateString('tr-TR')}</td>
+                  <td class="px-4 py-2">${s.end_date ? new Date(s.end_date).toLocaleDateString('tr-TR') : '-'}</td>
+                  <td class="px-4 py-2">
+                      <button onclick="deleteSubscription(${s.id}, '${s.type}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                  </td>
+              </tr>
+          `; }).join('') : '<tr><td colspan="9" class="text-center py-4 text-gray-400">Henüz abonelik yok</td></tr>';
+      }
 
     // Escape HTML helper (XSS koruması ve Türkçe karakter sorunu için)
 function escapeHtml(text) {
@@ -2512,13 +2570,19 @@ function composeFullName(firstName, lastName) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({
-                institution_id: parseInt(document.getElementById('instSubInstitutionId').value),
-                product_slug: document.getElementById('instSubProduct').value,
-                status: document.getElementById('instSubStatus').value,
-                end_date: document.getElementById('instSubEndDate').value || null
-            })
-        });
+                body: JSON.stringify({
+                    institution_id: parseInt(document.getElementById('instSubInstitutionId').value),
+                    product_slug: document.getElementById('instSubProduct').value,
+                    status: document.getElementById('instSubStatus').value,
+                    end_date: document.getElementById('instSubEndDate').value || null,
+                    access_type: document.getElementById('instSubAccessType').value || null,
+                    access_url: document.getElementById('instSubAccessUrl').value.trim() || null,
+                    requires_institution_email: document.getElementById('instSubRequiresEmail').checked,
+                    requires_vpn: document.getElementById('instSubRequiresVpn').checked,
+                    access_notes_tr: document.getElementById('instSubAccessNotesTr').value.trim() || null,
+                    access_notes_en: document.getElementById('instSubAccessNotesEn').value.trim() || null
+                })
+            });
         if (res.ok) showToast('Kurum aboneliği başarıyla eklendi!', 'success');
         else {
             const body = await res.json().catch(() => ({}));
