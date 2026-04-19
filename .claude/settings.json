@@ -11,6 +11,9 @@
       "Bash(wrangler r2:*)",
       "Bash(wrangler d1:*)",
       "Bash(node scripts/add-data-en.js)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\OWNER\\.claude\\projects\\c--Users-OWNER-Documents-GitHub-libedge-website\\memory"
     ]
   }
 }
