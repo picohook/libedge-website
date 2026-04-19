@@ -1115,10 +1115,10 @@
   <input type="hidden" name="formType" value="trial">
   <input type="hidden" id="trialProduct" name="product">
   <div id="trialAuthBanner" class="hidden text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded px-3 py-2"></div>
-  <input type="text" id="trialName" placeholder="Ad Soyad" name="name" class="w-full border p-2 rounded" required>
-  <input type="email" id="trialEmail" placeholder="E-posta" name="email" class="w-full border p-2 rounded" required>
-  <input type="text" id="trialCompany" placeholder="Kurum Adı" name="company" class="w-full border p-2 rounded">
-  <textarea placeholder="Talep Detayınız" name="message" class="w-full border p-2 rounded h-24"></textarea>
+  <input type="text" id="trialName" placeholder="Ad Soyad" name="name" class="w-full border p-2 rounded translatable" data-en-placeholder="Full Name" required>
+  <input type="email" id="trialEmail" placeholder="E-posta" name="email" class="w-full border p-2 rounded translatable" data-en-placeholder="Email">
+  <input type="text" id="trialCompany" placeholder="Kurum Adı" name="company" class="w-full border p-2 rounded translatable" data-en-placeholder="Institution Name">
+  <textarea placeholder="Talep Detayınız" name="message" class="w-full border p-2 rounded h-24 translatable" data-en-placeholder="Your Request Details"></textarea>
   <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 translatable" data-en="Send">Gönder</button>
 </form>
     </div>
@@ -1132,10 +1132,10 @@
     <form id="suggestionForm" class="space-y-4">
       <input type="hidden" name="formType" value="suggest">
       <div id="suggestAuthBanner" class="hidden text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded px-3 py-2"></div>
-      <input type="text" id="suggestName" name="name" placeholder="Ad Soyad" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-      <input type="email" id="suggestEmail" name="email" placeholder="E-posta" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-      <input type="text" id="suggestCompany" name="company" placeholder="Kurum Adı" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-      <textarea name="message" placeholder="Ürün Öneri Detayınız" class="w-full border border-gray-300 p-2 rounded h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+      <input type="text" id="suggestName" name="name" placeholder="Ad Soyad" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 translatable" data-en-placeholder="Full Name" required>
+      <input type="email" id="suggestEmail" name="email" placeholder="E-posta" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 translatable" data-en-placeholder="Email">
+      <input type="text" id="suggestCompany" name="company" placeholder="Kurum Adı" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 translatable" data-en-placeholder="Institution Name">
+      <textarea name="message" placeholder="Ürün Öneri Detayınız" class="w-full border border-gray-300 p-2 rounded h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 translatable" data-en-placeholder="Your Product Suggestion Details"></textarea>
       <button type="submit" class="w-full bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 transition duration-200 translatable" data-en="Send">Gönder</button>
     </form>
   </div>
