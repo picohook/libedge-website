@@ -16,6 +16,26 @@ const ALLOWED_ORIGINS = [
   'https://staging.libedge-website.pages.dev',
 ];
 
+const DEFAULT_PRODUCT_CATALOG = [
+  { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+  { slug: 'chatpdf', name: 'ChatPDF', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+  { slug: 'wonders', name: 'Wonders', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+  { slug: 'assistin', name: 'Assistin', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+  { slug: 'primal-pictures', name: 'Primal Pictures', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
+  { slug: 'lecturio', name: 'Lecturio', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
+  { slug: 'nejmhealer', name: 'NEJMHealer', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
+  { slug: 'imachek', name: 'ImaChek', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
+  { slug: 'cochrane-library', name: 'Cochrane Library', category: 'Sağlık', region: 'Türkiye (EKUAL dışı)' },
+  { slug: 'jove-research', name: 'JoVE Research', category: 'Fen & Matematik', region: 'Türkiye' },
+  { slug: 'jove-education', name: 'JoVE Education', category: 'Fen & Matematik', region: 'Türkiye' },
+  { slug: 'jove-business', name: 'JoVE Business', category: 'İş & Hukuk', region: 'Türkiye' },
+  { slug: 'biorender', name: 'BioRender', category: 'Mühendislik', region: 'Türkiye' },
+  { slug: 'wiley-journals', name: 'Wiley Dergiler', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)' },
+  { slug: 'wiley-books', name: 'Wiley Kitaplar', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)' },
+  { slug: 'klasik-muzik', name: 'Klasik Müzik Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' },
+  { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' }
+];
+
 // 1. CORS Middleware (En üstte, her şeyden önce)
 app.use('*', cors({
   origin: (origin) => {
@@ -580,6 +600,59 @@ async function ensureInstitutionSubscriptionAccessColumns(db) {
         throw err;
       }
     }
+  }
+}
+
+async function ensureProductsTableAndSeed(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS products (
+      slug TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT,
+      region TEXT,
+      default_access_type TEXT,
+      default_access_url TEXT,
+      default_requires_institution_email INTEGER DEFAULT 0,
+      default_requires_vpn INTEGER DEFAULT 0,
+      default_access_notes_tr TEXT,
+      default_access_notes_en TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  for (const sql of [
+    'ALTER TABLE products ADD COLUMN default_access_type TEXT',
+    'ALTER TABLE products ADD COLUMN default_access_url TEXT',
+    'ALTER TABLE products ADD COLUMN default_requires_institution_email INTEGER DEFAULT 0',
+    'ALTER TABLE products ADD COLUMN default_requires_vpn INTEGER DEFAULT 0',
+    'ALTER TABLE products ADD COLUMN default_access_notes_tr TEXT',
+    'ALTER TABLE products ADD COLUMN default_access_notes_en TEXT'
+  ]) {
+    try {
+      await db.prepare(sql).run();
+    } catch (err) {
+      const message = String(err?.message || '').toLowerCase();
+      if (!message.includes('duplicate column name')) {
+        throw err;
+      }
+    }
+  }
+
+  for (const product of DEFAULT_PRODUCT_CATALOG) {
+    await db.prepare(`
+      INSERT OR IGNORE INTO products (
+        slug, name, category, region,
+        default_access_type, default_access_url,
+        default_requires_institution_email, default_requires_vpn,
+        default_access_notes_tr, default_access_notes_en
+      )
+      VALUES (?, ?, ?, ?, NULL, NULL, 0, 0, NULL, NULL)
+    `).bind(
+      product.slug,
+      product.name,
+      product.category || null,
+      product.region || null
+    ).run();
   }
 }
 async function ensureInstitutionRootCollection(db, institutionId, createdBy = null) {
@@ -1289,9 +1362,14 @@ app.get('/api/subscription/check', async (c) => {
   const institutionId = auth.user.institution_id;
   const db = c.env.DB;
   await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureProductsTableAndSeed(db);
   
   const sub = await db.prepare(`
-    SELECT * FROM subscriptions 
+    SELECT s.*, p.default_access_type, p.default_access_url,
+           p.default_requires_institution_email, p.default_requires_vpn,
+           p.default_access_notes_tr, p.default_access_notes_en
+    FROM subscriptions s
+    LEFT JOIN products p ON p.slug = s.product_slug
     WHERE user_id = ? AND product_slug = ? 
       AND status IN ('trial', 'active')
       AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
@@ -1300,8 +1378,15 @@ app.get('/api/subscription/check', async (c) => {
   let institutionSub = null;
   if (institutionId) {
     institutionSub = await db.prepare(`
-      SELECT id, product_slug, status, access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en
-      FROM institution_subscriptions
+      SELECT is2.id, is2.product_slug, is2.status,
+             COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
+             COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
+             CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
+             CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
+             COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
+             COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en
+      FROM institution_subscriptions is2
+      LEFT JOIN products p ON p.slug = is2.product_slug
       WHERE institution_id = ? AND product_slug = ?
         AND status IN ('trial', 'active')
         AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
@@ -1309,7 +1394,16 @@ app.get('/api/subscription/check', async (c) => {
     `).bind(institutionId, product).first();
   }
 
-  const effective = institutionSub || sub || null;
+  const productAccess = sub ? {
+    access_type: sub.default_access_type || null,
+    access_url: sub.default_access_url || null,
+    requires_institution_email: sub.default_requires_institution_email ? 1 : 0,
+    requires_vpn: sub.default_requires_vpn ? 1 : 0,
+    access_notes_tr: sub.default_access_notes_tr || null,
+    access_notes_en: sub.default_access_notes_en || null
+  } : null;
+
+  const effective = institutionSub || (sub ? { ...sub, ...productAccess } : null);
   return c.json({ hasAccess: !!effective, status: effective ? effective.status : null, access: effective || null });
 });
 
@@ -1321,20 +1415,35 @@ app.get('/api/subscription/list', async (c) => {
   const institutionId = auth.user.institution_id;
   const db = c.env.DB;
   await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureProductsTableAndSeed(db);
 
   const individual = await db.prepare(`
-    SELECT id, product_slug, status, start_date, end_date, created_at, 'individual' as source
-    FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC
+    SELECT s.id, s.product_slug, s.status, s.start_date, s.end_date, s.created_at, 'individual' as source,
+           p.default_access_type AS access_type,
+           p.default_access_url AS access_url,
+           COALESCE(p.default_requires_institution_email, 0) AS requires_institution_email,
+           COALESCE(p.default_requires_vpn, 0) AS requires_vpn,
+           p.default_access_notes_tr AS access_notes_tr,
+           p.default_access_notes_en AS access_notes_en
+    FROM subscriptions s
+    LEFT JOIN products p ON p.slug = s.product_slug
+    WHERE s.user_id = ? ORDER BY s.created_at DESC
   `).bind(userId).all();
 
   let instSubs = [];
   if (institutionId) {
     const instRes = await db.prepare(`
-      SELECT id, product_slug, status, start_date, end_date, created_at, 'institution' as source,
-             access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en
-      FROM institution_subscriptions
-      WHERE institution_id = ? AND status IN ('active','trial')
-        AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
+      SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date, is2.created_at, 'institution' as source,
+             COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
+             COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
+             CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
+             CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
+             COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
+             COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en
+      FROM institution_subscriptions is2
+      LEFT JOIN products p ON p.slug = is2.product_slug
+      WHERE is2.institution_id = ? AND is2.status IN ('active','trial')
+        AND (is2.end_date IS NULL OR is2.end_date > CURRENT_TIMESTAMP)
     `).bind(institutionId).all();
     instSubs = instRes.results || [];
   }
@@ -1356,22 +1465,36 @@ app.get('/api/user/subscriptions', async (c) => {
   const institutionId = auth.user.institution_id;
   const db = c.env.DB;
   await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureProductsTableAndSeed(db);
 
   const individual = await db.prepare(`
-    SELECT id, product_slug, status, start_date, end_date, 'individual' as source
-    FROM subscriptions
-    WHERE user_id = ? AND status IN ('active','trial')
-      AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
+    SELECT s.id, s.product_slug, s.status, s.start_date, s.end_date, 'individual' as source,
+           p.default_access_type AS access_type,
+           p.default_access_url AS access_url,
+           COALESCE(p.default_requires_institution_email, 0) AS requires_institution_email,
+           COALESCE(p.default_requires_vpn, 0) AS requires_vpn,
+           p.default_access_notes_tr AS access_notes_tr,
+           p.default_access_notes_en AS access_notes_en
+    FROM subscriptions s
+    LEFT JOIN products p ON p.slug = s.product_slug
+    WHERE s.user_id = ? AND s.status IN ('active','trial')
+      AND (s.end_date IS NULL OR s.end_date > CURRENT_TIMESTAMP)
   `).bind(userId).all();
 
   let instSubs = [];
   if (institutionId) {
     const instRes = await db.prepare(`
-      SELECT id, product_slug, status, start_date, end_date, 'institution' as source,
-             access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en
-      FROM institution_subscriptions
-      WHERE institution_id = ? AND status IN ('active','trial')
-        AND (end_date IS NULL OR end_date > CURRENT_TIMESTAMP)
+      SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date, 'institution' as source,
+             COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
+             COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
+             CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
+             CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
+             COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
+             COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en
+      FROM institution_subscriptions is2
+      LEFT JOIN products p ON p.slug = is2.product_slug
+      WHERE is2.institution_id = ? AND is2.status IN ('active','trial')
+        AND (is2.end_date IS NULL OR is2.end_date > CURRENT_TIMESTAMP)
     `).bind(institutionId).all();
     instSubs = instRes.results || [];
   }
@@ -2185,10 +2308,69 @@ app.post('/api/admin/set-role/:id', async (c) => {
   return c.json({ success: true });
 });
 
+app.get('/api/admin/products', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
+  const rows = await db.prepare(`
+    SELECT slug, name, category, region,
+           default_access_type, default_access_url,
+           COALESCE(default_requires_institution_email, 0) AS default_requires_institution_email,
+           COALESCE(default_requires_vpn, 0) AS default_requires_vpn,
+           default_access_notes_tr, default_access_notes_en
+    FROM products
+    ORDER BY name COLLATE NOCASE ASC
+  `).all();
+  return c.json(rows.results || []);
+});
+
+app.put('/api/admin/product/:slug', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const slug = String(c.req.param('slug') || '').trim();
+  if (!slug) return c.json({ error: 'Geçersiz ürün slug' }, 400);
+
+  const {
+    name, category, region,
+    default_access_type, default_access_url,
+    default_requires_institution_email, default_requires_vpn,
+    default_access_notes_tr, default_access_notes_en
+  } = await c.req.json();
+
+  const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
+  const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
+
+  const existing = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(slug).first();
+  if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
+
+  await db.prepare(`
+    UPDATE products
+    SET name = ?, category = ?, region = ?,
+        default_access_type = ?, default_access_url = ?,
+        default_requires_institution_email = ?, default_requires_vpn = ?,
+        default_access_notes_tr = ?, default_access_notes_en = ?
+    WHERE slug = ?
+  `).bind(
+    String(name || '').trim() || slug,
+    String(category || '').trim() || null,
+    String(region || '').trim() || null,
+    validAccessTypes.includes(default_access_type) ? default_access_type : null,
+    String(default_access_url || '').trim() || null,
+    default_requires_institution_email ? 1 : 0,
+    default_requires_vpn ? 1 : 0,
+    String(default_access_notes_tr || '').trim() || null,
+    String(default_access_notes_en || '').trim() || null,
+    slug
+  ).run();
+
+  return c.json({ success: true });
+});
+
 app.get('/api/admin/subscriptions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureProductsTableAndSeed(db);
   const role = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
@@ -2227,17 +2409,44 @@ app.get('/api/admin/subscriptions', async (c) => {
     if (role === 'super_admin') {
       const institutional = await db.prepare(`
         SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
-               is2.access_type, is2.access_url, is2.requires_institution_email, is2.requires_vpn, is2.access_notes_tr, is2.access_notes_en,
+               is2.access_type AS raw_access_type,
+               is2.access_url AS raw_access_url,
+               COALESCE(is2.requires_institution_email, 0) AS raw_requires_institution_email,
+               COALESCE(is2.requires_vpn, 0) AS raw_requires_vpn,
+               is2.access_notes_tr AS raw_access_notes_tr,
+               is2.access_notes_en AS raw_access_notes_en,
+               COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
+               COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
+               CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
+               CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
+               COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
+               COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
                i.name as subject_name, i.name as institution_name, NULL as user_id
-        FROM institution_subscriptions is2 LEFT JOIN institutions i ON is2.institution_id = i.id ORDER BY is2.id DESC
+        FROM institution_subscriptions is2
+        LEFT JOIN institutions i ON is2.institution_id = i.id
+        LEFT JOIN products p ON p.slug = is2.product_slug
+        ORDER BY is2.id DESC
       `).all();
       institutionalResults = institutional.results || [];
     } else if (adminInstitutionId) {
       const institutional = await db.prepare(`
         SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
-               is2.access_type, is2.access_url, is2.requires_institution_email, is2.requires_vpn, is2.access_notes_tr, is2.access_notes_en,
+               is2.access_type AS raw_access_type,
+               is2.access_url AS raw_access_url,
+               COALESCE(is2.requires_institution_email, 0) AS raw_requires_institution_email,
+               COALESCE(is2.requires_vpn, 0) AS raw_requires_vpn,
+               is2.access_notes_tr AS raw_access_notes_tr,
+               is2.access_notes_en AS raw_access_notes_en,
+               COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
+               COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
+               CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
+               CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
+               COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
+               COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
                i.name as subject_name, i.name as institution_name, NULL as user_id
-        FROM institution_subscriptions is2 LEFT JOIN institutions i ON is2.institution_id = i.id
+        FROM institution_subscriptions is2
+        LEFT JOIN institutions i ON is2.institution_id = i.id
+        LEFT JOIN products p ON p.slug = is2.product_slug
         WHERE is2.institution_id = ? ORDER BY is2.id DESC
       `).bind(adminInstitutionId).all();
       institutionalResults = institutional.results || [];
@@ -2254,8 +2463,11 @@ app.post('/api/admin/subscription', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const { user_id, product_slug, status, end_date } = await c.req.json();
   const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
   const role = await getUserRole(c);
   const adminInstitution = await getUserInstitution(c);
+  const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
+  if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
   
   if (role === 'admin') {
     const targetUser = await db.prepare(`SELECT institution FROM users WHERE id = ?`).bind(user_id).first();
@@ -2296,7 +2508,10 @@ app.post('/api/admin/institution-subscription', async (c) => {
   const { institution_id, product_slug, status, end_date, access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
   if (!institution_id || !product_slug) return c.json({ error: 'institution_id ve product_slug zorunlu' }, 400);
   const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
   await ensureInstitutionSubscriptionAccessColumns(db);
+  const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
+  if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
   const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
   await db.prepare(`
     INSERT INTO institution_subscriptions (
@@ -2320,6 +2535,44 @@ app.post('/api/admin/institution-subscription', async (c) => {
   return c.json({ success: true });
 });
 
+app.put('/api/admin/institution-subscription/:id', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const id = Number(c.req.param('id'));
+  if (!id) return c.json({ error: 'Geçersiz abonelik id' }, 400);
+  const { institution_id, product_slug, status, end_date, access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
+  if (!institution_id || !product_slug) return c.json({ error: 'institution_id ve product_slug zorunlu' }, 400);
+  const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
+  await ensureInstitutionSubscriptionAccessColumns(db);
+  const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
+  if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
+  const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
+
+  const existing = await db.prepare(`SELECT id FROM institution_subscriptions WHERE id = ?`).bind(id).first();
+  if (!existing) return c.json({ error: 'Abonelik bulunamadı' }, 404);
+
+  await db.prepare(`
+    UPDATE institution_subscriptions
+    SET institution_id = ?, product_slug = ?, status = ?, end_date = ?,
+        access_type = ?, access_url = ?, requires_institution_email = ?, requires_vpn = ?, access_notes_tr = ?, access_notes_en = ?
+    WHERE id = ?
+  `).bind(
+    parseInt(institution_id),
+    product_slug,
+    status || 'active',
+    end_date || null,
+    validAccessTypes.includes(access_type) ? access_type : null,
+    String(access_url || '').trim() || null,
+    requires_institution_email ? 1 : 0,
+    requires_vpn ? 1 : 0,
+    String(access_notes_tr || '').trim() || null,
+    String(access_notes_en || '').trim() || null,
+    id
+  ).run();
+
+  return c.json({ success: true });
+});
+
 app.get('/api/admin/institution/:id/subscriptions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const role = await getUserRole(c);
@@ -2330,10 +2583,19 @@ app.get('/api/admin/institution/:id/subscriptions', async (c) => {
   }
   const db = c.env.DB;
   await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureProductsTableAndSeed(db);
   const subs = await db.prepare(`
-    SELECT is2.*, i.name as institution_name
+    SELECT is2.id, is2.institution_id, is2.product_slug, is2.status, is2.start_date, is2.end_date, is2.created_by, is2.created_at,
+           COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
+           COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
+           CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
+           CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
+           COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
+           COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
+           i.name as institution_name
     FROM institution_subscriptions is2
     LEFT JOIN institutions i ON is2.institution_id = i.id
+    LEFT JOIN products p ON p.slug = is2.product_slug
     WHERE is2.institution_id = ? ORDER BY is2.id DESC
   `).bind(institutionId).all();
   return c.json(subs.results);
@@ -2398,6 +2660,7 @@ app.get('/api/admin/my-institution', async (c) => {
   const db = c.env.DB;
   await ensureInstitutionMetadataColumns(db);
   await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureProductsTableAndSeed(db);
   // JWT payload'undan doğrudan al
   if (!payload.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
   const inst = await db.prepare(`
@@ -2409,8 +2672,14 @@ app.get('/api/admin/my-institution', async (c) => {
 
   const subRows = await db.prepare(`
     SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date,
-           is2.access_type, is2.access_url, is2.requires_institution_email, is2.requires_vpn, is2.access_notes_tr, is2.access_notes_en
+           COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
+           COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
+           CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
+           CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
+           COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
+           COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en
     FROM institution_subscriptions is2
+    LEFT JOIN products p ON p.slug = is2.product_slug
     WHERE is2.institution_id = ? AND is2.status = 'active'
     ORDER BY is2.end_date ASC
   `).bind(inst.id).all();

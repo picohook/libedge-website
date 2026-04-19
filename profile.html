@@ -813,6 +813,43 @@ async function loadSubscriptions() {
 
         const activeEl = document.getElementById('activeSubscriptionsList');
         const allEl = document.getElementById('allSubscriptionsList');
+        const accessTypeLabels = {
+            direct: 'Doğrudan Link',
+            ip: 'IP Erişimi',
+            proxy: 'Proxy / EZproxy',
+            sso: 'SSO',
+            institution_link: 'Kuruma Özel Link',
+            email_password_external: 'Kurum e-postası + harici şifre',
+            mixed: 'Karma Erişim'
+        };
+        const normalizeExternalUrl = (url) => {
+            if (!url) return '';
+            const trimmed = String(url).trim();
+            if (!trimmed) return '';
+            return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+        };
+        const buildAccessSummary = (sub) => {
+            const parts = [];
+            if (sub.access_type) parts.push(accessTypeLabels[sub.access_type] || sub.access_type);
+            if (sub.requires_institution_email) parts.push('Kurum e-postası gerekli');
+            if (sub.requires_vpn) parts.push('VPN / kampüs ağı gerekli');
+            return parts;
+        };
+        const renderAccessDetails = (sub, compact = false) => {
+            const parts = buildAccessSummary(sub);
+            const normalizedUrl = normalizeExternalUrl(sub.access_url);
+            const note = sub.access_notes_tr || '';
+            const summary = parts.length
+                ? `<p class="${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 mt-1">${escapeHtml(parts.join(' • '))}</p>`
+                : '';
+            const noteHtml = note
+                ? `<p class="${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 mt-1">${escapeHtml(note)}</p>`
+                : '';
+            const actionHtml = normalizedUrl
+                ? `<a href="${escapeHtml(normalizedUrl)}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 mt-2 ${compact ? 'text-[11px] px-2 py-1' : 'text-xs px-3 py-1.5'} rounded-lg bg-primary text-white hover:bg-opacity-90 transition"><i class="fas fa-arrow-up-right-from-square"></i><span>Erişime Git</span></a>`
+                : '';
+            return `${summary}${noteHtml}${actionHtml}`;
+        };
 
         if (data.subscriptions?.length > 0) {
             const activeSubs = data.subscriptions.filter(s => s.status === 'active' || s.status === 'trial');
@@ -821,7 +858,7 @@ async function loadSubscriptions() {
             const overviewSubCount = document.getElementById('overviewSubCount');
             if (overviewSubCount) overviewSubCount.textContent = activeSubs.length;
 
-            // Genel Bakış — Erişimlerim kartı
+            // Genel Bakış - Erişimlerim kartı
             activeEl.innerHTML = activeSubs.length ? activeSubs.map(sub => {
                 const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
                 const expiry = daysLeft !== null
@@ -831,12 +868,13 @@ async function loadSubscriptions() {
                         : `<span class="text-gray-400 text-xs">${new Date(sub.end_date).toLocaleDateString('tr-TR')}</span>`)
                     : '';
                 return `
-                <div class="flex justify-between items-center p-3 rounded-lg border ${daysLeft !== null && daysLeft <= 7 ? 'border-red-200 bg-red-50' : daysLeft !== null && daysLeft <= 30 ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}">
-                    <div>
+                <div class="flex justify-between items-center gap-3 p-3 rounded-lg border ${daysLeft !== null && daysLeft <= 7 ? 'border-red-200 bg-red-50' : daysLeft !== null && daysLeft <= 30 ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}">
+                    <div class="min-w-0 flex-1">
                         <p class="font-medium text-sm">${getProductName(sub.product_slug)}</p>
                         ${expiry}
+                        ${renderAccessDetails(sub, true)}
                     </div>
-                    <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : 'badge-trial'}">
+                    <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : 'badge-trial'} shrink-0">
                         ${sub.status === 'active' ? 'Aktif' : 'Deneme'}
                     </span>
                 </div>`; }).join('')
@@ -855,13 +893,14 @@ async function loadSubscriptions() {
                         : `<p class="text-sm text-gray-500">Bitiş: ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>`)
                     : '';
                 return `
-                <div class="flex justify-between items-center p-4 border ${borderClass} rounded-lg">
-                    <div>
+                <div class="flex justify-between items-start gap-4 p-4 border ${borderClass} rounded-lg">
+                    <div class="min-w-0 flex-1">
                         <p class="font-semibold">${getProductName(sub.product_slug)}</p>
                         <p class="text-sm text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
                         ${expiry}
+                        ${renderAccessDetails(sub)}
                     </div>
-                    <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : sub.status === 'trial' ? 'badge-trial' : 'badge-expired'}">
+                    <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : sub.status === 'trial' ? 'badge-trial' : 'badge-expired'} shrink-0">
                         ${sub.status === 'active' ? 'Aktif' : sub.status === 'trial' ? 'Deneme' : 'Süresi Doldu'}
                     </span>
                 </div>`; }).join('');
@@ -876,7 +915,6 @@ async function loadSubscriptions() {
         document.getElementById('activeSubscriptionsList').innerHTML = '<p class="text-red-500">Abonelikler yüklenemedi.</p>';
     }
 }
-
 async function loadNewsletterSubscription() {
     const textEl = document.getElementById('newsletterSubscriptionText');
     const btn = document.getElementById('newsletterToggleBtn');
@@ -2650,5 +2688,6 @@ async function submitNewTicket(e) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 </body>
 </html>
+
 
 

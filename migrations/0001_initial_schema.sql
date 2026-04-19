@@ -65,6 +65,20 @@ CREATE TABLE IF NOT EXISTS institution_subscriptions (
   FOREIGN KEY (institution_id) REFERENCES institutions(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS products (
+  slug TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT,
+  region TEXT,
+  default_access_type TEXT,
+  default_access_url TEXT,
+  default_requires_institution_email INTEGER DEFAULT 0,
+  default_requires_vpn INTEGER DEFAULT 0,
+  default_access_notes_tr TEXT,
+  default_access_notes_en TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Kurum klasörleri
 CREATE TABLE IF NOT EXISTS institution_folders (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
