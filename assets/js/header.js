@@ -28,7 +28,8 @@
 }
 
 async function fetchHeaderHtml() {
-    const candidates = ['/partials/header.html', 'partials/header.html'];
+    const headerVersion = '20260420c';
+    const candidates = ['/partials/header.html?v=', 'partials/header.html?v='];
 
     for (const url of candidates) {
         try {
@@ -64,3 +65,4 @@ async function mountSharedHeader() {
 }
 
 document.addEventListener('DOMContentLoaded', mountSharedHeader);
+
