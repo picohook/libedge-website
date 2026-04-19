@@ -1,4 +1,4 @@
-export async function onRequest(context) {
+﻿export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
@@ -17,7 +17,7 @@ export async function onRequest(context) {
   const targetUrl = `${workerBase}/api${url.pathname.replace('/api', '')}${url.search}`;
   const headers = new Headers(request.headers);
 
-  // Cookie'den token al, Authorization header'a taşı
+  // Cookie''den token al, Authorization header''a taşı
   const cookieHeader = request.headers.get('Cookie');
   if (cookieHeader) {
     const tokenMatch = cookieHeader.match(/authToken=([^;]+)/);
@@ -28,7 +28,7 @@ export async function onRequest(context) {
 
   let body = null;
   if (!['GET', 'HEAD'].includes(request.method)) {
-    // arrayBuffer ile tamamen belleğe al — ReadableStream olarak iletmek
+    // arrayBuffer ile tamamen belleğe al - ReadableStream olarak iletmek
     // Pages Function'da multipart/form-data sınırlarını bozabilir.
     body = await request.arrayBuffer();
   }
@@ -54,3 +54,4 @@ export async function onRequest(context) {
 
   return newResponse;
 }
+
