@@ -227,6 +227,7 @@ async function login(email, password) {
 
         const data = await res.json();
         if (res.ok && data.success) {
+            let hydrated = false;
             if (data.user) {
                 syncCurrentUser({
                     id: data.user.id,
@@ -237,11 +238,21 @@ async function login(email, password) {
                 });
             }
 
+            try {
+                await checkAuth();
+                hydrated = true;
+            } catch (_) {
+            }
+
             startTokenRefresh();
-            updateAuthUI(true);
+            if (!hydrated) {
+                updateAuthUI(true);
+            }
             closeLoginModal();
             showNotification('Giriş başarılı!', 'success');
-            document.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: currentUser } }));
+            if (!hydrated) {
+                document.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: currentUser } }));
+            }
             return true;
         }
 
