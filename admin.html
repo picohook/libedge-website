@@ -810,6 +810,9 @@
             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <h3 class="text-lg font-semibold">Kurumlar</h3>
                 <div class="flex gap-2">
+                    <button type="button" id="syncD1ToAirtableBtn" onclick="syncD1ToAirtable()" class="btn bg-indigo-600 text-white hover:bg-indigo-700">
+                        <i class="fas fa-cloud-upload-alt mr-2"></i>D1'den Airtable'a Senkronize Et
+                    </button>
                     <button type="button" id="syncAirtableBtn" onclick="syncAirtableToD1()" class="btn bg-green-600 text-white hover:bg-green-700">
                         <i class="fas fa-sync mr-2"></i>Airtable'dan Senkronize Et
                     </button>
@@ -1128,7 +1131,7 @@
 <div id="syncPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] flex flex-col">
         <div class="flex justify-between items-center mb-4 flex-shrink-0">
-            <h3 class="text-xl font-bold">Airtable Sync Önizleme</h3>
+            <h3 id="syncPreviewTitle" class="text-xl font-bold">Airtable Sync Önizleme</h3>
             <span id="syncPreviewSummary" class="text-sm text-gray-500"></span>
         </div>
         <div class="flex gap-2 mb-3 flex-shrink-0">
@@ -4589,10 +4592,8 @@ function renderInstitutions(institutions) {
                     class="text-purple-600 hover:text-purple-800" title="Dosyaları Gör">
                     <i class="fas fa-folder-open"></i>
                 </button>
-                ${inst.source === 'airtable' ?
-                    `<button onclick="editAirtableAccount('${inst.id}', '${escapeHtml(inst.displayName)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(inst.category || '')}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>` :
-                    `<button onclick="openEditInstitutionModal(${inst.id}, '${escapeHtml(inst.name)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(normalizeCategory(inst.category || ''))}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>
-                     <button onclick="deleteInstitution(${inst.id}, '${escapeHtml(inst.name)}')" class="text-red-600"><i class="fas fa-trash"></i></button>`}
+                <button onclick="openEditInstitutionModal(${inst.id}, '${escapeHtml(inst.name)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(normalizeCategory(inst.category || ''))}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>
+                ${inst.source === 'airtable' ? '' : `<button onclick="deleteInstitution(${inst.id}, '${escapeHtml(inst.name)}')" class="text-red-600"><i class="fas fa-trash"></i></button>`}
             </td>
         </tr>`;
     }).join('');
@@ -4813,31 +4814,68 @@ function filterInstitutions() {
 }
 let _syncChanges = [];
 let _userSyncChanges = [];
+let _institutionSyncMode = 'airtable-to-d1';
 
-async function syncAirtableToD1() {
-    const btn = document.getElementById('syncAirtableBtn');
+function getInstitutionSyncConfig(mode = _institutionSyncMode) {
+    return mode === 'd1-to-airtable'
+        ? {
+            triggerBtnId: 'syncD1ToAirtableBtn',
+            previewUrl: `${API_BASE}/api/admin/sync/d1-to-airtable`,
+            applyUrl: `${API_BASE}/api/admin/sync/d1-to-airtable`,
+            previewLabel: '<i class="fas fa-spinner fa-spin mr-2"></i>Önizleniyor...',
+            idleLabel: '<i class="fas fa-cloud-upload-alt mr-2"></i>D1\'den Airtable\'a Senkronize Et',
+            modalTitle: 'D1 → Airtable Sync Önizleme',
+            emptyMessage: 'Değişiklik yok, Airtable zaten güncel.',
+            successPrefix: 'D1 → Airtable sync tamamlandı'
+        }
+        : {
+            triggerBtnId: 'syncAirtableBtn',
+            previewUrl: `${API_BASE}/api/admin/sync/airtable-to-d1`,
+            applyUrl: `${API_BASE}/api/admin/sync/airtable-to-d1`,
+            previewLabel: '<i class="fas fa-spinner fa-spin mr-2"></i>Önizleniyor...',
+            idleLabel: '<i class="fas fa-sync mr-2"></i>Airtable\'dan Senkronize Et',
+            modalTitle: 'Airtable → D1 Sync Önizleme',
+            emptyMessage: 'Değişiklik yok, D1 zaten güncel.',
+            successPrefix: 'Airtable → D1 sync tamamlandı'
+        };
+}
+
+async function runInstitutionSyncPreview(mode) {
+    _institutionSyncMode = mode;
+    const cfg = getInstitutionSyncConfig(mode);
+    const btn = document.getElementById(cfg.triggerBtnId);
+    if (!btn) return;
+
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Önizleniyor...';
+    btn.innerHTML = cfg.previewLabel;
 
     try {
-        const res = await fetch(`${API_BASE}/api/admin/sync/airtable-to-d1`, { credentials: 'include' });
+        const res = await fetch(cfg.previewUrl, { credentials: 'include' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Önizleme hatası');
 
         if (data.changes.length === 0) {
-            showToast('Değişiklik yok, D1 zaten güncel.', 'success');
+            showToast(cfg.emptyMessage, 'success');
             return;
         }
 
         _syncChanges = data.changes;
-        renderSyncPreview(data.changes, data.total);
+        renderSyncPreview(data.changes, data.total, mode);
         document.getElementById('syncPreviewModal').classList.remove('hidden');
     } catch (err) {
         showToast(err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sync mr-2"></i>Airtable\'dan Senkronize Et';
+        btn.innerHTML = cfg.idleLabel;
     }
+}
+
+function syncAirtableToD1() {
+    return runInstitutionSyncPreview('airtable-to-d1');
+}
+
+function syncD1ToAirtable() {
+    return runInstitutionSyncPreview('d1-to-airtable');
 }
 
 async function syncAirtableContactsToUsers() {
@@ -4939,12 +4977,14 @@ async function applyUserSyncChanges() {
     }
 }
 
-function renderSyncPreview(changes, total) {
+function renderSyncPreview(changes, total, mode = _institutionSyncMode) {
     const actionLabel = { create: 'Ekle', update: 'Güncelle', link: 'Eşleştir' };
     const actionCls   = { create: 'bg-green-100 text-green-800', update: 'bg-blue-100 text-blue-800', link: 'bg-yellow-100 text-yellow-800' };
+    const cfg = getInstitutionSyncConfig(mode);
 
+    document.getElementById('syncPreviewTitle').textContent = cfg.modalTitle;
     document.getElementById('syncPreviewSummary').textContent =
-        `${total} kayıt çekildi — ${changes.length} değişiklik`;
+        `${total} kurum incelendi — ${changes.length} değişiklik`;
 
     document.getElementById('syncPreviewRows').innerHTML = changes.map((ch, i) => {
         const beforeText = ch.before
@@ -4982,11 +5022,12 @@ async function applySyncChanges() {
     if (selected.length === 0) { showToast('Hiç değişiklik seçilmedi.', 'error'); return; }
 
     const btn = document.getElementById('syncApplyBtn');
+    const cfg = getInstitutionSyncConfig();
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uygulanıyor...';
 
     try {
-        const res = await fetch(`${API_BASE}/api/admin/sync/airtable-to-d1`, {
+        const res = await fetch(cfg.applyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -4996,7 +5037,11 @@ async function applySyncChanges() {
         if (!res.ok) throw new Error(data.error || 'Uygulama hatası');
 
         closeSyncPreviewModal();
-        showToast(`Sync tamamlandı: ${data.created} eklendi, ${data.updated} güncellendi`, 'success');
+        const parts = [];
+        if (Number(data.created || 0) > 0) parts.push(`${data.created} eklendi`);
+        if (Number(data.updated || 0) > 0) parts.push(`${data.updated} güncellendi`);
+        if (Number(data.linked || 0) > 0) parts.push(`${data.linked} eşleştirildi`);
+        showToast(`${cfg.successPrefix}: ${parts.join(', ') || 'değişiklik yok'}`, 'success');
         loadInstitutions();
     } catch (err) {
         showToast(err.message, 'error');
@@ -5079,58 +5124,39 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
     const domain = document.getElementById('editInstitutionDomain').value.trim();
     const website_url = document.getElementById('editInstitutionWebsite').value.trim();
 
-    if (currentAirtableId) {
-        const res = await fetch(`/api/admin/airtable/accounts/${currentAirtableId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ name, organization: category, status, domain, website_url })
-        });
-        
-        if (res.ok) {
-            showToast('Airtable kurumu güncellendi!', 'success');
-            closeEditInstitutionModal();
-            loadInstitutions();
-        } else {
-            showToast('Güncelleme başarısız!', 'error');
-        }
-    } else {
-        // Mevcut D1 güncelleme kodu buraya gelecek
-        const id = document.getElementById('editInstitutionId').value;
-        const isSuper = currentAdmin?.role === 'super_admin';
-        const body = isSuper
-            ? { name, domain: domain || null, website_url: website_url || null, category, status }
-            : { domain: domain || null, website_url: website_url || null, status };
-        
-        const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(body)
-        });
-        
-        if (res.ok) {
-            // Logo varsa yükle
-            const logoFile = document.getElementById('editInstLogoFile').files[0];
-            if (logoFile) {
-                const fd = new FormData();
-                fd.append('logo', logoFile);
-                const logoRes = await fetch(`${API_BASE}/api/admin/institution/${id}/logo`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    body: fd
-                });
-                if (!logoRes.ok) {
-                    const logoData = await logoRes.json().catch(() => ({}));
-                    showToast(logoData.error || 'Kurum güncellendi ancak logo yüklenemedi.', 'warning');
-                }
+    const id = document.getElementById('editInstitutionId').value;
+    const isSuper = currentAdmin?.role === 'super_admin';
+    const body = isSuper
+        ? { name, domain: domain || null, website_url: website_url || null, category, status }
+        : { domain: domain || null, website_url: website_url || null, status };
+    
+    const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+    });
+    
+    if (res.ok) {
+        const logoFile = document.getElementById('editInstLogoFile').files[0];
+        if (logoFile) {
+            const fd = new FormData();
+            fd.append('logo', logoFile);
+            const logoRes = await fetch(`${API_BASE}/api/admin/institution/${id}/logo`, {
+                method: 'POST',
+                credentials: 'include',
+                body: fd
+            });
+            if (!logoRes.ok) {
+                const logoData = await logoRes.json().catch(() => ({}));
+                showToast(logoData.error || 'Kurum güncellendi ancak logo yüklenemedi.', 'warning');
             }
-            showToast('Kurum güncellendi!', 'success');
-            closeEditInstitutionModal();
-            loadInstitutions();
-        } else {
-            showToast('Güncelleme başarısız!', 'error');
         }
+        showToast('Kurum güncellendi!', 'success');
+        closeEditInstitutionModal();
+        loadInstitutions();
+    } else {
+        showToast('Güncelleme başarısız!', 'error');
     }
 });
 
@@ -6442,13 +6468,8 @@ updateAnnouncementLivePreview();
 let currentAirtableId = null;
 
 function editAirtableAccount(id, name, domain, category, status) {
-    currentAirtableId = id;
-    document.getElementById('editInstitutionId').value = '';
-    document.getElementById('editInstitutionName').value = name;
-    document.getElementById('editInstitutionDomain').value = domain || '';
-    document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHtml(category || 'University');
-    document.getElementById('editInstitutionStatus').innerHTML = statusOptionsHtml(status || 'Customer');
-    document.getElementById('editInstitutionModal').classList.remove('hidden');
+    currentAirtableId = null;
+    openEditInstitutionModal(id, name, domain, category, status);
 }
 
 // closeEditInstitutionModal zaten varsa güncelle, yoksa ekle

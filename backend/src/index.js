@@ -5778,6 +5778,47 @@ async function fetchAirtableAccounts(env) {
     }));
 }
 
+function buildAirtableAccountFields(record) {
+    return {
+        'Account Name': record.name || '',
+        'Domain': record.domain || '',
+        'Company website': record.website_url || '',
+        'City': record.city || '',
+        'Organization': record.category || null,
+        'Status': record.status || null,
+    };
+}
+
+async function createAirtableAccount(env, record) {
+    const url = `https://api.airtable.com/v0/${env.AIRTABLE_BASE_ID}/Accounts`;
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${env.AIRTABLE_PAT}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fields: buildAirtableAccountFields(record) })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || 'Airtable create hatası');
+    return data;
+}
+
+async function updateAirtableAccount(env, airtableId, record) {
+    const url = `https://api.airtable.com/v0/${env.AIRTABLE_BASE_ID}/Accounts/${airtableId}`;
+    const res = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Authorization': `Bearer ${env.AIRTABLE_PAT}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fields: buildAirtableAccountFields(record) })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || 'Airtable update hatası');
+    return data;
+}
+
 async function fetchAirtableContacts(env, accountMap = new Map()) {
     const baseId = env.AIRTABLE_BASE_ID;
     const pat = env.AIRTABLE_PAT;
@@ -6092,6 +6133,179 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
     }
 });
 
+// GET /api/admin/sync/d1-to-airtable — Dry-run, önizleme
+app.get('/api/admin/sync/d1-to-airtable', async (c) => {
+    const auth = await requireAuth(c);
+    if (auth.response) return auth.response;
+    if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+    if (!c.env.AIRTABLE_BASE_ID || !c.env.AIRTABLE_PAT) return c.json({ error: 'Airtable ayarları eksik' }, 500);
+
+    try {
+        const db = c.env.DB;
+        await ensureInstitutionMetadataColumns(db);
+
+        const institutionsResult = await db.prepare(
+            `SELECT id, name, domain, website_url, city, category, status, airtable_id
+             FROM institutions
+             ORDER BY name COLLATE NOCASE ASC`
+        ).all();
+        const institutions = institutionsResult.results || [];
+        const airtableAccounts = await fetchAirtableAccounts(c.env);
+        const airtableById = new Map(airtableAccounts.map(account => [account.airtable_id, account]));
+        const airtableByName = new Map();
+        for (const account of airtableAccounts) {
+            const key = normalizeComparableValue(account.name).toLowerCase();
+            if (key && !airtableByName.has(key)) airtableByName.set(key, account);
+        }
+
+        const changes = [];
+        const norm = (value) => normalizeComparableValue(value);
+
+        for (const institution of institutions) {
+            if (!institution.name) continue;
+
+            const nextState = {
+                institution_id: institution.id,
+                airtable_id: institution.airtable_id || null,
+                name: institution.name || '',
+                domain: institution.domain || '',
+                website_url: institution.website_url || '',
+                city: institution.city || '',
+                category: institution.category || '',
+                status: institution.status || '',
+            };
+
+            const linkedAccount = nextState.airtable_id ? airtableById.get(nextState.airtable_id) : null;
+            const nameMatchedAccount = linkedAccount || airtableByName.get(norm(nextState.name).toLowerCase()) || null;
+
+            if (linkedAccount) {
+                const changed =
+                    norm(linkedAccount.name) !== norm(nextState.name) ||
+                    norm(linkedAccount.domain) !== norm(nextState.domain) ||
+                    norm(linkedAccount.website_url) !== norm(nextState.website_url) ||
+                    norm(linkedAccount.city) !== norm(nextState.city) ||
+                    norm(linkedAccount.category) !== norm(nextState.category) ||
+                    norm(linkedAccount.status) !== norm(nextState.status);
+
+                if (changed) {
+                    changes.push({
+                        action: 'update',
+                        ...nextState,
+                        before: {
+                            name: linkedAccount.name,
+                            domain: linkedAccount.domain,
+                            website_url: linkedAccount.website_url,
+                            city: linkedAccount.city,
+                            category: linkedAccount.category,
+                            status: linkedAccount.status,
+                        }
+                    });
+                }
+                continue;
+            }
+
+            if (nameMatchedAccount) {
+                const changed =
+                    norm(nameMatchedAccount.name) !== norm(nextState.name) ||
+                    norm(nameMatchedAccount.domain) !== norm(nextState.domain) ||
+                    norm(nameMatchedAccount.website_url) !== norm(nextState.website_url) ||
+                    norm(nameMatchedAccount.city) !== norm(nextState.city) ||
+                    norm(nameMatchedAccount.category) !== norm(nextState.category) ||
+                    norm(nameMatchedAccount.status) !== norm(nextState.status) ||
+                    !nextState.airtable_id;
+
+                if (changed) {
+                    changes.push({
+                        action: 'link',
+                        ...nextState,
+                        airtable_id: nameMatchedAccount.airtable_id,
+                        before: {
+                            name: nameMatchedAccount.name,
+                            domain: nameMatchedAccount.domain,
+                            website_url: nameMatchedAccount.website_url,
+                            city: nameMatchedAccount.city,
+                            category: nameMatchedAccount.category,
+                            status: nameMatchedAccount.status,
+                        }
+                    });
+                }
+                continue;
+            }
+
+            changes.push({
+                action: 'create',
+                ...nextState,
+                before: null
+            });
+        }
+
+        return c.json({ success: true, total: institutions.length, changes });
+    } catch (err) {
+        console.error('D1 to Airtable sync preview error:', err);
+        return c.json({ error: err.message }, 500);
+    }
+});
+
+// POST /api/admin/sync/d1-to-airtable — Seçili değişiklikleri uygula
+app.post('/api/admin/sync/d1-to-airtable', async (c) => {
+    const auth = await requireAuth(c);
+    if (auth.response) return auth.response;
+    if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+    if (!c.env.AIRTABLE_BASE_ID || !c.env.AIRTABLE_PAT) return c.json({ error: 'Airtable ayarları eksik' }, 500);
+
+    try {
+        const db = c.env.DB;
+        await ensureInstitutionMetadataColumns(db);
+        const { changes } = await c.req.json();
+        if (!Array.isArray(changes) || changes.length === 0) return c.json({ error: 'Uygulanacak değişiklik yok' }, 400);
+
+        let created = 0;
+        let updated = 0;
+        let linked = 0;
+
+        for (const ch of changes) {
+            const institutionId = Number(ch.institution_id || 0);
+            if (!institutionId || !ch.name) continue;
+
+            const payload = {
+                name: ch.name || '',
+                domain: ch.domain || '',
+                website_url: ch.website_url || '',
+                city: ch.city || '',
+                category: ch.category || '',
+                status: ch.status || '',
+            };
+
+            if (ch.action === 'create') {
+                const createdRecord = await createAirtableAccount(c.env, payload);
+                await db.prepare(`UPDATE institutions SET airtable_id = ? WHERE id = ?`)
+                    .bind(createdRecord.id, institutionId)
+                    .run();
+                created++;
+                continue;
+            }
+
+            if (!ch.airtable_id) continue;
+
+            await updateAirtableAccount(c.env, ch.airtable_id, payload);
+
+            if (ch.action === 'link') {
+                await db.prepare(`UPDATE institutions SET airtable_id = ? WHERE id = ?`)
+                    .bind(ch.airtable_id, institutionId)
+                    .run();
+                linked++;
+            } else {
+                updated++;
+            }
+        }
+
+        return c.json({ success: true, created, updated, linked });
+    } catch (err) {
+        console.error('D1 to Airtable sync apply error:', err);
+        return c.json({ error: err.message }, 500);
+    }
+});
+
 // GET /api/admin/sync/airtable-contacts-to-users — Dry-run, önizleme
 app.get('/api/admin/sync/airtable-contacts-to-users', async (c) => {
     const auth = await requireAuth(c);
@@ -6176,47 +6390,7 @@ app.post('/api/admin/sync/airtable-contacts-to-users', async (c) => {
 
 // PUT /api/admin/airtable/accounts/:id
 app.put('/api/admin/airtable/accounts/:id', async (c) => {
-    const auth = await requireAuth(c);
-    if (auth.response) return auth.response;
-    if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') {
-        return c.json({ error: 'Yetkisiz' }, 403);
-    }
-    
-    const recordId = c.req.param('id');
-    const { name, organization, status, domain } = await c.req.json();
-
-    const baseId = c.env.AIRTABLE_BASE_ID;
-    const pat = c.env.AIRTABLE_PAT;
-
-    const url = `https://api.airtable.com/v0/${baseId}/Accounts/${recordId}`;
-
-    const fields = {};
-    if (name) fields['Account Name'] = name;
-    if (organization) fields['Organization'] = organization;
-    if (status) fields['Status'] = status;
-    if (domain !== undefined) fields['Domain'] = domain;
-    
-    try {
-        const response = await fetch(url, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `Bearer ${pat}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ fields })
-        });
-        const data = await response.json();
-        
-        if (data.error) {
-            console.error('Airtable update error:', data.error);
-            return c.json({ error: data.error.message }, 500);
-        }
-        
-        return c.json({ success: true, record: data });
-    } catch (err) {
-        console.error('Airtable fetch error:', err);
-        return c.json({ error: err.message }, 500);
-    }
+    return c.json({ error: 'Tek yönlü sync aktif. Airtable kayıtları proje içinden güncellenmez.' }, 410);
 });
 
 export default app;
