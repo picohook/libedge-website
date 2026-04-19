@@ -599,7 +599,22 @@ document.addEventListener('DOMContentLoaded', function() {
     'Çerez tercihlerinizi tarayıcı ayarlarınız üzerinden de (silme veya engelleme) yönetebilirsiniz.': 'You can also manage your cookie preferences through your browser settings (deleting or blocking).',
     '4. Üçüncü Taraf Çerezler': '4. Third-Party Cookies',
     'Web sitemiz, barındırma hizmeti (GitHub, Cloudflare) veya analitik hizmetler (Google) gibi üçüncü taraflarca yerleştirilen çerezleri kullanabilir. Bu çerezlerin yönetiminden ilgili üçüncü taraf sorumludur.': 'Our website may use cookies placed by third parties such as hosting services (GitHub, Cloudflare) or analytical services (Google). The relevant third party is responsible for the management of these cookies.',
-        // Add more translations as needed
+        // Auth / Forms
+        'Giriş Yap': 'Sign In',
+        'Kayıt Ol': 'Sign Up',
+        'Şifre': 'Password',
+        'E-posta Adresi': 'Email Address',
+        'Kurum Adı (İsteğe bağlı)': 'Institution Name (Optional)',
+        'Şifreniz en az 6 karakter olmalıdır.': 'Password must be at least 6 characters.',
+
+        // Products — SimTutor
+        '✔ Tıp eğitimi simülasyon platformu': '✔ Medical education simulation platform',
+        '✔ Gerçekçi hasta simülasyonları': '✔ Realistic patient simulations',
+        '✔ İnteraktif klinik senaryolar': '✔ Interactive clinical scenarios',
+
+        // Subject filters (HTML entity variants — fallback for dict lookup)
+        'Fen & Matematik': 'Science & Mathematics',
+        'İş & Hukuk': 'Business & Law',
     };
 
     // Translation apply/reset flow

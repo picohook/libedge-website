@@ -20,6 +20,11 @@ const scriptSrc = readFileSync(resolve(ROOT, 'assets/js/script.js'), 'utf8');
 const dictMatch = scriptSrc.match(/const translations\s*=\s*\{([\s\S]*?)\n\s*\};/);
 if (!dictMatch) { console.error('translations dict bulunamadı'); process.exit(1); }
 
+// HTML entity decode (migration script içi kullanım)
+function decodeEntities(str) {
+  return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
 // Basit key-value parse (eval yerine güvenli regex)
 const translations = {};
 const kvRegex = /['"`]((?:[^'"`\\]|\\[\s\S])*?)['"`]\s*:\s*['"`]((?:[^'"`\\]|\\[\s\S])*?)['"`]/g;
@@ -65,7 +70,7 @@ for (const filePath of HTML_FILES) {
     const trimmed = text.trim();
     if (!trimmed) return full;
 
-    const enText = translations[trimmed];
+    const enText = translations[trimmed] || translations[decodeEntities(trimmed)];
     if (!enText) { skipped++; return full; }
 
     // Zaten data-en varsa atla
