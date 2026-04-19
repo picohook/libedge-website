@@ -1501,6 +1501,10 @@
                 <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgülle ayırın</p>
             </div>
             <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Web Sitesi</label>
+                <input type="url" id="editInstitutionWebsite" placeholder="https://www.ornek.edu.tr" class="w-full border p-2 rounded">
+            </div>
+            <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Kurum Logosu</label>
                 <div class="flex items-center gap-3">
                     <div class="w-14 h-14 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -5027,6 +5031,7 @@ function openEditInstitutionModal(id, name, domain, category, status) {
 
     // Logo
     const inst = allInstitutions.find(i => String(i.id) === String(id));
+    document.getElementById('editInstitutionWebsite').value = (inst?.website_url || '').trim();
     const logoUrl = inst?.logo_url || null;
     const words = name.trim().split(/\s+/).filter(Boolean);
     const initials = '';
@@ -5072,13 +5077,14 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
     const category = document.getElementById('editInstitutionCategory').value;
     const status = document.getElementById('editInstitutionStatus').value;
     const domain = document.getElementById('editInstitutionDomain').value.trim();
+    const website_url = document.getElementById('editInstitutionWebsite').value.trim();
 
     if (currentAirtableId) {
         const res = await fetch(`/api/admin/airtable/accounts/${currentAirtableId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ name, organization: category, status, domain })
+            body: JSON.stringify({ name, organization: category, status, domain, website_url })
         });
         
         if (res.ok) {
@@ -5092,7 +5098,9 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
         // Mevcut D1 güncelleme kodu buraya gelecek
         const id = document.getElementById('editInstitutionId').value;
         const isSuper = currentAdmin?.role === 'super_admin';
-        const body = isSuper ? { name, domain: domain || null, category, status } : { domain: domain || null, status };
+        const body = isSuper
+            ? { name, domain: domain || null, website_url: website_url || null, category, status }
+            : { domain: domain || null, website_url: website_url || null, status };
         
         const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
             method: 'PUT',

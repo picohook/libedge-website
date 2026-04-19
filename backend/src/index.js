@@ -4569,15 +4569,16 @@ app.patch('/api/notifications/read-all', async (c) => {
 
 app.post('/api/admin/institution', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
-  const { name, domain, category, status } = await c.req.json();
+  const { name, domain, website_url, category, status } = await c.req.json();
   if (!name?.trim()) return c.json({ error: 'Kurum adı zorunludur' }, 400);
   const validCategories = ['University','Corporate','K-12','Government','Publisher','Service Provider','Sub-distributor'];
   const validStatuses = ['Customer','Prospect','Partner','Inactive'];
   const cat = validCategories.includes(category) ? category : 'University';
   const st = validStatuses.includes(status) ? status : 'Customer';
   const db = c.env.DB;
+  await ensureInstitutionMetadataColumns(db);
   try {
-    const result = await db.prepare(`INSERT INTO institutions (name, domain, category, status) VALUES (?, ?, ?, ?)`).bind(name.trim(), domain?.trim() || null, cat, st).run();
+    const result = await db.prepare(`INSERT INTO institutions (name, domain, website_url, category, status) VALUES (?, ?, ?, ?, ?)`).bind(name.trim(), domain?.trim() || null, website_url?.trim() || null, cat, st).run();
     return c.json({ success: true, id: result.meta?.last_row_id });
   } catch (e) {
     if (e.message?.includes('UNIQUE')) return c.json({ error: 'Bu kurum adı zaten var' }, 409);
@@ -4589,22 +4590,23 @@ app.put('/api/admin/institution/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetersiz yetki' }, 403);
   const role = await getUserRole(c);
   const id = c.req.param('id');
-  const { name, domain, category, status } = await c.req.json();
+  const { name, domain, website_url, category, status } = await c.req.json();
   const validCategories = ['University','Corporate','K-12','Government','Publisher','Service Provider','Sub-distributor'];
   const validStatuses = ['Customer','Prospect','Partner','Inactive'];
   const db = c.env.DB;
+  await ensureInstitutionMetadataColumns(db);
 
   if (role === 'super_admin') {
     const cat = validCategories.includes(category) ? category : null;
     const st = validStatuses.includes(status) ? status : null;
-    await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ?, category = COALESCE(?, category), status = COALESCE(?, status) WHERE id = ?`)
-      .bind(name || null, domain ?? null, cat, st, id).run();
+    await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ?, website_url = ?, category = COALESCE(?, category), status = COALESCE(?, status) WHERE id = ?`)
+      .bind(name || null, domain ?? null, website_url ?? null, cat, st, id).run();
   } else {
     const payload = await getTokenPayloadFromCookie(c);
     const target = await db.prepare(`SELECT name FROM institutions WHERE id = ?`).bind(id).first();
     if (!target || !payload?.institution || target.name !== payload.institution) return c.json({ error: 'Bu kurumu düzenleme yetkiniz yok' }, 403);
     const st = validStatuses.includes(status) ? status : null;
-    await db.prepare(`UPDATE institutions SET domain = ?, status = COALESCE(?, status) WHERE id = ?`).bind(domain ?? null, st, id).run();
+    await db.prepare(`UPDATE institutions SET domain = ?, website_url = ?, status = COALESCE(?, status) WHERE id = ?`).bind(domain ?? null, website_url ?? null, st, id).run();
   }
 
   return c.json({ success: true });

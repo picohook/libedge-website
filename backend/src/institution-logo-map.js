@@ -1,5 +1,6 @@
 // Auto-generated from tmp_institution_logo_apply_map.csv and assets/images/Uni Logos
 export const INSTITUTION_LOCAL_LOGO_MAP = Object.freeze({
+  "97": "/assets/images/Uni%20Logos/202950.png",
   "244": "/assets/images/Uni%20Logos/375111.png",
   "5": "/assets/images/Uni%20Logos/385368.png",
   "189": "/assets/images/Uni%20Logos/100259.png",
@@ -186,6 +187,7 @@ export const INSTITUTION_LOCAL_LOGO_MAP = Object.freeze({
   "27": "/assets/images/Uni%20Logos/163888.png",
   "43": "/assets/images/Uni%20Logos/447904.png",
   "188": "/assets/images/Uni%20Logos/360777.png",
+  "227": "/assets/images/Uni%20Logos/202952.png",
   "6": "/assets/images/Uni%20Logos/274886.png",
   "109": "/assets/images/Uni%20Logos/163898.png",
   "220": "/assets/images/Uni%20Logos/432690.png",
