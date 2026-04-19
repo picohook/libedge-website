@@ -35,6 +35,124 @@ app.use('*', cors({
 // hono/jwt: sign() and verify() replace manual HS256 implementation.
 // verify() throws on invalid signature or expired token (exp checked automatically).
 
+// ====================== INPUT VALIDATION ======================
+
+/**
+ * Hafif yerel validator. Zod olmadan tip güvenli giriş doğrulaması.
+ *
+ * Kural tipleri:
+ *   required        — null / undefined / boş string kabul etmez
+ *   type            — 'string' | 'number' | 'boolean' | 'array' | 'object'
+ *   integer         — Number.isInteger kontrolü (type:'number' ile birlikte)
+ *   min / max       — sayı aralığı
+ *   minLength / maxLength — string uzunluğu (trim sonrası)
+ *   email           — basit RFC-uyumlu format
+ *   enum            — allowedValues dizisinde olmalı
+ *   nullable        — required ile birlikte null'a izin verir
+ *
+ * Döner: { ok: true } | { ok: false, errors: string[], response: Response }
+ */
+function validate(data, rules) {
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const errors = [];
+
+  for (const [field, checks] of Object.entries(rules)) {
+    let val = data[field];
+
+    // String ise trim et (orijinal değeri değiştirme — sadece kontrol için)
+    const strVal = typeof val === 'string' ? val.trim() : val;
+    const isEmpty = val === null || val === undefined || strVal === '';
+
+    // nullable: null'a açıkça izin ver
+    if (checks.nullable && val === null) continue;
+
+    // required
+    if (checks.required && isEmpty) {
+      errors.push(`"${field}" zorunludur`);
+      continue; // bu alan için diğer kontrolleri atla
+    }
+
+    // değer yoksa ve required değilse kontrol etme
+    if (isEmpty) continue;
+
+    // type
+    if (checks.type) {
+      if (checks.type === 'array') {
+        if (!Array.isArray(val)) errors.push(`"${field}" dizi olmalıdır`);
+      } else if (typeof val !== checks.type) {
+        errors.push(`"${field}" ${checks.type} tipinde olmalıdır`);
+      }
+    }
+
+    // integer
+    if (checks.integer && !Number.isInteger(Number(val))) {
+      errors.push(`"${field}" tam sayı olmalıdır`);
+    }
+
+    // min / max (sayılar için)
+    if (checks.min !== undefined && Number(val) < checks.min) {
+      errors.push(`"${field}" en az ${checks.min} olmalıdır`);
+    }
+    if (checks.max !== undefined && Number(val) > checks.max) {
+      errors.push(`"${field}" en fazla ${checks.max} olabilir`);
+    }
+
+    // minLength / maxLength (string için, trim sonrası)
+    if (typeof strVal === 'string') {
+      if (checks.minLength !== undefined && strVal.length < checks.minLength) {
+        errors.push(`"${field}" en az ${checks.minLength} karakter olmalıdır`);
+      }
+      if (checks.maxLength !== undefined && strVal.length > checks.maxLength) {
+        errors.push(`"${field}" en fazla ${checks.maxLength} karakter olabilir`);
+      }
+    }
+
+    // email
+    if (checks.email && !EMAIL_RE.test(strVal)) {
+      errors.push(`"${field}" geçerli bir e-posta adresi olmalıdır`);
+    }
+
+    // enum
+    if (checks.enum && !checks.enum.includes(val)) {
+      errors.push(`"${field}" şu değerlerden biri olmalıdır: ${checks.enum.join(', ')}`);
+    }
+  }
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true };
+}
+
+/**
+ * Endpoint'lerde kısa kullanım için yardımcı.
+ * Geçersizse doğrudan 400 JSON response döner, aksi hâlde body'yi verir.
+ *
+ * Kullanım:
+ *   const body = await parseAndValidate(c, { email: { required:true, email:true }, ... });
+ *   if (body instanceof Response) return body;
+ */
+async function parseAndValidate(c, rules) {
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Geçersiz JSON gövdesi' }, 400);
+  }
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return c.json({ error: 'İstek gövdesi bir nesne olmalıdır' }, 400);
+  }
+  // String alanları trim et (mutasyonlu — orijinal referans korunur)
+  for (const key of Object.keys(body)) {
+    if (typeof body[key] === 'string') body[key] = body[key].trim();
+  }
+  const result = validate(body, rules);
+  if (!result.ok) {
+    return c.json({ error: result.errors[0], errors: result.errors }, 400);
+  }
+  return body;
+}
+
 // ====================== 🆕 AUTH MIDDLEWARE (Cookie tabanlı) ======================
 
 async function requireAuth(c) {
@@ -859,13 +977,18 @@ app.get('/api/auth/status', (c) => {
 // ====================== LOGIN ENDPOINT ======================
 app.post('/api/auth/login', async (c) => {
   try {
-    const { email, password } = await c.req.json();
+    const body = await parseAndValidate(c, {
+      email:    { required: true, type: 'string', email: true, maxLength: 254 },
+      password: { required: true, type: 'string', minLength: 1, maxLength: 128 },
+    });
+    if (body instanceof Response) return body;
+    const { email, password } = body;
     const db = c.env.DB;
 
     const user = await db.prepare(`
       SELECT id, email, full_name, institution, institution_id, password_hash, role
       FROM users WHERE email = ?
-    `).bind(email.toLowerCase().trim()).first();
+    `).bind(email.toLowerCase()).first();
 
     if (!user || !(await verifyPassword(password, user.password_hash))) {
       return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
@@ -1336,13 +1459,15 @@ app.delete('/api/newsletter/subscribe', async (c) => {
 // ====================== REGISTRATION ROUTES ======================
 app.post('/api/auth/register', async (c) => {
   try {
-    const { email, password, full_name, institution } = await c.req.json();
+    const body = await parseAndValidate(c, {
+      email:       { required: true, type: 'string', email: true, maxLength: 254 },
+      password:    { required: true, type: 'string', minLength: 6, maxLength: 128 },
+      full_name:   { type: 'string', maxLength: 120 },
+      institution: { type: 'string', maxLength: 200 },
+    });
+    if (body instanceof Response) return body;
+    const { email, password, full_name, institution } = body;
     const db = c.env.DB;
-  
-
-    if (!email || !password) {
-      return c.json({ success: false, error: 'E-posta ve şifre zorunludur.' }, 400);
-    }
 
     const password_hash = await hashPassword(password);
     const profileFields = normalizeUserProfileFields({ full_name });
@@ -4190,9 +4315,16 @@ app.post('/api/files/share', async (c) => {
   if (auth.response) return auth.response;
   if (!['super_admin', 'admin'].includes(auth.user.role)) return c.json({ error: 'Yetkisiz' }, 403);
 
-  const { file_ids, recipients, message, expires_at } = await c.req.json();
-  if (!Array.isArray(file_ids) || !file_ids.length) return c.json({ error: 'file_ids zorunlu' }, 400);
-  if (!Array.isArray(recipients) || !recipients.length) return c.json({ error: 'recipients zorunlu' }, 400);
+  const body = await parseAndValidate(c, {
+    file_ids:   { required: true, type: 'array' },
+    recipients: { required: true, type: 'array' },
+    message:    { type: 'string', maxLength: 1000 },
+    expires_at: { type: 'string', maxLength: 30 },
+  });
+  if (body instanceof Response) return body;
+  const { file_ids, recipients, message, expires_at } = body;
+  if (!file_ids.length) return c.json({ error: 'file_ids boş olamaz' }, 400);
+  if (!recipients.length) return c.json({ error: 'recipients boş olamaz' }, 400);
 
   const db = c.env.DB;
   const resolvedRecipients = await resolveShareRecipients(db, auth.user, recipients);
@@ -4569,12 +4701,17 @@ app.patch('/api/notifications/read-all', async (c) => {
 
 app.post('/api/admin/institution', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
-  const { name, domain, website_url, category, status } = await c.req.json();
-  if (!name?.trim()) return c.json({ error: 'Kurum adı zorunludur' }, 400);
-  const validCategories = ['University','Corporate','K-12','Government','Publisher','Service Provider','Sub-distributor'];
-  const validStatuses = ['Customer','Prospect','Partner','Inactive'];
-  const cat = validCategories.includes(category) ? category : 'University';
-  const st = validStatuses.includes(status) ? status : 'Customer';
+  const body = await parseAndValidate(c, {
+    name:        { required: true, type: 'string', minLength: 2, maxLength: 200 },
+    domain:      { type: 'string', maxLength: 500 },
+    website_url: { type: 'string', maxLength: 500 },
+    category:    { type: 'string', enum: ['University','Corporate','K-12','Government','Publisher','Service Provider','Sub-distributor'] },
+    status:      { type: 'string', enum: ['Customer','Prospect','Partner','Inactive'] },
+  });
+  if (body instanceof Response) return body;
+  const { name, domain, website_url, category, status } = body;
+  const cat = category || 'University';
+  const st  = status   || 'Customer';
   const db = c.env.DB;
   await ensureInstitutionMetadataColumns(db);
   try {
@@ -5295,10 +5432,14 @@ app.post('/api/support/tickets', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   const db = c.env.DB;
-  const { subject, message, priority } = await c.req.json();
-  if (!subject?.trim() || !message?.trim()) return c.json({ error: 'Konu ve mesaj zorunludur' }, 400);
-  const allowed_priority = ['low', 'normal', 'high', 'urgent'];
-  const p = allowed_priority.includes(priority) ? priority : 'normal';
+  const body = await parseAndValidate(c, {
+    subject:  { required: true, type: 'string', minLength: 3, maxLength: 200 },
+    message:  { required: true, type: 'string', minLength: 10, maxLength: 5000 },
+    priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent'] },
+  });
+  if (body instanceof Response) return body;
+  const { subject, message, priority } = body;
+  const p = priority || 'normal';
   const user = auth.user;
   const institution_id = user.institution_id || null;
   const result = await db.prepare(
