@@ -9,7 +9,8 @@
       "Bash(C:/Users/OWNER/AppData/Local/Programs/Python/Python313/python.exe -c ':*)",
       "Bash(C:/Users/OWNER/AppData/Local/Programs/Python/Python313/python.exe --version)",
       "Bash(wrangler r2:*)",
-      "Bash(wrangler d1:*)"
+      "Bash(wrangler d1:*)",
+      "Bash(node scripts/add-data-en.js)"
     ]
   }
 }

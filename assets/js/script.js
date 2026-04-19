@@ -611,23 +611,32 @@ document.addEventListener('DOMContentLoaded', function() {
         const translatableElements = document.querySelectorAll('[translatable], .translatable');
 
         translatableElements.forEach(element => {
-            if (element.textContent.trim()) {
+            // Text content
+            if (toEnglish) {
+                // data-en öncelikli; yoksa translations dict'e fallback
+                const enText = element.dataset.en;
                 const originalText = element.textContent.trim();
-                if (toEnglish && translations[originalText]) {
+                const resolved = enText || (originalText && translations[originalText]);
+                if (resolved) {
                     element.dataset.originalText = originalText;
-                    element.textContent = translations[originalText];
-                } else if (!toEnglish && element.dataset.originalText) {
-                    element.textContent = element.dataset.originalText;
-                    delete element.dataset.originalText;
+                    element.textContent = resolved;
                 }
+            } else if (element.dataset.originalText) {
+                element.textContent = element.dataset.originalText;
+                delete element.dataset.originalText;
             }
 
+            // Placeholder
             if (element.placeholder) {
-                const originalPlaceholder = element.placeholder.trim();
-                if (toEnglish && translations[originalPlaceholder]) {
-                    element.dataset.originalPlaceholder = originalPlaceholder;
-                    element.placeholder = translations[originalPlaceholder];
-                } else if (!toEnglish && element.dataset.originalPlaceholder) {
+                if (toEnglish) {
+                    const enPh = element.dataset.enPlaceholder;
+                    const originalPlaceholder = element.placeholder.trim();
+                    const resolvedPh = enPh || (originalPlaceholder && translations[originalPlaceholder]);
+                    if (resolvedPh) {
+                        element.dataset.originalPlaceholder = originalPlaceholder;
+                        element.placeholder = resolvedPh;
+                    }
+                } else if (element.dataset.originalPlaceholder) {
                     element.placeholder = element.dataset.originalPlaceholder;
                     delete element.dataset.originalPlaceholder;
                 }

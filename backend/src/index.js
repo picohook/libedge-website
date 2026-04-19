@@ -6517,6 +6517,17 @@ app.put('/api/admin/airtable/accounts/:id', async (c) => {
     return c.json({ error: 'Tek yönlü sync aktif. Airtable kayıtları proje içinden güncellenmez.' }, 410);
 });
 
+app.onError((err, c) => {
+  console.error(`[onError] ${c.req.method} ${c.req.url}`, err);
+  const isDev = c.env?.ENVIRONMENT === 'development';
+  return c.json(
+    { error: isDev ? (err.message || 'Sunucu hatası') : 'Sunucu hatası', code: 500 },
+    500
+  );
+});
+
+app.notFound((c) => c.json({ error: 'Endpoint bulunamadı', code: 404 }, 404));
+
 export default app;
 
 
