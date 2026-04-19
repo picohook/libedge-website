@@ -20,7 +20,7 @@ function getInitials(name) {
 function formatInstitutionLabel(name) {
     const value = String(name || '').trim();
     if (!value) return '';
-    return value.replace(/\bUNIVERSITY\b/gi, 'UNI');
+    return value;
 }
 
 
