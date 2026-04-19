@@ -1288,7 +1288,7 @@ app.post('/api/user/avatar', async (c) => {
     if (file.size > maxSize) return c.json({ error: 'Dosya 2MB\'dan küçük olmalı' }, 400);
 
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-    const key = `institution-logos/${id}.${ext}`;
+    const key = `avatars/${userId}.${ext}`;
 
     const arrayBuffer = await file.arrayBuffer();
     await bucket.put(key, arrayBuffer, {
