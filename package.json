@@ -1,29 +1,31 @@
-{
-  "name": "libedge-website",
-  "version": "1.0.0",
-  "description": "LibEdge Website Backend",
-  "type": "module",
-  "main": "backend/src/index.js",
-  "scripts": {
-    "test": "npm run smoke-checklist",
-    "smoke-checklist": "echo \"Manual smoke checks: homepage, login/logout, profile, announcements, newsletter, admin, institution files\"",
-    "dev": "wrangler dev",
-    "build:css": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --minify",
-    "build:css:watch": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --watch",
-    "build": "npm run build:css",
-    "deploy": "wrangler deploy"
-  },
-  "dependencies": {
-    "@fortawesome/fontawesome-free": "^6.7.2",
-    "hono": "^4.12.10"
-  },
-  "devDependencies": {
-    "tailwindcss": "^3.4.17",
-    "wrangler": "^4.83.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/picohook/libedge-website.git"
-  },
-  "license": "ISC"
+﻿{
+    "name":  "libedge-website",
+    "version":  "1.0.0",
+    "description":  "LibEdge Website Backend",
+    "type":  "module",
+    "main":  "backend/src/index.js",
+    "scripts":  {
+                    "test":  "npm run smoke-checklist",
+                    "smoke-checklist":  "echo \"Manual smoke checks: homepage, login/logout, profile, announcements, newsletter, admin, institution files\"",
+                    "dev":  "wrangler dev",
+                    "build:css":  "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --minify",
+                    "build:css:watch":  "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --watch",
+                    "build":  "npm run build:css",
+                    "deploy":  "wrangler deploy",
+                    "import:institution-logos":  "node scripts/import-institution-logos.mjs"
+                },
+    "dependencies":  {
+                         "@fortawesome/fontawesome-free":  "^6.7.2",
+                         "hono":  "^4.12.10"
+                     },
+    "devDependencies":  {
+                            "tailwindcss":  "^3.4.17",
+                            "wrangler":  "^4.83.0"
+                        },
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/picohook/libedge-website.git"
+                   },
+    "license":  "ISC"
 }
+
