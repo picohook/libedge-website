@@ -29,7 +29,7 @@
 
 async function fetchHeaderHtml() {
     const headerVersion = '20260420c';
-    const candidates = ['/partials/header.html?v=', 'partials/header.html?v='];
+    const candidates = [`/partials/header.html?v=${headerVersion}`, `partials/header.html?v=${headerVersion}`];
 
     for (const url of candidates) {
         try {
