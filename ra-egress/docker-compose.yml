@@ -26,8 +26,10 @@ services:
     # Inbound port publish etmiyoruz — tamamen outbound.
 
   ra-egress:
-    image: ghcr.io/libedge/ra-egress:latest
-    # Yerel build istersek: build: .
+    # POC aşamasında image publish edilmedi — yerelde build edilir.
+    # Registry'ye publish edildiğinde: image: ghcr.io/libedge/ra-egress:latest
+    build: .
+    image: ra-egress:local
     restart: unless-stopped
     environment:
       - EGRESS_SHARED_SECRET=${EGRESS_SHARED_SECRET}

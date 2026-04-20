@@ -39,13 +39,14 @@ id = "d742f0d165234385bacf6ddfc0cd43e1"   # npx wrangler kv:namespace create RA_
 # ──────────────────────────────────────────────────────────────────────────
 [env.staging]
 name = "libedge-ra-proxy-staging"
+# POC: tek subdomain (query-param target encoding) — Universal SSL yeterli
 # routes = [
-#   { pattern = "*proxy-staging.libedge.com/*", zone_name = "libedge.com" }
+#   { pattern = "proxy-staging.selmiye.com/*", zone_name = "selmiye.com" }
 # ]
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
-RA_PROXY_BASE_HOST = "proxy-staging.libedge.com"
+RA_PROXY_BASE_HOST = "proxy-staging.selmiye.com"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -69,13 +70,14 @@ id = "a3a0f76dca834921b4b1000bce675037"   # wrangler kv:namespace create --env s
 # ──────────────────────────────────────────────────────────────────────────
 [env.production]
 name = "libedge-ra-proxy-prod"
+# POC: tek subdomain (query-param target encoding) — Universal SSL yeterli
 # routes = [
-#   { pattern = "*proxy.libedge.com/*", zone_name = "libedge.com" }
+#   { pattern = "proxy.selmiye.com/*", zone_name = "selmiye.com" }
 # ]
 
 [env.production.vars]
 ENVIRONMENT = "production"
-RA_PROXY_BASE_HOST = "proxy.libedge.com"
+RA_PROXY_BASE_HOST = "proxy.selmiye.com"
 
 [[env.production.d1_databases]]
 binding = "DB"
@@ -99,4 +101,4 @@ id = "503551dabe024adf9afa425fa2ec1c54"   # wrangler kv:namespace create --env p
 # ──────────────────────────────────────────────────────────────────────────
 # RA_PROXY_TOKEN_SECRET    — Main Worker ile paylaşılan HS256 secret (32 byte)
 # RA_CREDS_MASTER_KEY      — publisher credential AES-GCM master key (32 byte base64)
-# RA_EGRESS_DEFAULT_SECRET — fallback egress HMAC secret (kurum başına rotate edilir)
+# RA_EGRESS_DEFAULT_SECRET — fallback egress HMAC secret (kurum başına rotate edili

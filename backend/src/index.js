@@ -10,6 +10,7 @@ import { sign, verify } from 'hono/jwt';
 // Route handler: POST /api/ra/issue-token
 // Şema guard (ALTER TABLE + CREATE TABLE IF NOT EXISTS) handler içinde çağrılır.
 import { registerRaIssueToken } from './routes/ra/issue-token.js';
+import { registerRaAdminTunnel } from './routes/ra/admin-tunnel.js';
 
 const app = new Hono();
 
@@ -6902,6 +6903,8 @@ app.put('/api/admin/airtable/accounts/:id', async (c) => {
 // ─── Remote Access (RA) route registration ─────────────────────────────────
 // POST /api/ra/issue-token
 registerRaIssueToken(app);
+// GET/PUT /api/ra/admin/institution-egress/:id ; POST .../test
+registerRaAdminTunnel(app);
 
 app.onError((err, c) => {
   console.error(`[onError] ${c.req.method} ${c.req.url}`, err);

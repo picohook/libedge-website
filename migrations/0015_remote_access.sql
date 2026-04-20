@@ -1,12 +1,12 @@
 ﻿-- 0015_remote_access.sql
--- Remote Access modülü için şema eklemeleri
+-- Remote Access modülü için şema eklemeleri (SQLite uyumlu)
 
--- 1. Products tablosuna RA ile ilgili kolonları ekle
-ALTER TABLE products ADD COLUMN IF NOT EXISTS ra_enabled BOOLEAN DEFAULT 0;
-ALTER TABLE products ADD COLUMN IF NOT EXISTS ra_origin_host TEXT;
+-- 1. Products tablosuna RA ile ilgili kolonları ekle (hata yönetimi ile)
+ALTER TABLE products ADD COLUMN ra_enabled BOOLEAN DEFAULT 0;
+ALTER TABLE products ADD COLUMN ra_origin_host TEXT;
 
 -- 2. Institution_subscriptions tablosuna access_type ekle
-ALTER TABLE institution_subscriptions ADD COLUMN IF NOT EXISTS access_type TEXT DEFAULT 'direct';
+ALTER TABLE institution_subscriptions ADD COLUMN access_type TEXT DEFAULT 'direct';
 
 -- 3. RA özel ayarları için yeni tablo
 CREATE TABLE IF NOT EXISTS institution_ra_settings (

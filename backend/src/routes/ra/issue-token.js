@@ -87,11 +87,18 @@ export function registerRaIssueToken(app) {
       );
     }
 
-    // Süre kontrolü: ra_valid_until (override) veya valid_until (genel)
+    // Süre kontrolü:
+    //   ra_valid_until → INTEGER unix timestamp (RA-specific override)
+    //   end_date       → date string (ISO veya 'YYYY-MM-DD'), LibEdge genel alanı
     const now = Math.floor(Date.now() / 1000);
-    const exp = sub.ra_valid_until ?? sub.valid_until ?? null;
-    if (exp && Number(exp) < now) {
+    if (sub.ra_valid_until && Number(sub.ra_valid_until) < now) {
       return c.json({ error: 'Abonelik süresi dolmuş' }, 410);
+    }
+    if (sub.end_date) {
+      const endTs = Math.floor(new Date(sub.end_date).getTime() / 1000);
+      if (Number.isFinite(endTs) && endTs < now) {
+        return c.json({ error: 'Abonelik süresi dolmuş' }, 410);
+      }
     }
 
     // products.ra_enabled = 1 olmalı
@@ -150,9 +157,11 @@ export function registerRaIssueToken(app) {
       expirationTtl: 600,
     });
 
-    // Proxy domain'i env'den; yoksa prod default
-    const proxyHost = c.env.RA_PROXY_HOST || 'proxy.libedge.com';
-    const redirectUrl = `https://${tgt}.${proxyHost}/#t=${token}`;
+    // Proxy domain'i env'den; yoksa prod default.
+    // POC: tek subdomain + query-param encoding (wildcard cert gerekmez).
+    //   https://proxy-staging.selmiye.com/?tgt=www-jove-com#t=eyJ...
+    const proxyHost = c.env.RA_PROXY_HOST || 'proxy.selmiye.com';
+    const redirectUrl = `https://${proxyHost}/?tgt=${encodeURIComponent(tgt)}#t=${token}`;
 
     return c.json({ redirect_url: redirectUrl, expires_at: now + 300 });
   });
@@ -166,7 +175,7 @@ async function lookupSubscription(db, { institutionId, subscriptionId, productSl
     SELECT
       isub.id,
       isub.product_slug,
-      isub.valid_until,
+      isub.end_date,
       isub.ra_credential_scope,
       isub.ra_credential_enc,
       isub.ra_recipe_override_json,

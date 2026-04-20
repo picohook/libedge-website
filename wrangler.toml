@@ -47,7 +47,7 @@ name = "form-handler-staging"
 [env.staging.vars]
 ENVIRONMENT = "staging"
 WORKER_NAME = "form-handler-staging"
-RA_PROXY_HOST = "proxy-staging.libedge.com"
+RA_PROXY_HOST = "proxy-staging.selmiye.com"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -75,7 +75,7 @@ name = "form-handler-prod"
 [env.production.vars]
 ENVIRONMENT = "production"
 WORKER_NAME = "form-handler-prod"
-RA_PROXY_HOST = "proxy.libedge.com"
+RA_PROXY_HOST = "proxy.selmiye.com"
 
 [[env.production.d1_databases]]
 binding = "DB"

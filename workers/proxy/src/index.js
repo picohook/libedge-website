@@ -1,26 +1,26 @@
 /**
  * workers/proxy/src/index.js
  *
- * Remote Access Proxy Worker — *.proxy.libedge.com wildcard'ına bağlı.
- * Main Worker'dan bağımsız deploy edilir, Hono kullanmaz (saf fetch
- * handler — minimal overhead, streaming-friendly).
+ * Remote Access Proxy Worker — POC (query-param target encoding).
+ * Tek hostname üzerinden çalışır: proxy-staging.selmiye.com / proxy.selmiye.com
+ * (wildcard SSL gerekmez — Universal SSL *.selmiye.com'u kapsar).
  *
  * Akış:
- *   1. İstek URL'i parse et: `https://www-sciencedirect-com.proxy.libedge.com/article/123`
- *      → targetEncoded = "www-sciencedirect-com"
- *   2. Proxy session cookie'si var mı?
- *      - Yoksa → hash fragment'ta veya ?t= query'de token arar
- *      - Token'ı verify et (Main Worker'ın imzası), jti check
- *      - Session cookie set et (proxy.libedge.com Domain), 302 redirect ile URL temizle
- *   3. Session varken:
- *      - Hedef origin'e fetch (ya egress agent üzerinden ya direkt)
- *      - Upstream login (cookie jar) — §9
- *      - HTML body rewrite — §9 host_allowlist + proxy subdomain'e map
- *      - Response'u stream et, Set-Cookie'leri YAKALA (kullanıcıya iletme)
+ *   1. İlk istek: https://proxy-staging.selmiye.com/?tgt=www-jove-com#t=TOKEN
+ *      - Token ve hedef host client-side bridge ile query'ye taşınır (hash
+ *        fragment server'a gitmez)
+ *      - Token verify → session cookie set (target_host token'dan gelir)
+ *      - 302 ile ?tgt ve ?t parametreleri temizlenmiş URL'e yönlendirilir
+ *   2. Sonraki istekler: oturum cookie'si var, target_host session'dan okunur.
+ *      Upstream'e fetch, HTML rewrite ile linkler proxy host'una çevrilir.
+ *
+ * Not: Main Worker ile paylaşılan KV (RA_UPSTREAM_SESSIONS) ve HS256 secret
+ * (RA_PROXY_TOKEN_SECRET) sayesinde token doğrulaması ve jti replay koruması.
  */
 
 import { verifyProxyToken } from '../../../backend/src/ra/jwt.js';
 import { decodeHost, isValidEncodedHost } from '../../../backend/src/ra/host.js';
+import { proxyToUpstream } from './upstream.js';
 
 const SESSION_COOKIE = 'ra_proxy_session';
 const SESSION_TTL_SEC = 3600;
@@ -43,93 +43,26 @@ export default {
 
 async function handle(request, env, ctx) {
   const url = new URL(request.url);
+  const proxyHost = url.hostname; // proxy-staging.selmiye.com
 
-  // 1. Subdomain parse: *.proxy.libedge.com veya *.proxy-staging.libedge.com
-  const parsed = parseProxyHost(url.hostname, env.RA_PROXY_BASE_HOST || inferBaseHost(url.hostname));
-  if (!parsed) {
-    return htmlError(400, 'Geçersiz proxy alt alan adı.');
+  // 1. Token kabul akışı: ?t=... varsa token verify + session oluştur
+  const tokenParam = url.searchParams.get('t');
+  if (tokenParam) {
+    return await acceptTokenAndRedirect(request, env, tokenParam, url);
   }
-  const { encodedLabel, baseHost } = parsed;
-
-  if (!isValidEncodedHost(encodedLabel)) {
-    return htmlError(400, 'Hedef adres çözümlenemedi.');
-  }
-  const targetHost = decodeHost(encodedLabel);
 
   // 2. Session cookie?
   const sessionCookie = readCookie(request.headers.get('Cookie'), SESSION_COOKIE);
-  let session = sessionCookie
-    ? await loadProxySession(env, sessionCookie)
-    : null;
+  const session = sessionCookie ? await loadProxySession(env, sessionCookie) : null;
 
   if (!session) {
-    // Token kabul — hash fragment server'a gönderilmez, client-side script
-    // gerekiyor. Pratikte Main Worker #t=... yerine ?t=... ile de gönderebilir.
-    const token = url.searchParams.get('t');
-    if (token) {
-      const redirected = await acceptTokenAndRedirect(request, env, token, url);
-      if (redirected) return redirected;
-    }
-
-    // Hash fragment fallback: client-side minik HTML servis et, token'ı
-    // ?t=...'e çevirip yönlendirsin.
-    if (!token) {
-      return hashToQueryBridge();
-    }
-
-    return htmlError(401, 'Oturum kurulamadı. Lütfen portal üzerinden tekrar deneyin.');
+    // Hash fragment'ta token gelmiş olabilir — JS bridge ile ?t='e çevir
+    return hashToQueryBridge();
   }
 
-  // 3. Session valid — upstream'e relay
-  // Session: { user_id, institution_id, subscription_id, product_slug, target_host }
-  // targetHost header'dan gelen subdomain, session'daki ile uyumlu mu?
-  if (session.target_host !== targetHost) {
-    // Farklı publisher'a atlamış; token'sız cross-publisher izni verilmez.
-    return htmlError(
-      403,
-      'Bu oturum bu kaynağa ait değil. Portal üzerinden ilgili kaynağa yeniden erişin.'
-    );
-  }
-
-  // Upstream URL inşası (hedef host + path + query)
-  const targetUrl = new URL(`https://${targetHost}${url.pathname}${url.search}`);
-
-  // TODO: upstream login recipe, cookie jar, egress dispatch — §9, §10
-  // Bu dosya şimdilik iskelet: gerçek fetch çağrısı upstream.js ve
-  // egress-client.js'te. Proxy Worker çağrı sırası:
-  //
-  //   const sess = await ensureUpstreamSession(env, session);
-  //   const resp = await egressFetch(env, session.institution_id, targetUrl, { ... });
-  //   return streamWithRewrite(resp, env, { baseHost, session });
-
-  return new Response(
-    `Proxy session OK\n` +
-      `target: ${targetUrl.toString()}\n` +
-      `user: ${session.user_id}\n` +
-      `institution: ${session.institution_id}\n` +
-      `product: ${session.product_slug}\n\n` +
-      `[upstream relay yet to be implemented — §9 upstream.js + §10 egress-client.js]`,
-    { status: 200, headers: { 'content-type': 'text/plain; charset=utf-8' } }
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// Host parse: "www-sciencedirect-com.proxy.libedge.com" →
-//   { encodedLabel: "www-sciencedirect-com", baseHost: "proxy.libedge.com" }
-// ──────────────────────────────────────────────────────────────────────────
-function parseProxyHost(hostname, baseHost) {
-  if (!hostname.endsWith('.' + baseHost)) return null;
-  const label = hostname.slice(0, -('.' + baseHost).length);
-  if (!label) return null;
-  return { encodedLabel: label, baseHost };
-}
-
-function inferBaseHost(hostname) {
-  // hostname: "www-sciencedirect-com.proxy.libedge.com"
-  // Ortadaki noktaları say: baseHost en az 2 parça (proxy.libedge.com)
-  const parts = hostname.split('.');
-  if (parts.length < 3) return hostname;
-  return parts.slice(1).join('.');
+  // 3. target_host session'dan (cross-publisher atlayışını engellemek için
+  // URL query'deki ?tgt göz ardı edilir). Upstream'e proxy et.
+  return await proxyToUpstream(env, session, sessionCookie, request, proxyHost);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -143,6 +76,17 @@ async function acceptTokenAndRedirect(request, env, token, url) {
     return htmlError(401, 'Token geçersiz veya süresi dolmuş.', err.message);
   }
 
+  // tgt claim'i token içinde — query'deki ?tgt ile eşleşmeli (tampering guard)
+  const encodedTgt = payload.tgt;
+  if (!encodedTgt || !isValidEncodedHost(encodedTgt)) {
+    return htmlError(400, 'Token hedef host bilgisi geçersiz.');
+  }
+  const tgtFromQuery = url.searchParams.get('tgt');
+  if (tgtFromQuery && tgtFromQuery !== encodedTgt) {
+    return htmlError(400, 'Token ve URL hedef host tutarsız.');
+  }
+  const targetHost = decodeHost(encodedTgt);
+
   // jti tek kullanımlık — RATE_LIMIT_KV'da daha önce harcandı mı?
   const jtiKey = `ra:jti:${payload.jti}`;
   const existing = await env.RATE_LIMIT_KV.get(jtiKey);
@@ -153,16 +97,15 @@ async function acceptTokenAndRedirect(request, env, token, url) {
 
   // Session oluştur (random id, KV'da)
   const sid = crypto.randomUUID();
-  // payload field'ları: sub=user_id(INTEGER), iid=institution_id(INTEGER),
-  // sid=subscription_id(INTEGER), pid=product_slug(TEXT), tgt=encoded host
+  const now = Math.floor(Date.now() / 1000);
   const session = {
-    user_id: payload.sub,
-    institution_id: payload.iid,
-    subscription_id: payload.sid,
-    product_slug: payload.pid,
-    target_host: decodeHost(payload.tgt),
-    created_at: Math.floor(Date.now() / 1000),
-    expires_at: Math.floor(Date.now() / 1000) + SESSION_TTL_SEC,
+    user_id: payload.sub,           // INTEGER
+    institution_id: payload.iid,    // INTEGER
+    subscription_id: payload.sid,   // INTEGER
+    product_slug: payload.pid,      // TEXT
+    target_host: targetHost,        // örn. www.jove.com
+    created_at: now,
+    expires_at: now + SESSION_TTL_SEC,
   };
   await env.RA_UPSTREAM_SESSIONS.put(
     `proxysess:${sid}`,
@@ -170,9 +113,13 @@ async function acceptTokenAndRedirect(request, env, token, url) {
     { expirationTtl: SESSION_TTL_SEC }
   );
 
-  // 302: aynı URL ama token'sız
+  // 302 clean URL — aynı path, ama ?t ve ?tgt çıkarılır
   const clean = new URL(url);
   clean.searchParams.delete('t');
+  clean.searchParams.delete('tgt');
+  // Path varsayılan /
+  if (!clean.pathname || clean.pathname === '') clean.pathname = '/';
+
   return new Response(null, {
     status: 302,
     headers: {
@@ -183,7 +130,7 @@ async function acceptTokenAndRedirect(request, env, token, url) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Hash fragment bridge — tarayıcıda JS'le fragment → query'ye taşı
+// Hash fragment bridge — tarayıcıda JS'le #t=... → ?t='e çevir
 // ──────────────────────────────────────────────────────────────────────────
 function hashToQueryBridge() {
   const html = `<!doctype html><html><head><meta charset="utf-8">
@@ -192,7 +139,10 @@ function hashToQueryBridge() {
 (function () {
   var h = window.location.hash || '';
   var m = h.match(/[#&]t=([^&]+)/);
-  if (!m) { document.body.innerText = 'Oturum bilgisi eksik.'; return; }
+  if (!m) {
+    document.body.innerText = 'Oturum bilgisi eksik — portal üzerinden tekrar erişin.';
+    return;
+  }
   var u = new URL(window.location.href);
   u.hash = '';
   u.searchParams.set('t', m[1]);
@@ -237,11 +187,10 @@ function readCookie(header, name) {
 }
 
 function buildSessionCookie(sid, hostname) {
-  // Domain = proxy.libedge.com (2 eksenli base host)
-  const baseHost = inferBaseHost(hostname);
+  // POC: tek host. Domain'i hostname'e sabitliyoruz (wildcard yok).
   return (
     `${SESSION_COOKIE}=${encodeURIComponent(sid)}; ` +
-    `Domain=.${baseHost}; Path=/; HttpOnly; Secure; SameSite=Lax; ` +
+    `Domain=${hostname}; Path=/; HttpOnly; Secure; SameSite=Lax; ` +
     `Max-Age=${SESSION_TTL_SEC}`
   );
 }
