@@ -1,0 +1,39 @@
+# ra-egress/docker-compose.yml
+#
+# Kurum IT'sine tek dosya olarak verilen paket. Gerekli:
+#   - Docker + Docker Compose (RPi 4, 2GB RAM yeter)
+#   - Outbound 443 HTTPS erişimi (cloudflared tünel için)
+#   - Admin panelimizden alınmış TUNNEL_TOKEN ve EGRESS_SHARED_SECRET
+#
+# Kurulum:
+#   1) .env dosyasını bu klasörde oluştur (aşağıdaki şablon):
+#        TUNNEL_TOKEN=<admin panelden kopyala>
+#        EGRESS_SHARED_SECRET=<admin panelden kopyala>
+#        ALLOWED_HOST_REGEX=<admin panelden kopyala, ör. ^(www\\.)?sciencedirect\\.com$>
+#   2) docker compose up -d
+#   3) Admin panelinde "Tüneli Test Et" butonu → yeşil ise tamam
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - ra-egress
+    # cloudflared ra-egress'e Docker network üzerinden erişir.
+    # Inbound port publish etmiyoruz — tamamen outbound.
+
+  ra-egress:
+    image: ghcr.io/libedge/ra-egress:latest
+    # Yerel build istersek: build: .
+    restart: unless-stopped
+    environment:
+      - EGRESS_SHARED_SECRET=${EGRESS_SHARED_SECRET}
+      - ALLOWED_HOST_REGEX=${ALLOWED_HOST_REGEX}
+      - MAX_REQUEST_BYTES=10485760
+      - LISTEN_ADDR=:8080
+    # Port publish edilmiyor — sadece cloudflared container'ı aynı network
+    # üzerinden http://ra-egress:8080 ile erişir.
+    # Kurum firewall'ı açısından ek port açılması gerekmez.

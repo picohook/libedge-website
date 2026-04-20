@@ -5,6 +5,12 @@ import { cors } from 'hono/cors';
 import { getCookie, setCookie } from 'hono/cookie';
 import { sign, verify } from 'hono/jwt';
 
+// ─── Remote Access (RA) modülü ─────────────────────────────────────────────
+// Kurumsal publisher aboneliklerine uzaktan erişim proxy'si.
+// Route handler: POST /api/ra/issue-token
+// Şema guard (ALTER TABLE + CREATE TABLE IF NOT EXISTS) handler içinde çağrılır.
+import { registerRaIssueToken } from './routes/ra/issue-token.js';
+
 const app = new Hono();
 
 // ====================== CONFIGURATION ======================
@@ -151,7 +157,7 @@ function validate(data, rules) {
  *   const body = await parseAndValidate(c, { email: { required:true, email:true }, ... });
  *   if (body instanceof Response) return body;
  */
-async function parseAndValidate(c, rules) {
+export async function parseAndValidate(c, rules) {
   let body;
   try {
     body = await c.req.json();
@@ -174,7 +180,7 @@ async function parseAndValidate(c, rules) {
 
 // ====================== 🆕 AUTH MIDDLEWARE (Cookie tabanlı) ======================
 
-async function requireAuth(c) {
+export async function requireAuth(c) {
   // ✅ YENİ: Proxy'den gelen Authorization header'ı da kabul et
   const authHeader = c.req.header('Authorization');
   if (authHeader?.startsWith('Bearer ')) {
@@ -6892,6 +6898,10 @@ app.post('/api/admin/sync/airtable-contacts-to-users', async (c) => {
 app.put('/api/admin/airtable/accounts/:id', async (c) => {
     return c.json({ error: 'Tek yönlü sync aktif. Airtable kayıtları proje içinden güncellenmez.' }, 410);
 });
+
+// ─── Remote Access (RA) route registration ─────────────────────────────────
+// POST /api/ra/issue-token
+registerRaIssueToken(app);
 
 app.onError((err, c) => {
   console.error(`[onError] ${c.req.method} ${c.req.url}`, err);

@@ -1,0 +1,102 @@
+# workers/proxy/wrangler.toml
+# Remote Access Proxy Worker — *.proxy.libedge.com wildcard.
+# Ana LibEdge Worker'ından (form-handler-*) BAĞIMSIZ deploy edilir ama
+# aynı D1 ve KV'lere bind olur.
+#
+# Ana wrangler.toml (libedge-website root) ile birebir paralel ortam yapısı:
+#   default      → (ana: form-handler)             libedge-db / RATE_LIMIT_KV 36237…
+#   env.staging  → (ana: form-handler-staging)     libedge-db / RATE_LIMIT_KV 556d17…
+#   env.production → (ana: form-handler-prod)      libedge-db-production / RATE_LIMIT_KV 5640d9…
+
+name = "libedge-ra-proxy"
+main = "src/index.js"
+compatibility_date = "2026-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "default"
+
+# D1 (default env — ana wrangler.toml'un untagged bölümüyle paralel)
+[[d1_databases]]
+binding = "DB"
+database_name = "libedge-db"
+database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
+
+[[r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "libedge-files"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "36237237597442bbb7c00ab9b6ee821f"
+
+[[kv_namespaces]]
+binding = "RA_UPSTREAM_SESSIONS"
+id = "<DEFAULT_RA_UPSTREAM_SESSIONS_KV_ID>"   # npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS
+
+# ──────────────────────────────────────────────────────────────────────────
+# env.staging — form-handler-staging ile paralel
+# ──────────────────────────────────────────────────────────────────────────
+[env.staging]
+name = "libedge-ra-proxy-staging"
+routes = [
+  { pattern = "*proxy-staging.libedge.com/*", zone_name = "libedge.com" }
+]
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+RA_PROXY_BASE_HOST = "proxy-staging.libedge.com"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "libedge-db"
+database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
+
+[[env.staging.r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "libedge-files-staging"
+
+[[env.staging.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "556d17f88a7a48e381e5ffed1d150536"
+
+[[env.staging.kv_namespaces]]
+binding = "RA_UPSTREAM_SESSIONS"
+id = "<STAGING_RA_UPSTREAM_SESSIONS_KV_ID>"   # wrangler kv:namespace create --env staging
+
+# ──────────────────────────────────────────────────────────────────────────
+# env.production — form-handler-prod ile paralel
+# ──────────────────────────────────────────────────────────────────────────
+[env.production]
+name = "libedge-ra-proxy-prod"
+routes = [
+  { pattern = "*proxy.libedge.com/*", zone_name = "libedge.com" }
+]
+
+[env.production.vars]
+ENVIRONMENT = "production"
+RA_PROXY_BASE_HOST = "proxy.libedge.com"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "libedge-db-production"
+database_id = "64e57edf-8163-4495-8874-fec00485b2ff"
+
+[[env.production.r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "libedge-files"
+
+[[env.production.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "5640d9b898c54a96bdd9e361e1c6f593"
+
+[[env.production.kv_namespaces]]
+binding = "RA_UPSTREAM_SESSIONS"
+id = "<PROD_RA_UPSTREAM_SESSIONS_KV_ID>"   # wrangler kv:namespace create --env production
+
+# ──────────────────────────────────────────────────────────────────────────
+# Secrets — her Worker'a ayrı ayrı yüklenir (`wrangler secret put --env …`)
+# ──────────────────────────────────────────────────────────────────────────
+# RA_PROXY_TOKEN_SECRET    — Main Worker ile paylaşılan HS256 secret (32 byte)
+# RA_CREDS_MASTER_KEY      — publisher credential AES-GCM master key (32 byte base64)
+# RA_EGRESS_DEFAULT_SECRET — fallback egress HMAC secret (kurum başına rotate edilir)
