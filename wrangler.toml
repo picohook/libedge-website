@@ -27,7 +27,7 @@ id = "36237237597442bbb7c00ab9b6ee821f"
 # Oluşturma: npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS
 [[kv_namespaces]]
 binding = "RA_UPSTREAM_SESSIONS"
-id = "REPLACE_WITH_DEFAULT_RA_UPSTREAM_SESSIONS_KV_ID"
+id = "d742f0d165234385bacf6ddfc0cd43e1"
 
 # JWT_SECRET: npx wrangler secret put JWT_SECRET
 # R2_PUBLIC_URL: npx wrangler secret put R2_PUBLIC_URL
@@ -66,7 +66,7 @@ id = "556d17f88a7a48e381e5ffed1d150536"
 # Oluşturma: npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS --env staging
 [[env.staging.kv_namespaces]]
 binding = "RA_UPSTREAM_SESSIONS"
-id = "REPLACE_WITH_STAGING_RA_UPSTREAM_SESSIONS_KV_ID"
+id = "a3a0f76dca834921b4b1000bce675037"
 
 # Production environment
 [env.production]
@@ -94,4 +94,4 @@ id = "5640d9b898c54a96bdd9e361e1c6f593"
 # Oluşturma: npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS --env production
 [[env.production.kv_namespaces]]
 binding = "RA_UPSTREAM_SESSIONS"
-id = "REPLACE_WITH_PROD_RA_UPSTREAM_SESSIONS_KV_ID"
+id = "503551dabe024adf9afa425fa2ec1c54"

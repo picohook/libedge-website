@@ -32,16 +32,16 @@ id = "36237237597442bbb7c00ab9b6ee821f"
 
 [[kv_namespaces]]
 binding = "RA_UPSTREAM_SESSIONS"
-id = "<DEFAULT_RA_UPSTREAM_SESSIONS_KV_ID>"   # npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS
+id = "d742f0d165234385bacf6ddfc0cd43e1"   # npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS
 
 # ──────────────────────────────────────────────────────────────────────────
 # env.staging — form-handler-staging ile paralel
 # ──────────────────────────────────────────────────────────────────────────
 [env.staging]
 name = "libedge-ra-proxy-staging"
-routes = [
-  { pattern = "*proxy-staging.libedge.com/*", zone_name = "libedge.com" }
-]
+# routes = [
+#   { pattern = "*proxy-staging.libedge.com/*", zone_name = "libedge.com" }
+# ]
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
@@ -62,16 +62,16 @@ id = "556d17f88a7a48e381e5ffed1d150536"
 
 [[env.staging.kv_namespaces]]
 binding = "RA_UPSTREAM_SESSIONS"
-id = "<STAGING_RA_UPSTREAM_SESSIONS_KV_ID>"   # wrangler kv:namespace create --env staging
+id = "a3a0f76dca834921b4b1000bce675037"   # wrangler kv:namespace create --env staging
 
 # ──────────────────────────────────────────────────────────────────────────
 # env.production — form-handler-prod ile paralel
 # ──────────────────────────────────────────────────────────────────────────
 [env.production]
 name = "libedge-ra-proxy-prod"
-routes = [
-  { pattern = "*proxy.libedge.com/*", zone_name = "libedge.com" }
-]
+# routes = [
+#   { pattern = "*proxy.libedge.com/*", zone_name = "libedge.com" }
+# ]
 
 [env.production.vars]
 ENVIRONMENT = "production"
@@ -92,7 +92,7 @@ id = "5640d9b898c54a96bdd9e361e1c6f593"
 
 [[env.production.kv_namespaces]]
 binding = "RA_UPSTREAM_SESSIONS"
-id = "<PROD_RA_UPSTREAM_SESSIONS_KV_ID>"   # wrangler kv:namespace create --env production
+id = "503551dabe024adf9afa425fa2ec1c54"   # wrangler kv:namespace create --env production
 
 # ──────────────────────────────────────────────────────────────────────────
 # Secrets — her Worker'a ayrı ayrı yüklenir (`wrangler secret put --env …`)
