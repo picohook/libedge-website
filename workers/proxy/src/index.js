@@ -74,7 +74,9 @@ async function handle(request, env, ctx) {
 // ──────────────────────────────────────────────────────────────────────────
 // Token kabul → session oluştur → 302 ile URL'i temizle
 // ──────────────────────────────────────────────────────────────────────────
-async function acceptTokenAndRedirect(request, env, token, url) {
+  async function acceptTokenAndRedirect(request, env, token, url) {
+ // GEÇİCİ - Bu fonksiyon kullanılmıyor
+  return htmlError(500, 'Bu fonksiyon geçici olarak devre dışı', '');
   let payload;
   try {
     payload = await verifyProxyToken(token, env.RA_PROXY_TOKEN_SECRET);
