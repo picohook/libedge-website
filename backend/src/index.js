@@ -6920,6 +6920,16 @@ app.notFound((c) => c.json({ error: 'Endpoint bulunamadı', code: 404 }, 404));
 export default app;
 
 
+// GEÇİCİ - TEST TOKEN ENDPOINT (SADECE STAGING İÇİN)
+app.get('/api/debug/token', async (c) => {
+  const jwt = require('jsonwebtoken');
+  const token = jwt.sign(
+    { id: 2, email: 'altan@libedge.com', role: 'super_admin' },
+    c.env.JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+  return c.json({ token });
+});
 
 
 
