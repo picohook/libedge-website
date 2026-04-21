@@ -47,9 +47,12 @@ export function registerRaIssueToken(app) {
 const auth = await requireAuth(c);
 if (auth.response) return auth.response;
 
-// GEÇİCİ - TEST İÇİN
-const institutionId = 1;  // Hardcoded
-const userId = auth.user.id || auth.user.user_id || 2;
+const userId = auth.user.id || auth.user.user_id;
+const institutionId = auth.user.institution_id;
+
+if (!institutionId) {
+  return c.json({ error: 'Kullanıcı bir kuruma bağlı değil', debug_institution_id: institutionId, debug_user: auth.user }, 403);
+}
 
     // Body doğrulama — subscription_id (INTEGER) YA DA product_slug (TEXT)
     const body = await parseAndValidate(c, {
