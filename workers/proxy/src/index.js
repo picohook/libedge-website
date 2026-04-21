@@ -45,11 +45,17 @@ async function handle(request, env, ctx) {
   const url = new URL(request.url);
   const proxyHost = url.hostname; // proxy-staging.selmiye.com
 
-  // 1. Token kabul akışı: ?t=... varsa token verify + session oluştur
-  const tokenParam = url.searchParams.get('t');
-  if (tokenParam) {
-    return await acceptTokenAndRedirect(request, env, tokenParam, url);
-  }
+  // GEÇİCİ - Token kontrolünü atla, doğrudan proxy yap
+  const targetHost = decodeHost(url.searchParams.get('tgt') || 'app-jove-com');
+  const fakeSession = {
+    target_host: targetHost,
+    user_id: 2,
+    institution_id: 1,
+    subscription_id: 6,
+    product_slug: 'jove-research',
+  };
+  return await proxyToUpstream(env, fakeSession, null, request, proxyHost);
+
 
   // 2. Session cookie?
   const sessionCookie = readCookie(request.headers.get('Cookie'), SESSION_COOKIE);
