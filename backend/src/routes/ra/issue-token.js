@@ -41,20 +41,23 @@ export function registerRaIssueToken(app) {
     await ensureRemoteAccessSchema(c.env.DB);
 
     // LibEdge auth
-    const authResult = await requireAuth(c);
-    if (authResult.response) return authResult.response;
+    const auth = await requireAuth(c);
+    if (auth.response) return auth.response;
 
-    // GEÇİCİ - TEST İÇİN institution_id hardcoded
-    const institutionId = 1;
-    const userId = authResult.user.id || authResult.user.user_id || 2;
+const auth = await requireAuth(c);
+if (auth.response) return auth.response;
 
-    // Body doğrulama
+// GEÇİCİ - TEST İÇİN
+const institutionId = 1;  // Hardcoded
+const userId = auth.user.id || auth.user.user_id || 2;
+
+    // Body doğrulama — subscription_id (INTEGER) YA DA product_slug (TEXT)
     const body = await parseAndValidate(c, {
       subscription_id: { type: 'number', integer: true, min: 1 },
       product_slug: { type: 'string', maxLength: 128 },
     });
     if (body instanceof Response) return body;
-    
+
     if (!body.subscription_id && !body.product_slug) {
       return c.json(
         { error: 'subscription_id veya product_slug verilmelidir' },
