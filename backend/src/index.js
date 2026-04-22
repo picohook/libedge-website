@@ -328,10 +328,10 @@ function buildAnnouncementImageUrl(title, summary, env, options = {}) {
   const model = ALLOWED_IMAGE_MODELS.includes(options.model) ? options.model : 'flux';
 
   const url = new URL(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`);
-  const key = `institution-logos/${id}.${ext}`;
-  if (key) {
-    url.searchParams.set('key', key);
-  }
+  const apiKey = getPollinationsKey(env);
+  if (apiKey) {
+    url.searchParams.set('key', apiKey);
+    }
   url.searchParams.set('model', model);
   url.searchParams.set('width', '1200');
   url.searchParams.set('height', '630');
@@ -346,14 +346,14 @@ function buildAnnouncementImageUrl(title, summary, env, options = {}) {
 }
 
 async function callPollinationsText(prompt, env) {
-  const key = `institution-logos/${id}.${ext}`;
+  const apiKey = getPollinationsKey(env);
   const body = {
     model: 'openai',
     messages: [{ role: 'user', content: prompt }],
     jsonMode: true,
     seed: Math.floor(Math.random() * 1e9)
   };
-  if (key) body.key = key;
+  if (apiKey) body.key = apiKey;
 
   const response = await fetch('https://text.pollinations.ai/', {
     method: 'POST',
@@ -933,25 +933,40 @@ async function resolveShareRecipients(db, actor, recipients = []) {
 // Fixed-window rate limiting via Cloudflare KV (RATE_LIMIT_KV binding).
 // KV is shared across all Worker instances so this actually works.
 async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10, windowSeconds = 300) {
-  if (!kv) return { isLimited: false, remaining: maxRequests, resetTime: Date.now() + windowSeconds * 1000 };
+  if (!kv) {
+    return {
+      isLimited: false,
+      remaining: maxRequests,
+      resetTime: Date.now() + windowSeconds * 1000
+    };
+  }
 
-  const key = `institution-logos/${id}.${ext}`;
+  const safeEndpoint = String(endpoint || 'unknown').trim().toLowerCase();
+  const safeIdentifier = String(identifier || 'anonymous').trim().toLowerCase();
+  const key = `rate:${safeEndpoint}:${safeIdentifier}`;
   const now = Date.now();
 
   const raw = await kv.get(key);
   let record = raw ? JSON.parse(raw) : null;
 
-  if (!record || now > record.resetTime) {
-    record = { count: 1, resetTime: now + windowSeconds * 1000 };
+  if (!record || now > Number(record.resetTime || 0)) {
+    record = {
+      count: 1,
+      resetTime: now + windowSeconds * 1000
+    };
   } else {
-    record.count++;
+    record.count += 1;
   }
 
-  await kv.put(key, JSON.stringify(record), { expirationTtl: windowSeconds });
+  await kv.put(key, JSON.stringify(record), {
+    expirationTtl: windowSeconds
+  });
 
-  const isLimited = record.count > maxRequests;
-  const remaining = Math.max(0, maxRequests - record.count);
-  return { isLimited, remaining, resetTime: record.resetTime };
+  return {
+    isLimited: record.count > maxRequests,
+    remaining: Math.max(0, maxRequests - record.count),
+    resetTime: record.resetTime
+  };
 }
 
 async function canAccessUser(c, targetUserId) {
@@ -1352,7 +1367,21 @@ app.delete('/api/user/delete', async (c) => {
   await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
   
   // Cookie'yi de sil
-  c.header('Set-Cookie', 'authToken=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict');
+  setCookie(c, 'authToken', '', {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'None',
+  maxAge: 0,
+  path: '/'
+});
+
+setCookie(c, 'refreshToken', '', {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'None',
+  maxAge: 0,
+  path: '/'
+});
   
   return c.json({ success: true });
 });
@@ -5200,7 +5229,7 @@ app.get('/api/files/*', async (c) => {
   const bucket = c.env.FILES_BUCKET;
   if (!bucket) return c.json({ error: 'R2 bucket bagli degil' }, 500);
 
-  const key = `institution-logos/${id}.${ext}`;
+  const key = c.req.path.replace(/^\/api\/files\//, '');
   if (!key) return c.json({ error: 'Dosya bulunamadı' }, 404);
 
   const db = c.env.DB;
@@ -5344,7 +5373,7 @@ app.post('/api/admin/announcements/upload-cover', async (c) => {
 
   try {
     const ext = (file.name || 'cover').split('.').pop()?.toLowerCase() || 'jpg';
-    const key = `institution-logos/${id}.${ext}`;
+    const key = `announcement-covers/${id}.${ext}`;
     const arrayBuffer = await file.arrayBuffer();
     await bucket.put(key, arrayBuffer, {
       httpMetadata: { contentType: file.type || 'image/jpeg' }
@@ -5801,11 +5830,11 @@ app.post('/api/support/tickets', async (c) => {
   const body = await parseAndValidate(c, {
     subject:  { required: true, type: 'string', minLength: 3, maxLength: 200 },
     message:  { required: true, type: 'string', minLength: 10, maxLength: 5000 },
-    priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent'] },
+    priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
   });
   if (body instanceof Response) return body;
   const { subject, message, priority } = body;
-  const p = priority || 'normal';
+  const p = priority || 'medium';
   const user = auth.user;
   const institution_id = user.institution_id || null;
   const result = await db.prepare(
@@ -5874,10 +5903,9 @@ app.post('/api/support/tickets/:id/reply', async (c) => {
     const file = fd.get('file');
     if (file && typeof file !== 'string' && bucket) {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
-      const key = `institution-logos/${id}.${ext}`;
+      const key = `ticket-attachments/${id}-${Date.now()}.${ext}`;
       await bucket.put(key, await file.arrayBuffer(), { 
     httpMetadata: { contentType: file.type },
-    customMetadata: { 'x-amz-acl': 'public-read' }
     });
       attachment_url = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : `/api/files/${key}`;
     }
@@ -5979,7 +6007,7 @@ app.put('/api/admin/support/tickets/:id', async (c) => {
   const id = c.req.param('id');
   const { status, priority } = await c.req.json();
   const allowed_status = ['open', 'in_progress', 'resolved', 'closed'];
-  const allowed_priority = ['low', 'normal', 'high', 'urgent'];
+  const allowed_priority = ['low', 'medium', 'high', 'urgent'];
   const updates = [];
   if (status && allowed_status.includes(status)) updates.push(`status = '${status}'`);
   if (priority && allowed_priority.includes(priority)) updates.push(`priority = '${priority}'`);
@@ -6006,7 +6034,7 @@ app.post('/api/admin/support/tickets/:id/reply', async (c) => {
     const file = fd.get('file');
     if (file && typeof file !== 'string' && bucket) {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
-      const key = `institution-logos/${id}.${ext}`;
+      const key = `ticket-attachments/${id}-admin-${Date.now()}.${ext}`;
       await bucket.put(key, await file.arrayBuffer(), { 
     httpMetadata: { contentType: file.type },
     customMetadata: { 'x-amz-acl': 'public-read' }
@@ -6017,7 +6045,6 @@ app.post('/api/admin/support/tickets/:id/reply', async (c) => {
     const body = await c.req.json();
     message = String(body.message || '').trim();
   }
-
   if (!message && !attachment_url) return c.json({ error: 'Mesaj veya dosya gerekli' }, 400);
 
   await db.prepare(`INSERT INTO ticket_replies (ticket_id, user_id, message, is_admin, attachment_url) VALUES (?, ?, ?, 1, ?)`)
@@ -6906,6 +6933,7 @@ registerRaIssueToken(app);
 // GET/PUT /api/ra/admin/institution-egress/:id ; POST .../test
 registerRaAdminTunnel(app);
 
+
 // ====================== PAGE VIEWS ROUTES ======================
 
 function normalizeViewSlug(raw) {
@@ -7009,6 +7037,11 @@ app.post('/api/views/batch', async (c) => {
     console.error('POST /api/views/batch error:', err);
     return c.json({ error: 'Toplu görüntülenme sayıları alınamadı' }, 500);
   }
+});
+
+app.onError((err, c) => {
+  console.error(`[onError] ${c.req.method} ${c.req.url}`, err);
+  return c.json({ error: 'Sunucu hatası', code: 500 }, 500);
 });
 
 app.notFound((c) => c.json({ error: 'Endpoint bulunamadı', code: 404 }, 404));
