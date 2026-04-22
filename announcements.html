@@ -761,14 +761,27 @@ async loadAnnouncements() {
         const announcements = data.announcements || data;
 
         const slugs = announcements
-    .map(a => String(a?.id || '').trim())
-    .filter(Boolean);
+            .map(a => String(a?.slug || a?.id || '').trim())
+            .filter(Boolean);
+
         const batchViews = await getViewCountsBatch(slugs);
 
-        for (let i = 0; i < announcements.length; i++) {
-            const a = announcements[i];
-            const slug = String(a.id);
-            a.views = Number(batchViews[slug] || 0);
+        for (const a of announcements) {
+            const slug = String(a?.slug || a?.id || '').trim();
+
+            if (!slug) {
+                a.views = Number(a?.views || 0);
+                continue;
+            }
+
+            a.views = Number(
+                batchViews[slug] ??
+                viewCountCache[slug] ??
+                a?.views ??
+                0
+            );
+
+            viewCountCache[slug] = a.views;
         }
 
         this.announcements = announcements;
@@ -885,7 +898,8 @@ async loadAnnouncements() {
             const date = new Date(announcement.published_at || announcement.date);
             const formattedDate = date.toLocaleDateString(this.currentLanguage === 'en' ? 'en-US' : 'tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
             const priorityClass = announcement.priority === 'high' ? 'priority-high' : '';
-            const views = announcement.views || 0;
+            const slug = String(announcement?.slug || announcement?.id || '').trim();
+            const views = Number(viewCountCache[slug] ?? announcement?.views ?? 0);
             const coverImage = announcement.cover_image_url
                 ? `<div class="aspect-[16/9] overflow-hidden"><img src="${escapeHtml(announcement.cover_image_url)}" alt="${escapeHtml(localized.title_display)}" class="w-full h-full object-cover"></div>`
                 : '';
@@ -975,11 +989,11 @@ async loadAnnouncements() {
             ? `<div class="mb-6 overflow-hidden rounded-2xl border border-gray-100"><img src="${escapeHtml(announcement.cover_image_url)}" alt="${escapeHtml(localized.title_display)}" class="w-full max-h-[26rem] object-cover"></div>`
             : '';
 
-const slug = String(announcementId);
+const slug = String(announcement?.slug || announcement?.id || '').trim();
 const viewedKey = `viewed:${slug}`;
-let updatedViews = announcement.views;
+let updatedViews = Number(viewCountCache[slug] ?? announcement?.views ?? 0);
 
-if (!sessionStorage.getItem(viewedKey)) {
+if (slug && !sessionStorage.getItem(viewedKey)) {
     updatedViews = await incrementViewCount(slug);
     announcement.views = updatedViews;
     viewCountCache[slug] = updatedViews;
@@ -990,9 +1004,8 @@ if (!sessionStorage.getItem(viewedKey)) {
         el.textContent = updatedViews;
     });
 } else {
-    updatedViews = viewCountCache[slug] || announcement.views || 0;
+    updatedViews = Number(viewCountCache[slug] ?? announcement?.views ?? 0);
 }
-
 
         modalContent.innerHTML = `
             ${heroImage}
