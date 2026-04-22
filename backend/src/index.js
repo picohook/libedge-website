@@ -6906,24 +6906,111 @@ registerRaIssueToken(app);
 // GET/PUT /api/ra/admin/institution-egress/:id ; POST .../test
 registerRaAdminTunnel(app);
 
-app.onError((err, c) => {
-  console.error(`[onError] ${c.req.method} ${c.req.url}`, err);
-  const isDev = c.env?.ENVIRONMENT === 'development';
-  return c.json(
-    { error: isDev ? (err.message || 'Sunucu hatası') : 'Sunucu hatası', code: 500 },
-    500
-  );
+// ====================== PAGE VIEWS ROUTES ======================
+
+function normalizeViewSlug(raw) {
+  const slug = String(raw || '').trim().toLowerCase();
+  if (!/^[a-z0-9-_]{1,120}$/.test(slug)) return null;
+  return slug;
+}
+
+app.get('/api/views/:slug', async (c) => {
+  try {
+    const slug = normalizeViewSlug(c.req.param('slug'));
+    if (!slug) {
+      return c.json({ error: 'Geçersiz slug' }, 400);
+    }
+
+    const row = await c.env.DB.prepare(
+      'SELECT view_count FROM page_views WHERE page_slug = ?'
+    ).bind(slug).first();
+
+    return c.json({
+      slug,
+      views: Number(row?.view_count || 0)
+    });
+  } catch (err) {
+    console.error('GET /api/views/:slug error:', err);
+    return c.json({ error: 'Görüntülenme sayısı alınamadı' }, 500);
+  }
+});
+
+app.post('/api/views/:slug', async (c) => {
+  try {
+    const slug = normalizeViewSlug(c.req.param('slug'));
+    if (!slug) {
+      return c.json({ error: 'Geçersiz slug' }, 400);
+    }
+
+    await c.env.DB.prepare(`
+      INSERT INTO page_views (page_slug, view_count, created_at, updated_at)
+      VALUES (?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(page_slug) DO UPDATE SET
+        view_count = view_count + 1,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(slug).run();
+
+    const row = await c.env.DB.prepare(
+      'SELECT view_count FROM page_views WHERE page_slug = ?'
+    ).bind(slug).first();
+
+    return c.json({
+      slug,
+      views: Number(row?.view_count || 0)
+    });
+  } catch (err) {
+    console.error('POST /api/views/:slug error:', err);
+    return c.json({ error: 'Görüntülenme sayısı artırılamadı' }, 500);
+  }
+});
+
+app.get('/api/views-ping', (c) => {
+  return c.json({ ok: true, marker: 'views-ping-v1' });
+});
+
+// POST - Birden fazla slug için görüntülenme sayılarını toplu al
+app.post('/api/views/batch', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => null);
+
+    if (!body || !Array.isArray(body.slugs)) {
+      return c.json({ error: 'slugs dizisi zorunludur' }, 400);
+    }
+
+    const normalizedSlugs = body.slugs
+      .map(normalizeViewSlug)
+      .filter(Boolean)
+      .slice(0, 200);
+
+    if (!normalizedSlugs.length) {
+      return c.json({ views: {} });
+    }
+
+    const uniqueSlugs = [...new Set(normalizedSlugs)];
+    const placeholders = uniqueSlugs.map(() => '?').join(', ');
+
+    const result = await c.env.DB.prepare(`
+      SELECT page_slug, view_count
+      FROM page_views
+      WHERE page_slug IN (${placeholders})
+    `).bind(...uniqueSlugs).all();
+
+    const viewsMap = {};
+    for (const slug of uniqueSlugs) {
+      viewsMap[slug] = 0;
+    }
+
+    for (const row of (result.results || [])) {
+      viewsMap[row.page_slug] = Number(row.view_count || 0);
+    }
+
+    return c.json({ views: viewsMap });
+  } catch (err) {
+    console.error('POST /api/views/batch error:', err);
+    return c.json({ error: 'Toplu görüntülenme sayıları alınamadı' }, 500);
+  }
 });
 
 app.notFound((c) => c.json({ error: 'Endpoint bulunamadı', code: 404 }, 404));
 
 export default app;
-
-
-
-
-
-
-
-
-

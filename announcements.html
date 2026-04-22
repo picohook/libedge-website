@@ -481,17 +481,35 @@ function escapeHtml(text) {
 
 const viewCountCache = {};
 
-async function getViewCount(slug) {
+async function getViewCountsBatch(slugs) {
     try {
-        const response = await fetch(`/api/views/${encodeURIComponent(slug)}`);
+        const normalized = [...new Set(
+            (slugs || [])
+                .map(s => String(s || '').trim())
+                .filter(Boolean)
+        )];
+
+        if (!normalized.length) return {};
+
+        const response = await fetch('/api/views/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slugs: normalized })
+        });
+
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
         const data = await response.json();
-        const views = Number(data.views || 0);
-        viewCountCache[slug] = views;
+        const views = data.views || {};
+
+        Object.entries(views).forEach(([slug, count]) => {
+            viewCountCache[slug] = Number(count || 0);
+        });
+
         return views;
     } catch (error) {
-        console.error('View count get error:', error);
-        return viewCountCache[slug] || 0;
+        console.error('Batch view count error:', error);
+        return {};
     }
 }
 
@@ -734,31 +752,32 @@ class AnnouncementManager {
         };
     }
 
-   async loadAnnouncements() {
-        try {
-            const response = await fetch('/api/announcements');
-            if (!response.ok) throw new Error('API error');
-            const data = await response.json();
-            const announcements = data.announcements || data;
-
- for (let i = 0; i < announcements.length; i++) {
-    const a = announcements[i];
-    const slug = String(a.id);
+async loadAnnouncements() {
     try {
-        a.views = await getViewCount(slug);
-    } catch (e) {
-        console.error(`View get error for ${slug}:`, e);
-        a.views = viewCountCache[slug] || 0;
+        const response = await fetch('/api/announcements');
+        if (!response.ok) throw new Error('API error');
+
+        const data = await response.json();
+        const announcements = data.announcements || data;
+
+        const slugs = announcements
+    .map(a => String(a?.id || '').trim())
+    .filter(Boolean);
+        const batchViews = await getViewCountsBatch(slugs);
+
+        for (let i = 0; i < announcements.length; i++) {
+            const a = announcements[i];
+            const slug = String(a.id);
+            a.views = Number(batchViews[slug] || 0);
+        }
+
+        this.announcements = announcements;
+        this.applyFilters();
+    } catch (error) {
+        console.error('Error loading announcements:', error);
+        this.showErrorState();
     }
 }
-
-            this.announcements = announcements;
-            this.applyFilters();
-        } catch (error) {
-            console.error('Error loading announcements:', error);
-            this.showErrorState();
-        }
-    }
 
     handleFilter(e) {
         document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -940,6 +959,22 @@ class AnnouncementManager {
 
         const localized = this.getLocalizedAnnouncement(announcement);
         const ui = this.getUiText();
+
+        const categoryInfo = this.getCategoryInfo(announcement.category);
+        const date = new Date(announcement.published_at || announcement.date);
+        const formattedDate = date.toLocaleDateString(this.currentLanguage === 'en' ? 'en-US' : 'tr-TR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            weekday: 'long'
+        });
+
+        const contentHtml = DOMPurify.sanitize(marked.parse(localized.full_content_display || localized.summary_display));
+        const modalContent = document.getElementById('modalContent');
+        const heroImage = announcement.cover_image_url
+            ? `<div class="mb-6 overflow-hidden rounded-2xl border border-gray-100"><img src="${escapeHtml(announcement.cover_image_url)}" alt="${escapeHtml(localized.title_display)}" class="w-full max-h-[26rem] object-cover"></div>`
+            : '';
+
 const slug = String(announcementId);
 const viewedKey = `viewed:${slug}`;
 let updatedViews = announcement.views;
@@ -958,20 +993,6 @@ if (!sessionStorage.getItem(viewedKey)) {
     updatedViews = viewCountCache[slug] || announcement.views || 0;
 }
 
-        const categoryInfo = this.getCategoryInfo(announcement.category);
-        const date = new Date(announcement.published_at || announcement.date);
-        const formattedDate = date.toLocaleDateString(this.currentLanguage === 'en' ? 'en-US' : 'tr-TR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            weekday: 'long'
-        });
-
-        const contentHtml = DOMPurify.sanitize(marked.parse(localized.full_content_display || localized.summary_display));
-        const modalContent = document.getElementById('modalContent');
-        const heroImage = announcement.cover_image_url
-            ? `<div class="mb-6 overflow-hidden rounded-2xl border border-gray-100"><img src="${escapeHtml(announcement.cover_image_url)}" alt="${escapeHtml(localized.title_display)}" class="w-full max-h-[26rem] object-cover"></div>`
-            : '';
 
         modalContent.innerHTML = `
             ${heroImage}
@@ -1017,6 +1038,7 @@ if (!sessionStorage.getItem(viewedKey)) {
         this.localizeStaticContent();
         this.loadEngagement(announcement.id);
     }
+
 
     // ---------- ETKİLEŞİM: REAKSİYON + YORUM ----------
     getReactionCatalog() {
@@ -1233,6 +1255,7 @@ if (!sessionStorage.getItem(viewedKey)) {
             if (submitBtn) submitBtn.disabled = false;
         }
     }
+
 
     async deleteComment(commentId) {
         if (!commentId) return;
@@ -1542,7 +1565,3 @@ document.addEventListener('header:ready', () => {
 </script>
 </body>
 </html>
-
-
-
-
