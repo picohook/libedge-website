@@ -140,29 +140,6 @@ hamburger.addEventListener('click', function(e) {
     }
 
     // ========== MOBİL KART FLİP - MEVCUT FLİP İLE ÇAKIŞMAZ ==========
-    function enhanceMobileCardFlip() {
-        // Sadece touch cihazlarda
-        if (!('ontouchstart' in window)) return;
-        
-        document.querySelectorAll('.flip-card').forEach(card => {
-            // Zaten event listener var mı kontrol et (çift eklemeyi önle)
-            if (card.dataset.mobileFlipEnhanced) return;
-            card.dataset.mobileFlipEnhanced = 'true';
-            
-            card.addEventListener('click', function(e) {
-                // Link tıklaması değilse VE zaten flipped değilse
-                if (!e.target.closest('a')) {
-                    const inner = this.querySelector('.flip-inner');
-                    if (inner) {
-                        // Mevcut flip durumunu toggle et
-                        inner.classList.toggle('flipped');
-                    }
-                }
-            });
-        });
-        
-        console.log('✅ Mobil kart flip geliştirmeleri aktif');
-    }
 
     // ========== FİLTRE SCROLL GÖSTERGESİ ==========
     function enhanceFilterScroll() {
@@ -271,11 +248,6 @@ hamburger.addEventListener('click', function(e) {
         // Header bağımlı fonksiyonlar
         enhanceMobileMenu();
         enhanceFilterScroll();
-        
-        // Kart flip için DOM'un tam oturmasını bekle
-        setTimeout(() => {
-            enhanceMobileCardFlip();
-        }, 200);
         
         // Oryantasyon değişiminde menüyü kontrol et
         window.addEventListener('orientationchange', () => {
