@@ -41,11 +41,17 @@ export function registerRaIssueToken(app) {
     await ensureRemoteAccessSchema(c.env.DB);
 
     // LibEdge auth
-    // AUTH BYPASS - TEST MODU
-    const userId = 2;
-    const institutionId = 1;
-    
-    // Normal akışta burada auth kontrolü vardı, şimdilik bypass
+    const auth = await requireAuth(c);
+    if (auth.response) return auth.response;
+
+    const userId = Number(auth.user.user_id);
+    const institutionId = Number(auth.user.institution_id);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return c.json({ error: 'Kullanıcı kimliği doğrulanamadı' }, 401);
+    }
+    if (!Number.isFinite(institutionId) || institutionId <= 0) {
+      return c.json({ error: 'Kurum bilgisi doğrulanamadı' }, 403);
+    }
 
     // Body doğrulama — subscription_id (INTEGER) YA DA product_slug (TEXT)
     const body = await parseAndValidate(c, {

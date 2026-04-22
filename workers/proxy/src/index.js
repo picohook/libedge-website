@@ -187,10 +187,11 @@ function readCookie(header, name) {
 }
 
 function buildSessionCookie(sid, hostname) {
-  // POC: tek host. Domain'i hostname'e sabitliyoruz (wildcard yok).
+  // Host-only cookie daha güvenli ve tarayıcılar arasında daha tutarlı.
+  // Domain belirtmeyince cookie yalnızca mevcut proxy host'u için geçerli olur.
   return (
     `${SESSION_COOKIE}=${encodeURIComponent(sid)}; ` +
-    `Domain=${hostname}; Path=/; HttpOnly; Secure; SameSite=Lax; ` +
+    `Path=/; HttpOnly; Secure; SameSite=Lax; ` +
     `Max-Age=${SESSION_TTL_SEC}`
   );
 }

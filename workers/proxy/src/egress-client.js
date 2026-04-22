@@ -15,6 +15,8 @@
 
 import { hmacSha256, sha256, decryptCredential } from '../../../backend/src/ra/crypto.js';
 
+const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
+
 /**
  * @param {any} env Worker env
  * @param {string} institutionId
@@ -72,13 +74,36 @@ export async function egressFetch(env, institutionId, targetUrl, init = {}) {
   headers.set('X-RA-Timestamp', String(ts));
   headers.set('X-RA-Signature', sig);
 
-  return await fetch(agentUrl, {
-    method: 'POST',
-    headers,
-    body: bodyBytes,
-    // Timeout'u Cloudflare Workers zaten 30s CPU ile sınırlar; fetch()
-    // network timeout'u ayrıca yok — önemliyse AbortController ile sar.
-  });
+  const maxAttempts = isRetryableMethod(method) ? 2 : 1;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const resp = await fetch(agentUrl, {
+        method: 'POST',
+        headers,
+        body: bodyBytes,
+        // Timeout'u Cloudflare Workers zaten 30s CPU ile sınırlar; fetch()
+        // network timeout'u ayrıca yok — önemliyse AbortController ile sar.
+      });
+
+      if (
+        attempt < maxAttempts &&
+        RETRYABLE_STATUS_CODES.has(resp.status)
+      ) {
+        await sleep(150 * attempt);
+        continue;
+      }
+
+      return resp;
+    } catch (err) {
+      lastError = err;
+      if (attempt >= maxAttempts) throw err;
+      await sleep(150 * attempt);
+    }
+  }
+
+  throw lastError || new Error('egress fetch failed');
 }
 
 async function loadInstitutionRaSettings(db, institutionId) {
@@ -89,4 +114,12 @@ async function loadInstitutionRaSettings(db, institutionId) {
     )
     .bind(institutionId)
     .first();
+}
+
+function isRetryableMethod(method) {
+  return method === 'GET' || method === 'HEAD';
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

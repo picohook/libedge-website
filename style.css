@@ -1664,3 +1664,171 @@ body.translating {
         border-radius: 12px 12px 0 0;
     }
 }
+
+/* ====================== MOBİL UYUMLULUK - REVİZE ====================== */
+/* Bu kodlar mevcut style.css ile çakışmaz, sadece mobil için ek stiller ekler */
+
+/* Viewport değişkeni */
+:root {
+    --vh: 1vh;
+}
+
+/* Filtre scroll göstergesi */
+.subject-filter-container {
+    position: relative;
+}
+
+.subject-filter-container::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    background: linear-gradient(to right, transparent, #f9fafb);
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.subject-filter-container.has-scroll::after {
+    opacity: 1;
+}
+
+/* Menü overlay */
+.nav-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Menü açıkken scroll engelleme - POSITION FIXED KULLANMA! */
+html.menu-open,
+body.menu-open {
+    overflow: hidden !important;
+    touch-action: none;
+    height: 100%;
+}
+
+/* Mobil menü geliştirmeleri */
+@media (max-width: 639px) {
+    .nav-links {
+        transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease;
+    }
+    
+    /* Hamburger ikonu transition */
+    .hamburger i {
+        transition: transform 0.2s ease;
+    }
+    
+    /* Dropdown listeler için smooth animasyon */
+    .nav-links .dropdown-list {
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        overflow: hidden;
+    }
+}
+
+/* Hero slider mobil */
+@media (max-width: 768px) {
+    .hero-header {
+        font-size: 2rem !important;
+        padding: 0 1rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 0.9rem !important;
+        padding: 0 1.5rem;
+    }
+    
+    .hero-badges-wrapper {
+        bottom: 5rem;
+        width: 90%;
+        max-width: 350px;
+    }
+}
+
+/* Filtre container mobil */
+@media (max-width: 640px) {
+    .filter-container {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 0.75rem;
+    }
+    
+    .filter-container::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .subject-btn {
+        scroll-snap-align: start;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+}
+
+/* Form elemanları mobil */
+@media (max-width: 640px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    textarea,
+    select {
+        font-size: 16px !important;
+    }
+}
+
+/* Footer mobil */
+@media (max-width: 768px) {
+    footer .grid {
+        grid-template-columns: 1fr !important;
+        text-align: center;
+    }
+    
+    footer h3::after {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    footer .flex.space-x-4 {
+        justify-content: center;
+    }
+}
+
+/* Safe area desteği */
+@supports (padding-top: env(safe-area-inset-top)) {
+    .has-safe-area .nav-links {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .has-safe-area footer {
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    }
+}
+
+/* Touch hedefleri - sadece mobil */
+@media (max-width: 640px) and (hover: none) {
+    .nav-links a,
+    .hero-badge,
+    .subject-btn,
+    #backToTop {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Karanlık mod için filtre göstergesi */
+@media (prefers-color-scheme: dark) {
+    .subject-filter-container::after {
+        background: linear-gradient(to right, transparent, #1f2937);
+    }
+}

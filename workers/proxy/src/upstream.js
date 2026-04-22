@@ -25,6 +25,13 @@ const COOKIE_JAR_TTL = 3600;
 export async function proxyToUpstream(env, session, sessionId, clientReq, proxyHost) {
   const url = new URL(clientReq.url);
   const targetHost = session.target_host;
+  const egressSettings = await loadInstitutionRaSettings(env.DB, session.institution_id);
+  const proxyableHosts = buildProxyableHosts(
+    targetHost,
+    egressSettings && egressSettings.egress_endpoint
+      ? egressSettings.egress_endpoint
+      : null
+  );
 
   // Upstream URL: proxy path + query (?t ve ?tgt çıkarılır; clean URL)
   const search = new URLSearchParams(url.search);
@@ -57,7 +64,7 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
   // Fetch — önce egress agent varsa oradan, yoksa direkt
   let upstreamResp;
   try {
-    upstreamResp = await tryEgressOrDirect(env, session.institution_id, upstreamUrl, {
+    upstreamResp = await tryEgressOrDirect(env, egressSettings, upstreamUrl, {
       method: clientReq.method,
       headers: upstreamHeaders,
       body,
@@ -86,7 +93,7 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
       continue;
     }
     if (kl === 'location') {
-      const newLoc = rewriteUrl(v, targetHost, proxyHost);
+      const newLoc = rewriteUrl(v, proxyableHosts, proxyHost);
       respHeaders.set('Location', newLoc);
       continue;
     }
@@ -102,7 +109,7 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
   // Content-Type ile HTML mi kontrol et — öyleyse HTMLRewriter ile linkleri çevir
   const ct = upstreamResp.headers.get('content-type') || '';
   if (/text\/html/i.test(ct)) {
-    const rewriter = makeHtmlRewriter(targetHost, proxyHost);
+    const rewriter = makeHtmlRewriter(proxyableHosts, proxyHost);
     const rewritten = rewriter.transform(upstreamResp);
     return new Response(rewritten.body, {
       status: upstreamResp.status,
@@ -120,14 +127,11 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-async function tryEgressOrDirect(env, institutionId, targetUrl, init) {
+async function tryEgressOrDirect(env, settings, targetUrl, init) {
   // Egress agent check
   try {
-    const settings = await env.DB.prepare(
-      `SELECT egress_endpoint, enabled FROM institution_ra_settings WHERE institution_id = ?`
-    ).bind(institutionId).first();
     if (settings && settings.enabled && settings.egress_endpoint) {
-      return await egressFetch(env, institutionId, targetUrl, init);
+      return await egressFetch(env, settings.institution_id, targetUrl, init);
     }
   } catch (err) {
     console.warn('egress lookup failed, falling back to direct', err);
@@ -140,7 +144,7 @@ async function tryEgressOrDirect(env, institutionId, targetUrl, init) {
 // URL rewrite: absolute URL (https://target/...) → https://proxy/...
 // Non-target host'lar olduğu gibi bırakılır.
 // ──────────────────────────────────────────────────────────────────────────
-function rewriteUrl(u, targetHost, proxyHost) {
+function rewriteUrl(u, proxyableHosts, proxyHost) {
   if (!u) return u;
   try {
     // Relative URL ise olduğu gibi bırak (browser proxy host üzerinden çözer)
@@ -148,7 +152,7 @@ function rewriteUrl(u, targetHost, proxyHost) {
     // Protocol-relative (//www.jove.com/x) destekle
     const abs = u.startsWith('//') ? `https:${u}` : u;
     const parsed = new URL(abs);
-    if (parsed.hostname === targetHost) {
+    if (proxyableHosts.has(parsed.hostname)) {
       parsed.hostname = proxyHost;
       parsed.protocol = 'https:';
       return parsed.toString();
@@ -162,12 +166,12 @@ function rewriteUrl(u, targetHost, proxyHost) {
 // ──────────────────────────────────────────────────────────────────────────
 // HTMLRewriter — href/src/action/poster/formaction attribute'ları
 // ──────────────────────────────────────────────────────────────────────────
-function makeHtmlRewriter(targetHost, proxyHost) {
+function makeHtmlRewriter(proxyableHosts, proxyHost) {
   const attrHandler = (attr) => ({
     element(el) {
       const v = el.getAttribute(attr);
       if (!v) return;
-      const n = rewriteUrl(v, targetHost, proxyHost);
+      const n = rewriteUrl(v, proxyableHosts, proxyHost);
       if (n !== v) el.setAttribute(attr, n);
     },
   });
@@ -188,6 +192,27 @@ function makeHtmlRewriter(targetHost, proxyHost) {
     .on('video[poster]', attrHandler('poster'))
     .on('button[formaction]', attrHandler('formaction'))
     .on('input[formaction]', attrHandler('formaction'));
+}
+
+async function loadInstitutionRaSettings(db, institutionId) {
+  return await db
+    .prepare(
+      `SELECT institution_id, egress_endpoint, enabled
+       FROM institution_ra_settings WHERE institution_id = ?`
+    )
+    .bind(institutionId)
+    .first();
+}
+
+function buildProxyableHosts(targetHost, egressEndpoint) {
+  const hosts = new Set([targetHost]);
+  if (!egressEndpoint) return hosts;
+  try {
+    hosts.add(new URL(egressEndpoint).hostname);
+  } catch {
+    // egress endpoint bozuksa rewrite set'ine ekleme yapma
+  }
+  return hosts;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
