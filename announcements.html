@@ -479,26 +479,35 @@ function escapeHtml(text) {
         .replace(/'/g, '&#39;');
 }
 
-const WORKER_URL = 'https://view-counter.agursel.workers.dev/';
 const viewCountCache = {};
 
-async function incrementViewCount(pageId) {
+async function getViewCount(slug) {
     try {
-        const response = await fetch(WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ page: pageId, action: 'increment' })
-        });
-        if (response.ok) {
-            const data = await response.json();
-            const views = data.views || 0;
-            viewCountCache[pageId] = views;
-            return views;
-        }
-        return viewCountCache[pageId] || 0;
+        const response = await fetch(`/api/views/${encodeURIComponent(slug)}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const views = Number(data.views || 0);
+        viewCountCache[slug] = views;
+        return views;
     } catch (error) {
-        console.error('View count error:', error);
-        return viewCountCache[pageId] || 0;
+        console.error('View count get error:', error);
+        return viewCountCache[slug] || 0;
+    }
+}
+
+async function incrementViewCount(slug) {
+    try {
+        const response = await fetch(`/api/views/${encodeURIComponent(slug)}`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const views = Number(data.views || 0);
+        viewCountCache[slug] = views;
+        return views;
+    } catch (error) {
+        console.error('View count increment error:', error);
+        return viewCountCache[slug] || 0;
     }
 }
 
@@ -725,29 +734,23 @@ class AnnouncementManager {
         };
     }
 
-    async loadAnnouncements() {
+   async loadAnnouncements() {
         try {
             const response = await fetch('/api/announcements');
             if (!response.ok) throw new Error('API error');
             const data = await response.json();
             const announcements = data.announcements || data;
 
-            for (let i = 0; i < announcements.length; i++) {
-                const a = announcements[i];
-                try {
-                    const res = await fetch(WORKER_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ page: String(a.id), action: 'get' })
-                    });
-                    const workerData = await res.json();
-                    a.views = workerData.views || 0;
-                    viewCountCache[a.id] = a.views;
-                } catch (e) {
-                    console.error(`Worker get error for ${a.id}:`, e);
-                    a.views = viewCountCache[a.id] || 0;
-                }
-            }
+ for (let i = 0; i < announcements.length; i++) {
+    const a = announcements[i];
+    const slug = String(a.id);
+    try {
+        a.views = await getViewCount(slug);
+    } catch (e) {
+        console.error(`View get error for ${slug}:`, e);
+        a.views = viewCountCache[slug] || 0;
+    }
+}
 
             this.announcements = announcements;
             this.applyFilters();
@@ -937,19 +940,23 @@ class AnnouncementManager {
 
         const localized = this.getLocalizedAnnouncement(announcement);
         const ui = this.getUiText();
-        const viewedKey = `viewed:${announcementId}`;
-        let updatedViews = announcement.views;
-        if (!sessionStorage.getItem(viewedKey)) {
-            updatedViews = await incrementViewCount(announcementId);
-            announcement.views = updatedViews;
-            viewCountCache[announcementId] = updatedViews;
-            sessionStorage.setItem(viewedKey, 'true');
+const slug = String(announcementId);
+const viewedKey = `viewed:${slug}`;
+let updatedViews = announcement.views;
 
-            const viewElements = document.querySelectorAll(`[data-announcement-id="${announcementId}"]`);
-            viewElements.forEach(el => el.textContent = updatedViews);
-        } else {
-            updatedViews = viewCountCache[announcementId] || announcement.views;
-        }
+if (!sessionStorage.getItem(viewedKey)) {
+    updatedViews = await incrementViewCount(slug);
+    announcement.views = updatedViews;
+    viewCountCache[slug] = updatedViews;
+    sessionStorage.setItem(viewedKey, 'true');
+
+    const viewElements = document.querySelectorAll(`[data-announcement-id="${announcementId}"]`);
+    viewElements.forEach(el => {
+        el.textContent = updatedViews;
+    });
+} else {
+    updatedViews = viewCountCache[slug] || announcement.views || 0;
+}
 
         const categoryInfo = this.getCategoryInfo(announcement.category);
         const date = new Date(announcement.published_at || announcement.date);
