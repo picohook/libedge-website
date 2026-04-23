@@ -6942,6 +6942,53 @@ function normalizeViewSlug(raw) {
   return slug;
 }
 
+app.get('/api/views-ping', (c) => {
+  return c.json({ ok: true, marker: 'views-ping-v1' });
+});
+
+// POST - Birden fazla slug için görüntülenme sayılarını toplu al
+app.post('/api/views/batch', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => null);
+
+    if (!body || !Array.isArray(body.slugs)) {
+      return c.json({ error: 'slugs dizisi zorunludur' }, 400);
+    }
+
+    const normalizedSlugs = body.slugs
+      .map(normalizeViewSlug)
+      .filter(Boolean)
+      .slice(0, 200);
+
+    if (!normalizedSlugs.length) {
+      return c.json({ views: {} });
+    }
+
+    const uniqueSlugs = [...new Set(normalizedSlugs)];
+    const placeholders = uniqueSlugs.map(() => '?').join(', ');
+
+    const result = await c.env.DB.prepare(`
+      SELECT page_slug, view_count
+      FROM page_views
+      WHERE page_slug IN (${placeholders})
+    `).bind(...uniqueSlugs).all();
+
+    const viewsMap = {};
+    for (const slug of uniqueSlugs) {
+      viewsMap[slug] = 0;
+    }
+
+    for (const row of (result.results || [])) {
+      viewsMap[row.page_slug] = Number(row.view_count || 0);
+    }
+
+    return c.json({ views: viewsMap });
+  } catch (err) {
+    console.error('POST /api/views/batch error:', err);
+    return c.json({ error: 'Toplu görüntülenme sayıları alınamadı' }, 500);
+  }
+});
+
 app.get('/api/views/:slug', async (c) => {
   try {
     const slug = normalizeViewSlug(c.req.param('slug'));
@@ -6989,53 +7036,6 @@ app.post('/api/views/:slug', async (c) => {
   } catch (err) {
     console.error('POST /api/views/:slug error:', err);
     return c.json({ error: 'Görüntülenme sayısı artırılamadı' }, 500);
-  }
-});
-
-app.get('/api/views-ping', (c) => {
-  return c.json({ ok: true, marker: 'views-ping-v1' });
-});
-
-// POST - Birden fazla slug için görüntülenme sayılarını toplu al
-app.post('/api/views/batch', async (c) => {
-  try {
-    const body = await c.req.json().catch(() => null);
-
-    if (!body || !Array.isArray(body.slugs)) {
-      return c.json({ error: 'slugs dizisi zorunludur' }, 400);
-    }
-
-    const normalizedSlugs = body.slugs
-      .map(normalizeViewSlug)
-      .filter(Boolean)
-      .slice(0, 200);
-
-    if (!normalizedSlugs.length) {
-      return c.json({ views: {} });
-    }
-
-    const uniqueSlugs = [...new Set(normalizedSlugs)];
-    const placeholders = uniqueSlugs.map(() => '?').join(', ');
-
-    const result = await c.env.DB.prepare(`
-      SELECT page_slug, view_count
-      FROM page_views
-      WHERE page_slug IN (${placeholders})
-    `).bind(...uniqueSlugs).all();
-
-    const viewsMap = {};
-    for (const slug of uniqueSlugs) {
-      viewsMap[slug] = 0;
-    }
-
-    for (const row of (result.results || [])) {
-      viewsMap[row.page_slug] = Number(row.view_count || 0);
-    }
-
-    return c.json({ views: viewsMap });
-  } catch (err) {
-    console.error('POST /api/views/batch error:', err);
-    return c.json({ error: 'Toplu görüntülenme sayıları alınamadı' }, 500);
   }
 });
 
