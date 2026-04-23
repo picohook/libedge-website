@@ -1142,9 +1142,9 @@
                         <div class="flex-1 min-w-40">
                             <label class="block text-xs text-gray-500 mb-1">Öncelik</label>
                             <select id="supportModalPriority" class="w-full border rounded-lg p-2 text-sm">
-                                <option value="low">Dtiok</option>
+                                <option value="low">Düşük</option>
                                 <option value="normal">Normal</option>
-                                <option value="high">Ypksek</option>
+                                <option value="high">Yüksek</option>
                                 <option value="urgent">Acil</option>
                             </select>
                         </div>
@@ -1154,13 +1154,13 @@
                     </div>
                     <div id="supportReplies" class="space-y-3 max-h-60 overflow-y-auto border rounded-xl p-3 bg-gray-50"></div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Yan&#305;t Yaz</label>
-                        <textarea id="supportReplyText" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="Kullan&#305;c&#305;ya yan&#305;t..."></textarea>
+                        <label class="block text-xs text-gray-500 mb-1">Yanıt Yaz</label>
+                        <textarea id="supportReplyText" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="Kullanıcıya yanıt..."></textarea>
                         <div class="mt-2 flex items-center gap-3 flex-wrap">
                             <label class="text-xs text-gray-500" for="supportReplyFile">Dosya ekle</label>
                             <input type="file" id="supportReplyFile" class="text-xs text-gray-500" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.txt,.zip">
                         </div>
-                        <button onclick="sendSupportReply()" class="btn btn-primary mt-2 w-full">Yan&#305;t G&#246;nder</button>
+                        <button onclick="sendSupportReply()" class="btn btn-primary mt-2 w-full">Yanıt Gönder</button>
                     </div>
                 </div>
             </div>
@@ -1246,7 +1246,7 @@
             </table>
         </div>
         <div class="flex gap-2 mt-4 flex-shrink-0">
-            <button type="button" id="syncApplyBtn" onclick="applySyncChanges()" class="btn btn-primary flex-1">Seçilileri Uygula</button>
+            <button type="button" id="syncApplyBtn" onclick="applySyncChanges()" class="btn btn-primary flex-1">Seçilenleri Uygula</button>
             <button type="button" onclick="closeSyncPreviewModal()" class="btn bg-gray-300 flex-1">İptal</button>
         </div>
     </div>
@@ -1289,7 +1289,7 @@
             </table>
         </div>
         <div class="flex gap-2 mt-4 flex-shrink-0">
-            <button type="button" id="userSyncApplyBtn" onclick="applyUserSyncChanges()" class="btn btn-primary flex-1">Seçilileri Uygula</button>
+            <button type="button" id="userSyncApplyBtn" onclick="applyUserSyncChanges()" class="btn btn-primary flex-1">Seçilenleri Uygula</button>
             <button type="button" onclick="closeUserSyncPreviewModal()" class="btn bg-gray-300 flex-1">İptal</button>
         </div>
     </div>
@@ -1974,6 +1974,14 @@ document.addEventListener('click', function(e) {
         const userId = parseInt(btn.dataset.userId);
         if (userId) deleteUser(userId);
     }
+
+    // User files button
+    if (e.target.closest('.user-files-btn')) {
+        const btn = e.target.closest('.user-files-btn');
+        const userId = parseInt(btn.dataset.userId);
+        const userName = btn.dataset.userName || '';
+        if (userId) openUserFilesPanel(userId, userName);
+    }
 });
 
 </script>
@@ -2286,7 +2294,7 @@ document.addEventListener('click', function(e) {
                 <td class="px-4 py-2 text-gray-500 text-sm">${timeAgo(u.last_login)}</td>
                 <td class="px-4 py-2">
                     <button class="text-blue-600 mr-2 edit-user-btn" data-user-id="${u.id}"><i class="fas fa-edit"></i></button>
-                    <button class="text-indigo-500 hover:text-indigo-700 mr-2" onclick="openUserFilesPanel(${u.id},'${escapeHtml(u.full_name || u.email)}')" title="Dosyaları Gör"><i class="fas fa-folder-open"></i></button>
+                    <button class="text-indigo-500 hover:text-indigo-700 mr-2 user-files-btn" data-user-id="${u.id}" data-user-name="${escapeHtml(u.full_name || u.email)}" title="Dosyaları Gör"><i class="fas fa-folder-open"></i></button>
                     ${isSuper && u.role !== 'super_admin' ? `<button class="text-green-600 mr-2 set-role-btn" data-user-id="${u.id}" data-new-role="${escapeHtml(u.role === 'admin' ? 'user' : 'admin')}" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}"><i class="fas fa-user-shield"></i></button>` : ''}
                     <button class="text-red-600 delete-user-btn" data-user-id="${u.id}"><i class="fas fa-trash"></i></button>
                 </td>
@@ -2342,6 +2350,25 @@ document.addEventListener('click', function(e) {
         document.getElementById('userFilesPanel').classList.add('translate-x-full');
         document.getElementById('userFilesOverlay').classList.add('hidden');
     };
+
+    document.getElementById('userFilesBreadcrumb')?.addEventListener('click', function(e) {
+        const rootBtn = e.target.closest('.user-files-root-btn');
+        if (rootBtn) {
+            _loadUserFilesPanel(_ufState.userId, null);
+            return;
+        }
+
+        const crumbBtn = e.target.closest('.user-files-breadcrumb-btn');
+        if (crumbBtn) {
+            _userFilesOpenFolder(Number(crumbBtn.dataset.folderId), crumbBtn.dataset.folderName || '');
+        }
+    });
+
+    document.getElementById('userFilesBody')?.addEventListener('click', function(e) {
+        const folderBtn = e.target.closest('.user-files-folder-btn');
+        if (!folderBtn) return;
+        _userFilesOpenFolder(Number(folderBtn.dataset.folderId), folderBtn.dataset.folderName || '');
+    });
 
     async function _loadUserFilesPanel(userId, collectionId) {
         const url = collectionId
@@ -2403,10 +2430,10 @@ document.addEventListener('click', function(e) {
                 const isLast = i === ancestors.length - 1;
                 const label = escapeHtml(a.name);
                 if (isLast) return `<span class="font-medium text-gray-700">${label}</span>`;
-                return `<button class="hover:underline text-indigo-500" onclick="_userFilesOpenFolder(${a.id},'${label}')">${label}</button>
+                return `<button class="hover:underline text-indigo-500 user-files-breadcrumb-btn" data-folder-id="${a.id}" data-folder-name="${label}">${label}</button>
                         <i class="fas fa-chevron-right text-gray-300 text-[10px]"></i>`;
             });
-            bc.innerHTML = `<button class="hover:underline text-indigo-500" onclick="_loadUserFilesPanel(${_ufState.userId},null)">Tümü</button>
+            bc.innerHTML = `<button class="hover:underline text-indigo-500 user-files-root-btn">Tümü</button>
                             <i class="fas fa-chevron-right text-gray-300 text-[10px]"></i>${parts.join('')}`;
             bc.classList.remove('hidden');
         } else {
@@ -2435,8 +2462,8 @@ document.addEventListener('click', function(e) {
         // Klasörler
         if (childFolders.length) {
             html += '<div class="grid grid-cols-2 gap-2 mb-3">' + childFolders.map(f => `
-                <button onclick="_userFilesOpenFolder(${f.id},'${escapeHtml(f.name)}')"
-                        class="flex items-center gap-2 p-2.5 border border-gray-100 rounded-lg hover:bg-indigo-50 hover:border-indigo-200 transition text-left">
+                <button class="user-files-folder-btn flex items-center gap-2 p-2.5 border border-gray-100 rounded-lg hover:bg-indigo-50 hover:border-indigo-200 transition text-left"
+                        data-folder-id="${f.id}" data-folder-name="${escapeHtml(f.name)}">
                     <i class="fas fa-folder text-yellow-400 text-lg flex-shrink-0"></i>
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-gray-700 truncate">${escapeHtml(f.name)}</p>
@@ -2497,7 +2524,7 @@ document.addEventListener('click', function(e) {
             const daysLeft = s.end_date ? Math.ceil((new Date(s.end_date) - new Date()) / 86400000) : null;
             const rowClass = daysLeft !== null && daysLeft <= 7 ? 'bg-red-50' : daysLeft !== null && daysLeft <= 30 ? 'bg-amber-50' : '';
             return `
-            <tr class="${rowClass}">
+            <tr class="${rowClass} subscription-row" data-subscription-id="${s.id}" data-subscription-type="${escapeHtml(s.type)}">
                 <td class="px-4 py-2">${s.id}</td>
                 <td class="px-4 py-2">
                     ${s.type === 'institution'
@@ -2515,13 +2542,34 @@ document.addEventListener('click', function(e) {
                     <td class="px-4 py-2">${s.end_date ? new Date(s.end_date).toLocaleDateString('tr-TR') : '-'}</td>
                     <td class="px-4 py-2">
                       ${s.type === 'institution'
-                        ? `<button onclick="editInstitutionSubscription(${s.id})" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>`
-                        : `<button onclick="editSubscription(${s.id})" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>`}
-                      <button onclick="deleteSubscription(${s.id}, '${s.type}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                        ? `<button class="subscription-edit-btn text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>`
+                        : `<button class="subscription-edit-btn text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>`}
+                      <button class="subscription-delete-btn text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
           `; }).join('') : '<tr><td colspan="9" class="text-center py-4 text-gray-400">Henüz abonelik yok</td></tr>';
       }
+
+document.getElementById('subscriptionsList')?.addEventListener('click', function(e) {
+    const row = e.target.closest('.subscription-row');
+    if (!row) return;
+
+    const subscriptionId = Number(row.dataset.subscriptionId);
+    const subscriptionType = row.dataset.subscriptionType || '';
+
+    if (e.target.closest('.subscription-edit-btn')) {
+        if (subscriptionType === 'institution') {
+            editInstitutionSubscription(subscriptionId);
+        } else {
+            editSubscription(subscriptionId);
+        }
+        return;
+    }
+
+    if (e.target.closest('.subscription-delete-btn')) {
+        deleteSubscription(subscriptionId, subscriptionType);
+    }
+});
 
     // Escape HTML helper (XSS koruması ve Türkçe karakter sorunu için)
 function escapeHtml(text) {
@@ -2998,18 +3046,16 @@ async function loadAdminFolders(parentId = null) {
                 ? `<span class="text-xs text-gray-400 inline-flex items-center gap-1 ml-0.5">${badgeParts.join('<span class="opacity-30">·</span>')}</span>`
                 : '';
             const selCb = `<input type="checkbox" class="folder-select-cb absolute top-1 left-1 hidden"
-                data-type="folder" data-id="${f.id}" data-name="${escapeHtml(f.folder_name)}"
-                onclick="event.stopPropagation();updateSelectionCount()">`;
+                data-type="folder" data-id="${f.id}" data-name="${escapeHtml(f.folder_name)}">`;
             return `
-            <div class="border border-gray-200 rounded-lg p-3 hover:bg-yellow-50 text-center group relative selectable-row"
-                 onclick="handleFolderClick(event,${f.id},'${escapeHtml(f.folder_name)}')">
+            <div class="border border-gray-200 rounded-lg p-3 hover:bg-yellow-50 text-center group relative selectable-row admin-folder-item"
+                 data-folder-id="${f.id}" data-folder-name="${escapeHtml(f.folder_name)}">
                 ${selCb}
                 <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
                 <p class="text-xs font-medium truncate">${escapeHtml(f.folder_name)} ${badge}</p>
-                <button class="admin-menu-trigger absolute top-1 right-1 w-6 h-6 rounded text-gray-400
+                <button class="admin-menu-trigger admin-folder-menu-trigger absolute top-1 right-1 w-6 h-6 rounded text-gray-400
                                hover:text-gray-700 hover:bg-white/80 opacity-0 group-hover:opacity-100
                                flex items-center justify-center transition"
-                        onclick="event.stopPropagation();openAdminFolderMenu(event,${f.id},'${escapeHtml(f.folder_name)}')"
                         title="İşlemler">
                     <i class="fas fa-ellipsis-v text-xs"></i>
                 </button>
@@ -3021,10 +3067,10 @@ async function loadAdminFolders(parentId = null) {
     }
 }
 
-function handleFolderClick(event, folderId, folderName) {
+function handleFolderClick(event, folderId, folderName, rowEl) {
     const isSelectMode = document.getElementById('tab-files')?.classList.contains('select-mode-active');
     if (isSelectMode) {
-        const cb = event.currentTarget.querySelector('.folder-select-cb');
+        const cb = (rowEl || event.currentTarget)?.querySelector('.folder-select-cb');
         if (cb && event.target !== cb) { cb.checked = !cb.checked; updateSelectionCount(); }
         return;
     }
@@ -3055,16 +3101,16 @@ async function loadAdminFiles() {
         }
 
         container.innerHTML = files.map(file => `
-            <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 selectable-row gap-2"
-                 onclick="handleFileClick(event,${file.id},'${escapeHtml(file.file_name)}',${file.source_file_id})">
+            <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 selectable-row gap-2 admin-file-item"
+                 data-ref-id="${file.id}" data-source-file-id="${file.source_file_id}"
+                 data-file-name="${escapeHtml(file.file_name)}" data-file-url="${escapeHtml(file.file_url)}"
+                 data-file-type="${escapeHtml(file.file_type || '')}" data-is-public="${file.is_public ? 1 : 0}">
                 <input type="checkbox" class="file-select-cb flex-shrink-0 hidden"
-                    data-type="file" data-id="${file.source_file_id}" data-name="${escapeHtml(file.file_name)}" data-ref-id="${file.id}"
-                    onclick="event.stopPropagation();updateSelectionCount()">
+                    data-type="file" data-id="${file.source_file_id}" data-name="${escapeHtml(file.file_name)}" data-ref-id="${file.id}">
                 <i class="fas ${getFileIcon(file.file_type)} text-gray-400 flex-shrink-0 w-4 text-center"></i>
                 <div class="flex-1 min-w-0">
                     <a href="javascript:void(0)"
-                       onclick="event.stopPropagation();previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${escapeHtml(file.file_type || '')}')"
-                       class="font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(file.file_name)}</a>
+                       class="admin-file-preview font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(file.file_name)}</a>
                     <div class="flex flex-wrap gap-3 mt-0.5 text-xs text-gray-400">
                         <span>${getCategoryName(file.category)}</span>
                         <span>${escapeHtml(file.uploaded_by_name || '-')}</span>
@@ -3072,12 +3118,11 @@ async function loadAdminFiles() {
                     </div>
                 </div>
                 <div class="flex items-center gap-1 ml-1 flex-shrink-0">
-                    <button onclick="handleAdminInstitutionSendClick(event,${file.source_file_id},'${escapeHtml(file.file_name)}')"
-                        class="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Kurumlara Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
-                    <button onclick="handleAdminUserSendClick(event,${file.id})"
-                        class="p-1.5 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded" title="Kişilere Gönder"><i class="fas fa-users text-xs"></i></button>
-                    <button class="admin-menu-trigger p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded"
-                            onclick="event.stopPropagation();openAdminFileMenu(event,${file.source_file_id},'${escapeHtml(file.file_name)}',${file.id},${file.is_public ? 1 : 0})"
+                    <button class="admin-send-inst-btn p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                        title="Kurumlara Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
+                    <button class="admin-send-user-btn p-1.5 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"
+                        title="Kişilere Gönder"><i class="fas fa-users text-xs"></i></button>
+                    <button class="admin-menu-trigger admin-file-menu-trigger p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded"
                             title="Daha fazla">
                         <i class="fas fa-ellipsis-v text-xs"></i>
                     </button>
@@ -3089,10 +3134,10 @@ async function loadAdminFiles() {
     }
 }
 
-function handleFileClick(event, refId, name, sourceFileId) {
+function handleFileClick(event, refId, name, sourceFileId, rowEl) {
     const isSelectMode = document.getElementById('tab-files')?.classList.contains('select-mode-active');
     if (isSelectMode) {
-        const cb = event.currentTarget.querySelector('.file-select-cb');
+        const cb = (rowEl || event.currentTarget)?.querySelector('.file-select-cb');
         if (cb && event.target !== cb) { cb.checked = !cb.checked; updateSelectionCount(); }
     }
 }
@@ -3153,12 +3198,12 @@ function updateAdminBreadcrumb() {
         return;
     }
 
-    let html = `<i class="fas fa-server text-gray-300 mr-1"></i><span class="cursor-pointer hover:text-primary" onclick="adminGoRoot()">Merkezi Dosyalar</span>`;
+        let html = `<i class="fas fa-server text-gray-300 mr-1"></i><button type="button" class="admin-breadcrumb-root cursor-pointer hover:text-primary">Merkezi Dosyalar</button>`;
     adminFolderStack.forEach((f, index) => {
         const isLast = index === adminFolderStack.length - 1;
         html += isLast
             ? ` <i class="fas fa-chevron-right text-gray-300 text-xs mx-0.5"></i><span class="font-semibold text-gray-700">${escapeHtml(f.name)}</span>`
-            : ` <i class="fas fa-chevron-right text-gray-300 text-xs mx-0.5"></i><span class="cursor-pointer hover:text-primary" onclick="adminGoToFolder(${index})">${escapeHtml(f.name)}</span>`;
+            : ` <i class="fas fa-chevron-right text-gray-300 text-xs mx-0.5"></i><button type="button" class="admin-breadcrumb-link cursor-pointer hover:text-primary" data-index="${index}">${escapeHtml(f.name)}</button>`;
     });
     bc.innerHTML = html;
 
@@ -3179,6 +3224,72 @@ document.addEventListener('click', function(e) {
         document.getElementById('adminContextMenu')?.classList.add('hidden');
     }
 }, true);
+
+document.getElementById('adminFoldersList')?.addEventListener('click', function(e) {
+    const checkbox = e.target.closest('.folder-select-cb');
+    if (checkbox) {
+        updateSelectionCount();
+        return;
+    }
+
+    const menuBtn = e.target.closest('.admin-folder-menu-trigger');
+    if (menuBtn) {
+        const folderEl = menuBtn.closest('.admin-folder-item');
+        if (!folderEl) return;
+        openAdminFolderMenu({ currentTarget: menuBtn }, Number(folderEl.dataset.folderId), folderEl.dataset.folderName || '');
+        return;
+    }
+
+    const folderEl = e.target.closest('.admin-folder-item');
+    if (!folderEl) return;
+    handleFolderClick(e, Number(folderEl.dataset.folderId), folderEl.dataset.folderName || '', folderEl);
+});
+
+document.getElementById('adminFilesList')?.addEventListener('click', function(e) {
+    const checkbox = e.target.closest('.file-select-cb');
+    if (checkbox) {
+        updateSelectionCount();
+        return;
+    }
+
+    const fileRow = e.target.closest('.admin-file-item');
+    if (!fileRow) return;
+
+    if (e.target.closest('.admin-file-preview')) {
+        previewFile(fileRow.dataset.fileUrl || '', fileRow.dataset.fileName || '', fileRow.dataset.fileType || '');
+        return;
+    }
+
+    if (e.target.closest('.admin-send-inst-btn')) {
+        handleAdminInstitutionSendClick(e, Number(fileRow.dataset.sourceFileId), fileRow.dataset.fileName || '');
+        return;
+    }
+
+    if (e.target.closest('.admin-send-user-btn')) {
+        handleAdminUserSendClick(e, Number(fileRow.dataset.refId));
+        return;
+    }
+
+    const menuBtn = e.target.closest('.admin-file-menu-trigger');
+    if (menuBtn) {
+        openAdminFileMenu(
+            { currentTarget: menuBtn },
+            Number(fileRow.dataset.sourceFileId),
+            fileRow.dataset.fileName || '',
+            Number(fileRow.dataset.refId),
+            Number(fileRow.dataset.isPublic || 0)
+        );
+        return;
+    }
+
+    handleFileClick(
+        e,
+        Number(fileRow.dataset.refId),
+        fileRow.dataset.fileName || '',
+        Number(fileRow.dataset.sourceFileId),
+        fileRow
+    );
+});
 
 function _showAdminContextMenu(triggerBtn, html) {
     const menu = document.getElementById('adminContextMenu');
@@ -4342,25 +4453,20 @@ function instFilesRender(folderFilter, fileFilter) {
 
     // Klasörler
     foldersEl.innerHTML = folders.map(f => {
-        const safeName = escapeHtml(f.folder_name).replace(/'/g, "\\'");
         const selCb = isSelect ? `<input type="checkbox" class="ift-folder-cb absolute top-1 left-1 w-4 h-4"
-            data-id="${f.id}" data-name="${escapeHtml(f.folder_name)}" onclick="event.stopPropagation();instFilesUpdateSelCount()">` : '';
+            data-id="${f.id}" data-name="${escapeHtml(f.folder_name)}">` : '';
         return `
-        <div class="border border-gray-200 rounded-lg p-3 hover:bg-yellow-50 text-center group relative selectable-row cursor-pointer"
-             onclick="${isSelect ? `instFolderToggleCb(this,event)` : `instFilesOpenFolder(${f.id},'${safeName}',event)`}">
+        <div class="border border-gray-200 rounded-lg p-3 hover:bg-yellow-50 text-center group relative selectable-row cursor-pointer inst-folder-item"
+             data-folder-id="${f.id}" data-folder-name="${escapeHtml(f.folder_name)}">
             ${selCb}
             <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
             <p class="text-xs font-medium truncate">${escapeHtml(f.folder_name)}</p>
             ${!isSelect ? `
             <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                <button type="button" onclick="event.stopPropagation();instFilesSendItem('folder',${f.id},'${safeName}')"
-                    class="text-blue-400 hover:text-blue-600" title="Kişilere Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
-                <button type="button" onclick="event.stopPropagation();instFilesMoveFolder(${f.id},'${safeName}')"
-                    class="text-gray-400 hover:text-purple-500" title="Taşı"><i class="fas fa-arrows-alt text-xs"></i></button>
-                <button type="button" onclick="instFilesRenameFolder(${f.id},'${safeName}',event)"
-                    class="text-gray-300 hover:text-blue-500" title="Yeniden Adlandır"><i class="fas fa-pencil-alt text-xs"></i></button>
-                <button type="button" onclick="instFilesDeleteFolder(${f.id},'${safeName}',event)"
-                    class="text-gray-300 hover:text-red-500" title="Sil"><i class="fas fa-trash text-xs"></i></button>
+                <button type="button" class="inst-folder-send-btn text-blue-400 hover:text-blue-600" title="Kişilere Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
+                <button type="button" class="inst-folder-move-btn text-gray-400 hover:text-purple-500" title="Taşı"><i class="fas fa-arrows-alt text-xs"></i></button>
+                <button type="button" class="inst-folder-rename-btn text-gray-300 hover:text-blue-500" title="Yeniden Adlandır"><i class="fas fa-pencil-alt text-xs"></i></button>
+                <button type="button" class="inst-folder-delete-btn text-gray-300 hover:text-red-500" title="Sil"><i class="fas fa-trash text-xs"></i></button>
             </div>` : ''}
         </div>`;
     }).join('');
@@ -4376,35 +4482,41 @@ function instFilesRender(folderFilter, fileFilter) {
         const name    = f.display_name || f.file_name || f.original_name || 'Dosya';
         const ext     = (f.file_type || f.extension || '').toLowerCase();
         const url     = f.file_url || (f.file_key ? `/api/files/${f.file_key}` : '');
-        const safeName = escapeHtml(name).replace(/'/g, "\\'");
         const safeUrl  = escapeHtml(url);
         const safeExt  = escapeHtml(ext);
         const isNew   = f.added_at && (Date.now() - new Date(f.added_at).getTime()) < 7 * 86400000;
         return `
-        <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 selectable-row gap-2"
-             onclick="${isSelect ? `instFileToggleCb(this,event)` : ''}">
-            ${isSelect ? `<input type="checkbox" class="ift-file-cb flex-shrink-0" data-id="${f.id}" data-name="${escapeHtml(name)}" onclick="event.stopPropagation();instFilesUpdateSelCount()">` : ''}
+        <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 selectable-row gap-2 inst-file-item"
+             data-file-id="${f.id}" data-file-name="${escapeHtml(name)}" data-file-url="${safeUrl}" data-file-type="${safeExt}">
+            ${isSelect ? `<input type="checkbox" class="ift-file-cb flex-shrink-0" data-id="${f.id}" data-name="${escapeHtml(name)}">` : ''}
             <i class="fas ${getFileIcon(ext)} text-gray-400 flex-shrink-0 w-4 text-center"></i>
             <div class="flex-1 min-w-0">
                 <a href="javascript:void(0)"
-                   onclick="event.stopPropagation();previewFile('${safeUrl}','${escapeHtml(name)}','${safeExt}')"
-                   class="font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(name)}${isNew ? ' <span class="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded-full font-normal align-middle ml-1">Yeni</span>' : ''}</a>
+                   class="inst-file-preview font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(name)}${isNew ? ' <span class="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded-full font-normal align-middle ml-1">Yeni</span>' : ''}</a>
                 <span class="text-xs text-gray-400 uppercase">${ext}</span>
             </div>
             ${!isSelect ? `
             <div class="flex items-center gap-2 ml-1 flex-shrink-0">
-                <button type="button" onclick="event.stopPropagation();instFilesSendItem('file',${f.id},'${safeName}')"
-                    class="text-blue-400 hover:text-blue-600" title="Kişilere Gönder"><i class="fas fa-paper-plane text-sm"></i></button>
-                <button type="button" onclick="event.stopPropagation();instFilesMoveFile(${f.id},'${safeName}',event)"
-                    class="text-slate-400 hover:text-slate-700" title="Taşı"><i class="fas fa-folder-open text-sm"></i></button>
-                <button type="button" onclick="event.stopPropagation();instFilesRenameFile(${f.id},'${safeName}',event)"
-                    class="text-amber-400 hover:text-amber-600" title="Yeniden Adlandır"><i class="fas fa-pencil-alt text-sm"></i></button>
-                <button type="button" onclick="event.stopPropagation();instFilesDeleteFile(${f.id},'${safeName}',event)"
-                    class="text-red-400 hover:text-red-600" title="Sil"><i class="fas fa-trash text-sm"></i></button>
+                <button type="button" class="inst-file-send-btn text-blue-400 hover:text-blue-600" title="Kişilere Gönder"><i class="fas fa-paper-plane text-sm"></i></button>
+                <button type="button" class="inst-file-move-btn text-slate-400 hover:text-slate-700" title="Taşı"><i class="fas fa-folder-open text-sm"></i></button>
+                <button type="button" class="inst-file-rename-btn text-amber-400 hover:text-amber-600" title="Yeniden Adlandır"><i class="fas fa-pencil-alt text-sm"></i></button>
+                <button type="button" class="inst-file-delete-btn text-red-400 hover:text-red-600" title="Sil"><i class="fas fa-trash text-sm"></i></button>
             </div>` : ''}
         </div>`;
     }).join('');
 }
+
+document.getElementById('adminBreadcrumb')?.addEventListener('click', function(e) {
+    if (e.target.closest('.admin-breadcrumb-root')) {
+        adminGoRoot();
+        return;
+    }
+
+    const crumb = e.target.closest('.admin-breadcrumb-link');
+    if (crumb) {
+        adminGoToFolder(Number(crumb.dataset.index));
+    }
+});
 
 // ---- Navigasyon ----
 function instFilesOpenFolder(id, name, event) {
@@ -4429,7 +4541,7 @@ function instFilesUpdateBreadcrumb() {
     if (!_ift.folderStack.length) { el.textContent = ''; return; }
     el.innerHTML = _ift.folderStack.map((f, i) =>
         i < _ift.folderStack.length - 1
-            ? `<span class="cursor-pointer text-indigo-600 hover:underline" onclick="instFilesBcGoTo(${i})">${escapeHtml(f.name)}</span> /`
+            ? `<button type="button" class="inst-files-breadcrumb-link cursor-pointer text-indigo-600 hover:underline" data-index="${i}">${escapeHtml(f.name)}</button> /`
             : `<span class="font-medium text-gray-700">${escapeHtml(f.name)}</span>`
     ).join(' ');
 }
@@ -4439,6 +4551,13 @@ function instFilesBcGoTo(index) {
     instFilesUpdateBackBtn();
     instFilesLoad();
 }
+
+document.getElementById('instFilesBc')?.addEventListener('click', function(e) {
+    const crumb = e.target.closest('.inst-files-breadcrumb-link');
+    if (crumb) {
+        instFilesBcGoTo(Number(crumb.dataset.index));
+    }
+});
 
 // ---- Arama/filtre ----
 function instFilesFilterContent(val) {
@@ -4676,6 +4795,47 @@ function instFolderToggleCb(el, event) {
     if (cb) { cb.checked = !cb.checked; instFilesUpdateSelCount(); }
 }
 
+document.getElementById('instFilesFoldersList')?.addEventListener('click', function(e) {
+    const checkbox = e.target.closest('.ift-folder-cb');
+    if (checkbox) {
+        instFilesUpdateSelCount();
+        return;
+    }
+
+    const folderEl = e.target.closest('.inst-folder-item');
+    if (!folderEl) return;
+
+    const folderId = Number(folderEl.dataset.folderId);
+    const folderName = folderEl.dataset.folderName || '';
+
+    if (e.target.closest('.inst-folder-send-btn')) {
+        instFilesSendItem('folder', folderId, e);
+        return;
+    }
+
+    if (e.target.closest('.inst-folder-move-btn')) {
+        instFilesMoveFolder(folderId, folderName, e);
+        return;
+    }
+
+    if (e.target.closest('.inst-folder-rename-btn')) {
+        instFilesRenameFolder(folderId, folderName, e);
+        return;
+    }
+
+    if (e.target.closest('.inst-folder-delete-btn')) {
+        instFilesDeleteFolder(folderId, folderName, e);
+        return;
+    }
+
+    if (_ift.selectMode) {
+        instFolderToggleCb(folderEl, e);
+        return;
+    }
+
+    instFilesOpenFolder(folderId, folderName, e);
+});
+
 // ---- Kişilere Gönder (unified) ----
 // Hem inst-files tab hem superadmin Merkezi Dosyalar aynı modalı kullanır.
 let _sendToUsers = { fileIds: [], usersUrl: '', sendUrl: '', allUsers: [] };
@@ -4766,6 +4926,51 @@ function instFileToggleCb(el, event) {
     const cb = el.querySelector('.ift-file-cb');
     if (cb) { cb.checked = !cb.checked; instFilesUpdateSelCount(); }
 }
+
+document.getElementById('instFilesFilesList')?.addEventListener('click', function(e) {
+    const checkbox = e.target.closest('.ift-file-cb');
+    if (checkbox) {
+        instFilesUpdateSelCount();
+        return;
+    }
+
+    const fileEl = e.target.closest('.inst-file-item');
+    if (!fileEl) return;
+
+    const fileId = Number(fileEl.dataset.fileId);
+    const fileName = fileEl.dataset.fileName || '';
+    const fileUrl = fileEl.dataset.fileUrl || '';
+    const fileType = fileEl.dataset.fileType || '';
+
+    if (e.target.closest('.inst-file-preview')) {
+        previewFile(fileUrl, fileName, fileType);
+        return;
+    }
+
+    if (e.target.closest('.inst-file-send-btn')) {
+        instFilesSendItem('file', fileId, e);
+        return;
+    }
+
+    if (e.target.closest('.inst-file-move-btn')) {
+        instFilesMoveFile(fileId, fileName, e);
+        return;
+    }
+
+    if (e.target.closest('.inst-file-rename-btn')) {
+        instFilesRenameFile(fileId, fileName, e);
+        return;
+    }
+
+    if (e.target.closest('.inst-file-delete-btn')) {
+        instFilesDeleteFile(fileId, fileName, e);
+        return;
+    }
+
+    if (_ift.selectMode) {
+        instFileToggleCb(fileEl, e);
+    }
+});
 
 function instFilesRenderSendUsers(users) {
     const listEl = document.getElementById('instFilesSendUserList');
@@ -4871,7 +5076,7 @@ submitBtn.addEventListener('click', async (e) => {
         });
         
         if (res.ok) {
-            successEl.textContent = '? Domain bilgileri başarıyla kaydedildi!';
+            successEl.textContent = 'Domain bilgileri başarıyla kaydedildi!';
             successEl.classList.remove('hidden');
             
             await loadMyInstitution();
@@ -5010,6 +5215,7 @@ function renderInstitutions(institutions) {
         const instInitials = '';
         const websiteUrl = (inst.website_url || '').trim();
         const normalizedWebsiteUrl = websiteUrl ? (websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`) : '';
+        const normalizedCategory = normalizeCategory(inst.category || '');
         const logoCore = inst.logo_url
             ? `<img src="${escapeHtml(inst.logo_url)}" alt="" class="w-7 h-7 object-contain rounded flex-shrink-0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
               + `<span class="w-7 h-7 rounded bg-blue-100 hidden items-center justify-center flex-shrink-0"></span>`
@@ -5018,7 +5224,14 @@ function renderInstitutions(institutions) {
             ? `<a href="${escapeHtml(normalizedWebsiteUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex" title="Kurum websitesini aç">${logoCore}</a>`
             : logoCore;
         return `
-        <tr>
+        <tr class="institution-row"
+            data-inst-id="${inst.id}"
+            data-inst-name="${escapeHtml(inst.name || '')}"
+            data-inst-display-name="${escapeHtml(inst.displayName || inst.name || '')}"
+            data-inst-domain="${escapeHtml(inst.domain || '')}"
+            data-inst-category="${escapeHtml(normalizedCategory)}"
+            data-inst-status="${escapeHtml(inst.status || 'Active')}"
+            data-inst-source="${escapeHtml(inst.source || '')}">
             <td class="px-4 py-2"><div class="flex items-center gap-2">${logoHtml}<span>${escapeHtml(inst.displayName || inst.name)}</span></div></td>
             <td class="px-4 py-2">${orgLabel ? `<span class="px-2 py-0.5 rounded text-xs font-medium ${CATEGORY_BADGE[inst.category] || 'bg-gray-100 text-gray-700'}">${escapeHtml(orgLabel)}</span>` : '-'}</td>
             <td class="px-4 py-2">${inst.status ? `<span class="px-2 py-0.5 rounded text-xs font-medium ${statusCls}">${escapeHtml(inst.status)}</span>` : '-'}</td>
@@ -5027,20 +5240,51 @@ function renderInstitutions(institutions) {
             <td class="px-4 py-2">${inst.user_count ?? '-'}</td>
             <td class="px-4 py-2">${inst.file_count ?? '-'}</td>
             <td class="px-4 py-2 flex gap-2 items-center">
-                <button onclick="openInstUsersPanel(${inst.id},'${escapeHtml(inst.displayName || inst.name)}')"
-                    class="text-blue-600 hover:text-blue-800" title="Kullanıcıları Gör">
+                <button class="inst-users-btn text-blue-600 hover:text-blue-800" title="Kullanıcıları Gör">
                     <i class="fas fa-users"></i>
                 </button>
-                <button onclick="openInstFilesPanel(${inst.id},'${escapeHtml(inst.displayName || inst.name)}')"
-                    class="text-purple-600 hover:text-purple-800" title="Dosyaları Gör">
+                <button class="inst-files-btn text-purple-600 hover:text-purple-800" title="Dosyaları Gör">
                     <i class="fas fa-folder-open"></i>
                 </button>
-                <button onclick="openEditInstitutionModal(${inst.id}, '${escapeHtml(inst.name)}', '${escapeHtml(inst.domain || '')}', '${escapeHtml(normalizeCategory(inst.category || ''))}', '${escapeHtml(inst.status || 'Active')}')" class="text-blue-600"><i class="fas fa-edit"></i></button>
-                ${inst.source === 'airtable' ? '' : `<button onclick="deleteInstitution(${inst.id}, '${escapeHtml(inst.name)}')" class="text-red-600"><i class="fas fa-trash"></i></button>`}
+                <button class="inst-edit-btn text-blue-600" title="Düzenle"><i class="fas fa-edit"></i></button>
+                ${inst.source === 'airtable' ? '' : `<button class="inst-delete-btn text-red-600" title="Sil"><i class="fas fa-trash"></i></button>`}
             </td>
         </tr>`;
     }).join('');
 }
+
+document.getElementById('institutionsList')?.addEventListener('click', function(e) {
+    const row = e.target.closest('.institution-row');
+    if (!row) return;
+
+    const instId = Number(row.dataset.instId);
+    const displayName = row.dataset.instDisplayName || row.dataset.instName || '';
+
+    if (e.target.closest('.inst-users-btn')) {
+        openInstUsersPanel(instId, displayName);
+        return;
+    }
+
+    if (e.target.closest('.inst-files-btn')) {
+        openInstFilesPanel(instId, displayName);
+        return;
+    }
+
+    if (e.target.closest('.inst-edit-btn')) {
+        openEditInstitutionModal(
+            instId,
+            row.dataset.instName || '',
+            row.dataset.instDomain || '',
+            row.dataset.instCategory || '',
+            row.dataset.instStatus || 'Active'
+        );
+        return;
+    }
+
+    if (e.target.closest('.inst-delete-btn')) {
+        deleteInstitution(instId, row.dataset.instName || displayName || '');
+    }
+});
 
 async function deleteInstitution(id, name) {
     if (!confirm(`"${name}" kurumunu silmek istediğinize emin misiniz?`)) return;
@@ -5155,6 +5399,40 @@ function instFilesGoRoot() {
     loadInstFilesPanel();
 }
 
+document.getElementById('instFilesBreadcrumb')?.addEventListener('click', function(e) {
+    if (e.target.closest('.inst-panel-back-btn')) {
+        instFilesGoBack();
+        return;
+    }
+
+    if (e.target.closest('.inst-panel-root-btn')) {
+        instFilesGoRoot();
+        return;
+    }
+
+    const crumbBtn = e.target.closest('.inst-panel-crumb-btn');
+    if (crumbBtn) {
+        instFilesGoToDepth(Number(crumbBtn.dataset.depth));
+    }
+});
+
+document.getElementById('instFilesBody')?.addEventListener('click', function(e) {
+    const folderEl = e.target.closest('.inst-panel-folder-item');
+    if (folderEl) {
+        _panelInstFilesOpenFolder(Number(folderEl.dataset.folderId), folderEl.dataset.folderName || '');
+        return;
+    }
+
+    const previewLink = e.target.closest('.inst-panel-file-preview');
+    if (previewLink) {
+        previewFile(
+            previewLink.dataset.fileUrl || '',
+            previewLink.dataset.fileName || '',
+            previewLink.dataset.fileType || ''
+        );
+    }
+});
+
 async function loadInstFilesPanel() {
     const { instId, instName, folderId, folderStack } = _instFilesState;
     const body = document.getElementById('instFilesBody');
@@ -5163,14 +5441,14 @@ async function loadInstFilesPanel() {
 
     // Breadcrumb
     if (folderStack.length > 0) {
-        let bc = `<span class="cursor-pointer text-primary hover:underline" onclick="instFilesGoRoot()">${escapeHtml(instName)}</span>`;
+        let bc = `<button class="inst-panel-root-btn cursor-pointer text-primary hover:underline" type="button">${escapeHtml(instName)}</button>`;
         folderStack.forEach((f, i) => {
             const isLast = i === folderStack.length - 1;
             bc += isLast
                 ? ` / <span class="font-medium text-gray-700">${escapeHtml(f.name)}</span>`
-                : ` / <span class="cursor-pointer text-primary hover:underline" onclick="instFilesGoToDepth(${i})">${escapeHtml(f.name)}</span>`;
+                : ` / <button class="inst-panel-crumb-btn cursor-pointer text-primary hover:underline" type="button" data-depth="${i}">${escapeHtml(f.name)}</button>`;
         });
-        bcEl.innerHTML = `<button onclick="instFilesGoBack()" class="mr-2 text-gray-400 hover:text-gray-700"><i class="fas fa-arrow-left"></i></button>${bc}`;
+        bcEl.innerHTML = `<button class="inst-panel-back-btn mr-2 text-gray-400 hover:text-gray-700" type="button"><i class="fas fa-arrow-left"></i></button>${bc}`;
         bcEl.classList.remove('hidden');
     } else {
         bcEl.classList.add('hidden');
@@ -5199,8 +5477,8 @@ async function loadInstFilesPanel() {
         if (folders.length) {
             html += '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">';
             html += folders.map(f => `
-                <div class="border rounded-lg p-3 hover:bg-yellow-50 cursor-pointer text-center"
-                     onclick="_panelInstFilesOpenFolder(${f.id},'${escapeHtml(f.folder_name)}')">
+                <div class="inst-panel-folder-item border rounded-lg p-3 hover:bg-yellow-50 cursor-pointer text-center"
+                     data-folder-id="${f.id}" data-folder-name="${escapeHtml(f.folder_name)}">
                     <i class="fas fa-folder text-2xl text-yellow-500 mb-1 block"></i>
                     <p class="text-xs font-medium truncate" title="${escapeHtml(f.folder_name)}">${escapeHtml(f.folder_name)}</p>
                 </div>`).join('');
@@ -5216,9 +5494,9 @@ async function loadInstFilesPanel() {
                 return `
                 <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50">
                     <i class="fas ${getFileIcon(type)} text-gray-400 flex-shrink-0 w-4 text-center"></i>
-                    <a href="javascript:void(0)"
-                       onclick="previewFile('${escapeHtml(url)}','${escapeHtml(name)}','${escapeHtml(type)}')"
-                       class="flex-1 text-sm text-primary hover:underline truncate">${escapeHtml(name)}</a>
+                    <a href="javascript:void(0)" class="inst-panel-file-preview flex-1 text-sm text-primary hover:underline truncate"
+                       data-file-url="${escapeHtml(url)}" data-file-name="${escapeHtml(name)}" data-file-type="${escapeHtml(type)}"
+                    >${escapeHtml(name)}</a>
                     <span class="text-xs text-gray-400 flex-shrink-0">${type.toUpperCase()}</span>
                 </div>`;
             }).join('');
@@ -5508,7 +5786,7 @@ async function applyUserSyncChanges() {
         showToast(err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = 'Seçilileri Uygula';
+        btn.innerHTML = 'Seçilenleri Uygula';
     }
 }
 
@@ -5615,7 +5893,7 @@ async function applySyncChanges() {
         showToast(err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = 'Seçilileri Uygula';
+        btn.innerHTML = 'Seçilenleri Uygula';
     }
 }
 
@@ -5843,12 +6121,6 @@ async function submitBulkInstitutions() {
     loadInstitutions();
 }
 
-async function deleteInstitution(id, name) {
-    if (!confirm(`"${name}" kurumunu silmek istediğinize emin misiniz?`)) return;
-    await fetch(`${API_BASE}/api/admin/institution/${id}`, { method: 'DELETE', credentials: 'include' });
-    loadInstitutions();
-}
-
 </script>
  
 <style>
@@ -5990,18 +6262,18 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileVie
 // ====================== DUYURU YÖNETİMİ ======================
 
 const categoryMap = {
-    'urgent': '?? Acil',
-    'new-product': '?? Yeni rrnn',
-    'product-update': '?? Gnncelleme',
-    'event': '?? Etkinlik',
-    'maintenance': '?? Bakmm',
-    'general': '?? Genel'
+    'urgent': 'Acil',
+    'new-product': 'Yeni Ürün',
+    'product-update': 'Güncelleme',
+    'event': 'Etkinlik',
+    'maintenance': 'Bakım',
+    'general': 'Genel'
 };
 
 const priorityMap = {
-    'high': '?? Ykksek',
-    'medium': '?? Orta',
-    'low': '?? Dşükk'
+    'high': 'Yüksek',
+    'medium': 'Orta',
+    'low': 'Düşük'
 };
 
 // ====================== TALEPLER ======================
@@ -6044,7 +6316,7 @@ async function loadSupport() {
         }
 
         tbody.innerHTML = data.map((t) => `
-            <tr id="support-row-${t.id}" class="hover:bg-gray-50 cursor-pointer ${t.has_unread_user_reply ? 'bg-amber-50/60' : ''}" onclick="openSupportModal(${t.id})">
+            <tr id="support-row-${t.id}" class="hover:bg-gray-50 cursor-pointer support-row ${t.has_unread_user_reply ? 'bg-amber-50/60' : ''}" data-ticket-id="${t.id}">
                 <td class="text-gray-400">#${t.id}</td>
                 <td class="font-medium max-w-xs truncate">${escapeHtml(t.subject)}</td>
                 <td>${escapeHtml(t.user_name || t.user_email || '')}</td>
@@ -6056,7 +6328,7 @@ async function loadSupport() {
                 <td>
                     <div class="flex items-center justify-end gap-2">
                         ${t.has_unread_user_reply ? `${renderSupportUnreadDot()}<span class="text-[11px] font-medium text-amber-600">Yeni</span>` : ''}
-                        <button class="text-indigo-600 hover:text-indigo-800 text-xs" onclick="event.stopPropagation();openSupportModal(${t.id})"><i class="fas fa-eye"></i></button>
+                        <button class="support-open-btn text-indigo-600 hover:text-indigo-800 text-xs"><i class="fas fa-eye"></i></button>
                     </div>
                 </td>
             </tr>`).join('');
@@ -6064,6 +6336,21 @@ async function loadSupport() {
         tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-red-400">Hata: ${err.message}</td></tr>`;
     }
 }
+
+document.getElementById('supportTableBody')?.addEventListener('click', function(e) {
+    const row = e.target.closest('.support-row');
+    if (!row) return;
+
+    const ticketId = Number(row.dataset.ticketId);
+    if (!ticketId) return;
+
+    if (e.target.closest('.support-open-btn')) {
+        openSupportModal(ticketId);
+        return;
+    }
+
+    openSupportModal(ticketId);
+});
 
 async function openSupportModal(id) {
     currentSupportTicketId = id;
@@ -7272,8 +7559,8 @@ async function moveAdminFileRef(refId, fileName) {
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[85vh] overflow-y-auto">
         <div class="flex items-center justify-between px-5 py-4 border-b">
             <div>
-                <h3 class="font-semibold text-gray-900">Dosyay&#305; Ta&#351;&#305;</h3>
-                <p id="adminMoveModalSubtitle" class="text-sm text-gray-500 mt-0.5">Hedef klas&#246;r&#252; se&#231;in</p>
+                <h3 class="font-semibold text-gray-900">Dosyayı Taşı</h3>
+                <p id="adminMoveModalSubtitle" class="text-sm text-gray-500 mt-0.5">Hedef klasörü seçin</p>
                 <p id="adminMoveModalPathInfo" class="text-xs text-gray-500 mt-1"></p>
             </div>
             <button onclick="closeAdminMoveModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
@@ -7285,8 +7572,8 @@ async function moveAdminFileRef(refId, fileName) {
             <div id="adminMoveModalFolderList" class="border rounded-xl divide-y max-h-72 overflow-y-auto mb-4 bg-gray-50"></div>
         </div>
         <div class="flex gap-3 px-5 py-4 border-t">
-            <button type="button" onclick="closeAdminMoveModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">&#304;ptal</button>
-            <button type="button" id="adminMoveModalConfirmBtn" onclick="submitAdminMoveModal()" class="btn btn-primary flex-1 disabled:opacity-50" disabled>Ta&#351;&#305;</button>
+            <button type="button" onclick="closeAdminMoveModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
+            <button type="button" id="adminMoveModalConfirmBtn" onclick="submitAdminMoveModal()" class="btn btn-primary flex-1 disabled:opacity-50" disabled>Taşı</button>
         </div>
     </div>
 </div>
