@@ -88,6 +88,9 @@
             height: 1.25rem;
         }
         .bulk-preview-scroll { max-height: calc(90vh - 220px); overflow-y: auto; }
+        .send-duplicate-warning { background: #fef3c7; color: #92400e; }
+        .crop-stage { max-height: 60vh; overflow: hidden; }
+        #coverCropImage { max-width: 100%; display: block; max-height: 55vh; }
         .select-mode-active .selectable-row { cursor: pointer; }
         .select-mode-active .selectable-row:hover { background: #eff6ff; }
         .select-mode-active .folder-select-cb,
@@ -1780,7 +1783,7 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Domain(lar)</label>
                 <input type="text" id="institutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
-                <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgnlle ay rin</p>
+                <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgülle ayırın</p>
             </div>
             <div class="modal-actions">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
@@ -2640,7 +2643,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         if (role) params.set('role', role);
         if (inst) params.set('institution', inst);
 
-        const res = await fetch(`/api/admin/users?${params.toString()}`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/admin/users?${params.toString()}`, { credentials: 'include' });
         const payload = await res.json();
         allUsers = payload.items || [];
         _usersView.items = allUsers;
@@ -2983,16 +2986,20 @@ function composeFullName(firstName, lastName) {
 
     // Rol değiştirme (sadece super admin)
     async function setRole(userId, newRole) {
-        if (confirm(`Kullanıcı rolünü ${newRole === 'admin' ? 'Admin' : 'Kullanıcı'} yapmak istediğinize emin misiniz?`)) {
-            await fetch(`${API_BASE}/api/admin/set-role/${userId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ role: newRole })
-            });
-            loadUsers();
-            loadDashboard();
-        }
+        showConfirmDialog(
+            `Kullanıcı rolünü ${newRole === 'admin' ? 'Admin' : 'Kullanıcı'} yapmak istediğinize emin misiniz?`,
+            async () => {
+                await fetch(`${API_BASE}/api/admin/set-role/${userId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ role: newRole })
+                });
+                loadUsers();
+                loadDashboard();
+            },
+            { danger: false }
+        );
     }
 
     // Kullanıcı modal işlemleri
@@ -3044,13 +3051,13 @@ function composeFullName(firstName, lastName) {
         document.getElementById('userModal').classList.remove('hidden');
     }
     async function deleteUser(id) {
-        if (confirm('Kullanıcıyı silmek istediğinize emin misiniz?')) {
+        showConfirmDialog('Kullanıcıyı silmek istediğinize emin misiniz?', async () => {
             const res = await fetch(`${API_BASE}/api/admin/user/${id}`, { method: 'DELETE', credentials: 'include' });
             if (res.ok) showToast('Kullanıcı başarıyla silindi!', 'success');
             else showToast('İşlem başarısız oldu!', 'error');
             loadUsers();
             loadDashboard();
-        }
+        });
     }
 
     const INDIVIDUAL_SUBSCRIPTION_PRODUCTS = [
@@ -3242,7 +3249,7 @@ function composeFullName(firstName, lastName) {
         await loadSubscriptionUserOptions('');
     }
     async function deleteSubscription(id, type) {
-        if (confirm('Aboneliği silmek istediğinize emin misiniz?')) {
+        showConfirmDialog('Aboneliği silmek istediğinize emin misiniz?', async () => {
             const url = type === 'institution'
                 ? `${API_BASE}/api/admin/institution-subscription/${id}`
                 : `${API_BASE}/api/admin/subscription/${id}`;
@@ -3251,7 +3258,7 @@ function composeFullName(firstName, lastName) {
             else showToast('İşlem başarısız oldu!', 'error');
             loadSubscriptions();
             loadDashboard();
-        }
+        });
     }
 
     // Form submit işlemleri
@@ -3275,18 +3282,23 @@ function composeFullName(firstName, lastName) {
         };
         const url = id ? `${API_BASE}/api/admin/user/${id}` : `${API_BASE}/api/admin/user`;
         const method = id ? 'PUT' : 'POST';
-        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', body: JSON.stringify(data) });
-        if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            errorEl.textContent = body.error || 'Bir hata oluştu.';
+        try {
+            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', body: JSON.stringify(data) });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                errorEl.textContent = body.error || 'Bir hata oluştu.';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+            showToast(id ? 'Kullanıcı başarıyla güncellendi!' : 'Kullanıcı başarıyla eklendi!', 'success');
+            closeUserModal();
+            loadUsers();
+            loadDashboard();
+        } catch(err) {
+            errorEl.textContent = err.message || 'Bağlantı hatası oluştu.';
             errorEl.classList.remove('hidden');
-            return;
         }
-        showToast(id ? 'Kullanıcı başarıyla güncellendi!' : 'Kullanıcı başarıyla eklendi!', 'success');
-        closeUserModal();
-        loadUsers();
-        loadDashboard();
     });
 
     document.getElementById('subscriptionEditorForm').addEventListener('submit', async (e) => {
@@ -3316,22 +3328,26 @@ function composeFullName(firstName, lastName) {
                 status: els.status.value,
                 end_date: els.endDate.value || null
             };
-        const res = await fetch(url, {
-            method: isEditing ? 'PUT' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-            showToast(
-                isInstitution
-                    ? (isEditing ? 'Kurum aboneliği başarıyla güncellendi!' : 'Kurum aboneliği başarıyla eklendi!')
-                    : (isEditing ? 'Abonelik başarıyla güncellendi!' : 'Abonelik başarıyla eklendi!'),
-                'success'
-            );
-        } else {
-            const body = await res.json().catch(() => ({}));
-            showToast(body.error || 'İşlem başarısız oldu!', 'error');
+        try {
+            const res = await fetch(url, {
+                method: isEditing ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                showToast(
+                    isInstitution
+                        ? (isEditing ? 'Kurum aboneliği başarıyla güncellendi!' : 'Kurum aboneliği başarıyla eklendi!')
+                        : (isEditing ? 'Abonelik başarıyla güncellendi!' : 'Abonelik başarıyla eklendi!'),
+                    'success'
+                );
+            } else {
+                const body = await res.json().catch(() => ({}));
+                showToast(body.error || 'İşlem başarısız oldu!', 'error');
+            }
+        } catch(err) {
+            showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
         }
         closeSubscriptionEditorModal();
         loadSubscriptions();
@@ -3341,29 +3357,33 @@ function composeFullName(firstName, lastName) {
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!editingProductSlug) return;
-        const res = await fetch(`${API_BASE}/api/admin/product/${editingProductSlug}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-                name: document.getElementById('productName').value.trim(),
-                category: document.getElementById('productCategory').value.trim() || null,
-                region: document.getElementById('productRegion').value.trim() || null,
-                default_access_type: document.getElementById('productAccessType').value || null,
-                default_access_url: document.getElementById('productAccessUrl').value.trim() || null,
-                default_requires_institution_email: document.getElementById('productRequiresEmail').checked,
-                default_requires_vpn: document.getElementById('productRequiresVpn').checked,
-                default_access_notes_tr: document.getElementById('productAccessNotesTr').value.trim() || null,
-                default_access_notes_en: document.getElementById('productAccessNotesEn').value.trim() || null
-            })
-        });
-        if (res.ok) {
-            showToast('Ürün erişimi güncellendi!', 'success');
-            closeProductModal();
-            loadProducts();
-        } else {
-            const body = await res.json().catch(() => ({}));
-            showToast(body.error || 'İşlem başarısız oldu!', 'error');
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/product/${editingProductSlug}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    name: document.getElementById('productName').value.trim(),
+                    category: document.getElementById('productCategory').value.trim() || null,
+                    region: document.getElementById('productRegion').value.trim() || null,
+                    default_access_type: document.getElementById('productAccessType').value || null,
+                    default_access_url: document.getElementById('productAccessUrl').value.trim() || null,
+                    default_requires_institution_email: document.getElementById('productRequiresEmail').checked,
+                    default_requires_vpn: document.getElementById('productRequiresVpn').checked,
+                    default_access_notes_tr: document.getElementById('productAccessNotesTr').value.trim() || null,
+                    default_access_notes_en: document.getElementById('productAccessNotesEn').value.trim() || null
+                })
+            });
+            if (res.ok) {
+                showToast('Ürün erişimi güncellendi!', 'success');
+                closeProductModal();
+                loadProducts();
+            } else {
+                const body = await res.json().catch(() => ({}));
+                showToast(body.error || 'İşlem başarısız oldu!', 'error');
+            }
+        } catch(err) {
+            showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
         }
     });
 
@@ -3423,11 +3443,48 @@ window.addEventListener('resize', () => {
     }
 });
 
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && _isAdminSidebarOpen) {
-        closeAdminSidebar();
-    }
-});
+// ====================== GLOBAL ESCAPE KEY HANDLER ======================
+(function () {
+    const MODAL_REGISTRY = [
+        { id: 'adminConfirmModal',        close: () => _adminConfirmClose() },
+        { id: 'coverCropModal',           close: () => closeCoverCropModal() },
+        { id: 'announcementPreviewModal', close: () => closeAnnouncementPreviewModal() },
+        { id: 'sendConfirmModal',         close: () => closeSendConfirmModal() },
+        { id: 'instFilesUtilModal',       close: () => instFilesCloseUtilModal() },
+        { id: 'instFilesSendModal',       close: () => instFilesCloseSendModal() },
+        { id: 'adminMoveModal',           close: () => closeAdminMoveModal() },
+        { id: 'announcementModal',        close: () => closeAnnouncementModal() },
+        { id: 'subscriptionEditorModal',  close: () => closeSubscriptionEditorModal() },
+        { id: 'sendToInstitutionsModal',  close: () => closeSendModal() },
+        { id: 'adminFileModal',           close: () => closeAdminFileModal() },
+        { id: 'folderMoveModal',          close: () => closeFolderMoveModal() },
+        { id: 'adminFolderRenameModal',   close: () => closeAdminFolderRenameModal() },
+        { id: 'adminFolderModal',         close: () => closeAdminFolderModal() },
+        { id: 'productModal',             close: () => closeProductModal() },
+        { id: 'submissionModal',          close: () => closeSubmissionModal() },
+        { id: 'supportModal',             close: () => closeSupportModal() },
+        { id: 'syncPreviewModal',         close: () => closeSyncPreviewModal() },
+        { id: 'userSyncPreviewModal',     close: () => closeUserSyncPreviewModal() },
+        { id: 'commentsModerationModal',  close: () => closeCommentsModerationModal() },
+        { id: 'bulkInstitutionModal',     close: () => closeBulkInstitutionModal() },
+        { id: 'editInstitutionModal',     close: () => closeEditInstitutionModal() },
+        { id: 'institutionModal',         close: () => closeInstitutionModal() },
+        { id: 'bulkUserModal',            close: () => closeBulkUserModal() },
+        { id: 'userModal',                close: () => closeUserModal() },
+    ];
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (_isAdminSidebarOpen) { closeAdminSidebar(); return; }
+        for (const { id, close } of MODAL_REGISTRY) {
+            const el = document.getElementById(id);
+            if (el && !el.classList.contains('hidden')) { close(); return; }
+        }
+        if (document.getElementById('fileViewerPanel')?.classList.contains('open')) {
+            closeFileViewer();
+        }
+    });
+})();
 
 async function _loadSettingsTab() {
     const el = (id) => document.getElementById(id);
@@ -4009,28 +4066,34 @@ function _sortAdminContent() {
 
 // CRUD
 async function toggleAdminFilePublic(fileId, currentStatus) {
-    if (!confirm(`Bu dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`)) return;
-    const endpoint = `${API_BASE}/api/system/file/${fileId}`;
-    const res = await fetch(endpoint, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', body: JSON.stringify({ is_public: currentStatus ? 0 : 1 })
-    });
-    if (res.ok) { showToast('Görünürlük başarıyla güncellendi!', 'success'); loadAdminFiles(); }
-    else showToast('İşlem başarısız oldu!', 'error');
+    showConfirmDialog(
+        `Bu dosyayı ${currentStatus ? 'kurum içi' : 'herkese açık'} yapmak istediğinize emin misiniz?`,
+        async () => {
+            const res = await fetch(`${API_BASE}/api/system/file/${fileId}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', body: JSON.stringify({ is_public: currentStatus ? 0 : 1 })
+            });
+            if (res.ok) { showToast('Görünürlük başarıyla güncellendi!', 'success'); loadAdminFiles(); }
+            else showToast('İşlem başarısız oldu!', 'error');
+        },
+        { danger: false }
+    );
 }
 
 async function deleteAdminFile(fileId) {
-    if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
-    const res = await fetch(`${API_BASE}/api/system/file/${fileId}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); loadAdminFolders(_adminFiles.currentFolderId); }
-    else showToast('İşlem başarısız oldu!', 'error');
+    showConfirmDialog('Bu dosyayı silmek istediğinize emin misiniz?', async () => {
+        const res = await fetch(`${API_BASE}/api/system/file/${fileId}`, { method: 'DELETE', credentials: 'include' });
+        if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); loadAdminFolders(_adminFiles.currentFolderId); }
+        else showToast('İşlem başarısız oldu!', 'error');
+    });
 }
 
 async function deleteAdminFolder(folderId) {
-    if (!confirm('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?')) return;
-    const res = await fetch(`${API_BASE}/api/collections/${folderId}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadAdminFolders(_adminFiles.currentFolderId); loadAdminFiles(); }
-    else showToast('İşlem başarısız oldu!', 'error');
+    showConfirmDialog('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?', async () => {
+        const res = await fetch(`${API_BASE}/api/collections/${folderId}`, { method: 'DELETE', credentials: 'include' });
+        if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadAdminFolders(_adminFiles.currentFolderId); loadAdminFiles(); }
+        else showToast('İşlem başarısız oldu!', 'error');
+    });
 }
 
 // Klasör yeniden adlandırma
@@ -4145,25 +4208,30 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
     const folderName = document.getElementById('adminFolderName').value.trim();
     if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
 
-    const res = await fetch(`${API_BASE}/api/collections`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({
-            name: folderName,
-            parent_id: _adminFiles.currentFolderId || _adminFiles.rootCollectionId || null,
-            scope_type: 'system',
-            scope_id: currentAdmin?.user_id || null,
-            kind: 'folder',
-            is_public: 0
-        })
-    });
-    const data = await res.json();
-    if (res.ok) {
-        if (data.id && !_adminFiles.rootCollectionId) _adminFiles.rootCollectionId = data.parent_id;
-        showToast('Klasör başarıyla oluşturuldu!', 'success');
-        closeAdminFolderModal();
-        loadAdminFolders(_adminFiles.currentFolderId);
+    try {
+        const res = await fetch(`${API_BASE}/api/collections`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({
+                name: folderName,
+                parent_id: _adminFiles.currentFolderId || _adminFiles.rootCollectionId || null,
+                scope_type: 'system',
+                scope_id: currentAdmin?.user_id || null,
+                kind: 'folder',
+                is_public: 0
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+            if (data.id && !_adminFiles.rootCollectionId) _adminFiles.rootCollectionId = data.parent_id;
+            showToast('Klasör başarıyla oluşturuldu!', 'success');
+            closeAdminFolderModal();
+            loadAdminFolders(_adminFiles.currentFolderId);
+        } else {
+            showToast(data.error || 'İşlem başarısız oldu!', 'error');
+        }
+    } catch(err) {
+        showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
     }
-    else showToast(data.error || 'İşlem başarısız oldu!', 'error');
 });
 
 // ====================== SEÇİM MODU ======================
@@ -4773,6 +4841,37 @@ function setBtnLoading(btn, loading, originalHTML = '') {
         : (originalHTML || btn.innerHTML);
 }
 
+// ====================== ONAY MODAL SİSTEMİ ======================
+let _adminConfirmCallback = null;
+
+function showConfirmDialog(message, onConfirm, { confirmLabel = 'Evet', danger = true } = {}) {
+    document.getElementById('adminConfirmMessage').textContent = message;
+    const okBtn = document.getElementById('adminConfirmOkBtn');
+    okBtn.textContent = confirmLabel;
+    okBtn.className = `btn ${danger ? 'btn-danger' : 'btn-primary'}`;
+    _adminConfirmCallback = onConfirm;
+    document.getElementById('adminConfirmModal').classList.remove('hidden');
+}
+function _adminConfirmClose() {
+    document.getElementById('adminConfirmModal').classList.add('hidden');
+    _adminConfirmCallback = null;
+}
+document.getElementById('adminConfirmCancelBtn').addEventListener('click', _adminConfirmClose);
+document.getElementById('adminConfirmOkBtn').addEventListener('click', async () => {
+    if (!_adminConfirmCallback) return;
+    const btn = document.getElementById('adminConfirmOkBtn');
+    const origHTML = btn.innerHTML;
+    setBtnLoading(btn, true);
+    try {
+        await _adminConfirmCallback();
+    } catch(err) {
+        showToast(err.message || 'İşlem başarısız oldu.', 'error');
+    } finally {
+        setBtnLoading(btn, false, origHTML);
+        _adminConfirmClose();
+    }
+});
+
 // ====================== TOAST BİLDİRİM SİSTEMİ ======================
 
 // showToast fonksiyonunu tek ikonlu versiyonla güncelle
@@ -5305,25 +5404,23 @@ function instFilesRenameFolder(id, currentName, event) {
 
 async function instFilesDeleteFolder(id, name, event) {
     if (event) event.stopPropagation();
-    if (!confirm(`"${name}" klasörünü ve içindekileri silmek istediğinizden emin misiniz?`)) return;
-    try {
+    showConfirmDialog(`"${name}" klasörünü ve içindekileri silmek istediğinizden emin misiniz?`, async () => {
         const res = await fetch(`${API_BASE}/api/institution/folder/${id}`, { method: 'DELETE', credentials: 'include' });
         if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || 'Silinemedi');
         showToast('Klasör silindi.', 'success');
         instFilesLoad();
-    } catch(err) { showToast(err.message, 'error'); }
+    });
 }
 
 // ---- Dosya CRUD ----
 async function instFilesDeleteFile(id, name, event) {
     if (event) event.stopPropagation();
-    if (!confirm(`"${name}" dosyasını silmek istediğinizden emin misiniz?`)) return;
-    try {
+    showConfirmDialog(`"${name}" dosyasını silmek istediğinizden emin misiniz?`, async () => {
         const res = await fetch(`${API_BASE}/api/institution/file/${id}`, { method: 'DELETE', credentials: 'include' });
         if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || 'Silinemedi');
         showToast('Dosya silindi.', 'success');
         instFilesLoad();
-    } catch(err) { showToast(err.message, 'error'); }
+    });
 }
 
 function instFilesRenameFile(id, currentName, event) {
@@ -5958,8 +6055,7 @@ document.getElementById('institutionsList')?.addEventListener('click', function(
 });
 
 async function deleteInstitution(id, name) {
-    if (!confirm(`"${name}" kurumunu silmek istediğinize emin misiniz?`)) return;
-    try {
+    showConfirmDialog(`"${name}" kurumunu silmek istediğinize emin misiniz?`, async () => {
         const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
             method: 'DELETE',
             credentials: 'include'
@@ -5969,11 +6065,9 @@ async function deleteInstitution(id, name) {
             showToast('Kurum silindi!', 'success');
             loadInstitutions();
         } else {
-            showToast(data.error || 'Silme başarısız!', 'error');
+            throw new Error(data.error || 'Silme başarısız!');
         }
-    } catch (err) {
-        showToast('Bağlantı hatası!', 'error');
-    }
+    });
 }
 
 // ====================== KURUM KULLANICILARI PANELİ ======================
@@ -6332,55 +6426,67 @@ async function syncAirtableContactsToUsers() {
     }
 }
 
-function renderUserSyncPreview(changes, total) {
-    const actionLabel = { create: 'Ekle', update: 'Güncelle' };
-    const actionCls = { create: 'bg-green-100 text-green-800', update: 'bg-blue-100 text-blue-800' };
-    const searchTerm = (document.getElementById('userSyncPreviewSearch')?.value || '').toLowerCase();
-    const actionFilter = document.getElementById('userSyncPreviewActionFilter')?.value || '';
+function renderSyncPreviewGeneric({ changes, total, searchId, actionFilterId, summaryId, rowsId, selectAllId, checkboxClass, selection, titleId, titleText, haystackFn, rowHtmlFn, colCount, summaryText, extraFilter }) {
+    const searchTerm = (document.getElementById(searchId)?.value || '').toLowerCase();
+    const actionFilter = document.getElementById(actionFilterId)?.value || '';
     const visibleChanges = changes
         .map((ch, i) => ({ ch, i }))
-        .filter(({ ch }) => {
-            const haystack = [
-                ch.full_name || composeFullName(ch.first_name, ch.last_name) || '',
-                ch.email || '',
-                ch.institution || ch.account_name || '',
-                ch.title || ''
-            ].join(' ').toLowerCase();
-            const matchSearch = !searchTerm || haystack.includes(searchTerm);
+        .filter(({ ch, i }) => {
+            const matchSearch = !searchTerm || haystackFn(ch).toLowerCase().includes(searchTerm);
             const matchAction = !actionFilter || ch.action === actionFilter;
-            return matchSearch && matchAction;
+            return matchSearch && matchAction && (!extraFilter || extraFilter(ch, i));
         });
 
-    document.getElementById('userSyncPreviewSummary').textContent =
-        `${total} contact çekildi — ${changes.length} değişiklik, ${visibleChanges.length} görünür`;
+    if (titleId) document.getElementById(titleId).textContent = titleText;
+    document.getElementById(summaryId).textContent = summaryText(total, changes.length, visibleChanges.length);
 
-    document.getElementById('userSyncPreviewRows').innerHTML = visibleChanges.length ? visibleChanges.map(({ ch, i }) => {
-        const beforeText = ch.before
-            ? `${ch.before.full_name || '-'} / ${ch.before.title || '-'} / ${ch.before.institution || '-'}`
-            : '';
-        const emailText = ch.sync_note
-            ? `${ch.email} (${ch.sync_note})`
-            : ch.email;
+    const rowsEl = document.getElementById(rowsId);
+    rowsEl.innerHTML = visibleChanges.length
+        ? visibleChanges.map(({ ch, i }) => rowHtmlFn(ch, i)).join('')
+        : `<tr><td colspan="${colCount}" class="px-3 py-8 text-center text-gray-400">Filtreye uygun değişiklik yok</td></tr>`;
 
-        return `<tr class="border-t border-gray-100">
-            <td class="px-3 py-2"><input type="checkbox" class="user-sync-chk" data-idx="${i}" ${_userSyncSelection.has(i) ? 'checked' : ''}></td>
-            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs font-medium ${actionCls[ch.action]}">${actionLabel[ch.action]}</span></td>
-            <td class="px-3 py-2 font-medium">${escapeHtml(ch.full_name || composeFullName(ch.first_name, ch.last_name) || '-')}</td>
-            <td class="px-3 py-2">${escapeHtml(emailText)}</td>
-            <td class="px-3 py-2">${escapeHtml(ch.title || '-')}</td>
-            <td class="px-3 py-2">${escapeHtml(ch.institution || ch.account_name || '-')}</td>
-            <td class="px-3 py-2 text-gray-400 text-xs">${escapeHtml(beforeText)}</td>
-        </tr>`;
-    }).join('') : '<tr><td colspan="7" class="px-3 py-8 text-center text-gray-400">Filtreye uygun değişiklik yok</td></tr>';
+    rowsEl.removeEventListener('change', rowsEl._syncChkHandler);
+    rowsEl._syncChkHandler = (e) => {
+        if (!e.target.matches(`.${checkboxClass}`)) return;
+        const idx = parseInt(e.target.dataset.idx);
+        if (e.target.checked) selection.add(idx);
+        else selection.delete(idx);
+    };
+    rowsEl.addEventListener('change', rowsEl._syncChkHandler);
 
-    document.querySelectorAll('.user-sync-chk').forEach(cb => {
-        cb.addEventListener('change', function() {
-            const idx = parseInt(this.dataset.idx);
-            if (this.checked) _userSyncSelection.add(idx);
-            else _userSyncSelection.delete(idx);
-        });
+    document.getElementById(selectAllId).checked =
+        visibleChanges.length > 0 && visibleChanges.every(({ i }) => selection.has(i));
+}
+
+function renderUserSyncPreview(changes, total) {
+    const actionLabel = { create: 'Ekle', update: 'Güncelle' };
+    const actionCls   = { create: 'bg-green-100 text-green-800', update: 'bg-blue-100 text-blue-800' };
+    renderSyncPreviewGeneric({
+        changes, total,
+        searchId: 'userSyncPreviewSearch', actionFilterId: 'userSyncPreviewActionFilter',
+        summaryId: 'userSyncPreviewSummary', rowsId: 'userSyncPreviewRows', selectAllId: 'userSyncSelectAll',
+        checkboxClass: 'user-sync-chk', selection: _userSyncSelection,
+        haystackFn: ch => [
+            ch.full_name || composeFullName(ch.first_name, ch.last_name) || '',
+            ch.email || '', ch.institution || ch.account_name || '', ch.title || ''
+        ].join(' '),
+        rowHtmlFn: (ch, i) => {
+            const beforeText = ch.before
+                ? `${ch.before.full_name || '-'} / ${ch.before.title || '-'} / ${ch.before.institution || '-'}` : '';
+            const emailText = ch.sync_note ? `${ch.email} (${ch.sync_note})` : ch.email;
+            return `<tr class="border-t border-gray-100">
+                <td class="px-3 py-2"><input type="checkbox" class="user-sync-chk" data-idx="${i}" ${_userSyncSelection.has(i) ? 'checked' : ''}></td>
+                <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs font-medium ${actionCls[ch.action]}">${actionLabel[ch.action]}</span></td>
+                <td class="px-3 py-2 font-medium">${escapeHtml(ch.full_name || composeFullName(ch.first_name, ch.last_name) || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(emailText)}</td>
+                <td class="px-3 py-2">${escapeHtml(ch.title || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(ch.institution || ch.account_name || '-')}</td>
+                <td class="px-3 py-2 text-gray-400 text-xs">${escapeHtml(beforeText)}</td>
+            </tr>`;
+        },
+        colCount: 7,
+        summaryText: (total, len, vis) => `${total} contact çekildi — ${len} değişiklik, ${vis} görünür`,
     });
-    document.getElementById('userSyncSelectAll').checked = visibleChanges.length > 0 && visibleChanges.every(({ i }) => _userSyncSelection.has(i));
 }
 
 function selectAllUserSyncChanges(checked) {
@@ -6435,58 +6541,37 @@ function renderSyncPreview(changes, total, mode = _institutionSyncMode) {
     const actionLabel = { create: 'Ekle', update: 'Güncelle', link: 'Eşleştir' };
     const actionCls   = { create: 'bg-green-100 text-green-800', update: 'bg-blue-100 text-blue-800', link: 'bg-yellow-100 text-yellow-800' };
     const cfg = getInstitutionSyncConfig(mode);
-    const searchTerm = (document.getElementById('syncPreviewSearch')?.value || '').toLowerCase();
-    const actionFilter = document.getElementById('syncPreviewActionFilter')?.value || '';
-    const fieldFilter = document.getElementById('syncPreviewFieldFilter')?.value || '';
-    const selectedOnly = !!document.getElementById('syncPreviewSelectedOnly')?.checked;
-    const visibleChanges = changes
-        .map((ch, i) => ({ ch, i }))
-        .filter(({ ch, i }) => {
-            const haystack = [
-                ch.name || '',
-                ch.website_url || '',
-                ch.city || '',
-                ch.domain || '',
-                ch.category || '',
-                ch.status || ''
-            ].join(' ').toLowerCase();
-            const matchSearch = !searchTerm || haystack.includes(searchTerm);
-            const matchAction = !actionFilter || ch.action === actionFilter;
-            const changedFields = getInstitutionSyncChangedFields(ch);
-            const matchField = !fieldFilter || changedFields.includes(fieldFilter);
-            const matchSelected = !selectedOnly || _syncSelection.has(i);
-            return matchSearch && matchAction && matchField && matchSelected;
-        });
-
-    document.getElementById('syncPreviewTitle').textContent = cfg.modalTitle;
-    document.getElementById('syncPreviewSummary').textContent =
-        `${total} kurum incelendi — ${changes.length} değişiklik, ${visibleChanges.length} görünür`;
-
-    document.getElementById('syncPreviewRows').innerHTML = visibleChanges.length ? visibleChanges.map(({ ch, i }) => {
-        const beforeText = ch.before
-            ? `${ch.before.name || '-'} / ${ch.before.category || '-'} / ${ch.before.status || '-'} / ${ch.before.website_url || '-'} / ${ch.before.city || '-'} / ${ch.before.domain || '-'}`
-            : '';
-        return `<tr class="border-t border-gray-100">
-            <td class="px-3 py-2"><input type="checkbox" class="sync-chk" data-idx="${i}" ${_syncSelection.has(i) ? 'checked' : ''}></td>
-            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs font-medium ${actionCls[ch.action]}">${actionLabel[ch.action]}</span></td>
-            <td class="px-3 py-2 font-medium">${escapeHtml(ch.name)}</td>
-            <td class="px-3 py-2">${escapeHtml(ch.category || '-')}</td>
-            <td class="px-3 py-2">${escapeHtml(ch.status || '-')}</td>
-            <td class="px-3 py-2">${escapeHtml(ch.website_url || '-')}</td>
-            <td class="px-3 py-2">${escapeHtml(ch.city || '-')}</td>
-            <td class="px-3 py-2">${escapeHtml(ch.domain || '-')}</td>
-            <td class="px-3 py-2 text-gray-400 text-xs">${escapeHtml(beforeText)}</td>
-        </tr>`;
-    }).join('') : '<tr><td colspan="9" class="px-3 py-8 text-center text-gray-400">Filtreye uygun değişiklik yok</td></tr>';
-
-    document.querySelectorAll('.sync-chk').forEach(cb => {
-        cb.addEventListener('change', function() {
-            const idx = parseInt(this.dataset.idx);
-            if (this.checked) _syncSelection.add(idx);
-            else _syncSelection.delete(idx);
-        });
+    renderSyncPreviewGeneric({
+        changes, total,
+        searchId: 'syncPreviewSearch', actionFilterId: 'syncPreviewActionFilter',
+        summaryId: 'syncPreviewSummary', rowsId: 'syncPreviewRows', selectAllId: 'syncSelectAll',
+        checkboxClass: 'sync-chk', selection: _syncSelection,
+        titleId: 'syncPreviewTitle', titleText: cfg.modalTitle,
+        haystackFn: ch => [ch.name || '', ch.website_url || '', ch.city || '', ch.domain || '', ch.category || '', ch.status || ''].join(' '),
+        rowHtmlFn: (ch, i) => {
+            const beforeText = ch.before
+                ? `${ch.before.name || '-'} / ${ch.before.category || '-'} / ${ch.before.status || '-'} / ${ch.before.website_url || '-'} / ${ch.before.city || '-'} / ${ch.before.domain || '-'}` : '';
+            return `<tr class="border-t border-gray-100">
+                <td class="px-3 py-2"><input type="checkbox" class="sync-chk" data-idx="${i}" ${_syncSelection.has(i) ? 'checked' : ''}></td>
+                <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-xs font-medium ${actionCls[ch.action]}">${actionLabel[ch.action]}</span></td>
+                <td class="px-3 py-2 font-medium">${escapeHtml(ch.name)}</td>
+                <td class="px-3 py-2">${escapeHtml(ch.category || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(ch.status || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(ch.website_url || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(ch.city || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(ch.domain || '-')}</td>
+                <td class="px-3 py-2 text-gray-400 text-xs">${escapeHtml(beforeText)}</td>
+            </tr>`;
+        },
+        colCount: 9,
+        summaryText: (total, len, vis) => `${total} kurum incelendi — ${len} değişiklik, ${vis} görünür`,
+        extraFilter: (ch, i) => {
+            const fieldFilter  = document.getElementById('syncPreviewFieldFilter')?.value || '';
+            const selectedOnly = !!document.getElementById('syncPreviewSelectedOnly')?.checked;
+            return (!fieldFilter || getInstitutionSyncChangedFields(ch).includes(fieldFilter))
+                && (!selectedOnly || _syncSelection.has(i));
+        },
     });
-    document.getElementById('syncSelectAll').checked = visibleChanges.length > 0 && visibleChanges.every(({ i }) => _syncSelection.has(i));
 }
 
 function selectAllSyncChanges(checked) {
@@ -6617,33 +6702,37 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
         ? { name, domain: domain || null, website_url: website_url || null, category, status }
         : { domain: domain || null, website_url: website_url || null, status };
     
-    const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body)
-    });
-    
-    if (res.ok) {
-        const logoFile = document.getElementById('editInstLogoFile').files[0];
-        if (logoFile) {
-            const fd = new FormData();
-            fd.append('logo', logoFile);
-            const logoRes = await fetch(`${API_BASE}/api/admin/institution/${id}/logo`, {
-                method: 'POST',
-                credentials: 'include',
-                body: fd
-            });
-            if (!logoRes.ok) {
-                const logoData = await logoRes.json().catch(() => ({}));
-                showToast(logoData.error || 'Kurum güncellendi ancak logo yüklenemedi.', 'warning');
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/institution/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body)
+        });
+        if (res.ok) {
+            const logoFile = document.getElementById('editInstLogoFile').files[0];
+            if (logoFile) {
+                const fd = new FormData();
+                fd.append('logo', logoFile);
+                const logoRes = await fetch(`${API_BASE}/api/admin/institution/${id}/logo`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: fd
+                });
+                if (!logoRes.ok) {
+                    const logoData = await logoRes.json().catch(() => ({}));
+                    showToast(logoData.error || 'Kurum güncellendi ancak logo yüklenemedi.', 'warning');
+                }
             }
+            showToast('Kurum güncellendi!', 'success');
+            closeEditInstitutionModal();
+            loadInstitutions();
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Güncelleme başarısız!', 'error');
         }
-        showToast('Kurum güncellendi!', 'success');
-        closeEditInstitutionModal();
-        loadInstitutions();
-    } else {
-        showToast('Güncelleme başarısız!', 'error');
+    } catch(err) {
+        showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
     }
 });
 
@@ -6713,14 +6802,24 @@ document.getElementById('institutionForm').addEventListener('submit', async (e) 
     const domain = document.getElementById('institutionDomain').value.trim();
     const category = document.getElementById('institutionCategory').value;
     const status = document.getElementById('institutionStatus').value;
-    await fetch(`${API_BASE}/api/admin/institution`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ name, domain: domain || null, category, status })
-    });
-    closeInstitutionModal();
-    loadInstitutions();
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/institution`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name, domain: domain || null, category, status })
+        });
+        if (res.ok) {
+            showToast('Kurum başarıyla eklendi!', 'success');
+            closeInstitutionModal();
+            loadInstitutions();
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'İşlem başarısız oldu!', 'error');
+        }
+    } catch(err) {
+        showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
+    }
 });
 
 async function submitBulkInstitutions() {
@@ -6951,7 +7050,6 @@ function closeFileViewer() {
     setTimeout(() => { document.getElementById('fileViewerBody').innerHTML = ''; }, 300);
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileViewer(); });
 </script>
 
 </div><!-- /authGate -->
@@ -7193,7 +7291,7 @@ async function loadRequests() {
     if (status) params.set('status', status);
 
     try {
-        const res = await fetch(`${API_BASE}/api/admin/submissions?${params}`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/admin/submissions?${params.toString()}`, { credentials: 'include' });
         if (!res.ok) throw new Error('Yüklenemedi');
         const rows = await res.json();
 
@@ -7233,6 +7331,9 @@ document.getElementById('requestsList')?.addEventListener('click', function(e) {
     }
 });
 
+function closeSubmissionModal() {
+    document.getElementById('submissionModal').classList.add('hidden');
+}
 function openSubmissionModal(btn) {
     document.getElementById('submissionEditId').value = btn.dataset.id;
     document.getElementById('submissionEditStatus').value = btn.dataset.status || 'pending';
@@ -7255,7 +7356,7 @@ async function saveSubmission() {
         document.getElementById('submissionModal').classList.add('hidden');
         loadRequests();
     } else {
-        alert('Güncelleme başarısız');
+        showToast('Güncelleme başarısız', 'error');
     }
 }
 
@@ -7462,8 +7563,7 @@ function closeCommentsModerationModal() {
 
 async function deleteModerationComment(commentId) {
     if (!commentId) return;
-    if (!confirm('Bu yorumu silmek istediğinden emin misin? (Audit için kayıt korunur)')) return;
-    try {
+    showConfirmDialog('Bu yorumu silmek istediğinden emin misin? (Audit için kayıt korunur)', async () => {
         const res = await fetch(`${API_BASE}/api/admin/announcements/comments/${encodeURIComponent(commentId)}`, {
             method: 'DELETE',
             credentials: 'include'
@@ -7471,13 +7571,10 @@ async function deleteModerationComment(commentId) {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Silme başarısız');
         showToast('Yorum silindi', 'success');
-        // Listeyi tazele
         const modal = document.getElementById('commentsModerationModal');
         const annId = modal?.dataset.annId;
         if (annId) await reloadCommentsModeration(annId);
-    } catch (err) {
-        showToast(err.message || 'Silme başarısız', 'error');
-    }
+    });
 }
 
 // Event delegation (modalsız listelerdeki "Yorumlar" butonları + modal içi silme)
@@ -7995,10 +8092,11 @@ function bindAnnouncementFormInteractions() {
 }
 
 async function deleteAnnouncement(id) {
-    if (!confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
-    const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Duyuru silindi', 'success'); loadAnnouncements(); }
-    else showToast('İşlem başarısız oldu', 'error');
+    showConfirmDialog('Bu duyuruyu silmek istediğinize emin misiniz?', async () => {
+        const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, { method: 'DELETE', credentials: 'include' });
+        if (res.ok) { showToast('Duyuru silindi', 'success'); loadAnnouncements(); }
+        else showToast('İşlem başarısız oldu', 'error');
+    });
 }
 
 document.getElementById('announcementForm').addEventListener('submit', async function(e) {
@@ -8036,23 +8134,27 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
     };
     const url = id ? `${API_BASE}/api/admin/announcements/${id}` : `${API_BASE}/api/admin/announcements`;
     const method = id ? 'PUT' : 'POST';
-    const res = await fetch(url, {
-        method, credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-        const successMessage = submitIntent === 'draft'
-            ? 'Duyuru taslak olarak kaydedildi'
-            : submitIntent === 'scheduled'
-                ? 'Duyuru planlandı'
-                : 'Duyuru yayınlandı';
-        showToast(successMessage, 'success');
-        closeAnnouncementModal();
-        loadAnnouncements();
-    } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'İşlem başarısız oldu', 'error');
+    try {
+        const res = await fetch(url, {
+            method, credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const successMessage = submitIntent === 'draft'
+                ? 'Duyuru taslak olarak kaydedildi'
+                : submitIntent === 'scheduled'
+                    ? 'Duyuru planlandı'
+                    : 'Duyuru yayınlandı';
+            showToast(successMessage, 'success');
+            closeAnnouncementModal();
+            loadAnnouncements();
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'İşlem başarısız oldu', 'error');
+        }
+    } catch(err) {
+        showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
     }
 });
 
@@ -8243,9 +8345,6 @@ function closeAdminMoveModal() {
 
 async function submitAdminMoveModal() {
     if (!adminMoveModalState.refId || !adminMoveModalState.selectedTargetId) return;
-    const targetName = adminMoveModalState.folders.find(f => Number(f.id) === adminMoveModalState.selectedTargetId)?.name || 'seçilen klasör';
-    if (!confirm(`"${adminMoveModalState.fileName || 'Dosya'}" → "${targetName}" klasörüne taşı?`)) return;
-
     const res = await fetch(`${API_BASE}/api/collection_files/${adminMoveModalState.refId}/move`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -8307,7 +8406,7 @@ async function moveAdminFileRef(refId, fileName) {
                 <p id="adminMoveModalSubtitle" class="text-sm text-gray-500 mt-0.5">Hedef klasörü seçin</p>
                 <p id="adminMoveModalPathInfo" class="text-xs text-gray-500 mt-1"></p>
             </div>
-            <button onclick="closeAdminMoveModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="closeAdminMoveModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
         </div>
         <div class="px-5 pt-4">
             <input id="adminMoveModalSearch" type="text" placeholder="Klasör ara..." class="w-full border rounded-lg px-3 py-2 text-sm mb-1"
@@ -8330,14 +8429,14 @@ async function moveAdminFileRef(refId, fileName) {
                 <h3 class="font-semibold text-gray-900">Görseli Kırp</h3>
                 <p class="text-xs text-gray-500 mt-0.5">16:9 (1200×630) oranında kırpma alanı seçin</p>
             </div>
-            <button onclick="closeCoverCropModal()" class="text-gray-400 hover:text-gray-600 text-xl touch-target flex items-center justify-center"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="closeCoverCropModal()" class="text-gray-400 hover:text-gray-600 text-xl touch-target flex items-center justify-center"><i class="fas fa-times"></i></button>
         </div>
-        <div class="p-4 bg-gray-900 crop-stage" style="max-height:60vh;overflow:hidden;">
-            <img id="coverCropImage" src="" alt="" style="max-width:100%;display:block;max-height:55vh;">
+        <div class="p-4 bg-gray-900 crop-stage">
+            <img id="coverCropImage" src="" alt="">
         </div>
         <div class="modal-actions px-5 py-4 border-t">
-            <button onclick="closeCoverCropModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
-            <button id="coverCropApplyBtn" onclick="applyCoverCrop()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 flex-1">
+            <button type="button" onclick="closeCoverCropModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
+            <button type="button" id="coverCropApplyBtn" onclick="applyCoverCrop()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 flex-1">
                 <i class="fas fa-crop-alt mr-2"></i>Uygula ve Kaydet
             </button>
         </div>
@@ -8354,7 +8453,7 @@ async function moveAdminFileRef(refId, fileName) {
                 <h3 class="font-semibold text-gray-900">Kurumlara Gönder</h3>
                 <p id="sendModalTitle" class="text-sm text-gray-500 mt-0.5"></p>
             </div>
-            <button onclick="closeSendModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="closeSendModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
         </div>
 
         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -8377,8 +8476,8 @@ async function moveAdminFileRef(refId, fileName) {
         </div>
 
         <div class="modal-actions px-5 py-4 border-t flex-shrink-0">
-            <button onclick="closeSendModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
-            <button onclick="openSendConfirmStep()" class="btn btn-primary flex-1">
+            <button type="button" onclick="closeSendModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
+            <button type="button" onclick="openSendConfirmStep()" class="btn btn-primary flex-1">
                 İleri <i class="fas fa-arrow-right ml-1"></i>
             </button>
         </div>
@@ -8392,25 +8491,38 @@ async function moveAdminFileRef(refId, fileName) {
     <div class="modal-panel modal-lg modal-panel-flex modal-panel-scroll">
         <div class="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
             <h3 class="font-semibold text-gray-900">Gönderimi Onayla</h3>
-            <button onclick="closeSendConfirmModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="closeSendConfirmModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
         </div>
 
         <div class="flex-1 overflow-y-auto px-5 py-4">
             <div id="sendConfirmSummary" class="space-y-2 mb-3"></div>
-            <div id="sendDuplicateWarning" class="hidden rounded-lg px-3 py-2 text-sm" style="background:#fef3c7;color:#92400e">
+            <div id="sendDuplicateWarning" class="hidden rounded-lg px-3 py-2 text-sm send-duplicate-warning">
                 <i class="fas fa-exclamation-triangle mr-1"></i>
                 Bazı dosyalar zaten mevcut — bu dosyalar atlanacak, üzerine yazılmayacak.
             </div>
         </div>
 
         <div class="modal-actions px-5 py-4 border-t flex-shrink-0">
-            <button onclick="backToSendStep1()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">
+            <button type="button" onclick="backToSendStep1()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">
                 <i class="fas fa-arrow-left mr-1"></i> Geri
             </button>
-            <button onclick="closeSendConfirmModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
-            <button id="sendConfirmBtn" onclick="executeSend()" class="btn btn-primary flex-1">
+            <button type="button" onclick="closeSendConfirmModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
+            <button type="button" id="sendConfirmBtn" onclick="executeSend()" class="btn btn-primary flex-1">
                 <i class="fas fa-paper-plane mr-1"></i> Gönder
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- Global Onay Modal -->
+<div id="adminConfirmModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-sm">
+        <div class="modal-content">
+            <p id="adminConfirmMessage" class="text-sm text-gray-700 mb-5"></p>
+            <div class="modal-actions justify-end">
+                <button type="button" id="adminConfirmCancelBtn" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
+                <button type="button" id="adminConfirmOkBtn" class="btn btn-danger">Evet</button>
+            </div>
         </div>
     </div>
 </div>
