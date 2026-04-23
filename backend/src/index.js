@@ -5603,7 +5603,7 @@ app.post('/api/admin/announcements/upload-cover', async (c) => {
 
   try {
     const ext = (file.name || 'cover').split('.').pop()?.toLowerCase() || 'jpg';
-    const key = `announcement-covers/${id}.${ext}`;
+    const key = `announcement-covers/${Date.now()}-${crypto.randomUUID()}.${ext}`;
     const arrayBuffer = await file.arrayBuffer();
     await bucket.put(key, arrayBuffer, {
       httpMetadata: { contentType: file.type || 'image/jpeg' }
