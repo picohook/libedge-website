@@ -30,6 +30,37 @@
         .btn-primary:hover { background-color: #3b2a7a; }
         .btn-danger { background-color: #dc2626; color: white; }
         .btn-danger:hover { background-color: #b91c1c; }
+        #authGate :where(button, [type="button"], [type="submit"], a[href], input, select, textarea, [data-admin-action], [role="menuitem"], [tabindex]):focus-visible {
+            outline: 3px solid #4338ca;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 3px rgba(165, 180, 252, 0.35);
+        }
+        .sidebar-link:focus-visible,
+        .sidebar-link-exit:focus-visible {
+            outline-color: #c4b5fd;
+            box-shadow: 0 0 0 3px rgba(196, 181, 253, 0.28);
+        }
+        #authGate .text-gray-400,
+        #authGate .text-slate-400 {
+            color: #6b7280 !important;
+        }
+        #authGate .text-gray-500,
+        #authGate .text-slate-500 {
+            color: #4b5563 !important;
+        }
+        #authGate .hover\:text-gray-600:hover,
+        #authGate .hover\:text-gray-700:hover,
+        #authGate .hover\:text-slate-700:hover {
+            color: #1f2937 !important;
+        }
+        #authGate .hover\:text-red-500:hover,
+        #authGate .hover\:text-red-600:hover {
+            color: #b91c1c !important;
+        }
+        #authGate th[data-admin-action],
+        #authGate .pseudo-button-action {
+            cursor: pointer;
+        }
 
         .sidebar-link-exit {
     display: flex;
@@ -2261,6 +2292,84 @@ function bindAdminElementEvent(id, eventName, handler) {
     el.dataset.boundEvents = `${el.dataset.boundEvents || ''}${eventName}:1;`;
 }
 
+function ensureFieldErrorElement(field) {
+    if (!field?.id) return null;
+    const errorId = `${field.id}Error`;
+    let errorEl = document.getElementById(errorId);
+    if (!errorEl) {
+        errorEl = document.createElement(field.tagName === 'SELECT' ? 'div' : 'p');
+        errorEl.id = errorId;
+        errorEl.className = 'mt-1 text-sm text-red-700 hidden';
+        errorEl.setAttribute('role', 'alert');
+        field.insertAdjacentElement('afterend', errorEl);
+    }
+    return errorEl;
+}
+
+function setFieldError(field, message) {
+    if (!field) return false;
+    const errorEl = ensureFieldErrorElement(field);
+    if (!errorEl) return false;
+    field.setAttribute('aria-invalid', 'true');
+    field.setAttribute('aria-describedby', errorEl.id);
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+    field.classList.add('border-red-500', 'ring-1', 'ring-red-200');
+    return true;
+}
+
+function clearFieldError(field) {
+    if (!field?.id) return;
+    const errorEl = document.getElementById(`${field.id}Error`);
+    field.removeAttribute('aria-invalid');
+    if (field.getAttribute('aria-describedby') === `${field.id}Error`) {
+        field.removeAttribute('aria-describedby');
+    }
+    field.classList.remove('border-red-500', 'ring-1', 'ring-red-200');
+    errorEl?.classList.add('hidden');
+    if (errorEl) errorEl.textContent = '';
+}
+
+function clearFormFieldErrors(form) {
+    form?.querySelectorAll('[aria-invalid="true"]').forEach(clearFieldError);
+}
+
+function focusFirstInvalidField(fields) {
+    const first = fields.find(Boolean);
+    first?.focus();
+}
+
+function updateSortableHeaderState(actionName, activeKey, isAsc) {
+    document.querySelectorAll(`[data-admin-action="${actionName}"][data-sort-key]`).forEach((el) => {
+        const key = el.dataset.sortKey;
+        const labelText = (el.textContent || '').replace(/[↕↑↓]/g, '').trim();
+        if (key === activeKey) {
+            el.setAttribute('aria-sort', isAsc ? 'ascending' : 'descending');
+            el.setAttribute('aria-label', `${labelText} sütununu ${isAsc ? 'artan' : 'azalan'} sırada gösteriyor`);
+        } else {
+            el.setAttribute('aria-sort', 'none');
+            el.setAttribute('aria-label', `${labelText} sütununa göre sırala`);
+        }
+    });
+}
+
+function initAdminKeyboardActions() {
+    document.querySelectorAll('[data-admin-action]').forEach((el) => {
+        const tag = el.tagName;
+        const isNativeInteractive = ['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tag);
+        if (tag === 'TH') {
+            if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+            el.classList.add('pseudo-button-action');
+            return;
+        }
+        if (!isNativeInteractive) {
+            if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+            if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+            el.classList.add('pseudo-button-action');
+        }
+    });
+}
+
 function bindRemainingAdminFormEvents() {
     bindAdminElementEvent('dashboardPeriodFilter', 'change', handleDashboardPeriodChange);
 
@@ -2328,6 +2437,22 @@ function bindRemainingAdminFormEvents() {
 
     bindAdminElementEvent('fileInput', 'change', (e) => handleFileSelect(e.target.files?.[0]));
 
+    [
+        'adminFolderName',
+        'userFirstName',
+        'userEmail',
+        'institutionName',
+        'editInstitutionName',
+        'subscriptionEditorUserId',
+        'subscriptionEditorInstitutionId',
+        'subscriptionEditorProduct',
+        'announcementTitle',
+        'announcementPublishAt',
+        'supportReplyText'
+    ].forEach((id) => {
+        bindAdminElementEvent(id, id.includes('Id') || id.includes('Type') || id.includes('Product') || id.includes('PublishAt') ? 'change' : 'input', (e) => clearFieldError(e.target));
+    });
+
     const logoErrorHandler = (e) => {
         if (!e.target.matches('img[data-inst-logo="1"]')) return;
         e.target.style.display = 'none';
@@ -2354,6 +2479,7 @@ function bindRemainingAdminFormEvents() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    initAdminKeyboardActions();
     bindRemainingAdminFormEvents();
     const ok = await checkAdminAuth();
     document.getElementById('loadingScreen')?.remove();
@@ -2767,6 +2893,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             el.textContent = k !== _userSortKey ? '↕' : (_userSortAsc ? '↑' : '↓');
             el.className = k === _userSortKey ? 'text-primary' : 'text-gray-400';
         });
+        updateSortableHeaderState('sort-users', _userSortKey, _userSortAsc);
     }
 
     function sortUsers(key) {
@@ -3081,6 +3208,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             el.textContent = k !== _subscriptionSortKey ? '↕' : (_subscriptionSortAsc ? '↑' : '↓');
             el.className = k === _subscriptionSortKey ? 'text-primary' : 'text-gray-400';
         });
+        updateSortableHeaderState('sort-subscriptions', _subscriptionSortKey, _subscriptionSortAsc);
     }
 
     function sortSubscriptions(key) {
@@ -3419,20 +3547,41 @@ function composeFullName(firstName, lastName) {
     }
 
     // Form submit işlemleri
-    document.getElementById('userForm').addEventListener('submit', async (e) => {
+document.getElementById('userForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const errorEl = document.getElementById('userFormError');
         errorEl.classList.add('hidden');
+        clearFormFieldErrors(e.currentTarget);
         const id = document.getElementById('userId').value;
         const instIdVal = document.getElementById('userInstitutionId').value;
-        const firstName = document.getElementById('userFirstName').value.trim();
+        const firstNameEl = document.getElementById('userFirstName');
+        const emailEl = document.getElementById('userEmail');
+        const firstName = firstNameEl.value.trim();
         const lastName = document.getElementById('userLastName').value.trim();
+        const invalidFields = [];
+        if (!firstName) {
+            setFieldError(firstNameEl, 'Ad alanı zorunludur.');
+            invalidFields.push(firstNameEl);
+        }
+        if (!emailEl.value.trim()) {
+            setFieldError(emailEl, 'E-posta alanı zorunludur.');
+            invalidFields.push(emailEl);
+        } else if (!emailEl.checkValidity()) {
+            setFieldError(emailEl, 'Geçerli bir e-posta adresi girin.');
+            invalidFields.push(emailEl);
+        }
+        if (invalidFields.length) {
+            errorEl.textContent = 'Lütfen işaretli alanları kontrol edin.';
+            errorEl.classList.remove('hidden');
+            focusFirstInvalidField(invalidFields);
+            return;
+        }
         const data = {
             first_name: firstName,
             last_name: lastName,
             full_name: composeFullName(firstName, lastName),
             title: document.getElementById('userTitle').value.trim(),
-            email: document.getElementById('userEmail').value,
+            email: emailEl.value,
             institution_id: instIdVal ? parseInt(instIdVal) : null,
             role: document.getElementById('userRole').value,
             password: document.getElementById('userPassword').value
@@ -3461,8 +3610,25 @@ function composeFullName(firstName, lastName) {
     document.getElementById('subscriptionEditorForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const els = getSubscriptionEditorElements();
+        clearFormFieldErrors(e.currentTarget);
         const isInstitution = _subscriptionEditorState.type === 'institution';
         const isEditing = !!_subscriptionEditorState.id;
+        const invalidFields = [];
+        const subjectField = isInstitution ? els.institutionId : els.userId;
+        const subjectMessage = isInstitution ? 'Kurum seçin.' : 'Kullanıcı seçin.';
+        if (!subjectField.value) {
+            setFieldError(subjectField, subjectMessage);
+            invalidFields.push(subjectField);
+        }
+        if (!els.product.value) {
+            setFieldError(els.product, 'Ürün seçin.');
+            invalidFields.push(els.product);
+        }
+        if (invalidFields.length) {
+            focusFirstInvalidField(invalidFields);
+            showToast('Lütfen abonelik formundaki zorunlu alanları tamamlayın.', 'warning');
+            return;
+        }
         const url = isInstitution
             ? (isEditing ? `${API_BASE}/api/admin/institution-subscription/${_subscriptionEditorState.id}` : `${API_BASE}/api/admin/institution-subscription`)
             : (isEditing ? `${API_BASE}/api/admin/subscription/${_subscriptionEditorState.id}` : `${API_BASE}/api/admin/subscription`);
@@ -3711,6 +3877,17 @@ document.addEventListener('click', (e) => {
         case 'inst-files-close-send-modal': instFilesCloseSendModal(); break;
         case 'inst-files-execute-send': instFilesExecuteSend(); break;
         default: break;
+    }
+});
+document.addEventListener('keydown', (e) => {
+    const actionEl = e.target.closest('[data-admin-action]');
+    if (!actionEl) return;
+    const tag = actionEl.tagName;
+    const isNativeInteractive = ['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tag);
+    if (isNativeInteractive) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        actionEl.click();
     }
 });
 window.addEventListener('resize', () => {
@@ -4663,8 +4840,15 @@ function closeAdminFolderModal() {
 
 document.getElementById('adminFolderForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const folderName = document.getElementById('adminFolderName').value.trim();
-    if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
+    clearFormFieldErrors(e.currentTarget);
+    const folderNameEl = document.getElementById('adminFolderName');
+    const folderName = folderNameEl.value.trim();
+    if (!folderName) {
+        setFieldError(folderNameEl, 'Klasör adı zorunludur.');
+        folderNameEl.focus();
+        showToast('Klasör adı boş olamaz.', 'warning');
+        return;
+    }
 
     try {
         const res = await fetch(`${API_BASE}/api/collections`, {
@@ -6874,6 +7058,7 @@ function sortInstitutions(key) {
         el.textContent = k !== _instSortKey ? '↕' : (_instSortAsc ? '↑' : '↓');
         el.className = k === _instSortKey ? 'text-primary' : 'text-gray-400';
     });
+    updateSortableHeaderState('sort-institutions', _instSortKey, _instSortAsc);
     loadInstitutions(1);
 }
 
@@ -7265,8 +7450,9 @@ function closeEditInstitutionModal() {
 
 document.getElementById('editInstitutionForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    const name = document.getElementById('editInstitutionName').value.trim();
+    clearFormFieldErrors(e.currentTarget);
+    const nameEl = document.getElementById('editInstitutionName');
+    const name = nameEl.value.trim();
     const category = document.getElementById('editInstitutionCategory').value;
     const status = document.getElementById('editInstitutionStatus').value;
     const domain = document.getElementById('editInstitutionDomain').value.trim();
@@ -7274,6 +7460,12 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
 
     const id = document.getElementById('editInstitutionId').value;
     const isSuper = currentAdmin?.role === 'super_admin';
+    if (isSuper && !name) {
+        setFieldError(nameEl, 'Kurum adı zorunludur.');
+        nameEl.focus();
+        showToast('Kurum adı boş olamaz.', 'warning');
+        return;
+    }
     const body = isSuper
         ? { name, domain: domain || null, website_url: website_url || null, category, status }
         : { domain: domain || null, website_url: website_url || null, status };
@@ -7374,10 +7566,18 @@ function parseBulkPaste() {
 
 document.getElementById('institutionForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = document.getElementById('institutionName').value.trim();
+    clearFormFieldErrors(e.currentTarget);
+    const nameEl = document.getElementById('institutionName');
+    const name = nameEl.value.trim();
     const domain = document.getElementById('institutionDomain').value.trim();
     const category = document.getElementById('institutionCategory').value;
     const status = document.getElementById('institutionStatus').value;
+    if (!name) {
+        setFieldError(nameEl, 'Kurum adı zorunludur.');
+        nameEl.focus();
+        showToast('Kurum adı boş olamaz.', 'warning');
+        return;
+    }
     try {
         const res = await fetch(`${API_BASE}/api/admin/institution`, {
             method: 'POST',
@@ -7821,10 +8021,13 @@ async function sendSupportReply() {
 
     const messageEl = document.getElementById('supportReplyText');
     const fileEl = document.getElementById('supportReplyFile');
+    clearFieldError(messageEl);
     const message = messageEl.value.trim();
     const file = fileEl?.files?.[0] || null;
 
     if (!message && !file) {
+        setFieldError(messageEl, 'Yanıt göndermek için mesaj yazın veya dosya ekleyin.');
+        messageEl.focus();
         showToast('Destek yanıtı göndermek için bir mesaj yazın veya dosya ekleyin.', 'warning');
         return;
     }
@@ -8677,19 +8880,39 @@ async function deleteAnnouncement(id) {
 
 document.getElementById('announcementForm').addEventListener('submit', async function(e) {
     e.preventDefault();
+    clearFormFieldErrors(e.currentTarget);
     const id = document.getElementById('announcementId').value;
     const submitIntent = document.getElementById('announcementSubmitIntent').value;
-    const rawPublishAt = document.getElementById('announcementPublishAt').value;
+    const publishAtEl = document.getElementById('announcementPublishAt');
+    const titleEl = document.getElementById('announcementTitle');
+    const rawPublishAt = publishAtEl.value;
+    const invalidFields = [];
+
+    if (!titleEl.value.trim()) {
+        setFieldError(titleEl, 'Duyuru başlığı zorunludur.');
+        invalidFields.push(titleEl);
+    }
 
     if (submitIntent === 'scheduled') {
         if (!rawPublishAt) {
+            setFieldError(publishAtEl, 'Planlı yayın için tarih seçin.');
+            invalidFields.push(publishAtEl);
             showToast('Lütfen planlı yayın tarihi seçin.', 'warning');
+            focusFirstInvalidField(invalidFields);
             return;
         }
         if (new Date(rawPublishAt).getTime() <= Date.now()) {
+            setFieldError(publishAtEl, 'Planlı yayın tarihi ileri bir zaman olmalıdır.');
+            invalidFields.push(publishAtEl);
             showToast('Planlı yayın için ileri bir tarih seçin.', 'warning');
+            focusFirstInvalidField(invalidFields);
             return;
         }
+    }
+
+    if (invalidFields.length) {
+        focusFirstInvalidField(invalidFields);
+        return;
     }
 
     const publishPayload = getAnnouncementPublishPayload();
