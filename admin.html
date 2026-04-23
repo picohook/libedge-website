@@ -346,6 +346,7 @@
                     </tbody>
                 </table>
             </div>
+            <div id="subscriptionsPagination" class="mt-4 flex items-center justify-between gap-3 text-sm text-gray-500"></div>
         </div>
     </div>
 <!-- Kurum Dosyaları Tab -->
@@ -2279,7 +2280,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
 
     // Kullanıcıları listele
     let allUsers = [];
-    let _usersView = { filtered: [], page: 1, pageSize: 25 };
+    let _usersView = { items: [], page: 1, pageSize: 25, total: 0, totalPages: 1 };
 
     function timeAgo(dateStr) {
         if (!dateStr) return '-';
@@ -2320,9 +2321,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
 
     function renderUsers(users) {
         const isSuper = currentAdmin?.role === 'super_admin';
-        const start = (_usersView.page - 1) * _usersView.pageSize;
-        const pageUsers = users.slice(start, start + _usersView.pageSize);
-        document.getElementById('usersList').innerHTML = pageUsers.length ? pageUsers.map(u => {
+        document.getElementById('usersList').innerHTML = users.length ? users.map(u => {
             return `
             <tr>
                 <td class="px-4 py-2">${u.id}</td>
@@ -2341,42 +2340,46 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             </tr>`;
         }).join('') : '<tr><td colspan="8" class="text-center py-4 text-gray-400">Sonuç bulunamadı</td></tr>';
 
-        renderTablePagination('usersPagination', users.length, _usersView, (page) => {
+        renderTablePagination('usersPagination', _usersView.total, _usersView, (page) => {
             _usersView.page = page;
-            renderUsers(_usersView.filtered);
+            loadUsers(page);
         });
     }
 
     function filterUsers() {
-        const q = document.getElementById('userSearchInput').value.toLowerCase();
-        const role = document.getElementById('userRoleFilter').value;
-        const inst = document.getElementById('userInstitutionFilter').value;
-        const filtered = allUsers.filter(u => {
-            const instName = u.institution_name || u.institution || '';
-            const matchQ = !q || (u.full_name || '').toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || instName.toLowerCase().includes(q);
-            const matchRole = !role || u.role === role;
-            const matchInst = !inst || instName === inst;
-            return matchQ && matchRole && matchInst;
-        });
-        _usersView.filtered = filtered;
         _usersView.page = 1;
-        renderUsers(filtered);
+        loadUsers(1);
     }
 
-    async function loadUsers() {
-        const res = await fetch('/api/admin/users', { credentials: 'include' });
-        allUsers = await res.json();
-        _usersView.filtered = allUsers;
-        _usersView.page = 1;
+    async function loadUsers(page = 1) {
+        const params = new URLSearchParams({
+            page: String(page),
+            page_size: String(_usersView.pageSize)
+        });
+        const q = document.getElementById('userSearchInput')?.value?.trim();
+        const role = document.getElementById('userRoleFilter')?.value;
+        const inst = document.getElementById('userInstitutionFilter')?.value;
+        if (q) params.set('search', q);
+        if (role) params.set('role', role);
+        if (inst) params.set('institution', inst);
+
+        const res = await fetch(`/api/admin/users?${params.toString()}`, { credentials: 'include' });
+        const payload = await res.json();
+        allUsers = payload.items || [];
+        _usersView.items = allUsers;
+        _usersView.total = Number(payload.total || 0);
+        _usersView.page = Number(payload.page || page || 1);
+        _usersView.pageSize = Number(payload.page_size || _usersView.pageSize);
+        _usersView.totalPages = Number(payload.total_pages || 1);
 
         // Kurum dropdown'u doldur (institution_name'i tercih et)
-        const institutions = [...new Set(allUsers.map(u => u.institution_name || u.institution).filter(Boolean))].sort();
+        const institutions = (payload.institutions || []).filter(Boolean);
         const instFilter = document.getElementById('userInstitutionFilter');
         const currentVal = instFilter.value;
         instFilter.innerHTML = '<option value="">Tüm Kurumlar</option>' +
             institutions.map(i => `<option value="${escapeHtml(i)}"${i === currentVal ? ' selected' : ''}>${escapeHtml(i)}</option>`).join('');
 
-        filterUsers();
+        renderUsers(allUsers);
     }
 
     // ---- Kullanıcı Dosyaları Panel ----
@@ -2554,9 +2557,21 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     // ---- Kullanıcı Dosyaları Panel sonu ----
 
     // Abonelikleri listele
-    async function loadSubscriptions() {
-        const res = await fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' });
-        const subs = await res.json();
+    let _subscriptionsView = { items: [], page: 1, pageSize: 25, total: 0, totalPages: 1 };
+
+    async function loadSubscriptions(page = 1) {
+        const params = new URLSearchParams({
+            page: String(page),
+            page_size: String(_subscriptionsView.pageSize)
+        });
+        const res = await fetch(`${API_BASE}/api/admin/subscriptions?${params.toString()}`, { credentials: 'include' });
+        const payload = await res.json();
+        const subs = payload.items || [];
+        _subscriptionsView.items = subs;
+        _subscriptionsView.total = Number(payload.total || 0);
+        _subscriptionsView.page = Number(payload.page || page || 1);
+        _subscriptionsView.pageSize = Number(payload.page_size || _subscriptionsView.pageSize);
+        _subscriptionsView.totalPages = Number(payload.total_pages || 1);
         const getProductName = (slug) => products.find(p => p.slug === slug)?.name || slug;
         const getAccessLabel = (s) => {
             if (s.type !== 'institution') return '-';
@@ -2597,7 +2612,12 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                     </td>
                 </tr>
           `; }).join('') : '<tr><td colspan="9" class="text-center py-4 text-gray-400">Henüz abonelik yok</td></tr>';
-      }
+
+        renderTablePagination('subscriptionsPagination', _subscriptionsView.total, _subscriptionsView, (nextPage) => {
+            _subscriptionsView.page = nextPage;
+            loadSubscriptions(nextPage);
+        });
+    }
 
 document.getElementById('subscriptionsList')?.addEventListener('click', function(e) {
     const row = e.target.closest('.subscription-row');

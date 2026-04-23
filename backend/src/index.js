@@ -1755,44 +1755,110 @@ app.get('/api/admin/users', async (c) => {
   if (!await canListUsers(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   const role = await getUserRole(c);
+  const url = new URL(c.req.url);
+  const hasPagedRequest =
+    url.searchParams.has('page') ||
+    url.searchParams.has('page_size') ||
+    url.searchParams.has('search') ||
+    url.searchParams.has('role') ||
+    url.searchParams.has('institution');
 
+  const search = (url.searchParams.get('search') || '').trim().toLowerCase();
+  const roleFilter = (url.searchParams.get('role') || '').trim();
+  const institutionFilter = (url.searchParams.get('institution') || '').trim();
+  const requestedPage = Math.max(1, Number(url.searchParams.get('page') || 1));
+  const requestedPageSize = Math.max(1, Math.min(100, Number(url.searchParams.get('page_size') || 25)));
 
-  let users;
+  const whereParts = [];
+  const params = [];
+
   if (role === 'super_admin') {
-    users = await db.prepare(`
-      SELECT u.id, u.email, u.full_name, u.first_name, u.last_name, u.title,
-             u.institution, u.institution_id, u.role, u.created_at, u.last_login,
-             COALESCE(i.name, u.institution) as institution_name
-      FROM users u
-      LEFT JOIN institutions i ON u.institution_id = i.id
-      ORDER BY u.id DESC
-    `).all();
+    if (roleFilter) {
+      whereParts.push(`u.role = ?`);
+      params.push(roleFilter);
+    }
+    if (institutionFilter) {
+      whereParts.push(`COALESCE(i.name, u.institution) = ?`);
+      params.push(institutionFilter);
+    }
   } else {
     const adminInstitutionId = await getUserInstitutionId(c);
     const adminInstitution = await getUserInstitution(c);
+    whereParts.push(`u.role != 'super_admin'`);
     if (adminInstitutionId) {
-      users = await db.prepare(`
-        SELECT u.id, u.email, u.full_name, u.first_name, u.last_name, u.title,
-               u.institution, u.institution_id, u.role, u.created_at, u.last_login,
-               COALESCE(i.name, u.institution) as institution_name
-        FROM users u
-        LEFT JOIN institutions i ON u.institution_id = i.id
-        WHERE u.institution_id = ? AND u.role != 'super_admin'
-        ORDER BY u.id DESC
-      `).bind(adminInstitutionId).all();
+      whereParts.push(`u.institution_id = ?`);
+      params.push(adminInstitutionId);
     } else {
-      users = await db.prepare(`
-        SELECT u.id, u.email, u.full_name, u.first_name, u.last_name, u.title,
-               u.institution, u.institution_id, u.role, u.created_at, u.last_login,
-               COALESCE(i.name, u.institution) as institution_name
-        FROM users u
-        LEFT JOIN institutions i ON u.institution_id = i.id
-        WHERE u.institution = ? AND u.role != 'super_admin'
-        ORDER BY u.id DESC
-      `).bind(adminInstitution).all();
+      whereParts.push(`u.institution = ?`);
+      params.push(adminInstitution);
     }
   }
-  return c.json(users.results);
+
+  if (search) {
+    whereParts.push(`(
+      LOWER(COALESCE(u.full_name, '')) LIKE ?
+      OR LOWER(u.email) LIKE ?
+      OR LOWER(COALESCE(i.name, u.institution, '')) LIKE ?
+    )`);
+    const like = `%${search}%`;
+    params.push(like, like, like);
+  }
+
+  const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+  const baseSql = `
+    FROM users u
+    LEFT JOIN institutions i ON u.institution_id = i.id
+    ${whereSql}
+  `;
+  const selectSql = `
+    SELECT u.id, u.email, u.full_name, u.first_name, u.last_name, u.title,
+           u.institution, u.institution_id, u.role, u.created_at, u.last_login,
+           COALESCE(i.name, u.institution) as institution_name
+    ${baseSql}
+    ORDER BY u.id DESC
+  `;
+
+  if (!hasPagedRequest) {
+    const users = await db.prepare(selectSql).bind(...params).all();
+    return c.json(users.results);
+  }
+
+  const totalRow = await db.prepare(`SELECT COUNT(*) as total ${baseSql}`).bind(...params).first();
+  const total = Number(totalRow?.total || 0);
+  const totalPages = Math.max(1, Math.ceil(total / requestedPageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const offset = (page - 1) * requestedPageSize;
+
+  const users = await db.prepare(`${selectSql} LIMIT ? OFFSET ?`).bind(...params, requestedPageSize, offset).all();
+  const institutionsQuery = role === 'super_admin'
+    ? `
+      SELECT DISTINCT COALESCE(i.name, u.institution) AS institution_name
+      FROM users u
+      LEFT JOIN institutions i ON u.institution_id = i.id
+      WHERE COALESCE(i.name, u.institution) IS NOT NULL AND COALESCE(i.name, u.institution) != ''
+      ORDER BY institution_name
+    `
+    : `
+      SELECT DISTINCT COALESCE(i.name, u.institution) AS institution_name
+      FROM users u
+      LEFT JOIN institutions i ON u.institution_id = i.id
+      WHERE u.role != 'super_admin'
+        AND COALESCE(i.name, u.institution) IS NOT NULL
+        AND COALESCE(i.name, u.institution) != ''
+        AND ${whereParts.some(part => part.includes('u.institution_id = ?')) ? 'u.institution_id = ?' : 'u.institution = ?'}
+      ORDER BY institution_name
+    `;
+  const institutionParams = role === 'super_admin' ? [] : [params[0]];
+  const institutionsRes = await db.prepare(institutionsQuery).bind(...institutionParams).all();
+
+  return c.json({
+    items: users.results || [],
+    total,
+    page,
+    page_size: requestedPageSize,
+    total_pages: totalPages,
+    institutions: (institutionsRes.results || []).map(r => r.institution_name).filter(Boolean)
+  });
 });
 
 // ====================== KULLANICI DOSYA GÖRÜNTÜLEME (ADMIN) ======================
@@ -2426,6 +2492,10 @@ app.get('/api/admin/subscriptions', async (c) => {
   const role = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
+  const url = new URL(c.req.url);
+  const hasPagedRequest = url.searchParams.has('page') || url.searchParams.has('page_size');
+  const requestedPage = Math.max(1, Number(url.searchParams.get('page') || 1));
+  const requestedPageSize = Math.max(1, Math.min(100, Number(url.searchParams.get('page_size') || 25)));
 
   let individualResults = [], institutionalResults = [];
 
@@ -2508,7 +2578,23 @@ app.get('/api/admin/subscriptions', async (c) => {
     console.error('institution_subscriptions query error:', e.message);
   }
 
-  return c.json([...institutionalResults, ...individualResults]);
+  const allResults = [...institutionalResults, ...individualResults].sort((a, b) => Number(b.id) - Number(a.id));
+  if (!hasPagedRequest) {
+    return c.json(allResults);
+  }
+
+  const total = allResults.length;
+  const totalPages = Math.max(1, Math.ceil(total / requestedPageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const offset = (page - 1) * requestedPageSize;
+
+  return c.json({
+    items: allResults.slice(offset, offset + requestedPageSize),
+    total,
+    page,
+    page_size: requestedPageSize,
+    total_pages: totalPages
+  });
 });
 
 app.post('/api/admin/subscription', async (c) => {
