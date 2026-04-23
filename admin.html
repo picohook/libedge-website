@@ -1764,101 +1764,110 @@
     </div>
 </div>
 
-<div id="subscriptionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-bold mb-4">Bireysel Abonelik Ekle</h3>
-        <form id="subscriptionForm">
-            <div class="mb-3"><select id="subUserId" class="w-full border p-2 rounded" required><option value="">Kullanıcı Seçin</option></select></div>
-            <div class="mb-3"><select id="subProduct" class="w-full border p-2 rounded" required><option value="">Ürün Seçin</option><option value="pangram">Pangram</option><option value="chatpdf">ChatPDF</option><option value="primal-pictures">Primal Pictures</option><option value="lecturio">Lecturio</option><option value="jove-research">JoVE Research</option><option value="biorender">BioRender</option><option value="wiley-journals">Wiley Dergiler</option></select></div>
-            <div class="mb-3"><select id="subStatus" class="w-full border p-2 rounded"><option value="active">Aktif</option><option value="trial">Deneme</option><option value="expired">Süresi Doldu</option></select></div>
-            <div class="mb-3"><input type="date" id="subEndDate" class="w-full border p-2 rounded"></div>
-            <div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeSubscriptionModal()" class="btn bg-gray-300 flex-1">İptal</button></div>
-        </form>
-    </div>
-</div>
+<div id="subscriptionEditorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 p-4">
+    <div class="min-h-full flex items-center justify-center">
+        <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] shadow-lg flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b">
+                <div>
+                    <h3 id="subscriptionEditorTitle" class="text-xl font-bold">Abonelik Ekle</h3>
+                    <p id="subscriptionEditorSubtitle" class="text-sm text-gray-500 mt-1">Abonelik tipini ve erişim ayarlarını yönetin.</p>
+                </div>
+                <button type="button" onclick="closeSubscriptionEditorModal()" class="text-gray-400 hover:text-gray-600 text-lg leading-none px-2 py-1">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="subscriptionEditorForm" class="flex flex-col min-h-0">
+                <input type="hidden" id="subscriptionEditorType" value="individual">
+                <div class="p-5 overflow-y-auto space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Abonelik Tipi</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="subscriptionTypeIndividualBtn" onclick="setSubscriptionEditorType('individual')" class="px-3 py-2 rounded-lg border text-sm font-medium bg-indigo-50 text-indigo-700 border-indigo-200">Bireysel</button>
+                            <button type="button" id="subscriptionTypeInstitutionBtn" onclick="setSubscriptionEditorType('institution')" class="px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-200">Kurum</button>
+                        </div>
+                    </div>
 
-<!-- Kurum Aboneliği Modal -->
-<div id="instSubscriptionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-bold mb-4">Kurum Aboneliği Ekle</h3>
-        <form id="instSubscriptionForm">
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kurum</label>
-                <select id="instSubInstitutionId" class="w-full border p-2 rounded" required>
-                    <option value="">Kurum Seçin</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Ürün</label>
-                <select id="instSubProduct" class="w-full border p-2 rounded" required>
-                    <option value="">Ürün Seçin</option>
-                    <option value="pangram">Pangram</option>
-                    <option value="chatpdf">ChatPDF</option>
-                    <option value="primal-pictures">Primal Pictures</option>
-                    <option value="lecturio">Lecturio</option>
-                    <option value="jove-research">JoVE Research</option>
-                    <option value="biorender">BioRender</option>
-                    <option value="wiley-journals">Wiley Dergiler</option>
-                    <option value="wonders">Wonders</option>
-                    <option value="assistin">Assistin</option>
-                    <option value="cochrane-library">Cochrane Library</option>
-                    <option value="jove-education">JoVE Education</option>
-                    <option value="jove-business">JoVE Business</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Durum</label>
-                <select id="instSubStatus" class="w-full border p-2 rounded">
-                    <option value="active">Aktif</option>
-                    <option value="trial">Deneme</option>
-                    <option value="expired">Süresi Doldu</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Bitiş Tarihi</label>
-                <input type="date" id="instSubEndDate" class="w-full border p-2 rounded">
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kuruma Özel Erişim Tipi</label>
-                <select id="instSubAccessType" class="w-full border p-2 rounded">
-                    <option value="">Seçin</option>
-                    <option value="direct">Doğrudan Link</option>
-                    <option value="ip">IP Erişimi</option>
-                    <option value="proxy">Proxy / EZproxy</option>
-                    <option value="sso">SSO</option>
-                    <option value="institution_link">Kuruma Özel Link</option>
-                    <option value="email_password_external">Kurum E-posta + Harici Şifre</option>
-                    <option value="mixed">Karma</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kuruma Özel Erişim URL</label>
-                <input type="url" id="instSubAccessUrl" placeholder="https://..." class="w-full border p-2 rounded">
-                <p class="text-xs text-gray-400 mt-1">Boş bırakırsanız ürünün varsayılan erişim ayarı kullanılır.</p>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                <label class="flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" id="instSubRequiresEmail" class="rounded">
-                    Kurum e-postası gerekli
-                </label>
-                <label class="flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" id="instSubRequiresVpn" class="rounded">
-                    VPN / Kampüs ağı gerekli
-                </label>
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Erişim Notu (TR)</label>
-                <textarea id="instSubAccessNotesTr" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Örn: Kurum e-postanız ve Lecturio şifrenizle giriş yapın."></textarea>
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Erişim Notu (EN)</label>
-                <textarea id="instSubAccessNotesEn" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Optional English note"></textarea>
-            </div>
-            <div class="flex gap-2">
-                <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
-                <button type="button" onclick="closeInstSubscriptionModal()" class="btn bg-gray-300 flex-1">İptal</button>
-            </div>
-        </form>
+                    <div id="subscriptionEditorUserField">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kullanıcı</label>
+                        <select id="subscriptionEditorUserId" class="w-full border p-2 rounded">
+                            <option value="">Kullanıcı Seçin</option>
+                        </select>
+                    </div>
+
+                    <div id="subscriptionEditorInstitutionField" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kurum</label>
+                        <select id="subscriptionEditorInstitutionId" class="w-full border p-2 rounded">
+                            <option value="">Kurum Seçin</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Ürün</label>
+                            <select id="subscriptionEditorProduct" class="w-full border p-2 rounded" required>
+                                <option value="">Ürün Seçin</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Durum</label>
+                            <select id="subscriptionEditorStatus" class="w-full border p-2 rounded">
+                                <option value="active">Aktif</option>
+                                <option value="trial">Deneme</option>
+                                <option value="expired">Süresi Doldu</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Bitiş Tarihi</label>
+                        <input type="date" id="subscriptionEditorEndDate" class="w-full border p-2 rounded">
+                    </div>
+
+                    <div id="subscriptionInstitutionFields" class="hidden space-y-4 border-t pt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Kuruma Özel Erişim Tipi</label>
+                            <select id="subscriptionEditorAccessType" class="w-full border p-2 rounded">
+                                <option value="">Seçin</option>
+                                <option value="direct">Doğrudan Link</option>
+                                <option value="ip">IP Erişimi</option>
+                                <option value="proxy">Proxy / EZproxy</option>
+                                <option value="sso">SSO</option>
+                                <option value="institution_link">Kuruma Özel Link</option>
+                                <option value="email_password_external">Kurum E-posta + Harici Şifre</option>
+                                <option value="mixed">Karma</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Kuruma Özel Erişim URL</label>
+                            <input type="url" id="subscriptionEditorAccessUrl" placeholder="https://..." class="w-full border p-2 rounded">
+                            <p class="text-xs text-gray-400 mt-1">Boş bırakırsanız ürünün varsayılan erişim ayarı kullanılır.</p>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" id="subscriptionEditorRequiresEmail" class="rounded">
+                                Kurum e-postası gerekli
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" id="subscriptionEditorRequiresVpn" class="rounded">
+                                VPN / Kampüs ağı gerekli
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Erişim Notu (TR)</label>
+                            <textarea id="subscriptionEditorAccessNotesTr" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Örn: Kurum e-postanız ve Lecturio şifrenizle giriş yapın."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Erişim Notu (EN)</label>
+                            <textarea id="subscriptionEditorAccessNotesEn" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Optional English note"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-5 py-4 border-t flex flex-col sm:flex-row gap-2">
+                    <button type="submit" class="btn btn-primary sm:flex-1">Kaydet</button>
+                    <button type="button" onclick="closeSubscriptionEditorModal()" class="btn bg-gray-300 sm:flex-1">İptal</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -2047,10 +2056,8 @@ document.addEventListener('click', function(e) {
 
     function renderProductOptions() {
         const options = '<option value="">Ürün Seçin</option>' + products.map(p => `<option value="${escapeHtml(p.slug)}">${escapeHtml(p.name)}</option>`).join('');
-        const subProduct = document.getElementById('subProduct');
-        const instSubProduct = document.getElementById('instSubProduct');
-        if (subProduct) subProduct.innerHTML = options;
-        if (instSubProduct) instSubProduct.innerHTML = options;
+        const subscriptionEditorProduct = document.getElementById('subscriptionEditorProduct');
+        if (subscriptionEditorProduct) subscriptionEditorProduct.innerHTML = options;
     }
 
     // Ürünleri yükle
@@ -2759,15 +2766,33 @@ function composeFullName(firstName, lastName) {
     }
 
     // Kullanıcı modal işlemleri
+    function normalizeInstitutionItems(payload) {
+        return Array.isArray(payload) ? payload : (payload?.items || []);
+    }
+
+    async function fetchAllInstitutionItems() {
+        const firstRes = await fetch(`${API_BASE}/api/admin/institutions?page=1&page_size=100&sort=name&order=asc`, { credentials: 'include' });
+        if (!firstRes.ok) return [];
+        const firstPayload = await firstRes.json();
+        const firstItems = normalizeInstitutionItems(firstPayload);
+        const totalPages = Number(firstPayload?.total_pages || 1);
+        if (Array.isArray(firstPayload) || totalPages <= 1) return firstItems;
+
+        const pages = await Promise.all(
+            Array.from({ length: totalPages - 1 }, (_, index) =>
+                fetch(`${API_BASE}/api/admin/institutions?page=${index + 2}&page_size=100&sort=name&order=asc`, { credentials: 'include' })
+                    .then(r => (r.ok ? r.json() : { items: [] }))
+            )
+        );
+        return firstItems.concat(...pages.map(normalizeInstitutionItems));
+    }
+
     async function loadInstitutionsForUserModal(selectedId) {
         const sel = document.getElementById('userInstitutionId');
         try {
-            const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
-            if (res.ok) {
-                const insts = await res.json();
-                sel.innerHTML = '<option value="">Kurum Seçin</option>' +
-                    insts.map(i => `<option value="${i.id}"${i.id == selectedId ? ' selected' : ''}>${escapeHtml(i.name)}</option>`).join('');
-            }
+            const insts = await fetchAllInstitutionItems();
+            sel.innerHTML = '<option value="">Kurum Seçin</option>' +
+                insts.map(i => `<option value="${i.id}"${i.id == selectedId ? ' selected' : ''}>${escapeHtml(i.name)}</option>`).join('');
         } catch (e) { console.error('Kurumlar yüklenemedi', e); }
     }
     function openUserModal() {
@@ -2798,121 +2823,193 @@ function composeFullName(firstName, lastName) {
         }
     }
 
-    let editingSubscriptionId = null;
-    let editingInstSubscriptionId = null;
+    const INDIVIDUAL_SUBSCRIPTION_PRODUCTS = [
+        ['pangram', 'Pangram'],
+        ['chatpdf', 'ChatPDF'],
+        ['primal-pictures', 'Primal Pictures'],
+        ['lecturio', 'Lecturio'],
+        ['jove-research', 'JoVE Research'],
+        ['biorender', 'BioRender'],
+        ['wiley-journals', 'Wiley Dergiler']
+    ];
+    const INSTITUTION_SUBSCRIPTION_PRODUCTS = [
+        ...INDIVIDUAL_SUBSCRIPTION_PRODUCTS,
+        ['wonders', 'Wonders'],
+        ['assistin', 'Assistin'],
+        ['cochrane-library', 'Cochrane Library'],
+        ['jove-education', 'JoVE Education'],
+        ['jove-business', 'JoVE Business']
+    ];
+    const _subscriptionEditorState = { type: 'individual', id: null };
 
-    // Abonelik modal işlemleri
+    function getSubscriptionEditorElements() {
+        return {
+            modal: document.getElementById('subscriptionEditorModal'),
+            form: document.getElementById('subscriptionEditorForm'),
+            title: document.getElementById('subscriptionEditorTitle'),
+            subtitle: document.getElementById('subscriptionEditorSubtitle'),
+            type: document.getElementById('subscriptionEditorType'),
+            userField: document.getElementById('subscriptionEditorUserField'),
+            userId: document.getElementById('subscriptionEditorUserId'),
+            institutionField: document.getElementById('subscriptionEditorInstitutionField'),
+            institutionId: document.getElementById('subscriptionEditorInstitutionId'),
+            product: document.getElementById('subscriptionEditorProduct'),
+            status: document.getElementById('subscriptionEditorStatus'),
+            endDate: document.getElementById('subscriptionEditorEndDate'),
+            institutionFields: document.getElementById('subscriptionInstitutionFields'),
+            accessType: document.getElementById('subscriptionEditorAccessType'),
+            accessUrl: document.getElementById('subscriptionEditorAccessUrl'),
+            requiresEmail: document.getElementById('subscriptionEditorRequiresEmail'),
+            requiresVpn: document.getElementById('subscriptionEditorRequiresVpn'),
+            accessNotesTr: document.getElementById('subscriptionEditorAccessNotesTr'),
+            accessNotesEn: document.getElementById('subscriptionEditorAccessNotesEn')
+        };
+    }
+
+    function populateSubscriptionProductOptions(type, selectedValue) {
+        const productEl = document.getElementById('subscriptionEditorProduct');
+        const options = products.length
+            ? products.map(p => [p.slug, p.name])
+            : (type === 'institution' ? INSTITUTION_SUBSCRIPTION_PRODUCTS : INDIVIDUAL_SUBSCRIPTION_PRODUCTS);
+        productEl.innerHTML = '<option value="">Ürün Seçin</option>' +
+            options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join('');
+        productEl.value = selectedValue || '';
+    }
+
+    function setSubscriptionEditorType(type) {
+        const els = getSubscriptionEditorElements();
+        const isInstitution = type === 'institution';
+        _subscriptionEditorState.type = type;
+        els.type.value = type;
+        els.userField.classList.toggle('hidden', isInstitution);
+        els.institutionField.classList.toggle('hidden', !isInstitution);
+        els.institutionFields.classList.toggle('hidden', !isInstitution);
+        els.userId.required = !isInstitution;
+        els.institutionId.required = isInstitution;
+        document.getElementById('subscriptionTypeIndividualBtn').className = isInstitution
+            ? 'px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-200'
+            : 'px-3 py-2 rounded-lg border text-sm font-medium bg-indigo-50 text-indigo-700 border-indigo-200';
+        document.getElementById('subscriptionTypeInstitutionBtn').className = isInstitution
+            ? 'px-3 py-2 rounded-lg border text-sm font-medium bg-indigo-50 text-indigo-700 border-indigo-200'
+            : 'px-3 py-2 rounded-lg border text-sm font-medium bg-white text-gray-700 border-gray-200';
+        populateSubscriptionProductOptions(type, els.product.value);
+    }
+
+    async function loadSubscriptionUserOptions(selectedId) {
+        const res = await fetch('/api/admin/users', { credentials: 'include' });
+        if (!res.ok) return;
+        const users = await res.json();
+        const select = document.getElementById('subscriptionEditorUserId');
+        select.innerHTML = '<option value="">Kullanıcı Seçin</option>' +
+            users.map(u => `<option value="${u.id}"${u.id == selectedId ? ' selected' : ''}>${escapeHtml(u.full_name || u.email)}</option>`).join('');
+    }
+
+    async function loadSubscriptionInstitutionOptions(selectedId) {
+        const insts = await fetchAllInstitutionItems();
+        const select = document.getElementById('subscriptionEditorInstitutionId');
+        select.innerHTML = '<option value="">Kurum Seçin</option>' +
+            insts.map(i => `<option value="${i.id}"${i.id == selectedId ? ' selected' : ''}>${escapeHtml(i.name)}</option>`).join('');
+    }
+
+    function resetSubscriptionEditorForm() {
+        const els = getSubscriptionEditorElements();
+        els.form.reset();
+        _subscriptionEditorState.id = null;
+        setSubscriptionEditorType('individual');
+        els.userId.disabled = false;
+        els.institutionId.disabled = false;
+        els.title.textContent = 'Bireysel Abonelik Ekle';
+        els.subtitle.textContent = 'Abonelik tipini ve erişim ayarlarını yönetin.';
+        populateSubscriptionProductOptions('individual', '');
+    }
+
+    async function openSubscriptionEditorModal(type, subscription) {
+        const els = getSubscriptionEditorElements();
+        resetSubscriptionEditorForm();
+        setSubscriptionEditorType(type);
+        _subscriptionEditorState.id = subscription ? Number(subscription.id) : null;
+
+        if (type === 'individual') {
+            await loadSubscriptionUserOptions(subscription?.user_id || '');
+            els.title.textContent = subscription ? 'Bireysel Aboneliği Düzenle' : 'Bireysel Abonelik Ekle';
+            els.subtitle.textContent = 'Kullanıcıya ait abonelik ayarlarını yönetin.';
+            els.userId.disabled = !!subscription;
+            els.userId.value = subscription?.user_id || '';
+        } else {
+            await loadSubscriptionInstitutionOptions(subscription?.institution_id || '');
+            els.title.textContent = subscription ? 'Kurum Aboneliğini Düzenle' : 'Kurum Aboneliği Ekle';
+            els.subtitle.textContent = 'Kurum aboneliği ve erişim kurallarını yönetin.';
+            els.institutionId.disabled = !!subscription;
+            els.institutionId.value = subscription?.institution_id || '';
+            els.accessType.value = subscription?.raw_access_type || '';
+            els.accessUrl.value = subscription?.raw_access_url || '';
+            els.requiresEmail.checked = !!subscription?.raw_requires_institution_email;
+            els.requiresVpn.checked = !!subscription?.raw_requires_vpn;
+            els.accessNotesTr.value = subscription?.raw_access_notes_tr || '';
+            els.accessNotesEn.value = subscription?.raw_access_notes_en || '';
+        }
+
+        populateSubscriptionProductOptions(type, subscription?.product_slug || '');
+        els.status.value = subscription?.status || 'active';
+        els.endDate.value = subscription?.end_date ? String(subscription.end_date).slice(0, 10) : '';
+        els.modal.classList.remove('hidden');
+    }
+
     function openSubscriptionModal() {
-        editingSubscriptionId = null;
-        loadUserSelect();
-        document.querySelector('#subscriptionModal h3').textContent = 'Bireysel Abonelik Ekle';
-        document.getElementById('subUserId').disabled = false;
-        document.getElementById('subscriptionModal').classList.remove('hidden');
+        openSubscriptionEditorModal('individual');
     }
+
+    function openInstSubscriptionModal() {
+        openSubscriptionEditorModal('institution');
+    }
+
+    function closeSubscriptionEditorModal() {
+        document.getElementById('subscriptionEditorModal').classList.add('hidden');
+        resetSubscriptionEditorForm();
+    }
+
     function closeSubscriptionModal() {
-        document.getElementById('subscriptionModal').classList.add('hidden');
-        document.getElementById('subscriptionForm').reset();
-        document.querySelector('#subscriptionModal h3').textContent = 'Bireysel Abonelik Ekle';
-        document.getElementById('subUserId').disabled = false;
-        editingSubscriptionId = null;
+        closeSubscriptionEditorModal();
     }
-    async function openInstSubscriptionModal() {
-        const sel = document.getElementById('instSubInstitutionId');
-        editingInstSubscriptionId = null;
-        try {
-            const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
-            if (res.ok) {
-                const insts = await res.json();
-                sel.innerHTML = '<option value="">Kurum Seçin</option>' +
-                    insts.map(i => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('');
-            }
-        } catch (e) { console.error(e); }
-        document.querySelector('#instSubscriptionModal h3').textContent = 'Kurum Aboneliği Ekle';
-        document.getElementById('instSubInstitutionId').disabled = false;
-        document.getElementById('instSubscriptionModal').classList.remove('hidden');
-    }
+
     function closeInstSubscriptionModal() {
-        document.getElementById('instSubscriptionModal').classList.add('hidden');
-        document.getElementById('instSubscriptionForm').reset();
-        editingInstSubscriptionId = null;
-        document.querySelector('#instSubscriptionModal h3').textContent = 'Kurum Aboneliği Ekle';
-        document.getElementById('instSubInstitutionId').disabled = false;
+        closeSubscriptionEditorModal();
     }
+
     async function editSubscription(id) {
         try {
-            const [usersRes, subRes] = await Promise.all([
-                fetch(`${API_BASE}/api/admin/users`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' })
-            ]);
-            if (!usersRes.ok || !subRes.ok) throw new Error('load failed');
-
-            const users = await usersRes.json();
+            const subRes = await fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' });
+            if (!subRes.ok) throw new Error('load failed');
             const subs = await subRes.json();
             const subscription = subs.find(s => s.type === 'individual' && Number(s.id) === Number(id));
             if (!subscription) {
                 showToast('Bireysel abonelik bulunamadı.', 'error');
                 return;
             }
-
-            document.getElementById('subUserId').innerHTML = '<option value="">Kullanıcı Seçin</option>' + users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name || u.email)}</option>`).join('');
-            editingSubscriptionId = id;
-            document.querySelector('#subscriptionModal h3').textContent = 'Bireysel Aboneliği Düzenle';
-            document.getElementById('subUserId').value = subscription.user_id || '';
-            document.getElementById('subUserId').disabled = true;
-            document.getElementById('subProduct').value = subscription.product_slug || '';
-            document.getElementById('subStatus').value = subscription.status || 'active';
-            document.getElementById('subEndDate').value = subscription.end_date ? String(subscription.end_date).slice(0, 10) : '';
-            document.getElementById('subscriptionModal').classList.remove('hidden');
+            await openSubscriptionEditorModal('individual', subscription);
         } catch (e) {
             console.error(e);
             showToast('Bireysel abonelik yüklenemedi.', 'error');
         }
     }
     async function editInstitutionSubscription(id) {
-        const sel = document.getElementById('instSubInstitutionId');
         try {
-            const [instRes, subRes] = await Promise.all([
-                fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' })
-            ]);
-            if (!instRes.ok || !subRes.ok) throw new Error('load failed');
-
-            const insts = await instRes.json();
+            const subRes = await fetch(`${API_BASE}/api/admin/subscriptions`, { credentials: 'include' });
+            if (!subRes.ok) throw new Error('load failed');
             const subs = await subRes.json();
             const subscription = subs.find(s => s.type === 'institution' && Number(s.id) === Number(id));
             if (!subscription) {
                 showToast('Kurum aboneliği bulunamadı.', 'error');
                 return;
             }
-
-            sel.innerHTML = '<option value="">Kurum Seçin</option>' +
-                insts.map(i => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('');
-
-            editingInstSubscriptionId = id;
-            document.querySelector('#instSubscriptionModal h3').textContent = 'Kurum Aboneliğini Düzenle';
-            document.getElementById('instSubInstitutionId').value = subscription.institution_id || '';
-            document.getElementById('instSubInstitutionId').disabled = true;
-            document.getElementById('instSubProduct').value = subscription.product_slug || '';
-            document.getElementById('instSubStatus').value = subscription.status || 'active';
-            document.getElementById('instSubEndDate').value = subscription.end_date ? String(subscription.end_date).slice(0, 10) : '';
-            document.getElementById('instSubAccessType').value = subscription.raw_access_type || '';
-            document.getElementById('instSubAccessUrl').value = subscription.raw_access_url || '';
-            document.getElementById('instSubRequiresEmail').checked = !!subscription.raw_requires_institution_email;
-            document.getElementById('instSubRequiresVpn').checked = !!subscription.raw_requires_vpn;
-            document.getElementById('instSubAccessNotesTr').value = subscription.raw_access_notes_tr || '';
-            document.getElementById('instSubAccessNotesEn').value = subscription.raw_access_notes_en || '';
-            document.getElementById('instSubscriptionModal').classList.remove('hidden');
+            await openSubscriptionEditorModal('institution', subscription);
         } catch (e) {
             console.error(e);
             showToast('Kurum aboneliği yüklenemedi.', 'error');
         }
     }
     async function loadUserSelect() {
-        const res = await fetch('/api/admin/users', {
-    credentials: 'include'
-})
-        const users = await res.json();
-        document.getElementById('subUserId').innerHTML = '<option value="">Kullanıcı Seçin</option>' + users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name || u.email)}</option>`).join('');
+        await loadSubscriptionUserOptions('');
     }
     async function deleteSubscription(id, type) {
         if (confirm('Aboneliği silmek istediğinize emin misiniz?')) {
@@ -2962,29 +3059,51 @@ function composeFullName(firstName, lastName) {
         loadDashboard();
     });
 
-    document.getElementById('subscriptionForm').addEventListener('submit', async (e) => {
+    document.getElementById('subscriptionEditorForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const isEditing = !!editingSubscriptionId;
-        const url = isEditing
-            ? `${API_BASE}/api/admin/subscription/${editingSubscriptionId}`
-            : `${API_BASE}/api/admin/subscription`;
+        const els = getSubscriptionEditorElements();
+        const isInstitution = _subscriptionEditorState.type === 'institution';
+        const isEditing = !!_subscriptionEditorState.id;
+        const url = isInstitution
+            ? (isEditing ? `${API_BASE}/api/admin/institution-subscription/${_subscriptionEditorState.id}` : `${API_BASE}/api/admin/institution-subscription`)
+            : (isEditing ? `${API_BASE}/api/admin/subscription/${_subscriptionEditorState.id}` : `${API_BASE}/api/admin/subscription`);
+        const payload = isInstitution
+            ? {
+                institution_id: parseInt(els.institutionId.value, 10),
+                product_slug: els.product.value,
+                status: els.status.value,
+                end_date: els.endDate.value || null,
+                access_type: els.accessType.value || null,
+                access_url: els.accessUrl.value.trim() || null,
+                requires_institution_email: els.requiresEmail.checked,
+                requires_vpn: els.requiresVpn.checked,
+                access_notes_tr: els.accessNotesTr.value.trim() || null,
+                access_notes_en: els.accessNotesEn.value.trim() || null
+            }
+            : {
+                user_id: els.userId.value,
+                product_slug: els.product.value,
+                status: els.status.value,
+                end_date: els.endDate.value || null
+            };
         const res = await fetch(url, {
             method: isEditing ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-            body: JSON.stringify({
-                user_id: document.getElementById('subUserId').value,
-                product_slug: document.getElementById('subProduct').value,
-                status: document.getElementById('subStatus').value,
-                end_date: document.getElementById('subEndDate').value || null
-            })
+            credentials: 'include',
+            body: JSON.stringify(payload)
         });
-        if (res.ok) showToast(isEditing ? 'Abonelik başarıyla güncellendi!' : 'Abonelik başarıyla eklendi!', 'success');
-        else {
+        if (res.ok) {
+            showToast(
+                isInstitution
+                    ? (isEditing ? 'Kurum aboneliği başarıyla güncellendi!' : 'Kurum aboneliği başarıyla eklendi!')
+                    : (isEditing ? 'Abonelik başarıyla güncellendi!' : 'Abonelik başarıyla eklendi!'),
+                'success'
+            );
+        } else {
             const body = await res.json().catch(() => ({}));
             showToast(body.error || 'İşlem başarısız oldu!', 'error');
         }
-        closeSubscriptionModal();
+        closeSubscriptionEditorModal();
         loadSubscriptions();
         loadDashboard();
     });
@@ -3016,39 +3135,6 @@ function composeFullName(firstName, lastName) {
             const body = await res.json().catch(() => ({}));
             showToast(body.error || 'İşlem başarısız oldu!', 'error');
         }
-    });
-
-    document.getElementById('instSubscriptionForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const isEditing = !!editingInstSubscriptionId;
-        const url = isEditing
-            ? `${API_BASE}/api/admin/institution-subscription/${editingInstSubscriptionId}`
-            : `${API_BASE}/api/admin/institution-subscription`;
-        const res = await fetch(url, {
-            method: isEditing ? 'PUT' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-                body: JSON.stringify({
-                    institution_id: parseInt(document.getElementById('instSubInstitutionId').value),
-                    product_slug: document.getElementById('instSubProduct').value,
-                    status: document.getElementById('instSubStatus').value,
-                    end_date: document.getElementById('instSubEndDate').value || null,
-                    access_type: document.getElementById('instSubAccessType').value || null,
-                    access_url: document.getElementById('instSubAccessUrl').value.trim() || null,
-                    requires_institution_email: document.getElementById('instSubRequiresEmail').checked,
-                    requires_vpn: document.getElementById('instSubRequiresVpn').checked,
-                    access_notes_tr: document.getElementById('instSubAccessNotesTr').value.trim() || null,
-                    access_notes_en: document.getElementById('instSubAccessNotesEn').value.trim() || null
-                })
-            });
-        if (res.ok) showToast(isEditing ? 'Kurum aboneliği başarıyla güncellendi!' : 'Kurum aboneliği başarıyla eklendi!', 'success');
-        else {
-            const body = await res.json().catch(() => ({}));
-            showToast(body.error || 'İşlem başarısız oldu!', 'error');
-        }
-        closeInstSubscriptionModal();
-        loadSubscriptions();
-        loadDashboard();
     });
 
 // Tab geçişleri
@@ -3156,12 +3242,8 @@ async function loadAdminInstitutions() {
 
     _allInstitutionOptionsPromise = (async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
-            if (res.ok) {
-                const payload = await res.json();
-                const institutions = Array.isArray(payload) ? payload : (payload.items || []);
-                _allInstitutionOptions = institutions.map(i => ({ value: i.name, text: i.name, id: i.id }));
-            }
+            const institutions = await fetchAllInstitutionItems();
+            _allInstitutionOptions = institutions.map(i => ({ value: i.name, text: i.name, id: i.id }));
         } catch(e) { /* non-critical */ }
         return _allInstitutionOptions;
     })();
