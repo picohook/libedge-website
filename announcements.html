@@ -739,6 +739,7 @@ class AnnouncementManager {
     setLanguage(language) {
         this.currentLanguage = language === 'en' ? 'en' : 'tr';
         localStorage.setItem('announcementLanguage', this.currentLanguage);
+        localStorage.setItem('language', this.currentLanguage);
         this.localizeStaticContent();
         this.updateLanguageControls();
         this.applyFilters();
@@ -1541,69 +1542,65 @@ document.addEventListener('keydown', (e) => {
 <script src="assets/js/header.js?v=20260420c"></script>
 <script src="assets/js/header-controller.js?v=20260420b"></script>
 <script src="assets/js/notifications.js?v=20260420b"></script>
+
 <script>
 document.addEventListener('header:ready', () => {
     if (typeof window.checkAuth === 'function') {
         window.checkAuth();
     }
 
-    // Sayfa statik elementlerini (header nav + newsletter) çevir
     function translateStaticElements(lang) {
-        // data-en attribute'u olan elementler (icon child'ı varsa textContent değil innerHTML'i koru)
         document.querySelectorAll('[data-en]').forEach(el => {
             const text = lang === 'en' ? el.dataset.en : (el.dataset.tr || null);
             if (!text) return;
             const icon = el.querySelector('i');
             if (icon) {
-                // icon + metin: icon outerHTML'i koru, sadece text node'u değiştir
                 el.innerHTML = icon.outerHTML + text;
             } else {
                 el.textContent = text;
             }
         });
-        // data-en-placeholder attribute'u olan input/textarea
+        
         document.querySelectorAll('[data-en-placeholder]').forEach(el => {
             if (!el.dataset.trPlaceholder) el.dataset.trPlaceholder = el.placeholder;
             el.placeholder = lang === 'en' ? el.dataset.enPlaceholder : el.dataset.trPlaceholder;
         });
-        // Newsletter email input (data-placeholder-tr/en)
+        
         const nlInput = document.getElementById('newsletterEmail');
         if (nlInput) {
             nlInput.placeholder = lang === 'en' ? (nlInput.dataset.placeholderEn || 'Your email address') : (nlInput.dataset.placeholderTr || 'E-posta adresiniz');
         }
     }
 
-    // Header translateBtn'ı AnnouncementManager'a bağla
-    const translateBtn = document.getElementById('translateBtn');
-    const translateText = document.getElementById('translateText');
+    const bindTranslateButton = () => {
+        const translateBtn = document.getElementById('translateBtn');
+        const translateText = document.getElementById('translateText');
 
-    if (translateBtn && typeof announcementManager !== 'undefined') {
-    const syncBtn = () => {
-        if (translateText) {
-            translateText.textContent =
-                announcementManager.currentLanguage === 'tr'
-                    ? 'English'
-                    : 'Türkçe';
-        }
-    };
+        if (!translateBtn || typeof announcementManager === 'undefined') return;
 
-    syncBtn();
+        const syncBtn = () => {
+            if (translateText) {
+                translateText.textContent =
+                    announcementManager.currentLanguage === 'tr' ? 'English' : 'Türkçe';
+            }
+        };
 
-    translateBtn.addEventListener('click', () => {
-        const next =
-            announcementManager.currentLanguage === 'tr' ? 'en' : 'tr';
-
-        announcementManager.setLanguage(next);
-
-        localStorage.setItem('language', next);
-
-        if (typeof translateStaticElements === 'function') {
-            translateStaticElements(next);
-        }
+        translateBtn.onclick = () => {
+            const next = announcementManager.currentLanguage === 'tr' ? 'en' : 'tr';
+            announcementManager.setLanguage(next);
+            if (typeof translateStaticElements === 'function') {
+                translateStaticElements(next);
+            }
+            syncBtn();
+        };
 
         syncBtn();
-    });
-}
+    };
+
+    bindTranslateButton();
+    setTimeout(bindTranslateButton, 500);
+});
 </script>
+
 </body>
 </html>
