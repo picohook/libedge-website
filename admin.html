@@ -654,8 +654,9 @@
 </div>
 
 <!-- Klasör Ekle Modal -->
-<div id="adminFolderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+<div id="adminFolderModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-md">
+        <div class="modal-content">
         <h3 class="text-xl font-bold mb-4">Yeni Klasör</h3>
         <form id="adminFolderForm">
             <div class="mb-3">
@@ -669,43 +670,49 @@
                     <option value="1">Herkes</option>
                 </select>
             </div>
-            <div class="flex gap-2">
+            <div class="modal-actions">
                 <button type="submit" class="btn btn-primary flex-1">Oluştur</button>
                 <button type="button" onclick="closeAdminFolderModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
         </form>
+        </div>
     </div>
 </div>
 <!-- Klasör Yeniden Adlandır Modal -->
-<div id="adminFolderRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-sm">
+<div id="adminFolderRenameModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-sm">
+        <div class="modal-content">
         <h3 class="text-lg font-bold mb-4">Klasörü Yeniden Adlandır</h3>
         <input type="text" id="adminFolderRenameInput" placeholder="Yeni klasör adı" class="w-full border p-2 rounded mb-4">
-        <div class="flex gap-2">
+        <div class="modal-actions">
             <button onclick="submitRenameFolder()" class="btn btn-primary flex-1">Kaydet</button>
             <button onclick="closeAdminFolderRenameModal()" class="btn bg-gray-300 flex-1">İptal</button>
+        </div>
         </div>
     </div>
 </div>
 
 <!-- Klasör Taşı Modal -->
-<div id="folderMoveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-sm">
+<div id="folderMoveModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-sm">
+        <div class="modal-content">
         <h3 class="text-lg font-bold mb-1">Klasörü Taşı</h3>
         <p id="folderMoveSubtitle" class="text-sm text-gray-500 mb-4 truncate"></p>
         <label class="block text-sm font-medium text-gray-700 mb-1">Hedef Üst Klasör</label>
         <select id="folderMoveTargetSelect" class="w-full border p-2 rounded mb-4 text-sm">
             <option value="">— Kök (üst klasör yok) —</option>
         </select>
-        <div class="flex gap-2">
+        <div class="modal-actions">
             <button onclick="submitFolderMove()" class="btn btn-primary flex-1">Taşı</button>
             <button onclick="closeFolderMoveModal()" class="btn bg-gray-300 flex-1">İptal</button>
+        </div>
         </div>
     </div>
 </div>
 
-<div id="adminFileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-screen overflow-y-auto">
+<div id="adminFileModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-lg modal-panel-scroll">
+        <div class="modal-content">
         <h3 class="text-xl font-bold mb-4">Dosya Ekle</h3>
 
         <!-- Kaynak sekmeleri -->
@@ -795,11 +802,12 @@
                     <option value="1">Herkes</option>
                 </select>
             </div>
-            <div class="flex gap-2">
+            <div class="modal-actions">
                 <button type="submit" id="adminFileSubmitBtn" class="btn btn-primary flex-1">Kaydet</button>
                 <button type="button" onclick="closeAdminFileModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
         </form>
+        </div>
     </div>
 </div>
     <!-- Products Tab -->
@@ -824,8 +832,9 @@
         </div>
     </div>
 
-    <div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-xl p-6 w-full max-w-lg">
+    <div id="productModal" class="modal-overlay modal-center hidden">
+        <div class="modal-panel modal-lg">
+            <div class="modal-content">
             <h3 class="text-xl font-bold mb-4">Ürün Erişimini Düzenle</h3>
             <form id="productForm">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -879,11 +888,12 @@
                         <textarea id="productAccessNotesEn" rows="2" class="w-full border p-2 rounded"></textarea>
                     </div>
                 </div>
-                <div class="flex gap-2 mt-4">
+                <div class="modal-actions mt-4">
                     <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
                     <button type="button" onclick="closeProductModal()" class="btn bg-gray-300 flex-1">İptal</button>
                 </div>
             </form>
+            </div>
         </div>
     </div>
 
@@ -1140,8 +1150,9 @@
     </div>
 
     <!-- Talep Not/Durum Modal -->
-    <div id="submissionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-lg">
+    <div id="submissionModal" class="modal-overlay modal-center hidden">
+        <div class="modal-panel modal-md">
+            <div class="modal-content">
             <h3 class="text-lg font-semibold mb-4">Talebi Güncelle</h3>
             <input type="hidden" id="submissionEditId">
             <div class="mb-3">
@@ -1157,9 +1168,10 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Admin Notu</label>
                 <textarea id="submissionEditNote" rows="3" class="w-full border rounded px-3 py-2 text-sm" placeholder="İç not ekleyin..."></textarea>
             </div>
-            <div class="flex gap-2 justify-end">
+            <div class="modal-actions justify-end">
                 <button onclick="document.getElementById('submissionModal').classList.add('hidden')" class="btn">İptal</button>
                 <button onclick="saveSubmission()" class="btn btn-primary">Kaydet</button>
+            </div>
             </div>
         </div>
     </div>
@@ -1209,8 +1221,8 @@
         </div>
 
         <!-- Support Ticket Detail Modal -->
-        <div id="supportModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div id="supportModal" class="modal-overlay modal-center hidden">
+            <div class="modal-panel modal-2xl modal-panel-flex modal-panel-scroll">
                 <div class="flex items-center justify-between px-6 py-4 border-b">
                     <h3 class="font-semibold text-gray-900" id="supportModalTitle">Talep Detayı</h3>
                     <button onclick="closeSupportModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
@@ -1281,8 +1293,9 @@
 
 
 <!-- Sync Preview Modal -->
-<div id="syncPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] flex flex-col">
+<div id="syncPreviewModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-4xl modal-panel-flex modal-panel-scroll">
+        <div class="modal-content flex flex-col min-h-0">
         <div class="flex justify-between items-center mb-4 flex-shrink-0">
             <h3 id="syncPreviewTitle" class="text-xl font-bold">Airtable Sync Önizleme</h3>
             <span id="syncPreviewSummary" class="text-sm text-gray-500"></span>
@@ -1332,16 +1345,18 @@
                 <tbody id="syncPreviewRows"></tbody>
             </table>
         </div>
-        <div class="flex gap-2 mt-4 flex-shrink-0">
+        <div class="modal-actions mt-4 flex-shrink-0">
             <button type="button" id="syncApplyBtn" onclick="applySyncChanges()" class="btn btn-primary flex-1">Seçilenleri Uygula</button>
             <button type="button" onclick="closeSyncPreviewModal()" class="btn bg-gray-300 flex-1">İptal</button>
+        </div>
         </div>
     </div>
 </div>
 
 <!-- User Sync Preview Modal -->
-<div id="userSyncPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-5xl max-h-[90vh] flex flex-col">
+<div id="userSyncPreviewModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-5xl modal-panel-flex modal-panel-scroll">
+        <div class="modal-content flex flex-col min-h-0">
         <div class="flex justify-between items-center mb-4 flex-shrink-0">
             <h3 class="text-xl font-bold">Airtable Contacts Sync Önizleme</h3>
             <span id="userSyncPreviewSummary" class="text-sm text-gray-500"></span>
@@ -1375,9 +1390,10 @@
                 <tbody id="userSyncPreviewRows"></tbody>
             </table>
         </div>
-        <div class="flex gap-2 mt-4 flex-shrink-0">
+        <div class="modal-actions mt-4 flex-shrink-0">
             <button type="button" id="userSyncApplyBtn" onclick="applyUserSyncChanges()" class="btn btn-primary flex-1">Seçilenleri Uygula</button>
             <button type="button" onclick="closeUserSyncPreviewModal()" class="btn bg-gray-300 flex-1">İptal</button>
+        </div>
         </div>
     </div>
 </div>
@@ -1611,8 +1627,9 @@
 </div>
 
 <!-- Yorum Moderasyon Modal'ı -->
-<div id="commentsModerationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-  <div class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+<div id="commentsModerationModal" class="modal-overlay modal-center hidden">
+  <div class="modal-panel modal-2xl modal-panel-scroll">
+    <div class="modal-content">
     <div class="flex items-start justify-between mb-4 gap-4">
       <div>
         <h3 class="text-xl font-bold text-gray-900">
@@ -1627,15 +1644,17 @@
     <div id="commentsModerationBody" class="space-y-2">
       <p class="text-center text-gray-400 py-8"><i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...</p>
     </div>
-    <div class="flex gap-3 mt-6">
+    <div class="modal-actions mt-6">
       <button onclick="closeCommentsModerationModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">Kapat</button>
+    </div>
     </div>
   </div>
 </div>
 
 <!-- Institution Modal -->
-<div id="institutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+<div id="institutionModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-md">
+        <div class="modal-content">
         <h3 class="text-xl font-bold mb-4">Kurum Ekle</h3>
         <form id="institutionForm">
             <div class="mb-3">
@@ -1655,17 +1674,19 @@
                 <input type="text" id="institutionDomain" placeholder="libedge.com, libedge.com.tr" class="w-full border p-2 rounded">
                 <p class="text-xs text-gray-400 mt-1">Birden fazla domain varsa virgnlle ay rin</p>
             </div>
-            <div class="flex gap-2">
+            <div class="modal-actions">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
                 <button type="button" onclick="closeInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
         </form>
+        </div>
     </div>
 </div>
 
 <!-- Edit Institution Modal -->
-<div id="editInstitutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+<div id="editInstitutionModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-md">
+        <div class="modal-content">
         <h3 class="text-xl font-bold mb-4">Kurumu Düzenle</h3>
         <form id="editInstitutionForm">
             <input type="hidden" id="editInstitutionId">
@@ -1707,18 +1728,20 @@
                     </div>
                 </div>
             </div>
-            <div class="flex gap-2">
+            <div class="modal-actions">
                 <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
                 <button type="button" onclick="closeEditInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
         </form>
+        </div>
     </div>
 </div>
 
 <!-- Bulk Institution Modal -->
 <!-- Bulk Institution Modal - DÜZELTİLMİŞ -->
-<div id="bulkInstitutionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
+<div id="bulkInstitutionModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-2xl modal-panel-flex modal-panel-scroll">
+        <div class="modal-content flex flex-col min-h-0">
         <h3 class="text-xl font-bold mb-1 flex-shrink-0">Toplu Kurum Ekle</h3>
 
         <!-- Adım 1: Yapıştır -->
@@ -1727,7 +1750,7 @@
             <textarea id="bulkPasteArea" rows="10"
                 placeholder="Ankara Üniversitesi&#9;ankara.edu.tr&#10;İstanbul Teknik Üniversitesi&#9;itu.edu.tr&#10;Hacettepe Üniversitesi"
                 class="w-full border rounded p-3 text-sm font-mono flex-1 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 min-h-0"></textarea>
-            <div class="flex gap-2 pt-3 mt-3 border-t flex-shrink-0">
+            <div class="modal-actions pt-3 mt-3 border-t flex-shrink-0">
                 <button type="button" onclick="parseBulkPaste()" class="btn btn-primary flex-1">Önizle</button>
                 <button type="button" onclick="closeBulkInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
@@ -1751,19 +1774,21 @@
                 </table>
             </div>
             <div id="bulkInstitutionStatus" class="hidden mt-2 text-sm text-gray-600 flex-shrink-0"></div>
-            <div class="flex gap-2 pt-3 mt-3 border-t flex-shrink-0">
+            <div class="modal-actions pt-3 mt-3 border-t flex-shrink-0">
                 <button type="button" onclick="showBulkStep1()" class="btn bg-gray-200 text-gray-700"><i class="fas fa-arrow-left mr-1"></i>Geri</button>
                 <button type="button" id="bulkInstitutionSubmitBtn" onclick="submitBulkInstitutions()" class="btn btn-primary flex-1">Kaydet</button>
                 <button type="button" onclick="closeBulkInstitutionModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
         </div>
 
+        </div>
     </div>
 </div>
 
 <!-- Modals -->
-<div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+<div id="userModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-md">
+        <div class="modal-content">
         <h3 id="userModalTitle" class="text-xl font-bold mb-4">Kullanıcı Ekle</h3>
         <form id="userForm">
             <input type="hidden" id="userId">
@@ -1781,15 +1806,17 @@
             </div>
             <div class="mb-3"><select id="userRole" class="w-full border p-2 rounded"><option value="user">Kullanıcı</option><option value="admin">Admin</option></select></div>
             <div id="userFormError" class="hidden mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2"></div>
-            <div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeUserModal()" class="btn bg-gray-300 flex-1">İptal</button></div>
+            <div class="modal-actions"><button type="submit" class="btn btn-primary flex-1">Kaydet</button><button type="button" onclick="closeUserModal()" class="btn bg-gray-300 flex-1">İptal</button></div>
         </form>
+        </div>
     </div>
 </div>
 
 <!-- Bulk User Modal -->
 <!-- Bulk User Modal - DÜZELTİLMİŞ -->
-<div id="bulkUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[90vh] flex flex-col">
+<div id="bulkUserModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-3xl modal-panel-flex modal-panel-scroll">
+        <div class="modal-content flex flex-col min-h-0">
         <h3 class="text-xl font-bold mb-1 flex-shrink-0">Toplu Kullanıcı Ekle</h3>
 
         <!-- Adım 1: Yapıştır -->
@@ -1798,7 +1825,7 @@
             <textarea id="bulkUserPasteArea" rows="12"
                 placeholder="Ahmet&#9;Yılmaz&#9;ahmet@ankara.edu.tr&#9;Kütüphane Direktörü&#9;Ankara Üniversitesi&#9;user&#10;Ayşe Kaya&#9;ayse@itu.edu.tr&#9;&#9;user"
                 class="w-full border rounded p-3 text-sm font-mono flex-1 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 min-h-0"></textarea>
-            <div class="flex gap-2 pt-3 mt-3 border-t flex-shrink-0">
+            <div class="modal-actions pt-3 mt-3 border-t flex-shrink-0">
                 <button type="button" onclick="parseBulkUsers()" class="btn btn-primary flex-1">Önizle</button>
                 <button type="button" onclick="closeBulkUserModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
@@ -1824,18 +1851,19 @@
                 </table>
             </div>
             <div id="bulkUserStatus" class="hidden mt-2 text-sm text-gray-600 whitespace-pre-wrap flex-shrink-0"></div>
-            <div class="flex gap-2 pt-3 mt-3 border-t flex-shrink-0">
+            <div class="modal-actions pt-3 mt-3 border-t flex-shrink-0">
                 <button type="button" onclick="showBulkUserStep1()" class="btn bg-gray-200 text-gray-700"><i class="fas fa-arrow-left mr-1"></i>Geri</button>
                 <button type="button" id="bulkUserSubmitBtn" onclick="submitBulkUsers()" class="btn btn-primary flex-1">Ekle</button>
                 <button type="button" onclick="closeBulkUserModal()" class="btn bg-gray-300 flex-1">İptal</button>
             </div>
         </div>
+        </div>
     </div>
 </div>
 
-<div id="subscriptionEditorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 p-4">
+<div id="subscriptionEditorModal" class="modal-overlay hidden z-50">
     <div class="min-h-full flex items-center justify-center">
-        <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] shadow-lg flex flex-col overflow-hidden">
+        <div class="modal-panel modal-2xl modal-panel-flex modal-panel-scroll">
             <div class="flex items-center justify-between px-5 py-4 border-b">
                 <div>
                     <h3 id="subscriptionEditorTitle" class="text-xl font-bold">Abonelik Ekle</h3>
@@ -1931,7 +1959,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="px-5 py-4 border-t flex flex-col sm:flex-row gap-2">
+                <div class="px-5 py-4 border-t modal-actions">
                     <button type="submit" class="btn btn-primary sm:flex-1">Kaydet</button>
                     <button type="button" onclick="closeSubscriptionEditorModal()" class="btn bg-gray-300 sm:flex-1">İptal</button>
                 </div>
@@ -8111,8 +8139,8 @@ async function moveAdminFileRef(refId, fileName) {
 </script>
 
 <!-- Dosya Taşıma Modal -->
-<div id="adminMoveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[85vh] overflow-y-auto">
+<div id="adminMoveModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-xl modal-panel-scroll">
         <div class="flex items-center justify-between px-5 py-4 border-b">
             <div>
                 <h3 class="font-semibold text-gray-900">Dosyayı Taşı</h3>
@@ -8127,7 +8155,7 @@ async function moveAdminFileRef(refId, fileName) {
             <p id="adminMoveModalSearchStatus" class="text-xs text-gray-500 mb-2"></p>
             <div id="adminMoveModalFolderList" class="border rounded-xl divide-y max-h-72 overflow-y-auto mb-4 bg-gray-50"></div>
         </div>
-        <div class="flex gap-3 px-5 py-4 border-t">
+        <div class="modal-actions px-5 py-4 border-t">
             <button type="button" onclick="closeAdminMoveModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
             <button type="button" id="adminMoveModalConfirmBtn" onclick="submitAdminMoveModal()" class="btn btn-primary flex-1 disabled:opacity-50" disabled>Taşı</button>
         </div>
@@ -8159,8 +8187,8 @@ async function moveAdminFileRef(refId, fileName) {
 <!-- ============================================================ -->
 <!-- Kurumlara Gönder — Adım 1: Kurum + Klasör Seçimi            -->
 <!-- ============================================================ -->
-<div id="sendToInstitutionsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+<div id="sendToInstitutionsModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-2xl modal-panel-flex modal-panel-scroll">
         <div class="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
             <div>
                 <h3 class="font-semibold text-gray-900">Kurumlara Gönder</h3>
@@ -8188,7 +8216,7 @@ async function moveAdminFileRef(refId, fileName) {
             <div id="sendInstFolderRows" class="space-y-2"></div>
         </div>
 
-        <div class="flex gap-3 px-5 py-4 border-t flex-shrink-0">
+        <div class="modal-actions px-5 py-4 border-t flex-shrink-0">
             <button onclick="closeSendModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
             <button onclick="openSendConfirmStep()" class="btn btn-primary flex-1">
                 İleri <i class="fas fa-arrow-right ml-1"></i>
@@ -8200,8 +8228,8 @@ async function moveAdminFileRef(refId, fileName) {
 <!-- ============================================================ -->
 <!-- Kurumlara Gönder — Adım 2: Onay                             -->
 <!-- ============================================================ -->
-<div id="sendConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+<div id="sendConfirmModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-lg modal-panel-flex modal-panel-scroll">
         <div class="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
             <h3 class="font-semibold text-gray-900">Gönderimi Onayla</h3>
             <button onclick="closeSendConfirmModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
@@ -8215,7 +8243,7 @@ async function moveAdminFileRef(refId, fileName) {
             </div>
         </div>
 
-        <div class="flex gap-3 px-5 py-4 border-t flex-shrink-0">
+        <div class="modal-actions px-5 py-4 border-t flex-shrink-0">
             <button onclick="backToSendStep1()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">
                 <i class="fas fa-arrow-left mr-1"></i> Geri
             </button>
@@ -8228,8 +8256,9 @@ async function moveAdminFileRef(refId, fileName) {
 </div>
 
 <!-- Kurum Dosyaları Tab — Klasör Ekle Modal -->
-<div id="instFilesFolderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+<div id="instFilesFolderModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-sm">
+        <div class="modal-content">
         <h3 class="text-base font-semibold mb-4">Yeni Klasör</h3>
         <form id="instFilesFolderForm">
             <input type="text" id="instFilesFolderName" placeholder="Klasör adı" class="w-full border p-2 rounded mb-3 text-sm" required>
@@ -8238,47 +8267,53 @@ async function moveAdminFileRef(refId, fileName) {
                     <input type="checkbox" id="instFilesFolderPublic"> Herkese açık
                 </label>
             </div>
-            <div class="flex gap-2 justify-end">
+            <div class="modal-actions justify-end">
                 <button type="button" onclick="instFilesCloseFolderModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
                 <button type="submit" class="btn btn-primary">Oluştur</button>
             </div>
         </form>
+        </div>
     </div>
 </div>
 
 <!-- Kurum Dosyaları Tab — Klasör Yeniden Adlandır Modal -->
-<div id="instFilesRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+<div id="instFilesRenameModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-sm">
+        <div class="modal-content">
         <h3 class="text-base font-semibold mb-4">Klasörü Yeniden Adlandır</h3>
         <form id="instFilesRenameForm">
             <input type="hidden" id="instFilesRenameId">
             <input type="text" id="instFilesRenameName" class="w-full border p-2 rounded mb-4 text-sm" required>
-            <div class="flex gap-2 justify-end">
+            <div class="modal-actions justify-end">
                 <button type="button" onclick="instFilesCloseRenameModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
                 <button type="submit" class="btn btn-primary">Kaydet</button>
             </div>
         </form>
+        </div>
     </div>
 </div>
 
 <!-- Kurum Dosyaları Tab — Dosya Yeniden Adlandır Modal -->
-<div id="instFilesFileRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+<div id="instFilesFileRenameModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-sm">
+        <div class="modal-content">
         <h3 class="text-base font-semibold mb-4">Dosyayı Yeniden Adlandır</h3>
         <form id="instFilesFileRenameForm">
             <input type="hidden" id="instFilesFileRenameId">
             <input type="text" id="instFilesFileRenameName" class="w-full border p-2 rounded mb-4 text-sm" required>
-            <div class="flex gap-2 justify-end">
+            <div class="modal-actions justify-end">
                 <button type="button" onclick="instFilesCloseFileRenameModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
                 <button type="submit" class="btn btn-primary">Kaydet</button>
             </div>
         </form>
+        </div>
     </div>
 </div>
 
 <!-- Kurum Dosyaları Tab — Dosya Taşı Modal -->
-<div id="instFilesMoveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+<div id="instFilesMoveModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-sm">
+        <div class="modal-content">
         <h3 class="text-base font-semibold mb-4">Dosyayı Taşı</h3>
         <input type="hidden" id="instFilesMoveId">
         <div class="mb-4">
@@ -8287,16 +8322,18 @@ async function moveAdminFileRef(refId, fileName) {
                 <option value="">Ana dizin (kök)</option>
             </select>
         </div>
-        <div class="flex gap-2 justify-end">
+        <div class="modal-actions justify-end">
             <button type="button" onclick="instFilesCloseMoveModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
             <button type="button" onclick="instFilesExecuteMove()" class="btn btn-primary">Taşı</button>
+        </div>
         </div>
     </div>
 </div>
 
 <!-- Kurum Dosyaları Tab — Klasör Taşı Modal -->
-<div id="instFilesFolderMoveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+<div id="instFilesFolderMoveModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-sm">
+        <div class="modal-content">
         <h3 class="text-base font-semibold mb-4">Klasörü Taşı</h3>
         <input type="hidden" id="instFilesFolderMoveId">
         <div class="mb-4">
@@ -8305,16 +8342,17 @@ async function moveAdminFileRef(refId, fileName) {
                 <option value="">Ana dizin (kök)</option>
             </select>
         </div>
-        <div class="flex gap-2 justify-end">
+        <div class="modal-actions justify-end">
             <button type="button" onclick="instFilesCloseFolderMoveModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
             <button type="button" onclick="instFilesExecuteFolderMove()" class="btn btn-primary">Taşı</button>
+        </div>
         </div>
     </div>
 </div>
 
 <!-- Kurum Dosyaları Tab — Kişilere Gönder Modal -->
-<div id="instFilesSendModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+<div id="instFilesSendModal" class="modal-overlay modal-center hidden">
+    <div class="modal-panel modal-lg modal-panel-flex modal-panel-scroll">
         <div class="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
             <h3 class="font-semibold text-gray-900">Kişilere Gönder</h3>
             <button type="button" onclick="instFilesCloseSendModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
@@ -8327,7 +8365,7 @@ async function moveAdminFileRef(refId, fileName) {
         <div id="instFilesSendUserList" class="flex-1 overflow-y-auto px-5 py-3 space-y-1">
             <p class="text-gray-400 text-sm text-center py-4"><i class="fas fa-spinner fa-spin mr-1"></i>Yükleniyor...</p>
         </div>
-        <div class="flex gap-3 px-5 py-4 border-t flex-shrink-0">
+        <div class="modal-actions px-5 py-4 border-t flex-shrink-0">
             <button type="button" onclick="instFilesCloseSendModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
             <button type="button" id="instFilesSendConfirmBtn" onclick="instFilesExecuteSend()" class="btn btn-primary flex-1">
                 <i class="fas fa-paper-plane mr-1"></i> Gönder
