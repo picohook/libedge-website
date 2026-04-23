@@ -2993,9 +2993,14 @@ async function _loadSettingsTab() {
 
 // ====================== ADMIN DOSYA & KLASÖR YÖNETİMİ ======================
 
-let adminCurrentFolderId = null;
-let adminFolderStack = [];
-let adminSystemRootCollectionId = null;
+let _adminFiles = {
+    currentFolderId: null,
+    folderStack: [],
+    rootCollectionId: null,
+    folders: [],
+    files: [],
+    selectMode: false,
+};
 let _allInstitutionOptions = []; // still used by Gönder modal
 
 // Files tab is super_admin-only, so this always returns true when on files tab
@@ -3016,11 +3021,15 @@ async function loadAdminInstitutions() {
 }
 
 function resetAdminFilesState() {
-    adminCurrentFolderId = null;
-    adminFolderStack = [];
-    adminSystemRootCollectionId = null;
+    _adminFiles.currentFolderId = null;
+    _adminFiles.folderStack = [];
+    _adminFiles.rootCollectionId = null;
+    _adminFiles.folders = [];
+    _adminFiles.files = [];
+    _adminFiles.selectMode = false;
     document.getElementById('adminBackBtn')?.classList.add('hidden');
     updateAdminBreadcrumb();
+    syncFileBrowserModeUi('admin');
 }
 
 async function loadAdminFilesTab() {
@@ -3028,6 +3037,59 @@ async function loadAdminFilesTab() {
     await loadAdminInstitutions();
     await loadAdminFolders(null);
     await loadAdminFiles();
+}
+
+function renderFileBrowserEmptyState(message, subMessage = '', iconClass = 'fas fa-folder-open text-4xl mb-2 opacity-50') {
+    return `<div class="text-center py-8 text-gray-400">
+        <i class="${iconClass}"></i>
+        <p>${message}</p>
+        ${subMessage ? `<p class="text-xs mt-1">${subMessage}</p>` : ''}
+    </div>`;
+}
+
+function renderFileBrowserFolderItem(options) {
+    const {
+        itemClass,
+        folderId,
+        folderName,
+        selectableCheckbox = '',
+        badge = '',
+        actionsHtml = '',
+        cursorClass = '',
+    } = options;
+
+    return `
+        <div class="border border-gray-200 rounded-lg p-3 hover:bg-yellow-50 text-center group relative selectable-row ${cursorClass} ${itemClass}"
+             data-folder-id="${folderId}" data-folder-name="${escapeHtml(folderName)}">
+            ${selectableCheckbox}
+            <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
+            <p class="text-xs font-medium truncate">${escapeHtml(folderName)} ${badge}</p>
+            ${actionsHtml}
+        </div>`;
+}
+
+function renderFileBrowserFileItem(options) {
+    const {
+        itemClass,
+        datasetAttrs = '',
+        selectableCheckbox = '',
+        fileIcon,
+        nameHtml,
+        metaHtml,
+        actionsHtml = '',
+    } = options;
+
+    return `
+        <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 selectable-row gap-2 ${itemClass}"
+             ${datasetAttrs}>
+            ${selectableCheckbox}
+            <i class="fas ${fileIcon} text-gray-400 flex-shrink-0 w-4 text-center"></i>
+            <div class="flex-1 min-w-0">
+                ${nameHtml}
+                ${metaHtml}
+            </div>
+            ${actionsHtml}
+        </div>`;
 }
 // Klasörleri yükle (system-only)
 async function loadAdminFolders(parentId = null) {
@@ -3041,8 +3103,9 @@ async function loadAdminFolders(parentId = null) {
         const res = await fetch(`${API_BASE}/api/system/folders${urlParent}`, { credentials: 'include' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (data.root_id && adminSystemRootCollectionId == null) adminSystemRootCollectionId = data.root_id;
+        if (data.root_id && _adminFiles.rootCollectionId == null) _adminFiles.rootCollectionId = data.root_id;
         const folders = data.folders || [];
+        _adminFiles.folders = folders;
 
         container.innerHTML = folders.length ? folders.map(f => {
             const subCount  = f.subfolder_count || 0;
@@ -3055,19 +3118,20 @@ async function loadAdminFolders(parentId = null) {
                 : '';
             const selCb = `<input type="checkbox" class="folder-select-cb absolute top-1 left-1 hidden"
                 data-type="folder" data-id="${f.id}" data-name="${escapeHtml(f.folder_name)}">`;
-            return `
-            <div class="border border-gray-200 rounded-lg p-3 hover:bg-yellow-50 text-center group relative selectable-row admin-folder-item"
-                 data-folder-id="${f.id}" data-folder-name="${escapeHtml(f.folder_name)}">
-                ${selCb}
-                <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
-                <p class="text-xs font-medium truncate">${escapeHtml(f.folder_name)} ${badge}</p>
-                <button class="admin-menu-trigger admin-folder-menu-trigger absolute top-1 right-1 w-6 h-6 rounded text-gray-400
-                               hover:text-gray-700 hover:bg-white/80 opacity-0 group-hover:opacity-100
-                               flex items-center justify-center transition"
-                        title="İşlemler">
-                    <i class="fas fa-ellipsis-v text-xs"></i>
-                </button>
-            </div>`;
+            const actionsHtml = `<button class="admin-menu-trigger admin-folder-menu-trigger absolute top-1 right-1 w-6 h-6 rounded text-gray-400
+                           hover:text-gray-700 hover:bg-white/80 opacity-0 group-hover:opacity-100
+                           flex items-center justify-center transition"
+                    title="İşlemler">
+                <i class="fas fa-ellipsis-v text-xs"></i>
+            </button>`;
+            return renderFileBrowserFolderItem({
+                itemClass: 'admin-folder-item',
+                folderId: f.id,
+                folderName: f.folder_name,
+                selectableCheckbox: selCb,
+                badge,
+                actionsHtml,
+            });
         }).join('') : '<div class="col-span-full text-center text-gray-400 py-4">Henüz klasör yok</div>';
     } catch (err) {
         console.error('loadAdminFolders error:', err);
@@ -3076,7 +3140,7 @@ async function loadAdminFolders(parentId = null) {
 }
 
 function handleFolderClick(event, folderId, folderName, rowEl) {
-    const isSelectMode = document.getElementById('tab-files')?.classList.contains('select-mode-active');
+    const isSelectMode = _adminFiles.selectMode;
     if (isSelectMode) {
         const cb = (rowEl || event.currentTarget)?.querySelector('.folder-select-cb');
         if (cb && event.target !== cb) { cb.checked = !cb.checked; updateSelectionCount(); }
@@ -3092,50 +3156,53 @@ async function loadAdminFiles() {
     container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>';
 
     try {
-        const query = adminCurrentFolderId != null ? `?collection_id=${adminCurrentFolderId}` : '';
+        const query = _adminFiles.currentFolderId != null ? `?collection_id=${_adminFiles.currentFolderId}` : '';
         const res = await fetch(`${API_BASE}/api/system/files${query}`, { credentials: 'include' });
         if (!res.ok) throw new Error(`${res.status}`);
         const data = await res.json();
-        if (adminSystemRootCollectionId == null && data?.root_collection_id != null)
-            adminSystemRootCollectionId = Number(data.root_collection_id);
+        if (_adminFiles.rootCollectionId == null && data?.root_collection_id != null)
+            _adminFiles.rootCollectionId = Number(data.root_collection_id);
         const files = data.files || [];
+        _adminFiles.files = files;
 
         if (!files.length) {
-            container.innerHTML = `<div class="text-center py-8 text-gray-400">
-                <i class="fas fa-folder-open text-4xl mb-2 opacity-50"></i>
-                <p>Bu konumda dosya yok</p>
-                <p class="text-xs mt-1">Dosya Yükle butonunu kullanın</p></div>`;
+            container.innerHTML = renderFileBrowserEmptyState('Bu konumda dosya yok', 'Dosya Yükle butonunu kullanın');
             return;
         }
 
-        container.innerHTML = files.map(file => `
-            <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 selectable-row gap-2 admin-file-item"
-                 data-ref-id="${file.id}" data-source-file-id="${file.source_file_id}"
+        container.innerHTML = files.map(file => {
+            const datasetAttrs = `data-ref-id="${file.id}" data-source-file-id="${file.source_file_id}"
                  data-file-name="${escapeHtml(file.file_name)}" data-file-url="${escapeHtml(file.file_url)}"
-                 data-file-type="${escapeHtml(file.file_type || '')}" data-is-public="${file.is_public ? 1 : 0}">
-                <input type="checkbox" class="file-select-cb flex-shrink-0 hidden"
-                    data-type="file" data-id="${file.source_file_id}" data-name="${escapeHtml(file.file_name)}" data-ref-id="${file.id}">
-                <i class="fas ${getFileIcon(file.file_type)} text-gray-400 flex-shrink-0 w-4 text-center"></i>
-                <div class="flex-1 min-w-0">
-                    <a href="javascript:void(0)"
-                       class="admin-file-preview font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(file.file_name)}</a>
-                    <div class="flex flex-wrap gap-3 mt-0.5 text-xs text-gray-400">
-                        <span>${getCategoryName(file.category)}</span>
-                        <span>${escapeHtml(file.uploaded_by_name || '-')}</span>
-                        <span>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-1 ml-1 flex-shrink-0">
-                    <button class="admin-send-inst-btn p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title="Kurumlara Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
-                    <button class="admin-send-user-btn p-1.5 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"
-                        title="Kişilere Gönder"><i class="fas fa-users text-xs"></i></button>
-                    <button class="admin-menu-trigger admin-file-menu-trigger p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded"
-                            title="Daha fazla">
-                        <i class="fas fa-ellipsis-v text-xs"></i>
-                    </button>
-                </div>
-            </div>`).join('');
+                 data-file-type="${escapeHtml(file.file_type || '')}" data-is-public="${file.is_public ? 1 : 0}"`;
+            const selectableCheckbox = `<input type="checkbox" class="file-select-cb flex-shrink-0 hidden"
+                data-type="file" data-id="${file.source_file_id}" data-name="${escapeHtml(file.file_name)}" data-ref-id="${file.id}">`;
+            const nameHtml = `<a href="javascript:void(0)"
+                   class="admin-file-preview font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(file.file_name)}</a>`;
+            const metaHtml = `<div class="flex flex-wrap gap-3 mt-0.5 text-xs text-gray-400">
+                    <span>${getCategoryName(file.category)}</span>
+                    <span>${escapeHtml(file.uploaded_by_name || '-')}</span>
+                    <span>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
+                </div>`;
+            const actionsHtml = `<div class="flex items-center gap-1 ml-1 flex-shrink-0">
+                <button class="admin-send-inst-btn p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                    title="Kurumlara Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
+                <button class="admin-send-user-btn p-1.5 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"
+                    title="Kişilere Gönder"><i class="fas fa-users text-xs"></i></button>
+                <button class="admin-menu-trigger admin-file-menu-trigger p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded"
+                        title="Daha fazla">
+                    <i class="fas fa-ellipsis-v text-xs"></i>
+                </button>
+            </div>`;
+            return renderFileBrowserFileItem({
+                itemClass: 'admin-file-item',
+                datasetAttrs,
+                selectableCheckbox,
+                fileIcon: getFileIcon(file.file_type),
+                nameHtml,
+                metaHtml,
+                actionsHtml,
+            });
+        }).join('');
     } catch (err) {
         console.error('loadAdminFiles error:', err);
         container.innerHTML = '<p class="text-red-500 text-center py-8">Dosyalar yüklenirken hata oluştu</p>';
@@ -3143,7 +3210,7 @@ async function loadAdminFiles() {
 }
 
 function handleFileClick(event, refId, name, sourceFileId, rowEl) {
-    const isSelectMode = document.getElementById('tab-files')?.classList.contains('select-mode-active');
+    const isSelectMode = _adminFiles.selectMode;
     if (isSelectMode) {
         const cb = (rowEl || event.currentTarget)?.querySelector('.file-select-cb');
         if (cb && event.target !== cb) { cb.checked = !cb.checked; updateSelectionCount(); }
@@ -3151,12 +3218,12 @@ function handleFileClick(event, refId, name, sourceFileId, rowEl) {
 }
 
 function hasAdminBulkSelection() {
-    return document.querySelectorAll('.folder-select-cb:checked,.file-select-cb:checked').length > 0;
+    return getFileBrowserSelectedCheckboxes('admin').length > 0;
 }
 
 function handleAdminInstitutionSendClick(event, sourceFileId, fileName) {
     if (event && event.stopPropagation) event.stopPropagation();
-    const isSelectMode = document.getElementById('tab-files')?.classList.contains('select-mode-active');
+    const isSelectMode = _adminFiles.selectMode;
     if (isSelectMode && hasAdminBulkSelection()) {
         openBulkSendModal();
         return;
@@ -3166,7 +3233,7 @@ function handleAdminInstitutionSendClick(event, sourceFileId, fileName) {
 
 function handleAdminUserSendClick(event, fileId) {
     if (event && event.stopPropagation) event.stopPropagation();
-    const isSelectMode = document.getElementById('tab-files')?.classList.contains('select-mode-active');
+    const isSelectMode = _adminFiles.selectMode;
     if (isSelectMode && hasAdminBulkSelection()) {
         adminOpenBulkSendToUsers();
         return;
@@ -3176,8 +3243,8 @@ function handleAdminUserSendClick(event, fileId) {
 
 // Klasör navigasyon
 function adminOpenFolder(folderId, folderName) {
-    adminFolderStack.push({ id: folderId, name: folderName });
-    adminCurrentFolderId = folderId;
+    _adminFiles.folderStack.push({ id: folderId, name: folderName });
+    _adminFiles.currentFolderId = folderId;
     updateAdminBreadcrumb();
     loadAdminFolders(folderId);
     loadAdminFiles();
@@ -3185,14 +3252,14 @@ function adminOpenFolder(folderId, folderName) {
 }
 
 function adminGoBack() {
-    adminFolderStack.pop();
-    adminCurrentFolderId = adminFolderStack.length
-        ? adminFolderStack[adminFolderStack.length - 1].id
+    _adminFiles.folderStack.pop();
+    _adminFiles.currentFolderId = _adminFiles.folderStack.length
+        ? _adminFiles.folderStack[_adminFiles.folderStack.length - 1].id
         : null;
     updateAdminBreadcrumb();
-    loadAdminFolders(adminCurrentFolderId);
+    loadAdminFolders(_adminFiles.currentFolderId);
     loadAdminFiles();
-    if (!adminCurrentFolderId && adminFolderStack.length === 0)
+    if (!_adminFiles.currentFolderId && _adminFiles.folderStack.length === 0)
         document.getElementById('adminBackBtn')?.classList.add('hidden');
 }
 
@@ -3200,15 +3267,15 @@ function updateAdminBreadcrumb() {
     const bc = document.getElementById('adminBreadcrumb');
     if (!bc) return;
 
-    if (adminFolderStack.length === 0) {
+    if (_adminFiles.folderStack.length === 0) {
         bc.innerHTML = '<i class="fas fa-server text-gray-300 mr-1"></i><span class="text-gray-400">Kök dizin</span>';
         document.getElementById('adminLocationBanner')?.classList.add('hidden');
         return;
     }
 
         let html = `<i class="fas fa-server text-gray-300 mr-1"></i><button type="button" class="admin-breadcrumb-root cursor-pointer hover:text-primary">Merkezi Dosyalar</button>`;
-    adminFolderStack.forEach((f, index) => {
-        const isLast = index === adminFolderStack.length - 1;
+    _adminFiles.folderStack.forEach((f, index) => {
+        const isLast = index === _adminFiles.folderStack.length - 1;
         html += isLast
             ? ` <i class="fas fa-chevron-right text-gray-300 text-xs mx-0.5"></i><span class="font-semibold text-gray-700">${escapeHtml(f.name)}</span>`
             : ` <i class="fas fa-chevron-right text-gray-300 text-xs mx-0.5"></i><button type="button" class="admin-breadcrumb-link cursor-pointer hover:text-primary" data-index="${index}">${escapeHtml(f.name)}</button>`;
@@ -3218,7 +3285,7 @@ function updateAdminBreadcrumb() {
     // Sarı konum bandı
     const banner = document.getElementById('adminLocationBanner');
     if (banner) {
-        const currentName = adminFolderStack[adminFolderStack.length - 1]?.name || '';
+        const currentName = _adminFiles.folderStack[_adminFiles.folderStack.length - 1]?.name || '';
         banner.innerHTML = `<i class="fas fa-folder-open text-yellow-500 flex-shrink-0 mr-1.5"></i><span class="font-medium truncate min-w-0">${escapeHtml(currentName)}</span><span class="flex-shrink-0 ml-1">klasöründesiniz</span>`;
         banner.classList.remove('hidden');
     }
@@ -3378,17 +3445,17 @@ function openAdminFileMenu(event, sourceFileId, fileName, refId, isPublic) {
 }
 
 function adminGoToFolder(index) {
-    adminFolderStack = adminFolderStack.slice(0, index + 1);
-    adminCurrentFolderId = adminFolderStack[index]?.id ?? null;
-    document.getElementById('adminBackBtn')?.classList.toggle('hidden', adminFolderStack.length === 0);
+    _adminFiles.folderStack = _adminFiles.folderStack.slice(0, index + 1);
+    _adminFiles.currentFolderId = _adminFiles.folderStack[index]?.id ?? null;
+    document.getElementById('adminBackBtn')?.classList.toggle('hidden', _adminFiles.folderStack.length === 0);
     updateAdminBreadcrumb();
-    loadAdminFolders(adminCurrentFolderId);
+    loadAdminFolders(_adminFiles.currentFolderId);
     loadAdminFiles();
 }
 
 function adminGoRoot() {
-    adminCurrentFolderId = null;
-    adminFolderStack = [];
+    _adminFiles.currentFolderId = null;
+    _adminFiles.folderStack = [];
     document.getElementById('adminBackBtn')?.classList.add('hidden');
     updateAdminBreadcrumb();
     loadAdminFolders(null);
@@ -3475,14 +3542,14 @@ async function toggleAdminFilePublic(fileId, currentStatus) {
 async function deleteAdminFile(fileId) {
     if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
     const res = await fetch(`${API_BASE}/api/system/file/${fileId}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); loadAdminFolders(adminCurrentFolderId); }
+    if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); loadAdminFolders(_adminFiles.currentFolderId); }
     else showToast('İşlem başarısız oldu!', 'error');
 }
 
 async function deleteAdminFolder(folderId) {
     if (!confirm('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?')) return;
     const res = await fetch(`${API_BASE}/api/collections/${folderId}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadAdminFolders(adminCurrentFolderId); loadAdminFiles(); }
+    if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadAdminFolders(_adminFiles.currentFolderId); loadAdminFiles(); }
     else showToast('İşlem başarısız oldu!', 'error');
 }
 
@@ -3508,7 +3575,7 @@ async function submitRenameFolder() {
     if (res.ok) {
         showToast('Klasör adı başarıyla güncellendi!', 'success');
         closeAdminFolderRenameModal();
-        loadAdminFolders(adminCurrentFolderId);
+        loadAdminFolders(_adminFiles.currentFolderId);
     } else {
         showToast('İşlem başarısız oldu!', 'error');
     }
@@ -3559,7 +3626,7 @@ async function submitFolderMove() {
     if (res.ok) {
         showToast('Klasör başarıyla taşındı!', 'success');
         closeFolderMoveModal();
-        loadAdminFolders(adminCurrentFolderId);
+        loadAdminFolders(_adminFiles.currentFolderId);
     } else {
         const data = await res.json().catch(() => ({}));
         showToast(data.error || 'Taşıma işlemi başarısız oldu!', 'error');
@@ -3602,7 +3669,7 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({
             name: folderName,
-            parent_id: adminCurrentFolderId || adminSystemRootCollectionId || null,
+            parent_id: _adminFiles.currentFolderId || _adminFiles.rootCollectionId || null,
             scope_type: 'system',
             scope_id: currentAdmin?.user_id || null,
             kind: 'folder',
@@ -3611,55 +3678,126 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
     });
     const data = await res.json();
     if (res.ok) {
-        if (data.id && !adminSystemRootCollectionId) adminSystemRootCollectionId = data.parent_id;
+        if (data.id && !_adminFiles.rootCollectionId) _adminFiles.rootCollectionId = data.parent_id;
         showToast('Klasör başarıyla oluşturuldu!', 'success');
         closeAdminFolderModal();
-        loadAdminFolders(adminCurrentFolderId);
+        loadAdminFolders(_adminFiles.currentFolderId);
     }
     else showToast(data.error || 'İşlem başarısız oldu!', 'error');
 });
 
 // ====================== SEÇİM MODU ======================
 
-function toggleSelectMode() {
-    const tab = document.getElementById('tab-files');
-    const controls = document.getElementById('selectModeControls');
-    const bar = document.getElementById('selectionBar');
-    const btn = document.getElementById('selectModeBtn');
-    if (!tab) return;
+function getFileBrowserConfig(type) {
+    if (type === 'admin') {
+        return {
+            state: _adminFiles,
+            tabId: 'tab-files',
+            buttonId: 'selectModeBtn',
+            controlsId: 'selectModeControls',
+            barId: 'selectionBar',
+            checkboxSelector: '.folder-select-cb,.file-select-cb',
+            counterIds: ['selectionCount', 'selectionBarCount', 'selectionCounter'],
+            activeLabel: '<i class="fas fa-times mr-1"></i>İptal',
+            inactiveLabel: '<i class="fas fa-check-square mr-1"></i>Seçim Modu',
+            onModeChange: null,
+            countLabel: ({ total }) => `${total} öğe seçildi`,
+            emptyLabel: '0 öğe seçildi',
+        };
+    }
 
-    const active = tab.classList.toggle('select-mode-active');
+    return {
+        state: _ift,
+        tabId: null,
+        buttonId: 'instFilesSelectModeBtn',
+        controlsId: 'instFilesSelectControls',
+        barId: 'instFilesSelectionBar',
+        checkboxSelector: '.ift-file-cb,.ift-folder-cb',
+        counterIds: ['instFilesSelectionCounter', 'instFilesSelectionBarCount'],
+        activeLabel: '<i class="fas fa-times mr-1"></i> İptal',
+        inactiveLabel: '<i class="fas fa-check-square mr-1"></i> Seçim Modu',
+        onModeChange: () => instFilesRender(),
+        countLabel: ({ files, folders }) => {
+            if (files && folders) return `${files} dosya, ${folders} klasör seçildi`;
+            if (files) return `${files} dosya seçildi`;
+            if (folders) return `${folders} klasör seçildi`;
+            return '';
+        },
+        emptyLabel: '0 öğe seçildi',
+    };
+}
+
+function syncFileBrowserModeUi(type) {
+    const cfg = getFileBrowserConfig(type);
+    const active = !!cfg.state.selectMode;
+    const tab = cfg.tabId ? document.getElementById(cfg.tabId) : null;
+    const btn = document.getElementById(cfg.buttonId);
+    const controls = document.getElementById(cfg.controlsId);
+    const bar = document.getElementById(cfg.barId);
+
+    tab?.classList.toggle('select-mode-active', active);
     controls?.classList.toggle('hidden', !active);
-    if (!active) {
-        document.querySelectorAll('.folder-select-cb,.file-select-cb').forEach(cb => cb.checked = false);
-        bar?.classList.add('hidden');
-        if (btn) btn.innerHTML = '<i class="fas fa-check-square mr-1"></i>Seçim Modu';
+    bar?.classList.toggle('hidden', !active);
+    if (btn) btn.innerHTML = active ? cfg.activeLabel : cfg.inactiveLabel;
+}
+
+function getFileBrowserSelectedCheckboxes(type) {
+    return [...document.querySelectorAll(getFileBrowserConfig(type).checkboxSelector)].filter(cb => cb.checked);
+}
+
+function updateFileBrowserSelectionCount(type) {
+    const cfg = getFileBrowserConfig(type);
+    const checked = getFileBrowserSelectedCheckboxes(type);
+    const files = checked.filter(cb => cb.classList.contains(type === 'admin' ? 'file-select-cb' : 'ift-file-cb')).length;
+    const folders = checked.filter(cb => cb.classList.contains(type === 'admin' ? 'folder-select-cb' : 'ift-folder-cb')).length;
+    const total = checked.length;
+    const label = cfg.countLabel({ total, files, folders });
+
+    cfg.counterIds.forEach((id, index) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const isPrimaryCounter = type === 'admin' ? true : index === 0;
+        el.textContent = label || (isPrimaryCounter ? '' : cfg.emptyLabel);
+    });
+
+    const bar = document.getElementById(cfg.barId);
+    if (cfg.state.selectMode) {
+        bar?.classList.toggle('hidden', total === 0);
     } else {
-        if (btn) btn.innerHTML = '<i class="fas fa-times mr-1"></i>İptal';
-        updateSelectionCount();
+        bar?.classList.add('hidden');
     }
 }
 
+function clearFileBrowserSelections(type) {
+    document.querySelectorAll(getFileBrowserConfig(type).checkboxSelector).forEach(cb => cb.checked = false);
+}
+
+function setFileBrowserSelectMode(type, active) {
+    const cfg = getFileBrowserConfig(type);
+    cfg.state.selectMode = !!active;
+    syncFileBrowserModeUi(type);
+    if (!cfg.state.selectMode) {
+        clearFileBrowserSelections(type);
+    }
+    cfg.onModeChange?.();
+    updateFileBrowserSelectionCount(type);
+}
+
+function toggleSelectMode() {
+    setFileBrowserSelectMode('admin', !_adminFiles.selectMode);
+}
+
 function updateSelectionCount() {
-    const total = document.querySelectorAll('.folder-select-cb:checked,.file-select-cb:checked').length;
-    const bar   = document.getElementById('selectionBar');
-    const counter1 = document.getElementById('selectionCount');
-    const counter2 = document.getElementById('selectionBarCount');
-    const counter3 = document.getElementById('selectionCounter');
-    const label = `${total} öğe seçildi`;
-    if (counter1) counter1.textContent = label;
-    if (counter2) counter2.textContent = label;
-    if (counter3) counter3.textContent = label;
-    if (bar) bar.classList.toggle('hidden', total === 0);
+    updateFileBrowserSelectionCount('admin');
 }
 
 function selectAllItems() {
-    document.querySelectorAll('.folder-select-cb,.file-select-cb').forEach(cb => cb.checked = true);
+    document.querySelectorAll(getFileBrowserConfig('admin').checkboxSelector).forEach(cb => cb.checked = true);
     updateSelectionCount();
 }
 
 function clearAllSelections() {
-    document.querySelectorAll('.folder-select-cb,.file-select-cb').forEach(cb => cb.checked = false);
+    clearFileBrowserSelections('admin');
     updateSelectionCount();
 }
 
@@ -4016,13 +4154,13 @@ async function openAdminFileModal() {
         const res = await fetch(`${API_BASE}/api/collections?scope_type=system&scope_id=self`, { credentials: 'include' });
         const collections = res.ok ? await res.json() : [];
         const root = (collections || []).find(item => item.kind === 'root');
-        if (root) adminSystemRootCollectionId = Number(root.id);
+        if (root) _adminFiles.rootCollectionId = Number(root.id);
         const folders = (collections || []).filter(item => item.kind === 'folder');
         const select = document.getElementById('adminFileFolderSelect');
         if (select) {
             select.innerHTML = '<option value="">Ana dizin</option>' +
                 folders.map(f => `<option value="${f.id}">${escapeHtml(f.name)}</option>`).join('');
-            if (adminCurrentFolderId) select.value = adminCurrentFolderId;
+            if (_adminFiles.currentFolderId) select.value = _adminFiles.currentFolderId;
         }
     } catch { /* keep default */ }
 }
@@ -4090,14 +4228,14 @@ document.getElementById('adminFileForm')?.addEventListener('submit', async (e) =
         });
         const result = await res.json();
         if (res.ok) {
-            const stack = adminFolderStack;
+            const stack = _adminFiles.folderStack;
             const pathStr = stack.length === 0
                 ? 'Merkezi Dosyalar'
                 : stack.length <= 2
                     ? 'Merkezi Dosyalar › ' + stack.map(f => f.name).join(' › ')
                     : '… › ' + stack.slice(-2).map(f => f.name).join(' › ');
             showToast(`"${fileName}" → ${pathStr} içine eklendi`, 'success');
-            closeAdminFileModal(); loadAdminFiles(); loadAdminFolders(adminCurrentFolderId);
+            closeAdminFileModal(); loadAdminFiles(); loadAdminFolders(_adminFiles.currentFolderId);
         }
         else showToast(result.error || 'İşlem başarısız oldu!', 'error');
     } catch(err) {
@@ -4463,25 +4601,26 @@ function instFilesRender(folderFilter, fileFilter) {
     foldersEl.innerHTML = folders.map(f => {
         const selCb = isSelect ? `<input type="checkbox" class="ift-folder-cb absolute top-1 left-1 w-4 h-4"
             data-id="${f.id}" data-name="${escapeHtml(f.folder_name)}">` : '';
-        return `
-        <div class="border border-gray-200 rounded-lg p-3 hover:bg-yellow-50 text-center group relative selectable-row cursor-pointer inst-folder-item"
-             data-folder-id="${f.id}" data-folder-name="${escapeHtml(f.folder_name)}">
-            ${selCb}
-            <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
-            <p class="text-xs font-medium truncate">${escapeHtml(f.folder_name)}</p>
-            ${!isSelect ? `
+        const actionsHtml = !isSelect ? `
             <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
                 <button type="button" class="inst-folder-send-btn text-blue-400 hover:text-blue-600" title="Kişilere Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
                 <button type="button" class="inst-folder-move-btn text-gray-400 hover:text-purple-500" title="Taşı"><i class="fas fa-arrows-alt text-xs"></i></button>
                 <button type="button" class="inst-folder-rename-btn text-gray-300 hover:text-blue-500" title="Yeniden Adlandır"><i class="fas fa-pencil-alt text-xs"></i></button>
                 <button type="button" class="inst-folder-delete-btn text-gray-300 hover:text-red-500" title="Sil"><i class="fas fa-trash text-xs"></i></button>
-            </div>` : ''}
-        </div>`;
+            </div>` : '';
+        return renderFileBrowserFolderItem({
+            itemClass: 'inst-folder-item',
+            folderId: f.id,
+            folderName: f.folder_name,
+            selectableCheckbox: selCb,
+            actionsHtml,
+            cursorClass: 'cursor-pointer',
+        });
     }).join('');
 
     // Dosyalar
     if (!files.length && !folders.length) {
-        filesEl.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fas fa-folder-open text-3xl opacity-30 block mb-2"></i>Bu konumda içerik yok</div>';
+        filesEl.innerHTML = renderFileBrowserEmptyState('Bu konumda içerik yok', '', 'fas fa-folder-open text-3xl opacity-30 block mb-2');
         return;
     }
     if (!files.length) { filesEl.innerHTML = ''; return; }
@@ -4493,24 +4632,27 @@ function instFilesRender(folderFilter, fileFilter) {
         const safeUrl  = escapeHtml(url);
         const safeExt  = escapeHtml(ext);
         const isNew   = f.added_at && (Date.now() - new Date(f.added_at).getTime()) < 7 * 86400000;
-        return `
-        <div class="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 selectable-row gap-2 inst-file-item"
-             data-file-id="${f.id}" data-file-name="${escapeHtml(name)}" data-file-url="${safeUrl}" data-file-type="${safeExt}">
-            ${isSelect ? `<input type="checkbox" class="ift-file-cb flex-shrink-0" data-id="${f.id}" data-name="${escapeHtml(name)}">` : ''}
-            <i class="fas ${getFileIcon(ext)} text-gray-400 flex-shrink-0 w-4 text-center"></i>
-            <div class="flex-1 min-w-0">
-                <a href="javascript:void(0)"
-                   class="inst-file-preview font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(name)}${isNew ? ' <span class="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded-full font-normal align-middle ml-1">Yeni</span>' : ''}</a>
-                <span class="text-xs text-gray-400 uppercase">${ext}</span>
-            </div>
-            ${!isSelect ? `
+        const datasetAttrs = `data-file-id="${f.id}" data-file-name="${escapeHtml(name)}" data-file-url="${safeUrl}" data-file-type="${safeExt}"`;
+        const selectableCheckbox = isSelect ? `<input type="checkbox" class="ift-file-cb flex-shrink-0" data-id="${f.id}" data-name="${escapeHtml(name)}">` : '';
+        const nameHtml = `<a href="javascript:void(0)"
+               class="inst-file-preview font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(name)}${isNew ? ' <span class="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded-full font-normal align-middle ml-1">Yeni</span>' : ''}</a>`;
+        const metaHtml = `<span class="text-xs text-gray-400 uppercase">${ext}</span>`;
+        const actionsHtml = !isSelect ? `
             <div class="flex items-center gap-2 ml-1 flex-shrink-0">
                 <button type="button" class="inst-file-send-btn text-blue-400 hover:text-blue-600" title="Kişilere Gönder"><i class="fas fa-paper-plane text-sm"></i></button>
                 <button type="button" class="inst-file-move-btn text-slate-400 hover:text-slate-700" title="Taşı"><i class="fas fa-folder-open text-sm"></i></button>
                 <button type="button" class="inst-file-rename-btn text-amber-400 hover:text-amber-600" title="Yeniden Adlandır"><i class="fas fa-pencil-alt text-sm"></i></button>
                 <button type="button" class="inst-file-delete-btn text-red-400 hover:text-red-600" title="Sil"><i class="fas fa-trash text-sm"></i></button>
-            </div>` : ''}
-        </div>`;
+            </div>` : '';
+        return renderFileBrowserFileItem({
+            itemClass: 'inst-file-item',
+            datasetAttrs,
+            selectableCheckbox,
+            fileIcon: getFileIcon(ext),
+            nameHtml,
+            metaHtml,
+            actionsHtml,
+        });
     }).join('');
 }
 
@@ -4758,43 +4900,17 @@ async function instFilesExecuteFolderMove() {
 
 // ---- Seçim modu ----
 function instFilesToggleSelectMode() {
-    _ift.selectMode = !_ift.selectMode;
-    const btn = document.getElementById('instFilesSelectModeBtn');
-    const bar = document.getElementById('instFilesSelectionBar');
-    const ctrl = document.getElementById('instFilesSelectControls');
-    if (_ift.selectMode) {
-        btn.innerHTML = '<i class="fas fa-times mr-1"></i> İptal';
-        bar.classList.remove('hidden');
-        ctrl.classList.remove('hidden');
-    } else {
-        btn.innerHTML = '<i class="fas fa-check-square mr-1"></i> Seçim Modu';
-        bar.classList.add('hidden');
-        ctrl.classList.add('hidden');
-    }
-    instFilesRender();
+    setFileBrowserSelectMode('institution', !_ift.selectMode);
 }
 function instFilesUpdateSelCount() {
-    const fileCount = document.querySelectorAll('.ift-file-cb:checked').length;
-    const folderCount = document.querySelectorAll('.ift-folder-cb:checked').length;
-    let message = '';
-
-    if (fileCount && folderCount) {
-        message = `${fileCount} dosya, ${folderCount} klasör seçildi`;
-    } else if (fileCount) {
-        message = `${fileCount} dosya seçildi`;
-    } else if (folderCount) {
-        message = `${folderCount} klasör seçildi`;
-    }
-
-    document.getElementById('instFilesSelectionCounter').textContent = message;
-    document.getElementById('instFilesSelectionBarCount').textContent = message || '0 öğe seçildi';
+    updateFileBrowserSelectionCount('institution');
 }
 function instFilesSelectAll() {
-    document.querySelectorAll('.ift-file-cb,.ift-folder-cb').forEach(cb => cb.checked = true);
+    document.querySelectorAll(getFileBrowserConfig('institution').checkboxSelector).forEach(cb => cb.checked = true);
     instFilesUpdateSelCount();
 }
 function instFilesClearSelections() {
-    document.querySelectorAll('.ift-file-cb,.ift-folder-cb').forEach(cb => cb.checked = false);
+    clearFileBrowserSelections('institution');
     instFilesUpdateSelCount();
 }
 function instFolderToggleCb(el, event) {
@@ -7543,7 +7659,7 @@ async function submitAdminMoveModal() {
     if (res.ok) {
         showToast('Dosya taşındı.', 'success');
         closeAdminMoveModal();
-        loadAdminFolders(adminCurrentFolderId);
+        loadAdminFolders(_adminFiles.currentFolderId);
         loadAdminFiles();
     } else {
         const data = await res.json().catch(() => ({}));
@@ -7554,8 +7670,8 @@ async function submitAdminMoveModal() {
 async function moveAdminFileRef(refId, fileName) {
     const res = await fetch(`${API_BASE}/api/system/folders`, { credentials: 'include' });
     const data = res.ok ? await res.json() : {};
-    if (data.root_id) adminSystemRootCollectionId = data.root_id;
-    const rootId = data.root_id || adminSystemRootCollectionId;
+    if (data.root_id) _adminFiles.rootCollectionId = data.root_id;
+    const rootId = data.root_id || _adminFiles.rootCollectionId;
     const subfolders = data.folders || [];
     const rootEntry = rootId ? [{ id: rootId, name: '(Ana Dizin)', kind: 'root' }] : [];
     const allFolders = [...rootEntry, ...subfolders.map(f => ({ ...f, name: f.folder_name }))];
@@ -7565,7 +7681,7 @@ async function moveAdminFileRef(refId, fileName) {
         return;
     }
 
-    const effectiveCurrent = adminCurrentFolderId ?? rootId ?? null;
+    const effectiveCurrent = _adminFiles.currentFolderId ?? rootId ?? null;
 
     adminMoveModalState = {
         refId, fileName: fileName || '',
