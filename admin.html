@@ -87,6 +87,14 @@
             width: 1.25rem;
             height: 1.25rem;
         }
+        .icon-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.5rem;
+            min-height: 2.5rem;
+            border-radius: 0.5rem;
+        }
         .bulk-preview-scroll { max-height: calc(90vh - 220px); overflow-y: auto; }
         .send-duplicate-warning { background: #fef3c7; color: #92400e; }
         .crop-stage { max-height: 60vh; overflow: hidden; }
@@ -168,6 +176,25 @@
             }
             .modal-content {
                 padding: 1rem;
+            }
+            input[type="checkbox"] {
+                width: 1.25rem;
+                height: 1.25rem;
+            }
+            .admin-menu-trigger,
+            .edit-user-btn,
+            .user-files-btn,
+            .set-role-btn,
+            .delete-user-btn,
+            .product-edit-btn,
+            .subscription-edit-btn,
+            .subscription-delete-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 2.75rem;
+                min-height: 2.75rem;
+                border-radius: 0.5rem;
             }
             .modal-actions {
                 flex-direction: column;
@@ -8666,7 +8693,6 @@ async function moveAdminFileRef(refId, fileName) {
 
 </body>
 </html>
-
 
 
 
