@@ -306,6 +306,7 @@
                     </tbody>
                 </table>
             </div>
+            <div id="usersPagination" class="mt-4 flex items-center justify-between gap-3 text-sm text-gray-500"></div>
         </div>
     </div>
 
@@ -345,6 +346,7 @@
                     </tbody>
                 </table>
             </div>
+            <div id="institutionsPagination" class="mt-4 flex items-center justify-between gap-3 text-sm text-gray-500"></div>
         </div>
     </div>
 <!-- Kurum Dosyaları Tab -->
@@ -2277,6 +2279,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
 
     // Kullanıcıları listele
     let allUsers = [];
+    let _usersView = { filtered: [], page: 1, pageSize: 25 };
 
     function timeAgo(dateStr) {
         if (!dateStr) return '-';
@@ -2288,9 +2291,41 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         return new Date(dateStr).toLocaleDateString('tr-TR');
     }
 
+    function renderTablePagination(containerId, totalItems, viewState, onPageChange) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+
+        const totalPages = Math.max(1, Math.ceil(totalItems / viewState.pageSize));
+        const currentPage = Math.min(viewState.page, totalPages);
+        viewState.page = currentPage;
+
+        if (totalItems <= viewState.pageSize) {
+            el.innerHTML = totalItems
+                ? `<span>${totalItems} kayıt</span>`
+                : '';
+            return;
+        }
+
+        const start = totalItems === 0 ? 0 : ((currentPage - 1) * viewState.pageSize) + 1;
+        const end = Math.min(currentPage * viewState.pageSize, totalItems);
+
+        el.innerHTML = `
+            <span>${start}-${end} / ${totalItems}</span>
+            <div class="flex items-center gap-2">
+                <button type="button" class="px-3 py-1 rounded border bg-white disabled:opacity-50" ${currentPage === 1 ? 'disabled' : ''} data-page-action="prev">Geri</button>
+                <span class="min-w-[84px] text-center">Sayfa ${currentPage}/${totalPages}</span>
+                <button type="button" class="px-3 py-1 rounded border bg-white disabled:opacity-50" ${currentPage === totalPages ? 'disabled' : ''} data-page-action="next">İleri</button>
+            </div>`;
+
+        el.querySelector('[data-page-action="prev"]')?.addEventListener('click', () => onPageChange(currentPage - 1));
+        el.querySelector('[data-page-action="next"]')?.addEventListener('click', () => onPageChange(currentPage + 1));
+    }
+
     function renderUsers(users) {
         const isSuper = currentAdmin?.role === 'super_admin';
-        document.getElementById('usersList').innerHTML = users.length ? users.map(u => {
+        const start = (_usersView.page - 1) * _usersView.pageSize;
+        const pageUsers = users.slice(start, start + _usersView.pageSize);
+        document.getElementById('usersList').innerHTML = pageUsers.length ? pageUsers.map(u => {
             return `
             <tr>
                 <td class="px-4 py-2">${u.id}</td>
@@ -2308,6 +2343,11 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 </td>
             </tr>`;
         }).join('') : '<tr><td colspan="8" class="text-center py-4 text-gray-400">Sonuç bulunamadı</td></tr>';
+
+        renderTablePagination('usersPagination', users.length, _usersView, (page) => {
+            _usersView.page = page;
+            renderUsers(_usersView.filtered);
+        });
     }
 
     function filterUsers() {
@@ -2321,12 +2361,16 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             const matchInst = !inst || instName === inst;
             return matchQ && matchRole && matchInst;
         });
+        _usersView.filtered = filtered;
+        _usersView.page = 1;
         renderUsers(filtered);
     }
 
     async function loadUsers() {
         const res = await fetch('/api/admin/users', { credentials: 'include' });
         allUsers = await res.json();
+        _usersView.filtered = allUsers;
+        _usersView.page = 1;
 
         // Kurum dropdown'u doldur (institution_name'i tercih et)
         const institutions = [...new Set(allUsers.map(u => u.institution_name || u.institution).filter(Boolean))].sort();
@@ -5302,6 +5346,7 @@ document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHt
 document.getElementById('editInstitutionStatus').innerHTML = statusOptionsHtml();
 
 let allInstitutions = [];
+let _institutionsView = { filtered: [], page: 1, pageSize: 25 };
 
 async function loadInstitutions() {
     const tbody = document.getElementById('institutionsList');
@@ -5316,6 +5361,8 @@ async function loadInstitutions() {
             source: 'd1',
             displayName: i.name,
         }));
+        _institutionsView.filtered = allInstitutions;
+        _institutionsView.page = 1;
 
         renderInstitutions(allInstitutions);
         
@@ -5330,10 +5377,14 @@ function renderInstitutions(institutions) {
     
     if (institutions.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">Kurum bulunamadı</td></tr>';
+        document.getElementById('institutionsPagination').innerHTML = '';
         return;
     }
-    
-    tbody.innerHTML = institutions.map(inst => {
+
+    const start = (_institutionsView.page - 1) * _institutionsView.pageSize;
+    const pageInstitutions = institutions.slice(start, start + _institutionsView.pageSize);
+
+    tbody.innerHTML = pageInstitutions.map(inst => {
         const statusCls = STATUS_BADGE[inst.status] || 'bg-gray-100 text-gray-600';
         const orgLabel = categoryLabel(inst.category || '');
         const instInitials = '';
@@ -5375,6 +5426,11 @@ function renderInstitutions(institutions) {
             </td>
         </tr>`;
     }).join('');
+
+    renderTablePagination('institutionsPagination', institutions.length, _institutionsView, (page) => {
+        _institutionsView.page = page;
+        renderInstitutions(_institutionsView.filtered);
+    });
 }
 
 document.getElementById('institutionsList')?.addEventListener('click', function(e) {
@@ -5692,6 +5748,8 @@ function filterInstitutions() {
         return 0;
     });
 
+    _institutionsView.filtered = filtered;
+    _institutionsView.page = 1;
     renderInstitutions(filtered);
 }
 let _syncChanges = [];
