@@ -294,7 +294,7 @@
 
 
 <div class="admin-layout">
-    <div id="adminSidebarOverlay" class="hidden fixed inset-0 bg-black/40 z-30 md:hidden" onclick="closeAdminSidebar()"></div>
+<div id="adminSidebarOverlay" class="hidden fixed inset-0 bg-black/40 z-30 md:hidden" onclick="closeAdminSidebar()" aria-hidden="true"></div>
     <!-- Sidebar -->
     <div id="adminSidebar" class="sidebar admin-sidebar-shell">
         <div class="admin-sidebar-inner p-6">
@@ -771,7 +771,7 @@
             <p class="text-xs text-gray-400 uppercase font-semibold">Kurum Dosyaları</p>
             <h3 id="instFilesPanelTitle" class="font-semibold text-gray-800 truncate"></h3>
         </div>
-        <button onclick="closeInstFilesPanel()" class="text-gray-400 hover:text-gray-600 text-xl ml-4"><i class="fas fa-times"></i></button>
+        <button onclick="closeInstFilesPanel()" class="text-gray-400 hover:text-gray-600 text-xl ml-4" aria-label="Kurum dosyaları panelini kapat"><i class="fas fa-times"></i></button>
     </div>
     <!-- Breadcrumb -->
     <div id="instFilesBreadcrumb" class="px-5 py-2 text-sm text-gray-500 border-b bg-white flex-shrink-0 hidden"></div>
@@ -789,7 +789,7 @@
             <p class="text-xs text-gray-400 uppercase font-semibold">Kurum Kullanıcıları</p>
             <h3 id="instUsersPanelTitle" class="font-semibold text-gray-800 truncate"></h3>
         </div>
-        <button onclick="closeInstUsersPanel()" class="text-gray-400 hover:text-gray-600 text-xl ml-4"><i class="fas fa-times"></i></button>
+        <button onclick="closeInstUsersPanel()" class="text-gray-400 hover:text-gray-600 text-xl ml-4" aria-label="Kurum kullanıcıları panelini kapat"><i class="fas fa-times"></i></button>
     </div>
     <div id="instUsersBody" class="flex-1 overflow-y-auto px-4 py-3">
         <div class="text-center py-12"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i></div>
@@ -804,7 +804,7 @@
             <p class="text-xs text-gray-400 uppercase font-semibold">Kullanıcı Dosyaları</p>
             <h3 id="userFilesPanelTitle" class="font-semibold text-gray-800 truncate"></h3>
         </div>
-        <button onclick="closeUserFilesPanel()" class="text-gray-400 hover:text-gray-600 text-xl ml-4 flex-shrink-0"><i class="fas fa-times"></i></button>
+        <button onclick="closeUserFilesPanel()" class="text-gray-400 hover:text-gray-600 text-xl ml-4 flex-shrink-0" aria-label="Kullanıcı dosyaları panelini kapat"><i class="fas fa-times"></i></button>
     </div>
     <!-- Breadcrumb -->
     <div id="userFilesBreadcrumb" class="hidden px-4 pt-3 pb-1 text-xs text-gray-500 flex items-center gap-1 flex-wrap min-w-0 overflow-hidden"></div>
@@ -2643,10 +2643,10 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 <td class="px-4 py-2">${u.created_at ? new Date(u.created_at).toLocaleDateString('tr-TR') : '-'}</td>
                 <td class="px-4 py-2 text-gray-500 text-sm">${timeAgo(u.last_login)}</td>
                 <td class="px-4 py-2">
-                    <button class="text-blue-600 mr-2 edit-user-btn" data-user-id="${u.id}"><i class="fas fa-edit"></i></button>
-                    <button class="text-indigo-500 hover:text-indigo-700 mr-2 user-files-btn" data-user-id="${u.id}" data-user-name="${escapeHtml(u.full_name || u.email)}" title="Dosyaları Gör"><i class="fas fa-folder-open"></i></button>
-                    ${isSuper && u.role !== 'super_admin' ? `<button class="text-green-600 mr-2 set-role-btn" data-user-id="${u.id}" data-new-role="${escapeHtml(u.role === 'admin' ? 'user' : 'admin')}" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}"><i class="fas fa-user-shield"></i></button>` : ''}
-                    <button class="text-red-600 delete-user-btn" data-user-id="${u.id}"><i class="fas fa-trash"></i></button>
+                    <button class="text-blue-600 mr-2 edit-user-btn" data-user-id="${u.id}" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} kaydını düzenle"><i class="fas fa-edit"></i></button>
+                    <button class="text-indigo-500 hover:text-indigo-700 mr-2 user-files-btn" data-user-id="${u.id}" data-user-name="${escapeHtml(u.full_name || u.email)}" title="Dosyaları Gör" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} için dosyaları görüntüle"><i class="fas fa-folder-open"></i></button>
+                    ${isSuper && u.role !== 'super_admin' ? `<button class="text-green-600 mr-2 set-role-btn" data-user-id="${u.id}" data-new-role="${escapeHtml(u.role === 'admin' ? 'user' : 'admin')}" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} için ${u.role === 'admin' ? 'admin yetkisini kaldır' : 'admin yetkisi ver'}"><i class="fas fa-user-shield"></i></button>` : ''}
+                    <button class="text-red-600 delete-user-btn" data-user-id="${u.id}" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} kaydını sil"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
         }).join('') : '<tr><td colspan="8" class="text-center py-4 text-gray-400">Sonuç bulunamadı</td></tr>';
@@ -2951,9 +2951,9 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                     <td class="px-4 py-2">${s.end_date ? new Date(s.end_date).toLocaleDateString('tr-TR') : '-'}</td>
                     <td class="px-4 py-2">
                       ${s.type === 'institution'
-                        ? `<button class="subscription-edit-btn text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>`
-                        : `<button class="subscription-edit-btn text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>`}
-                      <button class="subscription-delete-btn text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                        ? `<button class="subscription-edit-btn text-blue-600 hover:text-blue-800 mr-2" aria-label="${escapeHtml(s.subject_name || s.institution_name || 'Abonelik')} kaydını düzenle"><i class="fas fa-edit"></i></button>`
+                        : `<button class="subscription-edit-btn text-blue-600 hover:text-blue-800 mr-2" aria-label="${escapeHtml(s.subject_name || s.institution_name || 'Abonelik')} kaydını düzenle"><i class="fas fa-edit"></i></button>`}
+                      <button class="subscription-delete-btn text-red-600 hover:text-red-800" aria-label="${escapeHtml(s.subject_name || s.institution_name || 'Abonelik')} kaydını sil"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
           `; }).join('') : '<tr><td colspan="9" class="text-center py-4 text-gray-400">Henüz abonelik yok</td></tr>';
@@ -3398,10 +3398,10 @@ function composeFullName(firstName, lastName) {
                 );
             } else {
                 const body = await res.json().catch(() => ({}));
-                showToast(body.error || 'İşlem başarısız oldu!', 'error');
+                showActionError('Abonelik kaydetme işlemi', body.error);
             }
         } catch(err) {
-            showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
+            showActionError('Abonelik kaydetme işlemi', err.message);
         }
         closeSubscriptionEditorModal();
         loadSubscriptions();
@@ -3434,10 +3434,10 @@ function composeFullName(firstName, lastName) {
                 loadProducts();
             } else {
                 const body = await res.json().catch(() => ({}));
-                showToast(body.error || 'İşlem başarısız oldu!', 'error');
+                showActionError('Ürün erişim ayarlarını güncelleme işlemi', body.error);
             }
         } catch(err) {
-            showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
+            showActionError('Ürün erişim ayarlarını güncelleme işlemi', err.message);
         }
     });
 
@@ -3709,7 +3709,7 @@ async function loadAdminFolders(parentId = null) {
             const actionsHtml = `<button class="admin-menu-trigger admin-folder-menu-trigger touch-target absolute top-1 right-1 rounded text-gray-400
                            hover:text-gray-700 hover:bg-white/80 opacity-0 group-hover:opacity-100
                            flex items-center justify-center transition"
-                    title="İşlemler">
+                    title="İşlemler" aria-label="${escapeHtml(f.folder_name)} klasörü için işlemler" aria-haspopup="menu">
                 <i class="fas fa-ellipsis-v text-xs"></i>
             </button>`;
             return renderFileBrowserFolderItem({
@@ -3773,11 +3773,11 @@ async function loadAdminFiles() {
                 </div>`;
             const actionsHtml = `<div class="flex items-center gap-1 ml-1 flex-shrink-0">
                 <button class="admin-send-inst-btn touch-target text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded flex items-center justify-center"
-                    title="Kurumlara Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
+                    title="Kurumlara Gönder" aria-label="${escapeHtml(file.file_name)} dosyasını kurumlara gönder"><i class="fas fa-paper-plane text-xs"></i></button>
                 <button class="admin-send-user-btn touch-target text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded flex items-center justify-center"
-                    title="Kişilere Gönder"><i class="fas fa-users text-xs"></i></button>
+                    title="Kişilere Gönder" aria-label="${escapeHtml(file.file_name)} dosyasını kişilere gönder"><i class="fas fa-users text-xs"></i></button>
                 <button class="admin-menu-trigger admin-file-menu-trigger touch-target text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded flex items-center justify-center"
-                        title="Daha fazla">
+                        title="Daha fazla" aria-label="${escapeHtml(file.file_name)} dosyası için daha fazla işlem" aria-haspopup="menu">
                     <i class="fas fa-ellipsis-v text-xs"></i>
                 </button>
             </div>`;
@@ -4125,7 +4125,7 @@ async function toggleAdminFilePublic(fileId, currentStatus) {
                 credentials: 'include', body: JSON.stringify({ is_public: currentStatus ? 0 : 1 })
             });
             if (res.ok) { showToast('Görünürlük başarıyla güncellendi!', 'success'); loadAdminFiles(); }
-            else showToast('İşlem başarısız oldu!', 'error');
+            else showActionError('Dosya görünürlüğünü güncelleme işlemi');
         },
         { danger: false }
     );
@@ -4135,7 +4135,7 @@ async function deleteAdminFile(fileId) {
     showConfirmDialog('Bu dosyayı silmek istediğinize emin misiniz?', async () => {
         const res = await fetch(`${API_BASE}/api/system/file/${fileId}`, { method: 'DELETE', credentials: 'include' });
         if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadAdminFiles(); loadAdminFolders(_adminFiles.currentFolderId); }
-        else showToast('İşlem başarısız oldu!', 'error');
+        else showActionError('Dosyayı silme işlemi');
     });
 }
 
@@ -4143,7 +4143,7 @@ async function deleteAdminFolder(folderId) {
     showConfirmDialog('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?', async () => {
         const res = await fetch(`${API_BASE}/api/collections/${folderId}`, { method: 'DELETE', credentials: 'include' });
         if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadAdminFolders(_adminFiles.currentFolderId); loadAdminFiles(); }
-        else showToast('İşlem başarısız oldu!', 'error');
+        else showActionError('Klasörü silme işlemi');
     });
 }
 
@@ -4171,7 +4171,7 @@ async function submitRenameFolder() {
         closeAdminFolderRenameModal();
         loadAdminFolders(_adminFiles.currentFolderId);
     } else {
-        showToast('İşlem başarısız oldu!', 'error');
+        showActionError('Klasör adını güncelleme işlemi');
     }
 }
 
@@ -4223,7 +4223,7 @@ async function submitFolderMove() {
         loadAdminFolders(_adminFiles.currentFolderId);
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Taşıma işlemi başarısız oldu!', 'error');
+        showActionError('Klasörü taşıma işlemi', data.error);
     }
 }
 
@@ -4242,7 +4242,7 @@ async function renameAdminFileRef(refId, currentName) {
         loadAdminFiles();
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'İşlem başarısız oldu!', 'error');
+        showActionError('Dosya adını güncelleme işlemi', data.error);
     }
 }
 function openAdminFolderModal() {
@@ -4278,10 +4278,10 @@ document.getElementById('adminFolderForm')?.addEventListener('submit', async (e)
             closeAdminFolderModal();
             loadAdminFolders(_adminFiles.currentFolderId);
         } else {
-            showToast(data.error || 'İşlem başarısız oldu!', 'error');
+            showActionError('Klasör oluşturma işlemi', data.error);
         }
     } catch(err) {
-        showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
+        showActionError('Klasör oluşturma işlemi', err.message);
     }
 });
 
@@ -5008,6 +5008,41 @@ window.showToast = function(message, type = 'info') {
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 };
+
+function getToastErrorMessage(context, rawMessage) {
+    const raw = String(rawMessage || '').trim();
+    const genericMessages = new Set([
+        '',
+        'Bir hata oluştu.',
+        'Bir hata oluştu',
+        'İşlem başarısız oldu!',
+        'İşlem başarısız oldu',
+        'Taşıma işlemi başarısız oldu!',
+        'Taşıma işlemi başarısız oldu',
+        'Güncelleme başarısız',
+        'Yüklenemedi',
+        'Bağlantı hatası oluştu.',
+        'Bağlantı hatası oluştu'
+    ]);
+
+    if (!raw || genericMessages.has(raw)) {
+        return `${context} tamamlanamadı. Lütfen bilgileri kontrol edip tekrar deneyin.`;
+    }
+
+    if (/^HTTP\s+\d+/i.test(raw)) {
+        return `${context} sırasında sunucu beklenmeyen bir yanıt verdi (${raw}). Lütfen tekrar deneyin.`;
+    }
+
+    if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(raw)) {
+        return `${context} sırasında bağlantı kurulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.`;
+    }
+
+    return raw;
+}
+
+function showActionError(context, rawMessage, type = 'error') {
+    showToast(getToastErrorMessage(context, rawMessage), type);
+}
 
 console.log('? Toast düzeltildi - tek ikonlu');
 // ====================== TOPLU KULLANICI EKLEME ======================
@@ -7362,7 +7397,7 @@ async function saveSupportTicket() {
         showToast('Talep güncellendi.', 'success');
         await loadSupport();
     } catch (err) {
-        showToast(err.message, 'error');
+        showActionError('Destek talebini güncelleme işlemi', err.message);
     }
 }
 
@@ -7375,7 +7410,7 @@ async function sendSupportReply() {
     const file = fileEl?.files?.[0] || null;
 
     if (!message && !file) {
-        showToast('Yanıt veya dosya gerekli.', 'warning');
+        showToast('Destek yanıtı göndermek için bir mesaj yazın veya dosya ekleyin.', 'warning');
         return;
     }
 
@@ -7398,7 +7433,7 @@ async function sendSupportReply() {
         await openSupportModal(currentSupportTicketId);
         await loadSupport();
     } catch (err) {
-        showToast(err.message, 'error');
+        showActionError('Destek yanıtını gönderme işlemi', err.message);
     }
 }
 
@@ -7482,7 +7517,7 @@ async function saveSubmission() {
         document.getElementById('submissionModal').classList.add('hidden');
         loadRequests();
     } else {
-        showToast('Güncelleme başarısız', 'error');
+        showActionError('Talep güncelleme işlemi');
     }
 }
 
@@ -7567,11 +7602,11 @@ async function loadAnnouncements() {
                                 ${a.title_en || a.summary_en || a.full_content_en ? '<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">EN hazır</span>' : ''}
                             </div>
                             <div class="flex gap-1">
-                                <button class="announcement-edit-btn text-blue-500 hover:text-blue-700 p-1" title="Düzenle">
+                                <button class="announcement-edit-btn text-blue-500 hover:text-blue-700 p-1" title="Düzenle" aria-label="${escapeHtml(a.title || 'Duyuru')} kaydını düzenle">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="text-purple-600 hover:text-purple-800 p-1 open-comments-mod-btn" data-ann-id="${a.id}" data-ann-title="${escapeHtml(a.title || "")}" title="Yorumlar"><i class="fas fa-comments"></i></button>
-                                <button class="announcement-delete-btn text-red-500 hover:text-red-700 p-1" title="Sil">
+                                <button class="text-purple-600 hover:text-purple-800 p-1 open-comments-mod-btn" data-ann-id="${a.id}" data-ann-title="${escapeHtml(a.title || "")}" title="Yorumlar" aria-label="${escapeHtml(a.title || 'Duyuru')} yorumlarını yönet"><i class="fas fa-comments"></i></button>
+                                <button class="announcement-delete-btn text-red-500 hover:text-red-700 p-1" title="Sil" aria-label="${escapeHtml(a.title || 'Duyuru')} kaydını sil">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -7665,7 +7700,7 @@ async function reloadCommentsModeration(annId) {
                         </div>
                         <button class="text-red-500 hover:text-red-700 text-sm flex-shrink-0 mod-delete-comment-btn"
                                 data-comment-id="${Number(c.id) || 0}"
-                                title="Yorumu sil">
+                                title="Yorumu sil" aria-label="${name} tarafından yazılan yorumu sil">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -8189,7 +8224,7 @@ async function editAnnouncement(id) {
         fillAnnouncementForm(a);
         document.getElementById('announcementModal').classList.remove('hidden');
     } catch (err) {
-        showToast('Duyuru bilgileri alınamadı', 'error');
+        showActionError('Duyuru bilgilerini yükleme işlemi');
     }
 }
 
@@ -8221,7 +8256,7 @@ async function deleteAnnouncement(id) {
     showConfirmDialog('Bu duyuruyu silmek istediğinize emin misiniz?', async () => {
         const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, { method: 'DELETE', credentials: 'include' });
         if (res.ok) { showToast('Duyuru silindi', 'success'); loadAnnouncements(); }
-        else showToast('İşlem başarısız oldu', 'error');
+        else showActionError('Duyuruyu silme işlemi');
     });
 }
 
@@ -8277,10 +8312,10 @@ document.getElementById('announcementForm').addEventListener('submit', async fun
             loadAnnouncements();
         } else {
             const data = await res.json().catch(() => ({}));
-            showToast(data.error || 'İşlem başarısız oldu', 'error');
+            showActionError('Duyuruyu kaydetme işlemi', data.error);
         }
     } catch(err) {
-        showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
+        showActionError('Duyuruyu kaydetme işlemi', err.message);
     }
 });
 
@@ -8693,6 +8728,3 @@ async function moveAdminFileRef(refId, fileName) {
 
 </body>
 </html>
-
-
-
