@@ -5343,29 +5343,48 @@ document.getElementById('editInstitutionCategory').innerHTML = categoryOptionsHt
 document.getElementById('editInstitutionStatus').innerHTML = statusOptionsHtml();
 
 let allInstitutions = [];
-let _institutionsView = { filtered: [], page: 1, pageSize: 25 };
+let _institutionsView = { items: [], page: 1, pageSize: 25, total: 0, totalPages: 1 };
 
-async function loadInstitutions() {
+async function loadInstitutions(page = 1) {
     const tbody = document.getElementById('institutionsList');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Yükleniyor...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">Yükleniyor...</td></tr>';
     
     try {
-        const d1Res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
-        const d1Institutions = await d1Res.json();
+        const params = new URLSearchParams({
+            page: String(page),
+            page_size: String(_institutionsView.pageSize),
+            sort: _instSortKey,
+            order: _instSortAsc ? 'asc' : 'desc'
+        });
+        const search = document.getElementById('institutionSearchInput')?.value?.trim();
+        const category = document.getElementById('institutionOrgFilter')?.value;
+        const status = document.getElementById('institutionStatusFilter')?.value;
+        if (search) params.set('search', search);
+        if (category) params.set('category', category);
+        if (status) params.set('status', status);
 
-        allInstitutions = d1Institutions.map(i => ({
+        const d1Res = await fetch(`${API_BASE}/api/admin/institutions?${params.toString()}`, { credentials: 'include' });
+        const payload = await d1Res.json();
+        if (!d1Res.ok) throw new Error(payload?.error || 'Kurumlar yüklenemedi');
+
+        const items = (payload.items || []).map(i => ({
             ...i,
             source: 'd1',
             displayName: i.name,
         }));
-        _institutionsView.filtered = allInstitutions;
-        _institutionsView.page = 1;
+        allInstitutions = items;
+        _institutionsView.items = items;
+        _institutionsView.total = Number(payload.total || 0);
+        _institutionsView.page = Number(payload.page || page || 1);
+        _institutionsView.pageSize = Number(payload.page_size || _institutionsView.pageSize);
+        _institutionsView.totalPages = Number(payload.total_pages || 1);
 
-        renderInstitutions(allInstitutions);
+        renderInstitutions(items);
         
     } catch (err) {
         console.error('loadInstitutions error:', err);
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-4">Yüklenirken hata oluştu</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-red-500 py-4">Yüklenirken hata oluştu</td></tr>';
+        document.getElementById('institutionsPagination').innerHTML = '';
     }
 }
 
@@ -5378,10 +5397,7 @@ function renderInstitutions(institutions) {
         return;
     }
 
-    const start = (_institutionsView.page - 1) * _institutionsView.pageSize;
-    const pageInstitutions = institutions.slice(start, start + _institutionsView.pageSize);
-
-    tbody.innerHTML = pageInstitutions.map(inst => {
+    tbody.innerHTML = institutions.map(inst => {
         const statusCls = STATUS_BADGE[inst.status] || 'bg-gray-100 text-gray-600';
         const orgLabel = categoryLabel(inst.category || '');
         const instInitials = '';
@@ -5424,9 +5440,9 @@ function renderInstitutions(institutions) {
         </tr>`;
     }).join('');
 
-    renderTablePagination('institutionsPagination', institutions.length, _institutionsView, (page) => {
+    renderTablePagination('institutionsPagination', _institutionsView.total, _institutionsView, (page) => {
         _institutionsView.page = page;
-        renderInstitutions(_institutionsView.filtered);
+        loadInstitutions(page);
     });
 }
 
@@ -5710,44 +5726,12 @@ function sortInstitutions(key) {
         el.textContent = k !== _instSortKey ? '↕' : (_instSortAsc ? '↑' : '↓');
         el.className = k === _instSortKey ? 'text-primary' : 'text-gray-400';
     });
-    filterInstitutions();
+    loadInstitutions(1);
 }
 
 function filterInstitutions() {
-    const searchTerm = document.getElementById('institutionSearchInput').value.toLowerCase();
-    const orgFilter = document.getElementById('institutionOrgFilter').value;
-    const statusFilter = document.getElementById('institutionStatusFilter').value;
-
-    let filtered = allInstitutions.filter(inst => {
-        const matchSearch = !searchTerm ||
-            (inst.displayName || inst.name || '').toLowerCase().includes(searchTerm) ||
-            (inst.domain || '').toLowerCase().includes(searchTerm) ||
-            (inst.city || '').toLowerCase().includes(searchTerm);
-        const matchOrg = !orgFilter || (inst.category || '') === orgFilter;
-        const matchStatus = !statusFilter || (inst.status || '') === statusFilter;
-        return matchSearch && matchOrg && matchStatus;
-    });
-
-    filtered.sort((a, b) => {
-        let av, bv;
-        if (_instSortKey === 'name') {
-            av = (a.displayName || a.name || '').toLowerCase();
-            bv = (b.displayName || b.name || '').toLowerCase();
-        } else if (_instSortKey === 'city') {
-            av = (a.city || '').toLowerCase();
-            bv = (b.city || '').toLowerCase();
-        } else {
-            av = a[_instSortKey] ?? -1;
-            bv = b[_instSortKey] ?? -1;
-        }
-        if (av < bv) return _instSortAsc ? -1 : 1;
-        if (av > bv) return _instSortAsc ? 1 : -1;
-        return 0;
-    });
-
-    _institutionsView.filtered = filtered;
     _institutionsView.page = 1;
-    renderInstitutions(filtered);
+    loadInstitutions(1);
 }
 let _syncChanges = [];
 let _syncTotal = 0;

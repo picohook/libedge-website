@@ -2798,18 +2798,95 @@ app.get('/api/admin/institutions', async (c) => {
   const db = c.env.DB;
   await ensureInstitutionMetadataColumns(db);
   const role = await getUserRole(c);
+  const url = new URL(c.req.url);
+  const search = (url.searchParams.get('search') || '').trim();
+  const category = (url.searchParams.get('category') || '').trim();
+  const status = (url.searchParams.get('status') || '').trim();
+  const sort = (url.searchParams.get('sort') || 'name').trim();
+  const order = (url.searchParams.get('order') || 'asc').trim().toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+  const requestedPage = Math.max(1, Number(url.searchParams.get('page') || 1));
+  const requestedPageSize = Math.max(1, Math.min(100, Number(url.searchParams.get('page_size') || 25)));
+
+  const sortColumns = {
+    name: 'LOWER(inst.name)',
+    city: 'LOWER(COALESCE(inst.city, \'\'))',
+    user_count: 'user_count',
+    file_count: 'file_count'
+  };
+  const sortSql = sortColumns[sort] || sortColumns.name;
+
+  const whereParts = [];
+  const params = [];
+  if (search) {
+    whereParts.push(`(
+      LOWER(inst.name) LIKE ?
+      OR LOWER(COALESCE(inst.domain, '')) LIKE ?
+      OR LOWER(COALESCE(inst.city, '')) LIKE ?
+    )`);
+    const like = `%${search.toLowerCase()}%`;
+    params.push(like, like, like);
+  }
+  if (category) {
+    whereParts.push(`inst.category = ?`);
+    params.push(category);
+  }
+  if (status) {
+    whereParts.push(`inst.status = ?`);
+    params.push(status);
+  }
+  const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
 
   if (role === 'super_admin') {
+    const totalRow = await db.prepare(`
+      SELECT COUNT(*) AS total
+      FROM institutions inst
+      ${whereSql}
+    `).bind(...params).first();
+
+    const total = Number(totalRow?.total || 0);
+    const totalPages = Math.max(1, Math.ceil(total / requestedPageSize));
+    const page = Math.min(requestedPage, totalPages);
+    const offset = (page - 1) * requestedPageSize;
+
     const institutions = await db.prepare(`
-      SELECT inst.id, inst.name, inst.domain, inst.website_url, inst.city, inst.category, inst.status, inst.created_at, inst.logo_url,
-        (SELECT COUNT(*) FROM users WHERE institution = inst.name) as user_count
-      FROM institutions inst ORDER BY inst.name
-    `).all();
+      SELECT
+        inst.id,
+        inst.name,
+        inst.domain,
+        inst.website_url,
+        inst.city,
+        inst.category,
+        inst.status,
+        inst.created_at,
+        inst.logo_url,
+        (SELECT COUNT(*) FROM users WHERE institution = inst.name) AS user_count,
+        (
+          SELECT COUNT(*)
+          FROM collection_files cf
+          JOIN collections col ON col.id = cf.collection_id
+          WHERE col.scope_type = 'institution'
+            AND col.scope_id = inst.id
+            AND col.is_active = 1
+            AND cf.is_active = 1
+        ) AS file_count
+      FROM institutions inst
+      ${whereSql}
+      ORDER BY ${sortSql} ${order}, inst.id ASC
+      LIMIT ? OFFSET ?
+    `).bind(...params, requestedPageSize, offset).all();
+
     const rows = institutions.results || [];
     for (const row of rows) {
-      row.file_count = await getInstitutionFileCount(db, row.id);
+      row.file_count = Number(row.file_count || 0);
+      row.user_count = Number(row.user_count || 0);
     }
-    return c.json(rows);
+    return c.json({
+      items: rows,
+      total,
+      page,
+      page_size: requestedPageSize,
+      total_pages: totalPages
+    });
   } else {
     const adminInstitutionId = await getUserInstitutionId(c);
     const adminInstitution = await getUserInstitution(c);
@@ -2829,8 +2906,16 @@ app.get('/api/admin/institutions', async (c) => {
     }
     if (inst) {
       inst.file_count = await getInstitutionFileCount(db, inst.id);
+      inst.user_count = Number(inst.user_count || 0);
     }
-    return c.json(inst ? [inst] : []);
+    const items = inst ? [inst] : [];
+    return c.json({
+      items,
+      total: items.length,
+      page: 1,
+      page_size: items.length || requestedPageSize,
+      total_pages: 1
+    });
   }
 });
 
