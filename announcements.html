@@ -513,23 +513,27 @@ async function getViewCountsBatch(slugs) {
     }
 }
 
-
 async function incrementViewCount(slug) {
     try {
         slug = String(slug || '').trim().toLowerCase();
+        if (!slug) return 0;
+
         const response = await fetch(`/api/views/${encodeURIComponent(slug)}`, {
             method: 'POST'
         });
+
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
         const data = await response.json();
         const views = Number(data.views || 0);
         viewCountCache[slug] = views;
         return views;
     } catch (error) {
         console.error('View count increment error:', error);
-        return viewCountCache[slug] || 0;
+        return viewCountCache[String(slug || '').trim().toLowerCase()] || 0;
     }
 }
+
 
 class AnnouncementManager {
     constructor() {
@@ -776,16 +780,15 @@ async loadAnnouncements() {
                 continue;
             }
 
-            const resolvedViews = Number(
+            a._viewSlug = slug;
+            a.views = Number(
                 batchViews[slug] ??
                 viewCountCache[slug] ??
                 a?.views ??
                 0
             );
 
-            a._viewSlug = slug;
-            a.views = resolvedViews;
-            viewCountCache[slug] = resolvedViews;
+            viewCountCache[slug] = a.views;
         }
 
         this.announcements = announcements;
@@ -795,7 +798,9 @@ async loadAnnouncements() {
         this.showErrorState();
     }
 }
-    handleFilter(e) {
+ 
+
+handleFilter(e) {
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.classList.remove('active');
         });
