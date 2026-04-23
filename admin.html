@@ -4344,7 +4344,7 @@ function instFilesRender(folderFilter, fileFilter) {
     foldersEl.innerHTML = folders.map(f => {
         const safeName = escapeHtml(f.folder_name).replace(/'/g, "\\'");
         const selCb = isSelect ? `<input type="checkbox" class="ift-folder-cb absolute top-1 left-1 w-4 h-4"
-            data-id="${f.id}" onclick="event.stopPropagation();instFilesUpdateSelCount()">` : '';
+            data-id="${f.id}" data-name="${escapeHtml(f.folder_name)}" onclick="event.stopPropagation();instFilesUpdateSelCount()">` : '';
         return `
         <div class="border border-gray-200 rounded-lg p-3 hover:bg-yellow-50 text-center group relative selectable-row cursor-pointer"
              onclick="${isSelect ? `instFolderToggleCb(this,event)` : `instFilesOpenFolder(${f.id},'${safeName}',event)`}">
@@ -4647,9 +4647,20 @@ function instFilesToggleSelectMode() {
     instFilesRender();
 }
 function instFilesUpdateSelCount() {
-    const n = document.querySelectorAll('.ift-file-cb:checked,.ift-folder-cb:checked').length;
-    document.getElementById('instFilesSelectionCounter').textContent = n ? `${n} seçili` : '';
-    document.getElementById('instFilesSelectionBarCount').textContent = `${n} öğe seçildi`;
+    const fileCount = document.querySelectorAll('.ift-file-cb:checked').length;
+    const folderCount = document.querySelectorAll('.ift-folder-cb:checked').length;
+    let message = '';
+
+    if (fileCount && folderCount) {
+        message = `${fileCount} dosya, ${folderCount} klasör seçildi`;
+    } else if (fileCount) {
+        message = `${fileCount} dosya seçildi`;
+    } else if (folderCount) {
+        message = `${folderCount} klasör seçildi`;
+    }
+
+    document.getElementById('instFilesSelectionCounter').textContent = message;
+    document.getElementById('instFilesSelectionBarCount').textContent = message || '0 öğe seçildi';
 }
 function instFilesSelectAll() {
     document.querySelectorAll('.ift-file-cb,.ift-folder-cb').forEach(cb => cb.checked = true);
@@ -4690,14 +4701,39 @@ async function openSendToUsersModal(fileIds, usersUrl, sendUrl, label) {
 // Kurum dosyaları: seçim modundan toplu gönder
 async function instFilesOpenSendToUsersModal() {
     const fileChecks = [...document.querySelectorAll('.ift-file-cb:checked')];
-    if (!fileChecks.length) { showToast('Gönderilecek dosya seçin.', 'warning'); return; }
+    const folderChecks = [...document.querySelectorAll('.ift-folder-cb:checked')];
     if (!_ift.instId) { showToast('Kurum bilgisi yüklenemedi.', 'error'); return; }
-    const fileIds = fileChecks.map(cb => Number(cb.dataset.id));
+
+    let fileIds = fileChecks.map(cb => Number(cb.dataset.id));
+
+    for (const folderCheck of folderChecks) {
+        const folderId = folderCheck.dataset.id;
+        try {
+            const res = await fetch(`${API_BASE}/api/institution/folder/${folderId}/files`, { credentials: 'include' });
+            const files = res.ok ? await res.json() : [];
+            files.forEach(f => fileIds.push(Number(f.id)));
+        } catch {
+            const folderName = folderCheck.dataset.name || 'Seçili klasör';
+            showToast(`"${folderName}" klasöründeki dosyalar alınamadı.`, 'warning');
+        }
+    }
+
+    fileIds = [...new Set(fileIds)].filter(Boolean);
+
+    if (!fileIds.length) {
+        showToast('Gönderilecek dosya seçin veya içinde dosya olan bir klasör seçin.', 'warning');
+        return;
+    }
+
+    const label = folderChecks.length
+        ? `${fileIds.length} dosya, ${folderChecks.length} klasörden dahil edildi. Göndermek istediğiniz kişileri işaretleyin:`
+        : `${fileIds.length} dosya seçildi. Göndermek istediğiniz kişileri işaretleyin:`;
+
     await openSendToUsersModal(
         fileIds,
         `${API_BASE}/api/institution/${_ift.instId}/users`,
         `${API_BASE}/api/institution/${_ift.instId}/send-to-users`,
-        `${fileIds.length} dosya seçildi. Göndermek istediğiniz kişileri işaretleyin:`
+        label
     );
 }
 
