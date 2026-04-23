@@ -203,6 +203,19 @@
             #announcementModal .sticky {
                 position: static;
             }
+            #announcementPreviewModal {
+                padding: 0;
+                align-items: stretch;
+                justify-content: stretch;
+            }
+            #announcementPreviewModal > div {
+                max-width: none !important;
+                width: 100vw !important;
+                height: 100dvh !important;
+                max-height: 100dvh !important;
+                border-radius: 0 !important;
+                padding: 1rem !important;
+            }
             #coverCropModal {
                 padding: 0;
             }
@@ -221,6 +234,20 @@
             }
             #coverCropImage {
                 max-height: calc(100dvh - 10rem) !important;
+            }
+            #bulkInstitutionModal,
+            #bulkUserModal {
+                padding: 0;
+                align-items: stretch;
+                justify-content: stretch;
+            }
+            #bulkInstitutionModal > div,
+            #bulkUserModal > div {
+                max-width: none !important;
+                width: 100vw !important;
+                height: 100dvh !important;
+                max-height: 100dvh !important;
+                border-radius: 0 !important;
             }
         }
     </style>
@@ -1220,16 +1247,16 @@
 
     <div id="tab-requests" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                 <h3 class="text-lg font-semibold">Gelen Talepler</h3>
-                <div class="flex gap-2 flex-wrap">
-                    <select id="requestsTypeFilter" onchange="loadRequests()" class="border rounded px-2 py-1 text-sm">
+                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <select id="requestsTypeFilter" onchange="loadRequests()" class="border rounded px-3 py-2 text-sm w-full sm:w-auto">
                         <option value="">Tüm Tipler</option>
                         <option value="trial">Deneme Erişimi</option>
                         <option value="suggest">Ürün Önerisi</option>
                         <option value="contact">İletişim</option>
                     </select>
-                    <select id="requestsStatusFilter" onchange="loadRequests()" class="border rounded px-2 py-1 text-sm">
+                    <select id="requestsStatusFilter" onchange="loadRequests()" class="border rounded px-3 py-2 text-sm w-full sm:w-auto">
                         <option value="">Tüm Durumlar</option>
                         <option value="pending">Bekliyor</option>
                         <option value="reviewing">İnceleniyor</option>
@@ -1239,7 +1266,7 @@
                 </div>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="w-full min-w-[860px] text-sm">
                     <thead>
                         <tr>
                             <th>Tarih</th>
@@ -1290,17 +1317,17 @@
     <!-- Support Tab -->
     <div id="tab-support" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <div class="flex flex-wrap gap-3 items-center justify-between mb-5">
+            <div class="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-5">
                 <h3 class="text-lg font-semibold">Destek Talepleri</h3>
-                <div class="flex gap-2 flex-wrap">
-                    <select id="supportStatusFilter" onchange="loadSupport()" class="border rounded-lg px-3 py-2 text-sm">
+                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <select id="supportStatusFilter" onchange="loadSupport()" class="border rounded-lg px-3 py-2 text-sm w-full sm:w-auto">
                         <option value="">Tüm Durumlar</option>
                         <option value="open">Açık</option>
                         <option value="in_progress">İşlemde</option>
                         <option value="resolved">Çözüldü</option>
                         <option value="closed">Kapatıldı</option>
                     </select>
-                    <select id="supportPriorityFilter" onchange="loadSupport()" class="border rounded-lg px-3 py-2 text-sm">
+                    <select id="supportPriorityFilter" onchange="loadSupport()" class="border rounded-lg px-3 py-2 text-sm w-full sm:w-auto">
                         <option value="">Tüm Öncelikler</option>
                         <option value="urgent">Acil</option>
                         <option value="high">Yüksek</option>
@@ -1310,7 +1337,7 @@
                 </div>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="w-full min-w-[920px] text-sm">
                     <thead>
                         <tr class="text-left">
                             <th>#</th>
@@ -1339,7 +1366,7 @@
                     <button onclick="closeSupportModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="p-6 overflow-y-auto flex-1 space-y-4">
-                    <div class="flex gap-3 flex-wrap">
+                    <div class="flex flex-col sm:flex-row gap-3 flex-wrap">
                         <div class="flex-1 min-w-40">
                             <label class="block text-xs text-gray-500 mb-1">Durum</label>
                             <select id="supportModalStatus" class="w-full border rounded-lg p-2 text-sm">
@@ -1358,8 +1385,8 @@
                                 <option value="urgent">Acil</option>
                             </select>
                         </div>
-                        <div class="pt-5">
-                            <button onclick="saveSupportTicket()" class="btn btn-primary">Güncelle</button>
+                        <div class="pt-0 sm:pt-5">
+                            <button onclick="saveSupportTicket()" class="btn btn-primary w-full sm:w-auto">Güncelle</button>
                         </div>
                     </div>
                     <div id="supportReplies" class="space-y-3 max-h-60 overflow-y-auto border rounded-xl p-3 bg-gray-50"></div>
@@ -1708,30 +1735,30 @@
     </div>
 </div>
 
-<div id="announcementPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[60]">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
+<div id="announcementPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[60] p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <div class="flex items-center justify-between gap-4 mb-4">
             <div>
                 <h3 class="text-xl font-bold text-gray-900">Duyuru Önizleme</h3>
                 <p class="text-sm text-gray-500">Public kart görünümüne yakın hızlı kontrol ekranı</p>
             </div>
-            <button type="button" onclick="closeAnnouncementPreviewModal()" class="text-gray-400 hover:text-gray-600 text-xl">
+            <button type="button" onclick="closeAnnouncementPreviewModal()" class="text-gray-400 hover:text-gray-600 text-xl touch-target flex items-center justify-center">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <div class="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
-            <div id="announcementPreviewModalImage" class="h-64 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-slate-400 text-4xl">
+            <div id="announcementPreviewModalImage" class="h-48 sm:h-64 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-slate-400 text-4xl">
                 <i class="fas fa-image"></i>
             </div>
-            <div class="p-6">
+            <div class="p-4 sm:p-6">
                 <div class="flex flex-wrap items-center gap-2 mb-3">
                     <span id="announcementPreviewModalStatus" class="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700">Taslak</span>
                     <span id="announcementPreviewModalCategory" class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">Genel</span>
                     <span id="announcementPreviewModalPriority" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">Orta</span>
                 </div>
-                <h4 id="announcementPreviewModalTitle" class="text-2xl font-bold text-gray-900 mb-2">Duyuru başlığı</h4>
+                <h4 id="announcementPreviewModalTitle" class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Duyuru başlığı</h4>
                 <p id="announcementPreviewModalDate" class="text-sm text-gray-500 mb-4">Yayın tarihi seçilmedi</p>
-                <p id="announcementPreviewModalSummary" class="text-base text-gray-700 whitespace-pre-line">Kısa özet burada görünecek.</p>
+                <p id="announcementPreviewModalSummary" class="text-sm sm:text-base text-gray-700 whitespace-pre-line">Kısa özet burada görünecek.</p>
             </div>
         </div>
     </div>
@@ -1870,8 +1897,8 @@
         <!-- Adım 2: Önizleme tablosu - SCROLL EKLENDİ -->
         <div id="bulkStep2" class="hidden flex-col flex-1 min-h-0">
             <p class="text-sm text-gray-500 mb-3 flex-shrink-0">Yanlış satırları silin, ardından <strong>Kaydet</strong>'e basın.</p>
-            <div class="overflow-y-auto border rounded" style="flex: 1; min-height: 0; max-height: 50vh;">
-                <table class="w-full text-sm">
+            <div class="bulk-preview-scroll overflow-auto border rounded" style="flex: 1; min-height: 0;">
+                <table class="w-full min-w-[720px] text-sm">
                     <thead class="sticky top-0 bg-gray-50 z-10">
                         <tr>
                             <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Kurum Adı</th>
@@ -1945,8 +1972,8 @@
         <!-- Adım 2: Önizleme tablosu -->
         <div id="bulkUserStep2" class="hidden flex-col flex-1 min-h-0">
             <p class="text-sm text-gray-500 mb-3 flex-shrink-0">Yanlış satırları silin, ardından <strong>Ekle</strong>'ye basın.</p>
-            <div class="overflow-y-auto border rounded" style="flex: 1; min-height: 0; max-height: 50vh;">
-                <table class="w-full text-sm">
+            <div class="bulk-preview-scroll overflow-auto border rounded" style="flex: 1; min-height: 0;">
+                <table class="w-full min-w-[920px] text-sm">
                     <thead class="sticky top-0 bg-gray-50 z-10">
                         <tr>
                             <th class="text-left px-3 py-2 font-medium text-gray-700 sticky top-0 bg-gray-50">Ad</th>
@@ -8639,10 +8666,6 @@ async function moveAdminFileRef(refId, fileName) {
 
 </body>
 </html>
-
-
-
-
 
 
 
