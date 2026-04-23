@@ -1,12 +1,12 @@
 # workers/proxy/wrangler.toml
 # Remote Access Proxy Worker — *.proxy.libedge.com wildcard.
-# Ana LibEdge Worker'ından (form-handler-*) BAĞIMSIZ deploy edilir ama
+# Ana LibEdge Worker'ından (libedge-api-*) BAĞIMSIZ deploy edilir ama
 # aynı D1 ve KV'lere bind olur.
 #
 # Ana wrangler.toml (libedge-website root) ile birebir paralel ortam yapısı:
-#   default      → (ana: form-handler)             libedge-db / RATE_LIMIT_KV 36237…
-#   env.staging  → (ana: form-handler-staging)     libedge-db / RATE_LIMIT_KV 556d17…
-#   env.production → (ana: form-handler-prod)      libedge-db-production / RATE_LIMIT_KV 5640d9…
+#   default      → (ana: libedge-api)              libedge-db / RATE_LIMIT_KV 36237…
+#   env.staging  → (ana: libedge-api-staging)      libedge-db / RATE_LIMIT_KV 556d17…
+#   env.production → (ana: libedge-api-prod)       libedge-db-production / RATE_LIMIT_KV 5640d9…
 
 name = "libedge-ra-proxy"
 main = "src/index.js"
@@ -35,7 +35,7 @@ binding = "RA_UPSTREAM_SESSIONS"
 id = "d742f0d165234385bacf6ddfc0cd43e1"   # npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS
 
 # ──────────────────────────────────────────────────────────────────────────
-# env.staging — form-handler-staging ile paralel
+# env.staging — libedge-api-staging ile paralel
 # ──────────────────────────────────────────────────────────────────────────
 [env.staging]
 name = "libedge-ra-proxy-staging"
@@ -66,7 +66,7 @@ binding = "RA_UPSTREAM_SESSIONS"
 id = "a3a0f76dca834921b4b1000bce675037"   # wrangler kv:namespace create --env staging
 
 # ──────────────────────────────────────────────────────────────────────────
-# env.production — form-handler-prod ile paralel
+# env.production — libedge-api-prod ile paralel
 # ──────────────────────────────────────────────────────────────────────────
 [env.production]
 name = "libedge-ra-proxy-prod"

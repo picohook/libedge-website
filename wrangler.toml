@@ -1,11 +1,11 @@
-name = "form-handler"
+name = "libedge-api"
 main = "backend/src/index.js"
 compatibility_date = "2026-03-01"
 # compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "default"
-WORKER_NAME = "form-handler"
+WORKER_NAME = "libedge-api"
 
 # D1 Binding (default env)
 [[d1_databases]]
@@ -43,11 +43,11 @@ id = "d742f0d165234385bacf6ddfc0cd43e1"
 
 # Staging environment
 [env.staging]
-name = "form-handler-staging"
+name = "libedge-api-staging"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
-WORKER_NAME = "form-handler-staging"
+WORKER_NAME = "libedge-api-staging"
 RA_PROXY_HOST = "proxy-staging.selmiye.com"
 
 [[env.staging.d1_databases]]
@@ -71,11 +71,11 @@ id = "a3a0f76dca834921b4b1000bce675037"
 
 # Production environment
 [env.production]
-name = "form-handler-prod"
+name = "libedge-api-prod"
 
 [env.production.vars]
 ENVIRONMENT = "production"
-WORKER_NAME = "form-handler-prod"
+WORKER_NAME = "libedge-api-prod"
 RA_PROXY_HOST = "proxy.selmiye.com"
 
 [[env.production.d1_databases]]
