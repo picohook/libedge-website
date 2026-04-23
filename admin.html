@@ -2048,7 +2048,7 @@ document.addEventListener('click', function(e) {
 
         renderProductOptions();
         document.getElementById('productsList').innerHTML = products.map(p => `
-             <tr>
+             <tr class="product-row" data-product-slug="${escapeHtml(p.slug)}">
                 <td class="px-4 py-2">${escapeHtml(p.slug)}</td>
                 <td class="px-4 py-2">${escapeHtml(p.name)}</td>
                 <td class="px-4 py-2">${escapeHtml(p.category || '-')}</td>
@@ -2058,11 +2058,19 @@ document.addEventListener('click', function(e) {
                     ${p.default_access_url ? `<a href="${escapeHtml(p.default_access_url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all">${escapeHtml(p.default_access_url)}</a>` : ''}
                 </td>
                 <td class="px-4 py-2 text-right">
-                    <button type="button" onclick="openProductModal('${escapeHtml(p.slug)}')" class="text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="product-edit-btn text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></button>
                 </td>
              </tr>
         `).join('');
     }
+
+document.getElementById('productsList')?.addEventListener('click', function(e) {
+    const row = e.target.closest('.product-row');
+    if (!row) return;
+    if (e.target.closest('.product-edit-btn')) {
+        openProductModal(row.dataset.productSlug || '');
+    }
+});
 
     function openProductModal(slug) {
         const product = products.find(p => p.slug === slug);
@@ -6494,7 +6502,7 @@ async function loadRequests() {
             const statusColor = SUBMISSION_STATUS_COLORS[r.status]    || 'bg-gray-100 text-gray-700';
             const msg = r.message ? (r.message.length > 60 ? r.message.slice(0, 60) + '…' : r.message) : '-';
             const note = r.admin_note ? `<span title="${escapeHtml(r.admin_note)}" class="ml-1 text-gray-400 cursor-help"><i class="fas fa-info-circle text-xs"></i></span>` : '';
-            return `<tr class="hover:bg-gray-50">
+            return `<tr class="hover:bg-gray-50 request-row">
                 <td class="text-xs text-gray-500 whitespace-nowrap">${date}</td>
                 <td><span class="text-xs px-2 py-0.5 rounded-full font-medium ${typeColor}">${typeLabel}</span></td>
                 <td>${escapeHtml(r.name || '-')}</td>
@@ -6502,13 +6510,20 @@ async function loadRequests() {
                 <td class="text-xs">${escapeHtml(r.institution || '-')}</td>
                 <td class="text-xs text-gray-600" title="${escapeHtml(r.message || '')}">${escapeHtml(msg)}</td>
                 <td><span class="text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}">${statusLabel}</span>${note}</td>
-                <td><button onclick="openSubmissionModal(this)" data-id="${r.id}" data-status="${escapeHtml(r.status || 'pending')}" data-note="${escapeHtml(r.admin_note || '')}" class="text-xs text-primary hover:underline">Düzenle</button></td>
+                <td><button class="request-edit-btn text-xs text-primary hover:underline" data-id="${r.id}" data-status="${escapeHtml(r.status || 'pending')}" data-note="${escapeHtml(r.admin_note || '')}">Düzenle</button></td>
             </tr>`;
         }).join('');
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-red-500">${err.message}</td></tr>`;
     }
 }
+
+document.getElementById('requestsList')?.addEventListener('click', function(e) {
+    const btn = e.target.closest('.request-edit-btn');
+    if (btn) {
+        openSubmissionModal(btn);
+    }
+});
 
 function openSubmissionModal(btn) {
     document.getElementById('submissionEditId').value = btn.dataset.id;
@@ -6602,7 +6617,7 @@ async function loadAnnouncements() {
                 : '<div class="w-full h-40 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-3xl text-slate-400"><i class="fas fa-image"></i></div>';
 
             return `
-                <div class="border rounded-2xl overflow-hidden hover:shadow-md transition ${a.is_published ? 'bg-white' : isScheduled ? 'bg-amber-50' : 'bg-gray-50 opacity-80'}">
+                <div class="border rounded-2xl overflow-hidden hover:shadow-md transition announcement-card ${a.is_published ? 'bg-white' : isScheduled ? 'bg-amber-50' : 'bg-gray-50 opacity-80'}" data-announcement-id="${a.id}">
                     ${previewImage}
                     <div class="p-4">
                         <div class="flex justify-between items-start mb-2 gap-2">
@@ -6617,11 +6632,11 @@ async function loadAnnouncements() {
                                 ${a.title_en || a.summary_en || a.full_content_en ? '<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">EN hazır</span>' : ''}
                             </div>
                             <div class="flex gap-1">
-                                <button onclick="editAnnouncement(${a.id})" class="text-blue-500 hover:text-blue-700 p-1" title="Düzenle">
+                                <button class="announcement-edit-btn text-blue-500 hover:text-blue-700 p-1" title="Düzenle">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                                                <button class="text-purple-600 hover:text-purple-800 p-1 open-comments-mod-btn" data-ann-id="${a.id}" data-ann-title="${escapeHtml(a.title || "")}" title="Yorumlar"><i class="fas fa-comments"></i></button>
-                                <button onclick="deleteAnnouncement(${a.id})" class="text-red-500 hover:text-red-700 p-1" title="Sil">
+                                <button class="text-purple-600 hover:text-purple-800 p-1 open-comments-mod-btn" data-ann-id="${a.id}" data-ann-title="${escapeHtml(a.title || "")}" title="Yorumlar"><i class="fas fa-comments"></i></button>
+                                <button class="announcement-delete-btn text-red-500 hover:text-red-700 p-1" title="Sil">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -6640,6 +6655,22 @@ async function loadAnnouncements() {
         container.innerHTML = '<p class="col-span-full text-center text-red-500 py-8">Yüklenirken hata oluştu</p>';
     }
 }
+
+document.getElementById('announcementsList')?.addEventListener('click', function(e) {
+    const card = e.target.closest('.announcement-card');
+    if (!card) return;
+    const id = Number(card.dataset.announcementId);
+    if (!id) return;
+
+    if (e.target.closest('.announcement-edit-btn')) {
+        editAnnouncement(id);
+        return;
+    }
+
+    if (e.target.closest('.announcement-delete-btn')) {
+        deleteAnnouncement(id);
+    }
+});
 
 // ====================== YORUM MODERASYONU ======================
 async function openCommentsModeration(annId, title) {
@@ -7554,7 +7585,7 @@ async function moveAdminFileRef(refId, fileName) {
 
 </script>
 
-<!-- Dosya Ta->ma Modal -->
+<!-- Dosya Taşıma Modal -->
 <div id="adminMoveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[85vh] overflow-y-auto">
         <div class="flex items-center justify-between px-5 py-4 border-b">
@@ -7566,7 +7597,7 @@ async function moveAdminFileRef(refId, fileName) {
             <button onclick="closeAdminMoveModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
         </div>
         <div class="px-5 pt-4">
-            <input id="adminMoveModalSearch" type="text" placeholder="Klas&#246;r ara..." class="w-full border rounded-lg px-3 py-2 text-sm mb-1"
+            <input id="adminMoveModalSearch" type="text" placeholder="Klasör ara..." class="w-full border rounded-lg px-3 py-2 text-sm mb-1"
                 oninput="adminMoveModalState.search=this.value;renderAdminMoveModalFolders()">
             <p id="adminMoveModalSearchStatus" class="text-xs text-gray-500 mb-2"></p>
             <div id="adminMoveModalFolderList" class="border rounded-xl divide-y max-h-72 overflow-y-auto mb-4 bg-gray-50"></div>
