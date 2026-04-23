@@ -3530,9 +3530,6 @@ let _adminFiles = {
 let _allInstitutionOptions = []; // still used by Gönder modal
 let _allInstitutionOptionsPromise = null;
 
-// Files tab is super_admin-only, so this always returns true when on files tab
-function isAdminSystemScope() { return true; }
-
 // Kurum listesini yükle
 // ====================== KURUM DOSYALARI - ADMIN İÇİN DÜZELTİLMİŞ VERSİYON ======================
 
@@ -8642,7 +8639,6 @@ async function moveAdminFileRef(refId, fileName) {
 
 </body>
 </html>
-
 
 
 
