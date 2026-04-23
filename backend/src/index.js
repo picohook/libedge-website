@@ -44,18 +44,24 @@ const DEFAULT_PRODUCT_CATALOG = [
 ];
 
 // 1. CORS Middleware (En üstte, her şeyden önce)
-app.use('*', cors({
-  origin: (origin) => {
-    // Gelen origin izin verilenler listesinde varsa onu kullan, yoksa staging'i kullan
-    if (!origin) return "https://staging.libedge-website.pages.dev";
-    return ALLOWED_ORIGINS.includes(origin) ? origin : "https://staging.libedge-website.pages.dev";
-  },
-  credentials: true,
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  exposeHeaders: ['Set-Cookie', 'Content-Length'],  // ← Set-Cookie expose et!
-  maxAge: 86400,
-}));
+app.use('*', async (c, next) => {
+  const fallbackOrigin =
+    c.env?.ENVIRONMENT === 'production'
+      ? 'https://www.libedge.com'
+      : 'https://staging.libedge-website.pages.dev';
+
+  return cors({
+    origin: (origin) => {
+      if (!origin) return fallbackOrigin;
+      return ALLOWED_ORIGINS.includes(origin) ? origin : fallbackOrigin;
+    },
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    exposeHeaders: ['Set-Cookie', 'Content-Length'],
+    maxAge: 86400,
+  })(c, next);
+});
 
 // ====================== TOKEN HELPERS ======================
 // hono/jwt: sign() and verify() replace manual HS256 implementation.
