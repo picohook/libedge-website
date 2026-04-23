@@ -1768,6 +1768,18 @@ app.get('/api/admin/users', async (c) => {
   const institutionFilter = (url.searchParams.get('institution') || '').trim();
   const requestedPage = Math.max(1, Number(url.searchParams.get('page') || 1));
   const requestedPageSize = Math.max(1, Math.min(100, Number(url.searchParams.get('page_size') || 25)));
+  const sort = (url.searchParams.get('sort') || 'id').trim();
+  const order = (url.searchParams.get('order') || 'desc').trim().toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const sortColumns = {
+    id: 'u.id',
+    full_name: 'LOWER(COALESCE(u.full_name, \'\'))',
+    email: 'LOWER(u.email)',
+    institution_name: 'LOWER(COALESCE(i.name, u.institution, \'\'))',
+    role: 'LOWER(u.role)',
+    created_at: 'u.created_at',
+    last_login: 'u.last_login'
+  };
+  const sortSql = sortColumns[sort] || sortColumns.id;
 
   const whereParts = [];
   const params = [];
@@ -1815,7 +1827,7 @@ app.get('/api/admin/users', async (c) => {
            u.institution, u.institution_id, u.role, u.created_at, u.last_login,
            COALESCE(i.name, u.institution) as institution_name
     ${baseSql}
-    ORDER BY u.id DESC
+    ORDER BY ${sortSql} ${order}, u.id DESC
   `;
 
   if (!hasPagedRequest) {
@@ -2504,6 +2516,8 @@ app.get('/api/admin/subscriptions', async (c) => {
   const search = (url.searchParams.get('search') || '').trim().toLowerCase();
   const typeFilter = (url.searchParams.get('type') || '').trim();
   const statusFilter = (url.searchParams.get('status') || '').trim();
+  const sort = (url.searchParams.get('sort') || 'id').trim();
+  const order = (url.searchParams.get('order') || 'desc').trim().toLowerCase() === 'asc' ? 1 : -1;
 
   let individualResults = [], institutionalResults = [];
 
@@ -2605,7 +2619,19 @@ app.get('/api/admin/subscriptions', async (c) => {
     });
   }
 
-  allResults.sort((a, b) => Number(b.id) - Number(a.id));
+  const normalizeSortValue = (item, key) => {
+    if (key === 'subject_name') return String(item.subject_name || item.institution_name || '').toLowerCase();
+    if (key === 'product_slug' || key === 'type' || key === 'status') return String(item[key] || '').toLowerCase();
+    if (key === 'start_date' || key === 'end_date') return String(item[key] || '');
+    return Number(item.id || 0);
+  };
+  allResults.sort((a, b) => {
+    const av = normalizeSortValue(a, sort);
+    const bv = normalizeSortValue(b, sort);
+    if (av < bv) return -1 * order;
+    if (av > bv) return 1 * order;
+    return Number(b.id || 0) - Number(a.id || 0);
+  });
   if (!hasPagedRequest) {
     return c.json(allResults);
   }

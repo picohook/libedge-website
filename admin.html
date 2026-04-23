@@ -289,13 +289,13 @@
                 <table class="w-full">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Ad Soyad</th>
-                            <th>E-posta</th>
-                            <th>Kurum</th>
-                            <th>Rol</th>
-                            <th>Kayıt Tarihi</th>
-                            <th>Son Giriş</th>
+                            <th class="cursor-pointer select-none" onclick="sortUsers('id')">ID <span id="userSort_id" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortUsers('full_name')">Ad Soyad <span id="userSort_full_name" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortUsers('email')">E-posta <span id="userSort_email" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortUsers('institution_name')">Kurum <span id="userSort_institution_name" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortUsers('role')">Rol <span id="userSort_role" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortUsers('created_at')">Kayıt Tarihi <span id="userSort_created_at" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortUsers('last_login')">Son Giriş <span id="userSort_last_login" class="text-gray-400">↕</span></th>
                             <th>İşlem</th>
                         </tr>
                     </thead>
@@ -343,14 +343,14 @@
                 <table class="w-full">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Tip</th>
-                            <th>Kullanıcı / Kurum</th>
-                            <th>Ürün</th>
+                            <th class="cursor-pointer select-none" onclick="sortSubscriptions('id')">ID <span id="subSort_id" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortSubscriptions('type')">Tip <span id="subSort_type" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortSubscriptions('subject_name')">Kullanıcı / Kurum <span id="subSort_subject_name" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortSubscriptions('product_slug')">Ürün <span id="subSort_product_slug" class="text-gray-400">↕</span></th>
                             <th>Erişim</th>
-                            <th>Durum</th>
-                            <th>Başlangıç</th>
-                            <th>Bitiş</th>
+                            <th class="cursor-pointer select-none" onclick="sortSubscriptions('status')">Durum <span id="subSort_status" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortSubscriptions('start_date')">Başlangıç <span id="subSort_start_date" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" onclick="sortSubscriptions('end_date')">Bitiş <span id="subSort_end_date" class="text-gray-400">↕</span></th>
                             <th>İşlem</th>
                         </tr>
                     </thead>
@@ -2296,6 +2296,8 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     // Kullanıcıları listele
     let allUsers = [];
     let _usersView = { items: [], page: 1, pageSize: 25, total: 0, totalPages: 1 };
+    let _userSortKey = 'id';
+    let _userSortAsc = false;
 
     function timeAgo(dateStr) {
         if (!dateStr) return '-';
@@ -2361,6 +2363,27 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         });
     }
 
+    function updateUserSortIcons() {
+        ['id', 'full_name', 'email', 'institution_name', 'role', 'created_at', 'last_login'].forEach(k => {
+            const el = document.getElementById(`userSort_${k}`);
+            if (!el) return;
+            el.textContent = k !== _userSortKey ? '↕' : (_userSortAsc ? '↑' : '↓');
+            el.className = k === _userSortKey ? 'text-primary' : 'text-gray-400';
+        });
+    }
+
+    function sortUsers(key) {
+        if (_userSortKey === key) {
+            _userSortAsc = !_userSortAsc;
+        } else {
+            _userSortKey = key;
+            _userSortAsc = key === 'full_name' || key === 'email' || key === 'institution_name' || key === 'role';
+        }
+        updateUserSortIcons();
+        _usersView.page = 1;
+        loadUsers(1);
+    }
+
     function filterUsers() {
         _usersView.page = 1;
         loadUsers(1);
@@ -2369,7 +2392,9 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     async function loadUsers(page = 1) {
         const params = new URLSearchParams({
             page: String(page),
-            page_size: String(_usersView.pageSize)
+            page_size: String(_usersView.pageSize),
+            sort: _userSortKey,
+            order: _userSortAsc ? 'asc' : 'desc'
         });
         const q = document.getElementById('userSearchInput')?.value?.trim();
         const role = document.getElementById('userRoleFilter')?.value;
@@ -2395,6 +2420,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             institutions.map(i => `<option value="${escapeHtml(i)}"${i === currentVal ? ' selected' : ''}>${escapeHtml(i)}</option>`).join('');
 
         renderUsers(allUsers);
+        updateUserSortIcons();
     }
 
     // ---- Kullanıcı Dosyaları Panel ----
@@ -2573,11 +2599,15 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
 
     // Abonelikleri listele
     let _subscriptionsView = { items: [], page: 1, pageSize: 25, total: 0, totalPages: 1 };
+    let _subscriptionSortKey = 'id';
+    let _subscriptionSortAsc = false;
 
     async function loadSubscriptions(page = 1) {
         const params = new URLSearchParams({
             page: String(page),
-            page_size: String(_subscriptionsView.pageSize)
+            page_size: String(_subscriptionsView.pageSize),
+            sort: _subscriptionSortKey,
+            order: _subscriptionSortAsc ? 'asc' : 'desc'
         });
         const search = document.getElementById('subscriptionSearchInput')?.value?.trim();
         const type = document.getElementById('subscriptionTypeFilter')?.value;
@@ -2638,9 +2668,32 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             _subscriptionsView.page = nextPage;
             loadSubscriptions(nextPage);
         });
+
+        updateSubscriptionSortIcons();
     }
 
     function filterSubscriptions() {
+        _subscriptionsView.page = 1;
+        loadSubscriptions(1);
+    }
+
+    function updateSubscriptionSortIcons() {
+        ['id', 'type', 'subject_name', 'product_slug', 'status', 'start_date', 'end_date'].forEach(k => {
+            const el = document.getElementById(`subSort_${k}`);
+            if (!el) return;
+            el.textContent = k !== _subscriptionSortKey ? '↕' : (_subscriptionSortAsc ? '↑' : '↓');
+            el.className = k === _subscriptionSortKey ? 'text-primary' : 'text-gray-400';
+        });
+    }
+
+    function sortSubscriptions(key) {
+        if (_subscriptionSortKey === key) {
+            _subscriptionSortAsc = !_subscriptionSortAsc;
+        } else {
+            _subscriptionSortKey = key;
+            _subscriptionSortAsc = key === 'type' || key === 'subject_name' || key === 'product_slug' || key === 'status';
+        }
+        updateSubscriptionSortIcons();
         _subscriptionsView.page = 1;
         loadSubscriptions(1);
     }
