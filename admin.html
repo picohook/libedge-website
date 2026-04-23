@@ -6289,7 +6289,6 @@ function previewFile(url, name, type) {
     dl.href = url; dl.download = name;
     document.getElementById('fileViewerOpenNew').href = url;
     const body = document.getElementById('fileViewerBody');
-    body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px"><i class="fas fa-spinner fa-spin" style="font-size:2rem;color:#9ca3af"></i></div>';
 
     const images = ['jpg','jpeg','png','gif','webp','svg'];
     const videos = ['mp4','webm','ogg','mov'];
@@ -6297,54 +6296,119 @@ function previewFile(url, name, type) {
     const office = ['doc','docx','xls','xlsx','ppt','pptx'];
 
     const fullUrl = window.location.origin + url;
+    body.replaceChildren();
+
+    function setContainerStyle(el, styleText) {
+        el.style.cssText = styleText;
+        return el;
+    }
+
+    function createLinkButton(href, text, extraStyles = '', target = '_blank') {
+        const link = document.createElement('a');
+        link.href = href;
+        link.target = target;
+        link.rel = 'noopener noreferrer';
+        link.textContent = text;
+        link.style.cssText = `background:#220f60;color:white;padding:0.5rem 1rem;border-radius:0.5rem;text-decoration:none;${extraStyles}`;
+        return link;
+    }
 
     if (ext === 'pdf') {
-        body.innerHTML = `<object data="${url}" type="application/pdf" style="width:100%;height:100%;min-height:calc(100vh - 52px)">
-            <div style="padding:2rem;text-align:center">
-                <p style="margin-bottom:1rem;color:#6b7280">PDF önizlenemiyor.</p>
-                <a href="${url}" target="_blank" style="background:#220f60;color:white;padding:0.5rem 1rem;border-radius:0.5rem;text-decoration:none">Yeni Sekmede Aç</a>
-            </div>
-        </object>`;
+        const objectEl = document.createElement('object');
+        objectEl.data = url;
+        objectEl.type = 'application/pdf';
+        objectEl.style.cssText = 'width:100%;height:100%;min-height:calc(100vh - 52px)';
+
+        const fallback = setContainerStyle(document.createElement('div'), 'padding:2rem;text-align:center');
+        const text = document.createElement('p');
+        text.textContent = 'PDF önizlenemiyor.';
+        text.style.cssText = 'margin-bottom:1rem;color:#6b7280';
+        fallback.appendChild(text);
+        fallback.appendChild(createLinkButton(url, 'Yeni Sekmede Aç'));
+        objectEl.appendChild(fallback);
+        body.appendChild(objectEl);
     } else if (images.includes(ext)) {
-        body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;padding:1rem;background:#f9fafb;min-height:calc(100vh - 52px)">
-            <img src="${url}" alt="${name}" style="max-width:100%;max-height:calc(100vh - 100px);object-fit:contain;border-radius:0.5rem;box-shadow:0 4px 6px rgba(0,0,0,0.1)">
-        </div>`;
+        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;align-items:center;justify-content:center;padding:1rem;background:#f9fafb;min-height:calc(100vh - 52px)');
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = name;
+        img.style.cssText = 'max-width:100%;max-height:calc(100vh - 100px);object-fit:contain;border-radius:0.5rem;box-shadow:0 4px 6px rgba(0,0,0,0.1)';
+        wrapper.appendChild(img);
+        body.appendChild(wrapper);
     } else if (videos.includes(ext)) {
-        body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;background:#000;min-height:calc(100vh - 52px)">
-            <video controls autoplay style="max-width:100%;max-height:calc(100vh - 52px)">
-                <source src="${url}">Video oynatılamıyor.
-            </video>
-        </div>`;
+        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;align-items:center;justify-content:center;background:#000;min-height:calc(100vh - 52px)');
+        const video = document.createElement('video');
+        video.controls = true;
+        video.autoplay = true;
+        video.style.cssText = 'max-width:100%;max-height:calc(100vh - 52px)';
+        const source = document.createElement('source');
+        source.src = url;
+        video.appendChild(source);
+        video.appendChild(document.createTextNode('Video oynatılamıyor.'));
+        wrapper.appendChild(video);
+        body.appendChild(wrapper);
     } else if (audio.includes(ext)) {
-        body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;min-height:calc(100vh - 52px);background:linear-gradient(to bottom,#f5f3ff,white)">
-            <div style="width:6rem;height:6rem;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem">
-                <i class="fas fa-music" style="font-size:2.5rem;color:#7c3aed"></i>
-            </div>
-            <p style="font-weight:500;margin-bottom:1rem">${escapeHtml(name)}</p>
-            <audio controls style="width:100%;max-width:20rem"><source src="${url}"></audio>
-        </div>`;
+        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;min-height:calc(100vh - 52px);background:linear-gradient(to bottom,#f5f3ff,white)');
+        const iconWrap = setContainerStyle(document.createElement('div'), 'width:6rem;height:6rem;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem');
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-music';
+        icon.style.cssText = 'font-size:2.5rem;color:#7c3aed';
+        iconWrap.appendChild(icon);
+        const text = document.createElement('p');
+        text.textContent = name;
+        text.style.cssText = 'font-weight:500;margin-bottom:1rem';
+        const audioEl = document.createElement('audio');
+        audioEl.controls = true;
+        audioEl.style.cssText = 'width:100%;max-width:20rem';
+        const source = document.createElement('source');
+        source.src = url;
+        audioEl.appendChild(source);
+        wrapper.append(iconWrap, text, audioEl);
+        body.appendChild(wrapper);
     } else if (office.includes(ext)) {
         const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
-        body.innerHTML = `<iframe src="${viewerUrl}" style="width:100%;height:calc(100vh - 52px);border:0" onload="this.style.opacity=1" style="opacity:0;transition:opacity 0.3s"></iframe>`;
+        const iframe = document.createElement('iframe');
+        iframe.src = viewerUrl;
+        iframe.style.cssText = 'width:100%;height:calc(100vh - 52px);border:0;opacity:0;transition:opacity 0.3s';
+        iframe.addEventListener('load', () => { iframe.style.opacity = '1'; });
+        body.appendChild(iframe);
     } else if (ext === 'gdrive') {
         const id = url.match(/\/d\/([^/]+)/)?.[1];
-        body.innerHTML = id
-            ? `<iframe src="https://drive.google.com/file/d/${id}/preview" style="width:100%;height:calc(100vh - 52px);border:0" allow="autoplay"></iframe>`
-            : `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:2rem;text-align:center">
-                <i class="fab fa-google-drive" style="font-size:4rem;color:#4285f4;margin-bottom:1rem"></i>
-                <a href="${url}" target="_blank" style="background:#220f60;color:white;padding:0.5rem 1rem;border-radius:0.5rem;text-decoration:none">Drive'da Aç</a>
-            </div>`;
+        if (id) {
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://drive.google.com/file/d/${id}/preview`;
+            iframe.allow = 'autoplay';
+            iframe.style.cssText = 'width:100%;height:calc(100vh - 52px);border:0';
+            body.appendChild(iframe);
+        } else {
+            const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:2rem;text-align:center');
+            const icon = document.createElement('i');
+            icon.className = 'fab fa-google-drive';
+            icon.style.cssText = 'font-size:4rem;color:#4285f4;margin-bottom:1rem';
+            wrapper.appendChild(icon);
+            wrapper.appendChild(createLinkButton(url, "Drive'da Aç"));
+            body.appendChild(wrapper);
+        }
     } else {
-        body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:2rem;text-align:center">
-            <div style="width:5rem;height:5rem;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1rem">
-                <i class="fas fa-file" style="font-size:2.5rem;color:#9ca3af"></i>
-            </div>
-            <p style="font-weight:500;color:#374151;margin-bottom:0.25rem">${escapeHtml(name)}</p>
-            <p style="font-size:0.875rem;color:#9ca3af;margin-bottom:1.5rem">Bu dosya türü önizlenemiyor</p>
-            <a href="${url}" target="_blank" style="background:#220f60;color:white;padding:0.5rem 1rem;border-radius:0.5rem;text-decoration:none">
-                <i class="fas fa-external-link-alt" style="margin-right:0.5rem"></i>Aç / İndir
-            </a>
-        </div>`;
+        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:2rem;text-align:center');
+        const iconWrap = setContainerStyle(document.createElement('div'), 'width:5rem;height:5rem;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1rem');
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-file';
+        icon.style.cssText = 'font-size:2.5rem;color:#9ca3af';
+        iconWrap.appendChild(icon);
+        const title = document.createElement('p');
+        title.textContent = name;
+        title.style.cssText = 'font-weight:500;color:#374151;margin-bottom:0.25rem';
+        const text = document.createElement('p');
+        text.textContent = 'Bu dosya türü önizlenemiyor';
+        text.style.cssText = 'font-size:0.875rem;color:#9ca3af;margin-bottom:1.5rem';
+        const link = createLinkButton(url, 'Aç / İndir');
+        const linkIcon = document.createElement('i');
+        linkIcon.className = 'fas fa-external-link-alt';
+        linkIcon.style.cssText = 'margin-right:0.5rem';
+        link.prepend(linkIcon);
+        wrapper.append(iconWrap, title, text, link);
+        body.appendChild(wrapper);
     }
 
     document.getElementById('fileViewerPanel').classList.add('open');
