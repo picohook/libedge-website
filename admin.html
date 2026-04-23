@@ -64,6 +64,29 @@
             min-width: 0;
             overflow: auto;
         }
+        #adminBreadcrumb,
+        #instFilesBc {
+            min-width: 0;
+        }
+        #adminBreadcrumb button,
+        #adminBreadcrumb span,
+        #instFilesBc button,
+        #instFilesBc span {
+            max-width: 11rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+            vertical-align: bottom;
+        }
+        .touch-target {
+            min-width: 2.75rem;
+            min-height: 2.75rem;
+        }
+        .touch-checkbox {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
         .bulk-preview-scroll { max-height: calc(90vh - 220px); overflow-y: auto; }
         .select-mode-active .selectable-row { cursor: pointer; }
         .select-mode-active .selectable-row:hover { background: #eff6ff; }
@@ -151,6 +174,51 @@
             .modal-actions > a {
                 width: 100%;
             }
+            .toast-notification {
+                top: auto !important;
+                right: auto !important;
+                bottom: 1rem !important;
+                left: 50% !important;
+                transform: translate(-50%, 120%) !important;
+                width: min(420px, calc(100vw - 24px));
+            }
+            .toast-notification.toast-visible {
+                transform: translate(-50%, 0) !important;
+            }
+            #announcementModal {
+                padding: 0;
+                align-items: stretch;
+                justify-content: stretch;
+            }
+            #announcementModal > div {
+                max-width: none !important;
+                width: 100vw !important;
+                height: 100dvh !important;
+                max-height: 100dvh !important;
+                border-radius: 0 !important;
+            }
+            #announcementModal .sticky {
+                position: static;
+            }
+            #coverCropModal {
+                padding: 0;
+            }
+            #coverCropModal > div {
+                max-width: none !important;
+                width: 100vw !important;
+                height: 100dvh !important;
+                border-radius: 0 !important;
+                display: flex;
+                flex-direction: column;
+            }
+            #coverCropModal .crop-stage {
+                flex: 1 1 auto;
+                max-height: none !important;
+                min-height: 0;
+            }
+            #coverCropImage {
+                max-height: calc(100dvh - 10rem) !important;
+            }
         }
     </style>
 </head>
@@ -233,7 +301,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
             <div class="stat-card flex justify-between items-start">
                 <div>
                     <p class="text-gray-500 text-sm">Toplam Kullanıcı</p>
@@ -290,12 +358,12 @@
         </div>
 
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-            <div class="bg-white rounded-xl shadow-sm p-6 xl:col-span-2">
+            <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 xl:col-span-2">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold">Hızlı İşlemler</h3>
                     <span class="text-xs text-gray-400">Tek tıkla geçiş</span>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
                     <button type="button" onclick="openUserModalFromDashboard()" class="text-left border border-violet-100 bg-violet-50 hover:bg-violet-100 rounded-xl px-4 py-4 transition">
                         <div class="text-violet-700 text-lg mb-2"><i class="fas fa-user-plus"></i></div>
                         <p class="font-semibold text-gray-800">Kullanıcı Ekle</p>
@@ -319,7 +387,7 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold">Aksiyon Gerektirenler</h3>
                     <span class="text-xs text-gray-400">Öncelikli</span>
@@ -331,7 +399,7 @@
         </div>
 
         <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
-            <div class="bg-white rounded-xl shadow-sm p-6 xl:col-span-3">
+            <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 xl:col-span-3">
                 <h3 class="text-lg font-semibold mb-4">Son Kayıt Olan Kullanıcılar</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full">
@@ -352,7 +420,7 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm p-6 xl:col-span-2">
+            <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 xl:col-span-2">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold">Activity Feed</h3>
                     <span class="text-xs text-gray-400">Son 10 olay</span>
@@ -1441,13 +1509,13 @@
 <!-- Announcement Modal -->
 <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-2xl w-full max-w-5xl max-h-[92vh] shadow-2xl flex flex-col overflow-hidden">
-        <div class="p-6 border-b border-gray-100">
-        <div class="flex items-start justify-between gap-4 mb-5">
+        <div class="p-4 sm:p-6 border-b border-gray-100 shrink-0">
+        <div class="flex items-start justify-between gap-4 mb-3 sm:mb-5">
             <div>
-                <h3 id="announcementModalTitle" class="text-2xl font-bold text-gray-900">Yeni Duyuru</h3>
+                <h3 id="announcementModalTitle" class="text-xl sm:text-2xl font-bold text-gray-900">Yeni Duyuru</h3>
                 <p class="text-sm text-gray-500 mt-1">Kapak görseli, AI destekli metin düzenleme ve İngilizce içerik alanları tek formda yönetilir.</p>
             </div>
-            <button type="button" onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600 text-xl" aria-label="Modali kapat">
+            <button type="button" onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600 text-xl touch-target flex items-center justify-center" aria-label="Modali kapat">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -1458,16 +1526,16 @@
             <input type="hidden" id="announcementAiImagePrompt">
             <input type="hidden" id="announcementSubmitIntent" value="published">
 
-            <div class="flex-1 overflow-y-auto p-6 min-h-0">
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">
             <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
                 <div>
                     <div class="bg-gray-50 border border-gray-200 rounded-2xl p-5 mb-5">
-                        <div class="flex items-center justify-between gap-3 mb-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                             <div>
                                 <h4 class="font-semibold text-gray-900">Ana İçerik</h4>
                                 <p class="text-xs text-gray-500">Türkçe duyuru içeriği ve yayın ayarları</p>
                             </div>
-                            <button type="button" id="announcementPolishBtn" onclick="polishAnnouncementContent()" class="btn btn-primary whitespace-nowrap">
+                            <button type="button" id="announcementPolishBtn" onclick="polishAnnouncementContent()" class="btn btn-primary whitespace-nowrap w-full sm:w-auto">
                                 <i class="fas fa-magic mr-2"></i>AI ile Profesyonelleştir
                             </button>
                         </div>
@@ -1513,12 +1581,12 @@
                     </div>
 
                     <div class="bg-white border border-gray-200 rounded-2xl p-5">
-                        <div class="flex items-center justify-between gap-3 mb-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                             <div>
                                 <h4 class="font-semibold text-gray-900">İngilizce Versiyon</h4>
                                 <p class="text-xs text-gray-500">Public sayfadaki EN görünüm bu alanlardan beslenir.</p>
                             </div>
-                            <button type="button" id="announcementTranslateBtn" onclick="translateAnnouncementContent()" class="btn bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap">
+                            <button type="button" id="announcementTranslateBtn" onclick="translateAnnouncementContent()" class="btn bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap w-full sm:w-auto">
                                 <i class="fas fa-language mr-2"></i>TR to EN Çevir
                             </button>
                         </div>
@@ -1541,7 +1609,7 @@
                 </div>
 
                 <div>
-                    <div class="bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-5 sticky top-4 space-y-4">
+                    <div class="bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-5 sticky top-4 space-y-4">
                         <h4 class="font-semibold text-gray-900">Kapak Görseli</h4>
 
                         <!-- AI Görsel Üret -->
@@ -1617,13 +1685,13 @@
             </div>
             </div>
 
-            <div class="shrink-0 bg-white/95 backdrop-blur border-t border-gray-200 px-6 pt-4 pb-6">
+            <div class="shrink-0 bg-white/95 backdrop-blur border-t border-gray-200 px-4 sm:px-6 pt-4 pb-6">
                 <div id="announcementFooterScheduleWrap" class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
                     <label class="block text-sm font-medium text-amber-900 mb-1">Planlı Yayın Tarihi</label>
                     <input type="datetime-local" id="announcementPublishAt" class="w-full border p-3 rounded-xl bg-white">
                     <p class="text-xs text-amber-700 mt-2">Bu tarih gelene kadar duyuru public sayfada görünmez.</p>
                 </div>
-                <div class="flex flex-col sm:flex-row gap-3">
+                <div class="grid grid-cols-1 sm:flex gap-3">
                     <button type="button" onclick="openAnnouncementPreviewModal()" class="btn bg-slate-100 text-slate-700 sm:w-auto">
                         <i class="fas fa-eye mr-2"></i>Önizleme
                     </button>
@@ -3528,9 +3596,9 @@ async function loadAdminFolders(parentId = null) {
             const badge = badgeParts.length
                 ? `<span class="text-xs text-gray-400 inline-flex items-center gap-1 ml-0.5">${badgeParts.join('<span class="opacity-30">·</span>')}</span>`
                 : '';
-            const selCb = `<input type="checkbox" class="folder-select-cb absolute top-1 left-1 hidden"
+            const selCb = `<input type="checkbox" class="folder-select-cb touch-checkbox absolute top-2 left-2 hidden"
                 data-type="folder" data-id="${f.id}" data-name="${escapeHtml(f.folder_name)}">`;
-            const actionsHtml = `<button class="admin-menu-trigger admin-folder-menu-trigger absolute top-1 right-1 w-6 h-6 rounded text-gray-400
+            const actionsHtml = `<button class="admin-menu-trigger admin-folder-menu-trigger touch-target absolute top-1 right-1 rounded text-gray-400
                            hover:text-gray-700 hover:bg-white/80 opacity-0 group-hover:opacity-100
                            flex items-center justify-center transition"
                     title="İşlemler">
@@ -3586,7 +3654,7 @@ async function loadAdminFiles() {
             const datasetAttrs = `data-ref-id="${file.id}" data-source-file-id="${file.source_file_id}"
                  data-file-name="${escapeHtml(file.file_name)}" data-file-url="${escapeHtml(file.file_url)}"
                  data-file-type="${escapeHtml(file.file_type || '')}" data-is-public="${file.is_public ? 1 : 0}"`;
-            const selectableCheckbox = `<input type="checkbox" class="file-select-cb flex-shrink-0 hidden"
+            const selectableCheckbox = `<input type="checkbox" class="file-select-cb touch-checkbox flex-shrink-0 hidden"
                 data-type="file" data-id="${file.source_file_id}" data-name="${escapeHtml(file.file_name)}" data-ref-id="${file.id}">`;
             const nameHtml = `<a href="javascript:void(0)"
                    class="admin-file-preview font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(file.file_name)}</a>`;
@@ -3596,11 +3664,11 @@ async function loadAdminFiles() {
                     <span>${new Date(file.uploaded_at).toLocaleDateString('tr-TR')}</span>
                 </div>`;
             const actionsHtml = `<div class="flex items-center gap-1 ml-1 flex-shrink-0">
-                <button class="admin-send-inst-btn p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                <button class="admin-send-inst-btn touch-target text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded flex items-center justify-center"
                     title="Kurumlara Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
-                <button class="admin-send-user-btn p-1.5 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"
+                <button class="admin-send-user-btn touch-target text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded flex items-center justify-center"
                     title="Kişilere Gönder"><i class="fas fa-users text-xs"></i></button>
-                <button class="admin-menu-trigger admin-file-menu-trigger p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded"
+                <button class="admin-menu-trigger admin-file-menu-trigger touch-target text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded flex items-center justify-center"
                         title="Daha fazla">
                     <i class="fas fa-ellipsis-v text-xs"></i>
                 </button>
@@ -4704,7 +4772,8 @@ window.showToast = function(message, type = 'info') {
     if (existingToast) existingToast.remove();
     
     const toast = document.createElement('div');
-    toast.className = 'toast-notification fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 transform translate-x-full flex items-start gap-2 border-l-4 max-w-[min(420px,calc(100vw-40px))] break-words';
+    const isMobile = window.innerWidth < 768;
+    toast.className = 'toast-notification fixed z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 flex items-start gap-2 border-l-4 max-w-[min(420px,calc(100vw-40px))] break-words';
     
     const borderColors = {
         success: 'border-green-500 bg-white text-green-700',
@@ -4722,13 +4791,26 @@ window.showToast = function(message, type = 'info') {
 
     const styleClass = borderColors[type] || borderColors.info;
     toast.className = toast.className + ' ' + styleClass;
+    if (isMobile) {
+        toast.style.top = 'auto';
+        toast.style.right = 'auto';
+        toast.style.bottom = '1rem';
+        toast.style.left = '50%';
+        toast.style.transform = 'translate(-50%, 120%)';
+    } else {
+        toast.classList.add('top-5', 'right-5', 'translate-x-full');
+    }
 
     toast.innerHTML = `${icons[type] || '<i class="fas fa-bell"></i>'} ${message}`;
     document.body.appendChild(toast);
     
-    setTimeout(() => toast.classList.remove('translate-x-full'), 10);
     setTimeout(() => {
-        toast.classList.add('translate-x-full');
+        if (isMobile) toast.style.transform = 'translate(-50%, 0)';
+        else toast.classList.remove('translate-x-full');
+    }, 10);
+    setTimeout(() => {
+        if (isMobile) toast.style.transform = 'translate(-50%, 120%)';
+        else toast.classList.add('translate-x-full');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 };
@@ -5014,14 +5096,14 @@ function instFilesRender(folderFilter, fileFilter) {
 
     // Klasörler
     foldersEl.innerHTML = folders.map(f => {
-        const selCb = isSelect ? `<input type="checkbox" class="ift-folder-cb absolute top-1 left-1 w-4 h-4"
+        const selCb = isSelect ? `<input type="checkbox" class="ift-folder-cb touch-checkbox absolute top-2 left-2"
             data-id="${f.id}" data-name="${escapeHtml(f.folder_name)}">` : '';
         const actionsHtml = !isSelect ? `
             <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                <button type="button" class="inst-folder-send-btn text-blue-400 hover:text-blue-600" title="Kişilere Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
-                <button type="button" class="inst-folder-move-btn text-gray-400 hover:text-purple-500" title="Taşı"><i class="fas fa-arrows-alt text-xs"></i></button>
-                <button type="button" class="inst-folder-rename-btn text-gray-300 hover:text-blue-500" title="Yeniden Adlandır"><i class="fas fa-pencil-alt text-xs"></i></button>
-                <button type="button" class="inst-folder-delete-btn text-gray-300 hover:text-red-500" title="Sil"><i class="fas fa-trash text-xs"></i></button>
+                <button type="button" class="inst-folder-send-btn touch-target text-blue-400 hover:text-blue-600 flex items-center justify-center" title="Kişilere Gönder"><i class="fas fa-paper-plane text-xs"></i></button>
+                <button type="button" class="inst-folder-move-btn touch-target text-gray-400 hover:text-purple-500 flex items-center justify-center" title="Taşı"><i class="fas fa-arrows-alt text-xs"></i></button>
+                <button type="button" class="inst-folder-rename-btn touch-target text-gray-300 hover:text-blue-500 flex items-center justify-center" title="Yeniden Adlandır"><i class="fas fa-pencil-alt text-xs"></i></button>
+                <button type="button" class="inst-folder-delete-btn touch-target text-gray-300 hover:text-red-500 flex items-center justify-center" title="Sil"><i class="fas fa-trash text-xs"></i></button>
             </div>` : '';
         return renderFileBrowserFolderItem({
             itemClass: 'inst-folder-item',
@@ -5048,16 +5130,16 @@ function instFilesRender(folderFilter, fileFilter) {
         const safeExt  = escapeHtml(ext);
         const isNew   = f.added_at && (Date.now() - new Date(f.added_at).getTime()) < 7 * 86400000;
         const datasetAttrs = `data-file-id="${f.id}" data-file-name="${escapeHtml(name)}" data-file-url="${safeUrl}" data-file-type="${safeExt}"`;
-        const selectableCheckbox = isSelect ? `<input type="checkbox" class="ift-file-cb flex-shrink-0" data-id="${f.id}" data-name="${escapeHtml(name)}">` : '';
+        const selectableCheckbox = isSelect ? `<input type="checkbox" class="ift-file-cb touch-checkbox flex-shrink-0" data-id="${f.id}" data-name="${escapeHtml(name)}">` : '';
         const nameHtml = `<a href="javascript:void(0)"
                class="inst-file-preview font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(name)}${isNew ? ' <span class="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded-full font-normal align-middle ml-1">Yeni</span>' : ''}</a>`;
         const metaHtml = `<span class="text-xs text-gray-400 uppercase">${ext}</span>`;
         const actionsHtml = !isSelect ? `
             <div class="flex items-center gap-2 ml-1 flex-shrink-0">
-                <button type="button" class="inst-file-send-btn text-blue-400 hover:text-blue-600" title="Kişilere Gönder"><i class="fas fa-paper-plane text-sm"></i></button>
-                <button type="button" class="inst-file-move-btn text-slate-400 hover:text-slate-700" title="Taşı"><i class="fas fa-folder-open text-sm"></i></button>
-                <button type="button" class="inst-file-rename-btn text-amber-400 hover:text-amber-600" title="Yeniden Adlandır"><i class="fas fa-pencil-alt text-sm"></i></button>
-                <button type="button" class="inst-file-delete-btn text-red-400 hover:text-red-600" title="Sil"><i class="fas fa-trash text-sm"></i></button>
+                <button type="button" class="inst-file-send-btn touch-target text-blue-400 hover:text-blue-600 flex items-center justify-center" title="Kişilere Gönder"><i class="fas fa-paper-plane text-sm"></i></button>
+                <button type="button" class="inst-file-move-btn touch-target text-slate-400 hover:text-slate-700 flex items-center justify-center" title="Taşı"><i class="fas fa-folder-open text-sm"></i></button>
+                <button type="button" class="inst-file-rename-btn touch-target text-amber-400 hover:text-amber-600 flex items-center justify-center" title="Yeniden Adlandır"><i class="fas fa-pencil-alt text-sm"></i></button>
+                <button type="button" class="inst-file-delete-btn touch-target text-red-400 hover:text-red-600 flex items-center justify-center" title="Sil"><i class="fas fa-trash text-sm"></i></button>
             </div>` : '';
         return renderFileBrowserFileItem({
             itemClass: 'inst-file-item',
@@ -6673,6 +6755,7 @@ async function submitBulkInstitutions() {
     flex-direction: column;
     z-index: 100;
     transition: right 0.3s ease;
+    overscroll-behavior: contain;
 }
 #fileViewerPanel.open { right: 0; }
 #fileViewerOverlay {
@@ -6690,7 +6773,17 @@ async function submitBulkInstitutions() {
     min-height: 0;
 }
 @media (max-width: 768px) {
-    #fileViewerPanel { right: -100%; width: 100%; }
+    #fileViewerPanel {
+        right: -100%;
+        width: 100%;
+        height: 100dvh;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    #fileViewerOverlay {
+        background: rgba(15,23,42,0.55);
+        backdrop-filter: blur(1px);
+    }
 }
 </style>
 
@@ -6730,7 +6823,7 @@ function previewFile(url, name, type) {
         const objectEl = document.createElement('object');
         objectEl.data = url;
         objectEl.type = 'application/pdf';
-        objectEl.style.cssText = 'width:100%;height:100%;min-height:calc(100vh - 52px)';
+        objectEl.style.cssText = 'width:100%;height:100%;min-height:calc(100dvh - 56px)';
 
         const fallback = setContainerStyle(document.createElement('div'), 'padding:2rem;text-align:center');
         const text = document.createElement('p');
@@ -6741,19 +6834,19 @@ function previewFile(url, name, type) {
         objectEl.appendChild(fallback);
         body.appendChild(objectEl);
     } else if (images.includes(ext)) {
-        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;align-items:center;justify-content:center;padding:1rem;background:#f9fafb;min-height:calc(100vh - 52px)');
+        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;align-items:center;justify-content:center;padding:1rem;background:#f9fafb;min-height:calc(100dvh - 56px)');
         const img = document.createElement('img');
         img.src = url;
         img.alt = name;
-        img.style.cssText = 'max-width:100%;max-height:calc(100vh - 100px);object-fit:contain;border-radius:0.5rem;box-shadow:0 4px 6px rgba(0,0,0,0.1)';
+        img.style.cssText = 'max-width:100%;max-height:calc(100dvh - 104px);object-fit:contain;border-radius:0.5rem;box-shadow:0 4px 6px rgba(0,0,0,0.1)';
         wrapper.appendChild(img);
         body.appendChild(wrapper);
     } else if (videos.includes(ext)) {
-        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;align-items:center;justify-content:center;background:#000;min-height:calc(100vh - 52px)');
+        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;align-items:center;justify-content:center;background:#000;min-height:calc(100dvh - 56px)');
         const video = document.createElement('video');
         video.controls = true;
         video.autoplay = true;
-        video.style.cssText = 'max-width:100%;max-height:calc(100vh - 52px)';
+        video.style.cssText = 'max-width:100%;max-height:calc(100dvh - 56px)';
         const source = document.createElement('source');
         source.src = url;
         video.appendChild(source);
@@ -6761,7 +6854,7 @@ function previewFile(url, name, type) {
         wrapper.appendChild(video);
         body.appendChild(wrapper);
     } else if (audio.includes(ext)) {
-        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;min-height:calc(100vh - 52px);background:linear-gradient(to bottom,#f5f3ff,white)');
+        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;min-height:calc(100dvh - 56px);background:linear-gradient(to bottom,#f5f3ff,white)');
         const iconWrap = setContainerStyle(document.createElement('div'), 'width:6rem;height:6rem;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem');
         const icon = document.createElement('i');
         icon.className = 'fas fa-music';
@@ -6782,7 +6875,7 @@ function previewFile(url, name, type) {
         const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
         const iframe = document.createElement('iframe');
         iframe.src = viewerUrl;
-        iframe.style.cssText = 'width:100%;height:calc(100vh - 52px);border:0;opacity:0;transition:opacity 0.3s';
+        iframe.style.cssText = 'width:100%;height:calc(100dvh - 56px);border:0;opacity:0;transition:opacity 0.3s';
         iframe.addEventListener('load', () => { iframe.style.opacity = '1'; });
         body.appendChild(iframe);
     } else if (ext === 'gdrive') {
@@ -6791,10 +6884,10 @@ function previewFile(url, name, type) {
             const iframe = document.createElement('iframe');
             iframe.src = `https://drive.google.com/file/d/${id}/preview`;
             iframe.allow = 'autoplay';
-            iframe.style.cssText = 'width:100%;height:calc(100vh - 52px);border:0';
+            iframe.style.cssText = 'width:100%;height:calc(100dvh - 56px);border:0';
             body.appendChild(iframe);
         } else {
-            const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:2rem;text-align:center');
+            const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - 56px);padding:2rem;text-align:center');
             const icon = document.createElement('i');
             icon.className = 'fab fa-google-drive';
             icon.style.cssText = 'font-size:4rem;color:#4285f4;margin-bottom:1rem';
@@ -6803,7 +6896,7 @@ function previewFile(url, name, type) {
             body.appendChild(wrapper);
         }
     } else {
-        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:2rem;text-align:center');
+        const wrapper = setContainerStyle(document.createElement('div'), 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - 56px);padding:2rem;text-align:center');
         const iconWrap = setContainerStyle(document.createElement('div'), 'width:5rem;height:5rem;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1rem');
         const icon = document.createElement('i');
         icon.className = 'fas fa-file';
@@ -6844,15 +6937,15 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileVie
 <div id="fileViewerOverlay" onclick="closeFileViewer()"></div>
 
 <div id="fileViewerPanel">
-    <div style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem 1rem;border-bottom:1px solid #f3f4f6;flex-shrink:0">
-        <button onclick="closeFileViewer()" title="Kapat" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:0.25rem;border-radius:0.375rem" onmouseover="this.style.color='#374151'" onmouseout="this.style.color='#9ca3af'">
+    <div style="display:flex;align-items:center;gap:0.5rem;padding:0.875rem 1rem;border-bottom:1px solid #f3f4f6;flex-shrink:0;background:white">
+        <button onclick="closeFileViewer()" title="Kapat" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:0.625rem;border-radius:0.625rem;min-width:2.75rem;min-height:2.75rem;display:flex;align-items:center;justify-content:center" onmouseover="this.style.color='#374151'" onmouseout="this.style.color='#9ca3af'">
             <i class="fas fa-times" style="font-size:1.125rem"></i>
         </button>
         <h3 id="fileViewerTitle" style="font-weight:500;color:#1f2937;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.875rem;margin:0"></h3>
-        <a id="fileViewerDownload" href="#" download style="color:#9ca3af;padding:0.25rem;border-radius:0.375rem;text-decoration:none" title="İndir" onmouseover="this.style.color='#220f60'" onmouseout="this.style.color='#9ca3af'">
+        <a id="fileViewerDownload" href="#" download style="color:#9ca3af;padding:0.625rem;border-radius:0.625rem;text-decoration:none;min-width:2.75rem;min-height:2.75rem;display:flex;align-items:center;justify-content:center" title="İndir" onmouseover="this.style.color='#220f60'" onmouseout="this.style.color='#9ca3af'">
             <i class="fas fa-download"></i>
         </a>
-        <a id="fileViewerOpenNew" href="#" target="_blank" style="color:#9ca3af;padding:0.25rem;border-radius:0.375rem;text-decoration:none" title="Yeni sekmede aç" onmouseover="this.style.color='#220f60'" onmouseout="this.style.color='#9ca3af'">
+        <a id="fileViewerOpenNew" href="#" target="_blank" style="color:#9ca3af;padding:0.625rem;border-radius:0.625rem;text-decoration:none;min-width:2.75rem;min-height:2.75rem;display:flex;align-items:center;justify-content:center" title="Yeni sekmede aç" onmouseover="this.style.color='#220f60'" onmouseout="this.style.color='#9ca3af'">
             <i class="fas fa-external-link-alt"></i>
         </a>
     </div>
@@ -7965,6 +8058,7 @@ function openCoverCropModal(src, blob) {
     _coverCropSourceBlob = blob || null;
     const modal = document.getElementById('coverCropModal');
     const img = document.getElementById('coverCropImage');
+    const isMobile = window.innerWidth < 768;
 
     if (_coverCropper) { _coverCropper.destroy(); _coverCropper = null; }
 
@@ -7976,10 +8070,14 @@ function openCoverCropModal(src, blob) {
         _coverCropper = new Cropper(img, {
             aspectRatio: 1200 / 630,
             viewMode: 1,
-            autoCropArea: 0.85,
+            autoCropArea: isMobile ? 0.95 : 0.85,
             background: false,
             movable: true,
             zoomable: true,
+            zoomOnTouch: true,
+            zoomOnWheel: !isMobile,
+            dragMode: isMobile ? 'move' : 'crop',
+            guides: !isMobile,
             rotatable: false,
             scalable: false,
         });
@@ -8210,12 +8308,12 @@ async function moveAdminFileRef(refId, fileName) {
                 <h3 class="font-semibold text-gray-900">Görseli Kırp</h3>
                 <p class="text-xs text-gray-500 mt-0.5">16:9 (1200×630) oranında kırpma alanı seçin</p>
             </div>
-            <button onclick="closeCoverCropModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+            <button onclick="closeCoverCropModal()" class="text-gray-400 hover:text-gray-600 text-xl touch-target flex items-center justify-center"><i class="fas fa-times"></i></button>
         </div>
-        <div class="p-4 bg-gray-900" style="max-height:60vh;overflow:hidden;">
+        <div class="p-4 bg-gray-900 crop-stage" style="max-height:60vh;overflow:hidden;">
             <img id="coverCropImage" src="" alt="" style="max-width:100%;display:block;max-height:55vh;">
         </div>
-        <div class="flex gap-3 px-5 py-4 border-t">
+        <div class="modal-actions px-5 py-4 border-t">
             <button onclick="closeCoverCropModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">İptal</button>
             <button id="coverCropApplyBtn" onclick="applyCoverCrop()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 flex-1">
                 <i class="fas fa-crop-alt mr-2"></i>Uygula ve Kaydet
