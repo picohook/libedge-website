@@ -2298,16 +2298,13 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         const totalPages = Math.max(1, Math.ceil(totalItems / viewState.pageSize));
         const currentPage = Math.min(viewState.page, totalPages);
         viewState.page = currentPage;
-
-        if (totalItems <= viewState.pageSize) {
-            el.innerHTML = totalItems
-                ? `<span>${totalItems} kayıt</span>`
-                : '';
-            return;
-        }
-
         const start = totalItems === 0 ? 0 : ((currentPage - 1) * viewState.pageSize) + 1;
         const end = Math.min(currentPage * viewState.pageSize, totalItems);
+
+        if (totalItems === 0) {
+            el.innerHTML = '';
+            return;
+        }
 
         el.innerHTML = `
             <span>${start}-${end} / ${totalItems}</span>
