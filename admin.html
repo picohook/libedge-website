@@ -4843,8 +4843,62 @@ function setBtnLoading(btn, loading, originalHTML = '') {
 
 // ====================== ONAY MODAL SİSTEMİ ======================
 let _adminConfirmCallback = null;
+let _confirmListenersAttached = false;
+
+
+function _ensureConfirmListeners() {
+    if (_confirmListenersAttached) return true;
+    
+    const cancelBtn = document.getElementById('adminConfirmCancelBtn');
+    const okBtn = document.getElementById('adminConfirmOkBtn');
+    
+    if (!cancelBtn || !okBtn) {
+        console.warn('Confirm modal elements not found in DOM yet');
+        return false;
+    }
+    
+    // Temiz bir clone ile eski listener'ları temizle
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    const newOkBtn = okBtn.cloneNode(true);
+    cancelBtn.parentNode?.replaceChild(newCancelBtn, cancelBtn);
+    okBtn.parentNode?.replaceChild(newOkBtn, okBtn);
+    
+    newCancelBtn.addEventListener('click', _adminConfirmClose);
+    newOkBtn.addEventListener('click', async () => {
+        if (!_adminConfirmCallback) return;
+        const btn = newOkBtn;
+        const origHTML = btn.innerHTML;
+        setBtnLoading(btn, true);
+        try {
+            await _adminConfirmCallback();
+        } catch(err) {
+            showToast(err.message || 'İşlem başarısız oldu.', 'error');
+        } finally {
+            setBtnLoading(btn, false, origHTML);
+            _adminConfirmClose();
+        }
+    });
+    
+    _confirmListenersAttached = true;
+    return true;
+}
 
 function showConfirmDialog(message, onConfirm, { confirmLabel = 'Evet', danger = true } = {}) {
+    if (!_ensureConfirmListeners()) {
+        // Modal elementleri henüz yoksa, DOM yüklendikten sonra tekrar dene
+        document.addEventListener('DOMContentLoaded', () => {
+            if (_ensureConfirmListeners()) {
+                _showConfirmDialogImpl(message, onConfirm, { confirmLabel, danger });
+            } else {
+                showToast('Sistem hatası: Modal bileşenleri yüklenemedi', 'error');
+            }
+        });
+        return;
+    }
+    _showConfirmDialogImpl(message, onConfirm, { confirmLabel, danger });
+}
+
+function _showConfirmDialogImpl(message, onConfirm, { confirmLabel = 'Evet', danger = true } = {}) {
     document.getElementById('adminConfirmMessage').textContent = message;
     const okBtn = document.getElementById('adminConfirmOkBtn');
     okBtn.textContent = confirmLabel;
@@ -4852,25 +4906,6 @@ function showConfirmDialog(message, onConfirm, { confirmLabel = 'Evet', danger =
     _adminConfirmCallback = onConfirm;
     document.getElementById('adminConfirmModal').classList.remove('hidden');
 }
-function _adminConfirmClose() {
-    document.getElementById('adminConfirmModal').classList.add('hidden');
-    _adminConfirmCallback = null;
-}
-document.getElementById('adminConfirmCancelBtn').addEventListener('click', _adminConfirmClose);
-document.getElementById('adminConfirmOkBtn').addEventListener('click', async () => {
-    if (!_adminConfirmCallback) return;
-    const btn = document.getElementById('adminConfirmOkBtn');
-    const origHTML = btn.innerHTML;
-    setBtnLoading(btn, true);
-    try {
-        await _adminConfirmCallback();
-    } catch(err) {
-        showToast(err.message || 'İşlem başarısız oldu.', 'error');
-    } finally {
-        setBtnLoading(btn, false, origHTML);
-        _adminConfirmClose();
-    }
-});
 
 // ====================== TOAST BİLDİRİM SİSTEMİ ======================
 
@@ -5322,8 +5357,47 @@ function instFilesFilterContent(val) {
 
 // ---- Evrensel Yardımcı Modal ----
 let _instFilesUtilOnConfirm = null;
+let _utilModalListenersAttached = false;
 
-function instFilesShowUtilModal({ title, bodyHTML, confirmLabel = 'Kaydet', onConfirm, onOpen }) {
+function _ensureUtilModalListeners() {
+    if (_utilModalListenersAttached) return true;
+    
+    const confirmBtn = document.getElementById('instFilesUtilModalConfirm');
+    const cancelBtn = document.getElementById('instFilesUtilModalCancel');
+    
+    if (!confirmBtn || !cancelBtn) {
+        console.warn('Util modal elements not found in DOM yet');
+        return false;
+    }
+    
+    // Confirm butonunu temizle ve yeniden bağla
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode?.replaceChild(newConfirmBtn, confirmBtn);
+    
+    newConfirmBtn.addEventListener('click', async () => {
+        if (!_instFilesUtilOnConfirm) return;
+        const btn = newConfirmBtn;
+        const origHTML = btn.innerHTML;
+        setBtnLoading(btn, true);
+        try {
+            await _instFilesUtilOnConfirm();
+            instFilesCloseUtilModal();
+        } catch(err) {
+            showToast(err.message, 'error');
+            setBtnLoading(btn, false, origHTML);
+        }
+    });
+    
+    // Cancel butonunu temizle ve yeniden bağla
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode?.replaceChild(newCancelBtn, cancelBtn);
+    newCancelBtn.addEventListener('click', () => instFilesCloseUtilModal());
+    
+    _utilModalListenersAttached = true;
+    return true;
+}
+
+function _instFilesShowUtilModalImpl({ title, bodyHTML, confirmLabel = 'Kaydet', onConfirm, onOpen }) {
     document.getElementById('instFilesUtilModalTitle').textContent = title;
     document.getElementById('instFilesUtilModalBody').innerHTML = bodyHTML;
     const confirmBtn = document.getElementById('instFilesUtilModalConfirm');
@@ -5333,22 +5407,23 @@ function instFilesShowUtilModal({ title, bodyHTML, confirmLabel = 'Kaydet', onCo
     document.getElementById('instFilesUtilModal').classList.remove('hidden');
     if (onOpen) setTimeout(onOpen, 50);
 }
+
+function instFilesShowUtilModal({ title, bodyHTML, confirmLabel = 'Kaydet', onConfirm, onOpen }) {
+    if (!_ensureUtilModalListeners()) {
+        document.addEventListener('DOMContentLoaded', () => {
+            if (_ensureUtilModalListeners()) {
+                _instFilesShowUtilModalImpl({ title, bodyHTML, confirmLabel, onConfirm, onOpen });
+            }
+        });
+        return;
+    }
+    _instFilesShowUtilModalImpl({ title, bodyHTML, confirmLabel, onConfirm, onOpen });
+}
+
 function instFilesCloseUtilModal() {
     document.getElementById('instFilesUtilModal').classList.add('hidden');
     _instFilesUtilOnConfirm = null;
 }
-document.getElementById('instFilesUtilModalConfirm').addEventListener('click', async () => {
-    if (!_instFilesUtilOnConfirm) return;
-    const btn = document.getElementById('instFilesUtilModalConfirm');
-    const origHTML = btn.innerHTML;
-    setBtnLoading(btn, true);
-    try {
-        await _instFilesUtilOnConfirm();
-    } catch(err) {
-        showToast(err.message, 'error');
-        setBtnLoading(btn, false, origHTML);
-    }
-});
 
 // ---- Klasör CRUD ----
 function instFilesOpenFolderModal() {
@@ -8534,7 +8609,7 @@ async function moveAdminFileRef(refId, fileName) {
             <h3 id="instFilesUtilModalTitle" class="text-base font-semibold mb-4"></h3>
             <div id="instFilesUtilModalBody"></div>
             <div class="modal-actions justify-end mt-4">
-                <button type="button" onclick="instFilesCloseUtilModal()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
+                <button type="button" id="instFilesUtilModalCancel" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">İptal</button>
                 <button type="button" id="instFilesUtilModalConfirm" class="btn btn-primary">Kaydet</button>
             </div>
         </div>
