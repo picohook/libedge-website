@@ -2493,9 +2493,17 @@ app.get('/api/admin/subscriptions', async (c) => {
   const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
   const url = new URL(c.req.url);
-  const hasPagedRequest = url.searchParams.has('page') || url.searchParams.has('page_size');
+  const hasPagedRequest =
+    url.searchParams.has('page') ||
+    url.searchParams.has('page_size') ||
+    url.searchParams.has('search') ||
+    url.searchParams.has('type') ||
+    url.searchParams.has('status');
   const requestedPage = Math.max(1, Number(url.searchParams.get('page') || 1));
   const requestedPageSize = Math.max(1, Math.min(100, Number(url.searchParams.get('page_size') || 25)));
+  const search = (url.searchParams.get('search') || '').trim().toLowerCase();
+  const typeFilter = (url.searchParams.get('type') || '').trim();
+  const statusFilter = (url.searchParams.get('status') || '').trim();
 
   let individualResults = [], institutionalResults = [];
 
@@ -2578,7 +2586,26 @@ app.get('/api/admin/subscriptions', async (c) => {
     console.error('institution_subscriptions query error:', e.message);
   }
 
-  const allResults = [...institutionalResults, ...individualResults].sort((a, b) => Number(b.id) - Number(a.id));
+  let allResults = [...institutionalResults, ...individualResults];
+
+  if (typeFilter) {
+    allResults = allResults.filter(item => item.type === typeFilter);
+  }
+  if (statusFilter) {
+    allResults = allResults.filter(item => item.status === statusFilter);
+  }
+  if (search) {
+    allResults = allResults.filter(item => {
+      const haystack = [
+        item.subject_name || '',
+        item.institution_name || '',
+        item.product_slug || ''
+      ].join(' ').toLowerCase();
+      return haystack.includes(search);
+    });
+  }
+
+  allResults.sort((a, b) => Number(b.id) - Number(a.id));
   if (!hasPagedRequest) {
     return c.json(allResults);
   }

@@ -324,6 +324,21 @@
                     </button>
                 </div>
             </div>
+            <div class="flex flex-wrap gap-2 mb-4">
+                <input type="text" id="subscriptionSearchInput" placeholder="Kullanıcı, kurum veya ürün ara..."
+                       class="border rounded px-3 py-1.5 text-sm flex-1 min-w-[200px]" oninput="filterSubscriptions()">
+                <select id="subscriptionTypeFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterSubscriptions()">
+                    <option value="">Tüm Tipler</option>
+                    <option value="individual">Bireysel</option>
+                    <option value="institution">Kurum</option>
+                </select>
+                <select id="subscriptionStatusFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterSubscriptions()">
+                    <option value="">Tüm Durumlar</option>
+                    <option value="active">Aktif</option>
+                    <option value="trial">Deneme</option>
+                    <option value="expired">Süresi Doldu</option>
+                </select>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead>
@@ -2564,6 +2579,12 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             page: String(page),
             page_size: String(_subscriptionsView.pageSize)
         });
+        const search = document.getElementById('subscriptionSearchInput')?.value?.trim();
+        const type = document.getElementById('subscriptionTypeFilter')?.value;
+        const status = document.getElementById('subscriptionStatusFilter')?.value;
+        if (search) params.set('search', search);
+        if (type) params.set('type', type);
+        if (status) params.set('status', status);
         const res = await fetch(`${API_BASE}/api/admin/subscriptions?${params.toString()}`, { credentials: 'include' });
         const payload = await res.json();
         const subs = payload.items || [];
@@ -2617,6 +2638,11 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             _subscriptionsView.page = nextPage;
             loadSubscriptions(nextPage);
         });
+    }
+
+    function filterSubscriptions() {
+        _subscriptionsView.page = 1;
+        loadSubscriptions(1);
     }
 
 document.getElementById('subscriptionsList')?.addEventListener('click', function(e) {
@@ -3063,6 +3089,7 @@ let _adminFiles = {
     selectMode: false,
 };
 let _allInstitutionOptions = []; // still used by Gönder modal
+let _allInstitutionOptionsPromise = null;
 
 // Files tab is super_admin-only, so this always returns true when on files tab
 function isAdminSystemScope() { return true; }
@@ -3071,14 +3098,26 @@ function isAdminSystemScope() { return true; }
 // ====================== KURUM DOSYALARI - ADMIN İÇİN DÜZELTİLMİŞ VERSİYON ======================
 
 async function loadAdminInstitutions() {
+    if (_allInstitutionOptions.length) return _allInstitutionOptions;
+    if (_allInstitutionOptionsPromise) return _allInstitutionOptionsPromise;
+
+    _allInstitutionOptionsPromise = (async () => {
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
+            if (res.ok) {
+                const payload = await res.json();
+                const institutions = Array.isArray(payload) ? payload : (payload.items || []);
+                _allInstitutionOptions = institutions.map(i => ({ value: i.name, text: i.name, id: i.id }));
+            }
+        } catch(e) { /* non-critical */ }
+        return _allInstitutionOptions;
+    })();
+
     try {
-        const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
-        if (res.ok) {
-            const institutions = await res.json();
-            _allInstitutionOptions = institutions.map(i => ({ value: i.name, text: i.name, id: i.id }));
-        }
-    } catch(e) { /* non-critical */ }
-    return _allInstitutionOptions;
+        return await _allInstitutionOptionsPromise;
+    } finally {
+        _allInstitutionOptionsPromise = null;
+    }
 }
 
 function resetAdminFilesState() {
@@ -3095,9 +3134,11 @@ function resetAdminFilesState() {
 
 async function loadAdminFilesTab() {
     resetAdminFilesState();
-    await loadAdminInstitutions();
-    await loadAdminFolders(null);
-    await loadAdminFiles();
+    loadAdminInstitutions().catch(() => {});
+    await Promise.all([
+        loadAdminFolders(null),
+        loadAdminFiles()
+    ]);
 }
 
 function renderFileBrowserEmptyState(message, subMessage = '', iconClass = 'fas fa-folder-open text-4xl mb-2 opacity-50') {
@@ -3933,6 +3974,9 @@ let _sendSelections = [];      // [{ instId, instName, collectionId, collectionN
 // Tekli gönder butonu: openSendToInstitutionsModal('file', id, 'ad') şeklinde çağrılır
 // Toplu gönder: openSendToInstitutionsModal([{type,id,name},...]) şeklinde çağrılır
 async function openSendToInstitutionsModal(typeOrItems, id, name) {
+    if (!_allInstitutionOptions.length) {
+        await loadAdminInstitutions();
+    }
     if (Array.isArray(typeOrItems)) {
         _sendItems = typeOrItems;
     } else {
