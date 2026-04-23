@@ -367,35 +367,35 @@
     <!-- Users Tab -->
     <div id="tab-users" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
                 <h3 class="text-lg font-semibold">Kullanıcılar</h3>
-                <div class="flex gap-2">
-                    <button type="button" id="syncContactsBtn" class="btn bg-blue-50 text-blue-700 border border-blue-200" onclick="syncAirtableContactsToUsers()">
+                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <button type="button" id="syncContactsBtn" class="btn bg-blue-50 text-blue-700 border border-blue-200 w-full sm:w-auto" onclick="syncAirtableContactsToUsers()">
                         <i class="fas fa-address-book mr-2"></i>Airtable Contacts Sync
                     </button>
-                    <button type="button" class="btn bg-gray-200 text-gray-700" onclick="openBulkUserModal()">
+                    <button type="button" class="btn bg-gray-200 text-gray-700 w-full sm:w-auto" onclick="openBulkUserModal()">
                         <i class="fas fa-list mr-2"></i>Toplu Ekle
                     </button>
-                    <button id="addUserBtn" class="btn btn-primary" onclick="openUserModal()">
+                    <button id="addUserBtn" class="btn btn-primary w-full sm:w-auto" onclick="openUserModal()">
                         <i class="fas fa-plus mr-2"></i>Kullanıcı Ekle
                     </button>
                 </div>
             </div>
             <!-- Filtreler -->
-            <div class="flex flex-wrap gap-2 mb-4">
-                <input type="text" id="userSearchInput" placeholder="Ad, e-posta veya kurum ara..." class="border rounded px-3 py-1.5 text-sm flex-1 min-w-[200px]" oninput="filterUsers()">
-                <select id="userRoleFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterUsers()">
+            <div class="flex flex-col sm:flex-row flex-wrap gap-2 mb-4">
+                <input type="text" id="userSearchInput" placeholder="Ad, e-posta veya kurum ara..." class="border rounded px-3 py-2 text-sm flex-1 min-w-0 sm:min-w-[220px] w-full sm:w-auto" oninput="filterUsers()">
+                <select id="userRoleFilter" class="border rounded px-3 py-2 text-sm bg-white w-full sm:w-auto" onchange="filterUsers()">
                     <option value="">Tüm Roller</option>
                     <option value="user">Kullanıcı</option>
                     <option value="admin">Admin</option>
                     <option value="super_admin">Super Admin</option>
                 </select>
-                <select id="userInstitutionFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterUsers()">
+                <select id="userInstitutionFilter" class="border rounded px-3 py-2 text-sm bg-white w-full sm:w-auto" onchange="filterUsers()">
                     <option value="">Tüm Kurumlar</option>
                 </select>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full min-w-[980px]">
                     <thead>
                         <tr>
                             <th class="cursor-pointer select-none" onclick="sortUsers('id')">ID <span id="userSort_id" class="text-gray-400">↕</span></th>
@@ -415,7 +415,7 @@
                     </tbody>
                 </table>
             </div>
-            <div id="usersPagination" class="mt-4 flex items-center justify-between gap-3 text-sm text-gray-500"></div>
+            <div id="usersPagination" class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-500"></div>
         </div>
     </div>
 
@@ -477,24 +477,24 @@
 <div id="tab-files" class="tab-content hidden">
     <div class="bg-white rounded-xl shadow-sm p-6">
         <!-- Üst bar -->
-        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
             <div>
                 <h3 class="text-lg font-semibold flex items-center gap-2">
                     <i class="fas fa-server text-purple-600"></i> Merkezi Dosyalar
                 </h3>
                 <div id="adminBreadcrumb" class="text-xs text-gray-400 mt-0.5 flex items-center gap-0.5 min-w-0 overflow-hidden max-w-full flex-wrap"></div>
             </div>
-            <div class="flex gap-2 flex-wrap items-center">
-                <button id="adminBackBtn" onclick="adminGoBack()" class="btn bg-gray-200 text-gray-700 hidden">
+            <div class="grid grid-cols-1 sm:flex gap-2 w-full sm:w-auto items-stretch sm:items-center">
+                <button id="adminBackBtn" onclick="adminGoBack()" class="btn bg-gray-200 text-gray-700 hidden w-full sm:w-auto">
                     <i class="fas fa-arrow-left mr-1"></i> Geri
                 </button>
-                <button id="selectModeBtn" onclick="toggleSelectMode()" class="btn bg-gray-100 text-gray-600 text-sm border">
+                <button id="selectModeBtn" onclick="toggleSelectMode()" class="btn bg-gray-100 text-gray-600 text-sm border w-full sm:w-auto">
                     <i class="fas fa-check-square mr-1"></i> Seçim Modu
                 </button>
-                <button onclick="openAdminFolderModal()" class="btn bg-yellow-600 text-white">
+                <button onclick="openAdminFolderModal()" class="btn bg-yellow-600 text-white w-full sm:w-auto">
                     <i class="fas fa-folder-plus mr-1"></i> Klasör Ekle
                 </button>
-                <button id="addFileBtnAdmin" onclick="openAdminFileModal()" class="btn btn-primary">
+                <button id="addFileBtnAdmin" onclick="openAdminFileModal()" class="btn btn-primary w-full sm:w-auto">
                     <i class="fas fa-upload mr-1"></i> Dosya Yükle
                 </button>
             </div>
@@ -506,14 +506,14 @@
         </div>
 
         <!-- Arama ve sıralama -->
-        <div class="flex items-center gap-2 mb-3 flex-wrap">
-            <div class="relative flex-1 min-w-[160px] max-w-xs">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 flex-wrap">
+            <div class="relative flex-1 min-w-0 sm:min-w-[160px] sm:max-w-xs w-full">
                 <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 <input id="adminContentSearch" type="text" placeholder="Klasör veya dosya ara..."
                        class="w-full border rounded pl-7 pr-2 py-1.5 text-sm bg-white"
                        oninput="filterAdminContent(this.value)">
             </div>
-            <div class="flex gap-1 text-xs">
+            <div class="grid grid-cols-2 sm:flex gap-1 text-xs w-full sm:w-auto">
                 <button id="adminSortName" onclick="setAdminSort('name')"
                     class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
                     <i class="fas fa-font"></i> Ad
@@ -526,11 +526,11 @@
                 </button>
             </div>
             <!-- Seçim modu kontrolleri (gizli başlar) -->
-            <div id="selectModeControls" class="hidden flex gap-1 text-xs">
-                <button onclick="selectAllItems()" class="px-2 py-1.5 border rounded bg-blue-50 text-blue-700">
+            <div id="selectModeControls" class="hidden grid grid-cols-1 sm:flex gap-1 text-xs w-full sm:w-auto">
+                <button onclick="selectAllItems()" class="px-2 py-1.5 border rounded bg-blue-50 text-blue-700 w-full sm:w-auto">
                     <i class="fas fa-check-double mr-1"></i>Tümünü Seç
                 </button>
-                <button onclick="clearAllSelections()" class="px-2 py-1.5 border rounded bg-gray-50 text-gray-600">
+                <button onclick="clearAllSelections()" class="px-2 py-1.5 border rounded bg-gray-50 text-gray-600 w-full sm:w-auto">
                     <i class="fas fa-times mr-1"></i>Kaldır
                 </button>
                 <span id="selectionCounter" class="px-2 py-1.5 text-gray-500 font-medium"></span>
@@ -573,40 +573,40 @@
 <div id="tab-inst-files" class="tab-content hidden">
     <div class="bg-white rounded-xl shadow-sm p-6">
         <!-- Üst bar -->
-        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
             <div>
                 <h3 class="text-lg font-semibold flex items-center gap-2">
                     <i class="fas fa-folder-open text-indigo-500"></i> Kurum Dosyaları
                 </h3>
                 <div id="instFilesBc" class="text-sm text-gray-500 mt-1"></div>
             </div>
-            <div class="flex gap-2 flex-wrap items-center">
-                <button id="instFilesBackBtn" onclick="instFilesTabGoBack()" class="btn bg-gray-200 text-gray-700 hidden">
+            <div class="grid grid-cols-1 sm:flex gap-2 w-full sm:w-auto items-stretch sm:items-center">
+                <button id="instFilesBackBtn" onclick="instFilesTabGoBack()" class="btn bg-gray-200 text-gray-700 hidden w-full sm:w-auto">
                     <i class="fas fa-arrow-left mr-1"></i> Geri
                 </button>
-                <button id="instFilesSelectModeBtn" onclick="instFilesToggleSelectMode()" class="btn bg-gray-100 text-gray-600 text-sm border">
+                <button id="instFilesSelectModeBtn" onclick="instFilesToggleSelectMode()" class="btn bg-gray-100 text-gray-600 text-sm border w-full sm:w-auto">
                     <i class="fas fa-check-square mr-1"></i> Seçim Modu
                 </button>
-                <button onclick="instFilesOpenFolderModal()" class="btn bg-yellow-600 text-white">
+                <button onclick="instFilesOpenFolderModal()" class="btn bg-yellow-600 text-white w-full sm:w-auto">
                     <i class="fas fa-folder-plus mr-1"></i> Klasör Ekle
                 </button>
             </div>
         </div>
 
         <!-- Arama -->
-        <div class="flex items-center gap-2 mb-3 flex-wrap">
-            <div class="relative flex-1 min-w-[160px] max-w-xs">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 flex-wrap">
+            <div class="relative flex-1 min-w-0 sm:min-w-[160px] sm:max-w-xs w-full">
                 <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 <input id="instFilesSearch" type="text" placeholder="Klasör veya dosya ara..."
                        class="w-full border rounded pl-7 pr-2 py-1.5 text-sm bg-white"
                        oninput="instFilesFilterContent(this.value)">
             </div>
             <!-- Seçim modu kontrolleri -->
-            <div id="instFilesSelectControls" class="hidden flex gap-1 text-xs">
-                <button type="button" onclick="instFilesSelectAll()" class="px-2 py-1.5 border rounded bg-blue-50 text-blue-700">
+            <div id="instFilesSelectControls" class="hidden grid grid-cols-1 sm:flex gap-1 text-xs w-full sm:w-auto">
+                <button type="button" onclick="instFilesSelectAll()" class="px-2 py-1.5 border rounded bg-blue-50 text-blue-700 w-full sm:w-auto">
                     <i class="fas fa-check-double mr-1"></i>Tümünü Seç
                 </button>
-                <button type="button" onclick="instFilesClearSelections()" class="px-2 py-1.5 border rounded bg-gray-50 text-gray-600">
+                <button type="button" onclick="instFilesClearSelections()" class="px-2 py-1.5 border rounded bg-gray-50 text-gray-600 w-full sm:w-auto">
                     <i class="fas fa-times mr-1"></i>Kaldır
                 </button>
                 <span id="instFilesSelectionCounter" class="px-2 py-1.5 text-gray-500 font-medium"></span>
@@ -1009,28 +1009,28 @@
     <!-- Institutions Tab -->
     <div id="tab-institutions" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
                 <h3 class="text-lg font-semibold">Kurumlar</h3>
-                <div class="flex gap-2">
-                    <button type="button" id="syncD1ToAirtableBtn" onclick="syncD1ToAirtable()" class="btn bg-indigo-600 text-white hover:bg-indigo-700">
+                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <button type="button" id="syncD1ToAirtableBtn" onclick="syncD1ToAirtable()" class="btn bg-indigo-600 text-white hover:bg-indigo-700 w-full sm:w-auto">
                         <i class="fas fa-cloud-upload-alt mr-2"></i>D1'den Airtable'a Senkronize Et
                     </button>
-                    <button type="button" id="syncAirtableBtn" onclick="syncAirtableToD1()" class="btn bg-green-600 text-white hover:bg-green-700">
+                    <button type="button" id="syncAirtableBtn" onclick="syncAirtableToD1()" class="btn bg-green-600 text-white hover:bg-green-700 w-full sm:w-auto">
                         <i class="fas fa-sync mr-2"></i>Airtable'dan Senkronize Et
                     </button>
-                    <button type="button" onclick="openBulkInstitutionModal()" class="btn bg-gray-200 text-gray-700">
+                    <button type="button" onclick="openBulkInstitutionModal()" class="btn bg-gray-200 text-gray-700 w-full sm:w-auto">
                         <i class="fas fa-list mr-2"></i>Toplu Ekle
                     </button>
-                    <button type="button" onclick="openInstitutionModal()" class="btn btn-primary">
+                    <button type="button" onclick="openInstitutionModal()" class="btn btn-primary w-full sm:w-auto">
                         <i class="fas fa-plus mr-2"></i>Kurum Ekle
                     </button>
                 </div>
             </div>
             <!-- Filtreler -->
-            <div class="flex flex-wrap gap-2 mb-4">
+            <div class="flex flex-col sm:flex-row flex-wrap gap-2 mb-4">
                 <input type="text" id="institutionSearchInput" placeholder="Kurum, website veya şehir ara..."
-                       class="border rounded px-3 py-1.5 text-sm flex-1 min-w-[200px]" oninput="filterInstitutions()">
-                <select id="institutionOrgFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterInstitutions()">
+                       class="border rounded px-3 py-2 text-sm flex-1 min-w-0 sm:min-w-[220px] w-full sm:w-auto" oninput="filterInstitutions()">
+                <select id="institutionOrgFilter" class="border rounded px-3 py-2 text-sm bg-white w-full sm:w-auto" onchange="filterInstitutions()">
                     <option value="">Tüm Organization</option>
                     <option value="University">University</option>
                     <option value="Corporate">Corporate</option>
@@ -1040,7 +1040,7 @@
                     <option value="Service Provider">Service Provider</option>
                     <option value="Sub-distributor">Sub-distributor</option>
                 </select>
-                <select id="institutionStatusFilter" class="border rounded px-3 py-1.5 text-sm bg-white" onchange="filterInstitutions()">
+                <select id="institutionStatusFilter" class="border rounded px-3 py-2 text-sm bg-white w-full sm:w-auto" onchange="filterInstitutions()">
                     <option value="">Tüm Status</option>
                     <option value="Customer">Customer</option>
                     <option value="Prospect">Prospect</option>
@@ -1049,7 +1049,7 @@
                 </select>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full min-w-[1020px]">
                     <thead>
                         <tr>
                             <th class="cursor-pointer select-none" onclick="sortInstitutions('name')">Kurum Adı <span id="instSort_name" class="text-gray-400">↕</span></th>
@@ -1067,7 +1067,7 @@
                     </tbody>
                 </table>
             </div>
-            <div id="institutionsPagination" class="mt-4 flex items-center justify-between gap-3 text-sm text-gray-500"></div>
+            <div id="institutionsPagination" class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-500"></div>
         </div>
     </div>
 
