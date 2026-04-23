@@ -620,6 +620,31 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Safe interpolation for JS string literals inside HTML attributes.
+// Encodes everything that could break out of either an HTML attribute
+// value or a surrounding JS string (quotes, backslashes, angle brackets,
+// ampersands, newlines) as \uXXXX escape sequences so the output is
+// inert in both contexts.
+function jsStr(text) {
+    const raw = String(text ?? '');
+    let out = '';
+    for (let i = 0; i < raw.length; i++) {
+        const code = raw.charCodeAt(i);
+        const ch = raw[i];
+        if (
+            ch === '\\' || ch === '"' || ch === "'" || ch === '`' ||
+            ch === '<' || ch === '>' || ch === '&' ||
+            ch === '\n' || ch === '\r' || ch === '\t' ||
+            code < 0x20 || code === 0x2028 || code === 0x2029
+        ) {
+            out += '\\u' + code.toString(16).padStart(4, '0');
+        } else {
+            out += ch;
+        }
+    }
+    return out;
+}
+
 function getFileIcon(fileType) {
     const icons = {
         'pdf': 'fa-file-pdf', 'doc': 'fa-file-word', 'docx': 'fa-file-word',
@@ -1021,13 +1046,13 @@ async function loadFolders(parentId = null) {
 
             container.innerHTML = folders.length ? folders.map(f => `
                 <div class="border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-yellow-50 text-center group relative"
-                     onclick="openFolder(${f.id}, '${escapeHtml(f.name)}')">
+                     onclick="openFolder(${f.id}, '${jsStr(f.name)}')">
                     <div class="absolute top-1 right-1 hidden group-hover:flex gap-1">
-                        <button onclick="event.stopPropagation();renameUserFolder(${f.id}, '${escapeHtml(f.name)}')"
+                        <button onclick="event.stopPropagation();renameUserFolder(${f.id}, '${jsStr(f.name)}')"
                             class="p-1 text-gray-400 hover:text-blue-600 transition" title="Yeniden Adlandır">
                             <i class="fas fa-pencil-alt text-xs"></i>
                         </button>
-                        <button onclick="event.stopPropagation();deleteUserFolder(${f.id}, '${escapeHtml(f.name)}')"
+                        <button onclick="event.stopPropagation();deleteUserFolder(${f.id}, '${jsStr(f.name)}')"
                             class="p-1 text-gray-400 hover:text-red-500 transition" title="Sil">
                             <i class="fas fa-trash text-xs"></i>
                         </button>
@@ -1069,13 +1094,13 @@ async function loadFolders(parentId = null) {
 
             container.innerHTML = folders.length ? folders.map(f => `
                 <div class="border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-yellow-50 text-center group relative"
-                     onclick="openFolder(${f.id}, '${escapeHtml(f.name)}')">
+                     onclick="openFolder(${f.id}, '${jsStr(f.name)}')">
                     <div class="absolute top-1 right-1 hidden group-hover:flex gap-1">
-                        <button onclick="event.stopPropagation();renameSystemFolder(${f.id}, '${escapeHtml(f.name)}')"
+                        <button onclick="event.stopPropagation();renameSystemFolder(${f.id}, '${jsStr(f.name)}')"
                             class="p-1 text-gray-400 hover:text-blue-600 transition" title="Yeniden Adlandır">
                             <i class="fas fa-pencil-alt text-xs"></i>
                         </button>
-                        <button onclick="event.stopPropagation();deleteSystemFolder(${f.id}, '${escapeHtml(f.name)}')"
+                        <button onclick="event.stopPropagation();deleteSystemFolder(${f.id}, '${jsStr(f.name)}')"
                             class="p-1 text-gray-400 hover:text-red-500 transition" title="Sil">
                             <i class="fas fa-trash text-xs"></i>
                         </button>
@@ -1109,7 +1134,7 @@ async function loadFolders(parentId = null) {
 
         container.innerHTML = folders.length ? folders.map(f => `
             <div class="border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-yellow-50 text-center group relative"
-                 onclick="openFolder(${f.id}, '${escapeHtml(f.folder_name)}')">
+                 onclick="openFolder(${f.id}, '${jsStr(f.folder_name)}')">
                 <i class="fas fa-folder text-3xl text-yellow-500 mb-1 block"></i>
                 <p class="text-xs font-medium truncate">${escapeHtml(f.folder_name)}</p>
                 <p class="text-xs text-gray-400">${f.subfolder_count || 0} klasör, ${f.file_count || 0} dosya</p>
@@ -1160,7 +1185,7 @@ async function loadFiles(folderId = null) {
                         <div class="flex items-center gap-2 flex-wrap">
                             <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
                             <a href="javascript:void(0)"
-                               onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type||''}')"
+                               onclick="previewFile('${jsStr(file.file_url)}','${jsStr(file.file_name)}','${file.file_type||''}')"
                                class="font-medium text-primary hover:underline truncate">${escapeHtml(file.file_name)}</a>
                             ${file.is_read ? '' : '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Yeni</span>'}
                         </div>
@@ -1169,8 +1194,8 @@ async function loadFiles(folderId = null) {
                     </div>
                     <div class="flex gap-2 ml-2">
                         ${file.is_read ? '' : `<button type="button" onclick="markUserFileRead(${file.id})" title="Okundu yap" class="text-blue-500 hover:text-blue-700"><i class="fas fa-envelope-open"></i></button>`}
-                        <button type="button" onclick="moveUserFile(${file.id}, '${escapeHtml(file.file_name)}')" title="Taşı" class="text-gray-500 hover:text-gray-700"><i class="fas fa-folder-open"></i></button>
-                        <button type="button" onclick="renameUserFile(${file.id}, '${escapeHtml(file.file_name)}')" title="Yeniden adlandır" class="text-amber-500 hover:text-amber-700"><i class="fas fa-pencil-alt"></i></button>
+                        <button type="button" onclick="moveUserFile(${file.id}, '${jsStr(file.file_name)}')" title="Taşı" class="text-gray-500 hover:text-gray-700"><i class="fas fa-folder-open"></i></button>
+                        <button type="button" onclick="renameUserFile(${file.id}, '${jsStr(file.file_name)}')" title="Yeniden adlandır" class="text-amber-500 hover:text-amber-700"><i class="fas fa-pencil-alt"></i></button>
                         <button type="button" onclick="deleteUserFile(${file.id})" title="Kaldır" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
@@ -1198,15 +1223,15 @@ async function loadFiles(folderId = null) {
                         <div class="flex items-center gap-2 flex-wrap">
                             <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
                             <a href="javascript:void(0)"
-                               onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type||''}')"
+                               onclick="previewFile('${jsStr(file.file_url)}','${jsStr(file.file_name)}','${file.file_type||''}')"
                                class="font-medium text-primary hover:underline truncate">${escapeHtml(file.file_name)}</a>
                             <span class="text-xs text-gray-400">${getCategoryName(file.category)}</span>
                         </div>
                         <p class="text-xs text-gray-400 mt-1">${new Date(file.uploaded_at || file.created_at).toLocaleDateString('tr-TR')}</p>
                     </div>
                     <div class="flex gap-2 ml-2">
-                        <button type="button" onclick="moveSystemFile(${file.id}, '${escapeHtml(file.file_name)}')" title="Taşı" class="text-gray-500 hover:text-gray-700"><i class="fas fa-folder-open"></i></button>
-                        <button type="button" onclick="renameSystemFile(${file.id}, '${escapeHtml(file.file_name)}')" title="Yeniden adlandır" class="text-amber-500 hover:text-amber-700"><i class="fas fa-pencil-alt"></i></button>
+                        <button type="button" onclick="moveSystemFile(${file.id}, '${jsStr(file.file_name)}')" title="Taşı" class="text-gray-500 hover:text-gray-700"><i class="fas fa-folder-open"></i></button>
+                        <button type="button" onclick="renameSystemFile(${file.id}, '${jsStr(file.file_name)}')" title="Yeniden adlandır" class="text-amber-500 hover:text-amber-700"><i class="fas fa-pencil-alt"></i></button>
                         <button type="button" onclick="deleteFile(${file.id})" title="Sil" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
@@ -1233,7 +1258,7 @@ async function loadFiles(folderId = null) {
                     <div class="flex items-center gap-2 flex-wrap">
                         <i class="fas ${getFileIcon(file.file_type)} text-gray-400"></i>
                         <a href="javascript:void(0)"
-                           onclick="previewFile('${escapeHtml(file.file_url)}','${escapeHtml(file.file_name)}','${file.file_type||''}')"
+                           onclick="previewFile('${jsStr(file.file_url)}','${jsStr(file.file_name)}','${file.file_type||''}')"
                            class="font-medium text-primary hover:underline truncate">${escapeHtml(file.file_name)}</a>
                         ${file.is_public
                             ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full"><i class="fas fa-globe mr-1"></i>Açık</span>'
