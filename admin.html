@@ -2885,11 +2885,7 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 console.log("Dashboard yükleniyor...");
                 loadDashboard();
             } else if (tab === 'files') {
-                loadAdminInstitutions();
-                adminCurrentFolderId = null;
-                adminFolderStack = [];
-                document.getElementById('adminBackBtn')?.classList.add('hidden');
-                loadAdminFiles();
+                loadAdminFilesTab();
             } else if (tab === 'institutions') {
                 loadInstitutions();
             } else if (tab === 'my-institution') {
@@ -2953,7 +2949,6 @@ function isAdminSystemScope() { return true; }
 // ====================== KURUM DOSYALARI - ADMIN İÇİN DÜZELTİLMİŞ VERSİYON ======================
 
 async function loadAdminInstitutions() {
-    // Files tab is super_admin only. Load institution list for Gönder modal, then init the panel.
     try {
         const res = await fetch(`${API_BASE}/api/admin/institutions`, { credentials: 'include' });
         if (res.ok) {
@@ -2961,12 +2956,22 @@ async function loadAdminInstitutions() {
             _allInstitutionOptions = institutions.map(i => ({ value: i.name, text: i.name, id: i.id }));
         }
     } catch(e) { /* non-critical */ }
+    return _allInstitutionOptions;
+}
+
+function resetAdminFilesState() {
     adminCurrentFolderId = null;
     adminFolderStack = [];
     adminSystemRootCollectionId = null;
-    loadAdminFolders(null);
-    loadAdminFiles();
-    return {};
+    document.getElementById('adminBackBtn')?.classList.add('hidden');
+    updateAdminBreadcrumb();
+}
+
+async function loadAdminFilesTab() {
+    resetAdminFilesState();
+    await loadAdminInstitutions();
+    await loadAdminFolders(null);
+    await loadAdminFiles();
 }
 // Klasörleri yükle (system-only)
 async function loadAdminFolders(parentId = null) {
