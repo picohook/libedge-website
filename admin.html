@@ -132,11 +132,11 @@
 <div id="authGate" style="display:none">
 
 
-<div class="flex h-screen">
+<div class="flex min-h-screen">
     <div id="adminSidebarOverlay" class="hidden fixed inset-0 bg-black/40 z-30 md:hidden" onclick="closeAdminSidebar()"></div>
     <!-- Sidebar -->
-    <div id="adminSidebar" class="sidebar w-64 flex-shrink-0 fixed inset-y-0 left-0 z-40 transform -translate-x-full transition-transform duration-300 md:static md:translate-x-0">
-        <div class="p-6">
+    <div id="adminSidebar" class="sidebar w-64 flex-shrink-0 fixed inset-y-0 left-0 z-40 transform -translate-x-full transition-transform duration-300 md:relative md:inset-auto md:z-auto md:translate-x-0 md:block">
+        <div class="p-6 h-full md:min-h-screen">
             <div class="flex items-center gap-3 mb-8">
                 <img src="assets/images/libedge_logo.webp" alt="Logo" class="h-10 w-auto">
                 <span class="text-white font-bold text-lg">LibEdge</span>
@@ -162,7 +162,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-auto mobile-main-offset">
+    <div class="flex-1 min-w-0 overflow-auto mobile-main-offset">
         <div class="bg-white shadow-sm px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-20">
             <div class="flex items-center gap-3 min-w-0">
                 <button id="mobileSidebarBtn" type="button" class="inline-flex md:hidden items-center justify-center h-10 w-10 rounded-lg border border-gray-200 text-gray-700" onclick="toggleAdminSidebar()" aria-label="Menüyü aç">
