@@ -31,5 +31,6 @@ huggingface/
 tmp_*.sql
 # Local backup / deploy helper artifacts
 backups/
+.pages-deploy-current/
 .tmp_profile_update.js
 institution-logos
