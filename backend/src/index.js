@@ -1073,13 +1073,20 @@ async function hashPassword(password) {
   return `${saltHex}:${hashHex}`;
 }
 
+// Returns { matched, legacy }. `legacy: true` means the stored hash is
+// an unsalted SHA-256 digest from before PBKDF2 was introduced; callers
+// should rehash on successful login.
 async function verifyPassword(password, storedHash) {
+  if (!storedHash || typeof storedHash !== 'string') {
+    return { matched: false, legacy: false };
+  }
+
   if (!storedHash.includes(':')) {
     const encoder    = new TextEncoder();
     const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
     const hashHex    = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0')).join('');
-    return hashHex === storedHash;
+    return { matched: timingSafeEqual(hashHex, storedHash), legacy: true };
   }
 
   const [saltHex, existingHashHex] = storedHash.split(':');
@@ -1100,7 +1107,21 @@ async function verifyPassword(password, storedHash) {
   const hashHex = Array.from(new Uint8Array(hashBuffer))
     .map(b => b.toString(16).padStart(2, '0')).join('');
 
-  return timingSafeEqual(hashHex, existingHashHex);
+  return { matched: timingSafeEqual(hashHex, existingHashHex), legacy: false };
+}
+
+function extractClientIp(c) {
+  const fwd = c.req.header('cf-connecting-ip') ||
+              c.req.header('CF-Connecting-IP') ||
+              c.req.header('x-forwarded-for') ||
+              '';
+  return String(fwd).split(',')[0].trim() || 'unknown';
+}
+
+function rateLimitResponse(c, info, messageTr) {
+  const secondsUntilReset = Math.max(1, Math.ceil((Number(info?.resetTime || 0) - Date.now()) / 1000));
+  c.header('Retry-After', String(secondsUntilReset));
+  return c.json({ success: false, error: messageTr || 'Çok fazla istek. Lütfen biraz bekleyin.' }, 429);
 }
 
 function timingSafeEqual(a, b) {
@@ -1130,6 +1151,12 @@ app.get('/api/auth/status', (c) => {
 // ====================== LOGIN ENDPOINT ======================
 app.post('/api/auth/login', async (c) => {
   try {
+    const ip = extractClientIp(c);
+    const ipLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'login:ip', ip, 20, 15 * 60);
+    if (ipLimit.isLimited) {
+      return rateLimitResponse(c, ipLimit, 'Çok fazla giriş denemesi. Lütfen birkaç dakika sonra tekrar deneyin.');
+    }
+
     const body = await parseAndValidate(c, {
       email:    { required: true, type: 'string', email: true, maxLength: 254 },
       password: { required: true, type: 'string', minLength: 1, maxLength: 128 },
@@ -1138,13 +1165,33 @@ app.post('/api/auth/login', async (c) => {
     const { email, password } = body;
     const db = c.env.DB;
 
+    const normalizedEmail = email.toLowerCase().trim();
+    const accountLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'login:email', normalizedEmail, 10, 15 * 60);
+    if (accountLimit.isLimited) {
+      return rateLimitResponse(c, accountLimit, 'Çok fazla başarısız deneme. Lütfen birkaç dakika sonra tekrar deneyin.');
+    }
+
     const user = await db.prepare(`
       SELECT id, email, full_name, institution, institution_id, password_hash, role
       FROM users WHERE email = ?
-    `).bind(email.toLowerCase()).first();
+    `).bind(normalizedEmail).first();
 
-    if (!user || !(await verifyPassword(password, user.password_hash))) {
+    const verifyResult = user
+      ? await verifyPassword(password, user.password_hash)
+      : { matched: false, legacy: false };
+    if (!user || !verifyResult.matched) {
       return c.json({ success: false, error: 'E-posta veya şifre hatalı.' }, 401);
+    }
+
+    // Lazy-rehash legacy unsalted SHA-256 passwords on successful login so
+    // they migrate to PBKDF2 without forcing a password reset.
+    if (verifyResult.legacy) {
+      try {
+        const upgraded = await hashPassword(password);
+        await db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).bind(upgraded, user.id).run();
+      } catch (err) {
+        console.error('Legacy password rehash failed for user', user.id, err);
+      }
     }
 
     await db.prepare(`UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?`).bind(user.id).run();
@@ -1707,6 +1754,12 @@ app.delete('/api/newsletter/subscribe', async (c) => {
 // ====================== REGISTRATION ROUTES ======================
 app.post('/api/auth/register', async (c) => {
   try {
+    const ip = extractClientIp(c);
+    const ipLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'register:ip', ip, 5, 60 * 60);
+    if (ipLimit.isLimited) {
+      return rateLimitResponse(c, ipLimit, 'Çok fazla kayıt denemesi. Lütfen daha sonra tekrar deneyin.');
+    }
+
     const body = await parseAndValidate(c, {
       email:       { required: true, type: 'string', email: true, maxLength: 254 },
       password:    { required: true, type: 'string', minLength: 6, maxLength: 128 },
