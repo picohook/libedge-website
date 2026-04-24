@@ -72,7 +72,8 @@ export function registerRaAdminConfig(app) {
          ra_enabled,
          ra_origin_host,
          ra_login_recipe_json,
-         ra_host_allowlist_json
+         ra_host_allowlist_json,
+         ra_requires_tunnel
        FROM products
        ORDER BY name COLLATE NOCASE`
     ).all();
@@ -87,6 +88,7 @@ export function registerRaAdminConfig(app) {
       ra_origin_host: r.ra_origin_host || null,
       ra_login_recipe_json: r.ra_login_recipe_json || null,
       ra_host_allowlist_json: r.ra_host_allowlist_json || null,
+      ra_requires_tunnel: r.ra_requires_tunnel == null ? 1 : (r.ra_requires_tunnel ? 1 : 0),
     }));
 
     return c.json({ products });
@@ -167,16 +169,44 @@ export function registerRaAdminConfig(app) {
       allowlistJson = raw;
     }
 
-    await c.env.DB.prepare(
-      `UPDATE products
-          SET ra_enabled             = ?,
-              ra_origin_host         = ?,
-              ra_login_recipe_json   = ?,
-              ra_host_allowlist_json = ?
-        WHERE slug = ?`
-    )
-      .bind(raEnabled, raOriginHost, recipeJson, allowlistJson, slug)
-      .run();
+    // ra_requires_tunnel: gönderilmediyse (undefined) mevcut değeri koru,
+    // gönderildiyse 0/1'e normalize et.
+    const hasRequiresTunnel = Object.prototype.hasOwnProperty.call(
+      body,
+      'ra_requires_tunnel'
+    );
+    if (hasRequiresTunnel) {
+      const raRequiresTunnel = body.ra_requires_tunnel ? 1 : 0;
+      await c.env.DB.prepare(
+        `UPDATE products
+            SET ra_enabled             = ?,
+                ra_origin_host         = ?,
+                ra_login_recipe_json   = ?,
+                ra_host_allowlist_json = ?,
+                ra_requires_tunnel     = ?
+          WHERE slug = ?`
+      )
+        .bind(
+          raEnabled,
+          raOriginHost,
+          recipeJson,
+          allowlistJson,
+          raRequiresTunnel,
+          slug
+        )
+        .run();
+    } else {
+      await c.env.DB.prepare(
+        `UPDATE products
+            SET ra_enabled             = ?,
+                ra_origin_host         = ?,
+                ra_login_recipe_json   = ?,
+                ra_host_allowlist_json = ?
+          WHERE slug = ?`
+      )
+        .bind(raEnabled, raOriginHost, recipeJson, allowlistJson, slug)
+        .run();
+    }
 
     return c.json({ success: true, slug });
   });

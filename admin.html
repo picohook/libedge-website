@@ -1397,6 +1397,16 @@
                     <input id="raProductEnabledInput" type="checkbox" class="h-4 w-4" />
                     <span>RA bu ürün için <strong>aktif</strong></span>
                 </label>
+                <label class="flex items-start gap-2 text-sm text-gray-700">
+                    <input id="raProductRequiresTunnelInput" type="checkbox" class="h-4 w-4 mt-0.5" checked />
+                    <span>
+                        <strong>Kurum tüneli zorunlu</strong> (IP-gated publisher)
+                        <span class="block text-[11px] text-gray-400 font-normal">
+                            Pangram gibi session-cookie bazlı (public) erişimlerde kapalı bırak.
+                            Wiley/ScienceDirect gibi IP-kilitli kurumsal erişim için açık bırak.
+                        </span>
+                    </span>
+                </label>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Origin Host</label>
                     <input id="raProductOriginHostInput" type="text" placeholder="www.pangram.com" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono" />
@@ -5168,6 +5178,9 @@ function _raOpenProductModal(slug) {
     _ra.editingProductSlug = slug;
     document.getElementById('raProductModalSlug').textContent = slug;
     document.getElementById('raProductEnabledInput').checked = !!product.ra_enabled;
+    // ra_requires_tunnel: null/undefined => default 1 (backwards compat)
+    document.getElementById('raProductRequiresTunnelInput').checked =
+        product.ra_requires_tunnel == null ? true : !!product.ra_requires_tunnel;
     document.getElementById('raProductOriginHostInput').value = product.ra_origin_host || '';
     document.getElementById('raProductRecipeInput').value = _raPrettyJson(product.ra_login_recipe_json);
     document.getElementById('raProductAllowlistInput').value = _raPrettyJson(product.ra_host_allowlist_json);
@@ -5198,6 +5211,7 @@ async function _raSaveProduct() {
     const slug = _ra.editingProductSlug;
     if (!slug) return;
     const raEnabled = document.getElementById('raProductEnabledInput').checked ? 1 : 0;
+    const raRequiresTunnel = document.getElementById('raProductRequiresTunnelInput').checked ? 1 : 0;
     const originHost = document.getElementById('raProductOriginHostInput').value.trim();
     const recipe = document.getElementById('raProductRecipeInput').value.trim();
     const allowlist = document.getElementById('raProductAllowlistInput').value.trim();
@@ -5239,6 +5253,7 @@ async function _raSaveProduct() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 ra_enabled: raEnabled,
+                ra_requires_tunnel: raRequiresTunnel,
                 ra_origin_host: originHost || null,
                 ra_login_recipe_json: recipe || null,
                 ra_host_allowlist_json: allowlist || null,
