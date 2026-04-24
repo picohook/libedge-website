@@ -1384,6 +1384,19 @@ function getFrontendOrigin(c) {
   return 'https://staging.libedge-website.pages.dev';
 }
 
+// Sender for every outbound email. Configurable via the EMAIL_FROM var/secret
+// so the deployed Worker can be repointed at a different verified domain
+// without a code change. Format: 'Display Name <address@domain.tld>'.
+const DEFAULT_EMAIL_FROM = 'LibEdge <noreply@libedge.com>';
+
+function getEmailFrom(c) {
+  const configured = c.env.EMAIL_FROM;
+  if (typeof configured === 'string' && configured.trim().length > 0) {
+    return configured.trim();
+  }
+  return DEFAULT_EMAIL_FROM;
+}
+
 async function sendPasswordResetEmail(c, user, resetUrl) {
   if (!c.env.RESEND_API_KEY) {
     console.warn('RESEND_API_KEY missing; password reset email not sent for user', user.id);
@@ -1391,6 +1404,8 @@ async function sendPasswordResetEmail(c, user, resetUrl) {
   }
   const safeName = escapeHtml(user.full_name || user.email.split('@')[0] || 'kullanıcı');
   const safeUrl = escapeHtml(resetUrl);
+  const fromAddress = getEmailFrom(c);
+  const footerAddress = escapeHtml(fromAddress.replace(/^.*<([^>]+)>.*$/, '$1') || fromAddress);
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto;">
       <h2 style="color: #2a276b;">Şifre sıfırlama talebi</h2>
@@ -1402,7 +1417,7 @@ async function sendPasswordResetEmail(c, user, resetUrl) {
       <p style="color: #666; font-size: 13px;">Bu bağlantı 1 saat süreyle geçerlidir ve yalnızca bir kez kullanılabilir.</p>
       <p style="color: #666; font-size: 13px;">Bu talebi siz göndermediyseniz, bu e-postayı yok sayabilirsiniz. Şifreniz değiştirilmez.</p>
       <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;">
-      <p style="color: #999; font-size: 12px;">LibEdge · noreply@libedge.com</p>
+      <p style="color: #999; font-size: 12px;">LibEdge · ${footerAddress}</p>
     </div>
   `;
   try {
@@ -1413,7 +1428,7 @@ async function sendPasswordResetEmail(c, user, resetUrl) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'LibEdge <noreply@libedge.com>',
+        from: fromAddress,
         to: [user.email],
         subject: 'Şifre sıfırlama talebi',
         html,
@@ -1996,7 +2011,7 @@ app.post('/form', async (c) => {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            from: "LibEdge <noreply@libedge.com>",
+            from: getEmailFrom(c),
             to: ["info@libedge.com.tr", email],
             subject,
             html: `
