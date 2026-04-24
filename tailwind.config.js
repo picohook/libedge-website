@@ -12,7 +12,14 @@ export default {
     './assets/js/**/*.js'
   ],
   theme: {
-    extend: {}
+    extend: {
+      colors: {
+        // Brand primary — sidebar rengiyle aynı (#220f60). Admin panelde
+        // birçok butonda `bg-primary`, `text-primary`, `border-primary`
+        // ve `ra-subtab-active` style'ları bu renge güveniyor.
+        primary: '#220f60',
+      }
+    }
   },
   plugins: []
 };

@@ -2871,7 +2871,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
                COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
                COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
-               i.name as subject_name, i.name as institution_name, NULL as user_id
+               i.name as subject_name, i.name as institution_name, is2.institution_id, NULL as user_id
         FROM institution_subscriptions is2
         LEFT JOIN institutions i ON is2.institution_id = i.id
         LEFT JOIN products p ON p.slug = is2.product_slug
@@ -2893,7 +2893,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
                COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
                COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
-               i.name as subject_name, i.name as institution_name, NULL as user_id
+               i.name as subject_name, i.name as institution_name, is2.institution_id, NULL as user_id
         FROM institution_subscriptions is2
         LEFT JOIN institutions i ON is2.institution_id = i.id
         LEFT JOIN products p ON p.slug = is2.product_slug
