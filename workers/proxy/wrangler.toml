@@ -1,38 +1,40 @@
 # workers/proxy/wrangler.toml
-# Remote Access Proxy Worker — *.proxy.libedge.com wildcard.
-# Ana LibEdge Worker'ından (libedge-api-*) BAĞIMSIZ deploy edilir ama
-# aynı D1 ve KV'lere bind olur.
+# Remote Access Proxy Worker — deploy'lanır ayrı isim altında (libedge-ra-proxy-*)
+# ama ana LibEdge Worker'ı ile aynı D1 ve KV'lere bind olur.
 #
-# Ana wrangler.toml (libedge-website root) ile birebir paralel ortam yapısı:
-#   default      → (ana: libedge-api)              libedge-db / RATE_LIMIT_KV 36237…
-#   env.staging  → (ana: libedge-api-staging)      libedge-db / RATE_LIMIT_KV 556d17…
-#   env.production → (ana: libedge-api-prod)       libedge-db-production / RATE_LIMIT_KV 5640d9…
+# Bu dosyanın default bloğu SADECE local development için (`wrangler dev`).
+# Gerçek deploy'lar `--env staging` veya `--env production` bayrağıyla yapılmalı.
+# Ana wrangler.toml'daki footgun guard'ının aynısı: default isim `-local`,
+# R2 ve KV staging kaynaklarına bağlı — böylece bayraksız bir `wrangler deploy`
+# yanlışlıkla prod'u ezmez.
 
-name = "libedge-ra-proxy"
+name = "libedge-ra-proxy-local"
 main = "src/index.js"
 compatibility_date = "2026-03-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-ENVIRONMENT = "default"
+ENVIRONMENT = "local"
 
-# D1 (default env — ana wrangler.toml'un untagged bölümüyle paralel)
+# D1 (default env — staging DB'yi paylaşır, local dev için güvenli)
 [[d1_databases]]
 binding = "DB"
 database_name = "libedge-db"
 database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
 
+# R2 (default env) — staging bucket, prod bucket'a ASLA bağlanma
 [[r2_buckets]]
 binding = "FILES_BUCKET"
-bucket_name = "libedge-files"
+bucket_name = "libedge-files-staging"
 
+# KV (default env) — staging namespace'leri, prod namespace'lerine ASLA bağlanma
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "36237237597442bbb7c00ab9b6ee821f"
+id = "556d17f88a7a48e381e5ffed1d150536"
 
 [[kv_namespaces]]
 binding = "RA_UPSTREAM_SESSIONS"
-id = "d742f0d165234385bacf6ddfc0cd43e1"   # npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS
+id = "a3a0f76dca834921b4b1000bce675037"
 
 # ──────────────────────────────────────────────────────────────────────────
 # env.staging — libedge-api-staging ile paralel
