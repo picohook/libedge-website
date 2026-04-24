@@ -115,6 +115,11 @@ export function registerRaIssueToken(app) {
     }
     const tgt = encodeHost(sub.ra_origin_host);
 
+    // Origin landing path — opsiyonel, proxy session kurulumu sonrası 302
+    // hedefi olarak kullanılır. Default '/' (origin root). Pangram gibi
+    // root'u 404 olan publisher'lar için admin panelden '/login' vb. set edilir.
+    const landingPath = normalizeLandingPath(sub.ra_origin_landing_path);
+
     // Tünel zorunluluğu — yalnızca IP-gated publisher'lar için gerekli.
     //   - Ürün recipe'inde upstream_login varsa → credential-auth yeterli,
     //     tunnel gerekmez.
@@ -154,6 +159,7 @@ export function registerRaIssueToken(app) {
         sid: sub.id,              // INTEGER subscription id
         pid: sub.product_slug,    // TEXT product slug
         tgt,                      // encoded publisher host
+        lp: landingPath,          // opsiyonel ilk landing path ('/' veya '/login' vb.)
         exp: now + 300,           // 5 dk
         jti,
       },
@@ -195,7 +201,8 @@ async function lookupSubscription(db, { institutionId, subscriptionId, productSl
       COALESCE(p.ra_enabled, 0)    AS ra_enabled,
       p.ra_origin_host,
       p.ra_login_recipe_json,
-      COALESCE(p.ra_requires_tunnel, 1) AS ra_requires_tunnel
+      COALESCE(p.ra_requires_tunnel, 1) AS ra_requires_tunnel,
+      p.ra_origin_landing_path
     FROM institution_subscriptions isub
     JOIN products p ON p.slug = isub.product_slug
     WHERE isub.institution_id = ?
@@ -210,6 +217,21 @@ async function lookupSubscription(db, { institutionId, subscriptionId, productSl
     .prepare(`${base} AND isub.product_slug = ? LIMIT 1`)
     .bind(institutionId, productSlug)
     .first();
+}
+
+/**
+ * Landing path normalize: boşsa '/', aksi hâlde baş slash garanti,
+ * control karakter / path traversal temizle.
+ */
+function normalizeLandingPath(raw) {
+  if (!raw) return '/';
+  const trimmed = String(raw).trim();
+  if (!trimmed) return '/';
+  // Sadece pathname + opsiyonel query, scheme/host içeremez.
+  if (/^[a-z]+:\/\//i.test(trimmed)) return '/';
+  // Path traversal defans
+  if (trimmed.includes('..')) return '/';
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
 /**

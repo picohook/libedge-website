@@ -1413,6 +1413,11 @@
                     <p class="text-[11px] text-gray-400 mt-1">Proxy'nin istek atacağı gerçek publisher hostname'i. Sadece hostname (scheme'siz, path'siz).</p>
                 </div>
                 <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Landing Path (opsiyonel)</label>
+                    <input id="raProductOriginLandingPathInput" type="text" placeholder="/login" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono" />
+                    <p class="text-[11px] text-gray-400 mt-1">"Erişime Git" sonrası kullanıcının ilk düşeceği path. Boş bırakılırsa "/" kullanılır. Pangram gibi root'u 404 olan publisher'lar için <code>/login</code> gibi bir path gir.</p>
+                </div>
+                <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Login Recipe (JSON)</label>
                     <div class="flex items-center gap-2 mb-1">
                         <button type="button" data-ra-recipe-template="form_post" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: form_post</button>
@@ -5182,6 +5187,7 @@ function _raOpenProductModal(slug) {
     document.getElementById('raProductRequiresTunnelInput').checked =
         product.ra_requires_tunnel == null ? true : !!product.ra_requires_tunnel;
     document.getElementById('raProductOriginHostInput').value = product.ra_origin_host || '';
+    document.getElementById('raProductOriginLandingPathInput').value = product.ra_origin_landing_path || '';
     document.getElementById('raProductRecipeInput').value = _raPrettyJson(product.ra_login_recipe_json);
     document.getElementById('raProductAllowlistInput').value = _raPrettyJson(product.ra_host_allowlist_json);
     document.getElementById('raProductModalError').classList.add('hidden');
@@ -5213,6 +5219,7 @@ async function _raSaveProduct() {
     const raEnabled = document.getElementById('raProductEnabledInput').checked ? 1 : 0;
     const raRequiresTunnel = document.getElementById('raProductRequiresTunnelInput').checked ? 1 : 0;
     const originHost = document.getElementById('raProductOriginHostInput').value.trim();
+    const landingPath = document.getElementById('raProductOriginLandingPathInput').value.trim();
     const recipe = document.getElementById('raProductRecipeInput').value.trim();
     const allowlist = document.getElementById('raProductAllowlistInput').value.trim();
     const errorEl = document.getElementById('raProductModalError');
@@ -5255,6 +5262,7 @@ async function _raSaveProduct() {
                 ra_enabled: raEnabled,
                 ra_requires_tunnel: raRequiresTunnel,
                 ra_origin_host: originHost || null,
+                ra_origin_landing_path: landingPath || null,
                 ra_login_recipe_json: recipe || null,
                 ra_host_allowlist_json: allowlist || null,
             }),

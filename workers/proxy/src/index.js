@@ -113,12 +113,27 @@ async function acceptTokenAndRedirect(request, env, token, url) {
     { expirationTtl: SESSION_TTL_SEC }
   );
 
-  // 302 clean URL — aynı path, ama ?t ve ?tgt çıkarılır
+  // 302 clean URL — ?t ve ?tgt çıkarılır, landing path varsa origin
+  // üzerinde belirtilen ilk path'e yönlendirilir (Pangram için '/login' gibi).
   const clean = new URL(url);
   clean.searchParams.delete('t');
   clean.searchParams.delete('tgt');
-  // Path varsayılan /
-  if (!clean.pathname || clean.pathname === '') clean.pathname = '/';
+
+  const landing = normalizeLandingPath(payload.lp);
+  if (landing && landing !== '/') {
+    // landing zaten '/'la başlar, pathname + opsiyonel querystring olabilir.
+    const qIdx = landing.indexOf('?');
+    if (qIdx >= 0) {
+      clean.pathname = landing.slice(0, qIdx) || '/';
+      // JWT'den gelen querystring'i mevcut query ile birleştir (override).
+      const extra = new URLSearchParams(landing.slice(qIdx + 1));
+      for (const [k, v] of extra) clean.searchParams.set(k, v);
+    } else {
+      clean.pathname = landing;
+    }
+  } else if (!clean.pathname || clean.pathname === '') {
+    clean.pathname = '/';
+  }
 
   return new Response(null, {
     status: 302,
@@ -127,6 +142,15 @@ async function acceptTokenAndRedirect(request, env, token, url) {
       'Set-Cookie': buildSessionCookie(sid, url.hostname),
     },
   });
+}
+
+function normalizeLandingPath(raw) {
+  if (!raw) return '/';
+  const trimmed = String(raw).trim();
+  if (!trimmed) return '/';
+  if (/^[a-z]+:\/\//i.test(trimmed)) return '/';
+  if (trimmed.includes('..')) return '/';
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -153,7 +177,10 @@ Yönlendiriliyor…
 </body></html>`;
   return new Response(html, {
     status: 200,
-    headers: { 'content-type': 'text/html; charset=utf-8' },
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store, no-cache, must-revalidate, private',
+    },
   });
 }
 
@@ -210,7 +237,10 @@ ${detail ? `<p><small>Detay: <code>${escapeHtml(detail)}</code></small></p>` : '
 </body></html>`;
   return new Response(body, {
     status,
-    headers: { 'content-type': 'text/html; charset=utf-8' },
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store, no-cache, must-revalidate, private',
+    },
   });
 }
 
