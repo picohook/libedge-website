@@ -18,7 +18,24 @@ import {
   invalidateCapturedUserToken,
 } from './recipe.js';
 
-const COOKIE_JAR_TTL = 3600;
+// Cookie jar kullanıcı + publisher host bazında kalıcı olarak tutulur.
+// Pangram gibi session-cookie auth kullanan publisher'larda bu sayede
+// kullanıcı bir kere login olduktan sonra sonraki "Erişime Git" ziyaretlerinde
+// otomatik olarak session cookie'si ile geliyor. TTL publisher'ın session
+// cookie'sinin kendi ömründen daha uzun olmamalı — Pangram 1 yıl veriyor
+// ama 90 gün makul bir varsayılan (kurum abonelik süresi değişebilir).
+const COOKIE_JAR_TTL = 90 * 24 * 60 * 60; // 90 gün = 7776000 sn
+
+/**
+ * Cookie jar KV key builder. User+host bazlı — kullanıcı-özel (aynı makineyi
+ * paylaşan iki kullanıcının session cookie'leri birbirine karışmaz) ve
+ * LibEdge proxy session'ından bağımsız (kullanıcı iki saat sonra tekrar
+ * "Erişime Git"e bastığında yeni bir proxy session açılsa bile aynı jar'ı
+ * okur → Pangram onu hâlâ login'li görür).
+ */
+export function buildCookieJarKey(session, targetHost) {
+  return `jar:u${session.user_id}:${targetHost}`;
+}
 
 /**
  * @param {any} env
@@ -63,8 +80,8 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
     upstreamHeaders.set(k, v);
   }
   upstreamHeaders.set('Host', targetHost);
-  // Upstream Cookie jar (KV) — yalnız bu target_host için
-  const jarKey = `jar:${sessionId}:${targetHost}`;
+  // Upstream Cookie jar (KV) — user+host bazlı, proxy session'dan bağımsız
+  const jarKey = buildCookieJarKey(session, targetHost);
   const storedCookies = await env.RA_UPSTREAM_SESSIONS.get(jarKey);
   if (storedCookies) upstreamHeaders.set('Cookie', storedCookies);
 
