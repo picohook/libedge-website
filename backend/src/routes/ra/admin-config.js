@@ -20,7 +20,7 @@
  *
  *   PUT /api/ra/admin/subscriptions/:id/ra-credential
  *     body: { username?, password?, scope?, valid_until?, clear? }
- *     → username + password'u "username\npassword" formatında birleştirip
+ *     → username + password'u JSON ({"username":...,"password":...}) formatında
  *       AES-GCM ile şifreler ve ra_credential_enc alanına yazar.
  *       clear=true ise mevcut credential silinir.
  *
