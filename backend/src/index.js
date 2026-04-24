@@ -6435,11 +6435,19 @@ app.put('/api/admin/support/tickets/:id', async (c) => {
   const allowed_status = ['open', 'in_progress', 'resolved', 'closed'];
   const allowed_priority = ['low', 'medium', 'high', 'urgent'];
   const updates = [];
-  if (status && allowed_status.includes(status)) updates.push(`status = '${status}'`);
-  if (priority && allowed_priority.includes(priority)) updates.push(`priority = '${priority}'`);
+  const binds = [];
+  if (status && allowed_status.includes(status)) {
+    updates.push('status = ?');
+    binds.push(status);
+  }
+  if (priority && allowed_priority.includes(priority)) {
+    updates.push('priority = ?');
+    binds.push(priority);
+  }
   if (!updates.length) return c.json({ error: 'Güncellenecek alan yok' }, 400);
-  updates.push(`updated_at = CURRENT_TIMESTAMP`);
-  await db.prepare(`UPDATE support_tickets SET ${updates.join(', ')} WHERE id = ?`).bind(id).run();
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+  binds.push(id);
+  await db.prepare(`UPDATE support_tickets SET ${updates.join(', ')} WHERE id = ?`).bind(...binds).run();
   return c.json({ success: true });
 });
 
