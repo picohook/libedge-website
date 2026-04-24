@@ -829,6 +829,57 @@ async function checkAuthAndLoad() {
 
 document.addEventListener('DOMContentLoaded', checkAuthAndLoad);
 
+async function openRemoteAccess(btn) {
+    if (!btn || btn.dataset.raBusy === '1') return;
+    const subId = Number(btn.dataset.raSubId);
+    if (!Number.isFinite(subId) || subId <= 0) return;
+    const notify = (msg, type) => {
+        if (typeof window.showToast === 'function') window.showToast(msg, type || 'info');
+        else if (type === 'error') console.error(msg);
+    };
+    const labelEl = btn.querySelector('span');
+    const originalLabel = labelEl ? labelEl.textContent : '';
+    btn.dataset.raBusy = '1';
+    btn.disabled = true;
+    btn.classList.add('opacity-70', 'cursor-wait');
+    if (labelEl) labelEl.textContent = 'Yönlendiriliyor...';
+    try {
+        const res = await fetch(`${API_BASE}/api/ra/issue-token`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription_id: subId }),
+        });
+        let data = null;
+        try { data = await res.json(); } catch (_) { /* non-JSON body */ }
+        if (!res.ok) {
+            const msg = (data && data.error) || `Erişim hatası (HTTP ${res.status})`;
+            notify(msg, 'error');
+            return;
+        }
+        const redirectUrl = data && data.redirect_url;
+        if (!redirectUrl) {
+            notify('Sunucu geçerli bir yönlendirme adresi döndürmedi.', 'error');
+            return;
+        }
+        // Yeni sekmede aç — kullanıcının LibEdge sekmesi kaybolmasın
+        const opened = window.open(redirectUrl, '_blank', 'noopener');
+        if (!opened) {
+            // Popup engellendi — aynı sekmede devam
+            window.location.href = redirectUrl;
+        }
+    } catch (err) {
+        console.error('openRemoteAccess error:', err);
+        notify('Uzaktan erişim başlatılamadı. Lütfen tekrar deneyin.', 'error');
+    } finally {
+        btn.dataset.raBusy = '0';
+        btn.disabled = false;
+        btn.classList.remove('opacity-70', 'cursor-wait');
+        if (labelEl && originalLabel) labelEl.textContent = originalLabel;
+    }
+}
+window.openRemoteAccess = openRemoteAccess;
+
 async function loadSubscriptions() {
     try {
             const res = await fetch(`${API_BASE}/api/subscription/list`, {
@@ -870,9 +921,16 @@ async function loadSubscriptions() {
             const noteHtml = note
                 ? `<p class="${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 mt-1">${escapeHtml(note)}</p>`
                 : '';
-            const actionHtml = normalizedUrl
-                ? `<a href="${escapeHtml(normalizedUrl)}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 mt-2 ${compact ? 'text-[11px] px-2 py-1' : 'text-xs px-3 py-1.5'} rounded-lg bg-primary text-white hover:bg-opacity-90 transition"><i class="fas fa-arrow-up-right-from-square"></i><span>Erişime Git</span></a>`
-                : '';
+            const sizeClasses = compact ? 'text-[11px] px-2 py-1' : 'text-xs px-3 py-1.5';
+            let actionHtml = '';
+            if (sub.access_type === 'proxy') {
+                const subId = Number(sub.id);
+                actionHtml = Number.isFinite(subId) && subId > 0
+                    ? `<button type="button" data-ra-sub-id="${subId}" onclick="openRemoteAccess(this)" class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg bg-primary text-white hover:bg-opacity-90 transition"><i class="fas fa-arrow-up-right-from-square"></i><span>Erişime Git</span></button>`
+                    : '';
+            } else if (normalizedUrl) {
+                actionHtml = `<a href="${escapeHtml(normalizedUrl)}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg bg-primary text-white hover:bg-opacity-90 transition"><i class="fas fa-arrow-up-right-from-square"></i><span>Erişime Git</span></a>`;
+            }
             return `${summary}${noteHtml}${actionHtml}`;
         };
 
