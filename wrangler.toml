@@ -1,23 +1,30 @@
-name = "libedge-api"
+# ─── Default (local) environment ────────────────────────────────────────────
+# This block is ONLY for local development (`wrangler dev`). Real deploys
+# MUST use `--env staging` or `--env production`. The worker name below is
+# deliberately `-local` so that a stray `wrangler deploy` with no `--env`
+# flag publishes to a harmless `libedge-api-local` worker instead of
+# overwriting production. R2 points at the staging bucket for the same
+# reason — never the production bucket by default.
+name = "libedge-api-local"
 main = "backend/src/index.js"
 compatibility_date = "2026-03-01"
 # compatibility_flags = ["nodejs_compat"]
 
 [vars]
-ENVIRONMENT = "default"
-WORKER_NAME = "libedge-api"
+ENVIRONMENT = "local"
+WORKER_NAME = "libedge-api-local"
 
-# D1 Binding (default env)
+# D1 Binding (default env) — shares the staging database for `wrangler dev`.
 [[d1_databases]]
 binding = "DB"
 database_name = "libedge-db"
 database_id = "207d80d6-7e6b-4e10-aacf-b218970dbaf8"
 migrations_dir = "migrations"
 
-# R2 Binding (default env)
+# R2 Binding (default env) — staging bucket, NOT the production bucket.
 [[r2_buckets]]
 binding = "FILES_BUCKET"
-bucket_name = "libedge-files"
+bucket_name = "libedge-files-staging"
 
 # KV Binding (default env)
 [[kv_namespaces]]
