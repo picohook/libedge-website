@@ -277,13 +277,17 @@ export function registerRaAdminConfig(app) {
       updateBindings.push(t);
     }
 
-    if (body.scope != null) {
-      const scope = String(body.scope).trim();
-      if (scope && scope !== 'shared' && scope !== 'per_user') {
-        return c.json({ error: "scope 'shared' veya 'per_user' olmalı" }, 400);
+    if (body.scope !== undefined) {
+      if (body.scope === null || body.scope === '') {
+        updateParts.push('ra_credential_scope = NULL');
+      } else {
+        const scope = String(body.scope).trim();
+        if (scope !== 'shared' && scope !== 'per_user') {
+          return c.json({ error: "scope 'shared' veya 'per_user' olmalı" }, 400);
+        }
+        updateParts.push('ra_credential_scope = ?');
+        updateBindings.push(scope);
       }
-      updateParts.push('ra_credential_scope = ?');
-      updateBindings.push(scope || null);
     }
 
     if (body.valid_until !== undefined) {
