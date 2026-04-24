@@ -506,6 +506,55 @@ function buildManagedFileKey(hash, extension) {
   return `files/${hash.slice(0, 2)}/${hash.slice(2, 4)}/${hash}.${extension}`;
 }
 
+// Prefixes owned by this worker's own upload endpoints. Only objects under
+// these prefixes may be deleted via deleteManagedR2Object(); external URLs
+// or unexpected prefixes are ignored so we can never accidentally delete
+// something we don't manage.
+const MANAGED_R2_PREFIXES = [
+  'announcement-covers/',
+  'institution-logos/',
+  'avatars/',
+];
+
+// Given a value from a DB column (e.g. avatar_url, logo_url, cover_image_url)
+// return the R2 object key if it points at an object we manage, or null.
+function deriveManagedR2Key(env, urlOrKey) {
+  if (!urlOrKey) return null;
+  const raw = String(urlOrKey).trim();
+  if (!raw) return null;
+
+  let candidate = null;
+  const publicBase = normalizePublicBaseUrl(env?.R2_PUBLIC_URL || '');
+  if (publicBase && raw.startsWith(publicBase + '/')) {
+    candidate = raw.slice(publicBase.length + 1);
+  } else {
+    const m = raw.match(/\/api\/files\/(.+)$/);
+    if (m) {
+      try { candidate = decodeURIComponent(m[1]); } catch { candidate = m[1]; }
+    } else if (!/^https?:\/\//i.test(raw) && !raw.startsWith('/')) {
+      candidate = raw;
+    }
+  }
+
+  if (!candidate) return null;
+  if (!MANAGED_R2_PREFIXES.some((p) => candidate.startsWith(p))) return null;
+  return candidate;
+}
+
+async function deleteManagedR2Object(env, urlOrKey) {
+  try {
+    const bucket = env?.FILES_BUCKET;
+    if (!bucket) return false;
+    const key = deriveManagedR2Key(env, urlOrKey);
+    if (!key) return false;
+    await bucket.delete(key);
+    return true;
+  } catch (err) {
+    console.error('R2 cleanup failed for', urlOrKey, err);
+    return false;
+  }
+}
+
 function mapFileType(extension, mimeType = '') {
   const ext = String(extension || '').toLowerCase().trim();
   if (ext) return ext;
@@ -1318,6 +1367,9 @@ app.post('/api/user/avatar', async (c) => {
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
     const key = `avatars/${userId}.${ext}`;
 
+    const prevRow = await db.prepare(`SELECT avatar_url FROM users WHERE id = ?`).bind(userId).first();
+    const prevAvatarUrl = prevRow?.avatar_url || null;
+
     const arrayBuffer = await file.arrayBuffer();
     await bucket.put(key, arrayBuffer, {
       httpMetadata: { contentType: file.type, cacheControl: 'no-cache, no-store' }
@@ -1326,6 +1378,11 @@ app.post('/api/user/avatar', async (c) => {
     const avatarUrl = `${r2PublicUrl}/${key}`;
 
     await db.prepare(`UPDATE users SET avatar_url = ? WHERE id = ?`).bind(avatarUrl, userId).run();
+
+    if (prevAvatarUrl && prevAvatarUrl !== avatarUrl) {
+      const prevKey = deriveManagedR2Key(c.env, prevAvatarUrl);
+      if (prevKey && prevKey !== key) await deleteManagedR2Object(c.env, prevAvatarUrl);
+    }
 
     return c.json({ success: true, avatar_url: avatarUrl });
   } catch (err) {
@@ -1368,9 +1425,13 @@ app.delete('/api/user/delete', async (c) => {
   const db = c.env.DB;
   
 
+  const userRow = await db.prepare(`SELECT avatar_url FROM users WHERE id = ?`).bind(userId).first();
+
   await db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM subscriptions WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
+
+  if (userRow?.avatar_url) await deleteManagedR2Object(c.env, userRow.avatar_url);
   
   // Cookie'yi de sil
   setCookie(c, 'authToken', '', {
@@ -2412,10 +2473,14 @@ app.delete('/api/admin/user/:id', async (c) => {
   const db = c.env.DB;
 
 
+  const userRow = await db.prepare(`SELECT avatar_url FROM users WHERE id = ?`).bind(id).first();
+
   await db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(id).run();
   await db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id).run();
   await db.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
-  
+
+  if (userRow?.avatar_url) await deleteManagedR2Object(c.env, userRow.avatar_url);
+
   return c.json({ success: true });
 });
 
@@ -5397,11 +5462,21 @@ app.post('/api/admin/institution/:id/logo', async (c) => {
   try {
     const ext = (file.name.split('.').pop() || 'png').toLowerCase();
     const key = `institution-logos/${id}.${ext}`;
+
+    const prevRow = await db.prepare(`SELECT logo_url FROM institutions WHERE id = ?`).bind(id).first();
+    const prevLogoUrl = prevRow?.logo_url || null;
+
     const arrayBuffer = await file.arrayBuffer();
     await bucket.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
 
     const logo_url = `${r2PublicUrl}/${key}`;
     await db.prepare(`UPDATE institutions SET logo_url = ? WHERE id = ?`).bind(logo_url, id).run();
+
+    if (prevLogoUrl && prevLogoUrl !== logo_url) {
+      const prevKey = deriveManagedR2Key(c.env, prevLogoUrl);
+      if (prevKey && prevKey !== key) await deleteManagedR2Object(c.env, prevLogoUrl);
+    }
+
     return c.json({ success: true, logo_url });
   } catch (err) {
     console.error('Institution logo upload error:', err);
@@ -5448,7 +5523,12 @@ app.delete('/api/admin/institution/:id', async (c) => {
     await db.prepare(`DELETE FROM files WHERE id = ?`).bind(row.file_id).run();
   }
 
+  const instRow = await db.prepare(`SELECT logo_url FROM institutions WHERE id = ?`).bind(id).first();
+
   await db.prepare(`DELETE FROM institutions WHERE id = ?`).bind(id).run();
+
+  if (instRow?.logo_url) await deleteManagedR2Object(c.env, instRow.logo_url);
+
   return c.json({ success: true });
 });
 
@@ -5735,7 +5815,9 @@ app.put('/api/admin/announcements/:id', async (c) => {
   }
 
   try {
-
+    const prevRow = await db.prepare(`SELECT cover_image_url FROM announcements WHERE id = ?`).bind(id).first();
+    const prevCoverUrl = prevRow?.cover_image_url || null;
+    const newCoverUrl = coverImageUrl || null;
 
     const result = await db.prepare(`
       UPDATE announcements
@@ -5748,8 +5830,13 @@ app.put('/api/admin/announcements/:id', async (c) => {
           scheduled_publish_at = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, coverImageUrl || null, aiImagePrompt || null, category, priority, isPublished, publishAt, publishAt, isPublished, scheduledPublishAt, id).run();
+    `).bind(title, summary, fullContent, titleEn || null, summaryEn || null, fullContentEn || null, newCoverUrl, aiImagePrompt || null, category, priority, isPublished, publishAt, publishAt, isPublished, scheduledPublishAt, id).run();
     if (result.meta?.changes === 0) return c.json({ error: 'Duyuru bulunamadı' }, 404);
+
+    if (prevCoverUrl && prevCoverUrl !== newCoverUrl) {
+      await deleteManagedR2Object(c.env, prevCoverUrl);
+    }
+
     return c.json({ success: true });
   } catch (err) {
     console.error('Update announcement error:', err);
@@ -5762,8 +5849,14 @@ app.delete('/api/admin/announcements/:id', async (c) => {
   const db = c.env.DB;
   const id = c.req.param('id');
   try {
+    const prevRow = await db.prepare(`SELECT cover_image_url FROM announcements WHERE id = ?`).bind(id).first();
 
     await db.prepare(`DELETE FROM announcements WHERE id = ?`).bind(id).run();
+
+    if (prevRow?.cover_image_url) {
+      await deleteManagedR2Object(c.env, prevRow.cover_image_url);
+    }
+
     return c.json({ success: true });
   } catch (err) {
     console.error('Delete announcement error:', err);
