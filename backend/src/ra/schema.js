@@ -26,11 +26,15 @@ export async function ensureRemoteAccessSchema(db) {
   if (schemaEnsured) return;
 
   // products ek kolonları
+  // ra_requires_tunnel: IP-gated publisher'lar (ScienceDirect, Wiley kurumsal)
+  // için 1 (default). Pangram gibi per-user session-cookie auth kullanan,
+  // herkese açık ama credential'la giriş gereken publisher'lar için 0.
   await ensureColumns(db, 'products', [
     { name: 'ra_enabled', def: 'INTEGER NOT NULL DEFAULT 0' },
     { name: 'ra_origin_host', def: 'TEXT' },
     { name: 'ra_login_recipe_json', def: 'TEXT' },
     { name: 'ra_host_allowlist_json', def: 'TEXT' },
+    { name: 'ra_requires_tunnel', def: 'INTEGER NOT NULL DEFAULT 1' },
   ]);
 
   // institution_subscriptions ek kolonları

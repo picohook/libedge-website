@@ -115,14 +115,19 @@ export function registerRaIssueToken(app) {
     }
     const tgt = encodeHost(sub.ra_origin_host);
 
-    // Tünel zorunluluğu — IP-gated publisher için gerekli
-    // Heuristik: recipe'te upstream_login varsa credential-auth yeterli,
-    // yoksa IP egress şart → institution_ra_settings.enabled = 1 olmalı.
+    // Tünel zorunluluğu — yalnızca IP-gated publisher'lar için gerekli.
+    //   - Ürün recipe'inde upstream_login varsa → credential-auth yeterli,
+    //     tunnel gerekmez.
+    //   - Ürün ra_requires_tunnel = 0 olarak işaretlenmişse (Pangram gibi
+    //     session-cookie auth, public erişim) → tunnel gerekmez.
+    //   - Aksi hâlde (ra_requires_tunnel = 1, recipe yok) kurumun egress
+    //     tüneli yapılandırılmış olmalı.
     const recipeJson =
       sub.ra_recipe_override_json || sub.ra_login_recipe_json || null;
     const hasLoginRecipe = recipeJson ? hasUpstreamLogin(recipeJson) : false;
+    const requiresTunnel = Number(sub.ra_requires_tunnel) !== 0;
 
-    if (!hasLoginRecipe) {
+    if (!hasLoginRecipe && requiresTunnel) {
       const settings = await c.env.DB.prepare(
         `SELECT enabled, tunnel_status
            FROM institution_ra_settings
@@ -189,7 +194,8 @@ async function lookupSubscription(db, { institutionId, subscriptionId, productSl
       )                            AS access_type,
       COALESCE(p.ra_enabled, 0)    AS ra_enabled,
       p.ra_origin_host,
-      p.ra_login_recipe_json
+      p.ra_login_recipe_json,
+      COALESCE(p.ra_requires_tunnel, 1) AS ra_requires_tunnel
     FROM institution_subscriptions isub
     JOIN products p ON p.slug = isub.product_slug
     WHERE isub.institution_id = ?
