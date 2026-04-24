@@ -94,6 +94,47 @@ function bindAuthForms() {
             await register(fullName, email, password, institution);
         });
     }
+
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    if (forgotForm && forgotForm.dataset.authBound !== 'true') {
+        forgotForm.dataset.authBound = 'true';
+        forgotForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('forgotPasswordEmail')?.value || '';
+            const submitBtn = forgotForm.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            try {
+                await forgotPassword(email);
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }
+}
+
+async function forgotPassword(email) {
+    try {
+        await fetch(`${API_BASE}/api/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email }),
+        });
+    } catch (err) {
+        queueMicrotask(() => {
+            console.error('forgot-password error:', err.toString());
+        });
+    }
+    // Always show a generic success — backend also returns the same
+    // payload regardless of whether the email exists (account enumeration
+    // protection). We just mirror that behaviour in the UI.
+    const msg = 'E-posta adresiniz kayıtlı ise şifre sıfırlama bağlantısı gönderildi. Gelen kutunuzu (ve spam klasörünü) kontrol edin.';
+    showNotification(msg, 'success');
+    if (typeof window.closeForgotPasswordModal === 'function') {
+        window.closeForgotPasswordModal();
+    }
+    const input = document.getElementById('forgotPasswordEmail');
+    if (input) input.value = '';
 }
 
 async function waitForAuth(timeoutMs = 10000) {
@@ -149,10 +190,28 @@ window.closeRegisterModal = function() {
     }
 };
 
+window.openForgotPasswordModal = function() {
+    if (typeof window.closeLoginModal === 'function') window.closeLoginModal();
+    const modal = document.getElementById('forgotPasswordModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.classList.add('no-scroll');
+    }
+};
+
+window.closeForgotPasswordModal = function() {
+    const modal = document.getElementById('forgotPasswordModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.classList.remove('no-scroll');
+    }
+};
+
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (typeof window.closeLoginModal === 'function') window.closeLoginModal();
     if (typeof window.closeRegisterModal === 'function') window.closeRegisterModal();
+    if (typeof window.closeForgotPasswordModal === 'function') window.closeForgotPasswordModal();
     if (typeof window.closeModal === 'function') window.closeModal();
     if (typeof window.closeSuggestionModal === 'function') window.closeSuggestionModal();
     // Profil/admin gibi diğer sayfalardaki açık modallar
