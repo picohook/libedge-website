@@ -11,6 +11,7 @@
  */
 
 import { egressFetch } from './egress-client.js';
+import { ensureRecipeExecuted } from './recipe.js';
 
 const COOKIE_JAR_TTL = 3600;
 
@@ -33,6 +34,13 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
       : null
   );
 
+  // Recipe executor: ürün için ra_login_recipe_json tanımlıysa ve abonelikte
+  // credential varsa, auto-login burada yapılır. Sonuç (form_post = cookies
+  // jar'a yazılı, spa_token = bearer token) proxy request'lere uygulanır.
+  // Başarısızlık durumunda auth uygulanmaz — kullanıcı normal proxy akışında
+  // login sayfasını kendi görür.
+  const authState = await ensureRecipeExecuted(env, session, sessionId);
+
   // Upstream URL: proxy path + query (?t ve ?tgt çıkarılır; clean URL)
   const search = new URLSearchParams(url.search);
   search.delete('t');
@@ -54,6 +62,13 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
   const jarKey = `jar:${sessionId}:${targetHost}`;
   const storedCookies = await env.RA_UPSTREAM_SESSIONS.get(jarKey);
   if (storedCookies) upstreamHeaders.set('Cookie', storedCookies);
+
+  // spa_token modu: recipe login sonrası ele geçen bearer token header olarak
+  // eklenir. Client tarafında localStorage inject HTML akışında yapılır (aşağıda).
+  if (authState && authState.ok && authState.mode === 'spa_token' && authState.token) {
+    const { header_name, header_prefix, value } = authState.token;
+    upstreamHeaders.set(header_name || 'Authorization', `${header_prefix || ''}${value}`);
+  }
 
   // Body
   let body = null;
@@ -109,7 +124,16 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
   // Content-Type ile HTML mi kontrol et — öyleyse HTMLRewriter ile linkleri çevir
   const ct = upstreamResp.headers.get('content-type') || '';
   if (/text\/html/i.test(ct)) {
-    const rewriter = makeHtmlRewriter(proxyableHosts, proxyHost);
+    // spa_token modu: token'ı client'ın localStorage'ına enjekte et —
+    // modern SPA'lar auth durumu için localStorage'a bakıyor; sadece
+    // Authorization header yetmez, ilk HTML dönüşünde tarayıcı tarafında
+    // da token görünmeli.
+    const lsInject = (authState && authState.ok && authState.mode === 'spa_token'
+      && authState.token && authState.token.ls_key)
+      ? { key: authState.token.ls_key, value: authState.token.value }
+      : null;
+
+    const rewriter = makeHtmlRewriter(proxyableHosts, proxyHost, lsInject);
     const rewritten = rewriter.transform(upstreamResp);
     return new Response(rewritten.body, {
       status: upstreamResp.status,
@@ -166,7 +190,7 @@ function rewriteUrl(u, proxyableHosts, proxyHost) {
 // ──────────────────────────────────────────────────────────────────────────
 // HTMLRewriter — href/src/action/poster/formaction attribute'ları
 // ──────────────────────────────────────────────────────────────────────────
-function makeHtmlRewriter(proxyableHosts, proxyHost) {
+function makeHtmlRewriter(proxyableHosts, proxyHost, lsInject) {
   const attrHandler = (attr) => ({
     element(el) {
       const v = el.getAttribute(attr);
@@ -175,7 +199,7 @@ function makeHtmlRewriter(proxyableHosts, proxyHost) {
       if (n !== v) el.setAttribute(attr, n);
     },
   });
-  return new HTMLRewriter()
+  const rewriter = new HTMLRewriter()
     .on('a[href]', attrHandler('href'))
     .on('link[href]', attrHandler('href'))
     .on('area[href]', attrHandler('href'))
@@ -192,6 +216,24 @@ function makeHtmlRewriter(proxyableHosts, proxyHost) {
     .on('video[poster]', attrHandler('poster'))
     .on('button[formaction]', attrHandler('formaction'))
     .on('input[formaction]', attrHandler('formaction'));
+
+  if (lsInject && lsInject.key && lsInject.value) {
+    const js = buildLocalStorageInjectScript(lsInject.key, lsInject.value);
+    rewriter.on('head', {
+      element(el) {
+        el.prepend(js, { html: true });
+      },
+    });
+  }
+  return rewriter;
+}
+
+function buildLocalStorageInjectScript(key, value) {
+  // JSON.stringify hem güvenli escaping sağlıyor hem de </script> sızıntısını
+  // önlemek için ikinci bir pass ile slashelenmeli
+  const safeKey = JSON.stringify(String(key)).replace(/<\/script/gi, '<\\/script');
+  const safeVal = JSON.stringify(String(value)).replace(/<\/script/gi, '<\\/script');
+  return `<script>try{localStorage.setItem(${safeKey},${safeVal});}catch(e){}</script>`;
 }
 
 async function loadInstitutionRaSettings(db, institutionId) {
