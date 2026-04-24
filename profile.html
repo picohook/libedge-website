@@ -862,12 +862,20 @@ async function openRemoteAccess(btn) {
             notify('Sunucu geçerli bir yönlendirme adresi döndürmedi.', 'error');
             return;
         }
-        // Yeni sekmede aç — kullanıcının LibEdge sekmesi kaybolmasın
-        const opened = window.open(redirectUrl, '_blank', 'noopener');
-        if (!opened) {
-            // Popup engellendi — aynı sekmede devam
-            window.location.href = redirectUrl;
-        }
+        // Yeni sekmede aç — kullanıcının LibEdge sekmesi kaybolmasın.
+        // NOT: window.open('_blank', 'noopener') modern tarayıcılarda noopener
+        // flag'i ile null döndürüyor (tarayıcı güvenlik modeli). Bu yüzden
+        // dönüş değerinden popup block tespit edilemez. Gerçek popup block
+        // fallback'i için görünmez <a target=_blank> click delegation pattern
+        // kullanıyoruz — tarayıcı popup açarsa sekme açılır, engellerse
+        // tarayıcı bir toast/icon gösterir; current tab navigate olmaz.
+        const a = document.createElement('a');
+        a.href = redirectUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
     } catch (err) {
         console.error('openRemoteAccess error:', err);
         notify('Uzaktan erişim başlatılamadı. Lütfen tekrar deneyin.', 'error');
