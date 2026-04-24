@@ -7,6 +7,7 @@
     "scripts": {
         "test": "vitest run",
         "test:watch": "vitest",
+        "lint": "eslint backend scripts test --max-warnings=0",
         "smoke-checklist": "echo \"Manual smoke checks: homepage, login/logout, profile, announcements, newsletter, admin, institution files\"",
         "dev": "wrangler dev",
         "build:css": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --minify",
@@ -20,6 +21,9 @@
         "hono": "^4.12.10"
     },
     "devDependencies": {
+        "@eslint/js": "^9.39.4",
+        "eslint": "^9.39.4",
+        "globals": "^17.5.0",
         "jsonwebtoken": "^9.0.3",
         "tailwindcss": "^3.4.17",
         "vitest": "^2.1.9",
