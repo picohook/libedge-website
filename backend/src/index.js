@@ -5611,8 +5611,26 @@ app.get('/api/files/*', async (c) => {
 
   const refs = referenceRows.results || [];
   const hasPublicReference = refs.some(row => Number(row.is_public) === 1);
-  const isPrivate = refs.length > 0 && !hasPublicReference;
-  if (isPrivate) {
+  const isPrivateReference = refs.length > 0 && !hasPublicReference;
+
+  // Keys without any collection_files reference fall into three buckets:
+  // 1. Explicit public prefixes (avatars, institution logos, announcement
+  //    covers) — served anonymously by design.
+  // 2. ticket-attachments/… — must be downloadable only by the ticket
+  //    owner or an admin.
+  // 3. Anything else (including orphaned files/<hash>… managed uploads
+  //    that were never attached to a collection) — require super_admin.
+  const PUBLIC_KEY_PREFIXES = [
+    'avatars/',
+    'institution-logos/',
+    'announcement-covers/',
+  ];
+  const isPublicPrefix = PUBLIC_KEY_PREFIXES.some(p => key.startsWith(p));
+  const isTicketAttachment = key.startsWith('ticket-attachments/');
+  const needsNoRefAuth = refs.length === 0 && !isPublicPrefix;
+  const isPrivate = isPrivateReference || needsNoRefAuth;
+
+  if (isPrivateReference) {
     const auth = await requireAuth(c);
     if (auth.response) {
       return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
@@ -5628,6 +5646,31 @@ app.get('/api/files/*', async (c) => {
       if (!matchesInstitution) {
         return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
       }
+    }
+  } else if (needsNoRefAuth) {
+    const auth = await requireAuth(c);
+    if (auth.response) {
+      return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
+    }
+
+    if (isTicketAttachment) {
+      const ticketRow = await db.prepare(
+        `SELECT t.user_id
+           FROM ticket_replies r
+           JOIN support_tickets t ON t.id = r.ticket_id
+          WHERE r.attachment_url LIKE ?
+          LIMIT 1`
+      ).bind(`%${key}`).first();
+      if (!ticketRow) {
+        return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
+      }
+      const isOwner = Number(ticketRow.user_id) === Number(auth.user.user_id);
+      const isAdmin = auth.user.role === 'admin' || auth.user.role === 'super_admin';
+      if (!isOwner && !isAdmin) {
+        return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
+      }
+    } else if (auth.user.role !== 'super_admin') {
+      return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
     }
   }
 
