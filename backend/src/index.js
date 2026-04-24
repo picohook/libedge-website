@@ -44,16 +44,14 @@ const DEFAULT_PRODUCT_CATALOG = [
 ];
 
 // 1. CORS Middleware (En üstte, her şeyden önce)
+// Same-origin requests (no Origin header) are always allowed. Cross-origin
+// requests must match ALLOWED_ORIGINS exactly; anything else gets no ACAO
+// header so the browser rejects the response cleanly.
 app.use('*', async (c, next) => {
-  const fallbackOrigin =
-    c.env?.ENVIRONMENT === 'production'
-      ? 'https://www.libedge.com'
-      : 'https://staging.libedge-website.pages.dev';
-
   return cors({
     origin: (origin) => {
-      if (!origin) return fallbackOrigin;
-      return ALLOWED_ORIGINS.includes(origin) ? origin : fallbackOrigin;
+      if (!origin) return '';
+      return ALLOWED_ORIGINS.includes(origin) ? origin : null;
     },
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -1253,7 +1251,7 @@ app.post('/api/auth/login', async (c) => {
 
   } catch (err) {
     console.error("Login error:", err);
-    return c.json({ success: false, error: err.message || 'Giriş sırasında hata oluştu.' }, 500);
+    return c.json({ success: false, error: 'Giriş sırasında hata oluştu.' }, 500);
   }
 });
 
@@ -1434,7 +1432,7 @@ app.post('/api/user/avatar', async (c) => {
     return c.json({ success: true, avatar_url: avatarUrl });
   } catch (err) {
     console.error('Avatar upload error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -1731,7 +1729,7 @@ app.post('/api/newsletter/subscribe', async (c) => {
     return c.json({ success: true, subscribed: true, email });
   } catch (err) {
     console.error('Newsletter subscribe error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -1858,7 +1856,8 @@ app.post('/form', async (c) => {
 
     return c.json({ success: true });
   } catch (err) {
-    return c.json({ success: false, error: err.message }, 500);
+    console.error('Form submission error:', err);
+    return c.json({ success: false, error: 'Form gönderilemedi.' }, 500);
   }
 });
 
@@ -2086,7 +2085,7 @@ app.get('/api/admin/users/:id/files', async (c) => {
     });
   } catch (err) {
     console.error('admin/users/:id/files error:', err);
-    return c.json({ error: 'Sunucu hatası: ' + (err?.message || String(err)) }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -2993,7 +2992,7 @@ app.get('/api/admin/airtable/accounts', async (c) => {
         });
     } catch (err) {
         console.error('Airtable fetch error:', err);
-        return c.json({ error: err.message }, 500);
+        return c.json({ error: 'Sunucu hatası' }, 500);
     }
 });
 
@@ -3375,7 +3374,7 @@ app.get('/api/institution/:id/folders', async (c) => {
     return c.json(result);
   } catch (err) {
     console.error('Klasör sorgu hatası:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -4223,7 +4222,7 @@ app.post('/api/admin/folder-share', async (c) => {
       console.error('folder-share cleanup error:', cleanupErr);
     }
 
-    return c.json({ error: err.message || 'Klasör paylaşımı başarısız' }, 500);
+    return c.json({ error: 'Klasör paylaşımı başarısız' }, 500);
   }
 });
 
@@ -5533,7 +5532,7 @@ app.post('/api/admin/institution/:id/logo', async (c) => {
     return c.json({ success: true, logo_url });
   } catch (err) {
     console.error('Institution logo upload error:', err);
-    return c.json({ error: err?.message || 'Logo yükleme başarısız' }, 500);
+    return c.json({ error: 'Logo yükleme başarısız' }, 500);
   }
 });
 
@@ -5690,7 +5689,7 @@ app.get('/api/announcements', async (c) => {
     return c.json(announcements);
   } catch (err) {
     console.error('Get announcements error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -5720,7 +5719,7 @@ app.get('/api/admin/announcements', async (c) => {
     return c.json(rows.results || []);
   } catch (err) {
     console.error('Get admin announcements error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -5745,7 +5744,7 @@ app.post('/api/admin/announcements/upload-cover', async (c) => {
     return c.json({ success: true, url });
   } catch (err) {
     console.error('Announcement cover upload error:', err);
-    return c.json({ error: err.message || 'Yükleme başarısız' }, 400);
+    return c.json({ error: 'Yükleme başarısız' }, 400);
   }
 });
 
@@ -5761,7 +5760,7 @@ app.post('/api/admin/announcements/ai/image', async (c) => {
     return c.json({ success: true, image_url: image.imageUrl, prompt: image.prompt, model: image.model });
   } catch (err) {
     console.error('Generate announcement image error:', err);
-    return c.json({ error: err.message || 'Görsel oluşturulamadı' }, 500);
+    return c.json({ error: 'Görsel oluşturulamadı' }, 500);
   }
 });
 
@@ -5778,7 +5777,7 @@ app.post('/api/admin/announcements/ai/polish', async (c) => {
     return c.json({ success: true, announcement: polished });
   } catch (err) {
     console.error('Polish announcement error:', err);
-    return c.json({ error: err.message || 'İçerik düzenlenemedi' }, 500);
+    return c.json({ error: 'İçerik düzenlenemedi' }, 500);
   }
 });
 
@@ -5795,7 +5794,7 @@ app.post('/api/admin/announcements/ai/translate', async (c) => {
     return c.json({ success: true, announcement: translated });
   } catch (err) {
     console.error('Translate announcement error:', err);
-    return c.json({ error: err.message || 'Çeviri yapılamadı' }, 500);
+    return c.json({ error: 'Çeviri yapılamadı' }, 500);
   }
 });
 
@@ -5836,7 +5835,7 @@ app.post('/api/admin/announcements', async (c) => {
     return c.json({ success: true, id: result.meta?.last_row_id });
   } catch (err) {
     console.error('Create announcement error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -5893,7 +5892,7 @@ app.put('/api/admin/announcements/:id', async (c) => {
     return c.json({ success: true });
   } catch (err) {
     console.error('Update announcement error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -5913,7 +5912,7 @@ app.delete('/api/admin/announcements/:id', async (c) => {
     return c.json({ success: true });
   } catch (err) {
     console.error('Delete announcement error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -5992,7 +5991,7 @@ app.get('/api/announcements/:id/engagement', async (c) => {
     });
   } catch (err) {
     console.error('Get engagement error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -6049,7 +6048,7 @@ app.post('/api/announcements/:id/reactions', async (c) => {
     });
   } catch (err) {
     console.error('Reaction toggle error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -6108,7 +6107,7 @@ app.post('/api/announcements/:id/comments', async (c) => {
     });
   } catch (err) {
     console.error('Create comment error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -6132,7 +6131,7 @@ app.delete('/api/announcements/comments/:id', async (c) => {
     return c.json({ success: true });
   } catch (err) {
     console.error('Delete comment error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -6154,7 +6153,7 @@ app.delete('/api/admin/announcements/comments/:id', async (c) => {
     return c.json({ success: true });
   } catch (err) {
     console.error('Admin delete comment error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -6192,7 +6191,7 @@ app.get('/api/admin/announcements/:id/comments', async (c) => {
     });
   } catch (err) {
     console.error('Admin list comments error:', err);
-    return c.json({ error: err.message }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -6596,7 +6595,7 @@ app.post('/api/contact', async (c) => {
         return c.json({ success: true });
     } catch (err) {
         console.error('Contact endpoint error:', err);
-        return c.json({ error: err.message }, 500);
+        return c.json({ error: 'Sunucu hatası' }, 500);
     }
 });
 
@@ -6994,7 +6993,7 @@ app.get('/api/admin/sync/airtable-to-d1', async (c) => {
         return c.json({ success: true, total: records.length, changes });
     } catch (err) {
         console.error('Sync preview error:', err);
-        return c.json({ error: err.message }, 500);
+        return c.json({ error: 'Sunucu hatası' }, 500);
     }
 });
 
@@ -7039,7 +7038,7 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
         return c.json({ success: true, created, updated });
     } catch (err) {
         console.error('Sync apply error:', err);
-        return c.json({ error: err.message }, 500);
+        return c.json({ error: 'Sunucu hatası' }, 500);
     }
 });
 
@@ -7152,7 +7151,7 @@ app.get('/api/admin/sync/d1-to-airtable', async (c) => {
         return c.json({ success: true, total: institutions.length, changes });
     } catch (err) {
         console.error('D1 to Airtable sync preview error:', err);
-        return c.json({ error: err.message }, 500);
+        return c.json({ error: 'Sunucu hatası' }, 500);
     }
 });
 
@@ -7212,7 +7211,7 @@ app.post('/api/admin/sync/d1-to-airtable', async (c) => {
         return c.json({ success: true, created, updated, linked });
     } catch (err) {
         console.error('D1 to Airtable sync apply error:', err);
-        return c.json({ error: err.message }, 500);
+        return c.json({ error: 'Sunucu hatası' }, 500);
     }
 });
 
@@ -7228,7 +7227,7 @@ app.get('/api/admin/sync/airtable-contacts-to-users', async (c) => {
         return c.json({ success: true, total: result.total, changes: result.changes });
     } catch (err) {
         console.error('User sync preview error:', err);
-        return c.json({ error: err.message }, 500);
+        return c.json({ error: 'Sunucu hatası' }, 500);
     }
 });
 
@@ -7294,7 +7293,7 @@ app.post('/api/admin/sync/airtable-contacts-to-users', async (c) => {
         return c.json({ success: true, created, updated });
     } catch (err) {
         console.error('User sync apply error:', err);
-        return c.json({ error: err.message }, 500);
+        return c.json({ error: 'Sunucu hatası' }, 500);
     }
 });
 
