@@ -3522,7 +3522,8 @@ async function handleManagedUpload(c) {
       size: stored.file_size
     });
   } catch (error) {
-    return c.json({ error: error.message || 'Yükleme başarısız' }, 400);
+    console.error('Managed upload error:', error);
+    return c.json({ error: 'Yükleme başarısız' }, 400);
   }
 }
 
@@ -3550,7 +3551,7 @@ app.get('/api/institution/:id/users', async (c) => {
     ORDER BY full_name
   `).bind(institution.id, institution.name).all();
   return c.json(rows.results || []);
-  } catch(e) { console.error('/api/institution/:id/users error:', e); return c.json({ error: e.message }, 500); }
+  } catch(e) { console.error('/api/institution/:id/users error:', e); return c.json({ error: 'Sunucu hatası' }, 500); }
 });
 
 // Kişilere Gönder: dosyaları seçilen kullanıcılara bildirim olarak işaretle
@@ -3614,7 +3615,7 @@ app.post('/api/institution/:id/send-to-users', async (c) => {
     return c.json({ success: true, sent });
   } catch(e) {
     console.error('/api/institution/:id/send-to-users error:', e);
-    return c.json({ error: e.message || 'Sunucu hatası' }, 500);
+    return c.json({ error: 'Sunucu hatası' }, 500);
   }
 });
 
@@ -3757,7 +3758,7 @@ app.post('/api/system/send-to-users', async (c) => {
   } catch (error) {
     console.error('System send-to-users error:', error);
     return c.json({
-      error: error.message || 'Dosya paylaşılırken bir hata oluştu.'
+      error: 'Dosya paylaşılırken bir hata oluştu.'
     }, 500);
   }
 });
@@ -5610,7 +5611,8 @@ app.get('/api/files/*', async (c) => {
 
   const refs = referenceRows.results || [];
   const hasPublicReference = refs.some(row => Number(row.is_public) === 1);
-  if (refs.length > 0 && !hasPublicReference) {
+  const isPrivate = refs.length > 0 && !hasPublicReference;
+  if (isPrivate) {
     const auth = await requireAuth(c);
     if (auth.response) {
       return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
@@ -5635,7 +5637,13 @@ app.get('/api/files/*', async (c) => {
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set('etag', object.httpEtag);
-  headers.set('cache-control', 'public, max-age=3600');
+  // Private files must not be cached by shared caches (CF edge included) —
+  // otherwise a first authenticated hit would populate the cache and later
+  // unauthenticated requests to the same URL would be served from it.
+  headers.set(
+    'cache-control',
+    isPrivate ? 'private, max-age=0, no-store' : 'public, max-age=3600'
+  );
   headers.set('content-disposition', 'inline');
   headers.delete('x-frame-options');
   headers.set('access-control-allow-origin', '*');
