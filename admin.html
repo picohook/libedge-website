@@ -3871,16 +3871,22 @@ function composeFullName(firstName, lastName) {
         await loadSubscriptionUserOptions('');
     }
     async function deleteSubscription(id, type) {
-        showConfirmDialog('Aboneliği silmek istediğinize emin misiniz?', async () => {
+        if (!window.confirm('Aboneliği silmek istediğinize emin misiniz?')) return;
+        try {
             const url = type === 'institution'
                 ? `${API_BASE}/api/admin/institution-subscription/${id}`
                 : `${API_BASE}/api/admin/subscription/${id}`;
             const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
             if (res.ok) showToast('Abonelik başarıyla silindi!', 'success');
-            else showToast('İşlem başarısız oldu!', 'error');
-            loadSubscriptions();
-            loadDashboard();
-        });
+            else {
+                const body = await res.json().catch(() => ({}));
+                showToast(body.error || `İşlem başarısız (HTTP ${res.status})`, 'error');
+            }
+            await loadSubscriptions();
+            if (typeof loadDashboard === 'function') loadDashboard();
+        } catch (err) {
+            showToast(`Silinemedi: ${err?.message || err}`, 'error');
+        }
     }
 
     // Form submit işlemleri
