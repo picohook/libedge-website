@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    name: Tests + syntax
+    name: Lint + tests + syntax
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +35,9 @@ jobs:
             [ -e "$f" ] || continue
             node --check "$f"
           done
+
+      - name: Lint (ESLint, bug-only rules)
+        run: npm run lint
 
       - name: Unit tests
         run: npm test

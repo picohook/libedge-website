@@ -212,6 +212,7 @@ export async function requireAuth(c) {
   }
 }
 // 🆕 Yardımcı: Mevcut kullanıcıyı al (middleware sonrası kullanılır)
+// eslint-disable-next-line no-unused-vars -- retained for future route handlers; remove when clearly dead
 async function getCurrentUser(c) {
   const auth = await requireAuth(c);
   if (auth.response) return null;
@@ -858,6 +859,7 @@ async function countActiveReferences(db, fileId) {
   return Number(row?.cnt || 0);
 }
 
+// eslint-disable-next-line no-unused-vars -- retained for future route handlers; remove when clearly dead
 async function formatManagedFileResponse(db, refId) {
   return db.prepare(`
     SELECT
@@ -3729,7 +3731,7 @@ app.post('/api/system/send-to-users', async (c) => {
         }
 
         // 4. Kullanıcının klasörüne dosya kaydını ekle
-        const insertFile = await db.prepare(`
+        await db.prepare(`
           INSERT INTO user_collection_files (collection_id, file_id, display_name, is_read, added_at)
           VALUES (?, ?, ?, 0, ?)
         `).bind(userRoot.id, fileInfo.file_id, fileInfo.display_name, now).run();
@@ -4914,7 +4916,7 @@ app.post('/api/system/file', async (c) => {
   if (auth.response) return auth.response;
   if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
 
-  const { file_id, file_url, file_name, file_type, folder_id, display_name, category } = await c.req.json();
+  const { file_id, file_url, folder_id, display_name, category } = await c.req.json();
   if (!file_id && !file_url) return c.json({ error: 'file_id veya file_url zorunlu' }, 400);
 
   const db = c.env.DB;
