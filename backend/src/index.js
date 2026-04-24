@@ -1,6 +1,4 @@
-﻿console.log("HONO VERSION LOADED");
-
-import { Hono } from 'hono';
+﻿import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { getCookie, setCookie } from 'hono/cookie';
 import { sign, verify } from 'hono/jwt';
@@ -210,13 +208,6 @@ export async function requireAuth(c) {
   } catch {
     return { response: c.json({ error: 'Geçersiz veya süresi dolmuş oturum' }, 401) };
   }
-}
-// 🆕 Yardımcı: Mevcut kullanıcıyı al (middleware sonrası kullanılır)
-// eslint-disable-next-line no-unused-vars -- retained for future route handlers; remove when clearly dead
-async function getCurrentUser(c) {
-  const auth = await requireAuth(c);
-  if (auth.response) return null;
-  return auth.user;
 }
 
 async function getOptionalAuth(c) {
@@ -857,34 +848,6 @@ async function countActiveReferences(db, fileId) {
   `).bind(fileId, fileId).first();
 
   return Number(row?.cnt || 0);
-}
-
-// eslint-disable-next-line no-unused-vars -- retained for future route handlers; remove when clearly dead
-async function formatManagedFileResponse(db, refId) {
-  return db.prepare(`
-    SELECT
-      cf.id,
-      col.scope_id AS institution_id,
-      COALESCE(inst.name, '') AS institution_name,
-      cf.collection_id AS folder_id,
-      COALESCE(cf.display_name, f.original_name) AS file_name,
-      '/api/files/' || f.file_key AS file_url,
-      COALESCE(f.extension, '') AS file_type,
-      f.file_size,
-      COALESCE(cf.category, 'other') AS category,
-      cf.is_public,
-      cf.added_by AS uploaded_by,
-      cf.added_at AS uploaded_at,
-      u.full_name AS uploaded_by_name,
-      f.mime_type,
-      f.id AS source_file_id
-    FROM collection_files cf
-    JOIN files f ON f.id = cf.file_id
-    JOIN collections col ON col.id = cf.collection_id
-    LEFT JOIN institutions inst ON inst.id = col.scope_id
-    LEFT JOIN users u ON u.id = cf.added_by
-    WHERE cf.id = ?
-  `).bind(refId).first();
 }
 
 async function getInstitutionFileCount(db, institutionId) {
