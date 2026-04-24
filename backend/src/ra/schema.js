@@ -35,6 +35,10 @@ export async function ensureRemoteAccessSchema(db) {
     { name: 'ra_login_recipe_json', def: 'TEXT' },
     { name: 'ra_host_allowlist_json', def: 'TEXT' },
     { name: 'ra_requires_tunnel', def: 'INTEGER NOT NULL DEFAULT 1' },
+    // ra_origin_landing_path: proxy session cookie set edildikten sonra
+    // kullanıcının yönlendirileceği ilk path (örn. Pangram için '/login').
+    // Boş/null ise '/' kullanılır (origin root).
+    { name: 'ra_origin_landing_path', def: 'TEXT' },
   ]);
 
   // institution_subscriptions ek kolonları
