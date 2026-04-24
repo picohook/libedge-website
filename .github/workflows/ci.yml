@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - staging
+      - main
+  push:
+    branches:
+      - staging
+      - main
+
+jobs:
+  test:
+    name: Tests + syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        # Repo does not commit package-lock.json (see .gitignore), so use
+        # 'npm install' instead of 'npm ci'.
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax check (backend worker)
+        run: node --check backend/src/index.js
+
+      - name: Syntax check (scripts)
+        run: |
+          for f in scripts/*.mjs; do
+            [ -e "$f" ] || continue
+            node --check "$f"
+          done
+
+      - name: Unit tests
+        run: npm test

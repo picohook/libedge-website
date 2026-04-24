@@ -985,7 +985,7 @@ async function resolveShareRecipients(db, actor, recipients = []) {
 // ====================== RATE LIMITING ======================
 // Fixed-window rate limiting via Cloudflare KV (RATE_LIMIT_KV binding).
 // KV is shared across all Worker instances so this actually works.
-async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10, windowSeconds = 300) {
+export async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10, windowSeconds = 300) {
   if (!kv) {
     return {
       isLimited: false,
@@ -1044,7 +1044,7 @@ async function canListUsers(c) {
 
 // ====================== PASSWORD HELPERS ======================
 
-async function hashPassword(password) {
+export async function hashPassword(password) {
   const salt       = crypto.getRandomValues(new Uint8Array(16));
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -1074,7 +1074,7 @@ async function hashPassword(password) {
 // Returns { matched, legacy }. `legacy: true` means the stored hash is
 // an unsalted SHA-256 digest from before PBKDF2 was introduced; callers
 // should rehash on successful login.
-async function verifyPassword(password, storedHash) {
+export async function verifyPassword(password, storedHash) {
   if (!storedHash || typeof storedHash !== 'string') {
     return { matched: false, legacy: false };
   }
@@ -1122,7 +1122,7 @@ function rateLimitResponse(c, info, messageTr) {
   return c.json({ success: false, error: messageTr || 'Çok fazla istek. Lütfen biraz bekleyin.' }, 429);
 }
 
-function timingSafeEqual(a, b) {
+export function timingSafeEqual(a, b) {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) {
