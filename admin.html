@@ -1407,6 +1407,7 @@
                     <div class="flex items-center gap-2 mb-1">
                         <button type="button" data-ra-recipe-template="form_post" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: form_post</button>
                         <button type="button" data-ra-recipe-template="spa_token" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: spa_token</button>
+                        <button type="button" data-ra-recipe-template="spa_capture" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: spa_capture (Pangram)</button>
                         <button type="button" data-ra-recipe-template="clear" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Temizle</button>
                     </div>
                     <textarea id="raProductRecipeInput" rows="10" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono" placeholder='{"mode":"form_post",...}'></textarea>
@@ -4503,6 +4504,22 @@ const RA_RECIPE_TEMPLATES = {
     spa_token: JSON.stringify({
         mode: 'spa_token',
         description: 'Modern SPA (Pangram gibi). Client-side JS fetch ile login API çağırır, JWT localStorage veya HttpOnly cookie ile döner. Recipe executor fetch ile aynı API\'yi çağırır.',
+        login_endpoint_path: '/api/auth/login',
+        login_method: 'POST',
+        login_body_template: '{"email":"{{username}}","password":"{{password}}"}',
+        login_content_type: 'application/json',
+        token_source: 'response_json_field',
+        token_field: 'access_token',
+        token_placement: 'header',
+        token_header_name: 'Authorization',
+        token_header_prefix: 'Bearer ',
+        localstorage_inject_key: 'auth_token',
+        success_status_codes: [200, 201],
+    }, null, 2),
+    spa_capture: JSON.stringify({
+        mode: 'spa_token',
+        description: 'Per-user invite\'lı SPA (Pangram). Kullanıcı publisher\'a kendi şifresiyle login olur, proxy response\'u yakalayıp JWT\'yi saklar. Sonraki session\'larda token replay edilir. Abonelikte ra_credential_scope=\'per_user\' olmalı, admin-scope credential gerekmez.',
+        capture_token_on_login_path: '/api/auth/login',
         login_endpoint_path: '/api/auth/login',
         login_method: 'POST',
         login_body_template: '{"email":"{{username}}","password":"{{password}}"}',

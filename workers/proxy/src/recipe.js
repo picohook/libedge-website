@@ -19,7 +19,7 @@
  * bakımı ve validation admin endpoint'inde yapılıyor.
  */
 
-import { decryptCredential } from '../../../backend/src/ra/crypto.js';
+import { decryptCredential, encryptCredential } from '../../../backend/src/ra/crypto.js';
 
 const COOKIE_JAR_TTL = 3600;
 const AUTH_STATE_TTL = 3600;
@@ -76,13 +76,30 @@ async function executeRecipe(env, session, sessionId) {
     return { ok: false, error: 'recipe_not_object' };
   }
 
+  const originHost = product.ra_origin_host || session.target_host;
+  const mode = recipe.mode || 'form_post';
+
+  // Per-user token capture mode (Pangram gibi per-user invite'lı SPA'lar):
+  // subscription.ra_credential_scope='per_user' + recipe'de
+  // capture_token_on_login_path var. Her kullanıcı kendi token'ı üretir, ilk
+  // login'de proxy onu yakalar, sonraki session'larda replay edilir.
+  // Bu modda "credential" = kullanıcının ra_user_credentials'ta saklı token'ı,
+  // admin-scope credential değil.
+  if (mode === 'spa_token' && recipe.capture_token_on_login_path) {
+    const captured = await loadCapturedUserToken(env, session);
+    if (captured) {
+      return buildSpaTokenState(recipe, captured);
+    }
+    // Token henüz yakalanmamış — passthrough et, kullanıcı publisher'ın kendi
+    // login ekranını görsün. upstream.js capture_token_on_login_path'e gelen
+    // response'u intercept edip token'ı storelayacak.
+    return { ok: false, error: 'awaiting_capture', mode: 'awaiting_capture' };
+  }
+
   const credential = await loadCredential(env, session);
   if (!credential) {
     return { ok: false, error: 'no_credential' };
   }
-
-  const originHost = product.ra_origin_host || session.target_host;
-  const mode = recipe.mode || 'form_post';
 
   if (mode === 'form_post') {
     return await executeFormPost({ env, session, sessionId, recipe, credential, originHost });
@@ -91,6 +108,19 @@ async function executeRecipe(env, session, sessionId) {
     return await executeSpaToken({ env, session, sessionId, recipe, credential, originHost });
   }
   return { ok: false, error: `unknown_mode: ${mode}` };
+}
+
+function buildSpaTokenState(recipe, tokenValue) {
+  return {
+    ok: true,
+    mode: 'spa_token',
+    token: {
+      header_name: recipe.token_header_name || 'Authorization',
+      header_prefix: recipe.token_header_prefix != null ? recipe.token_header_prefix : 'Bearer ',
+      value: String(tokenValue),
+      ls_key: recipe.localstorage_inject_key || null,
+    },
+  };
 }
 
 /**
@@ -296,6 +326,21 @@ async function loadProduct(db, slug) {
     .first();
 }
 
+/**
+ * Ürünün parse edilmiş recipe'ini döner (token capture flow'da upstream.js
+ * bu bilgiyi her upstream response'ta kullanır). Invalid JSON null döner.
+ */
+export async function loadRecipeForSession(env, session) {
+  const product = await loadProduct(env.DB, session.product_slug);
+  if (!product || !product.ra_login_recipe_json) return null;
+  try {
+    const recipe = JSON.parse(product.ra_login_recipe_json);
+    return recipe && typeof recipe === 'object' ? recipe : null;
+  } catch {
+    return null;
+  }
+}
+
 async function loadCredential(env, session) {
   // Shared (institution-level) credential
   const masterKey = env.RA_CREDS_MASTER_KEY;
@@ -327,6 +372,179 @@ async function loadCredential(env, session) {
     return await decryptCredentialSafe(userRow.credential_enc, masterKey);
   }
   return null;
+}
+
+/**
+ * Per-user capture mode için yakalı token'ı ra_user_credentials'tan oku.
+ * Saklanan plaintext JSON formatı: `{"token":"..."}` (password alanı yok).
+ */
+async function loadCapturedUserToken(env, session) {
+  const masterKey = env.RA_CREDS_MASTER_KEY;
+  if (!masterKey) return null;
+
+  const row = await env.DB
+    .prepare(
+      `SELECT credential_enc FROM ra_user_credentials
+       WHERE user_id = ? AND product_slug = ?`
+    )
+    .bind(session.user_id, session.product_slug)
+    .first();
+  if (!row || !row.credential_enc) return null;
+
+  try {
+    const plaintext = await decryptCredential(row.credential_enc, masterKey);
+    const obj = JSON.parse(plaintext);
+    if (!obj || typeof obj !== 'object') return null;
+    // Token yakalanmış (Option B) ya da kullanıcı elle şifre girmiş (Option A)
+    // Option A'yı şimdilik desteklemiyoruz; sadece token var olan kayıtlar geçerli.
+    return obj.token ? String(obj.token) : null;
+  } catch (err) {
+    console.warn('captured token decrypt failed', err);
+    return null;
+  }
+}
+
+/**
+ * Login response'undan extract edilen token'ı ra_user_credentials'a yazar.
+ * Aynı zamanda raauth cache'ini invalidate eder, böylece aynı session'daki
+ * sonraki request hemen token'ı replay moduna geçer.
+ *
+ * @param {any} env
+ * @param {object} session
+ * @param {string} sessionId
+ * @param {string} token  Publisher'dan yakalanan auth token (JWT vb.)
+ */
+export async function storeCapturedUserToken(env, session, sessionId, token) {
+  const masterKey = env.RA_CREDS_MASTER_KEY;
+  if (!masterKey) {
+    console.warn('RA_CREDS_MASTER_KEY missing — cannot persist captured token');
+    return false;
+  }
+  const plaintext = JSON.stringify({ token: String(token) });
+  let ciphertext;
+  try {
+    ciphertext = await encryptCredential(plaintext, masterKey);
+  } catch (err) {
+    console.warn('captured token encrypt failed', err);
+    return false;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  // UPSERT (conflict → update): user_id + product_slug primary key
+  await env.DB
+    .prepare(
+      `INSERT INTO ra_user_credentials (user_id, product_slug, credential_enc, created_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id, product_slug) DO UPDATE SET
+         credential_enc = excluded.credential_enc,
+         created_at = excluded.created_at`
+    )
+    .bind(session.user_id, session.product_slug, ciphertext, now)
+    .run();
+
+  // Cache invalidate — sonraki ensureRecipeExecuted fresh read yapsın
+  await invalidateAuthCache(env, session, sessionId);
+  return true;
+}
+
+/**
+ * Stored token geçersiz (401) — kullanıcı tekrar login yapsın diye
+ * hem ra_user_credentials kaydını hem de raauth cache'ini sil.
+ */
+export async function invalidateCapturedUserToken(env, session, sessionId) {
+  await env.DB
+    .prepare(
+      `DELETE FROM ra_user_credentials WHERE user_id = ? AND product_slug = ?`
+    )
+    .bind(session.user_id, session.product_slug)
+    .run();
+  await invalidateAuthCache(env, session, sessionId);
+}
+
+async function invalidateAuthCache(env, session, sessionId) {
+  const cacheKey = `raauth:${sessionId}:${session.target_host}`;
+  await env.RA_UPSTREAM_SESSIONS.delete(cacheKey);
+}
+
+
+
+/**
+ * Login response'unu intercept et. Path eşleşiyorsa body'yi buffer'la,
+ * token extract et, storela. Token bulunursa client'a forward edilecek
+ * response buffer'dan reconstruct edilir.
+ *
+ * @param {any} env
+ * @param {object} session
+ * @param {string} sessionId
+ * @param {object} recipe
+ * @param {string} requestPath Publisher'a giden request'in path'i (/api/auth/login vs.)
+ * @param {Response} resp Publisher'dan dönen response
+ * @returns {Promise<Response>} Client'a forward edilecek response (body tüketildiyse
+ *   yeniden oluşturulmuş)
+ */
+export async function maybeCaptureTokenAndForward(env, session, sessionId, recipe, requestPath, resp) {
+  if (!recipe || !recipe.capture_token_on_login_path) return resp;
+  if (!pathMatches(requestPath, recipe.capture_token_on_login_path)) return resp;
+
+  const successCodes = Array.isArray(recipe.success_status_codes)
+    ? recipe.success_status_codes.map(Number)
+    : [200, 201];
+  if (!successCodes.includes(resp.status)) return resp;
+
+  // Body'yi buffer'la (JSON login response'ları küçük, güvenli)
+  const bodyBuf = await resp.arrayBuffer();
+  const bodyText = new TextDecoder().decode(bodyBuf);
+
+  // Token çıkar
+  const tokenSource = recipe.token_source || 'response_json_field';
+  let token = null;
+  if (tokenSource === 'response_json_field') {
+    const tokenField = recipe.token_field || 'access_token';
+    try {
+      const json = JSON.parse(bodyText);
+      token = extractJsonPath(json, tokenField);
+    } catch (err) {
+      console.warn('capture: response body not JSON', err);
+    }
+  } else if (tokenSource === 'response_header') {
+    const headerName = recipe.token_header_source || 'Authorization';
+    token = resp.headers.get(headerName);
+    if (token && /^bearer\s+/i.test(token)) token = token.replace(/^bearer\s+/i, '');
+  }
+
+  if (token) {
+    try {
+      await storeCapturedUserToken(env, session, sessionId, token);
+    } catch (err) {
+      console.warn('captured token persist failed', err);
+    }
+  }
+
+  // Response'u reconstruct et (body tüketildi) — client'a aynen yansıt
+  return new Response(bodyBuf, {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: resp.headers,
+  });
+}
+
+/**
+ * Path matching: recipe.capture_token_on_login_path "/api/auth/login" gibi
+ * sabit path ya da regex (slash'la başlayıp slash'la biten: "/^\/api\/auth\/login/")
+ */
+export function pathMatches(requestPath, pattern) {
+  if (!pattern) return false;
+  const s = String(pattern);
+  if (s.length > 2 && s.startsWith('/') && s.endsWith('/')) {
+    // Regex pattern
+    try {
+      const re = new RegExp(s.slice(1, -1));
+      return re.test(requestPath);
+    } catch {
+      return false;
+    }
+  }
+  return requestPath === s || requestPath.split('?')[0] === s;
 }
 
 async function decryptCredentialSafe(ciphertext, masterKey) {
