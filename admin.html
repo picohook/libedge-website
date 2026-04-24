@@ -14,6 +14,9 @@
         .sidebar-link { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.5rem; color: #e0e7ff; transition: all 0.2s; }
         .sidebar-link:hover { background-color: #3b2a7a; color: white; }
         .sidebar-link.active { background-color: #4c3d8c; color: white; }
+        .ra-subtab-btn { border-bottom: 2px solid transparent; color: #6b7280; }
+        .ra-subtab-btn:hover { color: #374151; }
+        .ra-subtab-btn.ra-subtab-active { border-bottom-color: #220f60; color: #220f60; }
         .stat-card { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .dashboard-kpi-card { display: flex; justify-content: space-between; align-items: stretch; min-height: 116px; }
         .dashboard-kpi-content { display: flex; flex-direction: column; justify-content: space-between; min-height: 68px; }
@@ -347,6 +350,7 @@
                 <a href="#" class="sidebar-link" data-tab="files" id="filesTab"><i class="fas fa-folder-open w-5"></i><span>Merkezi Dosyalar</span></a>
                 <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
                 <a href="#" class="sidebar-link" data-tab="products" id="productsTab"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
+                <a href="#" class="sidebar-link" data-tab="remote-access" id="remoteAccessTab" style="display:none"><i class="fas fa-network-wired w-5"></i><span>Uzaktan Erişim</span></a>
                 <a href="#" class="sidebar-link" data-tab="settings" id="settingsTab"><i class="fas fa-cog w-5"></i><span>Ayarlar</span></a>
             </nav>
             <div class="absolute bottom-6 left-6">
@@ -1092,6 +1096,147 @@
                     <button type="button" data-admin-action="close-product-modal" class="btn bg-gray-300 flex-1">İptal</button>
                 </div>
             </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remote Access Tab (Uzaktan Erişim - super_admin only) -->
+    <div id="tab-remote-access" class="tab-content hidden">
+        <div class="mb-4 flex items-center gap-3 border-b border-gray-200">
+            <button type="button" data-ra-subtab="tunnels" class="ra-subtab-btn ra-subtab-active px-4 py-2 text-sm font-medium">
+                <i class="fas fa-network-wired mr-2"></i>Kurum Tünelleri
+            </button>
+            <button type="button" data-ra-subtab="logs" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
+                <i class="fas fa-clipboard-list mr-2"></i>Erişim Logları
+            </button>
+        </div>
+
+        <!-- Kurum Tünelleri sub-view -->
+        <div id="ra-subview-tunnels" class="ra-subview">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-800">Kurum Egress Tünelleri</h3>
+                    <p class="text-xs text-gray-500">IP-kilitli yayınevlerine kurum ağından giden tünellerin durumu. <span class="text-gray-400">Yalnızca super admin.</span></p>
+                </div>
+                <button type="button" id="raRefreshTunnelsBtn" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2">
+                    <i class="fas fa-sync-alt"></i><span>Yenile</span>
+                </button>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Kurum</th>
+                                <th class="px-4 py-2 text-left">Kullanıcı</th>
+                                <th class="px-4 py-2 text-left">Durum</th>
+                                <th class="px-4 py-2 text-left">Son Heartbeat</th>
+                                <th class="px-4 py-2 text-left">Egress Endpoint</th>
+                                <th class="px-4 py-2 text-left">Secret</th>
+                                <th class="px-4 py-2 text-right">Aksiyon</th>
+                            </tr>
+                        </thead>
+                        <tbody id="raTunnelsTableBody">
+                            <tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Erişim Logları sub-view -->
+        <div id="ra-subview-logs" class="ra-subview hidden">
+            <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-base font-semibold text-gray-800">RA Erişim Logları</h3>
+                    <p class="text-xs text-gray-500">Hangi kullanıcı, hangi yayıncıya, ne zaman erişti. Compliance kaydı.</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                    <select id="raLogsFilterInstitution" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
+                        <option value="">Tüm kurumlar</option>
+                    </select>
+                    <input id="raLogsFilterProduct" type="text" placeholder="Ürün slug" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
+                    <input id="raLogsFilterUser" type="number" min="1" placeholder="Kullanıcı ID" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
+                    <button type="button" id="raApplyLogsFilterBtn" class="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-opacity-90 inline-flex items-center justify-center gap-2">
+                        <i class="fas fa-filter"></i><span>Uygula</span>
+                    </button>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Zaman</th>
+                                <th class="px-4 py-2 text-left">Kullanıcı</th>
+                                <th class="px-4 py-2 text-left">Kurum</th>
+                                <th class="px-4 py-2 text-left">Ürün</th>
+                                <th class="px-4 py-2 text-left">Hedef Host</th>
+                                <th class="px-4 py-2 text-left">HTTP</th>
+                                <th class="px-4 py-2 text-right">Bytes</th>
+                                <th class="px-4 py-2 text-right">Latency</th>
+                            </tr>
+                        </thead>
+                        <tbody id="raLogsTableBody">
+                            <tr><td colspan="8" class="px-4 py-6 text-center text-sm text-gray-400">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="raLogsPagination" class="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
+                    <span id="raLogsSummary">—</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="raLogsPrevBtn" class="px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button type="button" id="raLogsNextBtn" class="px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50" disabled>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RA Tunnel edit modal -->
+    <div id="raTunnelModal" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <h3 class="text-base font-semibold text-gray-800">Tünel Yapılandırması</h3>
+                <button type="button" data-ra-modal-close class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4">
+                <p class="text-xs text-gray-500">
+                    Kurum: <span id="raTunnelModalInstName" class="font-medium text-gray-700">—</span>
+                </p>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Egress Endpoint (HTTPS)</label>
+                    <input id="raTunnelEndpointInput" type="url" placeholder="https://egress.kurum-ornek.edu.tr" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                    <p class="text-[11px] text-gray-400 mt-1">Kurum ağında çalışan ra-egress agent'ının dış adresi.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Egress Shared Secret</label>
+                    <input id="raTunnelSecretInput" type="password" placeholder="(değiştirmek için yeni değer gir, boş bırak ↔ değişmez)" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" autocomplete="new-password" />
+                    <p class="text-[11px] text-gray-400 mt-1">HMAC imzalama için. LibEdge tarafı sadece şifreli hali saklar; buradan okunamaz, sadece güncellenebilir.</p>
+                    <p id="raTunnelSecretStatus" class="text-[11px] text-gray-500 mt-1"></p>
+                </div>
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input id="raTunnelEnabledInput" type="checkbox" class="h-4 w-4" />
+                    <span>Bu tünel <strong>aktif</strong> (IP-kilitli yayıncı istekleri buradan geçsin)</span>
+                </label>
+                <div id="raTunnelModalError" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2"></div>
+            </div>
+            <div class="flex items-center justify-between gap-2 px-5 py-3 border-t border-gray-100">
+                <button type="button" id="raTunnelTestBtn" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2">
+                    <i class="fas fa-bolt"></i><span>Tüneli Test Et</span>
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" data-ra-modal-close class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">İptal</button>
+                    <button type="button" id="raTunnelSaveBtn" class="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-opacity-90">
+                        <i class="fas fa-save mr-1"></i>Kaydet
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -2246,6 +2391,7 @@ async function checkAdminAuth() {
         if (isSuperAdmin) {
             const instSubBtn = document.getElementById('addInstSubscriptionBtn');
             if (instSubBtn) instSubBtn.style.display = '';
+            show('remoteAccessTab');
         }
         if (isAdmin) {
             show('myInstitutionTab');
@@ -3759,6 +3905,8 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 loadSupport();
             } else if (tab === 'settings') {
                 _loadSettingsTab();
+            } else if (tab === 'remote-access') {
+                _loadRemoteAccessTab();
             }
         }
     });
@@ -4130,6 +4278,356 @@ async function _loadSettingsTab() {
             : 'Production?';
         if (el('settingsEnvLabel')) el('settingsEnvLabel').textContent = fallback;
     }
+}
+
+// ====================== REMOTE ACCESS (RA) ADMIN PANELİ ======================
+// Super admin RA tab'ı: Kurum Tünelleri + Erişim Logları.
+// Veri kaynakları: /api/ra/admin/institutions, /api/ra/admin/institution-egress/:id,
+// /api/ra/admin/institution-egress/:id/test, /api/ra/admin/logs.
+
+const _ra = {
+    initialized: false,
+    activeSubtab: 'tunnels',
+    institutions: [],
+    logs: { items: [], total: 0, offset: 0, limit: 100 },
+    editingInstitutionId: null,
+};
+
+async function _loadRemoteAccessTab() {
+    if (!_ra.initialized) _initRemoteAccessTab();
+    if (_ra.activeSubtab === 'tunnels') {
+        await _raLoadTunnels();
+    } else {
+        await _raLoadLogs();
+    }
+}
+
+function _initRemoteAccessTab() {
+    _ra.initialized = true;
+
+    document.querySelectorAll('.ra-subtab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const target = btn.dataset.raSubtab;
+            if (!target) return;
+            _ra.activeSubtab = target;
+            document.querySelectorAll('.ra-subtab-btn').forEach((b) => b.classList.toggle('ra-subtab-active', b === btn));
+            document.getElementById('ra-subview-tunnels').classList.toggle('hidden', target !== 'tunnels');
+            document.getElementById('ra-subview-logs').classList.toggle('hidden', target !== 'logs');
+            if (target === 'tunnels') _raLoadTunnels();
+            else _raLoadLogs();
+        });
+    });
+
+    const refreshBtn = document.getElementById('raRefreshTunnelsBtn');
+    if (refreshBtn) refreshBtn.addEventListener('click', () => _raLoadTunnels(true));
+
+    const applyFilterBtn = document.getElementById('raApplyLogsFilterBtn');
+    if (applyFilterBtn) applyFilterBtn.addEventListener('click', () => {
+        _ra.logs.offset = 0;
+        _raLoadLogs();
+    });
+
+    const prevBtn = document.getElementById('raLogsPrevBtn');
+    if (prevBtn) prevBtn.addEventListener('click', () => {
+        _ra.logs.offset = Math.max(0, _ra.logs.offset - _ra.logs.limit);
+        _raLoadLogs();
+    });
+    const nextBtn = document.getElementById('raLogsNextBtn');
+    if (nextBtn) nextBtn.addEventListener('click', () => {
+        _ra.logs.offset = _ra.logs.offset + _ra.logs.limit;
+        _raLoadLogs();
+    });
+
+    // Modal kapatma
+    document.querySelectorAll('#raTunnelModal [data-ra-modal-close]').forEach((el) => {
+        el.addEventListener('click', _raCloseModal);
+    });
+    document.getElementById('raTunnelModal').addEventListener('click', (e) => {
+        if (e.target.id === 'raTunnelModal') _raCloseModal();
+    });
+
+    const saveBtn = document.getElementById('raTunnelSaveBtn');
+    if (saveBtn) saveBtn.addEventListener('click', _raSaveTunnel);
+    const testBtn = document.getElementById('raTunnelTestBtn');
+    if (testBtn) testBtn.addEventListener('click', _raTestTunnelFromModal);
+}
+
+async function _raLoadTunnels(force = false) {
+    const tbody = document.getElementById('raTunnelsTableBody');
+    if (!tbody) return;
+    if (force || !_ra.institutions.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Yükleniyor...</td></tr>';
+    }
+    try {
+        const res = await fetch(`${API_BASE}/api/ra/admin/institutions`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        _ra.institutions = Array.isArray(data.institutions) ? data.institutions : [];
+        _raRenderTunnels();
+        _raPopulateLogsInstitutionFilter();
+    } catch (err) {
+        console.error('RA tunnels load failed', err);
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-red-500">Yüklenemedi: ${escapeHtml(err.message || 'bilinmeyen hata')}</td></tr>`;
+    }
+}
+
+function _raRenderTunnels() {
+    const tbody = document.getElementById('raTunnelsTableBody');
+    if (!tbody) return;
+    if (!_ra.institutions.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Kurum bulunamadı.</td></tr>';
+        return;
+    }
+    const rows = _ra.institutions.map((inst) => {
+        const statusBadge = _raStatusBadge(inst.tunnel_status, inst.enabled);
+        const lastSeen = inst.tunnel_last_seen ? _raFormatTs(inst.tunnel_last_seen) : '<span class="text-gray-400">—</span>';
+        const endpoint = inst.egress_endpoint
+            ? `<span class="font-mono text-xs">${escapeHtml(inst.egress_endpoint)}</span>`
+            : '<span class="text-gray-400 text-xs">tanımsız</span>';
+        const secretBadge = inst.has_secret
+            ? '<span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">tanımlı</span>'
+            : '<span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">yok</span>';
+        return `<tr class="hover:bg-gray-50">
+            <td class="px-4 py-2">
+                <div class="font-medium text-gray-800">${escapeHtml(inst.name || '—')}</div>
+                <div class="text-[11px] text-gray-400">${escapeHtml(inst.domain || '')}</div>
+            </td>
+            <td class="px-4 py-2 text-gray-700">${Number(inst.user_count || 0).toLocaleString('tr-TR')}</td>
+            <td class="px-4 py-2">${statusBadge}</td>
+            <td class="px-4 py-2 text-xs text-gray-600">${lastSeen}</td>
+            <td class="px-4 py-2">${endpoint}</td>
+            <td class="px-4 py-2">${secretBadge}</td>
+            <td class="px-4 py-2 text-right">
+                <button type="button" class="text-xs px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-100 inline-flex items-center gap-1" data-ra-action="edit-tunnel" data-institution-id="${inst.id}">
+                    <i class="fas fa-pen"></i><span>Düzenle</span>
+                </button>
+                <button type="button" class="text-xs px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-100 inline-flex items-center gap-1 ml-1 ${inst.egress_endpoint ? '' : 'opacity-50 cursor-not-allowed'}" data-ra-action="test-tunnel" data-institution-id="${inst.id}" ${inst.egress_endpoint ? '' : 'disabled'}>
+                    <i class="fas fa-bolt"></i><span>Test</span>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+    tbody.innerHTML = rows;
+
+    tbody.querySelectorAll('[data-ra-action="edit-tunnel"]').forEach((btn) => {
+        btn.addEventListener('click', () => _raOpenModal(Number(btn.dataset.institutionId)));
+    });
+    tbody.querySelectorAll('[data-ra-action="test-tunnel"]').forEach((btn) => {
+        btn.addEventListener('click', () => _raTestTunnel(Number(btn.dataset.institutionId), btn));
+    });
+}
+
+function _raStatusBadge(status, enabled) {
+    const map = {
+        ok: { label: 'OK', cls: 'bg-emerald-100 text-emerald-700' },
+        error: { label: 'HATA', cls: 'bg-red-100 text-red-700' },
+        unknown: { label: 'Bilinmiyor', cls: 'bg-gray-100 text-gray-600' },
+        unconfigured: { label: 'Yapılandırılmamış', cls: 'bg-gray-100 text-gray-400' },
+    };
+    const s = map[status] || map.unknown;
+    const enabledLabel = enabled
+        ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 uppercase">aktif</span>'
+        : '<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-400 uppercase">pasif</span>';
+    return `<span class="text-[11px] px-2 py-0.5 rounded-full ${s.cls}">${s.label}</span>${enabledLabel}`;
+}
+
+function _raFormatTs(unixSec) {
+    if (!unixSec) return '—';
+    const d = new Date(Number(unixSec) * 1000);
+    return d.toLocaleString('tr-TR');
+}
+
+async function _raOpenModal(institutionId) {
+    const inst = _ra.institutions.find((i) => Number(i.id) === Number(institutionId));
+    if (!inst) return;
+    _ra.editingInstitutionId = Number(institutionId);
+    document.getElementById('raTunnelModalInstName').textContent = inst.name || '—';
+    document.getElementById('raTunnelEndpointInput').value = inst.egress_endpoint || '';
+    document.getElementById('raTunnelSecretInput').value = '';
+    document.getElementById('raTunnelSecretStatus').textContent = inst.has_secret
+        ? 'Halihazırda bir secret tanımlı. Boş bırakırsan korunur.'
+        : 'Secret tanımlı değil — yeni bir secret gir.';
+    document.getElementById('raTunnelEnabledInput').checked = !!inst.enabled;
+    document.getElementById('raTunnelModalError').classList.add('hidden');
+    document.getElementById('raTunnelModalError').textContent = '';
+    const modal = document.getElementById('raTunnelModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function _raCloseModal() {
+    const modal = document.getElementById('raTunnelModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    _ra.editingInstitutionId = null;
+}
+
+async function _raSaveTunnel() {
+    const id = _ra.editingInstitutionId;
+    if (!id) return;
+    const endpoint = (document.getElementById('raTunnelEndpointInput').value || '').trim();
+    const secret = document.getElementById('raTunnelSecretInput').value || '';
+    const enabled = document.getElementById('raTunnelEnabledInput').checked ? 1 : 0;
+    const errorEl = document.getElementById('raTunnelModalError');
+    errorEl.classList.add('hidden');
+    errorEl.textContent = '';
+
+    if (endpoint && !/^https:\/\//i.test(endpoint)) {
+        errorEl.textContent = 'Endpoint https:// ile başlamalı.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    const saveBtn = document.getElementById('raTunnelSaveBtn');
+    const origHtml = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Kaydediliyor...';
+
+    try {
+        const body = {
+            egress_endpoint: endpoint || null,
+            enabled,
+        };
+        if (secret) body.egress_secret = secret;
+        const res = await fetch(`${API_BASE}/api/ra/admin/institution-egress/${id}`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.error || `HTTP ${res.status}`);
+        }
+        showToast('Tünel yapılandırması kaydedildi.', 'success');
+        _raCloseModal();
+        await _raLoadTunnels(true);
+    } catch (err) {
+        errorEl.textContent = err.message || 'Kaydedilemedi.';
+        errorEl.classList.remove('hidden');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = origHtml;
+    }
+}
+
+async function _raTestTunnelFromModal() {
+    const id = _ra.editingInstitutionId;
+    if (!id) return;
+    const btn = document.getElementById('raTunnelTestBtn');
+    await _raTestTunnel(id, btn);
+    await _raLoadTunnels(true);
+    // Modal'ı kapatmayalım — kullanıcı sonucu görsün
+}
+
+async function _raTestTunnel(institutionId, triggerBtn) {
+    if (!institutionId) return;
+    const origHtml = triggerBtn ? triggerBtn.innerHTML : null;
+    if (triggerBtn) {
+        triggerBtn.disabled = true;
+        triggerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Test...</span>';
+    }
+    try {
+        const res = await fetch(`${API_BASE}/api/ra/admin/institution-egress/${institutionId}/test`, {
+            method: 'POST',
+            credentials: 'include',
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.ok) {
+            showToast(`Tünel ulaşılabilir (HTTP ${data.status}, ${data.latency_ms}ms).`, 'success');
+        } else {
+            const detail = data.error || (data.status ? `HTTP ${data.status}` : 'ulaşılamıyor');
+            showToast(`Tünel testi başarısız: ${detail}`, 'error');
+        }
+        // Listeyi güncelle
+        await _raLoadTunnels(true);
+    } catch (err) {
+        showToast(`Test isteği hata verdi: ${err.message || err}`, 'error');
+    } finally {
+        if (triggerBtn) {
+            triggerBtn.disabled = false;
+            triggerBtn.innerHTML = origHtml || '<i class="fas fa-bolt"></i><span>Test</span>';
+        }
+    }
+}
+
+function _raPopulateLogsInstitutionFilter() {
+    const sel = document.getElementById('raLogsFilterInstitution');
+    if (!sel) return;
+    const currentVal = sel.value;
+    const options = ['<option value="">Tüm kurumlar</option>'].concat(
+        _ra.institutions.map((i) => `<option value="${i.id}">${escapeHtml(i.name || `#${i.id}`)}</option>`)
+    );
+    sel.innerHTML = options.join('');
+    if (currentVal) sel.value = currentVal;
+}
+
+async function _raLoadLogs() {
+    const tbody = document.getElementById('raLogsTableBody');
+    if (!tbody) return;
+    const params = new URLSearchParams();
+    const inst = document.getElementById('raLogsFilterInstitution').value;
+    const product = (document.getElementById('raLogsFilterProduct').value || '').trim();
+    const userId = (document.getElementById('raLogsFilterUser').value || '').trim();
+    if (inst) params.set('institution_id', inst);
+    if (product) params.set('product_slug', product);
+    if (userId) params.set('user_id', userId);
+    params.set('limit', String(_ra.logs.limit));
+    params.set('offset', String(_ra.logs.offset));
+
+    tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-6 text-center text-sm text-gray-400">Yükleniyor...</td></tr>';
+    try {
+        const res = await fetch(`${API_BASE}/api/ra/admin/logs?${params.toString()}`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        _ra.logs.items = Array.isArray(data.logs) ? data.logs : [];
+        _ra.logs.total = Number(data.total || 0);
+        _raRenderLogs();
+    } catch (err) {
+        console.error('RA logs load failed', err);
+        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-6 text-center text-sm text-red-500">Yüklenemedi: ${escapeHtml(err.message || 'bilinmeyen hata')}</td></tr>`;
+    }
+}
+
+function _raRenderLogs() {
+    const tbody = document.getElementById('raLogsTableBody');
+    if (!tbody) return;
+    if (!_ra.logs.items.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-6 text-center text-sm text-gray-400">Kayıt bulunamadı.</td></tr>';
+    } else {
+        tbody.innerHTML = _ra.logs.items.map((l) => {
+            const userLabel = l.user_email
+                ? `<div class="text-xs text-gray-800">${escapeHtml(l.user_email)}</div><div class="text-[11px] text-gray-400">#${l.user_id || '-'}</div>`
+                : `<span class="text-gray-400 text-xs">#${l.user_id || '-'}</span>`;
+            const instLabel = l.institution_name ? escapeHtml(l.institution_name) : '<span class="text-gray-400">—</span>';
+            const target = l.target_host
+                ? `<span class="font-mono text-[11px]">${escapeHtml(l.target_host)}${escapeHtml(l.target_path || '')}</span>`
+                : '<span class="text-gray-400">—</span>';
+            const statusBadge = l.status
+                ? `<span class="text-[11px] px-2 py-0.5 rounded-full ${l.status < 400 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">${l.status}</span>`
+                : '<span class="text-gray-400 text-xs">—</span>';
+            const bytes = l.bytes_out != null ? Number(l.bytes_out).toLocaleString('tr-TR') : '—';
+            const latency = l.upstream_latency_ms != null ? `${l.upstream_latency_ms} ms` : '—';
+            return `<tr class="hover:bg-gray-50">
+                <td class="px-4 py-2 text-xs text-gray-600">${_raFormatTs(l.ts)}</td>
+                <td class="px-4 py-2">${userLabel}</td>
+                <td class="px-4 py-2 text-sm text-gray-700">${instLabel}</td>
+                <td class="px-4 py-2 text-xs text-gray-700">${escapeHtml(l.product_slug || '—')}</td>
+                <td class="px-4 py-2">${target}</td>
+                <td class="px-4 py-2">${statusBadge}</td>
+                <td class="px-4 py-2 text-right text-xs text-gray-600">${bytes}</td>
+                <td class="px-4 py-2 text-right text-xs text-gray-600">${latency}</td>
+            </tr>`;
+        }).join('');
+    }
+    const from = _ra.logs.items.length ? _ra.logs.offset + 1 : 0;
+    const to = _ra.logs.offset + _ra.logs.items.length;
+    const total = _ra.logs.total;
+    document.getElementById('raLogsSummary').textContent = total
+        ? `${from}–${to} / ${total.toLocaleString('tr-TR')}`
+        : 'Kayıt yok';
+    document.getElementById('raLogsPrevBtn').disabled = _ra.logs.offset <= 0;
+    document.getElementById('raLogsNextBtn').disabled = (_ra.logs.offset + _ra.logs.items.length) >= total;
 }
 
 // ====================== ADMIN DOSYA & KLASÖR YÖNETİMİ ======================

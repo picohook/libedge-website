@@ -9,6 +9,7 @@ import { sign, verify } from 'hono/jwt';
 // Şema guard (ALTER TABLE + CREATE TABLE IF NOT EXISTS) handler içinde çağrılır.
 import { registerRaIssueToken } from './routes/ra/issue-token.js';
 import { registerRaAdminTunnel } from './routes/ra/admin-tunnel.js';
+import { registerRaAdminOverview } from './routes/ra/admin-overview.js';
 
 const app = new Hono();
 
@@ -7553,6 +7554,8 @@ app.put('/api/admin/airtable/accounts/:id', async (c) => {
 registerRaIssueToken(app);
 // GET/PUT /api/ra/admin/institution-egress/:id ; POST .../test
 registerRaAdminTunnel(app);
+// GET /api/ra/admin/institutions ; GET /api/ra/admin/logs (super_admin read-only)
+registerRaAdminOverview(app);
 
 
 // ====================== PAGE VIEWS ROUTES ======================
