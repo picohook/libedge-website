@@ -1327,6 +1327,213 @@ app.post('/api/auth/refresh', async (c) => {
   });
 });
 
+// ====================== PASSWORD RESET ======================
+// /api/auth/forgot-password  — request a reset email
+// /api/auth/reset-password   — consume a token and set a new password
+//
+// Tokens are 32 random bytes hex-encoded (64 chars), sent in the email URL.
+// Only SHA-256(token) is persisted in the DB; a DB leak cannot be replayed
+// against live users. Tokens expire in 1 hour and are single-use.
+
+const PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 60;
+const PASSWORD_RESET_MIN_LENGTH = 8;
+
+async function ensurePasswordResetsSchema(db) {
+  await db.exec(
+    "CREATE TABLE IF NOT EXISTS password_resets (" +
+      "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+      "user_id INTEGER NOT NULL," +
+      "token_hash TEXT NOT NULL UNIQUE," +
+      "expires_at INTEGER NOT NULL," +
+      "used_at INTEGER," +
+      "created_at INTEGER NOT NULL," +
+      "ip TEXT," +
+      "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE" +
+    ")"
+  );
+  await db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets(token_hash)'
+  );
+  await db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id)'
+  );
+}
+
+export function generateResetToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  let hex = '';
+  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
+  return hex;
+}
+
+export async function hashResetToken(token) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function getFrontendOrigin(c) {
+  // Prefer the caller's Origin when it is in ALLOWED_ORIGINS; otherwise
+  // fall back to the env-appropriate default so emails still land with
+  // a usable link even from non-browser clients.
+  const origin = c.req.header('origin') || c.req.header('Origin') || '';
+  if (origin && ALLOWED_ORIGINS.includes(origin)) return origin;
+  const env = (c.env.ENVIRONMENT || '').toLowerCase();
+  if (env === 'production') return 'https://www.libedge.com';
+  return 'https://staging.libedge-website.pages.dev';
+}
+
+async function sendPasswordResetEmail(c, user, resetUrl) {
+  if (!c.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY missing; password reset email not sent for user', user.id);
+    return;
+  }
+  const safeName = escapeHtml(user.full_name || user.email.split('@')[0] || 'kullanıcı');
+  const safeUrl = escapeHtml(resetUrl);
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto;">
+      <h2 style="color: #2a276b;">Şifre sıfırlama talebi</h2>
+      <p>Merhaba ${safeName},</p>
+      <p>Hesabınız için şifre sıfırlama talebi aldık. Aşağıdaki bağlantıya tıklayarak yeni bir şifre belirleyebilirsiniz:</p>
+      <p style="margin: 24px 0;">
+        <a href="${safeUrl}" style="background: #2a276b; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block;">Şifreyi sıfırla</a>
+      </p>
+      <p style="color: #666; font-size: 13px;">Bu bağlantı 1 saat süreyle geçerlidir ve yalnızca bir kez kullanılabilir.</p>
+      <p style="color: #666; font-size: 13px;">Bu talebi siz göndermediyseniz, bu e-postayı yok sayabilirsiniz. Şifreniz değiştirilmez.</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;">
+      <p style="color: #999; font-size: 12px;">LibEdge · noreply@libedge.com</p>
+    </div>
+  `;
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${c.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'LibEdge <noreply@libedge.com>',
+        to: [user.email],
+        subject: 'Şifre sıfırlama talebi',
+        html,
+      }),
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      console.error('Resend password-reset send failed', response.status, body.slice(0, 200));
+    }
+  } catch (err) {
+    console.error('Resend password-reset network error:', err);
+  }
+}
+
+app.post('/api/auth/forgot-password', async (c) => {
+  try {
+    const ip = extractClientIp(c);
+    const ipLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'forgot:ip', ip, 5, 15 * 60);
+    if (ipLimit.isLimited) {
+      return rateLimitResponse(c, ipLimit, 'Çok fazla şifre sıfırlama denemesi. Lütfen birkaç dakika sonra tekrar deneyin.');
+    }
+
+    const body = await parseAndValidate(c, {
+      email: { required: true, type: 'string', email: true, maxLength: 254 },
+    });
+    if (body instanceof Response) return body;
+
+    const normalizedEmail = body.email.toLowerCase().trim();
+    const emailLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'forgot:email', normalizedEmail, 3, 60 * 60);
+    if (emailLimit.isLimited) {
+      // Still return the generic success response so we don't confirm the
+      // email exists. The rate limit on the email axis only protects us
+      // from sending excess emails to a real mailbox.
+      return c.json({ success: true });
+    }
+
+    const db = c.env.DB;
+    await ensurePasswordResetsSchema(db);
+
+    const user = await db.prepare(
+      'SELECT id, email, full_name FROM users WHERE email = ?'
+    ).bind(normalizedEmail).first();
+
+    if (user) {
+      const token = generateResetToken();
+      const tokenHash = await hashResetToken(token);
+      const now = Math.floor(Date.now() / 1000);
+      const expiresAt = now + PASSWORD_RESET_TOKEN_TTL_SECONDS;
+
+      await db.prepare(
+        'INSERT INTO password_resets (user_id, token_hash, expires_at, created_at, ip) VALUES (?, ?, ?, ?, ?)'
+      ).bind(user.id, tokenHash, expiresAt, now, ip).run();
+
+      const origin = getFrontendOrigin(c);
+      const resetUrl = `${origin}/reset-password.html?token=${encodeURIComponent(token)}`;
+      await sendPasswordResetEmail(c, user, resetUrl);
+    }
+
+    // Always return the same payload regardless of whether the email exists —
+    // prevents account enumeration.
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('forgot-password error:', err);
+    // Fail closed with a generic message so we still don't leak the error.
+    return c.json({ success: true });
+  }
+});
+
+app.post('/api/auth/reset-password', async (c) => {
+  try {
+    const ip = extractClientIp(c);
+    const ipLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'reset:ip', ip, 10, 15 * 60);
+    if (ipLimit.isLimited) {
+      return rateLimitResponse(c, ipLimit, 'Çok fazla sıfırlama denemesi. Lütfen birkaç dakika sonra tekrar deneyin.');
+    }
+
+    const body = await parseAndValidate(c, {
+      token:        { required: true, type: 'string', minLength: 10, maxLength: 256 },
+      new_password: { required: true, type: 'string', minLength: PASSWORD_RESET_MIN_LENGTH, maxLength: 128 },
+    });
+    if (body instanceof Response) return body;
+
+    const db = c.env.DB;
+    await ensurePasswordResetsSchema(db);
+
+    const tokenHash = await hashResetToken(body.token);
+    const now = Math.floor(Date.now() / 1000);
+
+    const row = await db.prepare(
+      'SELECT id, user_id, expires_at, used_at FROM password_resets WHERE token_hash = ?'
+    ).bind(tokenHash).first();
+
+    if (!row || row.used_at || Number(row.expires_at) < now) {
+      return c.json({ success: false, error: 'Bağlantı geçersiz veya süresi dolmuş. Lütfen yeni bir şifre sıfırlama talebi gönderin.' }, 400);
+    }
+
+    const user = await db.prepare(
+      'SELECT id, email FROM users WHERE id = ?'
+    ).bind(row.user_id).first();
+    if (!user) {
+      return c.json({ success: false, error: 'Kullanıcı bulunamadı.' }, 400);
+    }
+
+    const passwordHash = await hashPassword(body.new_password);
+
+    await db.batch([
+      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(passwordHash, user.id),
+      db.prepare('UPDATE password_resets SET used_at = ? WHERE id = ?').bind(now, row.id),
+      // Invalidate every other outstanding reset token for this user so the
+      // email list can't be used twice.
+      db.prepare('UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL').bind(now, user.id),
+    ]);
+
+    return c.json({ success: true, message: 'Şifreniz başarıyla güncellendi.' });
+  } catch (err) {
+    console.error('reset-password error:', err);
+    return c.json({ success: false, error: 'Şifre güncellenemedi. Lütfen tekrar deneyin.' }, 500);
+  }
+});
+
 // ====================== 🆕 PROTECTED ENDPOINT'LER (Cookie ile) ======================
 
 app.get('/api/user/profile', async (c) => {

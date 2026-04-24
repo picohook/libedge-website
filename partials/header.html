@@ -283,9 +283,33 @@
             </div>
             <button type="submit" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-opacity-90 transition translatable" data-en="Sign In">Giriş Yap</button>
         </form>
-        <p class="mt-4 text-center text-sm text-gray-600">
+        <p class="mt-3 text-center text-sm text-gray-600">
+            <button onclick="openForgotPasswordModal()" class="text-primary hover:underline translatable" data-en="Forgot your password?">Şifremi unuttum</button>
+        </p>
+        <p class="mt-2 text-center text-sm text-gray-600">
             <span class="translatable" data-en="Don't have an account?">Hesabınız yok mu?</span>
             <button onclick="openRegisterModal()" class="text-primary font-semibold hover:underline translatable" data-en="Sign Up">Kayıt Ol</button>
+        </p>
+    </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div id="forgotPasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
+        <button onclick="closeForgotPasswordModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+        </button>
+        <h2 class="text-2xl font-bold mb-2 text-primary translatable" data-en="Reset your password">Şifreyi sıfırla</h2>
+        <p class="text-sm text-gray-600 mb-4 translatable" data-en="Enter your email address and we'll send you a link to reset your password.">E-posta adresinizi girin, şifre sıfırlama bağlantısı göndereceğiz.</p>
+        <form id="forgotPasswordForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1 translatable" data-en="Email Address">E-posta Adresi</label>
+                <input type="email" id="forgotPasswordEmail" placeholder="ornek@email.com" class="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-primary" required>
+            </div>
+            <button type="submit" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-opacity-90 transition translatable" data-en="Send reset link">Bağlantı gönder</button>
+        </form>
+        <p class="mt-4 text-center text-sm text-gray-600">
+            <button onclick="closeForgotPasswordModal(); openLoginModal();" class="text-primary font-semibold hover:underline translatable" data-en="Back to sign in">Girişe dön</button>
         </p>
     </div>
 </div>
