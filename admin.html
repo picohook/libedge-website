@@ -1102,9 +1102,15 @@
 
     <!-- Remote Access Tab (Uzaktan Erişim - super_admin only) -->
     <div id="tab-remote-access" class="tab-content hidden">
-        <div class="mb-4 flex items-center gap-3 border-b border-gray-200">
+        <div class="mb-4 flex flex-wrap items-center gap-1 border-b border-gray-200">
             <button type="button" data-ra-subtab="tunnels" class="ra-subtab-btn ra-subtab-active px-4 py-2 text-sm font-medium">
                 <i class="fas fa-network-wired mr-2"></i>Kurum Tünelleri
+            </button>
+            <button type="button" data-ra-subtab="subscriptions" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
+                <i class="fas fa-key mr-2"></i>Kurumsal Abonelikler
+            </button>
+            <button type="button" data-ra-subtab="products" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
+                <i class="fas fa-cube mr-2"></i>Ürün RA Ayarları
             </button>
             <button type="button" data-ra-subtab="logs" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
                 <i class="fas fa-clipboard-list mr-2"></i>Erişim Logları
@@ -1137,6 +1143,72 @@
                             </tr>
                         </thead>
                         <tbody id="raTunnelsTableBody">
+                            <tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kurumsal Abonelikler sub-view -->
+        <div id="ra-subview-subscriptions" class="ra-subview hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-800">Kurumsal Abonelik Credential'ları</h3>
+                    <p class="text-xs text-gray-500">Publisher erişim türü proxy (veya credential saklı) olan abonelikler. Kullanıcı adı/şifre burada şifrelenir; plaintext asla geri okunamaz.</p>
+                </div>
+                <button type="button" id="raRefreshSubsBtn" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2">
+                    <i class="fas fa-sync-alt"></i><span>Yenile</span>
+                </button>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Kurum</th>
+                                <th class="px-4 py-2 text-left">Ürün</th>
+                                <th class="px-4 py-2 text-left">Erişim Tipi</th>
+                                <th class="px-4 py-2 text-left">Scope</th>
+                                <th class="px-4 py-2 text-left">Credential</th>
+                                <th class="px-4 py-2 text-left">Geçerlilik</th>
+                                <th class="px-4 py-2 text-right">Aksiyon</th>
+                            </tr>
+                        </thead>
+                        <tbody id="raSubsTableBody">
+                            <tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ürün RA Ayarları sub-view -->
+        <div id="ra-subview-products" class="ra-subview hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-800">Ürün RA Yapılandırması</h3>
+                    <p class="text-xs text-gray-500">Her ürün için proxy origin host ve otomatik login recipe JSON'u. Recipe executor Faz 2 engine ile aktifleşir.</p>
+                </div>
+                <button type="button" id="raRefreshProductsBtn" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2">
+                    <i class="fas fa-sync-alt"></i><span>Yenile</span>
+                </button>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Ürün</th>
+                                <th class="px-4 py-2 text-left">Kategori</th>
+                                <th class="px-4 py-2 text-left">RA</th>
+                                <th class="px-4 py-2 text-left">Origin Host</th>
+                                <th class="px-4 py-2 text-left">Recipe</th>
+                                <th class="px-4 py-2 text-left">Host Allowlist</th>
+                                <th class="px-4 py-2 text-right">Aksiyon</th>
+                            </tr>
+                        </thead>
+                        <tbody id="raProductsTableBody">
                             <tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Yükleniyor...</td></tr>
                         </tbody>
                     </table>
@@ -1237,6 +1309,121 @@
                         <i class="fas fa-save mr-1"></i>Kaydet
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RA Subscription credential modal -->
+    <div id="raSubModal" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <h3 class="text-base font-semibold text-gray-800">Abonelik Credential'ı</h3>
+                <button type="button" data-ra-sub-close class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4">
+                <p class="text-xs text-gray-500">
+                    <span id="raSubModalInstName" class="font-medium text-gray-700">—</span>
+                    <span class="text-gray-400">/</span>
+                    <span id="raSubModalProduct" class="font-medium text-gray-700">—</span>
+                </p>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Erişim Tipi</label>
+                    <select id="raSubAccessTypeInput" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="proxy">proxy (credential-auth, LibEdge proxy)</option>
+                        <option value="direct">direct (doğrudan URL)</option>
+                        <option value="institution_link">institution_link (kuruma özel URL)</option>
+                        <option value="ip">ip (IP-kilitli, kurum tüneli)</option>
+                        <option value="sso">sso</option>
+                        <option value="email_password_external">email_password_external (kurum email'iyle kendi login'i)</option>
+                        <option value="mixed">mixed</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Credential Scope</label>
+                    <select id="raSubScopeInput" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="">(tanımsız)</option>
+                        <option value="shared">shared (tüm kurum kullanıcıları aynı credential ile erişir)</option>
+                        <option value="per_user">per_user (her kullanıcı kendi credential'ını kullanır — ra_user_credentials)</option>
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">Burada set edilen credential sadece "shared" modunda kullanılır. per_user için ayrı tablo gerek.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Publisher kullanıcı adı</label>
+                        <input id="raSubUsernameInput" type="text" placeholder="(değiştirmek için gir)" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" autocomplete="off" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Publisher şifresi</label>
+                        <input id="raSubPasswordInput" type="password" placeholder="(değiştirmek için gir)" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" autocomplete="new-password" />
+                    </div>
+                </div>
+                <p id="raSubCredentialStatus" class="text-[11px] text-gray-500"></p>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Geçerlilik (opsiyonel)</label>
+                    <input id="raSubValidUntilInput" type="date" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                </div>
+                <div id="raSubModalError" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2"></div>
+            </div>
+            <div class="flex items-center justify-between gap-2 px-5 py-3 border-t border-gray-100">
+                <button type="button" id="raSubClearBtn" class="text-sm px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 inline-flex items-center gap-2">
+                    <i class="fas fa-trash"></i><span>Credential'ı Sil</span>
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" data-ra-sub-close class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">İptal</button>
+                    <button type="button" id="raSubSaveBtn" class="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-opacity-90">
+                        <i class="fas fa-save mr-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RA Product config modal -->
+    <div id="raProductModal" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <h3 class="text-base font-semibold text-gray-800">Ürün RA Yapılandırması</h3>
+                <button type="button" data-ra-product-close class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                <p class="text-xs text-gray-500">
+                    Ürün: <span id="raProductModalSlug" class="font-medium text-gray-700 font-mono">—</span>
+                </p>
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input id="raProductEnabledInput" type="checkbox" class="h-4 w-4" />
+                    <span>RA bu ürün için <strong>aktif</strong></span>
+                </label>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Origin Host</label>
+                    <input id="raProductOriginHostInput" type="text" placeholder="www.pangram.com" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono" />
+                    <p class="text-[11px] text-gray-400 mt-1">Proxy'nin istek atacağı gerçek publisher hostname'i. Sadece hostname (scheme'siz, path'siz).</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Login Recipe (JSON)</label>
+                    <div class="flex items-center gap-2 mb-1">
+                        <button type="button" data-ra-recipe-template="form_post" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: form_post</button>
+                        <button type="button" data-ra-recipe-template="spa_token" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: spa_token</button>
+                        <button type="button" data-ra-recipe-template="clear" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Temizle</button>
+                    </div>
+                    <textarea id="raProductRecipeInput" rows="10" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono" placeholder='{"mode":"form_post",...}'></textarea>
+                    <p class="text-[11px] text-gray-400 mt-1">Recipe executor Faz 2 engine'de aktifleşir. Şimdilik sadece saklanır. JSON invalid ise kaydedilmez.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Host Allowlist (JSON array)</label>
+                    <textarea id="raProductAllowlistInput" rows="3" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono" placeholder='["www.pangram.com","api.pangram.com"]'></textarea>
+                    <p class="text-[11px] text-gray-400 mt-1">Proxy'nin upstream'e yönlendirebileceği ek hostname'ler (örn. CDN, API). Boş bırakılabilir.</p>
+                </div>
+                <div id="raProductModalError" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2"></div>
+            </div>
+            <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100">
+                <button type="button" data-ra-product-close class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">İptal</button>
+                <button type="button" id="raProductSaveBtn" class="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-opacity-90">
+                    <i class="fas fa-save mr-1"></i>Kaydet
+                </button>
             </div>
         </div>
     </div>
@@ -4289,16 +4476,58 @@ const _ra = {
     initialized: false,
     activeSubtab: 'tunnels',
     institutions: [],
+    subscriptions: [],
+    products: [],
     logs: { items: [], total: 0, offset: 0, limit: 100 },
     editingInstitutionId: null,
+    editingSubscriptionId: null,
+    editingProductSlug: null,
+};
+
+const RA_SUBTABS = ['tunnels', 'subscriptions', 'products', 'logs'];
+
+const RA_RECIPE_TEMPLATES = {
+    form_post: JSON.stringify({
+        mode: 'form_post',
+        description: 'Klasik HTML form POST login (ör. ScienceDirect, Springer). Önce GET ile login sayfasını alıp hidden field + CSRF token okunur, sonra POST ile submit edilir.',
+        login_page_path: '/login',
+        form_selector: 'form',
+        fields: {
+            username: 'username',
+            password: 'password',
+        },
+        extra_static_fields: {},
+        success_cookie_names: ['SESSION', 'JSESSIONID'],
+        success_redirect_contains: '/dashboard',
+    }, null, 2),
+    spa_token: JSON.stringify({
+        mode: 'spa_token',
+        description: 'Modern SPA (Pangram gibi). Client-side JS fetch ile login API çağırır, JWT localStorage veya HttpOnly cookie ile döner. Recipe executor fetch ile aynı API\'yi çağırır.',
+        login_endpoint_path: '/api/auth/login',
+        login_method: 'POST',
+        login_body_template: '{"email":"{{username}}","password":"{{password}}"}',
+        login_content_type: 'application/json',
+        token_source: 'response_json_field',
+        token_field: 'access_token',
+        token_placement: 'header',
+        token_header_name: 'Authorization',
+        token_header_prefix: 'Bearer ',
+        localstorage_inject_key: 'auth_token',
+        success_status_codes: [200, 201],
+    }, null, 2),
 };
 
 async function _loadRemoteAccessTab() {
     if (!_ra.initialized) _initRemoteAccessTab();
-    if (_ra.activeSubtab === 'tunnels') {
-        await _raLoadTunnels();
-    } else {
-        await _raLoadLogs();
+    await _raRunActiveSubtab();
+}
+
+async function _raRunActiveSubtab() {
+    switch (_ra.activeSubtab) {
+        case 'tunnels': await _raLoadTunnels(); break;
+        case 'subscriptions': await _raLoadSubscriptions(); break;
+        case 'products': await _raLoadProducts(); break;
+        case 'logs': await _raLoadLogs(); break;
     }
 }
 
@@ -4308,18 +4537,23 @@ function _initRemoteAccessTab() {
     document.querySelectorAll('.ra-subtab-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
             const target = btn.dataset.raSubtab;
-            if (!target) return;
+            if (!target || !RA_SUBTABS.includes(target)) return;
             _ra.activeSubtab = target;
             document.querySelectorAll('.ra-subtab-btn').forEach((b) => b.classList.toggle('ra-subtab-active', b === btn));
-            document.getElementById('ra-subview-tunnels').classList.toggle('hidden', target !== 'tunnels');
-            document.getElementById('ra-subview-logs').classList.toggle('hidden', target !== 'logs');
-            if (target === 'tunnels') _raLoadTunnels();
-            else _raLoadLogs();
+            for (const st of RA_SUBTABS) {
+                const view = document.getElementById(`ra-subview-${st}`);
+                if (view) view.classList.toggle('hidden', st !== target);
+            }
+            _raRunActiveSubtab();
         });
     });
 
     const refreshBtn = document.getElementById('raRefreshTunnelsBtn');
     if (refreshBtn) refreshBtn.addEventListener('click', () => _raLoadTunnels(true));
+    const refreshSubsBtn = document.getElementById('raRefreshSubsBtn');
+    if (refreshSubsBtn) refreshSubsBtn.addEventListener('click', () => _raLoadSubscriptions(true));
+    const refreshProductsBtn = document.getElementById('raRefreshProductsBtn');
+    if (refreshProductsBtn) refreshProductsBtn.addEventListener('click', () => _raLoadProducts(true));
 
     const applyFilterBtn = document.getElementById('raApplyLogsFilterBtn');
     if (applyFilterBtn) applyFilterBtn.addEventListener('click', () => {
@@ -4350,6 +4584,41 @@ function _initRemoteAccessTab() {
     if (saveBtn) saveBtn.addEventListener('click', _raSaveTunnel);
     const testBtn = document.getElementById('raTunnelTestBtn');
     if (testBtn) testBtn.addEventListener('click', _raTestTunnelFromModal);
+
+    // Subscription credential modal
+    document.querySelectorAll('#raSubModal [data-ra-sub-close]').forEach((elx) => {
+        elx.addEventListener('click', _raCloseSubModal);
+    });
+    document.getElementById('raSubModal').addEventListener('click', (e) => {
+        if (e.target.id === 'raSubModal') _raCloseSubModal();
+    });
+    const subSaveBtn = document.getElementById('raSubSaveBtn');
+    if (subSaveBtn) subSaveBtn.addEventListener('click', _raSaveSubscription);
+    const subClearBtn = document.getElementById('raSubClearBtn');
+    if (subClearBtn) subClearBtn.addEventListener('click', _raClearSubscriptionCredential);
+
+    // Product RA config modal
+    document.querySelectorAll('#raProductModal [data-ra-product-close]').forEach((elx) => {
+        elx.addEventListener('click', _raCloseProductModal);
+    });
+    document.getElementById('raProductModal').addEventListener('click', (e) => {
+        if (e.target.id === 'raProductModal') _raCloseProductModal();
+    });
+    const prodSaveBtn = document.getElementById('raProductSaveBtn');
+    if (prodSaveBtn) prodSaveBtn.addEventListener('click', _raSaveProduct);
+
+    document.querySelectorAll('#raProductModal [data-ra-recipe-template]').forEach((tbtn) => {
+        tbtn.addEventListener('click', () => {
+            const key = tbtn.dataset.raRecipeTemplate;
+            const ta = document.getElementById('raProductRecipeInput');
+            if (!ta) return;
+            if (key === 'clear') {
+                ta.value = '';
+            } else if (RA_RECIPE_TEMPLATES[key]) {
+                ta.value = RA_RECIPE_TEMPLATES[key];
+            }
+        });
+    });
 }
 
 async function _raLoadTunnels(force = false) {
@@ -4628,6 +4897,342 @@ function _raRenderLogs() {
         : 'Kayıt yok';
     document.getElementById('raLogsPrevBtn').disabled = _ra.logs.offset <= 0;
     document.getElementById('raLogsNextBtn').disabled = (_ra.logs.offset + _ra.logs.items.length) >= total;
+}
+
+// ─── Kurumsal Abonelik Credential'ları ────────────────────────────────────
+
+async function _raLoadSubscriptions(force = false) {
+    const tbody = document.getElementById('raSubsTableBody');
+    if (!tbody) return;
+    if (force || !_ra.subscriptions.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Yükleniyor...</td></tr>';
+    }
+    try {
+        const res = await fetch(`${API_BASE}/api/ra/admin/subscriptions-ra`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        _ra.subscriptions = Array.isArray(data.subscriptions) ? data.subscriptions : [];
+        _raRenderSubscriptions();
+    } catch (err) {
+        console.error('RA subscriptions load failed', err);
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-red-500">Yüklenemedi: ${escapeHtml(err.message || 'bilinmeyen hata')}</td></tr>`;
+    }
+}
+
+function _raRenderSubscriptions() {
+    const tbody = document.getElementById('raSubsTableBody');
+    if (!tbody) return;
+    if (!_ra.subscriptions.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Proxy/credential-auth abonelik yok.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = _ra.subscriptions.map((s) => {
+        const credBadge = s.has_credential
+            ? '<span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">tanımlı</span>'
+            : '<span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">yok</span>';
+        const scope = s.ra_credential_scope
+            ? `<span class="text-[11px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">${escapeHtml(s.ra_credential_scope)}</span>`
+            : '<span class="text-gray-400 text-[11px]">tanımsız</span>';
+        const validUntil = s.ra_valid_until ? _raFormatTs(s.ra_valid_until) : '<span class="text-gray-400">süresiz</span>';
+        return `<tr class="hover:bg-gray-50">
+            <td class="px-4 py-2">
+                <div class="font-medium text-gray-800">${escapeHtml(s.institution_name || `#${s.institution_id}`)}</div>
+            </td>
+            <td class="px-4 py-2">
+                <div class="text-gray-800">${escapeHtml(s.product_name || s.product_slug)}</div>
+                <div class="text-[11px] text-gray-400 font-mono">${escapeHtml(s.product_slug)}</div>
+            </td>
+            <td class="px-4 py-2 text-xs">${escapeHtml(s.access_type || '—')}</td>
+            <td class="px-4 py-2">${scope}</td>
+            <td class="px-4 py-2">${credBadge}</td>
+            <td class="px-4 py-2 text-xs text-gray-600">${validUntil}</td>
+            <td class="px-4 py-2 text-right">
+                <button type="button" class="text-xs px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-100 inline-flex items-center gap-1" data-ra-action="edit-sub" data-sub-id="${s.id}">
+                    <i class="fas fa-pen"></i><span>Düzenle</span>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('[data-ra-action="edit-sub"]').forEach((btn) => {
+        btn.addEventListener('click', () => _raOpenSubModal(Number(btn.dataset.subId)));
+    });
+}
+
+function _raOpenSubModal(id) {
+    const sub = _ra.subscriptions.find((s) => Number(s.id) === Number(id));
+    if (!sub) return;
+    _ra.editingSubscriptionId = Number(id);
+    document.getElementById('raSubModalInstName').textContent = sub.institution_name || `#${sub.institution_id}`;
+    document.getElementById('raSubModalProduct').textContent = sub.product_name || sub.product_slug;
+    document.getElementById('raSubAccessTypeInput').value = sub.access_type || 'proxy';
+    document.getElementById('raSubScopeInput').value = sub.ra_credential_scope || '';
+    document.getElementById('raSubUsernameInput').value = '';
+    document.getElementById('raSubPasswordInput').value = '';
+    document.getElementById('raSubCredentialStatus').textContent = sub.has_credential
+        ? 'Credential tanımlı. Değiştirmek için yeni kullanıcı adı + şifre gir, aksi halde korunur.'
+        : 'Credential yok. Kullanıcı adı + şifre girerek ilk kez ekleyebilirsin.';
+    document.getElementById('raSubValidUntilInput').value = sub.ra_valid_until
+        ? new Date(Number(sub.ra_valid_until) * 1000).toISOString().slice(0, 10)
+        : '';
+    document.getElementById('raSubModalError').classList.add('hidden');
+    document.getElementById('raSubModalError').textContent = '';
+    const modal = document.getElementById('raSubModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function _raCloseSubModal() {
+    const modal = document.getElementById('raSubModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    _ra.editingSubscriptionId = null;
+}
+
+async function _raSaveSubscription() {
+    const id = _ra.editingSubscriptionId;
+    if (!id) return;
+    const accessType = document.getElementById('raSubAccessTypeInput').value;
+    const scope = document.getElementById('raSubScopeInput').value;
+    const username = document.getElementById('raSubUsernameInput').value.trim();
+    const password = document.getElementById('raSubPasswordInput').value;
+    const validUntilRaw = document.getElementById('raSubValidUntilInput').value;
+    const errorEl = document.getElementById('raSubModalError');
+    errorEl.classList.add('hidden');
+    errorEl.textContent = '';
+
+    const body = { access_type: accessType, scope: scope || null };
+
+    if (username || password) {
+        if (!username || !password) {
+            errorEl.textContent = 'Username ve password birlikte girilmeli.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+        body.username = username;
+        body.password = password;
+    }
+
+    if (validUntilRaw) {
+        const d = new Date(validUntilRaw + 'T23:59:59Z');
+        if (!isNaN(d.getTime())) {
+            body.valid_until = Math.floor(d.getTime() / 1000);
+        }
+    } else {
+        body.valid_until = null;
+    }
+
+    const saveBtn = document.getElementById('raSubSaveBtn');
+    const origHtml = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Kaydediliyor...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/ra/admin/subscriptions/${id}/ra-credential`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        showToast('Abonelik credential kaydedildi.', 'success');
+        _raCloseSubModal();
+        await _raLoadSubscriptions(true);
+    } catch (err) {
+        errorEl.textContent = err.message || 'Kaydedilemedi.';
+        errorEl.classList.remove('hidden');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = origHtml;
+    }
+}
+
+async function _raClearSubscriptionCredential() {
+    const id = _ra.editingSubscriptionId;
+    if (!id) return;
+    if (!confirm('Bu aboneliğin credential\'ı silinsin mi? Kullanıcılar artık proxy ile giriş yapamayacak.')) return;
+    const btn = document.getElementById('raSubClearBtn');
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Siliniyor...';
+    try {
+        const res = await fetch(`${API_BASE}/api/ra/admin/subscriptions/${id}/ra-credential`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clear: true }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        showToast('Credential silindi.', 'success');
+        _raCloseSubModal();
+        await _raLoadSubscriptions(true);
+    } catch (err) {
+        showToast(`Silinemedi: ${err.message || err}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+    }
+}
+
+// ─── Ürün RA Ayarları ─────────────────────────────────────────────────────
+
+async function _raLoadProducts(force = false) {
+    const tbody = document.getElementById('raProductsTableBody');
+    if (!tbody) return;
+    if (force || !_ra.products.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Yükleniyor...</td></tr>';
+    }
+    try {
+        const res = await fetch(`${API_BASE}/api/ra/admin/products-ra`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        _ra.products = Array.isArray(data.products) ? data.products : [];
+        _raRenderProducts();
+    } catch (err) {
+        console.error('RA products load failed', err);
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-red-500">Yüklenemedi: ${escapeHtml(err.message || 'bilinmeyen hata')}</td></tr>`;
+    }
+}
+
+function _raRenderProducts() {
+    const tbody = document.getElementById('raProductsTableBody');
+    if (!tbody) return;
+    if (!_ra.products.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Ürün bulunamadı.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = _ra.products.map((p) => {
+        const raBadge = p.ra_enabled
+            ? '<span class="text-[11px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">aktif</span>'
+            : '<span class="text-[11px] px-2 py-0.5 rounded bg-gray-100 text-gray-500">pasif</span>';
+        const origin = p.ra_origin_host
+            ? `<span class="text-xs font-mono">${escapeHtml(p.ra_origin_host)}</span>`
+            : '<span class="text-gray-400 text-xs">—</span>';
+        const recipe = p.ra_login_recipe_json
+            ? '<span class="text-[11px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">tanımlı</span>'
+            : '<span class="text-gray-400 text-[11px]">yok</span>';
+        const allowlist = p.ra_host_allowlist_json
+            ? '<span class="text-[11px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">tanımlı</span>'
+            : '<span class="text-gray-400 text-[11px]">yok</span>';
+        return `<tr class="hover:bg-gray-50">
+            <td class="px-4 py-2">
+                <div class="font-medium text-gray-800">${escapeHtml(p.name)}</div>
+                <div class="text-[11px] text-gray-400 font-mono">${escapeHtml(p.slug)}</div>
+            </td>
+            <td class="px-4 py-2 text-xs text-gray-600">${escapeHtml(p.category || '—')}</td>
+            <td class="px-4 py-2">${raBadge}</td>
+            <td class="px-4 py-2">${origin}</td>
+            <td class="px-4 py-2">${recipe}</td>
+            <td class="px-4 py-2">${allowlist}</td>
+            <td class="px-4 py-2 text-right">
+                <button type="button" class="text-xs px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-100 inline-flex items-center gap-1" data-ra-action="edit-product" data-slug="${escapeHtml(p.slug)}">
+                    <i class="fas fa-pen"></i><span>Düzenle</span>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('[data-ra-action="edit-product"]').forEach((btn) => {
+        btn.addEventListener('click', () => _raOpenProductModal(btn.dataset.slug));
+    });
+}
+
+function _raOpenProductModal(slug) {
+    const product = _ra.products.find((p) => p.slug === slug);
+    if (!product) return;
+    _ra.editingProductSlug = slug;
+    document.getElementById('raProductModalSlug').textContent = slug;
+    document.getElementById('raProductEnabledInput').checked = !!product.ra_enabled;
+    document.getElementById('raProductOriginHostInput').value = product.ra_origin_host || '';
+    document.getElementById('raProductRecipeInput').value = _raPrettyJson(product.ra_login_recipe_json);
+    document.getElementById('raProductAllowlistInput').value = _raPrettyJson(product.ra_host_allowlist_json);
+    document.getElementById('raProductModalError').classList.add('hidden');
+    document.getElementById('raProductModalError').textContent = '';
+    const modal = document.getElementById('raProductModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function _raPrettyJson(raw) {
+    if (!raw) return '';
+    try {
+        return JSON.stringify(JSON.parse(raw), null, 2);
+    } catch {
+        return raw;
+    }
+}
+
+function _raCloseProductModal() {
+    const modal = document.getElementById('raProductModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    _ra.editingProductSlug = null;
+}
+
+async function _raSaveProduct() {
+    const slug = _ra.editingProductSlug;
+    if (!slug) return;
+    const raEnabled = document.getElementById('raProductEnabledInput').checked ? 1 : 0;
+    const originHost = document.getElementById('raProductOriginHostInput').value.trim();
+    const recipe = document.getElementById('raProductRecipeInput').value.trim();
+    const allowlist = document.getElementById('raProductAllowlistInput').value.trim();
+    const errorEl = document.getElementById('raProductModalError');
+    errorEl.classList.add('hidden');
+    errorEl.textContent = '';
+
+    // Client-side JSON parse validation before sending
+    if (recipe) {
+        try {
+            const p = JSON.parse(recipe);
+            if (!p || typeof p !== 'object' || Array.isArray(p)) throw new Error('obje olmalı');
+        } catch (err) {
+            errorEl.textContent = `Recipe JSON invalid: ${err.message}`;
+            errorEl.classList.remove('hidden');
+            return;
+        }
+    }
+    if (allowlist) {
+        try {
+            const p = JSON.parse(allowlist);
+            if (!Array.isArray(p)) throw new Error('array olmalı');
+        } catch (err) {
+            errorEl.textContent = `Host allowlist invalid: ${err.message}`;
+            errorEl.classList.remove('hidden');
+            return;
+        }
+    }
+
+    const saveBtn = document.getElementById('raProductSaveBtn');
+    const origHtml = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Kaydediliyor...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/ra/admin/products/${encodeURIComponent(slug)}/ra-config`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ra_enabled: raEnabled,
+                ra_origin_host: originHost || null,
+                ra_login_recipe_json: recipe || null,
+                ra_host_allowlist_json: allowlist || null,
+            }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        showToast('Ürün RA ayarları kaydedildi.', 'success');
+        _raCloseProductModal();
+        await _raLoadProducts(true);
+    } catch (err) {
+        errorEl.textContent = err.message || 'Kaydedilemedi.';
+        errorEl.classList.remove('hidden');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = origHtml;
+    }
 }
 
 // ====================== ADMIN DOSYA & KLASÖR YÖNETİMİ ======================

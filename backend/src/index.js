@@ -10,6 +10,7 @@ import { sign, verify } from 'hono/jwt';
 import { registerRaIssueToken } from './routes/ra/issue-token.js';
 import { registerRaAdminTunnel } from './routes/ra/admin-tunnel.js';
 import { registerRaAdminOverview } from './routes/ra/admin-overview.js';
+import { registerRaAdminConfig } from './routes/ra/admin-config.js';
 
 const app = new Hono();
 
@@ -7556,6 +7557,8 @@ registerRaIssueToken(app);
 registerRaAdminTunnel(app);
 // GET /api/ra/admin/institutions ; GET /api/ra/admin/logs (super_admin read-only)
 registerRaAdminOverview(app);
+// GET/PUT /api/ra/admin/products-ra + subscriptions-ra (super_admin config)
+registerRaAdminConfig(app);
 
 
 // ====================== PAGE VIEWS ROUTES ======================
