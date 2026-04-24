@@ -11,7 +11,12 @@
  */
 
 import { egressFetch } from './egress-client.js';
-import { ensureRecipeExecuted } from './recipe.js';
+import {
+  ensureRecipeExecuted,
+  loadRecipeForSession,
+  maybeCaptureTokenAndForward,
+  invalidateCapturedUserToken,
+} from './recipe.js';
 
 const COOKIE_JAR_TTL = 3600;
 
@@ -91,6 +96,32 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
       `Upstream fetch hatası: ${escapeHtml(err.message)}`,
       { status: 502, headers: { 'content-type': 'text/plain; charset=utf-8' } }
     );
+  }
+
+  // Token capture: recipe'de capture_token_on_login_path tanımlıysa ve
+  // şu anki request bu path'e gidiyorsa, response body'sinden token çıkarılıp
+  // ra_user_credentials'a yazılır. upstreamResp body tüketildiği için
+  // reconstruct edilip yerine konur. Pangram gibi per-user invite'lı
+  // publisher'larda kullanıcı ilk manuel login'inde transparan olarak
+  // token yakalanır — sonraki session'larda replay edilir.
+  const recipe = await loadRecipeForSession(env, session);
+  if (recipe && recipe.capture_token_on_login_path) {
+    upstreamResp = await maybeCaptureTokenAndForward(
+      env, session, sessionId, recipe, url.pathname, upstreamResp
+    );
+  }
+
+  // Stored token geçersiz (401/403) — kullanıcı yeniden login yapsın diye
+  // hem DB kaydını hem raauth cache'ini sil. Sadece spa_token replay'den
+  // aktif oturumlarda gerekli (authState.mode='spa_token' ve captured mode).
+  if ((upstreamResp.status === 401 || upstreamResp.status === 403)
+      && authState && authState.ok && authState.mode === 'spa_token'
+      && recipe && recipe.capture_token_on_login_path) {
+    try {
+      await invalidateCapturedUserToken(env, session, sessionId);
+    } catch (err) {
+      console.warn('token invalidation failed', err);
+    }
   }
 
   // Response header'larını işle: Set-Cookie'leri jar'a; Location'u rewrite et
