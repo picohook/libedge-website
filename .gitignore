@@ -34,3 +34,9 @@ backups/
 .pages-deploy-current/
 .tmp_profile_update.js
 institution-logos
+
+# In-tree source backups (don't commit copies of index.js under alternate names)
+backend/src/*.backup.js
+backend/src/*.broken.js
+backend/src/*.bak
+*.bak
