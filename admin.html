@@ -1069,6 +1069,7 @@
                             <option value="email_password_external">Kurum E-posta + Harici Şifre</option>
                             <option value="mixed">Karma</option>
                         </select>
+                        <p class="text-xs text-gray-400 mt-1">Bu alan kullanıcıya gösterilen erişim etiketidir. Teknik açılış davranışı için RA tarafındaki <strong>Dağıtım Modu</strong> kullanılır.</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Erişim URL</label>
@@ -2488,6 +2489,7 @@
                                 <option value="email_password_external">Kurum E-posta + Harici Şifre</option>
                                 <option value="mixed">Karma</option>
                             </select>
+                            <p class="text-xs text-gray-400 mt-1">Bu alan kullanıcının göreceği erişim açıklamasını belirler. RA ürünlerinde teknik davranış ayrıca Uzaktan Erişim ayarlarından yönetilir.</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Kuruma Özel Erişim URL</label>
@@ -2922,9 +2924,19 @@ document.addEventListener('click', function(e) {
         mixed: 'Karma'
     };
 
+    function getEffectiveAccessTypeForDisplay(item) {
+        const accessType = String(item?.access_type || '').trim();
+        const deliveryMode = String(item?.ra_delivery_mode || '').trim().toLowerCase();
+        if (deliveryMode === 'direct_login' && accessType === 'proxy') {
+            return 'email_password_external';
+        }
+        return accessType;
+    }
+
     function getProductAccessLabel(product) {
         const parts = [];
-        if (product.default_access_type) parts.push(accessTypeLabels[product.default_access_type] || product.default_access_type);
+        const displayAccessType = getEffectiveAccessTypeForDisplay(product);
+        if (displayAccessType) parts.push(accessTypeLabels[displayAccessType] || displayAccessType);
         if (product.default_requires_institution_email) parts.push('Kurum e-postası');
         if (product.default_requires_vpn) parts.push('VPN');
         return parts.join(' • ');
@@ -3511,7 +3523,8 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         const getAccessLabel = (s) => {
             if (s.type !== 'institution') return '-';
             const parts = [];
-            parts.push(accessTypeLabels[s.access_type] || (s.access_type || 'Tanımsız'));
+            const displayAccessType = getEffectiveAccessTypeForDisplay(s);
+            parts.push(accessTypeLabels[displayAccessType] || (displayAccessType || 'Tanımsız'));
             if (s.requires_institution_email) parts.push('Kurum e-postası');
             if (s.requires_vpn) parts.push('VPN');
             return parts.join(' • ');
