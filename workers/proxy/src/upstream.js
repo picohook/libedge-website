@@ -52,9 +52,11 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
   const targetHost = session.target_host;
   const encodedLabel = pathInfo?.encodedLabel || encodeHost(targetHost);
   const remainingPath = pathInfo?.remainingPath || url.pathname || '/';
+  const productConfig = await loadProductProxyConfig(env.DB, session.product_slug);
   const egressSettings = await loadInstitutionRaSettings(env.DB, session.institution_id);
   const proxyableHosts = buildProxyableHosts(
     targetHost,
+    productConfig && productConfig.ra_host_allowlist_json,
     egressSettings && egressSettings.egress_endpoint
       ? egressSettings.egress_endpoint
       : null
@@ -299,8 +301,37 @@ async function loadInstitutionRaSettings(db, institutionId) {
     .first();
 }
 
-function buildProxyableHosts(targetHost, egressEndpoint) {
+async function loadProductProxyConfig(db, slug) {
+  return await db
+    .prepare(
+      `SELECT ra_host_allowlist_json
+       FROM products
+       WHERE slug = ?`
+    )
+    .bind(slug)
+    .first();
+}
+
+function buildProxyableHosts(targetHost, allowlistJson, egressEndpoint) {
   const hosts = new Set([targetHost]);
+  addCommonHostAliases(hosts, targetHost);
+
+  if (allowlistJson) {
+    try {
+      const parsed = JSON.parse(allowlistJson);
+      if (Array.isArray(parsed)) {
+        for (const host of parsed) {
+          if (typeof host === 'string' && host.trim()) {
+            hosts.add(host.trim().toLowerCase());
+            addCommonHostAliases(hosts, host);
+          }
+        }
+      }
+    } catch {
+      // allowlist parse edilemiyorsa sadece ana hostlarla devam et
+    }
+  }
+
   if (!egressEndpoint) return hosts;
   try {
     hosts.add(new URL(egressEndpoint).hostname);
@@ -308,6 +339,16 @@ function buildProxyableHosts(targetHost, egressEndpoint) {
     // egress endpoint bozuksa rewrite set'ine ekleme yapma
   }
   return hosts;
+}
+
+function addCommonHostAliases(hosts, rawHost) {
+  const host = String(rawHost || '').trim().toLowerCase();
+  if (!host) return;
+  if (host.startsWith('www.')) {
+    hosts.add(host.slice(4));
+  } else {
+    hosts.add(`www.${host}`);
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
