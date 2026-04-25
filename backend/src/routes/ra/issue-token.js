@@ -113,8 +113,12 @@ export function registerRaIssueToken(app) {
     const recipeJson =
       sub.ra_recipe_override_json || sub.ra_login_recipe_json || null;
     const hasLoginRecipe = recipeJson ? hasUpstreamLogin(recipeJson) : false;
+    const requiresTunnel = sub.ra_requires_tunnel == null
+      ? 1
+      : (sub.ra_requires_tunnel ? 1 : 0);
+    const landingPath = normalizeLandingPath(sub.ra_origin_landing_path);
 
-    if (!hasLoginRecipe) {
+    if (!hasLoginRecipe && requiresTunnel) {
       const settings = await c.env.DB.prepare(
         `SELECT enabled, tunnel_status
            FROM institution_ra_settings
@@ -141,16 +145,13 @@ export function registerRaIssueToken(app) {
         sid: sub.id,              // INTEGER subscription id
         pid: sub.product_slug,    // TEXT product slug
         tgt,                      // encoded publisher host
+        lp: landingPath,          // ilk açılış path'i ('/' veya '/login' vb.)
+        rt: requiresTunnel,       // 1 => egress tunnel, 0 => direct/public fetch
         exp: now + 300,           // 5 dk
         jti,
       },
       c.env.RA_PROXY_TOKEN_SECRET
     );
-
-    // jti rezervasyonu (replay koruması) — proxy aynı KV'yi okur
-    await c.env.RATE_LIMIT_KV.put(`ra:jti:${jti}`, '1', {
-      expirationTtl: 600,
-    });
 
     // Proxy domain'i env'den; yoksa prod default
     // Path-based format: https://{proxyHost}/{tgt}/?t={token}
@@ -180,7 +181,9 @@ async function lookupSubscription(db, { institutionId, subscriptionId, productSl
       )                            AS access_type,
       COALESCE(p.ra_enabled, 0)    AS ra_enabled,
       p.ra_origin_host,
-      p.ra_login_recipe_json
+      p.ra_login_recipe_json,
+      COALESCE(p.ra_requires_tunnel, 1) AS ra_requires_tunnel,
+      p.ra_origin_landing_path
     FROM institution_subscriptions isub
     JOIN products p ON p.slug = isub.product_slug
     WHERE isub.institution_id = ?
@@ -207,4 +210,13 @@ function hasUpstreamLogin(recipeJson) {
   } catch {
     return false;
   }
+}
+
+function normalizeLandingPath(raw) {
+  if (!raw) return '/';
+  const trimmed = String(raw).trim();
+  if (!trimmed) return '/';
+  if (/^[a-z]+:\/\//i.test(trimmed)) return '/';
+  if (trimmed.includes('..')) return '/';
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }

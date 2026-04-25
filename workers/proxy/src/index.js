@@ -78,16 +78,17 @@ async function handle(request, env, ctx) {
 
   let upstreamResp;
   try {
-    upstreamResp = await egressFetch(
-      env,
-      session.institution_id,
-      targetUrl.toString(),
-      {
-        method: request.method,
-        headers: upstreamHeaders,
-        body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
-      }
-    );
+    const upstreamInit = {
+      method: request.method,
+      headers: upstreamHeaders,
+      body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
+    };
+    const requiresTunnel = session.requires_tunnel == null
+      ? 1
+      : (session.requires_tunnel ? 1 : 0);
+    upstreamResp = requiresTunnel
+      ? await egressFetch(env, session.institution_id, targetUrl.toString(), upstreamInit)
+      : await fetch(targetUrl.toString(), upstreamInit);
   } catch (err) {
     console.error('egress error', err);
     return htmlError(502, 'Kurumun erişim sunucusuna ulaşılamadı.', err.message);
@@ -117,6 +118,30 @@ function parseProxyPath(pathname) {
   return { encodedLabel, remainingPath };
 }
 
+function normalizeLandingPath(raw) {
+  if (!raw) return '/';
+  const trimmed = String(raw).trim();
+  if (!trimmed) return '/';
+  if (/^[a-z]+:\/\//i.test(trimmed)) return '/';
+  if (trimmed.includes('..')) return '/';
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
+function applyLandingPath(url, encodedLabel, landingPath) {
+  const normalized = normalizeLandingPath(landingPath);
+  const queryIdx = normalized.indexOf('?');
+  const pathPart = queryIdx >= 0 ? normalized.slice(0, queryIdx) || '/' : normalized;
+  const extraQuery = queryIdx >= 0 ? normalized.slice(queryIdx + 1) : '';
+
+  url.pathname = `/${encodedLabel}${pathPart}`;
+  if (!extraQuery) return;
+
+  const params = new URLSearchParams(extraQuery);
+  for (const [k, v] of params.entries()) {
+    url.searchParams.set(k, v);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Token kabul → session oluştur → 302 ile token'sız URL'e yönlendir
 // ─────────────────────────────────────────────────────────────────────────────
@@ -131,7 +156,7 @@ async function acceptTokenAndRedirect(request, env, token, url, encodedLabel, re
   // jti tek kullanımlık
   const jtiKey = `ra:jti:${payload.jti}`;
   const used = await env.RATE_LIMIT_KV.get(jtiKey);
-  if (used) {
+  if (used === 'used') {
     return htmlError(401, 'Bu erişim bağlantısı daha önce kullanılmış. Portal üzerinden yeni bağlantı alın.');
   }
   await env.RATE_LIMIT_KV.put(jtiKey, 'used', { expirationTtl: 600 });
@@ -149,6 +174,8 @@ async function acceptTokenAndRedirect(request, env, token, url, encodedLabel, re
     subscription_id: payload.sid,
     product_slug:    payload.pid,
     target_host:     decodeHost(payload.tgt),
+    landing_path:    normalizeLandingPath(payload.lp),
+    requires_tunnel: payload.rt == null ? 1 : (payload.rt ? 1 : 0),
     created_at:      Math.floor(Date.now() / 1000),
     expires_at:      Math.floor(Date.now() / 1000) + SESSION_TTL_SEC,
   };
@@ -161,6 +188,7 @@ async function acceptTokenAndRedirect(request, env, token, url, encodedLabel, re
   // 302: token'ı URL'den sil
   const clean = new URL(url);
   clean.searchParams.delete('t');
+  applyLandingPath(clean, encodedLabel, session.landing_path);
   const baseHost = env.RA_PROXY_BASE_HOST || url.hostname;
 
   return new Response(null, {
