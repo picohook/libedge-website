@@ -75,18 +75,6 @@ export function registerRaIssueToken(app) {
       return c.json({ error: 'Abonelik bulunamadı' }, 403);
     }
 
-    // access_type = 'proxy' olmalı; aksi hâlde RA bu aboneliği handle etmez
-    if (sub.access_type !== 'proxy') {
-      return c.json(
-        {
-          error: 'Bu abonelik uzaktan erişim proxy üzerinden değil, ' +
-                 'doğrudan publisher linki ile açılır.',
-          access_type: sub.access_type,
-        },
-        409
-      );
-    }
-
     // Süre kontrolü: ra_valid_until (unix ts override) veya end_date (YYYY-MM-DD string)
     const now = Math.floor(Date.now() / 1000);
     const raExp = sub.ra_valid_until ? Number(sub.ra_valid_until) : null;
