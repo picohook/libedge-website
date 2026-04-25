@@ -533,9 +533,9 @@ npx wrangler delete --name form-handler-prod
 
 Silmeden önce rollback ihtiyacının kalmadığından emin olunmalıdır.
 
-### 12.2 Otomatik Test Eksikliği
+### 12.2 Test Durumu
 
-Mevcut `npm test` gerçek otomatik test çalıştırmıyor; manuel smoke checklist yazdırıyor. Özellikle şu alanlara test eklenmesi önerilir:
+Mevcut `npm test` Vitest tabanlı birim testlerini çalıştırır. Ancak D1 / KV / R2 binding gerektiren akışlar için manuel smoke checklist hâlâ gereklidir. Özellikle şu alanlarda ek test kapsamı değerlidir:
 
 | Alan | Önerilen Test |
 |---|---|
@@ -543,8 +543,20 @@ Mevcut `npm test` gerçek otomatik test çalıştırmıyor; manuel smoke checkli
 | Admin scope | kurum admin'inin yalnızca kendi kurumunu yönetmesi |
 | File access | public/private dosya yetkileri |
 | Announcements | public liste, admin CRUD, engagement |
-| RA | issue-token, expired subscription, invalid access type |
+| RA | issue-token, expired subscription, tunnel zorunluluğu, proxy worker davranışı |
 | Migrations | fresh D1 kurulum smoke testi |
+
+### 12.2.1 RA Smoke Checklist
+
+Deploy sonrası kısa doğrulama:
+
+1. `proxy` modundaki bir ürün için kullanıcı kartında `Erişime Git` görünür.
+2. Bu CTA yeni sekmede proxy host'una gider ve LibEdge sekmesi yerinde kalır.
+3. `direct_login` modundaki bir ürün için `Erişime Git` görünür.
+4. Bu CTA `/api/ra/issue-token` üzerinden başarıyla çalışır ve publisher login/landing path'ine yönlenir.
+5. `access_url` tabanlı bir abonelikte aynı CTA doğrudan linki yeni sekmede açar.
+6. Admin `RA abonelikleri` görünümünde `ra_enabled=1` olan ürünler listelenir; sadece eski `access_type='proxy'` kayıtlarına bağlı kalınmaz.
+7. Staging benzeri Pages doğrulaması gerekiyorsa `staging-preview` branch preview kullanılmalıdır; `main` hash deploy'u preview env yerine production binding'leriyle çalışabilir.
 
 ### 12.3 RA Migration/Schema Riski
 

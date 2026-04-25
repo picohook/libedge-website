@@ -13,6 +13,7 @@ test/
     host.test.js       — hyphen encoding / decoding / validation
     jwt.test.js        — HS256 JWT signing/verification, tamper detection
     crypto.test.js     — AES-GCM credential encryption, HMAC, SHA-256
+    routes.test.js     — issue-token direct_login + admin RA listing coverage
   backend/       → unit tests for helpers exported from backend/src/index.js
     password.test.js   — PBKDF2 hash/verify + legacy SHA-256 path
     rate-limit.test.js — KV-backed fixed-window rate limiter
