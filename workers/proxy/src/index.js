@@ -97,6 +97,22 @@ async function handle(request, env, ctx) {
   const baseHost = env.RA_PROXY_BASE_HOST || url.hostname;
   const respHeaders = buildResponseHeaders(upstreamResp.headers, baseHost, encodedLabel);
 
+  const contentType = upstreamResp.headers.get('content-type') || '';
+  if (/text\/html/i.test(contentType)) {
+    const rewritten = makeHtmlRewriter(targetHost, baseHost, encodedLabel).transform(
+      new Response(upstreamResp.body, {
+        status: upstreamResp.status,
+        statusText: upstreamResp.statusText,
+        headers: respHeaders,
+      })
+    );
+    return new Response(rewritten.body, {
+      status: upstreamResp.status,
+      statusText: upstreamResp.statusText,
+      headers: respHeaders,
+    });
+  }
+
   return new Response(upstreamResp.body, {
     status: upstreamResp.status,
     statusText: upstreamResp.statusText,
@@ -258,7 +274,7 @@ function buildResponseHeaders(incoming, baseHost, encodedLabel) {
     }
     // Location header rewrite: publisher kendi domain'ine yönlendiriyorsa proxy'e çevir
     if (k.toLowerCase() === 'location') {
-      out.set('Location', rewriteLocation(v, baseHost, encodedLabel));
+      out.set('Location', rewriteUrl(v, baseHost, encodedLabel));
       continue;
     }
     out.set(k, v);
@@ -266,20 +282,95 @@ function buildResponseHeaders(incoming, baseHost, encodedLabel) {
   return out;
 }
 
-// Publisher'ın Location header'ı (redirect) → proxy URL'e çevir
-function rewriteLocation(location, baseHost, currentEncodedLabel) {
+function rewriteUrl(raw, baseHost, encodedLabel) {
+  if (!raw) return raw;
+  const absolutePrefix = `https://${baseHost}/${encodedLabel}`;
   try {
-    const loc = new URL(location);
-    // Aynı origin'e yönlendirme → proxy path'e çevir
-    const locEncoded = loc.hostname
+    if (raw.startsWith('//')) {
+      const parsed = new URL(`https:${raw}`);
+      const locEncoded = encodeHostLabel(parsed.hostname);
+      return `https://${baseHost}/${locEncoded}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    if (raw.startsWith('/')) {
+      return `${absolutePrefix}${raw}`;
+    }
+    if (!/^[a-z]+:\/\//i.test(raw)) {
+      return raw;
+    }
+
+    const parsed = new URL(raw);
+    const locEncoded = encodeHostLabel(parsed.hostname);
+    return `https://${baseHost}/${locEncoded}${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return raw;
+  }
+}
+
+function encodeHostLabel(hostname) {
+  return String(hostname)
       .toLowerCase()
       .replace(/-/g, '--')
       .replace(/\./g, '-');
-    return `https://${baseHost}/${locEncoded}${loc.pathname}${loc.search}${loc.hash}`;
+}
+
+function rewriteHtmlAttr(value, targetHost, baseHost, encodedLabel) {
+  if (!value) return value;
+  const proxyPrefix = `https://${baseHost}/${encodedLabel}`;
+
+  try {
+    if (value.startsWith('//')) {
+      const parsed = new URL(`https:${value}`);
+      const locEncoded = encodeHostLabel(parsed.hostname);
+      return `https://${baseHost}/${locEncoded}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    if (value.startsWith('/')) {
+      return `${proxyPrefix}${value}`;
+    }
+    if (!/^[a-z]+:\/\//i.test(value)) {
+      return value;
+    }
+
+    const parsed = new URL(value);
+    if (parsed.hostname === targetHost) {
+      return `${proxyPrefix}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+
+    const locEncoded = encodeHostLabel(parsed.hostname);
+    return `https://${baseHost}/${locEncoded}${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
-    // Relative URL — olduğu gibi bırak, tarayıcı proxy domain'i baz alır
-    return location;
+    return value;
   }
+}
+
+function makeHtmlRewriter(targetHost, baseHost, encodedLabel) {
+  const attrHandler = (attr) => ({
+    element(el) {
+      const value = el.getAttribute(attr);
+      if (!value) return;
+      const rewritten = rewriteHtmlAttr(value, targetHost, baseHost, encodedLabel);
+      if (rewritten !== value) {
+        el.setAttribute(attr, rewritten);
+      }
+    },
+  });
+
+  return new HTMLRewriter()
+    .on('a[href]', attrHandler('href'))
+    .on('link[href]', attrHandler('href'))
+    .on('area[href]', attrHandler('href'))
+    .on('base[href]', attrHandler('href'))
+    .on('script[src]', attrHandler('src'))
+    .on('img[src]', attrHandler('src'))
+    .on('iframe[src]', attrHandler('src'))
+    .on('video[src]', attrHandler('src'))
+    .on('audio[src]', attrHandler('src'))
+    .on('source[src]', attrHandler('src'))
+    .on('track[src]', attrHandler('src'))
+    .on('embed[src]', attrHandler('src'))
+    .on('form[action]', attrHandler('action'))
+    .on('video[poster]', attrHandler('poster'))
+    .on('button[formaction]', attrHandler('formaction'))
+    .on('input[formaction]', attrHandler('formaction'));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
