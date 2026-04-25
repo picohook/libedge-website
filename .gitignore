@@ -34,6 +34,8 @@ backups/
 .pages-deploy-current/
 .tmp_profile_update.js
 institution-logos
+audit-report.json
+cookies.txt
 
 # In-tree source backups (don't commit copies of index.js under alternate names)
 backend/src/*.backup.js
