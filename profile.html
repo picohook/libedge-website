@@ -888,6 +888,40 @@ async function openRemoteAccess(btn) {
 }
 window.openRemoteAccess = openRemoteAccess;
 
+function openSubscriptionAccess(btn) {
+    if (!btn) return;
+    const deliveryMode = String(btn.dataset.deliveryMode || '').trim().toLowerCase();
+    const accessType = String(btn.dataset.accessType || '').trim();
+    const accessUrl = String(btn.dataset.accessUrl || '').trim();
+    const subId = Number(btn.dataset.raSubId);
+
+    if (deliveryMode === 'direct_login' || accessType === 'proxy') {
+        openRemoteAccess(btn);
+        return;
+    }
+
+    if (accessUrl) {
+        const a = document.createElement('a');
+        a.href = accessUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return;
+    }
+
+    if (Number.isFinite(subId) && subId > 0) {
+        openRemoteAccess(btn);
+        return;
+    }
+
+    if (typeof window.showToast === 'function') {
+        window.showToast('Bu abonelik için erişim bağlantısı henüz tanımlı değil.', 'warning');
+    }
+}
+window.openSubscriptionAccess = openSubscriptionAccess;
+
 async function loadSubscriptions() {
     try {
             const res = await fetch(`${API_BASE}/api/subscription/list`, {
@@ -920,11 +954,6 @@ async function loadSubscriptions() {
             }
             return accessType;
         };
-        const shouldUseRemoteAccessLaunch = (sub) => {
-            const deliveryMode = String(sub.ra_delivery_mode || '').trim().toLowerCase();
-            const accessType = String(sub.access_type || '').trim();
-            return deliveryMode === 'direct_login' || accessType === 'proxy';
-        };
         const buildAccessSummary = (sub) => {
             const parts = [];
             const displayAccessType = getDisplayAccessType(sub);
@@ -944,15 +973,19 @@ async function loadSubscriptions() {
                 ? `<p class="${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 mt-1">${escapeHtml(note)}</p>`
                 : '';
             const sizeClasses = compact ? 'text-[11px] px-2 py-1' : 'text-xs px-3 py-1.5';
-            let actionHtml = '';
-            if (shouldUseRemoteAccessLaunch(sub)) {
-                const subId = Number(sub.id);
-                actionHtml = Number.isFinite(subId) && subId > 0
-                    ? `<button type="button" data-ra-sub-id="${subId}" onclick="openRemoteAccess(this)" class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg bg-primary text-white hover:bg-opacity-90 transition"><i class="fas fa-arrow-up-right-from-square"></i><span>Erişime Git</span></button>`
-                    : '';
-            } else if (normalizedUrl) {
-                actionHtml = `<a href="${escapeHtml(normalizedUrl)}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg bg-primary text-white hover:bg-opacity-90 transition"><i class="fas fa-arrow-up-right-from-square"></i><span>Erişime Git</span></a>`;
-            }
+            const subId = Number(sub.id);
+            const hasAction = (Number.isFinite(subId) && subId > 0) || !!normalizedUrl;
+            const actionHtml = hasAction
+                ? `<button type="button"
+                        data-ra-sub-id="${Number.isFinite(subId) ? subId : ''}"
+                        data-access-type="${escapeHtml(String(sub.access_type || ''))}"
+                        data-delivery-mode="${escapeHtml(String(sub.ra_delivery_mode || ''))}"
+                        data-access-url="${escapeHtml(normalizedUrl)}"
+                        onclick="openSubscriptionAccess(this)"
+                        class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg bg-primary text-white hover:bg-opacity-90 transition">
+                        <i class="fas fa-arrow-up-right-from-square"></i><span>Erişime Git</span>
+                    </button>`
+                : '';
             return `${summary}${noteHtml}${actionHtml}`;
         };
 
