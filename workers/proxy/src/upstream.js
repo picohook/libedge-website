@@ -10,6 +10,7 @@
  *    KV cookie jar'a yazılır (tarayıcıya iletilmez).
  */
 
+import { encodeHost } from '../../../backend/src/ra/host.js';
 import { egressFetch } from './egress-client.js';
 import {
   ensureRecipeExecuted,
@@ -43,11 +44,14 @@ export function buildCookieJarKey(session, targetHost) {
  * @param {string} sessionId proxysess:{sid} anahtarı için
  * @param {Request} clientReq  kullanıcının Worker'a yaptığı istek
  * @param {string} proxyHost  proxy-staging.selmiye.com
+ * @param {{ encodedLabel: string, remainingPath: string }} pathInfo
  * @returns {Promise<Response>}
  */
-export async function proxyToUpstream(env, session, sessionId, clientReq, proxyHost) {
+export async function proxyToUpstream(env, session, sessionId, clientReq, proxyHost, pathInfo) {
   const url = new URL(clientReq.url);
   const targetHost = session.target_host;
+  const encodedLabel = pathInfo?.encodedLabel || encodeHost(targetHost);
+  const remainingPath = pathInfo?.remainingPath || url.pathname || '/';
   const egressSettings = await loadInstitutionRaSettings(env.DB, session.institution_id);
   const proxyableHosts = buildProxyableHosts(
     targetHost,
@@ -69,7 +73,7 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
   search.delete('tgt');
   const searchStr = search.toString();
   const upstreamUrl =
-    `https://${targetHost}${url.pathname}${searchStr ? '?' + searchStr : ''}`;
+    `https://${targetHost}${remainingPath}${searchStr ? '?' + searchStr : ''}`;
 
   // Request header'ları: kullanıcının Host'u temizlendi, Cookie jar'dan ekle
   const upstreamHeaders = new Headers();
@@ -124,7 +128,7 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
   const recipe = await loadRecipeForSession(env, session);
   if (recipe && recipe.capture_token_on_login_path) {
     upstreamResp = await maybeCaptureTokenAndForward(
-      env, session, sessionId, recipe, url.pathname, upstreamResp
+      env, session, sessionId, recipe, remainingPath, upstreamResp
     );
   }
 
@@ -156,7 +160,7 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
       continue;
     }
     if (kl === 'location') {
-      const newLoc = rewriteUrl(v, proxyableHosts, proxyHost);
+      const newLoc = rewriteUrl(v, proxyableHosts, proxyHost, encodedLabel);
       respHeaders.set('Location', newLoc);
       continue;
     }
@@ -181,7 +185,7 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
       ? { key: authState.token.ls_key, value: authState.token.value }
       : null;
 
-    const rewriter = makeHtmlRewriter(proxyableHosts, proxyHost, lsInject);
+    const rewriter = makeHtmlRewriter(proxyableHosts, proxyHost, encodedLabel, lsInject);
     const rewritten = rewriter.transform(upstreamResp);
     return new Response(rewritten.body, {
       status: upstreamResp.status,
@@ -216,18 +220,19 @@ async function tryEgressOrDirect(env, settings, targetUrl, init) {
 // URL rewrite: absolute URL (https://target/...) → https://proxy/...
 // Non-target host'lar olduğu gibi bırakılır.
 // ──────────────────────────────────────────────────────────────────────────
-function rewriteUrl(u, proxyableHosts, proxyHost) {
+function rewriteUrl(u, proxyableHosts, proxyHost, encodedLabel) {
   if (!u) return u;
   try {
+    if (u.startsWith('/')) {
+      return `https://${proxyHost}/${encodedLabel}${u}`;
+    }
     // Relative URL ise olduğu gibi bırak (browser proxy host üzerinden çözer)
     if (!/^https?:\/\//i.test(u) && !u.startsWith('//')) return u;
     // Protocol-relative (//www.jove.com/x) destekle
     const abs = u.startsWith('//') ? `https:${u}` : u;
     const parsed = new URL(abs);
     if (proxyableHosts.has(parsed.hostname)) {
-      parsed.hostname = proxyHost;
-      parsed.protocol = 'https:';
-      return parsed.toString();
+      return `https://${proxyHost}/${encodeHost(parsed.hostname)}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
     return u;
   } catch {
@@ -238,12 +243,12 @@ function rewriteUrl(u, proxyableHosts, proxyHost) {
 // ──────────────────────────────────────────────────────────────────────────
 // HTMLRewriter — href/src/action/poster/formaction attribute'ları
 // ──────────────────────────────────────────────────────────────────────────
-function makeHtmlRewriter(proxyableHosts, proxyHost, lsInject) {
+function makeHtmlRewriter(proxyableHosts, proxyHost, encodedLabel, lsInject) {
   const attrHandler = (attr) => ({
     element(el) {
       const v = el.getAttribute(attr);
       if (!v) return;
-      const n = rewriteUrl(v, proxyableHosts, proxyHost);
+      const n = rewriteUrl(v, proxyableHosts, proxyHost, encodedLabel);
       if (n !== v) el.setAttribute(attr, n);
     },
   });
