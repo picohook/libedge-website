@@ -234,7 +234,7 @@ function rewriteUrl(u, proxyableHosts, proxyHost, encodedLabel) {
     const abs = u.startsWith('//') ? `https:${u}` : u;
     const parsed = new URL(abs);
     if (proxyableHosts.has(parsed.hostname)) {
-      return `https://${proxyHost}/${encodeHost(parsed.hostname)}${parsed.pathname}${parsed.search}${parsed.hash}`;
+      return `https://${proxyHost}/${encodedLabel}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
     return u;
   } catch {
