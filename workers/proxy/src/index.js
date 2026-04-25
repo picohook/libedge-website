@@ -243,11 +243,27 @@ function buildUpstreamHeaders(incoming) {
   const out = new Headers();
   for (const [k, v] of incoming.entries()) {
     if (HOP_BY_HOP.has(k.toLowerCase())) continue;
-    // Kendi session cookie'mizi publisher'a iletme
-    if (k.toLowerCase() === 'cookie') continue;
+    if (k.toLowerCase() === 'cookie') {
+      const forwarded = stripProxySessionCookie(v, SESSION_COOKIE);
+      if (forwarded) out.set('Cookie', forwarded);
+      continue;
+    }
     out.set(k, v);
   }
   return out;
+}
+
+function stripProxySessionCookie(header, cookieName) {
+  if (!header) return '';
+  const kept = [];
+  for (const part of header.split(';').map((s) => s.trim()).filter(Boolean)) {
+    const idx = part.indexOf('=');
+    if (idx < 0) continue;
+    const name = part.slice(0, idx).trim();
+    if (name === cookieName) continue;
+    kept.push(part);
+  }
+  return kept.join('; ');
 }
 
 const STRIP_RESPONSE = new Set([
