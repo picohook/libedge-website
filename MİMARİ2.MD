@@ -395,6 +395,18 @@ npx wrangler pages deploy .pages-deploy-current `
 
 Not: Eski `backups/pages-deploy` klasörü kullanılmamalıdır; güncel dosyaları geriye alabilir.
 
+Preview environment ile test yapılacaksa `--branch main` kullanılmamalıdır. `main` production branch olduğu için hash'li deploy URL'leri production Pages environment binding'leri ile çalışabilir. Staging benzeri doğrulama için production olmayan bir branch adı kullanılmalıdır:
+
+```powershell
+npx wrangler pages deploy .pages-deploy-current `
+  --project-name libedge-website `
+  --branch staging-preview `
+  --commit-dirty true `
+  --commit-message "staging preview"
+```
+
+Bu durumda preview alias örneği: `https://staging-preview.libedge-website.pages.dev`
+
 ### 9.3 RA Proxy Worker
 
 ```powershell
