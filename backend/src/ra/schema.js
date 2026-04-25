@@ -31,6 +31,7 @@ export async function ensureRemoteAccessSchema(db) {
   // herkese açık ama credential'la giriş gereken publisher'lar için 0.
   await ensureColumns(db, 'products', [
     { name: 'ra_enabled', def: 'INTEGER NOT NULL DEFAULT 0' },
+    { name: 'ra_delivery_mode', def: "TEXT NOT NULL DEFAULT 'proxy'" },
     { name: 'ra_origin_host', def: 'TEXT' },
     { name: 'ra_login_recipe_json', def: 'TEXT' },
     { name: 'ra_host_allowlist_json', def: 'TEXT' },

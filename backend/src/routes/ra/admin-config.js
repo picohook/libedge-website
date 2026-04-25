@@ -45,6 +45,7 @@ const ALLOWED_ACCESS_TYPES = [
   'email_password_external',
   'mixed',
 ];
+const ALLOWED_RA_DELIVERY_MODES = ['proxy', 'direct_login'];
 
 const MAX_RECIPE_BYTES = 16 * 1024; // 16 KB — recipe genelde ~1-2 KB
 const MAX_ALLOWLIST_BYTES = 4 * 1024;
@@ -70,6 +71,7 @@ export function registerRaAdminConfig(app) {
          slug, name, category, region,
          default_access_type,
          ra_enabled,
+         ra_delivery_mode,
          ra_origin_host,
          ra_login_recipe_json,
          ra_host_allowlist_json,
@@ -86,6 +88,7 @@ export function registerRaAdminConfig(app) {
       region: r.region || null,
       default_access_type: r.default_access_type || null,
       ra_enabled: r.ra_enabled ? 1 : 0,
+      ra_delivery_mode: normalizeDeliveryMode(r.ra_delivery_mode),
       ra_origin_host: r.ra_origin_host || null,
       ra_login_recipe_json: r.ra_login_recipe_json || null,
       ra_host_allowlist_json: r.ra_host_allowlist_json || null,
@@ -127,6 +130,10 @@ export function registerRaAdminConfig(app) {
     if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
 
     const raEnabled = body.ra_enabled ? 1 : 0;
+    const raDeliveryMode = normalizeDeliveryMode(body.ra_delivery_mode);
+    if (!ALLOWED_RA_DELIVERY_MODES.includes(raDeliveryMode)) {
+      return c.json({ error: `ra_delivery_mode geçersiz: ${raDeliveryMode}` }, 400);
+    }
     const raOriginHost = normalizeHost(body.ra_origin_host);
     if (raOriginHost && !isValidHost(raOriginHost)) {
       return c.json({ error: 'ra_origin_host geçersiz bir hostname' }, 400);
@@ -175,11 +182,12 @@ export function registerRaAdminConfig(app) {
     // göndermiyorsa mevcut değer korunur (kolon SET listesine eklenmez).
     const setCols = [
       'ra_enabled             = ?',
+      'ra_delivery_mode       = ?',
       'ra_origin_host         = ?',
       'ra_login_recipe_json   = ?',
       'ra_host_allowlist_json = ?',
     ];
-    const bindVals = [raEnabled, raOriginHost, recipeJson, allowlistJson];
+    const bindVals = [raEnabled, raDeliveryMode, raOriginHost, recipeJson, allowlistJson];
 
     if (Object.prototype.hasOwnProperty.call(body, 'ra_requires_tunnel')) {
       setCols.push('ra_requires_tunnel = ?');
@@ -397,4 +405,10 @@ function normalizeLandingPath(raw) {
   if (trimmed.includes('..')) return null;
   if (trimmed.length > 512) return null;
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
+function normalizeDeliveryMode(raw) {
+  const mode = String(raw || '').trim().toLowerCase();
+  if (!mode) return 'proxy';
+  return mode;
 }

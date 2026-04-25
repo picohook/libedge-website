@@ -101,10 +101,19 @@ export function registerRaIssueToken(app) {
       return c.json({ error: 'Bu ürün için uzaktan erişim aktif değil' }, 409);
     }
 
+    const deliveryMode = normalizeDeliveryMode(sub.ra_delivery_mode);
+
     // ra_origin_host zorunlu — hyphen-encode
     if (!sub.ra_origin_host) {
       return c.json({ error: 'Publisher origin host tanımlı değil' }, 500);
     }
+    const landingPath = normalizeLandingPath(sub.ra_origin_landing_path);
+
+    if (deliveryMode === 'direct_login') {
+      const redirectUrl = `https://${sub.ra_origin_host}${landingPath}`;
+      return c.json({ redirect_url: redirectUrl, expires_at: now + 300 });
+    }
+
     const tgt = encodeHost(sub.ra_origin_host);
 
     // Tünel zorunluluğu — IP-gated publisher için gerekli
@@ -116,7 +125,6 @@ export function registerRaIssueToken(app) {
     const requiresTunnel = sub.ra_requires_tunnel == null
       ? 1
       : (sub.ra_requires_tunnel ? 1 : 0);
-    const landingPath = normalizeLandingPath(sub.ra_origin_landing_path);
 
     if (!hasLoginRecipe && requiresTunnel) {
       const settings = await c.env.DB.prepare(
@@ -180,6 +188,7 @@ async function lookupSubscription(db, { institutionId, subscriptionId, productSl
         p.default_access_type
       )                            AS access_type,
       COALESCE(p.ra_enabled, 0)    AS ra_enabled,
+      p.ra_delivery_mode,
       p.ra_origin_host,
       p.ra_login_recipe_json,
       COALESCE(p.ra_requires_tunnel, 1) AS ra_requires_tunnel,
@@ -219,4 +228,9 @@ function normalizeLandingPath(raw) {
   if (/^[a-z]+:\/\//i.test(trimmed)) return '/';
   if (trimmed.includes('..')) return '/';
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
+function normalizeDeliveryMode(raw) {
+  const mode = String(raw || '').trim().toLowerCase();
+  return mode || 'proxy';
 }
