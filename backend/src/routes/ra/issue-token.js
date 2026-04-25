@@ -44,13 +44,10 @@ export function registerRaIssueToken(app) {
     const auth = await requireAuth(c);
     if (auth.response) return auth.response;
 
-    const userId = Number(auth.user.user_id);
-    const institutionId = Number(auth.user.institution_id);
-    if (!Number.isFinite(userId) || userId <= 0) {
-      return c.json({ error: 'Kullanıcı kimliği doğrulanamadı' }, 401);
-    }
-    if (!Number.isFinite(institutionId) || institutionId <= 0) {
-      return c.json({ error: 'Kurum bilgisi doğrulanamadı' }, 403);
+    const userId = auth.user.user_id;            // INTEGER
+    const institutionId = auth.user.institution_id; // INTEGER or null
+    if (!institutionId) {
+      return c.json({ error: 'Kullanıcı bir kuruma bağlı değil' }, 403);
     }
 
     // Body doğrulama — subscription_id (INTEGER) YA DA product_slug (TEXT)
@@ -90,18 +87,13 @@ export function registerRaIssueToken(app) {
       );
     }
 
-    // Süre kontrolü:
-    //   ra_valid_until → INTEGER unix timestamp (RA-specific override)
-    //   end_date       → date string (ISO veya 'YYYY-MM-DD'), LibEdge genel alanı
+    // Süre kontrolü: ra_valid_until (unix ts override) veya end_date (YYYY-MM-DD string)
     const now = Math.floor(Date.now() / 1000);
-    if (sub.ra_valid_until && Number(sub.ra_valid_until) < now) {
+    const raExp = sub.ra_valid_until ? Number(sub.ra_valid_until) : null;
+    const endExp = sub.end_date ? Math.floor(new Date(sub.end_date).getTime() / 1000) : null;
+    const exp = raExp ?? endExp ?? null;
+    if (exp && exp < now) {
       return c.json({ error: 'Abonelik süresi dolmuş' }, 410);
-    }
-    if (sub.end_date) {
-      const endTs = Math.floor(new Date(sub.end_date).getTime() / 1000);
-      if (Number.isFinite(endTs) && endTs < now) {
-        return c.json({ error: 'Abonelik süresi dolmuş' }, 410);
-      }
     }
 
     // products.ra_enabled = 1 olmalı
@@ -115,24 +107,14 @@ export function registerRaIssueToken(app) {
     }
     const tgt = encodeHost(sub.ra_origin_host);
 
-    // Origin landing path — opsiyonel, proxy session kurulumu sonrası 302
-    // hedefi olarak kullanılır. Default '/' (origin root). Pangram gibi
-    // root'u 404 olan publisher'lar için admin panelden '/login' vb. set edilir.
-    const landingPath = normalizeLandingPath(sub.ra_origin_landing_path);
-
-    // Tünel zorunluluğu — yalnızca IP-gated publisher'lar için gerekli.
-    //   - Ürün recipe'inde upstream_login varsa → credential-auth yeterli,
-    //     tunnel gerekmez.
-    //   - Ürün ra_requires_tunnel = 0 olarak işaretlenmişse (Pangram gibi
-    //     session-cookie auth, public erişim) → tunnel gerekmez.
-    //   - Aksi hâlde (ra_requires_tunnel = 1, recipe yok) kurumun egress
-    //     tüneli yapılandırılmış olmalı.
+    // Tünel zorunluluğu — IP-gated publisher için gerekli
+    // Heuristik: recipe'te upstream_login varsa credential-auth yeterli,
+    // yoksa IP egress şart → institution_ra_settings.enabled = 1 olmalı.
     const recipeJson =
       sub.ra_recipe_override_json || sub.ra_login_recipe_json || null;
     const hasLoginRecipe = recipeJson ? hasUpstreamLogin(recipeJson) : false;
-    const requiresTunnel = Number(sub.ra_requires_tunnel) !== 0;
 
-    if (!hasLoginRecipe && requiresTunnel) {
+    if (!hasLoginRecipe) {
       const settings = await c.env.DB.prepare(
         `SELECT enabled, tunnel_status
            FROM institution_ra_settings
@@ -159,7 +141,6 @@ export function registerRaIssueToken(app) {
         sid: sub.id,              // INTEGER subscription id
         pid: sub.product_slug,    // TEXT product slug
         tgt,                      // encoded publisher host
-        lp: landingPath,          // opsiyonel ilk landing path ('/' veya '/login' vb.)
         exp: now + 300,           // 5 dk
         jti,
       },
@@ -171,11 +152,10 @@ export function registerRaIssueToken(app) {
       expirationTtl: 600,
     });
 
-    // Proxy domain'i env'den; yoksa prod default.
-    // POC: tek subdomain + query-param encoding (wildcard cert gerekmez).
-    //   https://proxy-staging.selmiye.com/?tgt=www-jove-com#t=eyJ...
+    // Proxy domain'i env'den; yoksa prod default
+    // Path-based format: https://{proxyHost}/{tgt}/?t={token}
     const proxyHost = c.env.RA_PROXY_HOST || 'proxy.selmiye.com';
-    const redirectUrl = `https://${proxyHost}/?tgt=${encodeURIComponent(tgt)}#t=${token}`;
+    const redirectUrl = `https://${proxyHost}/${tgt}/?t=${token}`;
 
     return c.json({ redirect_url: redirectUrl, expires_at: now + 300 });
   });
@@ -200,9 +180,7 @@ async function lookupSubscription(db, { institutionId, subscriptionId, productSl
       )                            AS access_type,
       COALESCE(p.ra_enabled, 0)    AS ra_enabled,
       p.ra_origin_host,
-      p.ra_login_recipe_json,
-      COALESCE(p.ra_requires_tunnel, 1) AS ra_requires_tunnel,
-      p.ra_origin_landing_path
+      p.ra_login_recipe_json
     FROM institution_subscriptions isub
     JOIN products p ON p.slug = isub.product_slug
     WHERE isub.institution_id = ?
@@ -217,21 +195,6 @@ async function lookupSubscription(db, { institutionId, subscriptionId, productSl
     .prepare(`${base} AND isub.product_slug = ? LIMIT 1`)
     .bind(institutionId, productSlug)
     .first();
-}
-
-/**
- * Landing path normalize: boşsa '/', aksi hâlde baş slash garanti,
- * control karakter / path traversal temizle.
- */
-function normalizeLandingPath(raw) {
-  if (!raw) return '/';
-  const trimmed = String(raw).trim();
-  if (!trimmed) return '/';
-  // Sadece pathname + opsiyonel query, scheme/host içeremez.
-  if (/^[a-z]+:\/\//i.test(trimmed)) return '/';
-  // Path traversal defans
-  if (trimmed.includes('..')) return '/';
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
 /**
