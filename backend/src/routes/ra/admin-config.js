@@ -13,7 +13,7 @@
  *       kısa bir geçerlilik kontrolünden geçer.
  *
  *   GET /api/ra/admin/subscriptions-ra
- *     → access_type='proxy' abonelikleri + RA metadata
+ *     → RA etkin ürün abonelikleri + RA metadata
  *       (institution adı, ra_credential_scope, has_credential flag,
  *        ra_valid_until, access_url, access_notes_tr). Plaintext credential
  *       ASLA döndürülmez.
@@ -228,9 +228,11 @@ export function registerRaAdminConfig(app) {
          s.product_slug,
          p.name          AS product_name,
          s.access_type,
+         COALESCE(p.ra_delivery_mode, 'proxy') AS ra_delivery_mode,
          s.access_url,
          s.ra_credential_scope,
          s.ra_valid_until,
+         COALESCE(p.ra_enabled, 0) AS ra_enabled,
          CASE WHEN s.ra_credential_enc IS NOT NULL AND s.ra_credential_enc != ''
               THEN 1 ELSE 0 END AS has_credential,
          s.status,
@@ -238,7 +240,7 @@ export function registerRaAdminConfig(app) {
        FROM institution_subscriptions s
        LEFT JOIN institutions i ON i.id = s.institution_id
        LEFT JOIN products p     ON p.slug = s.product_slug
-       WHERE s.access_type = 'proxy'
+       WHERE COALESCE(p.ra_enabled, 0) = 1
           OR (s.ra_credential_enc IS NOT NULL AND s.ra_credential_enc != '')
        ORDER BY i.name COLLATE NOCASE, p.name COLLATE NOCASE`
     ).all();
@@ -250,6 +252,8 @@ export function registerRaAdminConfig(app) {
       product_slug: r.product_slug,
       product_name: r.product_name || r.product_slug,
       access_type: r.access_type || null,
+      ra_delivery_mode: normalizeDeliveryMode(r.ra_delivery_mode),
+      ra_enabled: r.ra_enabled ? 1 : 0,
       access_url: r.access_url || null,
       ra_credential_scope: r.ra_credential_scope || null,
       ra_valid_until: r.ra_valid_until ? Number(r.ra_valid_until) : null,

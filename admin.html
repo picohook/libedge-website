@@ -4982,10 +4982,14 @@ function _raRenderSubscriptions() {
     const tbody = document.getElementById('raSubsTableBody');
     if (!tbody) return;
     if (!_ra.subscriptions.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Proxy/credential-auth abonelik yok.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Uzaktan erişim aboneliği yok.</td></tr>';
         return;
     }
     tbody.innerHTML = _ra.subscriptions.map((s) => {
+        const displayAccessType = getEffectiveAccessTypeForDisplay(s);
+        const accessLabel = displayAccessType
+            ? (accessTypeLabels[displayAccessType] || displayAccessType)
+            : '—';
         const credBadge = s.has_credential
             ? '<span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">tanımlı</span>'
             : '<span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">yok</span>';
@@ -5001,7 +5005,7 @@ function _raRenderSubscriptions() {
                 <div class="text-gray-800">${escapeHtml(s.product_name || s.product_slug)}</div>
                 <div class="text-[11px] text-gray-400 font-mono">${escapeHtml(s.product_slug)}</div>
             </td>
-            <td class="px-4 py-2 text-xs">${escapeHtml(s.access_type || '—')}</td>
+            <td class="px-4 py-2 text-xs">${escapeHtml(accessLabel)}</td>
             <td class="px-4 py-2">${scope}</td>
             <td class="px-4 py-2">${credBadge}</td>
             <td class="px-4 py-2 text-xs text-gray-600">${validUntil}</td>
