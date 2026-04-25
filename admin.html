@@ -1070,6 +1070,7 @@
                             <option value="mixed">Karma</option>
                         </select>
                         <p class="text-xs text-gray-400 mt-1">Bu alan kullanıcıya gösterilen erişim etiketidir. Teknik açılış davranışı için RA tarafındaki <strong>Dağıtım Modu</strong> kullanılır.</p>
+                        <div id="productAccessTypeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Erişim URL</label>
@@ -1340,6 +1341,7 @@
                         <option value="email_password_external">email_password_external (kurum email'iyle kendi login'i)</option>
                         <option value="mixed">mixed</option>
                     </select>
+                    <div id="raSubAccessTypeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></div>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Credential Scope</label>
@@ -1415,6 +1417,7 @@
                         <option value="direct_login">Doğrudan publisher login</option>
                     </select>
                     <p class="text-[11px] text-gray-400 mt-1">`direct_login` modunda kullanıcı LibEdge kontrolünden geçer, ardından publisher'ın kendi çalışan login akışına yönlendirilir.</p>
+                    <div id="raProductDeliveryModeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></div>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Origin Host</label>
@@ -2490,6 +2493,7 @@
                                 <option value="mixed">Karma</option>
                             </select>
                             <p class="text-xs text-gray-400 mt-1">Bu alan kullanıcının göreceği erişim açıklamasını belirler. RA ürünlerinde teknik davranış ayrıca Uzaktan Erişim ayarlarından yönetilir.</p>
+                            <div id="subscriptionAccessTypeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Kuruma Özel Erişim URL</label>
@@ -2942,6 +2946,46 @@ document.addEventListener('click', function(e) {
         return parts.join(' • ');
     }
 
+    function getAccessTypeGuideText(accessType) {
+        const normalized = String(accessType || '').trim();
+        const guides = {
+            direct: 'Kullanıcıyı doğrudan bir erişim linkine götüren klasik etiket. Teknik davranış ürün URL veya RA dağıtım moduna göre belirlenir.',
+            ip: 'IP-kilitli kurumsal erişim. Genelde RA tarafında kurum tüneli açık bırakılır ve kullanıcı publisher içinde doğal login görmez.',
+            proxy: 'Eski/teknik bir etiket. Yeni kurulumlarda bunu yalnızca gerçekten proxy deneyimi göstermek istediğinizde seçin.',
+            sso: 'Kurumun kendi tek oturum açma deneyimi için kullanıcıya gösterilen etiket.',
+            institution_link: 'Kuruma özel tekil bir erişim URL\'i varsa uygun etiket.',
+            email_password_external: 'Kullanıcı publisher\'ın kendi login ekranında kurum e-postası veya harici şifre ile giriş yapacaksa önerilen etiket.',
+            mixed: 'Tek bir açıklama yetmiyorsa ve birden fazla erişim yolu aynı anda geçerliyse kullanın.',
+        };
+        return guides[normalized] || 'Bu alan yalnızca kullanıcıya gösterilen erişim açıklamasını belirler.';
+    }
+
+    function getDeliveryModeGuideText(mode) {
+        const normalized = String(mode || '').trim().toLowerCase();
+        if (normalized === 'direct_login') {
+            return 'Önerilen kullanıcı etiketi çoğu durumda "Kurum E-posta + Harici Şifre" olur. Kullanıcı LibEdge kontrolünden geçer, sonra publisher\'ın kendi login akışına bırakılır.';
+        }
+        return 'Proxy modu IP-gated veya proxy içinde tutulması gereken yayıncılar içindir. Kullanıcı publisher deneyimini LibEdge proxy hostu üzerinden yaşar.';
+    }
+
+    function setGuideText(id, text) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text || '';
+    }
+
+    function refreshAdminAccessGuides() {
+        const productAccessType = document.getElementById('productAccessType')?.value;
+        const subscriptionAccessType = document.getElementById('subscriptionEditorAccessType')?.value;
+        const raSubAccessType = document.getElementById('raSubAccessTypeInput')?.value;
+        const raDeliveryMode = document.getElementById('raProductDeliveryModeInput')?.value;
+
+        setGuideText('productAccessTypeGuide', getAccessTypeGuideText(productAccessType));
+        setGuideText('subscriptionAccessTypeGuide', getAccessTypeGuideText(subscriptionAccessType));
+        setGuideText('raSubAccessTypeGuide', getAccessTypeGuideText(raSubAccessType));
+        setGuideText('raProductDeliveryModeGuide', getDeliveryModeGuideText(raDeliveryMode));
+    }
+
     function renderProductOptions() {
         const options = '<option value="">Ürün Seçin</option>' + products.map(p => `<option value="${escapeHtml(p.slug)}">${escapeHtml(p.name)}</option>`).join('');
         const subscriptionEditorProduct = document.getElementById('subscriptionEditorProduct');
@@ -2999,6 +3043,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         document.getElementById('productRequiresVpn').checked = !!product.default_requires_vpn;
         document.getElementById('productAccessNotesTr').value = product.default_access_notes_tr || '';
         document.getElementById('productAccessNotesEn').value = product.default_access_notes_en || '';
+        refreshAdminAccessGuides();
         document.getElementById('productModal').classList.remove('hidden');
     }
 
@@ -3847,6 +3892,7 @@ function composeFullName(firstName, lastName) {
         populateSubscriptionProductOptions(type, subscription?.product_slug || '');
         els.status.value = subscription?.status || 'active';
         els.endDate.value = subscription?.end_date ? String(subscription.end_date).slice(0, 10) : '';
+        refreshAdminAccessGuides();
         els.modal.classList.remove('hidden');
     }
 
@@ -4088,6 +4134,16 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             showActionError('Ürün erişim ayarlarını güncelleme işlemi', err.message);
         }
     });
+
+    [
+        'productAccessType',
+        'subscriptionEditorAccessType',
+        'raSubAccessTypeInput',
+        'raProductDeliveryModeInput',
+    ].forEach((id) => {
+        document.getElementById(id)?.addEventListener('change', refreshAdminAccessGuides);
+    });
+    refreshAdminAccessGuides();
 
 // Tab geçişleri
 document.querySelectorAll('.sidebar-link').forEach(link => {
@@ -5040,6 +5096,7 @@ function _raOpenSubModal(id) {
         : '';
     document.getElementById('raSubModalError').classList.add('hidden');
     document.getElementById('raSubModalError').textContent = '';
+    refreshAdminAccessGuides();
     const modal = document.getElementById('raSubModal');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -5218,6 +5275,7 @@ function _raOpenProductModal(slug) {
     document.getElementById('raProductAllowlistInput').value = _raPrettyJson(product.ra_host_allowlist_json);
     document.getElementById('raProductModalError').classList.add('hidden');
     document.getElementById('raProductModalError').textContent = '';
+    refreshAdminAccessGuides();
     const modal = document.getElementById('raProductModal');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
