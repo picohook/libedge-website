@@ -1408,6 +1408,14 @@
                     </span>
                 </label>
                 <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Dağıtım Modu</label>
+                    <select id="raProductDeliveryModeInput" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+                        <option value="proxy">Proxy içinde aç</option>
+                        <option value="direct_login">Doğrudan publisher login</option>
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">`direct_login` modunda kullanıcı LibEdge kontrolünden geçer, ardından publisher'ın kendi çalışan login akışına yönlendirilir.</p>
+                </div>
+                <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Origin Host</label>
                     <input id="raProductOriginHostInput" type="text" placeholder="www.pangram.com" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono" />
                     <p class="text-[11px] text-gray-400 mt-1">Proxy'nin istek atacağı gerçek publisher hostname'i. Sadece hostname (scheme'siz, path'siz).</p>
@@ -5183,6 +5191,7 @@ function _raOpenProductModal(slug) {
     _ra.editingProductSlug = slug;
     document.getElementById('raProductModalSlug').textContent = slug;
     document.getElementById('raProductEnabledInput').checked = !!product.ra_enabled;
+    document.getElementById('raProductDeliveryModeInput').value = product.ra_delivery_mode || 'proxy';
     // ra_requires_tunnel: null/undefined => default 1 (backwards compat)
     document.getElementById('raProductRequiresTunnelInput').checked =
         product.ra_requires_tunnel == null ? true : !!product.ra_requires_tunnel;
@@ -5217,6 +5226,7 @@ async function _raSaveProduct() {
     const slug = _ra.editingProductSlug;
     if (!slug) return;
     const raEnabled = document.getElementById('raProductEnabledInput').checked ? 1 : 0;
+    const raDeliveryMode = document.getElementById('raProductDeliveryModeInput').value || 'proxy';
     const raRequiresTunnel = document.getElementById('raProductRequiresTunnelInput').checked ? 1 : 0;
     const originHost = document.getElementById('raProductOriginHostInput').value.trim();
     const landingPath = document.getElementById('raProductOriginLandingPathInput').value.trim();
@@ -5260,6 +5270,7 @@ async function _raSaveProduct() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 ra_enabled: raEnabled,
+                ra_delivery_mode: raDeliveryMode,
                 ra_requires_tunnel: raRequiresTunnel,
                 ra_origin_host: originHost || null,
                 ra_origin_landing_path: landingPath || null,
