@@ -4,9 +4,9 @@
 
 FROM golang:1.24-alpine AS build
 WORKDIR /src
-COPY go.mod ./
-# go.sum yok çünkü standart kütüphane dışı dep kullanmıyoruz
+COPY go.mod go.sum ./
 COPY main.go ./
+
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/ra-egress .
 
 FROM scratch
