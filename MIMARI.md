@@ -131,6 +131,13 @@ slug='acs'
   ra_host_allowlist_json = '["pubs.acs.org","www.pubs.acs.org","acs.org","www.acs.org","cenglobal.acs.org","www.chemistry.org","pubsdev.acs.org","pubstest.acs.org","idp.acs.org"]'
   ra_enabled = 0  -- staging config hazır, ACS Cloudflare challenge 403 nedeniyle pasif
 
+slug='primal-pictures'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_origin_landing_path = '/'
+  ra_origin_host = 'anatomy.tv'
+  ra_host_allowlist_json = '["anatomy.tv","www.anatomy.tv","cdn.anatomy.tv","anatomysearch.anatomy.tv"]'
+  ra_enabled = 1  -- ürün RA-ready; kurum aboneliği ayrı yönetilir
+
 -- institution_ra_settings
 institution_id = 1
   egress_endpoint = 'https://ra-egress.selmiye.com'
@@ -615,6 +622,7 @@ olmalı. EMIS için bu `/php/login/redirect`; JoVE için `/research`.
 | EMIS | Mobil app API 401 | EMIS için desktop-UA override |
 | EMIS | Mobile config absolute API URL | `application*.js` URL rewrite |
 | ACS | Cloudflare challenge 403 (`pubs.acs.org`) | Staging config hazır, ürün pasif; mevcut Go egress ile çözülmedi |
+| Primal Pictures | Kurum bazlı IP entitlement gerekir | Ürün RA-ready; yalnızca aboneliği olan kurumlarda subscription aktif edilir |
 
 ### §16.4 ACS Bulgusu (2026-04-26)
 
@@ -665,3 +673,53 @@ Sonuç: ACS config/allowlist tarafı hazır, ancak upstream Cloudflare challenge
 isteğini kabul etmiyor. Bu JoVE/EMIS'teki cookie, redirect veya allowlist sınıfı bir sorun değil.
 Kırık ürün göstermemek için staging D1'de `acs.ra_enabled = 0` ve kurum aboneliği `inactive`
 durumunda bırakıldı.
+
+### §16.5 Primal Pictures / Anatomy TV (2026-04-26)
+
+Primal Pictures IP tabanlı RA-ready ürün olarak staging D1'e işlendi. Mevcut test kurumunda
+abonelik/yetki olmadığı için `institution_subscriptions` aktif edilmedi; ürün konfigürasyonu
+kurumdan bağımsız katalog seviyesinde hazır tutuluyor.
+
+EZproxy stanzası özeti:
+
+```
+Option CookiePassThrough
+AnonymousURL +*.json
+AnonymousURL +*.png
+AnonymousURL +*.jpg
+AnonymousURL +*.html
+AnonymousURL +*.unityweb
+Title Anatomy TV (updated 20220224)
+URL https://anatomy.tv
+HJ https://anatomy.tv
+HJ anatomy.tv
+HJ www.anatomy.tv
+HJ https://www.anatomy.tv
+DJ www.anatomy.tv
+DJ anatomy.tv
+Domain www.anatomy.tv
+Domain .anatomy.tv
+NeverProxy d11pbpfqgyaka7.cloudfront.net
+NeverProxy cdn.anatomy.tv
+NeverProxy *.prod.anatomy.tv
+NeverProxy anatomysearch.anatomy.tv
+AnonymousURL -*
+Option Cookie
+```
+
+Staging ürün config:
+
+```sql
+slug='primal-pictures'
+  ra_origin_host = 'anatomy.tv'
+  ra_origin_landing_path = '/'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_host_allowlist_json = '["anatomy.tv","www.anatomy.tv","cdn.anatomy.tv","anatomysearch.anatomy.tv"]'
+  ra_enabled = 1
+```
+
+Kurum bazlı kullanım kuralı:
+- Product `ra_enabled = 1` kalır; bu teknik RA desteğini ifade eder.
+- Abonelik yalnızca ilgili kurumda `institution_subscriptions.status = active` ve
+  `access_type = proxy` olduğunda kullanıcıya açılır.
+- Mevcut test kurumunda Primal subscription oluşturulmadı/aktif edilmedi.
