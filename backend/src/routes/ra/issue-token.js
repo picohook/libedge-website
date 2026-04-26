@@ -87,18 +87,6 @@ export function registerRaIssueToken(app) {
       return c.json({ error: 'Abonelik bulunamadı' }, 403);
     }
 
-    // access_type = 'proxy' olmalı; aksi hâlde RA bu aboneliği handle etmez
-    if (sub.access_type !== 'proxy') {
-      return c.json(
-        {
-          error: 'Bu abonelik uzaktan erişim proxy üzerinden değil, ' +
-                 'doğrudan publisher linki ile açılır.',
-          access_type: sub.access_type,
-        },
-        409
-      );
-    }
-
     // Süre kontrolü: ra_valid_until (unix ts override) veya end_date (YYYY-MM-DD string)
     const now = Math.floor(Date.now() / 1000);
     const raExp = sub.ra_valid_until ? Number(sub.ra_valid_until) : null;
@@ -116,6 +104,33 @@ export function registerRaIssueToken(app) {
     // ra_origin_host zorunlu
     if (!sub.ra_origin_host) {
       return c.json({ error: 'Publisher origin host tanımlı değil' }, 500);
+    }
+
+    // Delivery mode: path_proxy (default), session_host_proxy veya direct_login
+    const deliveryMode = sub.ra_delivery_mode || 'path_proxy';
+
+    // direct_login: proxy kullanmadan doğrudan publisher URL'ine yönlendir
+    if (deliveryMode === 'direct_login') {
+      const rawLanding = sub.ra_origin_landing_path
+        ? String(sub.ra_origin_landing_path).trim()
+        : '';
+      const landingPath = rawLanding && rawLanding !== '/'
+        ? (rawLanding.startsWith('/') ? rawLanding : `/${rawLanding}`)
+        : '';
+      const redirectUrl = `https://${sub.ra_origin_host}${landingPath}`;
+      return c.json({ redirect_url: redirectUrl });
+    }
+
+    // access_type = 'proxy' olmalı; aksi hâlde RA bu aboneliği handle etmez
+    if (sub.access_type !== 'proxy') {
+      return c.json(
+        {
+          error: 'Bu abonelik uzaktan erişim proxy üzerinden değil, ' +
+                 'doğrudan publisher linki ile açılır.',
+          access_type: sub.access_type,
+        },
+        409
+      );
     }
 
     // Tünel zorunluluğu — credential-only publisher'lar hariç egress şart
@@ -138,9 +153,6 @@ export function registerRaIssueToken(app) {
         );
       }
     }
-
-    // Delivery mode: path_proxy (default) veya session_host_proxy
-    const deliveryMode = sub.ra_delivery_mode || 'path_proxy';
 
     // Kısa ömürlü proxy JWT (HS256)
     const jti = newJti();
