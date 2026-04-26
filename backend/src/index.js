@@ -1797,7 +1797,10 @@ app.get('/api/subscription/list', async (c) => {
     SELECT s.id, s.product_slug, s.status, s.start_date, s.end_date, s.created_at, 'individual' as source,
            p.default_access_type AS access_type,
            p.default_access_url AS access_url,
-           COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
+           CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
+             WHEN 'session_host_proxy' THEN 'session_host_proxy'
+             ELSE 'path_proxy'
+           END AS ra_delivery_mode,
            COALESCE(p.default_requires_institution_email, 0) AS requires_institution_email,
            COALESCE(p.default_requires_vpn, 0) AS requires_vpn,
            p.default_access_notes_tr AS access_notes_tr,
@@ -1813,7 +1816,10 @@ app.get('/api/subscription/list', async (c) => {
       SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date, is2.created_at, 'institution' as source,
              COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-             COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
+             CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
+               WHEN 'session_host_proxy' THEN 'session_host_proxy'
+               ELSE 'path_proxy'
+             END AS ra_delivery_mode,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
@@ -1849,7 +1855,10 @@ app.get('/api/user/subscriptions', async (c) => {
     SELECT s.id, s.product_slug, s.status, s.start_date, s.end_date, 'individual' as source,
            p.default_access_type AS access_type,
            p.default_access_url AS access_url,
-           COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
+           CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
+             WHEN 'session_host_proxy' THEN 'session_host_proxy'
+             ELSE 'path_proxy'
+           END AS ra_delivery_mode,
            COALESCE(p.default_requires_institution_email, 0) AS requires_institution_email,
            COALESCE(p.default_requires_vpn, 0) AS requires_vpn,
            p.default_access_notes_tr AS access_notes_tr,
@@ -1866,7 +1875,10 @@ app.get('/api/user/subscriptions', async (c) => {
       SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date, 'institution' as source,
              COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-             COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
+             CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
+               WHEN 'session_host_proxy' THEN 'session_host_proxy'
+               ELSE 'path_proxy'
+             END AS ra_delivery_mode,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
@@ -2933,7 +2945,10 @@ app.get('/api/admin/subscriptions', async (c) => {
                is2.access_notes_en AS raw_access_notes_en,
                COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
                COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-               COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
+               CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
+                 WHEN 'session_host_proxy' THEN 'session_host_proxy'
+                 ELSE 'path_proxy'
+               END AS ra_delivery_mode,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
                COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
@@ -2956,7 +2971,10 @@ app.get('/api/admin/subscriptions', async (c) => {
                is2.access_notes_en AS raw_access_notes_en,
                COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
                COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-               COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
+               CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
+                 WHEN 'session_host_proxy' THEN 'session_host_proxy'
+                 ELSE 'path_proxy'
+               END AS ra_delivery_mode,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
                COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,

@@ -1448,10 +1448,10 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Dağıtım Modu</label>
                     <select id="raProductDeliveryModeInput" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
-                        <option value="proxy">Proxy içinde aç</option>
-                        <option value="direct_login">Doğrudan publisher login</option>
+                        <option value="session_host_proxy">Session host proxy</option>
+                        <option value="path_proxy">Path proxy</option>
                     </select>
-                    <p class="text-[11px] text-gray-400 mt-1">`direct_login` modunda kullanıcı LibEdge kontrolünden geçer, ardından publisher'ın kendi çalışan login akışına yönlendirilir.</p>
+                    <p class="text-[11px] text-gray-400 mt-1">RA dağıtımı yalnızca session host proxy veya path proxy modlarıyla yapılır.</p>
                     <div id="raProductDeliveryModeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></div>
                 </div>
                 <div>
@@ -3055,10 +3055,6 @@ document.addEventListener('click', function(e) {
 
     function getEffectiveAccessTypeForDisplay(item) {
         const accessType = String(item?.access_type || '').trim();
-        const deliveryMode = String(item?.ra_delivery_mode || '').trim().toLowerCase();
-        if (deliveryMode === 'direct_login' && accessType === 'proxy') {
-            return 'email_password_external';
-        }
         return accessType;
     }
 
@@ -3087,10 +3083,16 @@ document.addEventListener('click', function(e) {
 
     function getDeliveryModeGuideText(mode) {
         const normalized = String(mode || '').trim().toLowerCase();
-        if (normalized === 'direct_login') {
-            return 'Önerilen kullanıcı etiketi çoğu durumda "Kurum E-posta + Harici Şifre" olur. Kullanıcı LibEdge kontrolünden geçer, sonra publisher\'ın kendi login akışına bırakılır.';
+        if (normalized === 'session_host_proxy') {
+            return 'Her RA oturumu r{sid}.selmiye.com gibi tekil bir host üzerinden açılır. Cookie/domain hassas publisher\'lar için önerilir.';
         }
-        return 'Proxy modu IP-gated veya proxy içinde tutulması gereken yayıncılar içindir. Kullanıcı publisher deneyimini LibEdge proxy hostu üzerinden yaşar.';
+        return 'Path proxy tek proxy hostu altında encoded publisher host path\'i kullanır. Basit IP-gated veya path tabanlı akışlar için uygundur.';
+    }
+
+    function normalizeRaDeliveryMode(mode) {
+        const normalized = String(mode || '').trim().toLowerCase();
+        if (normalized === 'session_host_proxy') return 'session_host_proxy';
+        return 'path_proxy';
     }
 
     function setGuideText(id, text) {
@@ -5664,7 +5666,7 @@ function _raOpenProductModal(slug) {
     _ra.editingProductSlug = slug;
     document.getElementById('raProductModalSlug').textContent = slug;
     document.getElementById('raProductEnabledInput').checked = !!product.ra_enabled;
-    document.getElementById('raProductDeliveryModeInput').value = product.ra_delivery_mode || 'proxy';
+    document.getElementById('raProductDeliveryModeInput').value = normalizeRaDeliveryMode(product.ra_delivery_mode);
     // ra_requires_tunnel: null/undefined => default 1 (backwards compat)
     document.getElementById('raProductRequiresTunnelInput').checked =
         product.ra_requires_tunnel == null ? true : !!product.ra_requires_tunnel;
@@ -5700,7 +5702,7 @@ async function _raSaveProduct() {
     const slug = _ra.editingProductSlug;
     if (!slug) return;
     const raEnabled = document.getElementById('raProductEnabledInput').checked ? 1 : 0;
-    const raDeliveryMode = document.getElementById('raProductDeliveryModeInput').value || 'proxy';
+    const raDeliveryMode = normalizeRaDeliveryMode(document.getElementById('raProductDeliveryModeInput').value);
     const raRequiresTunnel = document.getElementById('raProductRequiresTunnelInput').checked ? 1 : 0;
     const originHost = document.getElementById('raProductOriginHostInput').value.trim();
     const landingPath = document.getElementById('raProductOriginLandingPathInput').value.trim();

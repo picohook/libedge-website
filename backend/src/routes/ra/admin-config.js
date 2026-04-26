@@ -45,7 +45,7 @@ const ALLOWED_ACCESS_TYPES = [
   'email_password_external',
   'mixed',
 ];
-const ALLOWED_RA_DELIVERY_MODES = ['proxy', 'direct_login'];
+const ALLOWED_RA_DELIVERY_MODES = ['session_host_proxy', 'path_proxy'];
 
 const MAX_RECIPE_BYTES = 16 * 1024; // 16 KB — recipe genelde ~1-2 KB
 const MAX_ALLOWLIST_BYTES = 4 * 1024;
@@ -228,7 +228,7 @@ export function registerRaAdminConfig(app) {
          s.product_slug,
          p.name          AS product_name,
          s.access_type,
-         COALESCE(p.ra_delivery_mode, 'proxy') AS ra_delivery_mode,
+         COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
          s.access_url,
          s.ra_credential_scope,
          s.ra_valid_until,
@@ -413,6 +413,7 @@ function normalizeLandingPath(raw) {
 
 function normalizeDeliveryMode(raw) {
   const mode = String(raw || '').trim().toLowerCase();
-  if (!mode) return 'proxy';
+  if (!mode) return 'path_proxy';
+  if (mode === 'proxy' || mode === 'direct_login') return 'path_proxy';
   return mode;
 }

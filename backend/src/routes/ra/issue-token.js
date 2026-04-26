@@ -34,6 +34,7 @@ import { ensureRemoteAccessSchema } from '../../ra/schema.js';
 import { buildProxyLandingPath } from '../../ra/proxy-url.js';
 
 const SESSION_TTL_SEC = 3600; // session_host_proxy oturumu süresi
+const ALLOWED_DELIVERY_MODES = new Set(['session_host_proxy', 'path_proxy']);
 
 /** 7 karakterlik base36 rastgele ID (cryptographically random) */
 function generateSessionId() {
@@ -140,8 +141,12 @@ export function registerRaIssueToken(app) {
       }
     }
 
-    // Delivery mode: path_proxy (default) veya session_host_proxy
-    const deliveryMode = sub.ra_delivery_mode || 'path_proxy';
+    // Delivery mode: path_proxy (default) veya session_host_proxy.
+    // Legacy DB değerleri ('proxy', 'direct_login') path_proxy olarak yürür.
+    const deliveryMode = normalizeDeliveryMode(sub.ra_delivery_mode);
+    if (!ALLOWED_DELIVERY_MODES.has(deliveryMode)) {
+      return c.json({ error: `ra_delivery_mode geçersiz: ${deliveryMode}` }, 500);
+    }
 
     // Kısa ömürlü proxy JWT (HS256)
     const jti = newJti();
@@ -211,24 +216,28 @@ export function registerRaIssueToken(app) {
       } catch { /* ip hashing opsiyonel */ }
     }
 
-    c.executionCtx.waitUntil(
-      c.env.DB.prepare(
-        `INSERT INTO ra_access_logs
-           (user_id, institution_id, product_slug, target_host, target_path, ip_hash, ts)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+    const accessLogWrite = c.env.DB.prepare(
+      `INSERT INTO ra_access_logs
+         (user_id, institution_id, product_slug, target_host, target_path, ip_hash, ts)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        userId,
+        institutionId,
+        sub.product_slug,
+        sub.ra_origin_host,
+        landingPath || '/',
+        ipHash,
+        now
       )
-        .bind(
-          userId,
-          institutionId,
-          sub.product_slug,
-          sub.ra_origin_host,
-          landingPath || '/',
-          ipHash,
-          now
-        )
-        .run()
-        .catch((err) => console.error('[RA] access log write failed', err))
-    );
+      .run()
+      .catch((err) => console.error('[RA] access log write failed', err));
+
+    try {
+      c.executionCtx.waitUntil(accessLogWrite);
+    } catch {
+      // Hono unit tests do not provide an ExecutionContext.
+    }
 
     return c.json({ redirect_url: redirectUrl, expires_at: now + 300 });
   });
@@ -282,4 +291,11 @@ function hasUpstreamLogin(recipeJson) {
   } catch {
     return false;
   }
+}
+
+function normalizeDeliveryMode(raw) {
+  const mode = String(raw || '').trim().toLowerCase();
+  if (!mode) return 'path_proxy';
+  if (mode === 'proxy' || mode === 'direct_login') return 'path_proxy';
+  return mode;
 }

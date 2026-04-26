@@ -138,6 +138,14 @@ export async function ensureRemoteAccessSchema(db) {
   // Bilinen ürünler için güvenli RA varsayımları.
   // Yalnızca bariz şekilde yapılandırılmamış kayıtları backfill ederiz;
   // admin'in elle verdiği değerleri ezmeyiz.
+  // Eski delivery enum değerleri standartlaştırılır:
+  // proxy/direct_login artık path_proxy davranışıyla temsil edilir.
+  await db.prepare(
+    `UPDATE products
+        SET ra_delivery_mode = 'path_proxy'
+      WHERE LOWER(TRIM(COALESCE(ra_delivery_mode, ''))) IN ('proxy', 'direct_login')`
+  ).run();
+
   // jove-research RA varsayımları — yalnızca boş/yapılandırılmamış alanları doldurur,
   // admin'in elle verdiği değerleri ezmez.
   await db.prepare(
@@ -145,7 +153,7 @@ export async function ensureRemoteAccessSchema(db) {
         SET ra_enabled      = 1,
             ra_origin_host  = COALESCE(NULLIF(TRIM(ra_origin_host), ''), 'www.jove.com'),
             ra_delivery_mode = CASE
-              WHEN ra_delivery_mode IS NULL OR TRIM(ra_delivery_mode) = '' OR ra_delivery_mode = 'proxy'
+              WHEN ra_delivery_mode IS NULL OR TRIM(ra_delivery_mode) = ''
               THEN 'session_host_proxy'
               ELSE ra_delivery_mode
             END,

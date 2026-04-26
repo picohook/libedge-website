@@ -51,7 +51,7 @@ async function makeAuthHeader(payload, secret) {
 }
 
 describe('RA issue-token route', () => {
-  it('returns publisher login URL for direct_login subscriptions', async () => {
+  it('maps legacy direct_login delivery mode to path_proxy redirects', async () => {
     const db = new FakeD1([
       {
         match: 'FROM institution_subscriptions isub',
@@ -63,7 +63,7 @@ describe('RA issue-token route', () => {
           ra_credential_enc: null,
           ra_recipe_override_json: null,
           ra_valid_until: null,
-          access_type: 'email_password_external',
+          access_type: 'proxy',
           ra_enabled: 1,
           ra_delivery_mode: 'direct_login',
           ra_origin_host: 'www.pangram.com',
@@ -71,6 +71,10 @@ describe('RA issue-token route', () => {
           ra_requires_tunnel: 0,
           ra_origin_landing_path: '/login',
         }),
+      },
+      {
+        match: 'FROM institution_ra_settings',
+        first: async () => ({ enabled: 1, tunnel_status: 'ok' }),
       },
     ]);
 
@@ -99,14 +103,15 @@ describe('RA issue-token route', () => {
     );
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toMatchObject({
-      redirect_url: 'https://www.pangram.com/login',
-    });
+    const data = await res.json();
+    expect(data.redirect_url).toMatch(
+      /^https:\/\/proxy-staging\.selmiye\.com\/www-pangram-com\/login\?t=/
+    );
   });
 });
 
 describe('RA admin subscriptions route', () => {
-  it('includes direct_login rows in RA subscriptions listing', async () => {
+  it('normalizes legacy delivery modes in RA subscriptions listing', async () => {
     const db = new FakeD1([
       {
         match: 'FROM institution_subscriptions s',
@@ -159,7 +164,7 @@ describe('RA admin subscriptions route', () => {
           id: 14,
           product_slug: 'pangram',
           access_type: 'email_password_external',
-          ra_delivery_mode: 'direct_login',
+          ra_delivery_mode: 'path_proxy',
           ra_enabled: 1,
         }),
       ],
