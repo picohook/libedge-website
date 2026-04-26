@@ -41,9 +41,9 @@ id = "a3a0f76dca834921b4b1000bce675037"
 # ──────────────────────────────────────────────────────────────────────────
 [env.staging]
 name = "libedge-ra-proxy-staging"
-# POC: tek subdomain (query-param target encoding) — Universal SSL yeterli
 routes = [
-  { pattern = "proxy-staging.selmiye.com/*", zone_name = "selmiye.com" }
+  { pattern = "proxy-staging.selmiye.com/*", zone_name = "selmiye.com" },
+  { pattern = "*.selmiye.com/*",             zone_name = "selmiye.com" }
 ]
 
 [env.staging.vars]

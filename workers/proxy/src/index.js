@@ -1,26 +1,19 @@
 /**
  * workers/proxy/src/index.js
  *
- * Remote Access Proxy Worker — proxy-staging.selmiye.com/* route'una bağlı.
- * Path-based encoding kullanır; wildcard SSL cert gerekmez.
+ * Remote Access Proxy Worker — iki modda çalışır:
  *
- * URL formatı:
- *   https://proxy-staging.selmiye.com/{encoded-host}/{path}
- *   örnek: https://proxy-staging.selmiye.com/www-jove-com/article/123
+ * 1. path_proxy   → proxy-staging.selmiye.com/{encoded-host}/{path}
+ * 2. session_host_proxy → r{sid}.selmiye.com/{path}  (JoVE, Primal vb.)
  *
- * Akış:
- *   1. Path'in ilk segmentinden hedefi decode et: www-jove-com → www.jove.com
- *   2. ?t= query param'da token var mı?
- *      - Varsa: doğrula, session cookie set et, 302 ile URL'i temizle
- *   3. Session cookie varsa: doğrula, upstream'e relay et
- *   4. Session yoksa: 401
+ * Mod tespiti: hostname'e göre otomatik.
  */
 
 import { verifyProxyToken } from '../../../backend/src/ra/jwt.js';
 import { decodeHost, isValidEncodedHost } from '../../../backend/src/ra/host.js';
-import { proxyToUpstream } from './upstream.js';
+import { egressFetch } from './egress-client.js';
 
-const SESSION_COOKIE = 'ra_proxy_session';
+const SESSION_COOKIE  = 'ra_proxy_session';
 const SESSION_TTL_SEC = 3600;
 
 export default {
@@ -36,7 +29,153 @@ export default {
 
 async function handle(request, env, ctx) {
   const url = new URL(request.url);
+  const hostname = url.hostname;
 
+  // ra-egress tunnel hostname — bu Worker handle etmez, origin'e pass-through.
+  // *.selmiye.com/* route'u ra-egress.selmiye.com'u da yakaladığından buraya düşer.
+  const egressHost = env.RA_EGRESS_HOST || 'ra-egress.selmiye.com';
+  if (hostname === egressHost) {
+    return fetch(request);
+  }
+
+  // Session-host modu tespiti: "r" + 7 alfanumerik + "." + domain
+  // örn: rx7f3a9b.selmiye.com  → sessionId = "rx7f3a9b"
+  const sessionHostMatch = hostname.match(/^(r[a-z0-9]{6,8})\./);
+  if (sessionHostMatch) {
+    return await handleSessionHost(request, env, url, sessionHostMatch[1]);
+  }
+
+  // Path-proxy modu (mevcut)
+  return await handlePathProxy(request, env, url);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SESSION-HOST PROXY
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function handleSessionHost(request, env, url, sessionId) {
+  // Token var mı? (issue-token'dan gelen ilk yönlendirme)
+  const token = url.searchParams.get('t');
+  if (token) {
+    return await acceptSessionHostToken(request, env, token, url, sessionId);
+  }
+
+  // Session cookie kontrol
+  const cookieVal = readCookie(request.headers.get('Cookie'), SESSION_COOKIE);
+  if (!cookieVal) {
+    return htmlError(401, 'Oturum bulunamadı. Lütfen portal üzerinden tekrar erişin.');
+  }
+
+  // KV'dan session yükle
+  const session = await env.RA_UPSTREAM_SESSIONS.get(`rhost:${sessionId}`, 'json');
+  if (!session || session.expires_at < Math.floor(Date.now() / 1000)) {
+    return htmlError(401, 'Oturum süresi dolmuş. Portal üzerinden yeniden erişin.');
+  }
+
+  // Upstream relay — path ve query aynen korunur, sadece host değişir
+  const targetUrl = `https://${session.origin_host}${url.pathname}${url.search}`;
+  const upstreamHeaders = buildUpstreamHeaders(request.headers);
+
+  let upstreamResp;
+  try {
+    upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
+      method: request.method,
+      headers: upstreamHeaders,
+      body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
+    });
+  } catch (err) {
+    console.error('egress error (session-host)', err);
+    return htmlError(502, 'Kurumun erişim sunucusuna ulaşılamadı.', err.message);
+  }
+
+  const respHeaders = buildSessionHostResponseHeaders(
+    upstreamResp.headers, url.hostname, session.origin_host
+  );
+
+  return new Response(upstreamResp.body, {
+    status: upstreamResp.status,
+    statusText: upstreamResp.statusText,
+    headers: respHeaders,
+  });
+}
+
+async function acceptSessionHostToken(request, env, token, url, sessionId) {
+  // Token doğrula
+  let payload;
+  try {
+    payload = await verifyProxyToken(token, env.RA_PROXY_TOKEN_SECRET);
+  } catch (err) {
+    return htmlError(401, 'Erişim bağlantısı geçersiz veya süresi dolmuş.', err.message);
+  }
+
+  // jti tek kullanımlık
+  const jtiKey = `ra:jti:${payload.jti}`;
+  const used = await env.RATE_LIMIT_KV.get(jtiKey);
+  if (used) {
+    return htmlError(401, 'Bu bağlantı daha önce kullanılmış. Portal üzerinden yeni bağlantı alın.');
+  }
+  await env.RATE_LIMIT_KV.put(jtiKey, 'used', { expirationTtl: 600 });
+
+  // mod uyumu kontrolü
+  if (payload.mod !== 'session_host_proxy') {
+    return htmlError(400, 'Token modu bu proxy ile uyumsuz.');
+  }
+
+  // KV session'ı doğrula (issue-token tarafından önceden yazılmış)
+  const session = await env.RA_UPSTREAM_SESSIONS.get(`rhost:${sessionId}`, 'json');
+  if (!session) {
+    return htmlError(401, 'Oturum kaydı bulunamadı. Token ile session eşleşmiyor.');
+  }
+
+  // Cookie set et — SADECE bu subdomain'e (cross-session izolasyon)
+  const clean = new URL(url);
+  clean.searchParams.delete('t');
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: clean.toString(),
+      'Set-Cookie':
+        `${SESSION_COOKIE}=${encodeURIComponent(sessionId)}; ` +
+        `Domain=${url.hostname}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_TTL_SEC}`,
+    },
+  });
+}
+
+function buildSessionHostResponseHeaders(incoming, proxyHostname, originHost) {
+  const out = new Headers();
+  for (const [k, v] of incoming.entries()) {
+    if (STRIP_RESPONSE.has(k.toLowerCase())) continue;
+    if (k.toLowerCase() === 'set-cookie') {
+      // Publisher cookie → proxy subdomain'e yönlendir
+      const stripped = v
+        .replace(/domain=[^;]+;?\s*/gi, '')
+        .replace(/secure;?\s*/gi, '')
+        .trim();
+      out.append('Set-Cookie',
+        `${stripped}; Domain=${proxyHostname}; Path=/; Secure; SameSite=Lax`);
+      continue;
+    }
+    if (k.toLowerCase() === 'location') {
+      // Publisher'ın kendi hostname'ine yönlendirmesi → proxy subdomain'e çevir
+      try {
+        const loc = new URL(v);
+        if (loc.hostname === originHost || loc.hostname.endsWith(`.${originHost}`)) {
+          out.set('Location', `https://${proxyHostname}${loc.pathname}${loc.search}${loc.hash}`);
+          continue;
+        }
+      } catch { /* relative → olduğu gibi bırak */ }
+    }
+    out.set(k, v);
+  }
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATH-PROXY (mevcut akış — ayrı fonksiyona alındı)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function handlePathProxy(request, env, url) {
   // 1. Path parse: /www-jove-com/article/123
   const parsed = parseProxyPath(url.pathname);
   if (!parsed) {
@@ -49,7 +188,7 @@ async function handle(request, env, ctx) {
   }
   const targetHost = decodeHost(encodedLabel);
 
-  // 2. Token var mı? (?t= query param)
+  // 2. Token var mı?
   const token = url.searchParams.get('t');
   if (token) {
     return await acceptTokenAndRedirect(request, env, token, url, encodedLabel, remainingPath);
@@ -63,23 +202,35 @@ async function handle(request, env, ctx) {
     return htmlError(401, 'Oturum bulunamadı. Lütfen portal üzerinden tekrar erişin.');
   }
 
-  // Session'ın target_host'u ile path'teki host uyuşuyor mu?
   if (session.target_host !== targetHost) {
-    return htmlError(
-      403,
-      'Bu oturum farklı bir kaynağa ait. Portal üzerinden ilgili kaynağa yeniden erişin.'
-    );
+    return htmlError(403,
+      'Bu oturum farklı bir kaynağa ait. Portal üzerinden ilgili kaynağa yeniden erişin.');
+  }
+
+  // 4. Upstream relay
+  const targetUrl = new URL(`https://${targetHost}${remainingPath}${url.search}`);
+  const upstreamHeaders = buildUpstreamHeaders(request.headers);
+
+  let upstreamResp;
+  try {
+    upstreamResp = await egressFetch(env, session.institution_id, targetUrl.toString(), {
+      method: request.method,
+      headers: upstreamHeaders,
+      body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
+    });
+  } catch (err) {
+    console.error('egress error', err);
+    return htmlError(502, 'Kurumun erişim sunucusuna ulaşılamadı.', err.message);
   }
 
   const baseHost = env.RA_PROXY_BASE_HOST || url.hostname;
-  return await proxyToUpstream(
-    env,
-    session,
-    sessionId,
-    request,
-    baseHost,
-    { encodedLabel, remainingPath }
-  );
+  const respHeaders = buildResponseHeaders(upstreamResp.headers, baseHost, encodedLabel);
+
+  return new Response(upstreamResp.body, {
+    status: upstreamResp.status,
+    statusText: upstreamResp.statusText,
+    headers: respHeaders,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,30 +247,6 @@ function parseProxyPath(pathname) {
   return { encodedLabel, remainingPath };
 }
 
-function normalizeLandingPath(raw) {
-  if (!raw) return '/';
-  const trimmed = String(raw).trim();
-  if (!trimmed) return '/';
-  if (/^[a-z]+:\/\//i.test(trimmed)) return '/';
-  if (trimmed.includes('..')) return '/';
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-}
-
-function applyLandingPath(url, encodedLabel, landingPath) {
-  const normalized = normalizeLandingPath(landingPath);
-  const queryIdx = normalized.indexOf('?');
-  const pathPart = queryIdx >= 0 ? normalized.slice(0, queryIdx) || '/' : normalized;
-  const extraQuery = queryIdx >= 0 ? normalized.slice(queryIdx + 1) : '';
-
-  url.pathname = `/${encodedLabel}${pathPart}`;
-  if (!extraQuery) return;
-
-  const params = new URLSearchParams(extraQuery);
-  for (const [k, v] of params.entries()) {
-    url.searchParams.set(k, v);
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Token kabul → session oluştur → 302 ile token'sız URL'e yönlendir
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,7 +261,7 @@ async function acceptTokenAndRedirect(request, env, token, url, encodedLabel, re
   // jti tek kullanımlık
   const jtiKey = `ra:jti:${payload.jti}`;
   const used = await env.RATE_LIMIT_KV.get(jtiKey);
-  if (used === 'used') {
+  if (used) {
     return htmlError(401, 'Bu erişim bağlantısı daha önce kullanılmış. Portal üzerinden yeni bağlantı alın.');
   }
   await env.RATE_LIMIT_KV.put(jtiKey, 'used', { expirationTtl: 600 });
@@ -152,8 +279,6 @@ async function acceptTokenAndRedirect(request, env, token, url, encodedLabel, re
     subscription_id: payload.sid,
     product_slug:    payload.pid,
     target_host:     decodeHost(payload.tgt),
-    landing_path:    normalizeLandingPath(payload.lp),
-    requires_tunnel: payload.rt == null ? 1 : (payload.rt ? 1 : 0),
     created_at:      Math.floor(Date.now() / 1000),
     expires_at:      Math.floor(Date.now() / 1000) + SESSION_TTL_SEC,
   };
@@ -166,7 +291,6 @@ async function acceptTokenAndRedirect(request, env, token, url, encodedLabel, re
   // 302: token'ı URL'den sil
   const clean = new URL(url);
   clean.searchParams.delete('t');
-  applyLandingPath(clean, encodedLabel, session.landing_path);
   const baseHost = env.RA_PROXY_BASE_HOST || url.hostname;
 
   return new Response(null, {
@@ -190,6 +314,73 @@ async function loadProxySession(env, sid) {
     return s;
   } catch {
     return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Header helpers
+// ─────────────────────────────────────────────────────────────────────────────
+const HOP_BY_HOP = new Set([
+  'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
+  'te', 'trailers', 'transfer-encoding', 'upgrade', 'host',
+]);
+
+function buildUpstreamHeaders(incoming) {
+  const out = new Headers();
+  for (const [k, v] of incoming.entries()) {
+    if (HOP_BY_HOP.has(k.toLowerCase())) continue;
+    // Kendi session cookie'mizi publisher'a iletme
+    if (k.toLowerCase() === 'cookie') continue;
+    out.set(k, v);
+  }
+  return out;
+}
+
+const STRIP_RESPONSE = new Set([
+  'connection', 'keep-alive', 'transfer-encoding', 'trailer',
+  'content-security-policy', 'content-security-policy-report-only',
+  'strict-transport-security',
+]);
+
+function buildResponseHeaders(incoming, baseHost, encodedLabel) {
+  const out = new Headers();
+  for (const [k, v] of incoming.entries()) {
+    if (STRIP_RESPONSE.has(k.toLowerCase())) continue;
+    if (k.toLowerCase() === 'set-cookie') {
+      // Publisher cookie → proxy domain'e yönlendir, path'e publisher prefix ekle
+      const stripped = v
+        .replace(/domain=[^;]+;?\s*/gi, '')
+        .replace(/secure;?\s*/gi, '')
+        .trim();
+      out.append(
+        'Set-Cookie',
+        `${stripped}; Domain=${baseHost}; Path=/${encodedLabel}/; Secure; SameSite=Lax`
+      );
+      continue;
+    }
+    // Location header rewrite: publisher kendi domain'ine yönlendiriyorsa proxy'e çevir
+    if (k.toLowerCase() === 'location') {
+      out.set('Location', rewriteLocation(v, baseHost, encodedLabel));
+      continue;
+    }
+    out.set(k, v);
+  }
+  return out;
+}
+
+// Publisher'ın Location header'ı (redirect) → proxy URL'e çevir
+function rewriteLocation(location, baseHost, currentEncodedLabel) {
+  try {
+    const loc = new URL(location);
+    // Aynı origin'e yönlendirme → proxy path'e çevir
+    const locEncoded = loc.hostname
+      .toLowerCase()
+      .replace(/-/g, '--')
+      .replace(/\./g, '-');
+    return `https://${baseHost}/${locEncoded}${loc.pathname}${loc.search}${loc.hash}`;
+  } catch {
+    // Relative URL — olduğu gibi bırak, tarayıcı proxy domain'i baz alır
+    return location;
   }
 }
 

@@ -32,6 +32,18 @@ import { signProxyToken, newJti } from '../../ra/jwt.js';
 import { encodeHost } from '../../ra/host.js';
 import { ensureRemoteAccessSchema } from '../../ra/schema.js';
 
+const SESSION_TTL_SEC = 3600; // session_host_proxy oturumu süresi
+
+/** 7 karakterlik base36 rastgele ID (cryptographically random) */
+function generateSessionId() {
+  const arr = new Uint8Array(5);
+  crypto.getRandomValues(arr);
+  return Array.from(arr)
+    .map(b => b.toString(36).padStart(2, '0'))
+    .join('')
+    .slice(0, 7);
+}
+
 /**
  * @param {import('hono').Hono} app
  */
@@ -75,6 +87,18 @@ export function registerRaIssueToken(app) {
       return c.json({ error: 'Abonelik bulunamadı' }, 403);
     }
 
+    // access_type = 'proxy' olmalı; aksi hâlde RA bu aboneliği handle etmez
+    if (sub.access_type !== 'proxy') {
+      return c.json(
+        {
+          error: 'Bu abonelik uzaktan erişim proxy üzerinden değil, ' +
+                 'doğrudan publisher linki ile açılır.',
+          access_type: sub.access_type,
+        },
+        409
+      );
+    }
+
     // Süre kontrolü: ra_valid_until (unix ts override) veya end_date (YYYY-MM-DD string)
     const now = Math.floor(Date.now() / 1000);
     const raExp = sub.ra_valid_until ? Number(sub.ra_valid_until) : null;
@@ -89,32 +113,17 @@ export function registerRaIssueToken(app) {
       return c.json({ error: 'Bu ürün için uzaktan erişim aktif değil' }, 409);
     }
 
-    const deliveryMode = normalizeDeliveryMode(sub.ra_delivery_mode);
-
-    // ra_origin_host zorunlu — hyphen-encode
+    // ra_origin_host zorunlu
     if (!sub.ra_origin_host) {
       return c.json({ error: 'Publisher origin host tanımlı değil' }, 500);
     }
-    const landingPath = normalizeLandingPath(sub.ra_origin_landing_path);
 
-    if (deliveryMode === 'direct_login') {
-      const redirectUrl = `https://${sub.ra_origin_host}${landingPath}`;
-      return c.json({ redirect_url: redirectUrl, expires_at: now + 300 });
-    }
-
-    const tgt = encodeHost(sub.ra_origin_host);
-
-    // Tünel zorunluluğu — IP-gated publisher için gerekli
-    // Heuristik: recipe'te upstream_login varsa credential-auth yeterli,
-    // yoksa IP egress şart → institution_ra_settings.enabled = 1 olmalı.
+    // Tünel zorunluluğu — credential-only publisher'lar hariç egress şart
     const recipeJson =
       sub.ra_recipe_override_json || sub.ra_login_recipe_json || null;
     const hasLoginRecipe = recipeJson ? hasUpstreamLogin(recipeJson) : false;
-    const requiresTunnel = sub.ra_requires_tunnel == null
-      ? 1
-      : (sub.ra_requires_tunnel ? 1 : 0);
 
-    if (!hasLoginRecipe && requiresTunnel) {
+    if (!hasLoginRecipe) {
       const settings = await c.env.DB.prepare(
         `SELECT enabled, tunnel_status
            FROM institution_ra_settings
@@ -130,29 +139,67 @@ export function registerRaIssueToken(app) {
       }
     }
 
+    // Delivery mode: path_proxy (default) veya session_host_proxy
+    const deliveryMode = sub.ra_delivery_mode || 'path_proxy';
+
     // Kısa ömürlü proxy JWT (HS256)
     const jti = newJti();
     const token = await signProxyToken(
       {
         iss: 'ra-main',
         aud: 'ra-proxy',
-        sub: userId,              // INTEGER user id
-        iid: institutionId,       // INTEGER institution id
-        sid: sub.id,              // INTEGER subscription id
-        pid: sub.product_slug,    // TEXT product slug
-        tgt,                      // encoded publisher host
-        lp: landingPath,          // ilk açılış path'i ('/' veya '/login' vb.)
-        rt: requiresTunnel,       // 1 => egress tunnel, 0 => direct/public fetch
-        exp: now + 300,           // 5 dk
+        sub: userId,
+        iid: institutionId,
+        sid: sub.id,
+        pid: sub.product_slug,
+        tgt: deliveryMode === 'session_host_proxy'
+          ? sub.ra_origin_host          // düz hostname, encode edilmez
+          : encodeHost(sub.ra_origin_host), // path_proxy: hyphen-encoded
+        mod: deliveryMode,              // proxy Worker modu seçmek için
+        exp: now + 300,
         jti,
       },
       c.env.RA_PROXY_TOKEN_SECRET
     );
 
-    // Proxy domain'i env'den; yoksa prod default
-    // Path-based format: https://{proxyHost}/{tgt}/?t={token}
-    const proxyHost = c.env.RA_PROXY_HOST || 'proxy.selmiye.com';
-    const redirectUrl = `https://${proxyHost}/${tgt}/?t=${token}`;
+    // jti proxy Worker tarafından ilk kullanımda 'used' olarak yazılır.
+    // Burada yazmıyoruz — proxy tek yazar, aksi hâlde '1' değeri "kullanıldı" sanılır.
+
+    // Landing path: ürün bazında ilk açılacak sayfa (örn. JoVE Research → /research)
+    // Boş/null ise '/' kullanılır. Başında slash olduğundan emin ol.
+    const rawLanding = sub.ra_origin_landing_path
+      ? String(sub.ra_origin_landing_path).trim()
+      : '';
+    const landingPath = rawLanding && rawLanding !== '/'
+      ? (rawLanding.startsWith('/') ? rawLanding : `/${rawLanding}`)
+      : '';   // boş string → URL'de sadece /?t= olur
+
+    let redirectUrl;
+    if (deliveryMode === 'session_host_proxy') {
+      // Session-host: r{sid}.{baseHost} formatında unique subdomain
+      const baseHost = c.env.RA_PROXY_BASE_HOST || 'selmiye.com';
+      const sid = generateSessionId();  // 7 char base36
+      // KV'ya session kaydı yaz (token doğrulanmadan ÖNCE — proxy Worker doğrular)
+      await c.env.RA_UPSTREAM_SESSIONS.put(
+        `rhost:r${sid}`,
+        JSON.stringify({
+          origin_host:     sub.ra_origin_host,
+          institution_id:  institutionId,
+          user_id:         userId,
+          product_slug:    sub.product_slug,
+          subscription_id: sub.id,
+          created_at:      now,
+          expires_at:      now + SESSION_TTL_SEC,
+        }),
+        { expirationTtl: SESSION_TTL_SEC }
+      );
+      // /research?t=JWT → proxy token doğrular → 302 /research → JoVE /research
+      redirectUrl = `https://r${sid}.${baseHost}${landingPath}/?t=${token}`;
+    } else {
+      const tgt = encodeHost(sub.ra_origin_host);
+      const proxyHost = c.env.RA_PROXY_HOST || 'proxy.selmiye.com';
+      redirectUrl = `https://${proxyHost}/${tgt}${landingPath}/?t=${token}`;
+    }
 
     return c.json({ redirect_url: redirectUrl, expires_at: now + 300 });
   });
@@ -176,10 +223,9 @@ async function lookupSubscription(db, { institutionId, subscriptionId, productSl
         p.default_access_type
       )                            AS access_type,
       COALESCE(p.ra_enabled, 0)    AS ra_enabled,
-      p.ra_delivery_mode,
       p.ra_origin_host,
       p.ra_login_recipe_json,
-      COALESCE(p.ra_requires_tunnel, 1) AS ra_requires_tunnel,
+      COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
       p.ra_origin_landing_path
     FROM institution_subscriptions isub
     JOIN products p ON p.slug = isub.product_slug
@@ -207,18 +253,4 @@ function hasUpstreamLogin(recipeJson) {
   } catch {
     return false;
   }
-}
-
-function normalizeLandingPath(raw) {
-  if (!raw) return '/';
-  const trimmed = String(raw).trim();
-  if (!trimmed) return '/';
-  if (/^[a-z]+:\/\//i.test(trimmed)) return '/';
-  if (trimmed.includes('..')) return '/';
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-}
-
-function normalizeDeliveryMode(raw) {
-  const mode = String(raw || '').trim().toLowerCase();
-  return mode || 'proxy';
 }

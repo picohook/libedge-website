@@ -1,41 +1,51 @@
 # ra-egress/docker-compose.yml
 #
-# Kurum IT'sine tek dosya olarak verilen paket. Gerekli:
-#   - Docker + Docker Compose (RPi 4, 2GB RAM yeter)
-#   - Outbound 443 HTTPS erişimi (cloudflared tünel için)
-#   - Admin panelimizden alınmış TUNNEL_TOKEN ve EGRESS_SHARED_SECRET
+# Kurum IT'sine teslim edilen paket — kalıcı Named Tunnel kurulumu.
 #
-# Kurulum:
-#   1) .env dosyasını bu klasörde oluştur (aşağıdaki şablon):
-#        TUNNEL_TOKEN=<admin panelden kopyala>
-#        EGRESS_SHARED_SECRET=<admin panelden kopyala>
-#        ALLOWED_HOST_REGEX=<admin panelden kopyala, ör. ^(www\\.)?sciencedirect\\.com$>
-#   2) docker compose up -d
-#   3) Admin panelinde "Tüneli Test Et" butonu → yeşil ise tamam
+# Gereksinimler:
+#   - Docker + Docker Compose (RPi 4 / Windows / Linux, 1 GB RAM yeter)
+#   - Outbound 443 (HTTPS) erişimi — inbound port açılmasına gerek YOK
+#   - .env dosyası (tunnel-provision.ps1 otomatik oluşturur)
+#
+# İLK KURULUM:
+#   .\tunnel-provision.ps1           ← tek seferlik, DNS + token ayarlar
+#
+# SONRAKI BAŞLATMALAR (URL değişmez):
+#   docker compose up -d             ← her seferinde bu kadar
+#
+# DURDURMA:
+#   docker compose down
+#
+# LOGLAR:
+#   docker compose logs -f cloudflared
+#   docker compose logs -f ra-egress
 
 services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
+    # TUNNEL_TOKEN → tunnel kimliğini ve credentials'ı barındırır.
+    # Named tunnel: URL asla değişmez, container restart'ta otomatik bağlanır.
     command: tunnel --no-autoupdate run
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     depends_on:
       - ra-egress
-    # cloudflared ra-egress'e Docker network üzerinden erişir.
-    # Inbound port publish etmiyoruz — tamamen outbound.
+    # cloudflared, ra-egress'e Docker iç ağından http://ra-egress:8080 ile erişir.
+    # Hiçbir inbound port açılmaz — firewall değişikliği gerekmez.
 
   ra-egress:
-    # POC aşamasında image publish edilmedi — yerelde build edilir.
-    # Registry'ye publish edildiğinde: image: ghcr.io/libedge/ra-egress:latest
-    build: .
-    image: ra-egress:local
+    build: .                          # Lokal build (ghcr.io image hazır olunca değiştir)
+    # image: ghcr.io/libedge/ra-egress:latest
     restart: unless-stopped
     environment:
       - EGRESS_SHARED_SECRET=${EGRESS_SHARED_SECRET}
-      - ALLOWED_HOST_REGEX=${ALLOWED_HOST_REGEX}
+      - ALLOWED_HOST_REGEX=${ALLOWED_HOST_REGEX:-^(www\.jove\.com|jove\.com|cdn\.jove\.com|player\.jove\.com)$$}
       - MAX_REQUEST_BYTES=10485760
       - LISTEN_ADDR=:8080
-    # Port publish edilmiyor — sadece cloudflared container'ı aynı network
-    # üzerinden http://ra-egress:8080 ile erişir.
-    # Kurum firewall'ı açısından ek port açılması gerekmez.
+    # Port dışarıya açılmıyor — sadece cloudflared container'ı erişir.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

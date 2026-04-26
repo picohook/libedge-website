@@ -26,6 +26,7 @@ import {
 // cookie'sinin kendi ömründen daha uzun olmamalı — Pangram 1 yıl veriyor
 // ama 90 gün makul bir varsayılan (kurum abonelik süresi değişebilir).
 const COOKIE_JAR_TTL = 90 * 24 * 60 * 60; // 90 gün = 7776000 sn
+const PROXY_SESSION_COOKIE = 'ra_proxy_session';
 
 /**
  * Cookie jar KV key builder. User+host bazlı — kullanıcı-özel (aynı makineyi
@@ -82,14 +83,22 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
   for (const [k, v] of clientReq.headers.entries()) {
     const kl = k.toLowerCase();
     if (kl === 'host' || kl === 'cookie' || kl === 'cf-connecting-ip' ||
-        kl === 'cf-ray' || kl === 'x-forwarded-for' || kl === 'x-real-ip') continue;
+        kl === 'cf-ray' || kl === 'x-forwarded-for' || kl === 'x-real-ip' ||
+        kl === 'origin' || kl === 'referer' ||
+        kl === 'sec-fetch-site' || kl === 'sec-fetch-mode' ||
+        kl === 'sec-fetch-dest' || kl === 'sec-fetch-user' ||
+        kl === 'sec-ch-ua' || kl === 'sec-ch-ua-mobile' ||
+        kl === 'sec-ch-ua-platform' || kl === 'cdn-loop' ||
+        kl === 'x-forwarded-host' || kl === 'x-forwarded-proto') continue;
     upstreamHeaders.set(k, v);
   }
   upstreamHeaders.set('Host', targetHost);
   // Upstream Cookie jar (KV) — user+host bazlı, proxy session'dan bağımsız
   const jarKey = buildCookieJarKey(session, targetHost);
   const storedCookies = await env.RA_UPSTREAM_SESSIONS.get(jarKey);
-  if (storedCookies) upstreamHeaders.set('Cookie', storedCookies);
+  const browserCookies = stripProxySessionCookie(clientReq.headers.get('Cookie'));
+  const effectiveCookies = mergeBrowserCookieJar(storedCookies || '', browserCookies);
+  if (effectiveCookies) upstreamHeaders.set('Cookie', effectiveCookies);
 
   // spa_token modu: recipe login sonrası ele geçen bearer token header olarak
   // eklenir. Client tarafında localStorage inject HTML akışında yapılır (aşağıda).
@@ -149,10 +158,10 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
 
   // Response header'larını işle: Set-Cookie'leri jar'a; Location'u rewrite et
   const respHeaders = new Headers();
-  const setCookies = [];
+  const setCookies = collectSetCookies(upstreamResp);
   for (const [k, v] of upstreamResp.headers.entries()) {
     const kl = k.toLowerCase();
-    if (kl === 'set-cookie') { setCookies.push(v); continue; }
+    if (kl === 'set-cookie') { continue; }
     if (kl === 'content-security-policy' || kl === 'content-security-policy-report-only') {
       // CSP'yi geçici kaldır — inline rewrite/eval için POC'de zorluk çıkarır
       continue;
@@ -171,8 +180,15 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
 
   if (setCookies.length) {
     // Cookie'leri normalize edip Cookie header formatına çevir (Set-Cookie syntax → Cookie syntax)
-    const merged = mergeCookieJar(storedCookies || '', setCookies);
+    const merged = mergeCookieJar(effectiveCookies || '', setCookies);
     await env.RA_UPSTREAM_SESSIONS.put(jarKey, merged, { expirationTtl: COOKIE_JAR_TTL });
+    for (const sc of setCookies) {
+      respHeaders.append('Set-Cookie', rewriteSetCookieForProxy(sc, proxyHost, encodedLabel));
+    }
+  }
+  if (String(env.ENVIRONMENT || '').toLowerCase() === 'staging') {
+    respHeaders.set('X-RA-Debug-Set-Cookie-Count', String(setCookies.length));
+    respHeaders.set('X-RA-Debug-Upstream-Host', targetHost);
   }
 
   // Content-Type ile HTML mi kontrol et — öyleyse HTMLRewriter ile linkleri çevir
@@ -380,6 +396,80 @@ function mergeCookieJar(existing, newSetCookies) {
   const out = [];
   for (const [k, v] of map.entries()) out.push(`${k}=${v}`);
   return out.join('; ');
+}
+
+export function stripProxySessionCookie(header) {
+  if (!header) return '';
+  const kept = [];
+  for (const part of String(header).split(';').map((s) => s.trim()).filter(Boolean)) {
+    const idx = part.indexOf('=');
+    if (idx <= 0) continue;
+    const name = part.slice(0, idx).trim();
+    if (name === PROXY_SESSION_COOKIE) continue;
+    kept.push(part);
+  }
+  return kept.join('; ');
+}
+
+export function mergeBrowserCookieJar(existing, browser) {
+  const map = new Map();
+  for (const source of [existing, browser]) {
+    if (!source) continue;
+    for (const pair of String(source).split(';').map((s) => s.trim()).filter(Boolean)) {
+      const idx = pair.indexOf('=');
+      if (idx <= 0) continue;
+      const name = pair.slice(0, idx).trim();
+      const value = pair.slice(idx + 1).trim();
+      if (name) map.set(name, value);
+    }
+  }
+  const out = [];
+  for (const [k, v] of map.entries()) out.push(`${k}=${v}`);
+  return out.join('; ');
+}
+
+export function rewriteSetCookieForProxy(setCookie, proxyHost, encodedLabel) {
+  if (!setCookie) return setCookie;
+  const parts = String(setCookie).split(';').map((s) => s.trim()).filter(Boolean);
+  if (!parts.length) return setCookie;
+
+  const rewritten = [parts[0]];
+  let sawDomain = false;
+  let sawPath = false;
+
+  for (let i = 1; i < parts.length; i += 1) {
+    const part = parts[i];
+    const lower = part.toLowerCase();
+    if (lower.startsWith('domain=')) {
+      rewritten.push(`Domain=${proxyHost}`);
+      sawDomain = true;
+      continue;
+    }
+    if (lower.startsWith('path=')) {
+      const rawPath = part.slice(5).trim() || '/';
+      const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+      rewritten.push(`Path=/${encodedLabel}${normalizedPath}`);
+      sawPath = true;
+      continue;
+    }
+    rewritten.push(part);
+  }
+
+  if (!sawDomain) rewritten.push(`Domain=${proxyHost}`);
+  if (!sawPath) rewritten.push(`Path=/${encodedLabel}/`);
+  return rewritten.join('; ');
+}
+
+function collectSetCookies(resp) {
+  const out = [];
+  if (typeof resp.headers.getSetCookie === 'function') {
+    for (const v of resp.headers.getSetCookie()) out.push(v);
+    return out;
+  }
+  for (const [k, v] of resp.headers.entries()) {
+    if (k.toLowerCase() === 'set-cookie') out.push(v);
+  }
+  return out;
 }
 
 function escapeHtml(s) {

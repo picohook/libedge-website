@@ -33,7 +33,15 @@ const DEFAULT_PRODUCT_CATALOG = [
   { slug: 'nejmhealer', name: 'NEJMHealer', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
   { slug: 'imachek', name: 'ImaChek', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
   { slug: 'cochrane-library', name: 'Cochrane Library', category: 'Sağlık', region: 'Türkiye (EKUAL dışı)' },
-  { slug: 'jove-research', name: 'JoVE Research', category: 'Fen & Matematik', region: 'Türkiye' },
+  {
+    slug: 'jove-research',
+    name: 'JoVE Research',
+    category: 'Fen & Matematik',
+    region: 'Türkiye',
+    default_access_type: 'ip',
+    default_access_notes_tr: 'Uzaktan erişim LibEdge kurumsal erişim hattı üzerinden sağlanır.',
+    default_access_notes_en: 'Remote access is provided via the LibEdge institutional access path.',
+  },
   { slug: 'jove-education', name: 'JoVE Education', category: 'Fen & Matematik', region: 'Türkiye' },
   { slug: 'jove-business', name: 'JoVE Business', category: 'İş & Hukuk', region: 'Türkiye' },
   { slug: 'biorender', name: 'BioRender', category: 'Mühendislik', region: 'Türkiye' },
@@ -700,13 +708,44 @@ async function ensureProductsTableAndSeed(db) {
         default_requires_institution_email, default_requires_vpn,
         default_access_notes_tr, default_access_notes_en
       )
-      VALUES (?, ?, ?, ?, NULL, NULL, 0, 0, NULL, NULL)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       product.slug,
       product.name,
       product.category || null,
-      product.region || null
+      product.region || null,
+      product.default_access_type || null,
+      product.default_access_url || null,
+      product.default_requires_institution_email ? 1 : 0,
+      product.default_requires_vpn ? 1 : 0,
+      product.default_access_notes_tr || null,
+      product.default_access_notes_en || null
     ).run();
+
+    if (
+      product.default_access_type ||
+      product.default_access_url ||
+      product.default_access_notes_tr ||
+      product.default_access_notes_en ||
+      product.default_requires_institution_email ||
+      product.default_requires_vpn
+    ) {
+      await db.prepare(`
+        UPDATE products
+        SET
+          default_access_type = COALESCE(NULLIF(default_access_type, ''), ?),
+          default_access_url = COALESCE(NULLIF(default_access_url, ''), ?),
+          default_access_notes_tr = COALESCE(NULLIF(default_access_notes_tr, ''), ?),
+          default_access_notes_en = COALESCE(NULLIF(default_access_notes_en, ''), ?)
+        WHERE slug = ?
+      `).bind(
+        product.default_access_type || null,
+        product.default_access_url || null,
+        product.default_access_notes_tr || null,
+        product.default_access_notes_en || null,
+        product.slug
+      ).run();
+    }
   }
 }
 async function ensureInstitutionRootCollection(db, institutionId, createdBy = null) {
@@ -1758,6 +1797,7 @@ app.get('/api/subscription/list', async (c) => {
     SELECT s.id, s.product_slug, s.status, s.start_date, s.end_date, s.created_at, 'individual' as source,
            p.default_access_type AS access_type,
            p.default_access_url AS access_url,
+           COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
            COALESCE(p.default_requires_institution_email, 0) AS requires_institution_email,
            COALESCE(p.default_requires_vpn, 0) AS requires_vpn,
            p.default_access_notes_tr AS access_notes_tr,
@@ -1773,6 +1813,7 @@ app.get('/api/subscription/list', async (c) => {
       SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date, is2.created_at, 'institution' as source,
              COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
+             COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
@@ -1808,7 +1849,7 @@ app.get('/api/user/subscriptions', async (c) => {
     SELECT s.id, s.product_slug, s.status, s.start_date, s.end_date, 'individual' as source,
            p.default_access_type AS access_type,
            p.default_access_url AS access_url,
-           COALESCE(p.ra_delivery_mode, 'proxy') AS ra_delivery_mode,
+           COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
            COALESCE(p.default_requires_institution_email, 0) AS requires_institution_email,
            COALESCE(p.default_requires_vpn, 0) AS requires_vpn,
            p.default_access_notes_tr AS access_notes_tr,
@@ -1825,7 +1866,7 @@ app.get('/api/user/subscriptions', async (c) => {
       SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date, 'institution' as source,
              COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-             COALESCE(p.ra_delivery_mode, 'proxy') AS ra_delivery_mode,
+             COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
@@ -2869,7 +2910,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                is2.access_notes_en AS raw_access_notes_en,
                COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
                COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-               COALESCE(p.ra_delivery_mode, 'proxy') AS ra_delivery_mode,
+               COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
                COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
@@ -2892,7 +2933,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                is2.access_notes_en AS raw_access_notes_en,
                COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
                COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-               COALESCE(p.ra_delivery_mode, 'proxy') AS ra_delivery_mode,
+               COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
                COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,

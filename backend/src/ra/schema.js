@@ -31,14 +31,14 @@ export async function ensureRemoteAccessSchema(db) {
   // herkese açık ama credential'la giriş gereken publisher'lar için 0.
   await ensureColumns(db, 'products', [
     { name: 'ra_enabled', def: 'INTEGER NOT NULL DEFAULT 0' },
-    { name: 'ra_delivery_mode', def: "TEXT NOT NULL DEFAULT 'proxy'" },
+    { name: 'ra_delivery_mode', def: "TEXT NOT NULL DEFAULT 'path_proxy'" },
     { name: 'ra_origin_host', def: 'TEXT' },
     { name: 'ra_login_recipe_json', def: 'TEXT' },
     { name: 'ra_host_allowlist_json', def: 'TEXT' },
     { name: 'ra_requires_tunnel', def: 'INTEGER NOT NULL DEFAULT 1' },
-    // ra_origin_landing_path: proxy session cookie set edildikten sonra
-    // kullanıcının yönlendirileceği ilk path (örn. Pangram için '/login').
-    // Boş/null ise '/' kullanılır (origin root).
+    // ra_origin_landing_path: session cookie set edildikten sonra kullanıcının
+    // yönlendirileceği ilk path. Boş/null ise '/' kullanılır.
+    // Örn: jove-research → '/research', pangram → '/login'
     { name: 'ra_origin_landing_path', def: 'TEXT' },
   ]);
 
@@ -50,7 +50,9 @@ export async function ensureRemoteAccessSchema(db) {
     { name: 'ra_valid_until', def: 'INTEGER' },
   ]);
 
-  // institution_ra_settings — institution_id INTEGER
+  // institution_ra_settings — CREATE TABLE IF NOT EXISTS (tablo zaten varsa noop)
+  // 0015 migration'da farklı yapıyla yaratılmış olabilir; eksik kolonları
+  // ensureColumns ile defansif ekle.
   await db
     .prepare(
       `CREATE TABLE IF NOT EXISTS institution_ra_settings (
@@ -66,6 +68,17 @@ export async function ensureRemoteAccessSchema(db) {
       )`
     )
     .run();
+
+  // 0015'in eski yapısında (ra_enabled + id + ra_origin_host + ra_allowed_ips)
+  // bu kolonlar eksik olabilir — defansif ekle.
+  await ensureColumns(db, 'institution_ra_settings', [
+    { name: 'egress_endpoint',   def: 'TEXT' },
+    { name: 'egress_secret_enc', def: 'TEXT' },
+    { name: 'tunnel_token_hash', def: 'TEXT' },
+    { name: 'tunnel_status',     def: "TEXT NOT NULL DEFAULT 'unknown'" },
+    { name: 'tunnel_last_seen',  def: 'INTEGER' },
+    { name: 'enabled',           def: 'INTEGER NOT NULL DEFAULT 0' },
+  ]);
 
   // ra_user_credentials — user_id INTEGER, product_slug TEXT
   await db
@@ -121,6 +134,29 @@ export async function ensureRemoteAccessSchema(db) {
       `CREATE INDEX IF NOT EXISTS idx_inst_subs_access_type ON institution_subscriptions(institution_id, access_type)`
     )
     .run();
+
+  // Bilinen ürünler için güvenli RA varsayımları.
+  // Yalnızca bariz şekilde yapılandırılmamış kayıtları backfill ederiz;
+  // admin'in elle verdiği değerleri ezmeyiz.
+  // jove-research RA varsayımları — yalnızca boş/yapılandırılmamış alanları doldurur,
+  // admin'in elle verdiği değerleri ezmez.
+  await db.prepare(
+    `UPDATE products
+        SET ra_enabled      = 1,
+            ra_origin_host  = COALESCE(NULLIF(TRIM(ra_origin_host), ''), 'www.jove.com'),
+            ra_delivery_mode = CASE
+              WHEN ra_delivery_mode IS NULL OR TRIM(ra_delivery_mode) = '' OR ra_delivery_mode = 'proxy'
+              THEN 'session_host_proxy'
+              ELSE ra_delivery_mode
+            END,
+            ra_origin_landing_path = COALESCE(NULLIF(TRIM(ra_origin_landing_path), ''), '/research'),
+            ra_host_allowlist_json = COALESCE(
+              NULLIF(ra_host_allowlist_json, ''),
+              '["www.jove.com","jove.com"]'
+            ),
+            ra_requires_tunnel = 1
+      WHERE slug = 'jove-research'`
+  ).run();
 
   schemaEnsured = true;
 }
