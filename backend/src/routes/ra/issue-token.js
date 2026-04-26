@@ -197,6 +197,39 @@ export function registerRaIssueToken(app) {
       redirectUrl = `https://${proxyHost}/${tgt}${landingPath}?t=${token}`;
     }
 
+    // ─── Compliance log (non-blocking) ───────────────────────────────────────
+    // Token başarıyla verildiğinde "erişim oturumu başladı" kaydı yaz.
+    // status/bytes/latency proxy katmanında ölçülebilir; şimdilik NULL bırakılır.
+    // ip_hash: Cloudflare'in CF-Connecting-IP başlığı main Worker'a geliyor,
+    // proxy Worker'a gelmiyor — burada hash'leyebiliriz.
+    const rawIp = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || '';
+    let ipHash = null;
+    if (rawIp) {
+      try {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawIp.split(',')[0].trim()));
+        ipHash = Array.from(new Uint8Array(buf)).slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch { /* ip hashing opsiyonel */ }
+    }
+
+    c.executionCtx.waitUntil(
+      c.env.DB.prepare(
+        `INSERT INTO ra_access_logs
+           (user_id, institution_id, product_slug, target_host, target_path, ip_hash, ts)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+        .bind(
+          userId,
+          institutionId,
+          sub.product_slug,
+          sub.ra_origin_host,
+          landingPath || '/',
+          ipHash,
+          now
+        )
+        .run()
+        .catch((err) => console.error('[RA] access log write failed', err))
+    );
+
     return c.json({ redirect_url: redirectUrl, expires_at: now + 300 });
   });
 }
