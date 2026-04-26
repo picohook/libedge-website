@@ -2560,6 +2560,20 @@ app.get('/api/admin/dashboard', async (c) => {
     SELECT COUNT(*) as count FROM announcements WHERE is_published = 0
   `).first();
 
+  // Aktif tünel sayısı (institution_ra_settings.enabled = 1)
+  const activeTunnelsRow = isSuper
+    ? await db.prepare(`SELECT COUNT(*) as count FROM institution_ra_settings WHERE enabled = 1`).first()
+    : adminInstitutionId
+      ? await db.prepare(`SELECT COUNT(*) as count FROM institution_ra_settings WHERE enabled = 1 AND institution_id = ?`).bind(adminInstitutionId).first()
+      : { count: 0 };
+
+  // Açık destek talepleri (sidebar badge)
+  const openSupportTicketsRow = isSuper
+    ? await db.prepare(`SELECT COUNT(*) as count FROM support_tickets WHERE status IN ('open', 'in_progress')`).first()
+    : adminInstitutionId
+      ? await db.prepare(`SELECT COUNT(*) as count FROM support_tickets WHERE status IN ('open', 'in_progress') AND institution_id = ?`).bind(adminInstitutionId).first()
+      : { count: 0 };
+
   const stats = {
     users: userCountRow?.count || 0,
     total_users: totalUsersRow?.count || 0,
@@ -2571,7 +2585,9 @@ app.get('/api/admin/dashboard', async (c) => {
     today_registrations: todayRegistrationsRow?.count || 0,
     active_institution_subscriptions: activeInstitutionRow?.count || 0,
     published_announcements: publishedAnnouncementsRow?.count || 0,
-    draft_announcements: draftAnnouncementsRow?.count || 0
+    draft_announcements: draftAnnouncementsRow?.count || 0,
+    active_tunnels: activeTunnelsRow?.count || 0,
+    open_support_tickets: openSupportTicketsRow?.count || 0
   };
 
   const actions = [
@@ -2595,6 +2611,13 @@ app.get('/api/admin/dashboard', async (c) => {
       count: pendingRequestsRow?.count || 0,
       description: isSuper ? 'Henüz işleme alınmamış formlar' : 'Sadece Super Admin tarafından yönetilir',
       tab: isSuper ? 'requests' : null
+    },
+    {
+      key: 'open_support_tickets',
+      label: 'Açık destek talepleri',
+      count: openSupportTicketsRow?.count || 0,
+      description: 'Yanıt bekleyen veya işlemdeki destek talepleri',
+      tab: 'support'
     }
   ];
 
@@ -3358,8 +3381,18 @@ app.get('/api/admin/institutions', async (c) => {
             AND col.scope_id = inst.id
             AND col.is_active = 1
             AND cf.is_active = 1
-        ) AS file_count
+        ) AS file_count,
+        irs.enabled        AS tunnel_enabled,
+        irs.tunnel_status  AS tunnel_status,
+        irs.tunnel_last_seen AS tunnel_last_seen,
+        (
+          SELECT GROUP_CONCAT(isub.product_slug)
+          FROM institution_subscriptions isub
+          JOIN products p ON p.slug = isub.product_slug AND COALESCE(p.ra_enabled, 0) = 1
+          WHERE isub.institution_id = inst.id AND isub.status = 'active'
+        ) AS ra_products
       FROM institutions inst
+      LEFT JOIN institution_ra_settings irs ON irs.institution_id = inst.id
       ${whereSql}
       ORDER BY ${sortSql} ${order}, inst.id ASC
       LIMIT ? OFFSET ?

@@ -574,8 +574,11 @@ Bilinen çalışan durum (2026-04-26):
   - Mobil (WiFi'sız) erişim → JoVE kurum IP (159.20.68.12) görüyor ✅
   - EMIS CAS akışı → /v2/ desktop arayüzü açılıyor ✅
   - EMIS mobil cihaz → desktop-UA override ile /v2/ açılıyor ✅
+  - ACS Publications → pubs.acs.org içerik açılıyor ✅ (utls Chrome bypass)
+  - IOPscience → iopscience.iop.org içerik açılıyor ✅
   - iOS Safari → yeni sekme açılıyor ✅
   - AWS WAF → HTTP/1.1 fingerprint ile bypass ✅
+  - Cloudflare korumalı yayıncılar → utls Chrome TLS fingerprint bypass ✅
 
 Sonraki adım: Production D1 migration (§14.5), egress secret yönetimi (§14.4) ve
 çoklu kurum onboarding (§14.6).
@@ -630,7 +633,7 @@ olmalı. EMIS için bu `/php/login/redirect`; JoVE için `/research`.
 | EMIS | Mobile config absolute API URL | `application*.js` URL rewrite |
 | ACS | Cloudflare challenge 403 (`pubs.acs.org`) | utls Chrome TLS fingerprint taklit → Cloudflare bypass ✅ |
 | Primal Pictures | Kurum bazlı IP entitlement gerekir | Ürün RA-ready; yalnızca aboneliği olan kurumlarda subscription aktif edilir |
-| IOPscience | Geniş IOP host ailesi | Staging subscription aktif; egress smoke test HTTPS 200 |
+| IOPscience | Geniş IOP host ailesi | Staging subscription aktif; mobil erişim onaylı ✅ |
 
 ### §16.4 ACS Publications — ✅ ÇÖZÜLDÜ (2026-04-26)
 

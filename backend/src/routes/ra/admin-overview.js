@@ -51,7 +51,12 @@ export function registerRaAdminOverview(app) {
          s.tunnel_last_seen,
          CASE WHEN s.egress_secret_enc IS NOT NULL AND s.egress_secret_enc != ''
               THEN 1 ELSE 0 END AS has_secret,
-         s.updated_at        AS ra_updated_at
+         s.updated_at        AS ra_updated_at,
+         (SELECT GROUP_CONCAT(isub.product_slug)
+          FROM institution_subscriptions isub
+          JOIN products p ON p.slug = isub.product_slug AND COALESCE(p.ra_enabled, 0) = 1
+          WHERE isub.institution_id = i.id AND isub.status = 'active'
+         ) AS ra_products
        FROM institutions i
        LEFT JOIN institution_ra_settings s ON s.institution_id = i.id
        ORDER BY i.name COLLATE NOCASE`
@@ -68,6 +73,7 @@ export function registerRaAdminOverview(app) {
       tunnel_last_seen: r.tunnel_last_seen ? Number(r.tunnel_last_seen) : null,
       has_secret: !!r.has_secret,
       ra_updated_at: r.ra_updated_at ? Number(r.ra_updated_at) : null,
+      ra_products: r.ra_products || null,
     }));
 
     return c.json({ institutions });
@@ -85,7 +91,11 @@ export function registerRaAdminOverview(app) {
 
     const institutionId = parseOptionalInt(c.req.query('institution_id'));
     const userId = parseOptionalInt(c.req.query('user_id'));
+    const userEmail = parseOptionalString(c.req.query('user_email'));
     const productSlug = parseOptionalString(c.req.query('product_slug'));
+    const dateFrom = parseOptionalString(c.req.query('date_from')); // YYYY-MM-DD
+    const dateTo   = parseOptionalString(c.req.query('date_to'));   // YYYY-MM-DD
+    const httpStatus = parseOptionalString(c.req.query('http_status')); // '2xx','4xx','5xx','error'
     const limit = clampInt(
       parseOptionalInt(c.req.query('limit')),
       1,
@@ -104,14 +114,35 @@ export function registerRaAdminOverview(app) {
       conditions.push('l.user_id = ?');
       bindings.push(userId);
     }
+    if (userEmail) {
+      conditions.push('LOWER(u.email) LIKE ?');
+      bindings.push(`%${userEmail.toLowerCase()}%`);
+    }
     if (productSlug) {
       conditions.push('l.product_slug = ?');
       bindings.push(productSlug);
     }
+    if (dateFrom) {
+      conditions.push("date(l.ts, 'unixepoch') >= ?");
+      bindings.push(dateFrom);
+    }
+    if (dateTo) {
+      conditions.push("date(l.ts, 'unixepoch') <= ?");
+      bindings.push(dateTo);
+    }
+    if (httpStatus === '2xx') {
+      conditions.push('l.status >= 200 AND l.status < 300');
+    } else if (httpStatus === '3xx') {
+      conditions.push('l.status >= 300 AND l.status < 400');
+    } else if (httpStatus === '4xx') {
+      conditions.push('l.status >= 400 AND l.status < 500');
+    } else if (httpStatus === '5xx' || httpStatus === 'error') {
+      conditions.push('(l.status >= 400 OR l.status IS NULL)');
+    }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const totalRow = await c.env.DB.prepare(
-      `SELECT COUNT(*) AS total FROM ra_access_logs l ${whereClause}`
+      `SELECT COUNT(*) AS total FROM ra_access_logs l LEFT JOIN users u ON u.id = l.user_id ${whereClause}`
     )
       .bind(...bindings)
       .first();

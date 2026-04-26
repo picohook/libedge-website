@@ -344,8 +344,8 @@
                 <a href="#" class="sidebar-link" data-tab="my-institution" id="myInstitutionTab" style="display:none"><i class="fas fa-university w-5"></i><span>Kurumum</span></a>
                 <a href="#" class="sidebar-link" data-tab="users"><i class="fas fa-users w-5"></i><span>Kullanıcılar</span></a>
                 <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-ticket-alt w-5"></i><span>Abonelikler</span></a>
-                <a href="#" class="sidebar-link" data-tab="requests" id="requestsTab"><i class="fas fa-envelope w-5"></i><span>Talepler</span></a>
-                <a href="#" class="sidebar-link" data-tab="support" id="supportTab"><i class="fas fa-headset w-5"></i><span>Destek Talepleri</span></a>
+                <a href="#" class="sidebar-link" data-tab="requests" id="requestsTab"><i class="fas fa-envelope w-5"></i><span>Talepler</span><span id="sidebarBadgeRequests" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
+                <a href="#" class="sidebar-link" data-tab="support" id="supportTab"><i class="fas fa-headset w-5"></i><span>Destek Talepleri</span><span id="sidebarBadgeSupport" class="hidden ml-auto bg-orange-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
                 <a href="#" class="sidebar-link" data-tab="announcements" id="announcementsTab"><i class="fas fa-bullhorn w-5"></i><span>Duyurular</span></a>
                 <a href="#" class="sidebar-link" data-tab="files" id="filesTab"><i class="fas fa-folder-open w-5"></i><span>Merkezi Dosyalar</span></a>
                 <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
@@ -451,6 +451,14 @@
                     <p id="statTodayRegistrations" class="text-2xl font-bold">0</p>
                 </div>
                 <i class="fas fa-user-clock text-3xl text-indigo-500 opacity-50"></i>
+            </div>
+            <div class="stat-card flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Aktif Tünel</p>
+                    <p id="statActiveTunnels" class="text-2xl font-bold">—</p>
+                    <p id="statActiveTunnelsSub" class="text-xs text-gray-400 mt-0.5">kurum tüneli</p>
+                </div>
+                <i class="fas fa-network-wired text-3xl text-purple-400 opacity-50"></i>
             </div>
         </div>
 
@@ -1136,9 +1144,10 @@
                         <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
                             <tr>
                                 <th class="px-4 py-2 text-left">Kurum</th>
-                                <th class="px-4 py-2 text-left">Kullanıcı</th>
+                                <th class="px-4 py-2 text-left">Kullanıcı #</th>
                                 <th class="px-4 py-2 text-left">Durum</th>
                                 <th class="px-4 py-2 text-left">Son Heartbeat</th>
+                                <th class="px-4 py-2 text-left">RA Ürünleri</th>
                                 <th class="px-4 py-2 text-left">Egress Endpoint</th>
                                 <th class="px-4 py-2 text-left">Secret</th>
                                 <th class="px-4 py-2 text-right">Aksiyon</th>
@@ -1162,6 +1171,10 @@
                 <button type="button" id="raRefreshSubsBtn" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2">
                     <i class="fas fa-sync-alt"></i><span>Yenile</span>
                 </button>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <input type="text" id="raSubsFilterInstitution" placeholder="Kurum ara..." class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm flex-1 min-w-[160px]" />
+                <input type="text" id="raSubsFilterProduct" placeholder="Ürün slug..." class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-40" />
             </div>
             <div class="bg-white rounded-xl shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">
@@ -1204,6 +1217,7 @@
                                 <th class="px-4 py-2 text-left">Ürün</th>
                                 <th class="px-4 py-2 text-left">Kategori</th>
                                 <th class="px-4 py-2 text-left">RA</th>
+                                <th class="px-4 py-2 text-left">Tünel Zorunlu</th>
                                 <th class="px-4 py-2 text-left">Origin Host</th>
                                 <th class="px-4 py-2 text-left">Recipe</th>
                                 <th class="px-4 py-2 text-left">Host Allowlist</th>
@@ -1225,15 +1239,27 @@
                     <h3 class="text-base font-semibold text-gray-800">RA Erişim Logları</h3>
                     <p class="text-xs text-gray-500">Hangi kullanıcı, hangi yayıncıya, ne zaman erişti. Compliance kaydı.</p>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-                    <select id="raLogsFilterInstitution" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                    <select id="raLogsFilterInstitution" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm col-span-2 sm:col-span-1">
                         <option value="">Tüm kurumlar</option>
                     </select>
                     <input id="raLogsFilterProduct" type="text" placeholder="Ürün slug" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
-                    <input id="raLogsFilterUser" type="number" min="1" placeholder="Kullanıcı ID" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
-                    <button type="button" id="raApplyLogsFilterBtn" class="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-opacity-90 inline-flex items-center justify-center gap-2">
-                        <i class="fas fa-filter"></i><span>Uygula</span>
-                    </button>
+                    <input id="raLogsFilterUser" type="text" placeholder="E-posta ara" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
+                    <input id="raLogsFilterDateFrom" type="date" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" title="Başlangıç tarihi" />
+                    <input id="raLogsFilterDateTo" type="date" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" title="Bitiş tarihi" />
+                    <div class="flex gap-1 col-span-2 sm:col-span-1">
+                        <select id="raLogsFilterStatus" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm flex-1">
+                            <option value="">Tüm HTTP</option>
+                            <option value="2xx">2xx Başarılı</option>
+                            <option value="3xx">3xx Yönlendirme</option>
+                            <option value="4xx">4xx İstemci Hatası</option>
+                            <option value="5xx">5xx Sunucu Hatası</option>
+                            <option value="error">Hata (4xx+5xx)</option>
+                        </select>
+                        <button type="button" id="raApplyLogsFilterBtn" class="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-opacity-90 inline-flex items-center gap-1 flex-shrink-0">
+                            <i class="fas fa-filter"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -1578,11 +1604,13 @@
                             <th>Domain</th>
                     <th class="cursor-pointer select-none" data-admin-action="sort-institutions" data-sort-key="user_count">Kullanıcı <span id="instSort_user_count" class="text-gray-400">↕</span></th>
                     <th class="cursor-pointer select-none" data-admin-action="sort-institutions" data-sort-key="file_count">Dosya <span id="instSort_file_count" class="text-gray-400">↕</span></th>
+                            <th>Tünel</th>
+                            <th>RA Ürünleri</th>
                             <th>İşlem</th>
                         </tr>
                     </thead>
                     <tbody id="institutionsList">
-                        <tr><td colspan="8" class="text-center py-4">Yükleniyor...</td></tr>
+                        <tr><td colspan="10" class="text-center py-4">Yükleniyor...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -3223,6 +3251,40 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('statPendingRequests').textContent = stats.pending_requests || 0;
             document.getElementById('statTodayRegistrations').textContent = stats.today_registrations || 0;
 
+            // Aktif Tünel KPI
+            const tunnelEl = document.getElementById('statActiveTunnels');
+            const tunnelSubEl = document.getElementById('statActiveTunnelsSub');
+            if (tunnelEl) {
+                if (stats.active_tunnels != null) {
+                    tunnelEl.textContent = stats.active_tunnels;
+                    if (tunnelSubEl) tunnelSubEl.textContent = stats.active_tunnels === 1 ? 'kurum tüneli' : 'kurum tüneli';
+                } else {
+                    // Backend bu alanı henüz dönmüyorsa RA tunnels endpoint'inden al
+                    fetch(`${API_BASE}/api/admin/ra/tunnels`, { credentials: 'include' })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                            if (!d) return;
+                            const active = (d.tunnels || d).filter(t => t.is_active).length;
+                            tunnelEl.textContent = active;
+                        })
+                        .catch(() => { tunnelEl.textContent = '—'; });
+                }
+            }
+
+            // Sidebar badge'leri
+            const pendingCount = stats.pending_requests || 0;
+            const supportCount = stats.open_support_tickets || 0;
+            const reqBadge = document.getElementById('sidebarBadgeRequests');
+            const supBadge = document.getElementById('sidebarBadgeSupport');
+            if (reqBadge) {
+                if (pendingCount > 0) { reqBadge.textContent = pendingCount > 99 ? '99+' : pendingCount; reqBadge.classList.remove('hidden'); }
+                else { reqBadge.classList.add('hidden'); }
+            }
+            if (supBadge) {
+                if (supportCount > 0) { supBadge.textContent = supportCount > 99 ? '99+' : supportCount; supBadge.classList.remove('hidden'); }
+                else { supBadge.classList.add('hidden'); }
+            }
+
             if (summaryEl) summaryEl.textContent = `${activePeriodLabel} görünümü`;
             if (registrationsLabelEl) registrationsLabelEl.textContent = `${activePeriodLabel} Kaydı`;
             
@@ -4676,6 +4738,11 @@ function _initRemoteAccessTab() {
         _raLoadLogs();
     });
 
+    // Kurumsal Abonelikler anlık filtre
+    ['raSubsFilterInstitution', 'raSubsFilterProduct'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', () => _raRenderSubscriptions());
+    });
+
     const prevBtn = document.getElementById('raLogsPrevBtn');
     if (prevBtn) prevBtn.addEventListener('click', () => {
         _ra.logs.offset = Math.max(0, _ra.logs.offset - _ra.logs.limit);
@@ -4759,7 +4826,7 @@ function _raRenderTunnels() {
     const tbody = document.getElementById('raTunnelsTableBody');
     if (!tbody) return;
     if (!_ra.institutions.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Kurum bulunamadı.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-6 text-center text-sm text-gray-400">Kurum bulunamadı.</td></tr>';
         return;
     }
     const rows = _ra.institutions.map((inst) => {
@@ -4771,6 +4838,9 @@ function _raRenderTunnels() {
         const secretBadge = inst.has_secret
             ? '<span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">tanımlı</span>'
             : '<span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">yok</span>';
+        const raPills = inst.ra_products
+            ? inst.ra_products.split(',').map(s => `<span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">${escapeHtml(RA_PRODUCT_LABELS[s] || s)}</span>`).join(' ')
+            : '<span class="text-gray-300 text-xs">—</span>';
         return `<tr class="hover:bg-gray-50">
             <td class="px-4 py-2">
                 <div class="font-medium text-gray-800">${escapeHtml(inst.name || '—')}</div>
@@ -4779,6 +4849,7 @@ function _raRenderTunnels() {
             <td class="px-4 py-2 text-gray-700">${Number(inst.user_count || 0).toLocaleString('tr-TR')}</td>
             <td class="px-4 py-2">${statusBadge}</td>
             <td class="px-4 py-2 text-xs text-gray-600">${lastSeen}</td>
+            <td class="px-4 py-2">${raPills}</td>
             <td class="px-4 py-2">${endpoint}</td>
             <td class="px-4 py-2">${secretBadge}</td>
             <td class="px-4 py-2 text-right">
@@ -4952,10 +5023,16 @@ async function _raLoadLogs() {
     const params = new URLSearchParams();
     const inst = document.getElementById('raLogsFilterInstitution').value;
     const product = (document.getElementById('raLogsFilterProduct').value || '').trim();
-    const userId = (document.getElementById('raLogsFilterUser').value || '').trim();
+    const userEmail = (document.getElementById('raLogsFilterUser').value || '').trim();
+    const dateFrom = (document.getElementById('raLogsFilterDateFrom')?.value || '').trim();
+    const dateTo   = (document.getElementById('raLogsFilterDateTo')?.value || '').trim();
+    const httpStatus = document.getElementById('raLogsFilterStatus')?.value || '';
     if (inst) params.set('institution_id', inst);
     if (product) params.set('product_slug', product);
-    if (userId) params.set('user_id', userId);
+    if (userEmail) params.set('user_email', userEmail);
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo)   params.set('date_to', dateTo);
+    if (httpStatus) params.set('http_status', httpStatus);
     params.set('limit', String(_ra.logs.limit));
     params.set('offset', String(_ra.logs.offset));
 
@@ -5037,11 +5114,18 @@ async function _raLoadSubscriptions(force = false) {
 function _raRenderSubscriptions() {
     const tbody = document.getElementById('raSubsTableBody');
     if (!tbody) return;
-    if (!_ra.subscriptions.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Uzaktan erişim aboneliği yok.</td></tr>';
+    const filterInst = (document.getElementById('raSubsFilterInstitution')?.value || '').trim().toLowerCase();
+    const filterProd = (document.getElementById('raSubsFilterProduct')?.value || '').trim().toLowerCase();
+    const filtered = _ra.subscriptions.filter(s => {
+        if (filterInst && !(s.institution_name || '').toLowerCase().includes(filterInst)) return false;
+        if (filterProd && !(s.product_slug || '').toLowerCase().includes(filterProd)) return false;
+        return true;
+    });
+    if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">${_ra.subscriptions.length ? 'Filtre sonucu bulunamadı.' : 'Uzaktan erişim aboneliği yok.'}</td></tr>`;
         return;
     }
-    tbody.innerHTML = _ra.subscriptions.map((s) => {
+    tbody.innerHTML = filtered.map((s) => {
         const displayAccessType = getEffectiveAccessTypeForDisplay(s);
         const accessLabel = displayAccessType
             ? (accessTypeLabels[displayAccessType] || displayAccessType)
@@ -5220,19 +5304,26 @@ function _raRenderProducts() {
     const tbody = document.getElementById('raProductsTableBody');
     if (!tbody) return;
     if (!_ra.products.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Ürün bulunamadı.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-6 text-center text-sm text-gray-400">Ürün bulunamadı.</td></tr>';
         return;
     }
     tbody.innerHTML = _ra.products.map((p) => {
         const raBadge = p.ra_enabled
             ? '<span class="text-[11px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">aktif</span>'
             : '<span class="text-[11px] px-2 py-0.5 rounded bg-gray-100 text-gray-500">pasif</span>';
+        const tunnelBadge = p.ra_requires_tunnel
+            ? '<span class="text-[11px] px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">zorunlu</span>'
+            : '<span class="text-[11px] px-2 py-0.5 rounded bg-gray-50 text-gray-400">—</span>';
         const origin = p.ra_origin_host
             ? `<span class="text-xs font-mono">${escapeHtml(p.ra_origin_host)}</span>`
             : '<span class="text-gray-400 text-xs">—</span>';
-        const recipe = p.ra_login_recipe_json
-            ? '<span class="text-[11px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">tanımlı</span>'
-            : '<span class="text-gray-400 text-[11px]">yok</span>';
+        const recipeMode = (() => {
+            try {
+                const j = JSON.parse(p.ra_login_recipe_json || '');
+                const mode = j.mode || 'tanımlı';
+                return `<span class="text-[11px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-mono">${escapeHtml(mode)}</span>`;
+            } catch { return p.ra_login_recipe_json ? '<span class="text-[11px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">tanımlı</span>' : '<span class="text-gray-400 text-[11px]">yok</span>'; }
+        })();
         const allowlist = p.ra_host_allowlist_json
             ? '<span class="text-[11px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">tanımlı</span>'
             : '<span class="text-gray-400 text-[11px]">yok</span>';
@@ -5243,8 +5334,9 @@ function _raRenderProducts() {
             </td>
             <td class="px-4 py-2 text-xs text-gray-600">${escapeHtml(p.category || '—')}</td>
             <td class="px-4 py-2">${raBadge}</td>
+            <td class="px-4 py-2">${tunnelBadge}</td>
             <td class="px-4 py-2">${origin}</td>
-            <td class="px-4 py-2">${recipe}</td>
+            <td class="px-4 py-2">${recipeMode}</td>
             <td class="px-4 py-2">${allowlist}</td>
             <td class="px-4 py-2 text-right">
                 <button type="button" class="text-xs px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-100 inline-flex items-center gap-1" data-ra-action="edit-product" data-slug="${escapeHtml(p.slug)}">
@@ -7920,8 +8012,8 @@ let _institutionsView = { items: [], page: 1, pageSize: 25, total: 0, totalPages
 
 async function loadInstitutions(page = 1) {
     const tbody = document.getElementById('institutionsList');
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">Yükleniyor...</td></tr>';
-    
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4">Yükleniyor...</td></tr>';
+
     try {
         const params = new URLSearchParams({
             page: String(page),
@@ -7956,16 +8048,55 @@ async function loadInstitutions(page = 1) {
         
     } catch (err) {
         console.error('loadInstitutions error:', err);
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-red-500 py-4">Yüklenirken hata oluştu</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-red-500 py-4">Yüklenirken hata oluştu</td></tr>';
         document.getElementById('institutionsPagination').innerHTML = '';
     }
 }
 
+function tunnelStatusHtml(inst) {
+    if (!inst.tunnel_enabled && inst.tunnel_enabled !== 0) {
+        // institution_ra_settings satırı hiç yok
+        return '<span class="text-gray-300 text-xs">—</span>';
+    }
+    if (!inst.tunnel_enabled) {
+        return '<span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-circle text-gray-300 text-[8px]"></i>Pasif</span>';
+    }
+    const status = inst.tunnel_status || 'unknown';
+    const lastSeen = inst.tunnel_last_seen;
+    const lastSeenLabel = lastSeen ? (() => {
+        const diff = Math.floor((Date.now() - new Date(lastSeen + (lastSeen.includes('Z') ? '' : 'Z')).getTime()) / 1000);
+        if (diff < 120) return `${diff}sn`;
+        if (diff < 3600) return `${Math.floor(diff/60)}dk`;
+        if (diff < 86400) return `${Math.floor(diff/3600)}sa`;
+        return `${Math.floor(diff/86400)}g`;
+    })() : null;
+    const tip = lastSeen ? `Son ping: ${lastSeenLabel} önce` : 'Henüz ping alınmadı';
+    const instId = inst.id;
+    const linkAttrs = `class="cursor-pointer hover:underline" data-ra-tunnel-link="${instId}" title="${tip} — RA panelinde aç"`;
+    if (status === 'ok') {
+        return `<span ${linkAttrs} style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#15803d"><i class="fas fa-circle" style="font-size:8px;color:#22c55e"></i>${lastSeenLabel || 'ok'}</span>`;
+    }
+    if (status === 'error') {
+        return `<span ${linkAttrs} style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#dc2626"><i class="fas fa-circle" style="font-size:8px;color:#ef4444"></i>Hata</span>`;
+    }
+    return `<span ${linkAttrs} style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#d97706"><i class="fas fa-circle" style="font-size:8px;color:#fbbf24"></i>?</span>`;
+}
+
+const RA_PRODUCT_LABELS = { jove: 'JoVE', emis: 'EMIS', acs: 'ACS', iopscience: 'IOP', 'primal-pictures': 'Primal' };
+
+function raProductsHtml(inst) {
+    if (!inst.ra_products) return '<span class="text-gray-300 text-xs">—</span>';
+    return inst.ra_products.split(',').map(slug => {
+        const label = RA_PRODUCT_LABELS[slug] || slug;
+        return `<span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">${escapeHtml(label)}</span>`;
+    }).join(' ');
+}
+
 function renderInstitutions(institutions) {
     const tbody = document.getElementById('institutionsList');
-    
+
     if (institutions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">Kurum bulunamadı</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">Kurum bulunamadı</td></tr>';
         document.getElementById('institutionsPagination').innerHTML = '';
         return;
     }
@@ -8000,6 +8131,8 @@ function renderInstitutions(institutions) {
             <td class="px-4 py-2">${escapeHtml(inst.domain || '-')}</td>
             <td class="px-4 py-2">${inst.user_count ?? '-'}</td>
             <td class="px-4 py-2">${inst.file_count ?? '-'}</td>
+            <td class="px-4 py-2">${tunnelStatusHtml(inst)}</td>
+            <td class="px-4 py-2">${raProductsHtml(inst)}</td>
             <td class="px-4 py-2 flex gap-2 items-center">
                 <button class="inst-users-btn text-blue-600 hover:text-blue-800" title="Kullanıcıları Gör">
                     <i class="fas fa-users"></i>
@@ -8025,6 +8158,33 @@ document.getElementById('institutionsList')?.addEventListener('click', function(
 
     const instId = Number(row.dataset.instId);
     const displayName = row.dataset.instDisplayName || row.dataset.instName || '';
+
+    // Tünel durumu hücresine tıklanınca → RA tab > Kurum Tünelleri
+    const tunnelLink = e.target.closest('[data-ra-tunnel-link]');
+    if (tunnelLink) {
+        const linkInstId = Number(tunnelLink.dataset.raTunnelLink);
+        // RA tab'ına geç
+        document.querySelector('[data-tab="remote-access"]')?.click();
+        // Tüneller sub-tab'ını aç
+        setTimeout(() => {
+            document.querySelector('[data-ra-subtab="tunnels"]')?.click();
+            // Satırı highlight et
+            setTimeout(() => {
+                const raRows = document.querySelectorAll('#raTunnelsTableBody tr');
+                raRows.forEach(r => r.classList.remove('bg-yellow-50', 'ring-1', 'ring-yellow-300'));
+                const editBtn = document.querySelector(`#raTunnelsTableBody [data-institution-id="${linkInstId}"]`);
+                if (editBtn) {
+                    const tr = editBtn.closest('tr');
+                    if (tr) {
+                        tr.classList.add('bg-yellow-50', 'ring-1', 'ring-yellow-300');
+                        tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(() => tr.classList.remove('bg-yellow-50', 'ring-1', 'ring-yellow-300'), 3000);
+                    }
+                }
+            }, 400);
+        }, 100);
+        return;
+    }
 
     if (e.target.closest('.inst-users-btn')) {
         openInstUsersPanel(instId, displayName);
