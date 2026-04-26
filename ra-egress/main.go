@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -31,7 +32,13 @@ var (
 	sharedSecret     []byte
 	allowedHostRegex *regexp.Regexp
 	maxRequestBytes  int64 = 10 * 1024 * 1024 // 10MB default
-	upstreamClient         = &http.Client{
+	upstreamClient = &http.Client{
+		// HTTP/2'yi devre dışı bırak: Go'nun HTTP/2 SETTINGS/HEADERS frame
+		// sıralaması AWS WAF bot detection tarafından "non-browser" olarak
+		// sınıflandırılıyor. HTTP/1.1 fingerprint daha nötr.
+		Transport: &http.Transport{
+			TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
+		},
 		Timeout: 30 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			// Publisher'a yönlendirmeleri bizim takip etmemiz lazım çünkü
@@ -192,6 +199,7 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+	log.Printf("proxied %s %s → %d (%dms)", upstreamMethod, targetURL, resp.StatusCode, time.Since(upstreamStart).Milliseconds())
 
 	// Response header'larını kopyala (hop-by-hop filtrele)
 	for k, vs := range resp.Header {
