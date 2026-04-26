@@ -129,7 +129,7 @@ slug='acs'
   ra_origin_landing_path = '/'
   ra_origin_host = 'pubs.acs.org'
   ra_host_allowlist_json = '["pubs.acs.org","www.pubs.acs.org","acs.org","www.acs.org","cenglobal.acs.org","www.chemistry.org","pubsdev.acs.org","pubstest.acs.org","idp.acs.org"]'
-  ra_enabled = 0  -- staging config hazır, ACS Cloudflare challenge 403 nedeniyle pasif
+  ra_enabled = 1  -- utls Chrome fingerprint ile Cloudflare bypass çözüldü ✅
 
 slug='primal-pictures'
   ra_delivery_mode = 'session_host_proxy'
@@ -628,59 +628,36 @@ olmalı. EMIS için bu `/php/login/redirect`; JoVE için `/research`.
 | EMIS | CAS/auth multi-host akışı | `__ra-host/{encoded-host}` routing |
 | EMIS | Mobil app API 401 | EMIS için desktop-UA override |
 | EMIS | Mobile config absolute API URL | `application*.js` URL rewrite |
-| ACS | Cloudflare challenge 403 (`pubs.acs.org`) | Staging config hazır, ürün pasif; mevcut Go egress ile çözülmedi |
+| ACS | Cloudflare challenge 403 (`pubs.acs.org`) | utls Chrome TLS fingerprint taklit → Cloudflare bypass ✅ |
 | Primal Pictures | Kurum bazlı IP entitlement gerekir | Ürün RA-ready; yalnızca aboneliği olan kurumlarda subscription aktif edilir |
 | IOPscience | Geniş IOP host ailesi | Staging subscription aktif; egress smoke test HTTPS 200 |
 
-### §16.4 ACS Bulgusu (2026-04-26)
+### §16.4 ACS Publications — ✅ ÇÖZÜLDÜ (2026-04-26)
 
-ACS Publications için staging D1 kaydı hazırlandı:
+ACS Publications `pubs.acs.org` Cloudflare koruması altında. Go'nun standart `net/tls`
+JA3 fingerprint'i Cloudflare bot detection tarafından 403 ile bloklanıyordu.
 
-```sql
-slug='acs'
-  ra_origin_host = 'pubs.acs.org'
-  ra_origin_landing_path = '/'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_host_allowlist_json = '["pubs.acs.org","www.pubs.acs.org","acs.org","www.acs.org","cenglobal.acs.org","www.chemistry.org","pubsdev.acs.org","pubstest.acs.org","idp.acs.org"]'
+**Çözüm:** `ra-egress/main.go`'ya `utls` (refraction-networking/utls) ile Chrome TLS
+fingerprint taklit eklendi. ALPN'den `h2` çıkarılarak HTTP/1.1 zorunlu kılındı (AWS WAF
+uyumluluğu da korundu).
+
+```go
+// dialTLSChrome — Chrome JA3 + HTTP/1.1 ALPN
+spec, _ := utls.UTLSIdToSpec(utls.HelloChrome_Auto)
+// h2'yi ALPN'den çıkar → http/1.1 only
+alpn.AlpnProtocols = []string{"http/1.1"}
+uconn := utls.UClient(tcpConn, &utls.Config{ServerName: host}, utls.HelloCustom)
+uconn.ApplyPreset(&spec)
+uconn.HandshakeContext(ctx)
 ```
 
-EZproxy stanzası:
-
+**Doğrulama (2026-04-26):**
 ```
-Title American Chemical Society
-URL http://pubs.acs.org
-HJ acs.org
-HJ cenglobal.acs.org
-HJ https://cenglobal.acs.org
-HJ https://pubs.acs.org
-HJ pubs.acs.org
-HJ www.acs.org
-HJ www.chemistry.org
-HJ www.pubs.acs.org
-DJ acs.org
-Find hostdev="pubsdev.acs.org"
-Replace hostdev="^ppubsdev.acs.org^"
-Find hosttest="pubstest.acs.org"
-Replace hosttest="^ppubstest.acs.org^"
-Find hostprod="pubs.acs.org"
-Replace hostprod="^ppubs.acs.org^"
+GET https://pubs.acs.org/ → 200 ✅  (önceden 403 "Just a moment...")
+CSS/JS/font asset'ler → 200 ✅
 ```
 
-Stanza'daki hostlar `ra_host_allowlist_json` ve `ra-egress` regex'ine işlendi.
-
-İmzalı egress smoke testleri:
-
-```
-GET http://pubs.acs.org/ → 301 Location: https://pubs.acs.org/
-GET https://pubs.acs.org/ → 403
-server: cloudflare
-body: "Just a moment..."
-```
-
-Sonuç: ACS config/allowlist tarafı hazır, ancak upstream Cloudflare challenge mevcut Go egress
-isteğini kabul etmiyor. Bu JoVE/EMIS'teki cookie, redirect veya allowlist sınıfı bir sorun değil.
-Kırık ürün göstermemek için staging D1'de `acs.ra_enabled = 0` ve kurum aboneliği `inactive`
-durumunda bırakıldı.
+Staging D1: `ra_enabled = 1`, kurum aboneliği aktif.
 
 ### §16.5 Primal Pictures / Anatomy TV (2026-04-26)
 
