@@ -559,3 +559,51 @@ Bilinen çalışan durum (2026-04-26):
 Sonraki adım: Production D1 migration (§14.5), egress secret yönetimi (§14.4) ve
 çoklu kurum onboarding (§14.6).
 ```
+
+---
+
+## §16 Yeni Ürün Onboarding Reçetesi
+
+Yeni bir IP-auth yayıncı ürünü eklerken önce kurum IP'sinden doğrudan davranış doğrulanır,
+sonra aynı akış proxy altında çoğaltılır.
+
+### §16.1 Gerekli D1 Alanları
+
+```sql
+UPDATE products
+SET
+  ra_enabled = 1,
+  ra_delivery_mode = 'session_host_proxy',
+  ra_origin_host = '{primary-host}',
+  ra_origin_landing_path = '{entry-path}',
+  ra_host_allowlist_json = '["{primary-host}","{auth-host}", "..."]',
+  ra_requires_tunnel = 1
+WHERE slug = '{product-slug}';
+```
+
+`ra_origin_landing_path` mümkün olduğunca yayıncının IP-auth başlatan gerçek giriş yolu
+olmalı. EMIS için bu `/php/login/redirect`; JoVE için `/research`.
+
+### §16.2 Kontrol Listesi
+
+1. Kurum IP'sinden incognito test: entry URL hangi son URL'e gidiyor?
+2. DevTools Network: `302 Location`, `Set-Cookie`, auth/CAS hostları not edilir.
+3. `ra_host_allowlist_json`: yalnızca akışta gereken hostlar eklenir.
+4. `ra-egress/.env ALLOWED_HOST_REGEX`: aynı hostları kapsıyor mu?
+5. Proxy test: `X-RA-Debug-Upstream-Status`, `X-RA-Debug-Upstream-Location`,
+   `X-RA-Debug-Set-Cookies` header'ları kontrol edilir.
+6. Mobil test: yayıncı mobil hosta zorla yönlendiriyorsa desktop-UA override gerekip
+   gerekmediği değerlendirilir.
+7. Başarılı sayfa yüklemesi yetmez; gerçek kullanıcı endpoint'i 200 dönmeli
+   (`/api/user`, `/app/user`, `/ip-auth` vb.).
+
+### §16.3 Ürün Bazlı Özel Durumlar
+
+| Ürün | Özel davranış | Çözüm |
+|---|---|---|
+| JoVE | AWS WAF HTTP/2 fingerprint challenge | `ra-egress` HTTP/2 kapalı |
+| JoVE | Mobil kaynak IP header'ları | IP-ifşa header'ları strip |
+| EMIS | Ara `302 + Set-Cookie` kaybı | Worker→egress `redirect: 'manual'` |
+| EMIS | CAS/auth multi-host akışı | `__ra-host/{encoded-host}` routing |
+| EMIS | Mobil app API 401 | EMIS için desktop-UA override |
+| EMIS | Mobile config absolute API URL | `application*.js` URL rewrite |
