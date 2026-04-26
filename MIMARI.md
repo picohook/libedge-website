@@ -124,6 +124,13 @@ slug='emis'
   ra_host_allowlist_json = '["www.emis.com","emis.com","cas.emis.com","auth.emis.com","m.emis.com"]'
   ra_enabled = 1
 
+slug='acs'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_origin_landing_path = '/'
+  ra_origin_host = 'pubs.acs.org'
+  ra_host_allowlist_json = '["pubs.acs.org","acs.org","www.acs.org","idp.acs.org"]'
+  ra_enabled = 0  -- staging config hazır, ACS Cloudflare challenge 403 nedeniyle pasif
+
 -- institution_ra_settings
 institution_id = 1
   egress_endpoint = 'https://ra-egress.selmiye.com'
@@ -607,3 +614,30 @@ olmalı. EMIS için bu `/php/login/redirect`; JoVE için `/research`.
 | EMIS | CAS/auth multi-host akışı | `__ra-host/{encoded-host}` routing |
 | EMIS | Mobil app API 401 | EMIS için desktop-UA override |
 | EMIS | Mobile config absolute API URL | `application*.js` URL rewrite |
+| ACS | Cloudflare challenge 403 (`pubs.acs.org`) | Staging config hazır, ürün pasif; mevcut Go egress ile çözülmedi |
+
+### §16.4 ACS Bulgusu (2026-04-26)
+
+ACS Publications için staging D1 kaydı hazırlandı:
+
+```sql
+slug='acs'
+  ra_origin_host = 'pubs.acs.org'
+  ra_origin_landing_path = '/'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_host_allowlist_json = '["pubs.acs.org","acs.org","www.acs.org","idp.acs.org"]'
+```
+
+`ra-egress` allowlist regex'ine ACS hostları eklendi ve container yeniden başlatıldı.
+İmzalı egress smoke test:
+
+```
+GET https://pubs.acs.org/ → 403
+server: cloudflare
+body: "Just a moment..."
+```
+
+Sonuç: ACS config/allowlist tarafı hazır, ancak upstream Cloudflare challenge mevcut Go egress
+isteğini kabul etmiyor. Bu JoVE/EMIS'teki cookie, redirect veya allowlist sınıfı bir sorun değil.
+Kırık ürün göstermemek için staging D1'de `acs.ra_enabled = 0` ve kurum aboneliği `inactive`
+durumunda bırakıldı.
