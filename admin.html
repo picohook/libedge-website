@@ -1068,14 +1068,13 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Erişim Tipi</label>
                         <select id="productAccessType" class="w-full border p-2 rounded">
-                            <option value="">Tanımsız</option>
-                            <option value="direct">Doğrudan Link</option>
-                            <option value="ip">IP Erişimi</option>
-                            <option value="proxy">Proxy / EZproxy</option>
-                            <option value="sso">SSO</option>
-                            <option value="institution_link">Kuruma Özel Link</option>
-                            <option value="email_password_external">Kurum E-posta + Harici Şifre</option>
-                            <option value="mixed">Karma</option>
+                            <option value="">— Tanımsız —</option>
+                            <option value="direct">Ücretsiz / Doğrudan Link</option>
+                            <option value="ip">Kurum IP'si / Uzaktan Erişim</option>
+                            <option value="institution_link">Kurumsal Giriş Sayfası (Lecturio gibi)</option>
+                            <option value="sso">SSO (Kurumsal Giriş)</option>
+                            <option value="email_password_external">Kullanıcı Adı + Şifre</option>
+                            <option value="mixed">Karma (birden fazla yöntem)</option>
                         </select>
                         <p class="text-xs text-gray-400 mt-1">Bu alan kullanıcıya gösterilen erişim etiketidir. Teknik açılış davranışı için RA tarafındaki <strong>Dağıtım Modu</strong> kullanılır.</p>
                         <div id="productAccessTypeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></div>
@@ -1234,12 +1233,22 @@
 
         <!-- Erişim Logları sub-view -->
         <div id="ra-subview-logs" class="ra-subview hidden">
-            <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
-                <div class="flex-1 min-w-0">
-                    <h3 class="text-base font-semibold text-gray-800">RA Erişim Logları</h3>
-                    <p class="text-xs text-gray-500">Hangi kullanıcı, hangi yayıncıya, ne zaman erişti. Compliance kaydı.</p>
+            <div class="flex flex-col gap-3 mb-4">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-base font-semibold text-gray-800">RA Erişim Logları</h3>
+                        <p class="text-xs text-gray-500">Hangi kullanıcı, hangi yayıncıya, ne zaman erişti. Compliance kaydı.</p>
+                    </div>
+                    <div class="flex gap-2 flex-shrink-0">
+                        <button type="button" id="raLogsClearBtn" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 inline-flex items-center gap-1">
+                            <i class="fas fa-times"></i><span>Temizle</span>
+                        </button>
+                        <button type="button" id="raLogsExportBtn" class="text-sm px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 inline-flex items-center gap-1">
+                            <i class="fas fa-download"></i><span>CSV</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
                     <select id="raLogsFilterInstitution" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm col-span-2 sm:col-span-1">
                         <option value="">Tüm kurumlar</option>
                     </select>
@@ -1247,19 +1256,17 @@
                     <input id="raLogsFilterUser" type="text" placeholder="E-posta ara" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
                     <input id="raLogsFilterDateFrom" type="date" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" title="Başlangıç tarihi" />
                     <input id="raLogsFilterDateTo" type="date" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" title="Bitiş tarihi" />
-                    <div class="flex gap-1 col-span-2 sm:col-span-1">
-                        <select id="raLogsFilterStatus" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm flex-1">
-                            <option value="">Tüm HTTP</option>
-                            <option value="2xx">2xx Başarılı</option>
-                            <option value="3xx">3xx Yönlendirme</option>
-                            <option value="4xx">4xx İstemci Hatası</option>
-                            <option value="5xx">5xx Sunucu Hatası</option>
-                            <option value="error">Hata (4xx+5xx)</option>
-                        </select>
-                        <button type="button" id="raApplyLogsFilterBtn" class="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-opacity-90 inline-flex items-center gap-1 flex-shrink-0">
-                            <i class="fas fa-filter"></i>
-                        </button>
-                    </div>
+                    <select id="raLogsFilterStatus" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
+                        <option value="">Tüm HTTP</option>
+                        <option value="2xx">2xx Başarılı</option>
+                        <option value="3xx">3xx Yönlendirme</option>
+                        <option value="4xx">4xx İstemci Hatası</option>
+                        <option value="5xx">5xx Sunucu Hatası</option>
+                        <option value="error">Hata (4xx+5xx)</option>
+                    </select>
+                    <button type="button" id="raApplyLogsFilterBtn" class="text-sm px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-opacity-90 inline-flex items-center justify-center gap-1">
+                        <i class="fas fa-filter"></i><span>Filtrele</span>
+                    </button>
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -1285,6 +1292,12 @@
                 <div id="raLogsPagination" class="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
                     <span id="raLogsSummary">—</span>
                     <div class="flex items-center gap-2">
+                        <select id="raLogsPageSize" class="border border-gray-200 rounded px-2 py-1 text-xs">
+                            <option value="50">50 kayıt</option>
+                            <option value="100" selected>100 kayıt</option>
+                            <option value="250">250 kayıt</option>
+                            <option value="500">500 kayıt</option>
+                        </select>
                         <button type="button" id="raLogsPrevBtn" class="px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50" disabled>
                             <i class="fas fa-chevron-left"></i>
                         </button>
@@ -1357,26 +1370,22 @@
                     <span id="raSubModalProduct" class="font-medium text-gray-700">—</span>
                 </p>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Erişim Tipi</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Erişim Yöntemi</label>
                     <select id="raSubAccessTypeInput" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                        <option value="proxy">proxy (credential-auth, LibEdge proxy)</option>
-                        <option value="direct">direct (doğrudan URL)</option>
-                        <option value="institution_link">institution_link (kuruma özel URL)</option>
-                        <option value="ip">ip (IP-kilitli, kurum tüneli)</option>
-                        <option value="sso">sso</option>
-                        <option value="email_password_external">email_password_external (kurum email'iyle kendi login'i)</option>
-                        <option value="mixed">mixed</option>
+                        <option value="ip">Kurum IP'si ile (tünel yeterli, credential gerekmez)</option>
+                        <option value="proxy">Paylaşılan Credential (kullanıcı adı + şifre ile proxy)</option>
+                        <option value="email_password_external">Kullanıcı Adı + Şifre (her kullanıcı kendi hesabıyla)</option>
                     </select>
                     <div id="raSubAccessTypeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></div>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Credential Scope</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Credential Paylaşımı</label>
                     <select id="raSubScopeInput" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                         <option value="">(tanımsız)</option>
-                        <option value="shared">shared (tüm kurum kullanıcıları aynı credential ile erişir)</option>
-                        <option value="per_user">per_user (her kullanıcı kendi credential'ını kullanır — ra_user_credentials)</option>
+                        <option value="shared">Ortak — tüm kurum kullanıcıları aynı hesabı kullanır</option>
+                        <option value="per_user">Bireysel — her kullanıcı kendi hesabıyla giriş yapar</option>
                     </select>
-                    <p class="text-[11px] text-gray-400 mt-1">Burada set edilen credential sadece "shared" modunda kullanılır. per_user için ayrı tablo gerek.</p>
+                    <p class="text-[11px] text-gray-400 mt-1">Aşağıdaki kullanıcı adı/şifre alanları yalnızca "Ortak" modunda geçerlidir.</p>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -1485,6 +1494,44 @@
     <!-- Settings Tab -->
     <div id="tab-settings" class="tab-content hidden">
         <div class="max-w-3xl space-y-6">
+
+            <!-- Admin Profili -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-base font-semibold text-gray-800 mb-1">Admin Profili</h3>
+                <p class="text-sm text-gray-400 mb-4">Hesap bilgileri ve şifre değiştirme</p>
+                <div class="grid grid-cols-2 gap-3 text-sm mb-5">
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-400 mb-0.5">Ad Soyad</p>
+                        <p class="font-medium text-gray-700" id="settingsCurrentUser">—</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-400 mb-0.5">E-posta</p>
+                        <p class="font-medium text-gray-700 font-mono text-xs" id="settingsCurrentEmail">—</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3 col-span-2">
+                        <p class="text-xs text-gray-400 mb-0.5">Rol</p>
+                        <p class="font-medium text-gray-700" id="settingsCurrentRole">—</p>
+                    </div>
+                </div>
+                <div class="border-t pt-4">
+                    <p class="text-sm font-medium text-gray-700 mb-3">Şifre Değiştir</p>
+                    <form id="settingsPasswordForm" class="space-y-3" novalidate>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Yeni Şifre</label>
+                                <input type="password" id="settingsNewPassword" class="w-full border rounded px-3 py-2 text-sm" placeholder="En az 6 karakter" minlength="6">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Yeni Şifre (Tekrar)</label>
+                                <input type="password" id="settingsNewPasswordConfirm" class="w-full border rounded px-3 py-2 text-sm" placeholder="Aynı şifreyi girin">
+                            </div>
+                        </div>
+                        <div id="settingsPasswordMsg" class="hidden text-xs rounded px-3 py-2"></div>
+                        <button type="submit" class="btn btn-primary text-sm">Şifreyi Güncelle</button>
+                    </form>
+                </div>
+            </div>
+
             <!-- Sistem Bilgisi -->
             <div class="bg-white rounded-xl shadow-sm p-6">
                 <h3 class="text-base font-semibold text-gray-800 mb-1">Sistem Bilgisi</h3>
@@ -1503,16 +1550,75 @@
                         <p class="font-medium text-gray-700 font-mono text-xs" id="settingsApiBase">—</p>
                     </div>
                     <div class="bg-gray-50 rounded-lg p-3">
-                        <p class="text-xs text-gray-400 mb-0.5">Giriş Yapan</p>
-                        <p class="font-medium text-gray-700" id="settingsCurrentUser">—</p>
+                        <p class="text-xs text-gray-400 mb-0.5">Worker</p>
+                        <p class="font-medium text-gray-700 font-mono text-xs" id="settingsWorkerName">—</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Planlanan Ayarlar -->
+            <!-- Sistem İstatistikleri -->
             <div class="bg-white rounded-xl shadow-sm p-6">
-                <h3 class="text-base font-semibold text-gray-800 mb-1">Yapılandırma</h3>
-                <p class="text-sm text-gray-400 mb-4">Aşağıdaki ayarlar ilerleyen sürümlerde eklenecektir</p>
+                <h3 class="text-base font-semibold text-gray-800 mb-1">Sistem İstatistikleri</h3>
+                <p class="text-sm text-gray-400 mb-4">Anlık veritabanı sayıları</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm" id="settingsStatsGrid">
+                    <div class="bg-indigo-50 rounded-lg p-3 text-center">
+                        <p class="text-2xl font-bold text-indigo-600" id="settingsStatUsers">—</p>
+                        <p class="text-xs text-indigo-400 mt-0.5">Kullanıcı</p>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-3 text-center">
+                        <p class="text-2xl font-bold text-green-600" id="settingsStatInstitutions">—</p>
+                        <p class="text-xs text-green-400 mt-0.5">Kurum</p>
+                    </div>
+                    <div class="bg-amber-50 rounded-lg p-3 text-center">
+                        <p class="text-2xl font-bold text-amber-600" id="settingsStatSubscriptions">—</p>
+                        <p class="text-xs text-amber-400 mt-0.5">Abonelik</p>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-3 text-center">
+                        <p class="text-2xl font-bold text-purple-600" id="settingsStatTunnels">—</p>
+                        <p class="text-xs text-purple-400 mt-0.5">Aktif Tünel</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Veri Dışa Aktarma -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-base font-semibold text-gray-800 mb-1">Veri Dışa Aktarma</h3>
+                <p class="text-sm text-gray-400 mb-4">Mevcut verileri CSV olarak indirin</p>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Kurumlar</p>
+                            <p class="text-xs text-gray-400">Tüm kurumların temel bilgileri</p>
+                        </div>
+                        <button type="button" id="settingsExportInstitutions" class="btn bg-indigo-100 text-indigo-700 hover:bg-indigo-200 text-sm py-1.5 px-3">
+                            <i class="fas fa-download mr-1"></i>CSV İndir
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Kullanıcılar</p>
+                            <p class="text-xs text-gray-400">Tüm kullanıcıların e-posta ve kurum bilgileri</p>
+                        </div>
+                        <button type="button" id="settingsExportUsers" class="btn bg-indigo-100 text-indigo-700 hover:bg-indigo-200 text-sm py-1.5 px-3">
+                            <i class="fas fa-download mr-1"></i>CSV İndir
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Abonelikler</p>
+                            <p class="text-xs text-gray-400">Tüm kurumsal abonelik kayıtları</p>
+                        </div>
+                        <button type="button" id="settingsExportSubscriptions" class="btn bg-indigo-100 text-indigo-700 hover:bg-indigo-200 text-sm py-1.5 px-3">
+                            <i class="fas fa-download mr-1"></i>CSV İndir
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Yakında -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-base font-semibold text-gray-800 mb-1">Gelecek Özellikler</h3>
+                <p class="text-sm text-gray-400 mb-4">İlerleyen sürümlerde eklenecek yapılandırma seçenekleri</p>
                 <div class="space-y-3">
                     <div class="flex items-start gap-3 p-3 border border-dashed border-gray-200 rounded-lg opacity-50">
                         <i class="fas fa-envelope text-indigo-400 mt-0.5 w-4"></i>
@@ -1526,28 +1632,21 @@
                         <i class="fas fa-shield-alt text-indigo-400 mt-0.5 w-4"></i>
                         <div>
                             <p class="text-sm font-medium text-gray-700">İzin Verilen Domain'ler</p>
-                            <p class="text-xs text-gray-400">Kayıt açık olan e-posta domain'leri</p>
+                            <p class="text-xs text-gray-400">Kayıt açık olan e-posta domain'leri ve otomatik kurum eşleştirme</p>
                         </div>
                         <span class="ml-auto text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Yakında</span>
                     </div>
                     <div class="flex items-start gap-3 p-3 border border-dashed border-gray-200 rounded-lg opacity-50">
                         <i class="fas fa-clock text-indigo-400 mt-0.5 w-4"></i>
                         <div>
-                            <p class="text-sm font-medium text-gray-700">Oturum Süresi</p>
-                            <p class="text-xs text-gray-400">JWT erişim ve yenileme token süreleri</p>
-                        </div>
-                        <span class="ml-auto text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Yakında</span>
-                    </div>
-                    <div class="flex items-start gap-3 p-3 border border-dashed border-gray-200 rounded-lg opacity-50">
-                        <i class="fas fa-hdd text-indigo-400 mt-0.5 w-4"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Depolama Kotaları</p>
-                            <p class="text-xs text-gray-400">Kurum ve kullanıcı başına maksimum dosya boyutu</p>
+                            <p class="text-sm font-medium text-gray-700">Oturum & Token Süreleri</p>
+                            <p class="text-xs text-gray-400">JWT erişim ve yenileme token süresi yapılandırması</p>
                         </div>
                         <span class="ml-auto text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0">Yakında</span>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -2511,16 +2610,14 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Kuruma Özel Erişim Tipi</label>
                             <select id="subscriptionEditorAccessType" class="w-full border p-2 rounded">
-                                <option value="">Seçin</option>
-                                <option value="direct">Doğrudan Link</option>
-                                <option value="ip">IP Erişimi</option>
-                                <option value="proxy">Proxy / EZproxy</option>
-                                <option value="sso">SSO</option>
-                                <option value="institution_link">Kuruma Özel Link</option>
-                                <option value="email_password_external">Kurum E-posta + Harici Şifre</option>
-                                <option value="mixed">Karma</option>
+                                <option value="">— Ürün varsayılanını kullan —</option>
+                                <option value="direct">Ücretsiz / Doğrudan Link</option>
+                                <option value="ip">Kurum IP'si / Uzaktan Erişim</option>
+                                <option value="institution_link">Kurumsal Giriş Sayfası (Lecturio gibi)</option>
+                                <option value="sso">SSO (Kurumsal Giriş)</option>
+                                <option value="email_password_external">Kullanıcı Adı + Şifre</option>
                             </select>
-                            <p class="text-xs text-gray-400 mt-1">Bu alan kullanıcının göreceği erişim açıklamasını belirler. RA ürünlerinde teknik davranış ayrıca Uzaktan Erişim ayarlarından yönetilir.</p>
+                            <p class="text-xs text-gray-400 mt-1">Kullanıcıya gösterilecek erişim yöntemini belirler. Boş bırakılırsa ürün varsayılanı geçerlidir.</p>
                             <div id="subscriptionAccessTypeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></div>
                         </div>
                         <div>
@@ -2947,12 +3044,12 @@ document.addEventListener('click', function(e) {
     let editingProductSlug = null;
 
     const accessTypeLabels = {
-        direct: 'Doğrudan Link',
-        ip: 'IP Erişimi',
-        proxy: 'Proxy / EZproxy',
-        sso: 'SSO',
-        institution_link: 'Kuruma Özel Link',
-        email_password_external: 'Kurum E-posta + Harici Şifre',
+        direct: 'Ücretsiz / Doğrudan Link',
+        ip: 'Kurum IP\'si / Uzaktan Erişim',
+        proxy: 'Uzaktan Erişim (Proxy)',
+        sso: 'SSO — Kurumsal Giriş',
+        institution_link: 'Kurumsal Giriş Sayfası',
+        email_password_external: 'Kullanıcı Adı + Şifre',
         mixed: 'Karma'
     };
 
@@ -4597,34 +4694,162 @@ if (document.readyState === 'loading') {
     });
 })();
 
+let _settingsTabInitialized = false;
+
 async function _loadSettingsTab() {
     const el = (id) => document.getElementById(id);
-    if (el('settingsApiBase'))  el('settingsApiBase').textContent  = window.API_BASE || '(aynı origin)';
-    if (el('settingsCurrentUser')) el('settingsCurrentUser').textContent = currentAdmin?.full_name || currentAdmin?.email || '—';
-    if (el('settingsEnvLabel')) el('settingsEnvLabel').textContent = 'Yükleniyor...';
 
+    // ─── Profil bilgileri ────────────────────────────────────────────────────
+    if (el('settingsApiBase'))     el('settingsApiBase').textContent     = window.API_BASE || '(aynı origin)';
+    if (el('settingsCurrentUser')) el('settingsCurrentUser').textContent = currentAdmin?.full_name || '—';
+    if (el('settingsCurrentEmail'))el('settingsCurrentEmail').textContent= currentAdmin?.email || '—';
+    if (el('settingsCurrentRole')) {
+        const roleMap = { super_admin: 'Super Admin', admin: 'Admin', user: 'Kullanıcı' };
+        el('settingsCurrentRole').textContent = roleMap[currentAdmin?.role] || currentAdmin?.role || '—';
+    }
+    if (el('settingsEnvLabel')) el('settingsEnvLabel').textContent = 'Yükleniyor...';
+    if (el('settingsWorkerName')) el('settingsWorkerName').textContent = '…';
+
+    // ─── Runtime info ────────────────────────────────────────────────────────
     try {
         const res = await fetch(`${API_BASE}/api/admin/runtime-info`, { credentials: 'include' });
         if (!res.ok) throw new Error('runtime info failed');
         const info = await res.json();
-        const labelMap = {
-            staging: 'Staging',
-            production: 'Production',
-            default: 'Default',
-            development: 'Development'
-        };
+        const labelMap = { staging: 'Staging', production: 'Production', default: 'Default', development: 'Development' };
         if (el('settingsEnvLabel')) {
-            const envLabel = labelMap[info.environment] || info.environment || 'Unknown';
-            const workerLabel = info.worker_name ? ` (${info.worker_name})` : '';
-            el('settingsEnvLabel').textContent = `${envLabel}${workerLabel}`;
+            el('settingsEnvLabel').textContent = labelMap[info.environment] || info.environment || 'Unknown';
+        }
+        if (el('settingsWorkerName')) {
+            el('settingsWorkerName').textContent = info.worker_name || '—';
         }
     } catch (err) {
         console.error('runtime info load failed', err);
         const hostname = window.location.hostname;
         const fallback = hostname.includes('staging') || hostname.includes('localhost') || hostname === '127.0.0.1'
-            ? 'Staging / Geliştirme'
-            : 'Production?';
+            ? 'Staging / Geliştirme' : 'Production?';
         if (el('settingsEnvLabel')) el('settingsEnvLabel').textContent = fallback;
+        if (el('settingsWorkerName')) el('settingsWorkerName').textContent = '—';
+    }
+
+    // ─── İstatistikler ───────────────────────────────────────────────────────
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/dashboard`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            const s = data.stats || {};
+            if (el('settingsStatUsers'))         el('settingsStatUsers').textContent         = s.total_users ?? '—';
+            if (el('settingsStatInstitutions'))   el('settingsStatInstitutions').textContent   = s.total_institutions ?? '—';
+            if (el('settingsStatSubscriptions'))  el('settingsStatSubscriptions').textContent  = s.active_subscriptions ?? s.total_subscriptions ?? '—';
+            if (el('settingsStatTunnels'))        el('settingsStatTunnels').textContent        = s.active_tunnels ?? '—';
+        }
+    } catch (err) {
+        console.error('dashboard stats for settings failed', err);
+    }
+
+    // ─── Şifre formu (bir kez bağla) ────────────────────────────────────────
+    if (!_settingsTabInitialized) {
+        _settingsTabInitialized = true;
+
+        const form = document.getElementById('settingsPasswordForm');
+        const msgEl = document.getElementById('settingsPasswordMsg');
+        if (form && msgEl) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const np  = document.getElementById('settingsNewPassword')?.value || '';
+                const np2 = document.getElementById('settingsNewPasswordConfirm')?.value || '';
+                msgEl.className = 'text-xs rounded px-3 py-2';
+
+                if (np.length < 6) {
+                    msgEl.classList.add('bg-red-50', 'text-red-700');
+                    msgEl.textContent = 'Şifre en az 6 karakter olmalı.';
+                    msgEl.classList.remove('hidden');
+                    return;
+                }
+                if (np !== np2) {
+                    msgEl.classList.add('bg-red-50', 'text-red-700');
+                    msgEl.textContent = 'Şifreler eşleşmiyor.';
+                    msgEl.classList.remove('hidden');
+                    return;
+                }
+                try {
+                    const res = await fetch(`${API_BASE}/api/user/update`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ new_password: np }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Güncelleme başarısız');
+                    msgEl.classList.add('bg-green-50', 'text-green-700');
+                    msgEl.textContent = 'Şifre başarıyla güncellendi.';
+                    msgEl.classList.remove('hidden');
+                    document.getElementById('settingsNewPassword').value = '';
+                    document.getElementById('settingsNewPasswordConfirm').value = '';
+                } catch (err) {
+                    msgEl.classList.add('bg-red-50', 'text-red-700');
+                    msgEl.textContent = err.message || 'Bir hata oluştu.';
+                    msgEl.classList.remove('hidden');
+                }
+            });
+        }
+
+        // ─── CSV export ─────────────────────────────────────────────────────
+        document.getElementById('settingsExportInstitutions')?.addEventListener('click', () => {
+            _exportCsv(
+                `${API_BASE}/api/admin/institutions?page_size=10000`,
+                (data) => data.institutions || data.items || [],
+                ['id','name','domain','city','organization_type','status','user_count'],
+                'kurumlar.csv'
+            );
+        });
+
+        document.getElementById('settingsExportUsers')?.addEventListener('click', () => {
+            _exportCsv(
+                `${API_BASE}/api/admin/users?limit=10000`,
+                (data) => data.users || data.items || [],
+                ['id','email','full_name','institution','role','created_at'],
+                'kullanicilar.csv'
+            );
+        });
+
+        document.getElementById('settingsExportSubscriptions')?.addEventListener('click', () => {
+            _exportCsv(
+                `${API_BASE}/api/admin/subscriptions?limit=10000`,
+                (data) => data.subscriptions || data.items || [],
+                ['id','institution_name','product_slug','access_type','status','expires_at'],
+                'abonelikler.csv'
+            );
+        });
+    }
+}
+
+async function _exportCsv(url, extractFn, columns, filename) {
+    try {
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) throw new Error('Veri alınamadı');
+        const data = await res.json();
+        const rows = extractFn(data);
+        if (!rows.length) { alert('Dışa aktarılacak veri bulunamadı.'); return; }
+
+        const escape = (v) => {
+            const s = v == null ? '' : String(v);
+            return s.includes(',') || s.includes('"') || s.includes('\n')
+                ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        const header = columns.join(',');
+        const body   = rows.map(r => columns.map(c => escape(r[c])).join(',')).join('\n');
+        const csv    = '﻿' + header + '\n' + body; // BOM for Excel UTF-8
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    } catch (err) {
+        alert('CSV dışa aktarma hatası: ' + err.message);
     }
 }
 
@@ -4734,6 +4959,27 @@ function _initRemoteAccessTab() {
 
     const applyFilterBtn = document.getElementById('raApplyLogsFilterBtn');
     if (applyFilterBtn) applyFilterBtn.addEventListener('click', () => {
+        _ra.logs.offset = 0;
+        _raLoadLogs();
+    });
+
+    // Filtre temizle
+    document.getElementById('raLogsClearBtn')?.addEventListener('click', () => {
+        ['raLogsFilterInstitution','raLogsFilterProduct','raLogsFilterUser',
+         'raLogsFilterDateFrom','raLogsFilterDateTo','raLogsFilterStatus'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        _ra.logs.offset = 0;
+        _raLoadLogs();
+    });
+
+    // CSV export
+    document.getElementById('raLogsExportBtn')?.addEventListener('click', _raExportLogsCsv);
+
+    // Sayfa boyutu değiştiğinde sıfırdan yükle
+    document.getElementById('raLogsPageSize')?.addEventListener('change', (e) => {
+        _ra.logs.limit = Number(e.target.value) || 100;
         _ra.logs.offset = 0;
         _raLoadLogs();
     });
@@ -5065,7 +5311,14 @@ function _raRenderLogs() {
                 ? `<span class="font-mono text-[11px]">${escapeHtml(l.target_host)}${escapeHtml(l.target_path || '')}</span>`
                 : '<span class="text-gray-400">—</span>';
             const statusBadge = l.status
-                ? `<span class="text-[11px] px-2 py-0.5 rounded-full ${l.status < 400 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">${l.status}</span>`
+                ? (() => {
+                    const s = l.status;
+                    const cls = s < 300 ? 'bg-emerald-50 text-emerald-700'
+                               : s < 400 ? 'bg-amber-50 text-amber-700'
+                               : s < 500 ? 'bg-orange-50 text-orange-700'
+                               : 'bg-red-50 text-red-700';
+                    return `<span class="text-[11px] px-2 py-0.5 rounded-full ${cls}">${s}</span>`;
+                  })()
                 : '<span class="text-gray-400 text-xs">—</span>';
             const bytes = l.bytes_out != null ? Number(l.bytes_out).toLocaleString('tr-TR') : '—';
             const latency = l.upstream_latency_ms != null ? `${l.upstream_latency_ms} ms` : '—';
@@ -5089,6 +5342,60 @@ function _raRenderLogs() {
         : 'Kayıt yok';
     document.getElementById('raLogsPrevBtn').disabled = _ra.logs.offset <= 0;
     document.getElementById('raLogsNextBtn').disabled = (_ra.logs.offset + _ra.logs.items.length) >= total;
+}
+
+// ─── Erişim Logu CSV Export ───────────────────────────────────────────────
+
+async function _raExportLogsCsv() {
+    const btn = document.getElementById('raLogsExportBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>İndiriliyor...</span>'; }
+
+    try {
+        const params = new URLSearchParams();
+        const inst = document.getElementById('raLogsFilterInstitution')?.value;
+        const product = (document.getElementById('raLogsFilterProduct')?.value || '').trim();
+        const userEmail = (document.getElementById('raLogsFilterUser')?.value || '').trim();
+        const dateFrom = (document.getElementById('raLogsFilterDateFrom')?.value || '').trim();
+        const dateTo   = (document.getElementById('raLogsFilterDateTo')?.value || '').trim();
+        const httpStatus = document.getElementById('raLogsFilterStatus')?.value || '';
+        if (inst) params.set('institution_id', inst);
+        if (product) params.set('product_slug', product);
+        if (userEmail) params.set('user_email', userEmail);
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo)   params.set('date_to', dateTo);
+        if (httpStatus) params.set('http_status', httpStatus);
+        params.set('limit', '500');
+        params.set('offset', '0');
+
+        const res = await fetch(`${API_BASE}/api/ra/admin/logs?${params.toString()}`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const logs = Array.isArray(data.logs) ? data.logs : [];
+        if (!logs.length) { alert('Dışa aktarılacak log kaydı bulunamadı.'); return; }
+
+        const cols = ['id','ts_formatted','user_email','user_name','institution_name','product_slug','target_host','target_path','status','bytes_out','upstream_latency_ms'];
+        const colHeaders = ['ID','Zaman','Kullanıcı E-posta','Kullanıcı Ad','Kurum','Ürün','Hedef Host','Hedef Path','HTTP Status','Bytes','Latency (ms)'];
+        const esc = (v) => { const s = v == null ? '' : String(v); return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s; };
+        const rows = logs.map(l => {
+            const d = { ...l, ts_formatted: l.ts ? new Date(l.ts * 1000).toISOString() : '' };
+            return cols.map(c => esc(d[c])).join(',');
+        });
+        const csv = '﻿' + colHeaders.join(',') + '\n' + rows.join('\n');
+
+        const nowStr = new Date().toISOString().slice(0,10);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `ra-erisim-loglari-${nowStr}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    } catch (err) {
+        alert('CSV export hatası: ' + err.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i><span>CSV</span>'; }
+    }
 }
 
 // ─── Kurumsal Abonelik Credential'ları ────────────────────────────────────
