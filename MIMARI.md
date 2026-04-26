@@ -128,7 +128,7 @@ slug='acs'
   ra_delivery_mode = 'session_host_proxy'
   ra_origin_landing_path = '/'
   ra_origin_host = 'pubs.acs.org'
-  ra_host_allowlist_json = '["pubs.acs.org","acs.org","www.acs.org","idp.acs.org"]'
+  ra_host_allowlist_json = '["pubs.acs.org","www.pubs.acs.org","acs.org","www.acs.org","cenglobal.acs.org","www.chemistry.org","pubsdev.acs.org","pubstest.acs.org","idp.acs.org"]'
   ra_enabled = 0  -- staging config hazır, ACS Cloudflare challenge 403 nedeniyle pasif
 
 -- institution_ra_settings
@@ -625,13 +625,37 @@ slug='acs'
   ra_origin_host = 'pubs.acs.org'
   ra_origin_landing_path = '/'
   ra_delivery_mode = 'session_host_proxy'
-  ra_host_allowlist_json = '["pubs.acs.org","acs.org","www.acs.org","idp.acs.org"]'
+  ra_host_allowlist_json = '["pubs.acs.org","www.pubs.acs.org","acs.org","www.acs.org","cenglobal.acs.org","www.chemistry.org","pubsdev.acs.org","pubstest.acs.org","idp.acs.org"]'
 ```
 
-`ra-egress` allowlist regex'ine ACS hostları eklendi ve container yeniden başlatıldı.
-İmzalı egress smoke test:
+EZproxy stanzası:
 
 ```
+Title American Chemical Society
+URL http://pubs.acs.org
+HJ acs.org
+HJ cenglobal.acs.org
+HJ https://cenglobal.acs.org
+HJ https://pubs.acs.org
+HJ pubs.acs.org
+HJ www.acs.org
+HJ www.chemistry.org
+HJ www.pubs.acs.org
+DJ acs.org
+Find hostdev="pubsdev.acs.org"
+Replace hostdev="^ppubsdev.acs.org^"
+Find hosttest="pubstest.acs.org"
+Replace hosttest="^ppubstest.acs.org^"
+Find hostprod="pubs.acs.org"
+Replace hostprod="^ppubs.acs.org^"
+```
+
+Stanza'daki hostlar `ra_host_allowlist_json` ve `ra-egress` regex'ine işlendi.
+
+İmzalı egress smoke testleri:
+
+```
+GET http://pubs.acs.org/ → 301 Location: https://pubs.acs.org/
 GET https://pubs.acs.org/ → 403
 server: cloudflare
 body: "Just a moment..."
