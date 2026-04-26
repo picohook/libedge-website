@@ -50,13 +50,11 @@ var (
 		},
 		Timeout: 30 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// Publisher'a yönlendirmeleri bizim takip etmemiz lazım çünkü
-			// response'un tamamını Worker'a döndürüyoruz. Redirect chain'i
-			// sınırlayalım ama takip edelim.
-			if len(via) >= 10 {
-				return fmt.Errorf("too many redirects")
-			}
-			return nil
+			// Redirect'leri takip ETME — 302/301 response'u olduğu gibi
+			// Proxy Worker'a döndür. Worker Location header'ı rewrite eder,
+			// Set-Cookie'leri tarayıcıya iletir. ra-egress burada takip ederse
+			// ara 302'deki Set-Cookie kaybolur (EMIS session cookie sorunu).
+			return http.ErrUseLastResponse
 		},
 	}
 )

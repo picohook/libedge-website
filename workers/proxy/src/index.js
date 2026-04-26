@@ -38,6 +38,13 @@ async function handle(request, env, ctx) {
     return fetch(request);
   }
 
+  // R2 files subdomain — *.selmiye.com/* route'u bu hostname'i de yakaladığından
+  // buraya düşer; JWT kontrolü yapmadan doğrudan R2'den serve et.
+  const filesHost = env.RA_FILES_HOST || 'files.selmiye.com';
+  if (hostname === filesHost) {
+    return fetch(request);
+  }
+
   // Session-host modu tespiti: "r" + 7 alfanumerik + "." + domain
   // örn: rx7f3a9b.selmiye.com  → sessionId = "rx7f3a9b"
   const sessionHostMatch = hostname.match(/^(r[a-z0-9]{6,8})\./);
@@ -60,6 +67,17 @@ async function handleSessionHost(request, env, url, sessionId) {
     return await acceptSessionHostToken(request, env, token, url, sessionId);
   }
 
+  // Login redirect loop tespiti: URL'de proxy hostname'i içeren ?ref= varsa
+  // client-side JS loopuna girildim demektir — hemen durdur.
+  const refParam = url.searchParams.get('ref') || '';
+  if (refParam.includes(url.hostname)) {
+    return htmlError(403,
+      'Bu kaynağa erişim sağlanamadı.',
+      'Yayıncı sunucusu kurumunuzun IP adresini tanımıyor olabilir. ' +
+      'Lütfen sistem yöneticinizle iletişime geçin.'
+    );
+  }
+
   // Session cookie kontrol
   const cookieVal = readCookie(request.headers.get('Cookie'), SESSION_COOKIE);
   if (!cookieVal) {
@@ -72,9 +90,15 @@ async function handleSessionHost(request, env, url, sessionId) {
     return htmlError(401, 'Oturum süresi dolmuş. Portal üzerinden yeniden erişin.');
   }
 
-  // Upstream relay — path ve query aynen korunur, sadece host değişir
-  const targetUrl = `https://${session.origin_host}${url.pathname}${url.search}`;
-  const upstreamHeaders = buildUpstreamHeaders(request.headers);
+  // Upstream relay — path ve query aynen korunur, sadece host değişir.
+  // Query params içindeki proxy hostname'i (r*.selmiye.com) origin'e rewrite et;
+  // aksi hâlde EMIS gibi "ref=<current_url>" echo'layan siteler redirect loop oluşturur.
+  const search = rewriteQueryProxyUrls(url.search, url.hostname, session.origin_host);
+  const targetUrl = `https://${session.origin_host}${url.pathname}${search}`;
+  const upstreamHeaders = buildUpstreamHeaders(request.headers, {
+    proxyHostname: url.hostname,
+    originHost: session.origin_host,
+  });
 
   let upstreamResp;
   try {
@@ -91,6 +115,17 @@ async function handleSessionHost(request, env, url, sessionId) {
   const respHeaders = buildSessionHostResponseHeaders(
     upstreamResp.headers, url.hostname, session.origin_host
   );
+  addStagingDebugHeaders(respHeaders, env, {
+    targetUrl,
+    upstreamStatus: upstreamResp.status,
+    requestCookies: request.headers.get('Cookie'),
+    upstreamCookies: upstreamHeaders.get('Cookie'),
+    upstreamSetCookies: upstreamResp.headers,
+    origin: request.headers.get('Origin'),
+    referer: request.headers.get('Referer'),
+    upstreamOrigin: upstreamHeaders.get('Origin'),
+    upstreamReferer: upstreamHeaders.get('Referer'),
+  });
 
   return new Response(upstreamResp.body, {
     status: upstreamResp.status,
@@ -147,13 +182,6 @@ function buildSessionHostResponseHeaders(incoming, proxyHostname, originHost) {
   for (const [k, v] of incoming.entries()) {
     if (STRIP_RESPONSE.has(k.toLowerCase())) continue;
     if (k.toLowerCase() === 'set-cookie') {
-      // Publisher cookie → proxy subdomain'e yönlendir
-      const stripped = v
-        .replace(/domain=[^;]+;?\s*/gi, '')
-        .replace(/secure;?\s*/gi, '')
-        .trim();
-      out.append('Set-Cookie',
-        `${stripped}; Domain=${proxyHostname}; Path=/; Secure; SameSite=Lax`);
       continue;
     }
     if (k.toLowerCase() === 'location') {
@@ -167,6 +195,9 @@ function buildSessionHostResponseHeaders(incoming, proxyHostname, originHost) {
       } catch { /* relative → olduğu gibi bırak */ }
     }
     out.set(k, v);
+  }
+  for (const sc of collectSetCookies(incoming)) {
+    out.append('Set-Cookie', rewriteSessionHostSetCookie(sc, proxyHostname));
   }
   return out;
 }
@@ -209,7 +240,11 @@ async function handlePathProxy(request, env, url) {
 
   // 4. Upstream relay
   const targetUrl = new URL(`https://${targetHost}${remainingPath}${url.search}`);
-  const upstreamHeaders = buildUpstreamHeaders(request.headers);
+  const upstreamHeaders = buildUpstreamHeaders(request.headers, {
+    proxyHostname: url.hostname,
+    originHost: targetHost,
+    pathPrefix: `/${encodedLabel}`,
+  });
 
   let upstreamResp;
   try {
@@ -225,6 +260,17 @@ async function handlePathProxy(request, env, url) {
 
   const baseHost = env.RA_PROXY_BASE_HOST || url.hostname;
   const respHeaders = buildResponseHeaders(upstreamResp.headers, baseHost, encodedLabel);
+  addStagingDebugHeaders(respHeaders, env, {
+    targetUrl: targetUrl.toString(),
+    upstreamStatus: upstreamResp.status,
+    requestCookies: request.headers.get('Cookie'),
+    upstreamCookies: upstreamHeaders.get('Cookie'),
+    upstreamSetCookies: upstreamResp.headers,
+    origin: request.headers.get('Origin'),
+    referer: request.headers.get('Referer'),
+    upstreamOrigin: upstreamHeaders.get('Origin'),
+    upstreamReferer: upstreamHeaders.get('Referer'),
+  });
 
   return new Response(upstreamResp.body, {
     status: upstreamResp.status,
@@ -325,12 +371,27 @@ const HOP_BY_HOP = new Set([
   'te', 'trailers', 'transfer-encoding', 'upgrade', 'host',
 ]);
 
-function buildUpstreamHeaders(incoming) {
+const STRIP_REQUEST = new Set([
+  'cf-connecting-ip', 'cf-ipcountry', 'cf-ray', 'cf-visitor', 'cf-worker',
+  'cdn-loop', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto',
+  'x-real-ip', 'true-client-ip',
+]);
+
+export function buildUpstreamHeaders(incoming, context = {}) {
   const out = new Headers();
   for (const [k, v] of incoming.entries()) {
-    if (HOP_BY_HOP.has(k.toLowerCase())) continue;
-    // Kendi session cookie'mizi publisher'a iletme
-    if (k.toLowerCase() === 'cookie') continue;
+    const lower = k.toLowerCase();
+    if (HOP_BY_HOP.has(lower) || STRIP_REQUEST.has(lower)) continue;
+    if (lower === 'cookie') {
+      const cleaned = stripSessionCookie(v);
+      if (cleaned) out.set(k, cleaned);
+      continue;
+    }
+    if (lower === 'origin' || lower === 'referer') {
+      const rewritten = rewriteClientContextHeader(k, v, context);
+      if (rewritten) out.set(k, rewritten);
+      continue;
+    }
     out.set(k, v);
   }
   return out;
@@ -347,15 +408,6 @@ function buildResponseHeaders(incoming, baseHost, encodedLabel) {
   for (const [k, v] of incoming.entries()) {
     if (STRIP_RESPONSE.has(k.toLowerCase())) continue;
     if (k.toLowerCase() === 'set-cookie') {
-      // Publisher cookie → proxy domain'e yönlendir, path'e publisher prefix ekle
-      const stripped = v
-        .replace(/domain=[^;]+;?\s*/gi, '')
-        .replace(/secure;?\s*/gi, '')
-        .trim();
-      out.append(
-        'Set-Cookie',
-        `${stripped}; Domain=${baseHost}; Path=/${encodedLabel}/; Secure; SameSite=Lax`
-      );
       continue;
     }
     // Location header rewrite: publisher kendi domain'ine yönlendiriyorsa proxy'e çevir
@@ -365,7 +417,21 @@ function buildResponseHeaders(incoming, baseHost, encodedLabel) {
     }
     out.set(k, v);
   }
+  for (const sc of collectSetCookies(incoming)) {
+    out.append('Set-Cookie', rewritePathProxySetCookie(sc, baseHost, encodedLabel));
+  }
   return out;
+}
+
+// Query string içindeki proxy hostname'i → origin hostname'e çevir.
+// EMIS gibi siteler "ref=<current_url>" ile redirect loop oluşturur;
+// upstream'e göndermeden önce proxy URL'lerini temizleriz.
+function rewriteQueryProxyUrls(search, proxyHostname, originHost) {
+  if (!search || !search.includes(proxyHostname)) return search;
+  // URL-encoded ve plain her iki forma da bak
+  return search
+    .replaceAll(encodeURIComponent(`https://${proxyHostname}`), encodeURIComponent(`https://${originHost}`))
+    .replaceAll(`https://${proxyHostname}`, `https://${originHost}`);
 }
 
 // Publisher'ın Location header'ı (redirect) → proxy URL'e çevir
@@ -403,6 +469,130 @@ function buildSessionCookie(sid, baseHost) {
     `Domain=${baseHost}; Path=/; HttpOnly; Secure; SameSite=Lax; ` +
     `Max-Age=${SESSION_TTL_SEC}`
   );
+}
+
+export function stripSessionCookie(header) {
+  if (!header) return '';
+  const kept = [];
+  for (const part of String(header).split(';').map(s => s.trim()).filter(Boolean)) {
+    const idx = part.indexOf('=');
+    if (idx <= 0) continue;
+    if (part.slice(0, idx).trim() === SESSION_COOKIE) continue;
+    kept.push(part);
+  }
+  return kept.join('; ');
+}
+
+export function rewriteSessionHostSetCookie(setCookie, proxyHostname) {
+  return rewritePublisherSetCookie(setCookie, {
+    domain: proxyHostname,
+    path: '/',
+  });
+}
+
+export function rewritePathProxySetCookie(setCookie, baseHost, encodedLabel) {
+  return rewritePublisherSetCookie(setCookie, {
+    domain: baseHost,
+    path: `/${encodedLabel}/`,
+  });
+}
+
+export function rewriteClientContextHeader(headerName, value, context = {}) {
+  if (!value || !context.proxyHostname || !context.originHost) return value;
+  const lower = String(headerName || '').toLowerCase();
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.hostname !== context.proxyHostname) return value;
+
+    if (lower === 'origin') {
+      return `https://${context.originHost}`;
+    }
+
+    let path = parsed.pathname || '/';
+    if (context.pathPrefix) {
+      const prefix = context.pathPrefix;
+      if (path === prefix) {
+        path = '/';
+      } else if (path.startsWith(`${prefix}/`)) {
+        path = path.slice(prefix.length) || '/';
+      }
+    }
+
+    return `https://${context.originHost}${path}${parsed.search}${parsed.hash}`;
+  } catch {
+    return value;
+  }
+}
+
+function rewritePublisherSetCookie(setCookie, { domain, path }) {
+  if (!setCookie) return setCookie;
+  const parts = String(setCookie).split(';').map(s => s.trim()).filter(Boolean);
+  if (!parts.length) return setCookie;
+
+  const rewritten = [parts[0]];
+  let sawSameSite = false;
+  for (let i = 1; i < parts.length; i += 1) {
+    const lower = parts[i].toLowerCase();
+    if (lower.startsWith('domain=')) continue;
+    if (lower.startsWith('path=')) continue;
+    if (lower === 'secure') continue;
+    if (lower.startsWith('samesite=')) sawSameSite = true;
+    rewritten.push(parts[i]);
+  }
+  rewritten.push(`Domain=${domain}`);
+  rewritten.push(`Path=${path}`);
+  rewritten.push('Secure');
+  if (!sawSameSite) rewritten.push('SameSite=Lax');
+  return rewritten.join('; ');
+}
+
+function collectSetCookies(headers) {
+  if (typeof headers.getSetCookie === 'function') {
+    return headers.getSetCookie();
+  }
+  const out = [];
+  for (const [k, v] of headers.entries()) {
+    if (k.toLowerCase() === 'set-cookie') out.push(v);
+  }
+  return out;
+}
+
+function addStagingDebugHeaders(headers, env, info) {
+  if (String(env?.ENVIRONMENT || '').toLowerCase() !== 'staging') return;
+  headers.set('X-RA-Debug-Target', truncateHeader(info.targetUrl, 220));
+  headers.set('X-RA-Debug-Upstream-Status', String(info.upstreamStatus || ''));
+  headers.set('X-RA-Debug-Req-Cookies', cookieNames(info.requestCookies).join(',') || '-');
+  headers.set('X-RA-Debug-Upstream-Cookies', cookieNames(info.upstreamCookies).join(',') || '-');
+  headers.set('X-RA-Debug-Set-Cookies', setCookieNames(info.upstreamSetCookies).join(',') || '-');
+  if (info.origin) headers.set('X-RA-Debug-Origin', truncateHeader(info.origin, 120));
+  if (info.referer) headers.set('X-RA-Debug-Referer', truncateHeader(info.referer, 180));
+  if (info.upstreamOrigin) headers.set('X-RA-Debug-Upstream-Origin', truncateHeader(info.upstreamOrigin, 120));
+  if (info.upstreamReferer) headers.set('X-RA-Debug-Upstream-Referer', truncateHeader(info.upstreamReferer, 180));
+}
+
+function cookieNames(cookieHeader) {
+  if (!cookieHeader) return [];
+  const names = [];
+  for (const part of String(cookieHeader).split(';').map(s => s.trim()).filter(Boolean)) {
+    const idx = part.indexOf('=');
+    if (idx > 0) names.push(part.slice(0, idx).trim());
+  }
+  return names;
+}
+
+function setCookieNames(headers) {
+  const names = [];
+  for (const sc of collectSetCookies(headers)) {
+    const idx = String(sc).indexOf('=');
+    if (idx > 0) names.push(String(sc).slice(0, idx).trim());
+  }
+  return names;
+}
+
+function truncateHeader(value, maxLen) {
+  const s = String(value || '');
+  return s.length > maxLen ? `${s.slice(0, maxLen - 3)}...` : s;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
