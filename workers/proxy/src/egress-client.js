@@ -33,10 +33,17 @@ export async function egressFetch(env, institutionId, targetUrl, init = {}) {
     throw new Error('egress_endpoint missing');
   }
 
-  const secret = await decryptCredential(
-    settings.egress_secret_enc,
-    env.RA_CREDS_MASTER_KEY
-  );
+  // Secret resolution priority:
+  //   1. D1 egress_secret_enc (AES-GCM encrypted, per-institution) — production
+  //   2. RA_EGRESS_DEFAULT_SECRET env var (plaintext, single-tenant/staging fallback)
+  let secret;
+  if (settings.egress_secret_enc && env.RA_CREDS_MASTER_KEY) {
+    secret = await decryptCredential(settings.egress_secret_enc, env.RA_CREDS_MASTER_KEY);
+  } else if (env.RA_EGRESS_DEFAULT_SECRET) {
+    secret = env.RA_EGRESS_DEFAULT_SECRET;
+  } else {
+    throw new Error('no egress secret configured (set egress_secret_enc in D1 or RA_EGRESS_DEFAULT_SECRET)');
+  }
 
   const method = (init.method || 'GET').toUpperCase();
   const urlStr = typeof targetUrl === 'string' ? targetUrl : targetUrl.toString();
