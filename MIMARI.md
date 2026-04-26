@@ -138,6 +138,13 @@ slug='primal-pictures'
   ra_host_allowlist_json = '["anatomy.tv","www.anatomy.tv","cdn.anatomy.tv","anatomysearch.anatomy.tv"]'
   ra_enabled = 1  -- ürün RA-ready; kurum aboneliği ayrı yönetilir
 
+slug='iopscience'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_origin_landing_path = '/'
+  ra_origin_host = 'iopscience.iop.org'
+  ra_host_allowlist_json = '["iopscience.iop.org","www.iopscience.iop.org","cdp.iopscience.iop.org","iopscience.org","www.iopscience.org","iop.org","www.iop.org","ioppublishing.org","www.ioppublishing.org","stacks.iop.org","www.stacks.iop.org","asia.iop.org","www.asia.iop.org","biologicalphysics.iop.org","www.biologicalphysics.iop.org","conferenceseries.iop.org","irish.iop.org","tap.iop.org","www.tap.iop.org","jphysplus.iop.org","librarians.iop.org","www.librarians.iop.org","njp.org","www.njp.org","physicsworld.com","www.physicsworld.com","physicsworldarchive.iop.org","www.physicsworldarchive.iop.org","stimulatingphysics.org","www.stimulatingphysics.org","stimulatingphysicssupport.iop.org"]'
+  ra_enabled = 1  -- staging kurum subscription id=16 active/proxy
+
 -- institution_ra_settings
 institution_id = 1
   egress_endpoint = 'https://ra-egress.selmiye.com'
@@ -623,6 +630,7 @@ olmalı. EMIS için bu `/php/login/redirect`; JoVE için `/research`.
 | EMIS | Mobile config absolute API URL | `application*.js` URL rewrite |
 | ACS | Cloudflare challenge 403 (`pubs.acs.org`) | Staging config hazır, ürün pasif; mevcut Go egress ile çözülmedi |
 | Primal Pictures | Kurum bazlı IP entitlement gerekir | Ürün RA-ready; yalnızca aboneliği olan kurumlarda subscription aktif edilir |
+| IOPscience | Geniş IOP host ailesi | Staging subscription aktif; egress smoke test HTTPS 200 |
 
 ### §16.4 ACS Bulgusu (2026-04-26)
 
@@ -723,3 +731,40 @@ Kurum bazlı kullanım kuralı:
 - Abonelik yalnızca ilgili kurumda `institution_subscriptions.status = active` ve
   `access_type = proxy` olduğunda kullanıcıya açılır.
 - Mevcut test kurumunda Primal subscription oluşturulmadı/aktif edilmedi.
+
+### §16.6 Institute of Physics / IOPscience (2026-04-26)
+
+IOPscience mevcut test kurumunda abonelik olduğu belirtilerek staging'e aktif proxy subscription
+olarak eklendi.
+
+EZproxy stanzası `URL http://iopscience.iop.org/` ile başlıyor; smoke testlerde:
+
+```
+GET http://iopscience.iop.org/  → 302 Location: https://iopscience.iop.org/
+GET https://iopscience.iop.org/ → 200
+```
+
+Bu nedenle mevcut `session_host_proxy` HTTPS upstream davranışı IOP için uygundur.
+
+Staging ürün config:
+
+```sql
+slug='iopscience'
+  ra_origin_host = 'iopscience.iop.org'
+  ra_origin_landing_path = '/'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_enabled = 1
+```
+
+Staging kurum subscription:
+
+```sql
+institution_id = 1
+product_slug = 'iopscience'
+status = 'active'
+access_type = 'proxy'
+subscription_id = 16
+```
+
+İlk HTML içinde `cdp.iopscience.iop.org` asset host'u görüldüğü için allowlist'e eklendi.
+Kullanıcı tarafı doğrulama için portal üzerinden IOPscience "Erişime Git" testi bekleniyor.
