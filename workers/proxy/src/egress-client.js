@@ -90,6 +90,7 @@ export async function egressFetch(env, institutionId, targetUrl, init = {}) {
         method: 'POST',
         headers,
         body: bodyBytes,
+        redirect: 'manual',
         // Timeout'u Cloudflare Workers zaten 30s CPU ile sınırlar; fetch()
         // network timeout'u ayrıca yok — önemliyse AbortController ile sar.
       });

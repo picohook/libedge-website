@@ -60,6 +60,11 @@ var (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--healthcheck" {
+		runHealthcheck()
+		return
+	}
+
 	secretStr := mustEnv("EGRESS_SHARED_SECRET")
 	sharedSecret = []byte(secretStr)
 
@@ -80,6 +85,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handleHealth)
 	mux.HandleFunc("/proxy", handleProxy)
+	mux.HandleFunc("/", handleNotFound)
 
 	addr := ":8080"
 	if v := os.Getenv("LISTEN_ADDR"); v != "" {
@@ -87,6 +93,20 @@ func main() {
 	}
 	log.Printf("ra-egress listening on %s, host regex: %s", addr, hostPattern)
 	log.Fatal(http.ListenAndServe(addr, mux))
+}
+
+func runHealthcheck() {
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:8080/health")
+	if err != nil {
+		log.Printf("healthcheck failed: %v", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("healthcheck status: %d", resp.StatusCode)
+		os.Exit(1)
+	}
 }
 
 func mustEnv(k string) string {
@@ -104,6 +124,11 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{"status":"ok","ts":%d}`, time.Now().Unix())
+}
+
+func handleNotFound(w http.ResponseWriter, r *http.Request) {
+	log.Printf("not found %s %s host=%s ua=%q", r.Method, r.URL.String(), r.Host, r.UserAgent())
+	http.NotFound(w, r)
 }
 
 // ──────────────────────────────────────────────────────────────────────────

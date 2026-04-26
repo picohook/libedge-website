@@ -10,11 +10,15 @@
  */
 
 import { verifyProxyToken } from '../../../backend/src/ra/jwt.js';
-import { decodeHost, isValidEncodedHost } from '../../../backend/src/ra/host.js';
+import { encodeHost, decodeHost, isValidEncodedHost } from '../../../backend/src/ra/host.js';
 import { egressFetch } from './egress-client.js';
 
 const SESSION_COOKIE  = 'ra_proxy_session';
 const SESSION_TTL_SEC = 3600;
+const SESSION_ALT_HOST_PREFIX = '/__ra-host/';
+const DESKTOP_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
 
 export default {
   async fetch(request, env, ctx) {
@@ -90,14 +94,21 @@ async function handleSessionHost(request, env, url, sessionId) {
     return htmlError(401, 'Oturum süresi dolmuş. Portal üzerinden yeniden erişin.');
   }
 
+  const proxyableHosts = await loadSessionProxyableHosts(env.DB, session);
+  const target = parseSessionHostTarget(url.pathname, session.origin_host, proxyableHosts);
+  if (!target) {
+    return htmlError(403, 'Bu oturum bu yayıncı hostuna erişemez.');
+  }
+
   // Upstream relay — path ve query aynen korunur, sadece host değişir.
   // Query params içindeki proxy hostname'i (r*.selmiye.com) origin'e rewrite et;
   // aksi hâlde EMIS gibi "ref=<current_url>" echo'layan siteler redirect loop oluşturur.
-  const search = rewriteQueryProxyUrls(url.search, url.hostname, session.origin_host);
-  const targetUrl = `https://${session.origin_host}${url.pathname}${search}`;
+  const search = rewriteQueryProxyUrls(url.search, url.hostname, target.host);
+  const targetUrl = `https://${target.host}${target.path}${search}`;
   const upstreamHeaders = buildUpstreamHeaders(request.headers, {
     proxyHostname: url.hostname,
-    originHost: session.origin_host,
+    originHost: target.host,
+    forceDesktopUserAgent: session.product_slug === 'emis',
   });
 
   let upstreamResp;
@@ -113,7 +124,11 @@ async function handleSessionHost(request, env, url, sessionId) {
   }
 
   const respHeaders = buildSessionHostResponseHeaders(
-    upstreamResp.headers, url.hostname, session.origin_host
+    upstreamResp.headers,
+    url.hostname,
+    session.origin_host,
+    target.host,
+    proxyableHosts
   );
   addStagingDebugHeaders(respHeaders, env, {
     targetUrl,
@@ -121,11 +136,30 @@ async function handleSessionHost(request, env, url, sessionId) {
     requestCookies: request.headers.get('Cookie'),
     upstreamCookies: upstreamHeaders.get('Cookie'),
     upstreamSetCookies: upstreamResp.headers,
+    upstreamLocation: upstreamResp.headers.get('Location'),
     origin: request.headers.get('Origin'),
     referer: request.headers.get('Referer'),
     upstreamOrigin: upstreamHeaders.get('Origin'),
     upstreamReferer: upstreamHeaders.get('Referer'),
   });
+
+  if (shouldRewriteSessionTextResponse(target, upstreamResp)) {
+    const text = await upstreamResp.text();
+    const rewritten = rewriteSessionTextProxyUrls(
+      text,
+      url.hostname,
+      session.origin_host,
+      proxyableHosts
+    );
+    respHeaders.delete('Content-Length');
+    respHeaders.delete('Content-Encoding');
+
+    return new Response(rewritten, {
+      status: upstreamResp.status,
+      statusText: upstreamResp.statusText,
+      headers: respHeaders,
+    });
+  }
 
   return new Response(upstreamResp.body, {
     status: upstreamResp.status,
@@ -177,7 +211,7 @@ async function acceptSessionHostToken(request, env, token, url, sessionId) {
   });
 }
 
-function buildSessionHostResponseHeaders(incoming, proxyHostname, originHost) {
+function buildSessionHostResponseHeaders(incoming, proxyHostname, originHost, currentTargetHost, proxyableHosts) {
   const out = new Headers();
   for (const [k, v] of incoming.entries()) {
     if (STRIP_RESPONSE.has(k.toLowerCase())) continue;
@@ -185,14 +219,8 @@ function buildSessionHostResponseHeaders(incoming, proxyHostname, originHost) {
       continue;
     }
     if (k.toLowerCase() === 'location') {
-      // Publisher'ın kendi hostname'ine yönlendirmesi → proxy subdomain'e çevir
-      try {
-        const loc = new URL(v);
-        if (loc.hostname === originHost || loc.hostname.endsWith(`.${originHost}`)) {
-          out.set('Location', `https://${proxyHostname}${loc.pathname}${loc.search}${loc.hash}`);
-          continue;
-        }
-      } catch { /* relative → olduğu gibi bırak */ }
+      out.set('Location', rewriteSessionHostLocation(v, proxyHostname, originHost, currentTargetHost, proxyableHosts));
+      continue;
     }
     out.set(k, v);
   }
@@ -266,6 +294,7 @@ async function handlePathProxy(request, env, url) {
     requestCookies: request.headers.get('Cookie'),
     upstreamCookies: upstreamHeaders.get('Cookie'),
     upstreamSetCookies: upstreamResp.headers,
+    upstreamLocation: upstreamResp.headers.get('Location'),
     origin: request.headers.get('Origin'),
     referer: request.headers.get('Referer'),
     upstreamOrigin: upstreamHeaders.get('Origin'),
@@ -379,9 +408,23 @@ const STRIP_REQUEST = new Set([
 
 export function buildUpstreamHeaders(incoming, context = {}) {
   const out = new Headers();
+  let sawUserAgent = false;
   for (const [k, v] of incoming.entries()) {
     const lower = k.toLowerCase();
     if (HOP_BY_HOP.has(lower) || STRIP_REQUEST.has(lower)) continue;
+    if (context.forceDesktopUserAgent && lower === 'user-agent') {
+      out.set('User-Agent', DESKTOP_USER_AGENT);
+      sawUserAgent = true;
+      continue;
+    }
+    if (context.forceDesktopUserAgent && lower === 'sec-ch-ua-mobile') {
+      out.set('Sec-CH-UA-Mobile', '?0');
+      continue;
+    }
+    if (context.forceDesktopUserAgent && lower === 'sec-ch-ua-platform') {
+      out.set('Sec-CH-UA-Platform', '"Windows"');
+      continue;
+    }
     if (lower === 'cookie') {
       const cleaned = stripSessionCookie(v);
       if (cleaned) out.set(k, cleaned);
@@ -393,6 +436,9 @@ export function buildUpstreamHeaders(incoming, context = {}) {
       continue;
     }
     out.set(k, v);
+  }
+  if (context.forceDesktopUserAgent && !sawUserAgent) {
+    out.set('User-Agent', DESKTOP_USER_AGENT);
   }
   return out;
 }
@@ -432,6 +478,104 @@ function rewriteQueryProxyUrls(search, proxyHostname, originHost) {
   return search
     .replaceAll(encodeURIComponent(`https://${proxyHostname}`), encodeURIComponent(`https://${originHost}`))
     .replaceAll(`https://${proxyHostname}`, `https://${originHost}`);
+}
+
+function parseSessionHostTarget(pathname, originHost, proxyableHosts) {
+  if (!pathname.startsWith(SESSION_ALT_HOST_PREFIX)) {
+    return { host: originHost, path: pathname || '/' };
+  }
+
+  const rest = pathname.slice(SESSION_ALT_HOST_PREFIX.length);
+  const slashIdx = rest.indexOf('/');
+  const encodedHost = slashIdx === -1 ? rest : rest.slice(0, slashIdx);
+  if (!isValidEncodedHost(encodedHost)) return null;
+
+  const host = decodeHost(encodedHost);
+  if (!proxyableHosts.has(host)) return null;
+
+  const path = slashIdx === -1 ? '/' : rest.slice(slashIdx);
+  return { host, path };
+}
+
+export function rewriteSessionHostLocation(location, proxyHostname, originHost, currentTargetHost, proxyableHosts) {
+  if (!location) return location;
+  try {
+    const loc = new URL(location);
+    if (!proxyableHosts.has(loc.hostname)) return location;
+    return `https://${proxyHostname}${sessionHostPathFor(loc.hostname, originHost, loc.pathname)}${loc.search}${loc.hash}`;
+  } catch {
+    if (!location.startsWith('/')) return location;
+    return sessionHostPathFor(currentTargetHost, originHost, location);
+  }
+}
+
+function sessionHostPathFor(targetHost, originHost, pathname) {
+  const path = pathname || '/';
+  if (targetHost === originHost) return path;
+  return `${SESSION_ALT_HOST_PREFIX}${encodeHost(targetHost)}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+function shouldRewriteSessionTextResponse(target, upstreamResp) {
+  const contentType = upstreamResp.headers.get('Content-Type') || '';
+  if (!/\b(javascript|ecmascript|json|text\/)/i.test(contentType)) return false;
+
+  // EMIS mobile keeps API origins in a tiny runtime config file. Rewriting only
+  // this file avoids touching large application bundles while fixing mobile XHRs.
+  return target.host === 'm.emis.com'
+    && /^\/config\/application(?:_[a-z0-9-]+)?\.js$/i.test(target.path);
+}
+
+export function rewriteSessionTextProxyUrls(text, proxyHostname, originHost, proxyableHosts) {
+  let out = String(text || '');
+  for (const targetHost of proxyableHosts) {
+    const proxyOrigin = targetHost === originHost
+      ? `https://${proxyHostname}`
+      : `https://${proxyHostname}${SESSION_ALT_HOST_PREFIX}${encodeHost(targetHost)}`;
+
+    out = out
+      .replaceAll(`https://${targetHost}`, proxyOrigin)
+      .replaceAll(`http://${targetHost}`, proxyOrigin);
+  }
+
+  return out.replace(
+    /cookieDomain:\s*(['"])\.emis\.com\1/g,
+    `cookieDomain: '${proxyHostname}'`
+  );
+}
+
+async function loadSessionProxyableHosts(db, session) {
+  const hosts = new Set([session.origin_host]);
+  const product = await db
+    .prepare(
+      `SELECT ra_host_allowlist_json
+       FROM products
+       WHERE slug = ?`
+    )
+    .bind(session.product_slug)
+    .first();
+
+  if (product && product.ra_host_allowlist_json) {
+    try {
+      const parsed = JSON.parse(product.ra_host_allowlist_json);
+      if (Array.isArray(parsed)) {
+        for (const rawHost of parsed) {
+          const host = normalizeHost(rawHost);
+          if (host) hosts.add(host);
+        }
+      }
+    } catch {
+      // Malformed admin config: keep origin-only rather than failing all access.
+    }
+  }
+  return hosts;
+}
+
+function normalizeHost(rawHost) {
+  const host = String(rawHost || '').trim().toLowerCase();
+  if (!host) return '';
+  return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(host)
+    ? host
+    : '';
 }
 
 // Publisher'ın Location header'ı (redirect) → proxy URL'e çevir
@@ -565,6 +709,7 @@ function addStagingDebugHeaders(headers, env, info) {
   headers.set('X-RA-Debug-Req-Cookies', cookieNames(info.requestCookies).join(',') || '-');
   headers.set('X-RA-Debug-Upstream-Cookies', cookieNames(info.upstreamCookies).join(',') || '-');
   headers.set('X-RA-Debug-Set-Cookies', setCookieNames(info.upstreamSetCookies).join(',') || '-');
+  if (info.upstreamLocation) headers.set('X-RA-Debug-Upstream-Location', truncateHeader(info.upstreamLocation, 220));
   if (info.origin) headers.set('X-RA-Debug-Origin', truncateHeader(info.origin, 120));
   if (info.referer) headers.set('X-RA-Debug-Referer', truncateHeader(info.referer, 180));
   if (info.upstreamOrigin) headers.set('X-RA-Debug-Upstream-Origin', truncateHeader(info.upstreamOrigin, 120));

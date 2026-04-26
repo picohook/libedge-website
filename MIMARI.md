@@ -117,6 +117,13 @@ slug='jove-research'
   ra_origin_host = 'www.jove.com'
   ra_enabled = 1
 
+slug='emis'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_origin_landing_path = '/php/login/redirect'
+  ra_origin_host = 'www.emis.com'
+  ra_host_allowlist_json = '["www.emis.com","emis.com","cas.emis.com","auth.emis.com","m.emis.com"]'
+  ra_enabled = 1
+
 -- institution_ra_settings
 institution_id = 1
   egress_endpoint = 'https://ra-egress.selmiye.com'
@@ -157,16 +164,16 @@ institution_id = 1
   │  handleSessionHost():
   │  - KV'dan session yükle
   │  - buildUpstreamHeaders(): ra_proxy_session strip, diğer cookieler forward
-  │  - Origin/Referer rewrite: r*.selmiye.com → www.jove.com
+  │  - Origin/Referer rewrite: r*.selmiye.com → publisher origin
   │  - egressFetch() → ra-egress.selmiye.com/proxy
   ▼
 [ra-egress (Go, Named Tunnel)]
   │  - X-RA-Signature HMAC-SHA256 verify
   │  - ALLOWED_HOST_REGEX kontrol (SSRF koruması)
-  │  - net/http → www.jove.com (kurum IP'siyle)
+  │  - net/http → publisher allowlist host (kurum IP'siyle)
   │  - Response stream
   ▼
-[www.jove.com]
+[Publisher]
 ```
 
 ---
@@ -195,16 +202,42 @@ Secret öncelik sırası (egress-client.js):
 
 ## §7 Proxy Worker — Header Politikası
 
-### Upstream'e gönderilen (browser → JoVE):
+### Upstream'e gönderilen (browser → publisher):
 - Tüm browser cookie'leri **ra_proxy_session hariç** (aws-waf-token, cf_clearance, joveiptoken vb.)
-- Origin ve Referer → `r*.selmiye.com` → `www.jove.com` olarak rewrite
+- Origin ve Referer → `r*.selmiye.com` → publisher origin olarak rewrite
 - Cloudflare runtime header'ları strip: `cf-connecting-ip`, `cf-ray`, `x-forwarded-for`, `cdn-loop` vb.
+- Ürün bazlı override: EMIS için upstream'e desktop User-Agent / Client Hints gönderilir
 
-### JoVE'den gelen response:
+### Publisher'dan gelen response:
 - Set-Cookie → domain `r*.selmiye.com`, path `/` olarak rewrite
 - `getSetCookie()` destekli çoklu Set-Cookie işleme
 - Location → `r*.selmiye.com` subdomain'e rewrite
 - CSP, HSTS strip (proxy domain'i bozuyor)
+
+### Multi-host publisher routing
+
+Bazı yayıncılar tek hostta kalmaz; örn. EMIS akışı:
+
+```
+www.emis.com/php/login/redirect → www.emis.com/php/emiscom/registered →
+cas.emis.com/login → www.emis.com/v2/app/auth → www.emis.com/v2/
+```
+
+`session_host_proxy` modunda primary host normal path'te kalır:
+
+```
+https://r{sid}.selmiye.com/v2/
+```
+
+Allowlist'teki alternatif hostlar encoded prefix altında taşınır:
+
+```
+https://r{sid}.selmiye.com/__ra-host/cas-emis-com/login
+https://r{sid}.selmiye.com/__ra-host/m-emis-com/api/
+```
+
+Bu sayede CAS/auth/mobile host geçişleri aynı `ra_proxy_session` altında kalır, ama
+SSRF sınırı `products.ra_host_allowlist_json` ile korunur.
 
 ---
 
@@ -336,6 +369,14 @@ Bu oturumda `workers/proxy/src/index.js`'e eklenenler:
 4. **Set-Cookie multi**: `headers.getSetCookie()` destekli çoklu cookie handling
 5. **Trailing slash**: `proxy-url.js` — landing path'e gereksiz `/` eklenmiyor
 6. **Staging debug headers**: `X-RA-Debug-*` (yalnızca ENVIRONMENT=staging)
+7. **Redirect manual**: Proxy Worker → ra-egress fetch `redirect: 'manual'`  
+   → EMIS gibi ara `302 + Set-Cookie` kullanan akışlarda cookie kaybı engellendi.
+8. **Multi-host session routing**: `__ra-host/{encoded-host}` prefix'i  
+   → `cas.emis.com`, `auth.emis.com`, `m.emis.com` gibi hostlar tek session altında proxylanır.
+9. **EMIS mobile config rewrite**: `m.emis.com/config/application*.js` içindeki
+   absolute API originleri `r*.selmiye.com/__ra-host/m-emis-com/...` adreslerine çevrilir.
+10. **EMIS desktop-UA override**: Mobil cihazdan gelen EMIS isteklerinde upstream'e desktop
+    browser kimliği gönderilir; EMIS böylece çalışan `/v2/` CAS akışına yönlenir.
 
 ### §12.3 Yürütülen ra-egress Düzeltmeleri
 
@@ -351,6 +392,43 @@ Bu oturumda `ra-egress/main.go`'ya eklenenler:
 3. **IP-ifşa header filtreleme**: `isIPRevealingHeader()` header loop'a eklendi  
    → `CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`, `CF-Ray`, `CF-Connecting-IPv6` vb.  
    → JoVE artık mobil kaynak IP yerine yalnızca egress container IP'sini (kurum IP'si) görüyor.
+
+4. **Redirect takip etmeme**: `CheckRedirect: http.ErrUseLastResponse`  
+   → ara `302` yanıtları Proxy Worker'a döner; `Set-Cookie` ve `Location` Worker tarafından
+   rewrite edilip tarayıcıya iletilir. EMIS session cookie kaybı bu şekilde çözüldü.
+
+5. **Healthcheck modu**: `/ra-egress --healthcheck`  
+   → scratch image içinde `wget` bağımlılığı olmadan Docker healthcheck çalışır.
+
+### §12.4 Ürün Bazlı Doğrulama — EMIS (2026-04-26)
+
+**D1 konfigürasyonu:**
+
+```sql
+slug='emis'
+  ra_origin_host = 'www.emis.com'
+  ra_origin_landing_path = '/php/login/redirect'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_host_allowlist_json = '["www.emis.com","emis.com","cas.emis.com","auth.emis.com","m.emis.com"]'
+```
+
+**Kritik akış:**
+
+```
+Portal → r{sid}.selmiye.com/php/login/redirect?t=JWT →
+www.emis.com/php/login/redirect → 302 →
+www.emis.com/php/emiscom/registered → 302 →
+cas.emis.com/login → 302 →
+www.emis.com/v2/app/auth?token=... → 302 →
+www.emis.com/v2/ → 200 ✅
+```
+
+**Kanıtlar:**
+- Desktop kurum dışı erişim: `/v2/app/user?timezone=Europe%2FIstanbul → 200`
+- Mobil WiFi kapalı erişim: desktop `/v2/` arayüzü açılıyor ✅
+- `m.emis.com/api/` mobile fallback çağrıları proxylenebiliyor; ancak EMIS mobile API 401 döndüğü
+  için EMIS'e özel desktop-UA override ile çalışan CAS `/v2/` akışı tercih edildi.
+- `ra-egress` kurum IP'siyle çıkıyor; EMIS IP tabanlı auth kurum içinde doğrulandı.
 
 ---
 
@@ -473,8 +551,11 @@ Bilinen çalışan durum (2026-04-26):
   - JoVE /api/ip-auth → 200 (kurum IP tanınıyor) ✅
   - JoVE içerik sayfaları → paywall yok, içerik açılıyor ✅
   - Mobil (WiFi'sız) erişim → JoVE kurum IP (159.20.68.12) görüyor ✅
+  - EMIS CAS akışı → /v2/ desktop arayüzü açılıyor ✅
+  - EMIS mobil cihaz → desktop-UA override ile /v2/ açılıyor ✅
   - iOS Safari → yeni sekme açılıyor ✅
   - AWS WAF → HTTP/1.1 fingerprint ile bypass ✅
 
-Sonraki adım: Production D1 migration (§14.5) ve çoklu kurum onboarding (§14.6).
+Sonraki adım: Production D1 migration (§14.5), egress secret yönetimi (§14.4) ve
+çoklu kurum onboarding (§14.6).
 ```

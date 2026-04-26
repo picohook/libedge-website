@@ -31,6 +31,7 @@ import { requireAuth, parseAndValidate } from '../../index.js';
 import { signProxyToken, newJti } from '../../ra/jwt.js';
 import { encodeHost } from '../../ra/host.js';
 import { ensureRemoteAccessSchema } from '../../ra/schema.js';
+import { buildProxyLandingPath } from '../../ra/proxy-url.js';
 
 const SESSION_TTL_SEC = 3600; // session_host_proxy oturumu süresi
 
@@ -167,12 +168,7 @@ export function registerRaIssueToken(app) {
 
     // Landing path: ürün bazında ilk açılacak sayfa (örn. JoVE Research → /research)
     // Boş/null ise '/' kullanılır. Başında slash olduğundan emin ol.
-    const rawLanding = sub.ra_origin_landing_path
-      ? String(sub.ra_origin_landing_path).trim()
-      : '';
-    const landingPath = rawLanding && rawLanding !== '/'
-      ? (rawLanding.startsWith('/') ? rawLanding : `/${rawLanding}`)
-      : '';   // boş string → URL'de sadece /?t= olur
+    const landingPath = buildProxyLandingPath(sub.ra_origin_landing_path);
 
     let redirectUrl;
     if (deliveryMode === 'session_host_proxy') {
@@ -194,11 +190,11 @@ export function registerRaIssueToken(app) {
         { expirationTtl: SESSION_TTL_SEC }
       );
       // /research?t=JWT → proxy token doğrular → 302 /research → JoVE /research
-      redirectUrl = `https://r${sid}.${baseHost}${landingPath}/?t=${token}`;
+      redirectUrl = `https://r${sid}.${baseHost}${landingPath}?t=${token}`;
     } else {
       const tgt = encodeHost(sub.ra_origin_host);
       const proxyHost = c.env.RA_PROXY_HOST || 'proxy.selmiye.com';
-      redirectUrl = `https://${proxyHost}/${tgt}${landingPath}/?t=${token}`;
+      redirectUrl = `https://${proxyHost}/${tgt}${landingPath}?t=${token}`;
     }
 
     return c.json({ redirect_url: redirectUrl, expires_at: now + 300 });

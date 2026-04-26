@@ -843,6 +843,12 @@ async function openRemoteAccess(btn) {
     btn.disabled = true;
     btn.classList.add('opacity-70', 'cursor-wait');
     if (labelEl) labelEl.textContent = 'Yönlendiriliyor...';
+
+    // iOS Safari popup blocker fix: window.open() kullanıcı gesture'ı (click)
+    // sırasında — await'ten ÖNCE — çağrılmalı. Sonradan location set edilir.
+    // Boş sekme açılır, fetch tamamlanınca URL yazılır; sekme kapanmaz.
+    const newTab = window.open('', '_blank');
+
     try {
         const res = await fetch(`${API_BASE}/api/ra/issue-token`, {
             method: 'POST',
@@ -854,30 +860,26 @@ async function openRemoteAccess(btn) {
         try { data = await res.json(); } catch (_) { /* non-JSON body */ }
         if (!res.ok) {
             const msg = (data && data.error) || `Erişim hatası (HTTP ${res.status})`;
+            if (newTab) newTab.close();
             notify(msg, 'error');
             return;
         }
         const redirectUrl = data && data.redirect_url;
         if (!redirectUrl) {
+            if (newTab) newTab.close();
             notify('Sunucu geçerli bir yönlendirme adresi döndürmedi.', 'error');
             return;
         }
-        // Yeni sekmede aç — kullanıcının LibEdge sekmesi kaybolmasın.
-        // NOT: window.open('_blank', 'noopener') modern tarayıcılarda noopener
-        // flag'i ile null döndürüyor (tarayıcı güvenlik modeli). Bu yüzden
-        // dönüş değerinden popup block tespit edilemez. Gerçek popup block
-        // fallback'i için görünmez <a target=_blank> click delegation pattern
-        // kullanıyoruz — tarayıcı popup açarsa sekme açılır, engellerse
-        // tarayıcı bir toast/icon gösterir; current tab navigate olmaz.
-        const a = document.createElement('a');
-        a.href = redirectUrl;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+        if (newTab) {
+            // Önceden açılan sekmeye URL yaz — popup blocker devreye girmez
+            newTab.location.href = redirectUrl;
+        } else {
+            // newTab null ise (sistem popup'ı engelledi) aynı sekmede aç
+            window.location.href = redirectUrl;
+        }
     } catch (err) {
         console.error('openRemoteAccess error:', err);
+        if (newTab) newTab.close();
         notify('Uzaktan erişim başlatılamadı. Lütfen tekrar deneyin.', 'error');
     } finally {
         btn.dataset.raBusy = '0';
