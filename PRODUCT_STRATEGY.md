@@ -241,6 +241,43 @@ Kart butonları ürünün ticari ve erişim durumuna göre backend tarafından b
 Ürün hem bireysel hem kurumsal olabilir. Bu durumda primary action kullanıcının
 en hızlı faydasına göre seçilir, diğer seçenek secondary action olur.
 
+### Action Resolution Rules
+
+Aynı ürün birden fazla audience/monetization tipinde olabilir. Primary action
+deterministik olmalıdır.
+
+Öncelik sırası:
+
+1. Kurum erişimi varsa ve kullanıcı RA kullanabiliyorsa → `ra_access`
+2. Kullanıcının bireysel aboneliği/satın alımı varsa → `owned_access`
+3. Ürün ücretsizse → `free_access`
+4. Bireysel ücretli ürünse → `purchase`
+5. Affiliate ürünse → `affiliate_outbound`
+6. Kurumsal lisanslanabilir ama kurumda yoksa → `request_from_institution`
+7. Hiçbir aksiyon yoksa → `learn_more`
+
+Örnek:
+
+```text
+if institution_access AND user.has_ra:
+  primary = ra_access
+else if user_has_individual_access:
+  primary = owned_access
+else if product.monetization == free:
+  primary = free_access
+else if product.individual_paid:
+  primary = purchase
+else if product.affiliate:
+  primary = affiliate_outbound
+else if product.corporate_available AND user.institution_id:
+  primary = request_from_institution
+else:
+  primary = learn_more
+```
+
+Secondary action'lar primary action ile çelişmemelidir. Örneğin kurum erişimi
+olan üründe satın alma CTA'sı ilk ekranda baskın gösterilmez.
+
 ## 7. Kurumumdan Talep Et
 
 Kurumda olmayan ama ilgili bir ürün için kullanıcı ihtiyacını iletebilmelidir.
@@ -273,13 +310,46 @@ product_requests
 - updated_at
 ```
 
+Spam ve tekrar önleme:
+
+```sql
+UNIQUE(user_id, product_slug, institution_id)
+```
+
+Ek kurallar:
+
+- `rejected` talepler için aynı kullanıcıya 6 ay cooldown uygulanabilir.
+- Kullanıcı aynı talebi tekrar açarsa yeni kayıt yerine mevcut talep durumu gösterilir.
+- Talep sonrası kullanıcıya beklenen süreç gösterilir:
+  "Talebiniz iletildi. Kurumunuz taleplere genellikle 5 iş günü içinde yanıt verir.
+  Durum değiştiğinde e-posta ile bilgilendirileceksiniz."
+- Kurum bazlı tipik yanıt süresi ölçülür ve zamanla gerçek veriden hesaplanır.
+
 Kurallar:
 
 - Aynı kullanıcı aynı ürünü tekrar tekrar talep edememeli.
 - Talep sayıları ürün kartlarında sosyal kanıt olarak kullanılabilir.
 - Admin tarafında ürün, kurum, bölüm/fakülte ve talep sayısı bazlı filtre olmalı.
 
-## 8. Öneri Sistemi
+## 8. Kütüphaneci / Kurum Karar Paneli
+
+"Kurumumdan Talep Et" akışı yalnız form toplamak değildir; kurum karar vericisine
+satın alma ve bütçe döneminde kullanılacak karar desteği üretmelidir.
+
+Panelde gösterilecekler:
+
+- En çok talep edilen ürünler
+- Talep eden kullanıcı sayısı
+- Bölüm/fakülte dağılımı
+- Talep gerekçeleri ve kullanım amacı
+- Zaman içindeki talep trendi
+- Mevcut aboneliklerde kullanım ve erişim başarı oranı
+- "Bu ürün alınırsa şu kadar kullanıcı ihtiyacı karşılanır" özeti
+
+Bu panel LibEdge'in kuruma yalnız ürün değil, karar destek mekanizması sunduğunu
+gösterir. Kurumsal satışta deal closer olarak konumlandırılır.
+
+## 9. Öneri Sistemi
 
 İlk sürümde açıklanabilir kural motoru yeterlidir. AI zorunlu değildir.
 
@@ -312,7 +382,38 @@ Kullanıcı sinyalleri:
 - Dış sağlayıcı önerisi
 - PDF analizi için uygun
 
-## 9. Ücretsiz AI Araçları
+### MVP Sinyal Seti
+
+İlk sürümde sinyal seti dar tutulur:
+
+1. Kullanıcının bölüm/fakültesi
+2. Kurumun eriştiği ürünler
+3. Son 7 gündeki genel en çok erişilen 5 ürün
+4. Ürün subject tag'leri
+5. Ücretsiz veya zaten erişilebilir ürün önceliği
+
+Collaborative filtering veya karmaşık davranışsal ranking MVP kapsamına alınmaz.
+
+## 10. Araçlar ve Ürünler Ayrımı
+
+Ücretsiz AI araçları, katalogdaki ücretsiz ürünlerle karışmamalıdır.
+
+Araçlar:
+
+- Tek işlevlidir.
+- Kullanıcının niyetini anlar veya çıktı üretir.
+- Ürün/kaynak önerisine bağlanır.
+- Örnek: Kaynak Bulucu, Terim Açıklayıcı, Çalışma Planı.
+
+Ürünler:
+
+- Devamlı kullanılan veya abonelik/erişim ilişkisi olan kaynaklardır.
+- Kart, erişim ve ticari aksiyon taşır.
+- Örnek: JoVE, EMIS, ChatPDF, ACS, Primal Pictures.
+
+UI'da "Araçlar" ve "Ürünler" ayrı görsel dil kullanmalıdır.
+
+## 11. Ücretsiz AI Araçları
 
 Ücretsiz AI araçları kullanıcıyı siteye getirmek için kullanılmalıdır. Bunlar
 ChatPDF gibi temsilcisi olunan premium ürünü kanibalize etmemelidir.
@@ -361,7 +462,13 @@ Kısıtlar:
 - Aynı sorgular cache'lenmeli
 - AI'a yalnız kontrollü katalog verisi gönderilmeli
 
-## 10. ChatPDF'in Konumu
+MVP notu:
+
+- Akademik Kaynak Bulucu stratejik olarak en değerli araçtır.
+- Çalışma Planı Oluşturucu teknik olarak daha kolay MVP olabilir.
+- PDF özetleme ücretsiz araç olarak yapılmaz; ChatPDF'e yönlendirilir.
+
+## 12. ChatPDF'in Konumu
 
 PDF özetleme ve PDF ile sohbet özelliği ücretsiz LibEdge aracı olarak
 kopyalanmamalıdır. Çünkü ChatPDF temsilcisi olunan premium AI/PDF ürünüdür.
@@ -389,21 +496,134 @@ formats: ai_tool
 tool_capabilities: pdf_chat, article_summary, document_qa
 ```
 
-## 11. MVP Sırası
+## 13. Anonim Kullanıcı Hafızası
+
+Login olmayan kullanıcı ürünü incelediğinde veya AI aracını kullandığında, login
+sonrası deneyimin devam etmesi dönüşümü artırır.
+
+Öneri:
+
+```text
+anonymous_session_id cookie
+product_views
+- id
+- anonymous_session_id
+- user_id nullable
+- product_slug
+- source_section
+- created_at
+```
+
+Login sonrası:
+
+- Aynı `anonymous_session_id` ile kayıtlı product view'lar kullanıcıya bağlanır.
+- Home feed "Son baktıkların" veya öneri sinyali olarak kullanabilir.
+- KVKK gereği retention kısa tutulur ve cookie politikasıyla açıklanır.
+
+## 14. Erişim ve Affiliate Analitiği
+
+Ürün kartı aksiyonları ölçülmeden iyileştirilemez.
+
+### Access Attempts
+
+`Erişime Git` tıklandığında erişimin sonucu izlenmelidir:
+
+```text
+access_attempts
+- id
+- user_id nullable
+- anonymous_session_id nullable
+- institution_id nullable
+- product_slug
+- action_type
+- target_host
+- status: started | success | failed
+- error_type nullable
+- latency_ms nullable
+- created_at
+```
+
+Kullanım:
+
+- RA hatalarının ürün/kategori bazlı görünmesi
+- Hangi kaynakların gerçekten kullanıldığının ölçülmesi
+- Kart aksiyonlarının iyileştirilmesi
+- Kurum raporlarına başarı/arıza verisi eklenmesi
+
+### Affiliate / Outbound Click Tracking
+
+Bireysel ve affiliate model için attribution baştan tasarlanmalıdır:
+
+```text
+outbound_clicks
+- id
+- user_id nullable
+- anonymous_session_id nullable
+- institution_id nullable
+- product_slug
+- target_url
+- source_section
+- campaign
+- created_at
+```
+
+Bu veri reklam veren/partner raporlaması ve bireysel lead üretimi için gerekir.
+
+## 15. Wishlist
+
+Bireysel kullanıcı için "Kurumumdan Talep Et" akışının karşılığı wishlist olabilir.
+
+Örnek aksiyonlar:
+
+- Favorilere ekle
+- İndirime girince haber ver
+- Türkiye'de açılınca bildir
+- Kurumuma öner
+
+Wishlist bireysel lead datasını zenginleştirir, ama MVP'de home-feed ve talep
+akışından sonra gelmelidir.
+
+## 16. Browser Extension / Access Checker
+
+Uzun vadede en güçlü retention kanallarından biri browser extension olabilir.
+
+Kullanıcı publisher sayfasındayken:
+
+> LibEdge ile kurumunuz üzerinden erişebilirsiniz.
+
+İlk fazda MVP kapsamına alınmaz. RA, home-feed ve talep/raporlama oturduktan
+sonra büyüme kanalı olarak değerlendirilir.
+
+## 17. Bildirim / Duyuru Feed'i
+
+Geniş akademik haber sitesi yapılmamalıdır. İlk sürüm kişisel erişim bildirimleri
+ile sınırlı kalmalıdır:
+
+- Kurumunuzun yeni erişime açtığı kaynaklar
+- Talep ettiğiniz ürünün durumu değişti
+- Size önerilen yeni ürünler
+- Sık kullandığınız kaynakta bakım/erişim sorunu var
+
+## 18. MVP Sırası
 
 Önerilen uygulama sırası:
 
 1. Ürün stratejisi ve metadata kararları bu belgeyle sabitlenir.
-2. DB migration: ürün sınıflandırma alanları ve `product_requests`.
+2. DB migration: ürün sınıflandırma alanları, `product_requests`,
+   `access_attempts`, `outbound_clicks`.
 3. `/api/home-feed` backend endpoint'i.
-4. Ana sayfa login durumuna göre home-feed render eder.
-5. "Kurumumdan Talep Et" modal + API.
-6. Basit öneri motoru.
-7. Akademik Kaynak Bulucu MVP.
-8. ChatPDF yönlendirme ve talep akışı.
-9. Admin panelde talep raporları.
+4. Basit öneri motoru: bölüm + kurum erişimi + popüler ürünler.
+5. Ana sayfa login durumuna göre home-feed render eder.
+6. "Kurumumdan Talep Et" modal + API.
+7. Kütüphaneci talep/rapor paneli.
+8. Affiliate/outbound click tracking raporu.
+9. Çalışma Planı veya Akademik Kaynak Bulucu MVP.
+10. ChatPDF yönlendirme ve talep akışı.
+11. Wishlist.
+12. Bildirim/feed.
+13. Browser extension / Access Checker.
 
-## 12. Tasarım İlkeleri
+## 19. Tasarım İlkeleri
 
 - Kullanıcı önce erişebildiği şeyleri görür.
 - Kurum kaynakları satış kataloğu gibi sunulmaz.
@@ -413,3 +633,5 @@ tool_capabilities: pdf_chat, article_summary, document_qa
 - Backend erişim ve aksiyon kararını verir, frontend render eder.
 - Öneriler açıklanabilir olur.
 - Kurumdan talep akışı düşük sürtünmeli olur.
+- Ürün/araç ayrımı UI'da net olur.
+- Aynı ürün için primary action deterministik çözülür.
