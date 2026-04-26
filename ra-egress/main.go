@@ -14,6 +14,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/tls"
@@ -21,10 +22,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -37,7 +40,13 @@ var (
 		// sıralaması AWS WAF bot detection tarafından "non-browser" olarak
 		// sınıflandırılıyor. HTTP/1.1 fingerprint daha nötr.
 		Transport: &http.Transport{
+			// HTTP/2 devre dışı — Go h2 fingerprint AWS WAF'ı tetikliyor.
 			TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
+			// IPv4 zorla — Docker container'ın default outbound IPv6 olabilir;
+			// kurum IP'si IPv4 olduğundan tcp4 ile kurum IP'si garantilenir.
+			DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, "tcp4", addr)
+			},
 		},
 		Timeout: 30 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -182,6 +191,11 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 		if isHopByHopHeader(k) {
 			continue
 		}
+		// IP-ifşa eden header'ları filtrele — JoVE kurum IP'sini (159.x.x.x)
+		// görmeli; mobil/CF kaynak IP'yi değil.
+		if isIPRevealingHeader(k) {
+			continue
+		}
 		for _, v := range vs {
 			req.Header.Add(k, v)
 		}
@@ -238,6 +252,21 @@ func isHopByHopHeader(k string) bool {
 	switch k {
 	case "Connection", "Keep-Alive", "Proxy-Authenticate", "Proxy-Authorization",
 		"TE", "Trailers", "Transfer-Encoding", "Upgrade", "Host":
+		return true
+	}
+	return false
+}
+
+// isIPRevealingHeader — Cloudflare Workers veya ara proxy'lerin eklediği
+// gerçek kullanıcı IP'sini ifşa eden header'ları filtreler.
+// Bunlar JoVE'ye ulaşırsa JoVE mobil IP'yi görür ve kurumsal erişim vermez.
+func isIPRevealingHeader(k string) bool {
+	switch strings.ToLower(k) {
+	case "x-forwarded-for", "x-forwarded-host", "x-forwarded-proto",
+		"x-real-ip", "true-client-ip",
+		"cf-connecting-ip", "cf-connecting-ipv6",
+		"cf-ipcountry", "cf-ray", "cf-visitor", "cf-worker",
+		"cdn-loop", "x-cluster-client-ip":
 		return true
 	}
 	return false
