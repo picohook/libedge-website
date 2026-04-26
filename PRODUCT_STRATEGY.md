@@ -317,6 +317,10 @@ Kullanıcı sinyalleri:
 Ücretsiz AI araçları kullanıcıyı siteye getirmek için kullanılmalıdır. Bunlar
 ChatPDF gibi temsilcisi olunan premium ürünü kanibalize etmemelidir.
 
+AI araçları tasarlanırken KVKK ve veri minimizasyonu `KVKK_SECURITY.md` içindeki
+kurallara göre uygulanır. Kullanıcı adı, e-posta, ham IP, credential, JWT veya
+cookie gibi veriler AI sağlayıcısına gönderilmez.
+
 İlk önerilen araçlar:
 
 1. Akademik Kaynak Bulucu
@@ -404,6 +408,7 @@ tool_capabilities: pdf_chat, article_summary, document_qa
 - Kullanıcı önce erişebildiği şeyleri görür.
 - Kurum kaynakları satış kataloğu gibi sunulmaz.
 - Ücretsiz AI araçları değer verir ama premium ürünleri ikame etmez.
+- AI araçları kişisel veri minimizasyonu ile çalışır.
 - Ürün kartında aksiyon belirsiz olmaz.
 - Backend erişim ve aksiyon kararını verir, frontend render eder.
 - Öneriler açıklanabilir olur.

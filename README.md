@@ -54,7 +54,11 @@ libedge-website/
 ├── admin.html                        # Super-admin tek sayfa arayüzü
 ├── profile.html                      # Kullanıcı portalı
 ├── wrangler.toml                     # Main Worker config (local / staging / production)
-└── MIMARI.md                         # Detaylı teknik mimari belgesi
+├── MIMARI.md                         # Detaylı teknik mimari belgesi
+├── PRODUCT_STRATEGY.md               # Katalog, AI, öneri ve home-feed stratejisi
+├── RA_PRODUCTION_READINESS.md        # RA production hazırlık rehberi
+├── LIBEDGE_DOMAIN_MIGRATION.md       # libedge.com geçiş checklist'i
+└── KVKK_SECURITY.md                  # KVKK ve veri güvenliği baseline'ı
 ```
 
 ---
@@ -256,3 +260,4 @@ Geçiş için sadece Cloudflare Worker env değişkenlerini güncellemek yeterli
 - [ ] Production'da `*.libedge.com` wildcard route aktif edilecek (session_host_proxy için zorunlu)
 - [ ] Admin UI'dan ürün onboarding (manuel D1 SQL ihtiyacını azaltmak)
 - [ ] MIMARI.md ile migration'lar arasındaki terminoloji tutarsızlıklarını gider
+- [ ] KVKK/Gizlilik metni kayıtlı kullanıcı, RA ve AI araçlarını kapsayacak şekilde güncellenecek
