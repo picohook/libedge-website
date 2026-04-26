@@ -48,7 +48,7 @@ routes = [
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
-RA_PROXY_BASE_HOST = "proxy-staging.selmiye.com"
+RA_PROXY_BASE_HOST = "selmiye.com"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -72,14 +72,14 @@ id = "a3a0f76dca834921b4b1000bce675037"   # wrangler kv:namespace create --env s
 # ──────────────────────────────────────────────────────────────────────────
 [env.production]
 name = "libedge-ra-proxy-prod"
-# POC: tek subdomain (query-param target encoding) — Universal SSL yeterli
 routes = [
-  { pattern = "proxy.selmiye.com/*", zone_name = "selmiye.com" }
+  { pattern = "proxy.selmiye.com/*", zone_name = "selmiye.com" },
+  { pattern = "*.selmiye.com/*",     zone_name = "selmiye.com" }
 ]
 
 [env.production.vars]
 ENVIRONMENT = "production"
-RA_PROXY_BASE_HOST = "proxy.selmiye.com"
+RA_PROXY_BASE_HOST = "selmiye.com"
 
 [[env.production.d1_databases]]
 binding = "DB"

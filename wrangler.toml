@@ -57,6 +57,7 @@ workers_dev = true
 ENVIRONMENT = "staging"
 WORKER_NAME = "libedge-api-staging"
 RA_PROXY_HOST = "proxy-staging.selmiye.com"
+RA_PROXY_BASE_HOST = "selmiye.com"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -85,6 +86,7 @@ name = "libedge-api-prod"
 ENVIRONMENT = "production"
 WORKER_NAME = "libedge-api-prod"
 RA_PROXY_HOST = "proxy.selmiye.com"
+RA_PROXY_BASE_HOST = "selmiye.com"
 
 [[env.production.d1_databases]]
 binding = "DB"

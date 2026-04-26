@@ -512,15 +512,26 @@ try {
 }
 ```
 
-### §14.3 RA_PROXY_BASE_HOST Eksikliği
+### §14.3 RA_PROXY_BASE_HOST ve Wildcard Route
 
-Staging `wrangler.toml`'da `RA_PROXY_HOST` var ama kod `c.env.RA_PROXY_BASE_HOST` kullanıyor.
-Şu an `'selmiye.com'` fallback çalışıyor — ama explicit set edilmeli.
+`RA_PROXY_BASE_HOST` explicit set edildi. Bu değer proxy hostname'i değil, session-host
+subdomain'lerinin bağlanacağı çıplak domain olmalıdır.
 
 ```toml
-# workers/proxy/wrangler.toml [env.staging.vars]
+# wrangler.toml ve workers/proxy/wrangler.toml
 RA_PROXY_BASE_HOST = "selmiye.com"
 ```
+
+Production `session_host_proxy` için Proxy Worker route listesinde wildcard şarttır:
+
+```toml
+routes = [
+  { pattern = "proxy.selmiye.com/*", zone_name = "selmiye.com" },
+  { pattern = "*.selmiye.com/*",     zone_name = "selmiye.com" }
+]
+```
+
+`libedge.com` taşınması için ayrıntılı checklist: `RA_PRODUCTION_READINESS.md`.
 
 ### §14.4 Egress Secret Yönetimi (Production)
 
@@ -580,8 +591,10 @@ Bilinen çalışan durum (2026-04-26):
   - AWS WAF → HTTP/1.1 fingerprint ile bypass ✅
   - Cloudflare korumalı yayıncılar → utls Chrome TLS fingerprint bypass ✅
 
-Sonraki adım: Production D1 migration (§14.5), egress secret yönetimi (§14.4) ve
-çoklu kurum onboarding (§14.6).
+Sonraki adım: `libedge.com` domain taşıma + wildcard route doğrulaması,
+Production D1 migration (§14.5), egress secret yönetimi (§14.4) ve çoklu kurum
+onboarding (§14.6). Kurum gereksinimleri ve kapasite tahmini:
+`RA_PRODUCTION_READINESS.md`.
 ```
 
 ---
