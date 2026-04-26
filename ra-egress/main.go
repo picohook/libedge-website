@@ -5,10 +5,11 @@
 // ALLOWED_HOST_REGEX'e uyuyorsa publisher'a forward eder, response'u
 // streaming olarak geri döndürür.
 //
-// Tek binary, sıfır external dep (net/http, crypto/hmac standard lib yeterli).
-//
 // Build: CGO_ENABLED=0 go build -ldflags="-s -w" -o ra-egress .
 // Image: ~10MB (alpine veya scratch base)
+//
+// TLS fingerprint: utls ile Chrome JA3 taklit edilir; Cloudflare'in
+// Go net/tls bot tespitini (ACS gibi CF-korumalı yayıncılarda) aşmak için.
 
 package main
 
@@ -29,24 +30,40 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	utls "github.com/refraction-networking/utls"
 )
 
 var (
 	sharedSecret     []byte
 	allowedHostRegex *regexp.Regexp
 	maxRequestBytes  int64 = 10 * 1024 * 1024 // 10MB default
-	upstreamClient = &http.Client{
-		// HTTP/2'yi devre dışı bırak: Go'nun HTTP/2 SETTINGS/HEADERS frame
-		// sıralaması AWS WAF bot detection tarafından "non-browser" olarak
-		// sınıflandırılıyor. HTTP/1.1 fingerprint daha nötr.
+	upstreamClient         = buildUpstreamClient()
+)
+
+// buildUpstreamClient — utls Chrome fingerprint + IPv4 + redirect-manual transport.
+//
+// Neden utls?
+//   Go'nun standart net/tls JA3 fingerprint'i Cloudflare bot detection tarafından
+//   tanınır (ACS/pubs.acs.org gibi CF-korumalı yayıncılarda 403). Chrome fingerprint
+//   taklit ederek Cloudflare'i aşarız.
+//
+// Neden HTTP/1.1?
+//   AWS WAF (JoVE) Go HTTP/2 SETTINGS frame sıralamasını bot olarak sınıflandırıyor.
+//   ALPN'den h2 çıkararak HTTP/1.1 fingerprint nötr kalır.
+func buildUpstreamClient() *http.Client {
+	return &http.Client{
 		Transport: &http.Transport{
-			// HTTP/2 devre dışı — Go h2 fingerprint AWS WAF'ı tetikliyor.
-			TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
-			// IPv4 zorla — Docker container'ın default outbound IPv6 olabilir;
-			// kurum IP'si IPv4 olduğundan tcp4 ile kurum IP'si garantilenir.
+			// utls ile TLS bağlantısı kur — Chrome fingerprint (JA3) taklit eder.
+			// DialTLSContext, DialContext'in yerini HTTPS için alır.
+			DialTLSContext: dialTLSChrome,
+			// HTTP (plain) bağlantılar için IPv4 zorla.
 			DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
 				return (&net.Dialer{}).DialContext(ctx, "tcp4", addr)
 			},
+			// HTTP/2 devre dışı — h2 handler'ı yoksa Transport h2 negotiate etmez.
+			// utls ALPN'den h2 zaten çıkarılıyor; çift güvence.
+			TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
 		},
 		Timeout: 30 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -57,7 +74,49 @@ var (
 			return http.ErrUseLastResponse
 		},
 	}
-)
+}
+
+// dialTLSChrome — Chrome TLS fingerprint + IPv4 + HTTP/1.1 ALPN.
+func dialTLSChrome(ctx context.Context, _, addr string) (net.Conn, error) {
+	// TCP bağlantısı: IPv4 zorla
+	tcpConn, err := (&net.Dialer{}).DialContext(ctx, "tcp4", addr)
+	if err != nil {
+		return nil, err
+	}
+
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		tcpConn.Close()
+		return nil, err
+	}
+
+	// Chrome_Auto fingerprint'ini al, sonra ALPN'i override et
+	spec, err := utls.UTLSIdToSpec(utls.HelloChrome_Auto)
+	if err != nil {
+		tcpConn.Close()
+		return nil, fmt.Errorf("utls spec: %w", err)
+	}
+	for i, ext := range spec.Extensions {
+		if alpn, ok := ext.(*utls.ALPNExtension); ok {
+			// HTTP/2 çıkar — Go transport h2 konuşamaz, HTTP/1.1 fingerprint
+			// AWS WAF için de nötr.
+			alpn.AlpnProtocols = []string{"http/1.1"}
+			spec.Extensions[i] = alpn
+			break
+		}
+	}
+
+	uconn := utls.UClient(tcpConn, &utls.Config{ServerName: host}, utls.HelloCustom)
+	if err := uconn.ApplyPreset(&spec); err != nil {
+		tcpConn.Close()
+		return nil, fmt.Errorf("utls preset: %w", err)
+	}
+	if err := uconn.HandshakeContext(ctx); err != nil {
+		tcpConn.Close()
+		return nil, fmt.Errorf("utls handshake: %w", err)
+	}
+	return uconn, nil
+}
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--healthcheck" {
