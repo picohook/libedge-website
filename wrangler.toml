@@ -52,9 +52,6 @@ id = "d742f0d165234385bacf6ddfc0cd43e1"
 [env.staging]
 name = "libedge-api-staging"
 workers_dev = true
-routes = [
-  { pattern = "selmiye.com/api/*", zone_name = "selmiye.com" }
-]
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
