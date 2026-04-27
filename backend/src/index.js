@@ -11,6 +11,7 @@ import { registerRaIssueToken } from './routes/ra/issue-token.js';
 import { registerRaAdminTunnel } from './routes/ra/admin-tunnel.js';
 import { registerRaAdminOverview } from './routes/ra/admin-overview.js';
 import { registerRaAdminConfig } from './routes/ra/admin-config.js';
+import { registerRaEgressAllowedHosts } from './routes/ra/egress-allowed-hosts.js';
 import { ensureRemoteAccessSchema } from './ra/schema.js';
 
 const app = new Hono();
@@ -7837,6 +7838,8 @@ registerRaAdminTunnel(app);
 registerRaAdminOverview(app);
 // GET/PUT /api/ra/admin/products-ra + subscriptions-ra (super_admin config)
 registerRaAdminConfig(app);
+// GET /api/ra/egress/allowed-hosts — egress agent'lar için dinamik host listesi
+registerRaEgressAllowedHosts(app);
 
 
 // ====================== PAGE VIEWS ROUTES ======================
