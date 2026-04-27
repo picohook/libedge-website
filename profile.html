@@ -1002,6 +1002,7 @@ async function loadSubscriptions() {
         const renderAccessDetails = (sub, compact = false) => {
             const parts = buildAccessSummary(sub);
             const normalizedUrl = normalizeExternalUrl(sub.access_url);
+            const registrationUrl = normalizeExternalUrl(sub.registration_url);
             const note = sub.access_notes_tr || '';
             const subId = Number(sub.id);
             const actionConfig = getActionConfig(sub, normalizedUrl);
@@ -1026,8 +1027,15 @@ async function loadSubscriptions() {
                         <i class="fas ${actionConfig.icon}"></i><span>${actionConfig.label}</span>
                     </button>`
                 : '';
+            const registrationHtml = registrationUrl
+                ? `<button type="button"
+                        onclick="window.open('${jsStr(registrationUrl)}', '_blank', 'noopener,noreferrer')"
+                        class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50 transition">
+                        <i class="fas fa-user-plus"></i><span>Kayıt Ol</span>
+                    </button>`
+                : '';
 
-            return `${summary}${noteHtml}${actionHtml}`;
+            return `${summary}${noteHtml}<div class="flex flex-wrap items-center gap-2">${registrationHtml}${actionHtml}</div>`;
         };
 
         if (data.subscriptions?.length > 0) {
@@ -2890,8 +2898,6 @@ async function submitNewTicket(e) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 </body>
 </html>
-
-
 
 
 

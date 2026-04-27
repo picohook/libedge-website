@@ -1071,7 +1071,7 @@
     </div>
 
     <div id="productModal" class="modal-overlay modal-center hidden">
-        <div class="modal-panel modal-lg">
+        <div class="modal-panel modal-2xl modal-panel-scroll">
             <div class="modal-content">
             <h3 id="productModalTitle" class="text-xl font-bold mb-4">Ürün Düzenle</h3>
             <form id="productForm">
@@ -1139,6 +1139,13 @@
                         </label>
                     </div>
                     <div id="productRaFields" class="grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
+                        <label class="md:col-span-2 inline-flex items-start gap-2 text-sm text-gray-700">
+                            <input type="checkbox" id="productRaRequiresTunnel" class="rounded mt-0.5" checked>
+                            <span>
+                                <span class="font-medium">Kurum tüneli zorunlu</span>
+                                <span class="block text-[11px] text-gray-400">IP-kilitli publisher'lar için açık, Pangram gibi public login/session akışlarında kapalı bırak.</span>
+                            </span>
+                        </label>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Dağıtım Modu</label>
                             <select id="productRaDeliveryMode" class="w-full border p-2 rounded">
@@ -1153,6 +1160,20 @@
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Landing Path <span class="text-xs text-gray-400 font-normal">(opsiyonel, başlangıç sayfası)</span></label>
                             <input type="text" id="productRaLandingPath" class="w-full border p-2 rounded font-mono text-sm" placeholder="/login veya /tr/home">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Host Allowlist (JSON array)</label>
+                            <textarea id="productRaHostAllowlist" rows="3" class="w-full border p-2 rounded font-mono text-xs" placeholder='["www.iop.org","iopscience.iop.org"]'></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Login Recipe (JSON)</label>
+                            <div class="flex flex-wrap items-center gap-2 mb-1">
+                                <button type="button" data-product-ra-recipe-template="form_post" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: form_post</button>
+                                <button type="button" data-product-ra-recipe-template="spa_token" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: spa_token</button>
+                                <button type="button" data-product-ra-recipe-template="spa_capture" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: spa_capture (Pangram)</button>
+                                <button type="button" data-product-ra-recipe-template="clear" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Temizle</button>
+                            </div>
+                            <textarea id="productRaLoginRecipe" rows="10" class="w-full border p-2 rounded font-mono text-xs" placeholder='{"mode":"form_post",...}'></textarea>
                         </div>
                     </div>
                 </div>
@@ -1174,9 +1195,6 @@
             </button>
             <button type="button" data-ra-subtab="subscriptions" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
                 <i class="fas fa-key mr-2"></i>Kurumsal Abonelikler
-            </button>
-            <button type="button" data-ra-subtab="products" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
-                <i class="fas fa-cube mr-2"></i>Ürün RA Ayarları
             </button>
             <button type="button" data-ra-subtab="logs" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
                 <i class="fas fa-clipboard-list mr-2"></i>Erişim Logları
@@ -2682,6 +2700,11 @@
                             <input type="url" id="subscriptionEditorAccessUrl" placeholder="https://..." class="w-full border p-2 rounded">
                             <p class="text-xs text-gray-400 mt-1">Boş bırakırsanız ürünün varsayılan erişim ayarı kullanılır.</p>
                         </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Kuruma Özel Kayıt Linki</label>
+                            <input type="url" id="subscriptionEditorRegistrationUrl" placeholder="https://..." class="w-full border p-2 rounded">
+                            <p class="text-xs text-gray-400 mt-1">CAS SciFinder gibi önce kurum linkinden hesap açılması gereken ürünlerde kullanılır. Şifre LibEdge'de saklanmaz.</p>
+                        </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <label class="flex items-center gap-2 text-sm text-gray-700">
                                 <input type="checkbox" id="subscriptionEditorRequiresEmail" class="rounded">
@@ -3163,6 +3186,15 @@ document.addEventListener('click', function(e) {
         return 'path_proxy';
     }
 
+    function prettyJson(raw) {
+        if (!raw) return '';
+        try {
+            return JSON.stringify(JSON.parse(raw), null, 2);
+        } catch {
+            return raw;
+        }
+    }
+
     function setGuideText(id, text) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -3300,8 +3332,12 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         document.getElementById('productRaEnabled').checked = raEnabled;
         document.getElementById('productRaFields').classList.toggle('hidden', !raEnabled);
         document.getElementById('productRaDeliveryMode').value = product.ra_delivery_mode || 'path_proxy';
+        document.getElementById('productRaRequiresTunnel').checked =
+            product.ra_requires_tunnel == null ? true : !!product.ra_requires_tunnel;
         document.getElementById('productRaOriginHost').value = product.ra_origin_host || '';
         document.getElementById('productRaLandingPath').value = product.ra_origin_landing_path || '';
+        document.getElementById('productRaHostAllowlist').value = prettyJson(product.ra_host_allowlist_json);
+        document.getElementById('productRaLoginRecipe').value = prettyJson(product.ra_login_recipe_json);
         refreshAdminAccessGuides();
     }
 
@@ -4107,6 +4143,7 @@ function composeFullName(firstName, lastName) {
             institutionFields: document.getElementById('subscriptionInstitutionFields'),
             accessType: document.getElementById('subscriptionEditorAccessType'),
             accessUrl: document.getElementById('subscriptionEditorAccessUrl'),
+            registrationUrl: document.getElementById('subscriptionEditorRegistrationUrl'),
             requiresEmail: document.getElementById('subscriptionEditorRequiresEmail'),
             requiresVpn: document.getElementById('subscriptionEditorRequiresVpn'),
             accessNotesTr: document.getElementById('subscriptionEditorAccessNotesTr'),
@@ -4191,6 +4228,7 @@ function composeFullName(firstName, lastName) {
             els.institutionId.value = subscription?.institution_id || '';
             els.accessType.value = subscription?.raw_access_type || '';
             els.accessUrl.value = subscription?.raw_access_url || '';
+            els.registrationUrl.value = subscription?.raw_registration_url || '';
             els.requiresEmail.checked = !!subscription?.raw_requires_institution_email;
             els.requiresVpn.checked = !!subscription?.raw_requires_vpn;
             els.accessNotesTr.value = subscription?.raw_access_notes_tr || '';
@@ -4373,6 +4411,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
                 end_date: els.endDate.value || null,
                 access_type: els.accessType.value || null,
                 access_url: els.accessUrl.value.trim() || null,
+                registration_url: els.registrationUrl.value.trim() || null,
                 requires_institution_email: els.requiresEmail.checked,
                 requires_vpn: els.requiresVpn.checked,
                 access_notes_tr: els.accessNotesTr.value.trim() || null,
@@ -4418,6 +4457,27 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             : editingProductSlug;
         if (!slug) { showToast('Slug zorunludur', 'error'); return; }
 
+        const recipeJson = document.getElementById('productRaLoginRecipe').value.trim();
+        const allowlistJson = document.getElementById('productRaHostAllowlist').value.trim();
+        if (recipeJson) {
+            try {
+                const parsed = JSON.parse(recipeJson);
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('obje olmalı');
+            } catch (err) {
+                showToast(`Login Recipe JSON geçersiz: ${err.message}`, 'error');
+                return;
+            }
+        }
+        if (allowlistJson) {
+            try {
+                const parsed = JSON.parse(allowlistJson);
+                if (!Array.isArray(parsed)) throw new Error('array olmalı');
+            } catch (err) {
+                showToast(`Host Allowlist JSON geçersiz: ${err.message}`, 'error');
+                return;
+            }
+        }
+
         const payload = {
             slug,
             name: document.getElementById('productName').value.trim(),
@@ -4431,8 +4491,11 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             default_access_notes_en: document.getElementById('productAccessNotesEn').value.trim() || null,
             ra_enabled: document.getElementById('productRaEnabled').checked,
             ra_delivery_mode: document.getElementById('productRaDeliveryMode').value || 'path_proxy',
+            ra_requires_tunnel: document.getElementById('productRaRequiresTunnel').checked,
             ra_origin_host: document.getElementById('productRaOriginHost').value.trim() || null,
             ra_origin_landing_path: document.getElementById('productRaLandingPath').value.trim() || null,
+            ra_host_allowlist_json: allowlistJson || null,
+            ra_login_recipe_json: recipeJson || null,
         };
 
         try {
@@ -5092,6 +5155,23 @@ const RA_RECIPE_TEMPLATES = {
     }, null, 2),
 };
 
+document.getElementById('productRaEnabled')?.addEventListener('change', function() {
+    document.getElementById('productRaFields').classList.toggle('hidden', !this.checked);
+});
+
+document.querySelectorAll('#productModal [data-product-ra-recipe-template]').forEach((tbtn) => {
+    tbtn.addEventListener('click', () => {
+        const key = tbtn.dataset.productRaRecipeTemplate;
+        const ta = document.getElementById('productRaLoginRecipe');
+        if (!ta) return;
+        if (key === 'clear') {
+            ta.value = '';
+        } else if (RA_RECIPE_TEMPLATES[key]) {
+            ta.value = RA_RECIPE_TEMPLATES[key];
+        }
+    });
+});
+
 async function _loadRemoteAccessTab() {
     if (!_ra.initialized) _initRemoteAccessTab();
     await _raRunActiveSubtab();
@@ -5121,11 +5201,6 @@ function _initRemoteAccessTab() {
             }
             _raRunActiveSubtab();
         });
-    });
-
-    // RA etkin checkbox toggle
-    document.getElementById('productRaEnabled')?.addEventListener('change', function() {
-        document.getElementById('productRaFields').classList.toggle('hidden', !this.checked);
     });
 
     const refreshBtn = document.getElementById('raRefreshTunnelsBtn');

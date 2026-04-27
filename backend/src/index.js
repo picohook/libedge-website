@@ -11,6 +11,7 @@ import { registerRaIssueToken } from './routes/ra/issue-token.js';
 import { registerRaAdminTunnel } from './routes/ra/admin-tunnel.js';
 import { registerRaAdminOverview } from './routes/ra/admin-overview.js';
 import { registerRaAdminConfig } from './routes/ra/admin-config.js';
+import { ensureRemoteAccessSchema } from './ra/schema.js';
 
 const app = new Hono();
 
@@ -652,7 +653,8 @@ async function ensureInstitutionSubscriptionAccessColumns(db) {
     'ALTER TABLE institution_subscriptions ADD COLUMN requires_institution_email INTEGER DEFAULT 0',
     'ALTER TABLE institution_subscriptions ADD COLUMN requires_vpn INTEGER DEFAULT 0',
     'ALTER TABLE institution_subscriptions ADD COLUMN access_notes_tr TEXT',
-    'ALTER TABLE institution_subscriptions ADD COLUMN access_notes_en TEXT'
+    'ALTER TABLE institution_subscriptions ADD COLUMN access_notes_en TEXT',
+    'ALTER TABLE institution_subscriptions ADD COLUMN registration_url TEXT'
   ]) {
     try {
       await db.prepare(sql).run();
@@ -1760,7 +1762,8 @@ app.get('/api/subscription/check', async (c) => {
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
-             COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en
+             COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
+             NULLIF(TRIM(is2.registration_url), '') AS registration_url
       FROM institution_subscriptions is2
       LEFT JOIN products p ON p.slug = is2.product_slug
       WHERE institution_id = ? AND product_slug = ?
@@ -1825,7 +1828,8 @@ app.get('/api/subscription/list', async (c) => {
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
-             COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en
+             COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
+             NULLIF(TRIM(is2.registration_url), '') AS registration_url
       FROM institution_subscriptions is2
       LEFT JOIN products p ON p.slug = is2.product_slug
       WHERE is2.institution_id = ? AND is2.status IN ('active','trial')
@@ -2814,10 +2818,95 @@ app.post('/api/admin/set-role/:id', async (c) => {
   return c.json({ success: true });
 });
 
+const MAX_PRODUCT_RA_RECIPE_BYTES = 16 * 1024;
+const MAX_PRODUCT_RA_ALLOWLIST_BYTES = 4 * 1024;
+
+function normalizeProductRaDeliveryMode(raw) {
+  const mode = String(raw || '').trim().toLowerCase();
+  if (mode === 'session_host_proxy') return 'session_host_proxy';
+  return 'path_proxy';
+}
+
+function normalizeProductRaHost(raw) {
+  if (raw == null) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return null;
+  return s.replace(/^https?:\/\//, '').replace(/\/.*$/, '') || null;
+}
+
+function isValidProductRaHost(host) {
+  if (typeof host !== 'string') return false;
+  if (host.length > 253) return false;
+  return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(host);
+}
+
+function normalizeProductRaLandingPath(raw) {
+  if (raw == null) return null;
+  const trimmed = String(raw).trim();
+  if (!trimmed || trimmed === '/') return null;
+  if (/^[a-z]+:\/\//i.test(trimmed)) return null;
+  if (trimmed.includes('..')) return null;
+  if (trimmed.length > 512) return null;
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
+function validateProductRaConfig(body) {
+  const raOriginHost = normalizeProductRaHost(body.ra_origin_host);
+  if (raOriginHost && !isValidProductRaHost(raOriginHost)) {
+    return { error: 'ra_origin_host geçersiz bir hostname' };
+  }
+
+  let raLoginRecipeJson = null;
+  if (body.ra_login_recipe_json != null && body.ra_login_recipe_json !== '') {
+    const raw = String(body.ra_login_recipe_json);
+    if (raw.length > MAX_PRODUCT_RA_RECIPE_BYTES) return { error: 'ra_login_recipe_json çok uzun' };
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return { error: 'recipe JSON objesi olmalı' };
+      }
+    } catch (err) {
+      return { error: `recipe JSON parse hatası: ${err.message}` };
+    }
+    raLoginRecipeJson = raw;
+  }
+
+  let raHostAllowlistJson = null;
+  if (body.ra_host_allowlist_json != null && body.ra_host_allowlist_json !== '') {
+    const raw = String(body.ra_host_allowlist_json);
+    if (raw.length > MAX_PRODUCT_RA_ALLOWLIST_BYTES) return { error: 'ra_host_allowlist_json çok uzun' };
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return { error: 'host allowlist bir dizi olmalı' };
+      for (const h of parsed) {
+        const host = normalizeProductRaHost(h);
+        if (!host || !isValidProductRaHost(host)) {
+          return { error: `allowlist geçersiz host içeriyor: ${h}` };
+        }
+      }
+    } catch (err) {
+      return { error: `allowlist JSON parse hatası: ${err.message}` };
+    }
+    raHostAllowlistJson = raw;
+  }
+
+  return {
+    values: {
+      ra_delivery_mode: normalizeProductRaDeliveryMode(body.ra_delivery_mode),
+      ra_origin_host: raOriginHost,
+      ra_origin_landing_path: normalizeProductRaLandingPath(body.ra_origin_landing_path),
+      ra_requires_tunnel: body.ra_requires_tunnel == null ? 1 : (body.ra_requires_tunnel ? 1 : 0),
+      ra_login_recipe_json: raLoginRecipeJson,
+      ra_host_allowlist_json: raHostAllowlistJson,
+    },
+  };
+}
+
 app.get('/api/admin/products', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
+  await ensureRemoteAccessSchema(db);
   const rows = await db.prepare(`
     SELECT slug, name, category, region,
            default_access_type, default_access_url,
@@ -2827,7 +2916,10 @@ app.get('/api/admin/products', async (c) => {
            COALESCE(ra_enabled, 0) AS ra_enabled,
            ra_delivery_mode,
            ra_origin_host,
-           ra_origin_landing_path
+           ra_origin_landing_path,
+           COALESCE(ra_requires_tunnel, 1) AS ra_requires_tunnel,
+           ra_login_recipe_json,
+           ra_host_allowlist_json
     FROM products
     ORDER BY name COLLATE NOCASE ASC
   `).all();
@@ -2849,18 +2941,22 @@ app.put('/api/admin/product/:slug', async (c) => {
   const slug = String(c.req.param('slug') || '').trim();
   if (!slug) return c.json({ error: 'Geçersiz ürün slug' }, 400);
 
+  const body = await c.req.json().catch(() => ({}));
   const {
     name, category, region,
     default_access_type, default_access_url,
     default_requires_institution_email, default_requires_vpn,
     default_access_notes_tr, default_access_notes_en,
-    ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path
-  } = await c.req.json();
+    ra_enabled
+  } = body;
 
   const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
-  const validDeliveryModes = ['session_host_proxy', 'path_proxy'];
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
+  await ensureRemoteAccessSchema(db);
+  const raConfig = validateProductRaConfig(body);
+  if (raConfig.error) return c.json({ error: raConfig.error }, 400);
+  const ra = raConfig.values;
 
   const existing = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(slug).first();
   if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
@@ -2872,7 +2968,8 @@ app.put('/api/admin/product/:slug', async (c) => {
         default_requires_institution_email = ?, default_requires_vpn = ?,
         default_access_notes_tr = ?, default_access_notes_en = ?,
         ra_enabled = ?, ra_delivery_mode = ?,
-        ra_origin_host = ?, ra_origin_landing_path = ?
+        ra_origin_host = ?, ra_origin_landing_path = ?,
+        ra_requires_tunnel = ?, ra_login_recipe_json = ?, ra_host_allowlist_json = ?
     WHERE slug = ?
   `).bind(
     String(name || '').trim() || slug,
@@ -2885,9 +2982,12 @@ app.put('/api/admin/product/:slug', async (c) => {
     String(default_access_notes_tr || '').trim() || null,
     String(default_access_notes_en || '').trim() || null,
     ra_enabled ? 1 : 0,
-    validDeliveryModes.includes(ra_delivery_mode) ? ra_delivery_mode : 'path_proxy',
-    String(ra_origin_host || '').trim() || null,
-    String(ra_origin_landing_path || '').trim() || null,
+    ra.ra_delivery_mode,
+    ra.ra_origin_host,
+    ra.ra_origin_landing_path,
+    ra.ra_requires_tunnel,
+    ra.ra_login_recipe_json,
+    ra.ra_host_allowlist_json,
     slug
   ).run();
 
@@ -2898,14 +2998,16 @@ app.post('/api/admin/products', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
+  await ensureRemoteAccessSchema(db);
 
+  const body = await c.req.json().catch(() => ({}));
   const {
     slug, name, category, region,
     default_access_type, default_access_url,
     default_requires_institution_email, default_requires_vpn,
     default_access_notes_tr, default_access_notes_en,
-    ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path
-  } = await c.req.json().catch(() => ({}));
+    ra_enabled
+  } = body;
 
   const slugNorm = String(slug || '').trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9_-]{0,79}$/.test(slugNorm))
@@ -2916,8 +3018,10 @@ app.post('/api/admin/products', async (c) => {
   const conflict = await db.prepare('SELECT slug FROM products WHERE slug = ?').bind(slugNorm).first();
   if (conflict) return c.json({ error: 'Bu slug zaten kullanımda' }, 409);
 
-  const validAccessTypes = ['direct', 'ip', 'sso', 'institution_link', 'email_password_external', 'mixed'];
-  const validDeliveryModes = ['session_host_proxy', 'path_proxy'];
+  const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
+  const raConfig = validateProductRaConfig(body);
+  if (raConfig.error) return c.json({ error: raConfig.error }, 400);
+  const ra = raConfig.values;
 
   await db.prepare(`
     INSERT INTO products (
@@ -2925,8 +3029,9 @@ app.post('/api/admin/products', async (c) => {
       default_access_type, default_access_url,
       default_requires_institution_email, default_requires_vpn,
       default_access_notes_tr, default_access_notes_en,
-      ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path,
+      ra_requires_tunnel, ra_login_recipe_json, ra_host_allowlist_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     slugNorm,
     String(name).trim(),
@@ -2939,9 +3044,12 @@ app.post('/api/admin/products', async (c) => {
     String(default_access_notes_tr || '').trim() || null,
     String(default_access_notes_en || '').trim() || null,
     ra_enabled ? 1 : 0,
-    validDeliveryModes.includes(ra_delivery_mode) ? ra_delivery_mode : 'path_proxy',
-    String(ra_origin_host || '').trim() || null,
-    String(ra_origin_landing_path || '').trim() || null
+    ra.ra_delivery_mode,
+    ra.ra_origin_host,
+    ra.ra_origin_landing_path,
+    ra.ra_requires_tunnel,
+    ra.ra_login_recipe_json,
+    ra.ra_host_allowlist_json
   ).run();
 
   return c.json({ success: true, slug: slugNorm }, 201);
@@ -3008,6 +3116,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                is2.access_url AS raw_access_url,
                COALESCE(is2.requires_institution_email, 0) AS raw_requires_institution_email,
                COALESCE(is2.requires_vpn, 0) AS raw_requires_vpn,
+               is2.registration_url AS raw_registration_url,
                is2.access_notes_tr AS raw_access_notes_tr,
                is2.access_notes_en AS raw_access_notes_en,
                COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
@@ -3018,6 +3127,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                END AS ra_delivery_mode,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
+               NULLIF(TRIM(is2.registration_url), '') AS registration_url,
                COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
                COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
                i.name as subject_name, i.name as institution_name, is2.institution_id, NULL as user_id
@@ -3034,6 +3144,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                is2.access_url AS raw_access_url,
                COALESCE(is2.requires_institution_email, 0) AS raw_requires_institution_email,
                COALESCE(is2.requires_vpn, 0) AS raw_requires_vpn,
+               is2.registration_url AS raw_registration_url,
                is2.access_notes_tr AS raw_access_notes_tr,
                is2.access_notes_en AS raw_access_notes_en,
                COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
@@ -3044,6 +3155,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                END AS ra_delivery_mode,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
+               NULLIF(TRIM(is2.registration_url), '') AS registration_url,
                COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
                COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
                i.name as subject_name, i.name as institution_name, is2.institution_id, NULL as user_id
@@ -3192,7 +3304,7 @@ app.delete('/api/admin/subscription/:id', async (c) => {
 app.post('/api/admin/institution-subscription', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const auth = await requireAuth(c);
-  const { institution_id, product_slug, status, end_date, access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
+  const { institution_id, product_slug, status, end_date, access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
   if (!institution_id || !product_slug) return c.json({ error: 'institution_id ve product_slug zorunlu' }, 400);
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
@@ -3203,9 +3315,9 @@ app.post('/api/admin/institution-subscription', async (c) => {
   await db.prepare(`
     INSERT INTO institution_subscriptions (
       institution_id, product_slug, status, end_date, created_by,
-      access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en
+      access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     parseInt(institution_id),
     product_slug,
@@ -3214,6 +3326,7 @@ app.post('/api/admin/institution-subscription', async (c) => {
     auth.user.user_id,
     validAccessTypes.includes(access_type) ? access_type : null,
     String(access_url || '').trim() || null,
+    String(registration_url || '').trim() || null,
     requires_institution_email ? 1 : 0,
     requires_vpn ? 1 : 0,
     String(access_notes_tr || '').trim() || null,
@@ -3226,7 +3339,7 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const id = Number(c.req.param('id'));
   if (!id) return c.json({ error: 'Geçersiz abonelik id' }, 400);
-  const { institution_id, product_slug, status, end_date, access_type, access_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
+  const { institution_id, product_slug, status, end_date, access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
   if (!institution_id || !product_slug) return c.json({ error: 'institution_id ve product_slug zorunlu' }, 400);
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
@@ -3241,7 +3354,7 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
   await db.prepare(`
     UPDATE institution_subscriptions
     SET institution_id = ?, product_slug = ?, status = ?, end_date = ?,
-        access_type = ?, access_url = ?, requires_institution_email = ?, requires_vpn = ?, access_notes_tr = ?, access_notes_en = ?
+        access_type = ?, access_url = ?, registration_url = ?, requires_institution_email = ?, requires_vpn = ?, access_notes_tr = ?, access_notes_en = ?
     WHERE id = ?
   `).bind(
     parseInt(institution_id),
@@ -3250,6 +3363,7 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
     end_date || null,
     validAccessTypes.includes(access_type) ? access_type : null,
     String(access_url || '').trim() || null,
+    String(registration_url || '').trim() || null,
     requires_institution_email ? 1 : 0,
     requires_vpn ? 1 : 0,
     String(access_notes_tr || '').trim() || null,
@@ -3275,6 +3389,7 @@ app.get('/api/admin/institution/:id/subscriptions', async (c) => {
     SELECT is2.id, is2.institution_id, is2.product_slug, is2.status, is2.start_date, is2.end_date, is2.created_by, is2.created_at,
            COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
            COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
+           NULLIF(TRIM(is2.registration_url), '') AS registration_url,
            CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
            CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
            COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
