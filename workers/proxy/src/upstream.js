@@ -266,15 +266,16 @@ function rewriteUrl(u, proxyableHosts, proxyHost, encodedLabel) {
     if (u.startsWith('/')) {
       return `https://${proxyHost}/${encodedLabel}${u}`;
     }
-    // Relative URL ise olduğu gibi bırak (browser proxy host üzerinden çözer)
     if (!/^https?:\/\//i.test(u) && !u.startsWith('//')) return u;
-    // Protocol-relative (//www.jove.com/x) destekle
     const abs = u.startsWith('//') ? `https:${u}` : u;
     const parsed = new URL(abs);
+    
     if (proxyableHosts.has(parsed.hostname)) {
       // FIX: her host kendi label'ı ile encode edilmeli; encodedLabel sadece
       // orijinal targetHost içindir — farklı bir proxyable host gelirse yanlış
-      // label üretilir (örn. media.jove.com için www.jove.com label'ı kullanılır).
+      // label üretilir (örn. sso.cas.org için scifinder-n label'ı kullanılır).
+      // NOT: redirect_uri query param'ına dokunma — OIDC sunucusu kayıtlı değerle
+      // karşılaştırır, değiştirirsen invalid_redirect_uri hatası alırsın.
       const hostLabel = encodeHost(parsed.hostname);
       return `https://${proxyHost}/${hostLabel}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }

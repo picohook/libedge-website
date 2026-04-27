@@ -261,9 +261,16 @@ async function handlePathProxy(request, env, url) {
     return htmlError(401, 'Oturum bulunamadı. Lütfen portal üzerinden tekrar erişin.');
   }
 
+  // Oturum ana host'unu mevcut URL label'ıyla kıyasla.
+  // OIDC ve multi-origin akışlarında (örn. scifinder-n.cas.org → sso.cas.org →
+  // scifinder-n.cas.org/pa/oidc/cb) farklı bir host gelebilir; ürünün
+  // ra_host_allowlist_json listesindeyse aynı oturumla erişime izin ver.
   if (session.target_host !== targetHost) {
-    return htmlError(403,
-      'Bu oturum farklı bir kaynağa ait. Portal üzerinden ilgili kaynağa yeniden erişin.');
+    const allowedHosts = await loadProductAllowedHosts(env.DB, session.product_slug, session.target_host);
+    if (!allowedHosts.has(targetHost)) {
+      return htmlError(403,
+        'Bu oturum farklı bir kaynağa ait. Portal üzerinden ilgili kaynağa yeniden erişin.');
+    }
   }
 
   // 4. Upstream relay
@@ -406,12 +413,18 @@ const STRIP_REQUEST = new Set([
   'x-real-ip', 'true-client-ip',
 ]);
 
+// EZproxy stanza'sından: HTTPHeader -request -process x-cas*
+// CAS'in kendi header'ları publisher'a iletilmemeli.
+function isCasPrivateHeader(lower) {
+  return lower.startsWith('x-cas');
+}
+
 export function buildUpstreamHeaders(incoming, context = {}) {
   const out = new Headers();
   let sawUserAgent = false;
   for (const [k, v] of incoming.entries()) {
     const lower = k.toLowerCase();
-    if (HOP_BY_HOP.has(lower) || STRIP_REQUEST.has(lower)) continue;
+    if (HOP_BY_HOP.has(lower) || STRIP_REQUEST.has(lower) || isCasPrivateHeader(lower)) continue;
     if (context.forceDesktopUserAgent && lower === 'user-agent') {
       out.set('User-Agent', DESKTOP_USER_AGENT);
       sawUserAgent = true;
@@ -541,6 +554,31 @@ export function rewriteSessionTextProxyUrls(text, proxyHostname, originHost, pro
     /cookieDomain:\s*(['"])\.emis\.com\1/g,
     `cookieDomain: '${proxyHostname}'`
   );
+}
+
+// path_proxy cross-domain kontrolü için — ürünün ra_host_allowlist_json'unu yükler.
+// OIDC, federated SSO gibi multi-origin akışlarda aynı oturum farklı hostlara
+// yönlenebilir; bunların allowlist'te olması gerekir.
+async function loadProductAllowedHosts(db, productSlug, originHost) {
+  const hosts = new Set([originHost]);
+  const product = await db
+    .prepare('SELECT ra_host_allowlist_json FROM products WHERE slug = ?')
+    .bind(productSlug)
+    .first();
+  if (product && product.ra_host_allowlist_json) {
+    try {
+      const list = JSON.parse(product.ra_host_allowlist_json);
+      if (Array.isArray(list)) {
+        for (const h of list) {
+          const host = normalizeHost(h);
+          if (host) hosts.add(host);
+        }
+      }
+    } catch {
+      // Bozuk JSON — sadece origin ile devam et
+    }
+  }
+  return hosts;
 }
 
 async function loadSessionProxyableHosts(db, session) {
