@@ -892,35 +892,41 @@ window.openRemoteAccess = openRemoteAccess;
 
 function openSubscriptionAccess(btn) {
     if (!btn) return;
-    const deliveryMode = String(btn.dataset.deliveryMode || '').trim().toLowerCase();
-    const accessType = String(btn.dataset.accessType || '').trim();
-    const accessUrl = String(btn.dataset.accessUrl || '').trim();
-    const subId = Number(btn.dataset.raSubId);
+    const accessType = String(btn.dataset.accessType || '').trim().toLowerCase();
+    const accessUrl  = String(btn.dataset.accessUrl  || '').trim();
+    const subId      = Number(btn.dataset.raSubId);
 
-    if (deliveryMode === 'direct_login' || accessType === 'proxy') {
+    const openUrl = (url) => {
+        const a = document.createElement('a');
+        a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        document.body.appendChild(a); a.click(); a.remove();
+    };
+
+    // 1. Kurum IP/RA tüneli
+    if (accessType === 'ip') {
         openRemoteAccess(btn);
         return;
     }
 
-    if (accessUrl) {
-        const a = document.createElement('a');
-        a.href = accessUrl;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+    // 2. Kuruma özel giriş sayfası (Lecturio tipi)
+    if (accessType === 'institution_link') {
+        if (accessUrl) { openUrl(accessUrl); return; }
+        if (typeof window.showToast === 'function')
+            window.showToast('Kurumsal giriş bağlantısı henüz tanımlı değil.', 'warning');
         return;
     }
 
+    // 3. Doğrudan link / SSO / harici kimlik bilgisi
+    if (accessUrl) { openUrl(accessUrl); return; }
+
+    // 4. Fallback — RA tüneli ile dene (subId varsa)
     if (Number.isFinite(subId) && subId > 0) {
         openRemoteAccess(btn);
         return;
     }
 
-    if (typeof window.showToast === 'function') {
+    if (typeof window.showToast === 'function')
         window.showToast('Bu abonelik için erişim bağlantısı henüz tanımlı değil.', 'warning');
-    }
 }
 window.openSubscriptionAccess = openSubscriptionAccess;
 
@@ -948,14 +954,8 @@ async function loadSubscriptions() {
             if (!trimmed) return '';
             return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
         };
-        const getDisplayAccessType = (sub) => {
-            const accessType = String(sub.access_type || '').trim();
-            const deliveryMode = String(sub.ra_delivery_mode || '').trim().toLowerCase();
-            if (deliveryMode === 'direct_login' && accessType === 'proxy') {
-                return 'email_password_external';
-            }
-            return accessType;
-        };
+        const getDisplayAccessType = (sub) => String(sub.access_type || '').trim();
+
         const buildAccessSummary = (sub) => {
             const parts = [];
             const displayAccessType = getDisplayAccessType(sub);
@@ -964,30 +964,61 @@ async function loadSubscriptions() {
             if (sub.requires_vpn) parts.push('VPN / kampüs ağı gerekli');
             return parts;
         };
+
+        // access_type'a göre buton etiket + ikon belirle
+        const getActionConfig = (sub, normalizedUrl) => {
+            const accessType = getDisplayAccessType(sub);
+            const subId = Number(sub.id);
+            const hasSubId = Number.isFinite(subId) && subId > 0;
+
+            if (accessType === 'ip') {
+                if (!hasSubId) return null;
+                return { label: 'Uzaktan Erişim', icon: 'fa-shield-halved', style: 'bg-indigo-600 hover:bg-indigo-700' };
+            }
+            if (accessType === 'institution_link') {
+                if (!normalizedUrl) return null;
+                return { label: 'Kurumsal Giriş', icon: 'fa-building', style: 'bg-primary hover:bg-opacity-90' };
+            }
+            if (accessType === 'sso') {
+                if (!normalizedUrl) return null;
+                return { label: 'SSO ile Giriş', icon: 'fa-key', style: 'bg-primary hover:bg-opacity-90' };
+            }
+            if (normalizedUrl) {
+                return { label: 'Erişime Git', icon: 'fa-arrow-up-right-from-square', style: 'bg-primary hover:bg-opacity-90' };
+            }
+            if (hasSubId) {
+                return { label: 'Erişime Git', icon: 'fa-arrow-up-right-from-square', style: 'bg-primary hover:bg-opacity-90' };
+            }
+            return null;
+        };
+
         const renderAccessDetails = (sub, compact = false) => {
             const parts = buildAccessSummary(sub);
             const normalizedUrl = normalizeExternalUrl(sub.access_url);
             const note = sub.access_notes_tr || '';
+            const subId = Number(sub.id);
+            const actionConfig = getActionConfig(sub, normalizedUrl);
+
             const summary = parts.length
                 ? `<p class="${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 mt-1">${escapeHtml(parts.join(' • '))}</p>`
                 : '';
             const noteHtml = note
                 ? `<p class="${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 mt-1">${escapeHtml(note)}</p>`
                 : '';
+
             const sizeClasses = compact ? 'text-[11px] px-2 py-1' : 'text-xs px-3 py-1.5';
-            const subId = Number(sub.id);
-            const hasAction = (Number.isFinite(subId) && subId > 0) || !!normalizedUrl;
-            const actionHtml = hasAction
+            const actionHtml = actionConfig
                 ? `<button type="button"
                         data-ra-sub-id="${Number.isFinite(subId) ? subId : ''}"
                         data-access-type="${escapeHtml(String(sub.access_type || ''))}"
                         data-delivery-mode="${escapeHtml(String(sub.ra_delivery_mode || ''))}"
                         data-access-url="${escapeHtml(normalizedUrl)}"
                         onclick="openSubscriptionAccess(this)"
-                        class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg bg-primary text-white hover:bg-opacity-90 transition">
-                        <i class="fas fa-arrow-up-right-from-square"></i><span>Erişime Git</span>
+                        class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg text-white transition ${actionConfig.style}">
+                        <i class="fas ${actionConfig.icon}"></i><span>${actionConfig.label}</span>
                     </button>`
                 : '';
+
             return `${summary}${noteHtml}${actionHtml}`;
         };
 
@@ -1001,16 +1032,26 @@ async function loadSubscriptions() {
             // Genel Bakış - Erişimlerim kartı
             activeEl.innerHTML = activeSubs.length ? activeSubs.map(sub => {
                 const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
+                const isRA = String(sub.access_type || '').trim() === 'ip' && sub.ra_enabled;
                 const expiry = daysLeft !== null
                     ? (daysLeft <= 0 ? '<span class="text-red-500 text-xs">Süresi doldu</span>'
                         : daysLeft <= 7 ? `<span class="text-red-500 text-xs font-medium">${daysLeft} gün kaldı</span>`
                         : daysLeft <= 30 ? `<span class="text-amber-600 text-xs font-medium">${daysLeft} gün kaldı</span>`
                         : `<span class="text-gray-400 text-xs">${new Date(sub.end_date).toLocaleDateString('tr-TR')}</span>`)
                     : '';
+                const raBadge = isRA
+                    ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium ml-1"><i class="fas fa-shield-halved mr-0.5"></i>RA</span>'
+                    : '';
+                const borderClass = daysLeft !== null && daysLeft <= 7 ? 'border-red-200 bg-red-50'
+                    : daysLeft !== null && daysLeft <= 30 ? 'border-amber-200 bg-amber-50'
+                    : isRA ? 'border-indigo-100 bg-indigo-50' : 'border-gray-100 bg-gray-50';
                 return `
-                <div class="flex justify-between items-center gap-3 p-3 rounded-lg border ${daysLeft !== null && daysLeft <= 7 ? 'border-red-200 bg-red-50' : daysLeft !== null && daysLeft <= 30 ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}">
+                <div class="flex justify-between items-center gap-3 p-3 rounded-lg border ${borderClass}">
                     <div class="min-w-0 flex-1">
-                        <p class="font-medium text-sm">${getProductName(sub.product_slug)}</p>
+                        <div class="flex items-center flex-wrap gap-1">
+                            <p class="font-medium text-sm">${getProductName(sub.product_slug)}</p>
+                            ${raBadge}
+                        </div>
                         ${expiry}
                         ${renderAccessDetails(sub, true)}
                     </div>
@@ -1023,8 +1064,12 @@ async function loadSubscriptions() {
             // Aboneliklerim sekmesi
             allEl.innerHTML = data.subscriptions.map(sub => {
                 const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
-                const borderClass = daysLeft !== null && daysLeft <= 7 ? 'border-red-200 bg-red-50'
-                    : daysLeft !== null && daysLeft <= 30 ? 'border-amber-200 bg-amber-50'
+                const isRA = String(sub.access_type || '').trim() === 'ip' && sub.ra_enabled;
+                const isExpiring = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7;
+                const isWarning = daysLeft !== null && daysLeft >= 0 && daysLeft > 7 && daysLeft <= 30;
+                const borderClass = isExpiring ? 'border-red-200 bg-red-50'
+                    : isWarning ? 'border-amber-200 bg-amber-50'
+                    : isRA ? 'border-indigo-200 bg-indigo-50'
                     : 'border-gray-100';
                 const expiry = sub.end_date
                     ? (daysLeft <= 0 ? '<p class="text-xs text-red-600 font-medium">Süresi doldu</p>'
@@ -1032,11 +1077,20 @@ async function loadSubscriptions() {
                         : daysLeft <= 30 ? `<p class="text-xs text-amber-600 font-medium">${daysLeft} gün kaldı · ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>`
                         : `<p class="text-sm text-gray-500">Bitiş: ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>`)
                     : '';
+                const sourceBadge = sub.source === 'institution'
+                    ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium ml-2">Kurum</span>'
+                    : '';
+                const raBadge = isRA
+                    ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium ml-1"><i class="fas fa-shield-halved mr-0.5"></i>RA</span>'
+                    : '';
                 return `
                 <div class="flex justify-between items-start gap-4 p-4 border ${borderClass} rounded-lg">
                     <div class="min-w-0 flex-1">
-                        <p class="font-semibold">${getProductName(sub.product_slug)}</p>
-                        <p class="text-sm text-gray-500">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
+                        <div class="flex items-center flex-wrap gap-1">
+                            <p class="font-semibold">${getProductName(sub.product_slug)}</p>
+                            ${sourceBadge}${raBadge}
+                        </div>
+                        <p class="text-sm text-gray-500 mt-0.5">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
                         ${expiry}
                         ${renderAccessDetails(sub)}
                     </div>

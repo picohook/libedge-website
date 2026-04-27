@@ -1801,6 +1801,7 @@ app.get('/api/subscription/list', async (c) => {
              WHEN 'session_host_proxy' THEN 'session_host_proxy'
              ELSE 'path_proxy'
            END AS ra_delivery_mode,
+           COALESCE(p.ra_enabled, 0) AS ra_enabled,
            COALESCE(p.default_requires_institution_email, 0) AS requires_institution_email,
            COALESCE(p.default_requires_vpn, 0) AS requires_vpn,
            p.default_access_notes_tr AS access_notes_tr,
@@ -1820,6 +1821,7 @@ app.get('/api/subscription/list', async (c) => {
                WHEN 'session_host_proxy' THEN 'session_host_proxy'
                ELSE 'path_proxy'
              END AS ra_delivery_mode,
+             COALESCE(p.ra_enabled, 0) AS ra_enabled,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
@@ -2821,7 +2823,11 @@ app.get('/api/admin/products', async (c) => {
            default_access_type, default_access_url,
            COALESCE(default_requires_institution_email, 0) AS default_requires_institution_email,
            COALESCE(default_requires_vpn, 0) AS default_requires_vpn,
-           default_access_notes_tr, default_access_notes_en
+           default_access_notes_tr, default_access_notes_en,
+           COALESCE(ra_enabled, 0) AS ra_enabled,
+           ra_delivery_mode,
+           ra_origin_host,
+           ra_origin_landing_path
     FROM products
     ORDER BY name COLLATE NOCASE ASC
   `).all();
@@ -2847,10 +2853,12 @@ app.put('/api/admin/product/:slug', async (c) => {
     name, category, region,
     default_access_type, default_access_url,
     default_requires_institution_email, default_requires_vpn,
-    default_access_notes_tr, default_access_notes_en
+    default_access_notes_tr, default_access_notes_en,
+    ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path
   } = await c.req.json();
 
   const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
+  const validDeliveryModes = ['session_host_proxy', 'path_proxy'];
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
 
@@ -2862,7 +2870,9 @@ app.put('/api/admin/product/:slug', async (c) => {
     SET name = ?, category = ?, region = ?,
         default_access_type = ?, default_access_url = ?,
         default_requires_institution_email = ?, default_requires_vpn = ?,
-        default_access_notes_tr = ?, default_access_notes_en = ?
+        default_access_notes_tr = ?, default_access_notes_en = ?,
+        ra_enabled = ?, ra_delivery_mode = ?,
+        ra_origin_host = ?, ra_origin_landing_path = ?
     WHERE slug = ?
   `).bind(
     String(name || '').trim() || slug,
@@ -2874,10 +2884,67 @@ app.put('/api/admin/product/:slug', async (c) => {
     default_requires_vpn ? 1 : 0,
     String(default_access_notes_tr || '').trim() || null,
     String(default_access_notes_en || '').trim() || null,
+    ra_enabled ? 1 : 0,
+    validDeliveryModes.includes(ra_delivery_mode) ? ra_delivery_mode : 'path_proxy',
+    String(ra_origin_host || '').trim() || null,
+    String(ra_origin_landing_path || '').trim() || null,
     slug
   ).run();
 
   return c.json({ success: true });
+});
+
+app.post('/api/admin/products', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
+
+  const {
+    slug, name, category, region,
+    default_access_type, default_access_url,
+    default_requires_institution_email, default_requires_vpn,
+    default_access_notes_tr, default_access_notes_en,
+    ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path
+  } = await c.req.json().catch(() => ({}));
+
+  const slugNorm = String(slug || '').trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9_-]{0,79}$/.test(slugNorm))
+    return c.json({ error: 'Geçersiz slug — küçük harf/rakam/tire/alt çizgi, max 80 karakter' }, 400);
+  if (!String(name || '').trim())
+    return c.json({ error: 'Ürün adı zorunludur' }, 400);
+
+  const conflict = await db.prepare('SELECT slug FROM products WHERE slug = ?').bind(slugNorm).first();
+  if (conflict) return c.json({ error: 'Bu slug zaten kullanımda' }, 409);
+
+  const validAccessTypes = ['direct', 'ip', 'sso', 'institution_link', 'email_password_external', 'mixed'];
+  const validDeliveryModes = ['session_host_proxy', 'path_proxy'];
+
+  await db.prepare(`
+    INSERT INTO products (
+      slug, name, category, region,
+      default_access_type, default_access_url,
+      default_requires_institution_email, default_requires_vpn,
+      default_access_notes_tr, default_access_notes_en,
+      ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    slugNorm,
+    String(name).trim(),
+    String(category || '').trim() || null,
+    String(region || '').trim() || null,
+    validAccessTypes.includes(default_access_type) ? default_access_type : null,
+    String(default_access_url || '').trim() || null,
+    default_requires_institution_email ? 1 : 0,
+    default_requires_vpn ? 1 : 0,
+    String(default_access_notes_tr || '').trim() || null,
+    String(default_access_notes_en || '').trim() || null,
+    ra_enabled ? 1 : 0,
+    validDeliveryModes.includes(ra_delivery_mode) ? ra_delivery_mode : 'path_proxy',
+    String(ra_origin_host || '').trim() || null,
+    String(ra_origin_landing_path || '').trim() || null
+  ).run();
+
+  return c.json({ success: true, slug: slugNorm }, 201);
 });
 
 app.get('/api/admin/subscriptions', async (c) => {

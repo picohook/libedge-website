@@ -1024,7 +1024,12 @@
     <!-- Products Tab -->
     <div id="tab-products" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <h3 class="text-lg font-semibold mb-4">Ürünler</h3>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Ürünler</h3>
+                <button type="button" id="newProductBtn" class="btn btn-primary text-sm inline-flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Yeni Ürün
+                </button>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead>
@@ -1032,8 +1037,8 @@
                             <th>Slug</th>
                             <th>Ürün Adı</th>
                             <th>Kategori</th>
-                            <th>Yetkili Bölge</th>
                             <th>Varsayılan Erişim</th>
+                            <th class="text-center">RA</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -1046,12 +1051,13 @@
     <div id="productModal" class="modal-overlay modal-center hidden">
         <div class="modal-panel modal-lg">
             <div class="modal-content">
-            <h3 class="text-xl font-bold mb-4">Ürün Erişimini Düzenle</h3>
+            <h3 id="productModalTitle" class="text-xl font-bold mb-4">Ürün Düzenle</h3>
             <form id="productForm">
+                <!-- Temel Bilgiler -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Slug</label>
-                        <input type="text" id="productSlug" class="w-full border p-2 rounded bg-gray-50" readonly>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Slug <span id="productSlugHint" class="text-xs text-gray-400 font-normal"></span></label>
+                        <input type="text" id="productSlug" class="w-full border p-2 rounded font-mono text-sm" placeholder="ornek-urun" pattern="[a-z0-9][a-z0-9_\-]{0,79}" title="Küçük harf, rakam, tire veya alt çizgi">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Ürün Adı</label>
@@ -1059,11 +1065,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                        <input type="text" id="productCategory" class="w-full border p-2 rounded">
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Yetkili Bölge</label>
-                        <input type="text" id="productRegion" class="w-full border p-2 rounded">
+                        <input type="text" id="productCategory" class="w-full border p-2 rounded" placeholder="Tıp, Kimya, Dil...">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Erişim Tipi</label>
@@ -1076,21 +1078,26 @@
                             <option value="email_password_external">Kullanıcı Adı + Şifre</option>
                             <option value="mixed">Karma (birden fazla yöntem)</option>
                         </select>
-                        <p class="text-xs text-gray-400 mt-1">Bu alan kullanıcıya gösterilen erişim etiketidir. Teknik açılış davranışı için RA tarafındaki <strong>Dağıtım Modu</strong> kullanılır.</p>
-                        <div id="productAccessTypeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></div>
+                        <div id="productAccessTypeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 hidden"></div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Erişim URL</label>
                         <input type="text" id="productAccessUrl" class="w-full border p-2 rounded" placeholder="https://...">
                     </div>
-                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                        <input type="checkbox" id="productRequiresEmail">
-                        <span>Kurum e-postası gerekli</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                        <input type="checkbox" id="productRequiresVpn">
-                        <span>VPN / kampüs ağı gerekli</span>
-                    </label>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Yetkili Bölge</label>
+                        <input type="text" id="productRegion" class="w-full border p-2 rounded" placeholder="TR, Global...">
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" id="productRequiresEmail">
+                            <span>Kurum e-postası gerekli</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" id="productRequiresVpn">
+                            <span>VPN gerekli</span>
+                        </label>
+                    </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Not (TR)</label>
                         <textarea id="productAccessNotesTr" rows="2" class="w-full border p-2 rounded"></textarea>
@@ -1100,6 +1107,34 @@
                         <textarea id="productAccessNotesEn" rows="2" class="w-full border p-2 rounded"></textarea>
                     </div>
                 </div>
+
+                <!-- RA Yapılandırması -->
+                <div class="mt-5 pt-4 border-t border-gray-200">
+                    <div class="flex items-center gap-3 mb-3">
+                        <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="productRaEnabled" class="rounded">
+                            <span><i class="fas fa-shield-halved text-indigo-500 mr-1"></i>Uzaktan Erişim (RA) Etkin</span>
+                        </label>
+                    </div>
+                    <div id="productRaFields" class="grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Dağıtım Modu</label>
+                            <select id="productRaDeliveryMode" class="w-full border p-2 rounded">
+                                <option value="path_proxy">path_proxy — proxy.libedge.com/{host}/path</option>
+                                <option value="session_host_proxy">session_host_proxy — r{sid}.libedge.com (JoVE, EMIS...)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Origin Host</label>
+                            <input type="text" id="productRaOriginHost" class="w-full border p-2 rounded font-mono text-sm" placeholder="www.jove.com">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Landing Path <span class="text-xs text-gray-400 font-normal">(opsiyonel, başlangıç sayfası)</span></label>
+                            <input type="text" id="productRaLandingPath" class="w-full border p-2 rounded font-mono text-sm" placeholder="/login veya /tr/home">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="modal-actions mt-4">
                     <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
                     <button type="button" data-admin-action="close-product-modal" class="btn bg-gray-300 flex-1">İptal</button>
@@ -3132,35 +3167,41 @@ document.addEventListener('click', function(e) {
 
         renderProductOptions();
         document.getElementById('productsList').innerHTML = products.map(p => `
-             <tr class="product-row" data-product-slug="${escapeHtml(p.slug)}">
-                <td class="px-4 py-2">${escapeHtml(p.slug)}</td>
-                <td class="px-4 py-2">${escapeHtml(p.name)}</td>
-                <td class="px-4 py-2">${escapeHtml(p.category || '-')}</td>
-                <td class="px-4 py-2">${escapeHtml(p.region || '-')}</td>
+             <tr class="product-row hover:bg-gray-50 cursor-pointer" data-product-slug="${escapeHtml(p.slug)}">
+                <td class="px-4 py-2 font-mono text-xs text-gray-600">${escapeHtml(p.slug)}</td>
+                <td class="px-4 py-2 font-medium">${escapeHtml(p.name)}</td>
+                <td class="px-4 py-2 text-sm text-gray-500">${escapeHtml(p.category || '-')}</td>
                 <td class="px-4 py-2">
                     <div class="text-sm text-gray-700">${escapeHtml(getProductAccessLabel(p) || '-')}</div>
-                    ${p.default_access_url ? `<a href="${escapeHtml(p.default_access_url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all">${escapeHtml(p.default_access_url)}</a>` : ''}
+                    ${p.default_access_url ? `<a href="${escapeHtml(p.default_access_url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all" onclick="event.stopPropagation()">${escapeHtml(p.default_access_url)}</a>` : ''}
+                </td>
+                <td class="px-4 py-2 text-center">
+                    ${p.ra_enabled
+                        ? `<span title="${escapeHtml(p.ra_origin_host || '')}" class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium"><i class="fas fa-shield-halved mr-0.5"></i>${escapeHtml(p.ra_delivery_mode === 'session_host_proxy' ? 'SHP' : 'PP')}</span>`
+                        : '<span class="text-gray-300 text-xs">—</span>'}
                 </td>
                 <td class="px-4 py-2 text-right">
-                    <button type="button" class="product-edit-btn text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="product-edit-btn text-blue-600 hover:text-blue-800 px-2" onclick="event.stopPropagation()"><i class="fas fa-edit"></i></button>
                 </td>
              </tr>
         `).join('');
     }
 
 document.getElementById('productsList')?.addEventListener('click', function(e) {
+    if (e.target.closest('a')) return; // URL linkleri tıklamayı geçir
     const row = e.target.closest('.product-row');
     if (!row) return;
-    if (e.target.closest('.product-edit-btn')) {
-        openProductModal(row.dataset.productSlug || '');
-    }
+    openProductModal(row.dataset.productSlug || '');
 });
 
-    function openProductModal(slug) {
-        const product = products.find(p => p.slug === slug);
-        if (!product) return;
-        editingProductSlug = slug;
-        document.getElementById('productSlug').value = product.slug || '';
+    function _fillProductModal(product, isNew) {
+        const slugInput = document.getElementById('productSlug');
+        slugInput.value = product.slug || '';
+        slugInput.readOnly = !isNew;
+        slugInput.classList.toggle('bg-gray-50', !isNew);
+        slugInput.classList.toggle('text-gray-500', !isNew);
+        document.getElementById('productSlugHint').textContent = isNew ? '(yeni ürün için slug belirleyin)' : '(slug değiştirilemez)';
+        document.getElementById('productModalTitle').textContent = isNew ? 'Yeni Ürün' : 'Ürün Düzenle';
         document.getElementById('productName').value = product.name || '';
         document.getElementById('productCategory').value = product.category || '';
         document.getElementById('productRegion').value = product.region || '';
@@ -3170,8 +3211,30 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         document.getElementById('productRequiresVpn').checked = !!product.default_requires_vpn;
         document.getElementById('productAccessNotesTr').value = product.default_access_notes_tr || '';
         document.getElementById('productAccessNotesEn').value = product.default_access_notes_en || '';
+        // RA alanları
+        const raEnabled = !!product.ra_enabled;
+        document.getElementById('productRaEnabled').checked = raEnabled;
+        document.getElementById('productRaFields').classList.toggle('hidden', !raEnabled);
+        document.getElementById('productRaDeliveryMode').value = product.ra_delivery_mode || 'path_proxy';
+        document.getElementById('productRaOriginHost').value = product.ra_origin_host || '';
+        document.getElementById('productRaLandingPath').value = product.ra_origin_landing_path || '';
         refreshAdminAccessGuides();
+    }
+
+    function openProductModal(slug) {
+        const product = products.find(p => p.slug === slug);
+        if (!product) return;
+        editingProductSlug = slug;
+        _fillProductModal(product, false);
         document.getElementById('productModal').classList.remove('hidden');
+    }
+
+    function openNewProductModal() {
+        editingProductSlug = null;
+        document.getElementById('productForm').reset();
+        _fillProductModal({ ra_delivery_mode: 'path_proxy' }, true);
+        document.getElementById('productModal').classList.remove('hidden');
+        document.getElementById('productSlug').focus();
     }
 
     function closeProductModal() {
@@ -4265,34 +4328,47 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
 
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!editingProductSlug) return;
+        const isNew = !editingProductSlug;
+        const slug = isNew
+            ? document.getElementById('productSlug').value.trim().toLowerCase()
+            : editingProductSlug;
+        if (!slug) { showToast('Slug zorunludur', 'error'); return; }
+
+        const payload = {
+            slug,
+            name: document.getElementById('productName').value.trim(),
+            category: document.getElementById('productCategory').value.trim() || null,
+            region: document.getElementById('productRegion').value.trim() || null,
+            default_access_type: document.getElementById('productAccessType').value || null,
+            default_access_url: document.getElementById('productAccessUrl').value.trim() || null,
+            default_requires_institution_email: document.getElementById('productRequiresEmail').checked,
+            default_requires_vpn: document.getElementById('productRequiresVpn').checked,
+            default_access_notes_tr: document.getElementById('productAccessNotesTr').value.trim() || null,
+            default_access_notes_en: document.getElementById('productAccessNotesEn').value.trim() || null,
+            ra_enabled: document.getElementById('productRaEnabled').checked,
+            ra_delivery_mode: document.getElementById('productRaDeliveryMode').value || 'path_proxy',
+            ra_origin_host: document.getElementById('productRaOriginHost').value.trim() || null,
+            ra_origin_landing_path: document.getElementById('productRaLandingPath').value.trim() || null,
+        };
+
         try {
-            const res = await fetch(`${API_BASE}/api/admin/product/${editingProductSlug}`, {
-                method: 'PUT',
+            const url = isNew ? `${API_BASE}/api/admin/products` : `${API_BASE}/api/admin/product/${slug}`;
+            const res = await fetch(url, {
+                method: isNew ? 'POST' : 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({
-                    name: document.getElementById('productName').value.trim(),
-                    category: document.getElementById('productCategory').value.trim() || null,
-                    region: document.getElementById('productRegion').value.trim() || null,
-                    default_access_type: document.getElementById('productAccessType').value || null,
-                    default_access_url: document.getElementById('productAccessUrl').value.trim() || null,
-                    default_requires_institution_email: document.getElementById('productRequiresEmail').checked,
-                    default_requires_vpn: document.getElementById('productRequiresVpn').checked,
-                    default_access_notes_tr: document.getElementById('productAccessNotesTr').value.trim() || null,
-                    default_access_notes_en: document.getElementById('productAccessNotesEn').value.trim() || null
-                })
+                body: JSON.stringify(payload)
             });
             if (res.ok) {
-                showToast('Ürün erişimi güncellendi!', 'success');
+                showToast(isNew ? 'Ürün oluşturuldu!' : 'Ürün güncellendi!', 'success');
                 closeProductModal();
                 loadProducts();
             } else {
                 const body = await res.json().catch(() => ({}));
-                showActionError('Ürün erişim ayarlarını güncelleme işlemi', body.error);
+                showActionError(isNew ? 'Ürün oluşturma' : 'Ürün güncelleme', body.error);
             }
         } catch(err) {
-            showActionError('Ürün erişim ayarlarını güncelleme işlemi', err.message);
+            showActionError('Ürün kaydetme', err.message);
         }
     });
 
@@ -4950,6 +5026,14 @@ function _initRemoteAccessTab() {
             }
             _raRunActiveSubtab();
         });
+    });
+
+    // Yeni Ürün butonu
+    document.getElementById('newProductBtn')?.addEventListener('click', openNewProductModal);
+
+    // RA etkin checkbox toggle
+    document.getElementById('productRaEnabled')?.addEventListener('change', function() {
+        document.getElementById('productRaFields').classList.toggle('hidden', !this.checked);
     });
 
     const refreshBtn = document.getElementById('raRefreshTunnelsBtn');
