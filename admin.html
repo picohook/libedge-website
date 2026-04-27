@@ -1025,20 +1025,42 @@
     <div id="tab-products" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold">Ürünler</h3>
+                <h3 class="text-lg font-semibold">Ürünler <span id="productsCount" class="text-sm font-normal text-gray-400"></span></h3>
                 <button type="button" data-admin-action="open-new-product-modal" class="btn btn-primary text-sm inline-flex items-center gap-2">
                     <i class="fas fa-plus"></i> Yeni Ürün
+                </button>
+            </div>
+            <!-- Filtreler -->
+            <div class="flex flex-col sm:flex-row flex-wrap gap-2 mb-4">
+                <input type="text" id="productSearchInput" placeholder="Slug veya ürün adı ara…"
+                       class="border rounded px-3 py-2 text-sm flex-1 min-w-0 sm:min-w-[200px]">
+                <select id="productAccessTypeFilter" class="border rounded px-3 py-2 text-sm bg-white w-full sm:w-auto">
+                    <option value="">Tüm Erişim Tipleri</option>
+                    <option value="direct">Doğrudan Link</option>
+                    <option value="ip">Kurum IP / RA</option>
+                    <option value="institution_link">Kurumsal Giriş</option>
+                    <option value="sso">SSO</option>
+                    <option value="email_password_external">Kullanıcı + Şifre</option>
+                    <option value="mixed">Karma</option>
+                </select>
+                <select id="productRaFilter" class="border rounded px-3 py-2 text-sm bg-white w-full sm:w-auto">
+                    <option value="">RA: Tümü</option>
+                    <option value="1">RA Etkin</option>
+                    <option value="0">RA Kapalı</option>
+                </select>
+                <button type="button" id="productFilterClearBtn" class="text-sm px-3 py-2 rounded border border-gray-200 text-gray-500 hover:bg-gray-50 hidden">
+                    <i class="fas fa-times mr-1"></i>Temizle
                 </button>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead>
                         <tr>
-                            <th>Slug</th>
-                            <th>Ürün Adı</th>
-                            <th>Kategori</th>
-                            <th>Varsayılan Erişim</th>
-                            <th class="text-center">RA</th>
+                            <th class="cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="slug">Slug <span id="prodSort_slug" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="name">Ürün Adı <span id="prodSort_name" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="category">Kategori <span id="prodSort_category" class="text-gray-400">↕</span></th>
+                            <th class="cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="default_access_type">Varsayılan Erişim <span id="prodSort_default_access_type" class="text-gray-400">↕</span></th>
+                            <th class="text-center cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="ra_enabled">RA <span id="prodSort_ra_enabled" class="text-gray-400">↕</span></th>
                             <th></th>
                         </tr>
                     </thead>
@@ -2907,6 +2929,17 @@ function bindRemainingAdminFormEvents() {
         bindAdminElementEvent(id, id === 'subscriptionSearchInput' ? 'input' : 'change', filterSubscriptions);
     });
 
+    ['productSearchInput', 'productAccessTypeFilter', 'productRaFilter'].forEach((id) => {
+        bindAdminElementEvent(id, id === 'productSearchInput' ? 'input' : 'change', () => renderProductsList());
+    });
+    bindAdminElementEvent('productFilterClearBtn', 'click', () => {
+        ['productSearchInput','productAccessTypeFilter','productRaFilter'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        renderProductsList();
+    });
+
     bindAdminElementEvent('adminSearchInput', 'input', (e) => filterAdminContent(e.target.value));
     bindAdminElementEvent('instFilesSearchInput', 'input', (e) => instFilesFilterContent(e.target.value));
     bindAdminElementEvent('userFilesSearch', 'input', _userFilesFilter);
@@ -3154,6 +3187,75 @@ document.addEventListener('click', function(e) {
         if (subscriptionEditorProduct) subscriptionEditorProduct.innerHTML = options;
     }
 
+    // Ürün listesi — sort & filter state
+    const _prodSort = { key: 'name', dir: 1 };
+
+    function _applyProductSortArrows() {
+        ['slug','name','category','default_access_type','ra_enabled'].forEach(k => {
+            const el = document.getElementById(`prodSort_${k}`);
+            if (!el) return;
+            el.textContent = k === _prodSort.key ? (_prodSort.dir === 1 ? '↑' : '↓') : '↕';
+            el.className = k === _prodSort.key ? 'text-primary' : 'text-gray-400';
+        });
+    }
+
+    function renderProductsList() {
+        const search = (document.getElementById('productSearchInput')?.value || '').toLowerCase().trim();
+        const accessFilter = document.getElementById('productAccessTypeFilter')?.value || '';
+        const raFilter = document.getElementById('productRaFilter')?.value || '';
+        const hasFilter = search || accessFilter || raFilter;
+        document.getElementById('productFilterClearBtn')?.classList.toggle('hidden', !hasFilter);
+
+        let list = products.filter(p => {
+            if (search && !p.slug.toLowerCase().includes(search) && !p.name.toLowerCase().includes(search)) return false;
+            if (accessFilter && p.default_access_type !== accessFilter) return false;
+            if (raFilter !== '') {
+                const want = raFilter === '1';
+                if (!!p.ra_enabled !== want) return false;
+            }
+            return true;
+        });
+
+        list.sort((a, b) => {
+            let av = a[_prodSort.key] ?? '', bv = b[_prodSort.key] ?? '';
+            if (typeof av === 'number' || typeof bv === 'number') return (Number(av) - Number(bv)) * _prodSort.dir;
+            return String(av).localeCompare(String(bv), 'tr') * _prodSort.dir;
+        });
+
+        const count = document.getElementById('productsCount');
+        if (count) count.textContent = list.length < products.length ? `(${list.length} / ${products.length})` : `(${products.length})`;
+
+        document.getElementById('productsList').innerHTML = list.length === 0
+            ? `<tr><td colspan="6" class="text-center py-8 text-gray-400">Sonuç bulunamadı.</td></tr>`
+            : list.map(p => `
+             <tr class="product-row hover:bg-gray-50 cursor-pointer" data-product-slug="${escapeHtml(p.slug)}">
+                <td class="px-4 py-2 font-mono text-xs text-gray-600">${escapeHtml(p.slug)}</td>
+                <td class="px-4 py-2 font-medium">${escapeHtml(p.name)}</td>
+                <td class="px-4 py-2 text-sm text-gray-500">${escapeHtml(p.category || '—')}</td>
+                <td class="px-4 py-2">
+                    <div class="text-sm text-gray-700">${escapeHtml(getProductAccessLabel(p) || '—')}</div>
+                    ${p.default_access_url ? `<a href="${escapeHtml(p.default_access_url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all" onclick="event.stopPropagation()">${escapeHtml(p.default_access_url)}</a>` : ''}
+                </td>
+                <td class="px-4 py-2 text-center">
+                    ${p.ra_enabled
+                        ? `<span title="${escapeHtml(p.ra_origin_host || '')}" class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium cursor-pointer"><i class="fas fa-shield-halved mr-0.5"></i>${p.ra_delivery_mode === 'session_host_proxy' ? 'SHP' : 'PP'}</span>`
+                        : '<span class="text-gray-300 text-xs">—</span>'}
+                </td>
+                <td class="px-4 py-2 text-right">
+                    <button type="button"
+                        data-admin-action="edit-product"
+                        data-product-slug="${escapeHtml(p.slug)}"
+                        class="text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition"
+                        onclick="event.stopPropagation()">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </td>
+             </tr>
+        `).join('');
+
+        _applyProductSortArrows();
+    }
+
     // Ürünleri yükle
     async function loadProducts() {
         try {
@@ -3164,34 +3266,16 @@ document.addEventListener('click', function(e) {
         } catch (e) {
             console.error(e);
         }
-
         renderProductOptions();
-        document.getElementById('productsList').innerHTML = products.map(p => `
-             <tr class="product-row hover:bg-gray-50 cursor-pointer" data-product-slug="${escapeHtml(p.slug)}">
-                <td class="px-4 py-2 font-mono text-xs text-gray-600">${escapeHtml(p.slug)}</td>
-                <td class="px-4 py-2 font-medium">${escapeHtml(p.name)}</td>
-                <td class="px-4 py-2 text-sm text-gray-500">${escapeHtml(p.category || '-')}</td>
-                <td class="px-4 py-2">
-                    <div class="text-sm text-gray-700">${escapeHtml(getProductAccessLabel(p) || '-')}</div>
-                    ${p.default_access_url ? `<a href="${escapeHtml(p.default_access_url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all" onclick="event.stopPropagation()">${escapeHtml(p.default_access_url)}</a>` : ''}
-                </td>
-                <td class="px-4 py-2 text-center">
-                    ${p.ra_enabled
-                        ? `<span title="${escapeHtml(p.ra_origin_host || '')}" class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium"><i class="fas fa-shield-halved mr-0.5"></i>${escapeHtml(p.ra_delivery_mode === 'session_host_proxy' ? 'SHP' : 'PP')}</span>`
-                        : '<span class="text-gray-300 text-xs">—</span>'}
-                </td>
-                <td class="px-4 py-2 text-right">
-                    <button type="button" class="product-edit-btn text-blue-600 hover:text-blue-800 px-2" onclick="event.stopPropagation()"><i class="fas fa-edit"></i></button>
-                </td>
-             </tr>
-        `).join('');
+        renderProductsList();
     }
 
 document.getElementById('productsList')?.addEventListener('click', function(e) {
-    if (e.target.closest('a')) return; // URL linkleri tıklamayı geçir
+    if (e.target.closest('a')) return;
+    const editBtn = e.target.closest('[data-admin-action="edit-product"]');
+    if (editBtn) { openProductModal(editBtn.dataset.productSlug || ''); return; }
     const row = e.target.closest('.product-row');
-    if (!row) return;
-    openProductModal(row.dataset.productSlug || '');
+    if (row) openProductModal(row.dataset.productSlug || '');
 });
 
     function _fillProductModal(product, isNew) {
@@ -4476,6 +4560,16 @@ document.addEventListener('click', (e) => {
         case 'close-admin-file-modal': closeAdminFileModal(); break;
         case 'open-new-product-modal': openNewProductModal(); break;
         case 'close-product-modal': closeProductModal(); break;
+        case 'edit-product': openProductModal(actionEl.dataset.productSlug || ''); break;
+        case 'sort-products': {
+            const k = actionEl.dataset.sortKey;
+            if (k) {
+                if (_prodSort.key === k) _prodSort.dir *= -1;
+                else { _prodSort.key = k; _prodSort.dir = 1; }
+                renderProductsList();
+            }
+            break;
+        }
         case 'set-admin-sort': if (sortKey) setAdminSort(sortKey); break;
         case 'select-all-admin-items': selectAllItems(); break;
         case 'clear-admin-selections': clearAllSelections(); break;

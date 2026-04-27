@@ -895,6 +895,7 @@ function openSubscriptionAccess(btn) {
     const accessType = String(btn.dataset.accessType || '').trim().toLowerCase();
     const accessUrl  = String(btn.dataset.accessUrl  || '').trim();
     const subId      = Number(btn.dataset.raSubId);
+    const raEnabled  = btn.dataset.raEnabled === '1';
 
     const openUrl = (url) => {
         const a = document.createElement('a');
@@ -902,10 +903,14 @@ function openSubscriptionAccess(btn) {
         document.body.appendChild(a); a.click(); a.remove();
     };
 
-    // 1. Kurum IP/RA tüneli
-    if (accessType === 'ip') {
-        openRemoteAccess(btn);
-        return;
+    // 1. RA tüneli — birincil sinyal ra_enabled; ek güvence: ip / proxy (legacy)
+    const isRaRoute = raEnabled || accessType === 'ip' || accessType === 'proxy';
+    if (isRaRoute) {
+        if (Number.isFinite(subId) && subId > 0) {
+            openRemoteAccess(btn);
+            return;
+        }
+        // ra_enabled ama subId yoksa direkt URL'e düş (aşağıda ele alınır)
     }
 
     // 2. Kuruma özel giriş sayfası (Lecturio tipi)
@@ -919,7 +924,7 @@ function openSubscriptionAccess(btn) {
     // 3. Doğrudan link / SSO / harici kimlik bilgisi
     if (accessUrl) { openUrl(accessUrl); return; }
 
-    // 4. Fallback — RA tüneli ile dene (subId varsa)
+    // 4. Son çare — RA tüneli (subId varsa)
     if (Number.isFinite(subId) && subId > 0) {
         openRemoteAccess(btn);
         return;
@@ -965,13 +970,15 @@ async function loadSubscriptions() {
             return parts;
         };
 
-        // access_type'a göre buton etiket + ikon belirle
+        // Buton etiket + ikon belirle
+        // Birincil sinyal: ra_enabled. Ek: access_type ip/proxy (legacy uyumluluk)
         const getActionConfig = (sub, normalizedUrl) => {
             const accessType = getDisplayAccessType(sub);
             const subId = Number(sub.id);
             const hasSubId = Number.isFinite(subId) && subId > 0;
+            const isRaProduct = !!sub.ra_enabled || accessType === 'ip' || accessType === 'proxy';
 
-            if (accessType === 'ip') {
+            if (isRaProduct) {
                 if (!hasSubId) return null;
                 return { label: 'Uzaktan Erişim', icon: 'fa-shield-halved', style: 'bg-indigo-600 hover:bg-indigo-700' };
             }
@@ -1013,6 +1020,7 @@ async function loadSubscriptions() {
                         data-access-type="${escapeHtml(String(sub.access_type || ''))}"
                         data-delivery-mode="${escapeHtml(String(sub.ra_delivery_mode || ''))}"
                         data-access-url="${escapeHtml(normalizedUrl)}"
+                        data-ra-enabled="${sub.ra_enabled ? '1' : '0'}"
                         onclick="openSubscriptionAccess(this)"
                         class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg text-white transition ${actionConfig.style}">
                         <i class="fas ${actionConfig.icon}"></i><span>${actionConfig.label}</span>
@@ -1032,7 +1040,7 @@ async function loadSubscriptions() {
             // Genel Bakış - Erişimlerim kartı
             activeEl.innerHTML = activeSubs.length ? activeSubs.map(sub => {
                 const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
-                const isRA = String(sub.access_type || '').trim() === 'ip' && sub.ra_enabled;
+                const isRA = !!sub.ra_enabled;
                 const expiry = daysLeft !== null
                     ? (daysLeft <= 0 ? '<span class="text-red-500 text-xs">Süresi doldu</span>'
                         : daysLeft <= 7 ? `<span class="text-red-500 text-xs font-medium">${daysLeft} gün kaldı</span>`
@@ -1064,7 +1072,7 @@ async function loadSubscriptions() {
             // Aboneliklerim sekmesi
             allEl.innerHTML = data.subscriptions.map(sub => {
                 const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
-                const isRA = String(sub.access_type || '').trim() === 'ip' && sub.ra_enabled;
+                const isRA = !!sub.ra_enabled;
                 const isExpiring = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7;
                 const isWarning = daysLeft !== null && daysLeft >= 0 && daysLeft > 7 && daysLeft <= 30;
                 const borderClass = isExpiring ? 'border-red-200 bg-red-50'
