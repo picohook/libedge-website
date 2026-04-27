@@ -89,8 +89,13 @@ export function registerRaIssueToken(app) {
       return c.json({ error: 'Abonelik bulunamadı' }, 403);
     }
 
-    // access_type = 'proxy' olmalı; aksi hâlde RA bu aboneliği handle etmez
-    if (sub.access_type !== 'proxy') {
+    // ra_enabled birincil RA sinyali; legacy access_type 'proxy' veya 'ip' de kabul edilir
+    const isRaSubscription =
+      !!sub.ra_enabled ||
+      sub.access_type === 'proxy' ||
+      sub.access_type === 'ip';
+
+    if (!isRaSubscription) {
       return c.json(
         {
           error: 'Bu abonelik uzaktan erişim proxy üzerinden değil, ' +
@@ -110,7 +115,7 @@ export function registerRaIssueToken(app) {
       return c.json({ error: 'Abonelik süresi dolmuş' }, 410);
     }
 
-    // products.ra_enabled = 1 olmalı
+    // products.ra_enabled = 1 olmalı (isRaSubscription kontrolü zaten bunu kapsıyor ama açık bırakıyoruz)
     if (!sub.ra_enabled) {
       return c.json({ error: 'Bu ürün için uzaktan erişim aktif değil' }, 409);
     }
