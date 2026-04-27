@@ -19,6 +19,22 @@ import {
   invalidateCapturedUserToken,
 } from './recipe.js';
 
+// Cookie'den upstream host'u al (multi-origin için)
+function getUpstreamHostFromCookie(request, defaultHost) {
+  const cookie = request.headers.get('Cookie');
+  if (!cookie) return defaultHost;
+  
+  const match = cookie.match(/__ra_upstream=([^;]+)/);
+  if (match && match[1]) {
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return defaultHost;
+    }
+  }
+  return defaultHost;
+}
+
 // Cookie jar kullanıcı + publisher host bazında kalıcı olarak tutulur.
 // Pangram gibi session-cookie auth kullanan publisher'larda bu sayede
 // kullanıcı bir kere login olduktan sonra sonraki "Erişime Git" ziyaretlerinde
@@ -50,17 +66,23 @@ export function buildCookieJarKey(session, targetHost) {
  */
 export async function proxyToUpstream(env, session, sessionId, clientReq, proxyHost, pathInfo) {
   const url = new URL(clientReq.url);
-  const targetHost = session.target_host;
+  
+  // Cookie'den upstream host'u al (multi-origin için)
+  let targetHost = getUpstreamHostFromCookie(clientReq, session.target_host);
+  const originalTargetHost = session.target_host;
+  
+  // Eğer cookie'den farklı bir host geldiyse, targetHost'u güncelle
+  if (targetHost !== originalTargetHost) {
+    console.log(`Multi-origin: switching from ${originalTargetHost} to ${targetHost} (from cookie)`);
+  }
+
   const encodedLabel = pathInfo?.encodedLabel || encodeHost(targetHost);
   const remainingPath = pathInfo?.remainingPath || url.pathname || '/';
   const productConfig = await loadProductProxyConfig(env.DB, session.product_slug);
   const egressSettings = await loadInstitutionRaSettings(env.DB, session.institution_id);
   const proxyableHosts = buildProxyableHosts(
-    targetHost,
-    productConfig && productConfig.ra_host_allowlist_json,
-    egressSettings && egressSettings.egress_endpoint
-      ? egressSettings.egress_endpoint
-      : null
+    originalTargetHost,
+    productConfig && productConfig.ra_host_allowlist_json
   );
 
   // Recipe executor: ürün için ra_login_recipe_json tanımlıysa ve abonelikte
@@ -250,7 +272,11 @@ function rewriteUrl(u, proxyableHosts, proxyHost, encodedLabel) {
     const abs = u.startsWith('//') ? `https:${u}` : u;
     const parsed = new URL(abs);
     if (proxyableHosts.has(parsed.hostname)) {
-      return `https://${proxyHost}/${encodedLabel}${parsed.pathname}${parsed.search}${parsed.hash}`;
+      // FIX: her host kendi label'ı ile encode edilmeli; encodedLabel sadece
+      // orijinal targetHost içindir — farklı bir proxyable host gelirse yanlış
+      // label üretilir (örn. media.jove.com için www.jove.com label'ı kullanılır).
+      const hostLabel = encodeHost(parsed.hostname);
+      return `https://${proxyHost}/${hostLabel}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
     return u;
   } catch {
@@ -328,7 +354,9 @@ async function loadProductProxyConfig(db, slug) {
     .first();
 }
 
-function buildProxyableHosts(targetHost, allowlistJson, egressEndpoint) {
+// FIX: egressEndpoint parametresi kaldırıldı. Egress endpoint dahili bir servis
+// URL'sidir (publisher host'u değil); rewrite set'ine eklenmemeli.
+function buildProxyableHosts(targetHost, allowlistJson) {
   const hosts = new Set([targetHost]);
   addCommonHostAliases(hosts, targetHost);
 
@@ -348,12 +376,6 @@ function buildProxyableHosts(targetHost, allowlistJson, egressEndpoint) {
     }
   }
 
-  if (!egressEndpoint) return hosts;
-  try {
-    hosts.add(new URL(egressEndpoint).hostname);
-  } catch {
-    // egress endpoint bozuksa rewrite set'ine ekleme yapma
-  }
   return hosts;
 }
 
