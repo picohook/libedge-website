@@ -1026,7 +1026,7 @@
         <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold">Ürünler</h3>
-                <button type="button" id="newProductBtn" class="btn btn-primary text-sm inline-flex items-center gap-2">
+                <button type="button" data-admin-action="open-new-product-modal" class="btn btn-primary text-sm inline-flex items-center gap-2">
                     <i class="fas fa-plus"></i> Yeni Ürün
                 </button>
             </div>
@@ -4474,6 +4474,7 @@ document.addEventListener('click', (e) => {
         case 'trigger-file-input': document.getElementById('fileInput')?.click(); break;
         case 'clear-file-selection': clearFileSelection(); break;
         case 'close-admin-file-modal': closeAdminFileModal(); break;
+        case 'open-new-product-modal': openNewProductModal(); break;
         case 'close-product-modal': closeProductModal(); break;
         case 'set-admin-sort': if (sortKey) setAdminSort(sortKey); break;
         case 'select-all-admin-items': selectAllItems(); break;
@@ -5027,9 +5028,6 @@ function _initRemoteAccessTab() {
             _raRunActiveSubtab();
         });
     });
-
-    // Yeni Ürün butonu
-    document.getElementById('newProductBtn')?.addEventListener('click', openNewProductModal);
 
     // RA etkin checkbox toggle
     document.getElementById('productRaEnabled')?.addEventListener('change', function() {
