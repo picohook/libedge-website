@@ -140,6 +140,15 @@ func main() {
 			maxRequestBytes = n
 		}
 	}
+	    apiURL := os.Getenv("LIBEDGE_API_URL")
+    serviceKey := os.Getenv("LIBEDGE_SERVICE_KEY")
+    
+    if apiURL != "" {
+        log.Printf("API URL configured: %s", apiURL)
+    }
+    if serviceKey != "" {
+        log.Printf("Service key length: %d", len(serviceKey))
+    }
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handleHealth)
