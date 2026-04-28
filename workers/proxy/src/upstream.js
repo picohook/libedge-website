@@ -213,8 +213,24 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
     respHeaders.set('X-RA-Debug-Upstream-Host', targetHost);
   }
 
-  // Content-Type ile HTML mi kontrol et — öyleyse HTMLRewriter ile linkleri çevir
+  // OIDC rewrite: SciFinder JS/HTML içindeki sso.cas.org referanslarını
+  // kurumun {hash}.selmiye.com OIDC proxy subdomain'iyle değiştir.
+  const oidcHash = egressSettings?.oidc_hash || null;
   const ct = upstreamResp.headers.get('content-type') || '';
+  if (oidcHash && /javascript|ecmascript/i.test(ct)) {
+    const proxyDomain = (typeof env !== 'undefined' && env.RA_PROXY_BASE_HOST) || 'selmiye.com';
+    const text = await upstreamResp.text();
+    const rewritten = text.replaceAll('https://sso.cas.org', `https://${oidcHash}.${proxyDomain}`);
+    respHeaders.delete('Content-Length');
+    respHeaders.delete('Content-Encoding');
+    return new Response(rewritten, {
+      status: upstreamResp.status,
+      statusText: upstreamResp.statusText,
+      headers: respHeaders,
+    });
+  }
+
+  // Content-Type ile HTML mi kontrol et — öyleyse HTMLRewriter ile linkleri çevir
   if (/text\/html/i.test(ct)) {
     // spa_token modu: token'ı client'ın localStorage'ına enjekte et —
     // modern SPA'lar auth durumu için localStorage'a bakıyor; sadece
@@ -225,7 +241,7 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
       ? { key: authState.token.ls_key, value: authState.token.value }
       : null;
 
-    const rewriter = makeHtmlRewriter(proxyableHosts, proxyHost, encodedLabel, lsInject);
+    const rewriter = makeHtmlRewriter(proxyableHosts, proxyHost, encodedLabel, lsInject, oidcHash);
     const rewritten = rewriter.transform(upstreamResp);
     return new Response(rewritten.body, {
       status: upstreamResp.status,
@@ -288,7 +304,7 @@ function rewriteUrl(u, proxyableHosts, proxyHost, encodedLabel) {
 // ──────────────────────────────────────────────────────────────────────────
 // HTMLRewriter — href/src/action/poster/formaction attribute'ları
 // ──────────────────────────────────────────────────────────────────────────
-function makeHtmlRewriter(proxyableHosts, proxyHost, encodedLabel, lsInject) {
+function makeHtmlRewriter(proxyableHosts, proxyHost, encodedLabel, lsInject, oidcHash) {
   const attrHandler = (attr) => ({
     element(el) {
       const v = el.getAttribute(attr);
@@ -323,6 +339,20 @@ function makeHtmlRewriter(proxyableHosts, proxyHost, encodedLabel, lsInject) {
       },
     });
   }
+
+  // OIDC rewrite: <script> blokları içindeki sso.cas.org → {hash}.selmiye.com
+  if (oidcHash) {
+    const from = 'https://sso.cas.org';
+    const to = `https://${oidcHash}.selmiye.com`;
+    rewriter.on('script', {
+      text(chunk) {
+        if (chunk.text.includes('sso.cas.org')) {
+          chunk.replace(chunk.text.replaceAll(from, to));
+        }
+      },
+    });
+  }
+
   return rewriter;
 }
 
@@ -337,7 +367,7 @@ function buildLocalStorageInjectScript(key, value) {
 async function loadInstitutionRaSettings(db, institutionId) {
   return await db
     .prepare(
-      `SELECT institution_id, egress_endpoint, enabled
+      `SELECT institution_id, egress_endpoint, enabled, oidc_hash
        FROM institution_ra_settings WHERE institution_id = ?`
     )
     .bind(institutionId)

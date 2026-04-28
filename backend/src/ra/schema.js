@@ -78,6 +78,8 @@ export async function ensureRemoteAccessSchema(db) {
     { name: 'tunnel_status',     def: "TEXT NOT NULL DEFAULT 'unknown'" },
     { name: 'tunnel_last_seen',  def: 'INTEGER' },
     { name: 'enabled',           def: 'INTEGER NOT NULL DEFAULT 0' },
+    // OIDC thin proxy: {oidc_hash}.selmiye.com → sso.cas.org üzerinden IP-auth
+    { name: 'oidc_hash',         def: 'TEXT' },
   ]);
 
   // ra_user_credentials — user_id INTEGER, product_slug TEXT

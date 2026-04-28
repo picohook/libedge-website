@@ -181,11 +181,13 @@ export function registerRaIssueToken(app) {
     const landingPath = buildProxyLandingPath(sub.ra_origin_landing_path);
 
     let redirectUrl;
+
     if (deliveryMode === 'session_host_proxy') {
-      // Session-host: r{sid}.{baseHost} formatında unique subdomain
+      // r{sid}.selmiye.com subdomaini için KV session yaz, token ile yönlendir
       const baseHost = c.env.RA_PROXY_BASE_HOST || 'selmiye.com';
-      const sid = generateSessionId();  // 7 char base36
-      // KV'ya session kaydı yaz (token doğrulanmadan ÖNCE — proxy Worker doğrular)
+      const sid = generateSessionId();
+      const sessionHostname = `r${sid}.${baseHost}`;
+
       await c.env.RA_UPSTREAM_SESSIONS.put(
         `rhost:r${sid}`,
         JSON.stringify({
@@ -199,14 +201,14 @@ export function registerRaIssueToken(app) {
         }),
         { expirationTtl: SESSION_TTL_SEC }
       );
-      // /research?t=JWT → proxy token doğrular → 302 /research → JoVE /research
-      redirectUrl = `https://r${sid}.${baseHost}${landingPath}?t=${token}`;
-    } else {
-      const tgt = encodeHost(sub.ra_origin_host);
-      const proxyHost = c.env.RA_PROXY_HOST || 'proxy.selmiye.com';
-      redirectUrl = `https://${proxyHost}/${tgt}${landingPath}?t=${token}`;
-    }
 
+      redirectUrl = `https://${sessionHostname}${landingPath}?t=${token}`;
+    } else {
+      // path_proxy: selmiye.com/{encoded-host}{landingPath}?t={token}
+      const baseHost = c.env.RA_PROXY_BASE_HOST || 'selmiye.com';
+      const encodedLabel = encodeHost(sub.ra_origin_host);
+      redirectUrl = `https://${baseHost}/${encodedLabel}${landingPath}?t=${token}`;
+    }
     // ─── Compliance log (non-blocking) ───────────────────────────────────────
     // Token başarıyla verildiğinde "erişim oturumu başladı" kaydı yaz.
     // status/bytes/latency proxy katmanında ölçülebilir; şimdilik NULL bırakılır.
