@@ -1,7 +1,7 @@
 # LibEdge — Remote Access Platform Mimarisi
 
-> Son güncelleme: 2026-04-26  
-> Durum: Staging'de aktif · Mobil erişim uçtan uca çalışıyor ✅
+> Son güncelleme: 2026-04-28
+> Durum: Staging'de aktif · JoVE/EMIS/ACS/CAS SciFinder mobil erişim uçtan uca çalışıyor ✅
 
 ---
 
@@ -145,6 +145,13 @@ slug='iopscience'
   ra_host_allowlist_json = '["iopscience.iop.org","www.iopscience.iop.org","cdp.iopscience.iop.org","iopscience.org","www.iopscience.org","iop.org","www.iop.org","ioppublishing.org","www.ioppublishing.org","stacks.iop.org","www.stacks.iop.org","asia.iop.org","www.asia.iop.org","biologicalphysics.iop.org","www.biologicalphysics.iop.org","conferenceseries.iop.org","irish.iop.org","tap.iop.org","www.tap.iop.org","jphysplus.iop.org","librarians.iop.org","www.librarians.iop.org","njp.org","www.njp.org","physicsworld.com","www.physicsworld.com","physicsworldarchive.iop.org","www.physicsworldarchive.iop.org","stimulatingphysics.org","www.stimulatingphysics.org","stimulatingphysicssupport.iop.org"]'
   ra_enabled = 1  -- staging kurum subscription id=16 active/proxy
 
+slug='cas-scifinder-discovery-platform'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_origin_landing_path = '/'
+  ra_origin_host = 'scifinder-n.cas.org'
+  ra_host_allowlist_json = '["sso.cas.org","scifinder-n.cas.org"]'
+  ra_enabled = 1  -- CAS OIDC desktop + mobil staging doğrulandı ✅
+
 -- institution_ra_settings
 institution_id = 1
   egress_endpoint = 'https://ra-egress.selmiye.com'
@@ -259,6 +266,53 @@ https://r{sid}.selmiye.com/__ra-host/m-emis-com/api/
 
 Bu sayede CAS/auth/mobile host geçişleri aynı `ra_proxy_session` altında kalır, ama
 SSRF sınırı `products.ra_host_allowlist_json` ile korunur.
+
+### Cookie-based multi-origin SSO
+
+CAS SciFinder gibi bazı ürünlerde akış aynı path altında kalır ama upstream host değişir:
+
+```
+scifinder-n.cas.org/ → 302 → sso.cas.org/as/authorization.oauth2?... →
+login → 302 → scifinder-n.cas.org/pa/oidc/cb?code=...
+```
+
+Bu ürünler için `session_host_proxy` ek bir upstream-host cookie kullanır:
+
+1. Worker allowlist'teki farklı hosta giden `Location` header'ını aynı session hostuna yazar:
+   `https://sso.cas.org/as/...` → `https://r{sid}.selmiye.com/as/...`
+2. Aynı 302 yanıtında `__ra_upstream=sso.cas.org` set edilir.
+3. Cookie varken normal path istekleri origin host yerine cookie'deki hosta gider.
+4. Akış origin hosta döndüğünde (`scifinder-n.cas.org/pa/oidc/cb`) cookie temizlenir.
+
+Kritik kural: OIDC `redirect_uri` parametresi değiştirilmez. CAS bu değeri doğrular;
+`redirect_uri=https://scifinder-n.cas.org/pa/oidc/cb` olarak kalır. SSO tamamlandığında
+gelen absolute redirect Worker tarafından tekrar `r{sid}.selmiye.com/pa/oidc/cb` altına
+rewrite edilir.
+
+### Session-host upstream cookie jar
+
+CAS callback sırasında bazı gerekli upstream cookie'ler tarayıcı request'inde görünmeyebilir.
+SciFinder'da ilk 403/Try Again davranışının kök nedeni, callback isteğinde
+`nonce.{state.suffix}` cookie'sinin browser header'ında eksik olmasıydı.
+
+`session_host_proxy` bu yüzden `RA_UPSTREAM_SESSIONS` içinde session+host bazlı geçici jar tutar:
+
+```
+rhostjar:{sessionId}:{targetHost} → "nonce.xxx=...; PF=..."
+```
+
+Her upstream yanıttaki `Set-Cookie` bu jar'a işlenir; sonraki upstream request'te jar cookie'leri
+browser cookie'lerinden önce eklenir, aynı isim varsa browser değeri kazanır. TTL proxy session
+TTL'i ile aynıdır. Bu mekanizma CAS gibi çok adımlı OIDC akışlarında callback'in ilk denemede
+geçmesini sağlar; Pangram gibi kullanıcı bazlı uzun ömürlü cookie jar davranışıyla karıştırılmamalıdır.
+
+Staging debug header'ları:
+
+| Header | Anlamı |
+|---|---|
+| `X-RA-Debug-Oidc-State-Suffix` | CAS `state` protected header içindeki `suffix` |
+| `X-RA-Debug-Oidc-Nonce-Cookie` | Browser request cookie'sinde nonce var mı |
+| `X-RA-Debug-Oidc-Upstream-Nonce-Cookie` | Upstream'e gönderilen efektif cookie'de nonce var mı |
 
 ---
 
@@ -398,6 +452,14 @@ Bu oturumda `workers/proxy/src/index.js`'e eklenenler:
    absolute API originleri `r*.selmiye.com/__ra-host/m-emis-com/...` adreslerine çevrilir.
 10. **EMIS desktop-UA override**: Mobil cihazdan gelen EMIS isteklerinde upstream'e desktop
     browser kimliği gönderilir; EMIS böylece çalışan `/v2/` CAS akışına yönlenir.
+11. **Cookie-based multi-origin SSO**: CAS SciFinder'da `scifinder-n.cas.org ↔ sso.cas.org`
+    geçişleri aynı `r{sid}.selmiye.com` hostu altında tutulur; `__ra_upstream` aktif upstream
+    hostunu seçer.
+12. **Session-host upstream cookie jar**: CAS callback'te browser'dan düşebilen
+    `nonce.{state.suffix}` cookie'si `rhostjar:{sessionId}:{targetHost}` üzerinden upstream'e
+    taşınır; ilk callback 403/Try Again problemi çözüldü.
+13. **CAS OIDC debug header'ları**: Staging'de state suffix, browser nonce ve upstream nonce
+    görünürlüğü `X-RA-Debug-Oidc-*` header'larıyla takip edilir.
 
 ### §12.3 Yürütülen ra-egress Düzeltmeleri
 
@@ -450,6 +512,37 @@ www.emis.com/v2/ → 200 ✅
 - `m.emis.com/api/` mobile fallback çağrıları proxylenebiliyor; ancak EMIS mobile API 401 döndüğü
   için EMIS'e özel desktop-UA override ile çalışan CAS `/v2/` akışı tercih edildi.
 - `ra-egress` kurum IP'siyle çıkıyor; EMIS IP tabanlı auth kurum içinde doğrulandı.
+
+### §12.5 Ürün Bazlı Doğrulama — CAS SciFinder (2026-04-28)
+
+**D1 konfigürasyonu:**
+
+```sql
+slug='cas-scifinder-discovery-platform'
+  ra_origin_host = 'scifinder-n.cas.org'
+  ra_origin_landing_path = '/'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_host_allowlist_json = '["sso.cas.org","scifinder-n.cas.org"]'
+```
+
+**Kritik akış:**
+
+```
+Portal → r{sid}.selmiye.com/?t=JWT →
+scifinder-n.cas.org/ → 302 →
+sso.cas.org/as/authorization.oauth2?... →
+email → password → 302 →
+scifinder-n.cas.org/pa/oidc/cb?code=... →
+SciFinder search page ✅
+```
+
+**Kritik davranışlar:**
+- Tüm login/SSO adımları `r*.selmiye.com` altında kalır; browser doğrudan `sso.cas.org` veya
+  `scifinder-n.cas.org` hostuna çıkmaz.
+- OIDC `redirect_uri` değeri `https://scifinder-n.cas.org/pa/oidc/cb` olarak korunur.
+- İlk callback 403/Try Again problemi, session-host upstream cookie jar ile çözüldü.
+- Desktop ve mobil kurum dışı erişim doğrulandı; search sayfası açılıyor ✅
+- Logout sonrası yayıncı proxy dışına çıkabiliyor; mevcut aşamada kabul edilen davranış.
 
 ---
 
@@ -646,7 +739,8 @@ olmalı. EMIS için bu `/php/login/redirect`; JoVE için `/research`.
 | EMIS | Mobile config absolute API URL | `application*.js` URL rewrite |
 | ACS | Cloudflare challenge 403 (`pubs.acs.org`) | utls Chrome TLS fingerprint taklit → Cloudflare bypass ✅ |
 | Primal Pictures | Kurum bazlı IP entitlement gerekir | Ürün RA-ready; yalnızca aboneliği olan kurumlarda subscription aktif edilir |
-| IOPscience | Geniş IOP host ailesi | Staging subscription aktif; mobil erişim onaylı ✅ |
+| IOPscience | Geniş IOP host ailesi | Staging subscription aktif; portal doğrulama bekleniyor |
+| CAS SciFinder | OIDC SSO `scifinder-n.cas.org ↔ sso.cas.org` cross-origin akışı | `__ra_upstream` + session-host upstream cookie jar; desktop/mobil doğrulandı ✅ |
 
 ### §16.4 ACS Publications — ✅ ÇÖZÜLDÜ (2026-04-26)
 
@@ -761,3 +855,42 @@ subscription_id = 16
 
 İlk HTML içinde `cdp.iopscience.iop.org` asset host'u görüldüğü için allowlist'e eklendi.
 Kullanıcı tarafı doğrulama için portal üzerinden IOPscience "Erişime Git" testi bekleniyor.
+
+### §16.7 CAS SciFinder Discovery Platform (2026-04-28)
+
+CAS SciFinder iki aşamalı bir model kullanır:
+
+1. `scifinder-n.cas.org` kurum/IP bağlamını başlatır.
+2. Kullanıcı login'i `sso.cas.org` üzerinde OIDC/PingFederate akışıyla tamamlanır.
+
+Bu nedenle ürün tek bir origin host gibi ele alınamaz; ama path de `__ra-host` prefix'iyle
+değiştirilmemelidir. CAS login formu aynı `r{sid}.selmiye.com` altında kalmalı, aktif upstream
+host `__ra_upstream` cookie'siyle seçilmelidir.
+
+Staging ürün config:
+
+```sql
+slug='cas-scifinder-discovery-platform'
+  ra_origin_host = 'scifinder-n.cas.org'
+  ra_origin_landing_path = '/'
+  ra_delivery_mode = 'session_host_proxy'
+  ra_host_allowlist_json = '["sso.cas.org","scifinder-n.cas.org"]'
+  ra_enabled = 1
+```
+
+Egress allowlist gereksinimi:
+
+```env
+ALLOWED_HOST_REGEX=...scifinder-n\.cas\.org|sso\.cas\.org...
+```
+
+Çalışan davranış:
+- `sso.cas.org` redirect'i proxy domain'ine rewrite edilir ve `__ra_upstream=sso.cas.org`
+  set edilir.
+- SSO callback `scifinder-n.cas.org/pa/oidc/cb` origin hostuna dönünce `__ra_upstream`
+  temizlenir.
+- `redirect_uri` parametresi rewrite edilmez; CAS tarafında kayıtlı gerçek callback URL'i
+  olarak kalır.
+- Callback'te eksik kalabilen `nonce.{state.suffix}` cookie'si session-host upstream cookie
+  jar üzerinden upstream'e taşınır.
+- Desktop ve mobil kurum dışı testte email → password → search page akışı başarılıdır.

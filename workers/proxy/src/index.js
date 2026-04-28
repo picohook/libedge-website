@@ -14,6 +14,7 @@ import { encodeHost, decodeHost, isValidEncodedHost } from '../../../backend/src
 import { egressFetch } from './egress-client.js';
 
 const SESSION_COOKIE  = 'ra_proxy_session';
+const UPSTREAM_HOST_COOKIE = '__ra_upstream';
 const SESSION_TTL_SEC = 3600;
 const SESSION_ALT_HOST_PREFIX = '/__ra-host/';
 const DESKTOP_USER_AGENT =
@@ -95,7 +96,16 @@ async function handleSessionHost(request, env, url, sessionId) {
   }
 
   const proxyableHosts = await loadSessionProxyableHosts(env.DB, session);
-  const target = parseSessionHostTarget(url.pathname, session.origin_host, proxyableHosts);
+  const upstreamCookieHost = readAllowedUpstreamHostCookie(
+    request.headers.get('Cookie'),
+    proxyableHosts
+  );
+  const target = parseSessionHostTarget(
+    url.pathname,
+    session.origin_host,
+    proxyableHosts,
+    upstreamCookieHost
+  );
   if (!target) {
     return htmlError(403, 'Bu oturum bu yayıncı hostuna erişemez.');
   }
@@ -110,6 +120,16 @@ async function handleSessionHost(request, env, url, sessionId) {
     originHost: target.host,
     forceDesktopUserAgent: session.product_slug === 'emis',
   });
+  const storedUpstreamCookies = await loadSessionHostCookieJar(env, sessionId, target.host);
+  const effectiveUpstreamCookies = mergeSessionHostCookieJar(
+    storedUpstreamCookies,
+    upstreamHeaders.get('Cookie') || ''
+  );
+  if (effectiveUpstreamCookies) {
+    upstreamHeaders.set('Cookie', effectiveUpstreamCookies);
+  } else {
+    upstreamHeaders.delete('Cookie');
+  }
 
   let upstreamResp;
   try {
@@ -123,6 +143,14 @@ async function handleSessionHost(request, env, url, sessionId) {
     return htmlError(502, 'Kurumun erişim sunucusuna ulaşılamadı.', err.message);
   }
 
+  await persistSessionHostCookieJar(
+    env,
+    sessionId,
+    target.host,
+    upstreamHeaders.get('Cookie') || '',
+    upstreamResp.headers
+  );
+
   const respHeaders = buildSessionHostResponseHeaders(
     upstreamResp.headers,
     url.hostname,
@@ -130,6 +158,7 @@ async function handleSessionHost(request, env, url, sessionId) {
     target.host,
     proxyableHosts
   );
+
   addStagingDebugHeaders(respHeaders, env, {
     targetUrl,
     upstreamStatus: upstreamResp.status,
@@ -143,18 +172,38 @@ async function handleSessionHost(request, env, url, sessionId) {
     upstreamReferer: upstreamHeaders.get('Referer'),
   });
 
-  if (shouldRewriteSessionTextResponse(target, upstreamResp)) {
-    const text = await upstreamResp.text();
-    const rewritten = rewriteSessionTextProxyUrls(
-      text,
-      url.hostname,
-      session.origin_host,
-      proxyableHosts
+  const contentType = upstreamResp.headers.get('Content-Type') || '';
+  if (String(env?.ENVIRONMENT || '').toLowerCase() === 'staging') {
+    respHeaders.set('X-RA-Debug-Content-Type', contentType.slice(0, 60));
+    respHeaders.set('X-RA-Debug-Upstream-Cookie-Host', upstreamCookieHost || '-');
+    addOidcCallbackDebugHeaders(
+      respHeaders,
+      target,
+      url.search,
+      request.headers.get('Cookie'),
+      upstreamHeaders.get('Cookie')
     );
+  }
+  const needsTextRewrite =
+    shouldRewriteSessionTextResponse(target, upstreamResp) ||
+    shouldRewriteCurrentHostTextResponse(target, session.origin_host, contentType);
+
+  if (needsTextRewrite) {
+    let text = await upstreamResp.text();
+
+    if (target.host !== session.origin_host) {
+      text = rewriteCurrentHostUrls(text, url.hostname, target.host);
+    }
+
+    // Ürün-bazlı proxy URL rewrite (EMIS vb.)
+    if (shouldRewriteSessionTextResponse(target, upstreamResp)) {
+      text = rewriteSessionTextProxyUrls(text, url.hostname, session.origin_host, proxyableHosts);
+    }
+
     respHeaders.delete('Content-Length');
     respHeaders.delete('Content-Encoding');
 
-    return new Response(rewritten, {
+    return new Response(text, {
       status: upstreamResp.status,
       statusText: upstreamResp.statusText,
       headers: respHeaders,
@@ -219,7 +268,17 @@ function buildSessionHostResponseHeaders(incoming, proxyHostname, originHost, cu
       continue;
     }
     if (k.toLowerCase() === 'location') {
-      out.set('Location', rewriteSessionHostLocation(v, proxyHostname, originHost, currentTargetHost, proxyableHosts));
+      const rewritten = rewriteSessionHostLocationWithUpstreamCookie(
+        v,
+        proxyHostname,
+        originHost,
+        currentTargetHost,
+        proxyableHosts
+      );
+      out.set('Location', rewritten.location);
+      if (rewritten.upstreamCookie) {
+        out.append('Set-Cookie', rewritten.upstreamCookie);
+      }
       continue;
     }
     out.set(k, v);
@@ -493,9 +552,9 @@ function rewriteQueryProxyUrls(search, proxyHostname, originHost) {
     .replaceAll(`https://${proxyHostname}`, `https://${originHost}`);
 }
 
-function parseSessionHostTarget(pathname, originHost, proxyableHosts) {
+function parseSessionHostTarget(pathname, originHost, proxyableHosts, upstreamCookieHost = null) {
   if (!pathname.startsWith(SESSION_ALT_HOST_PREFIX)) {
-    return { host: originHost, path: pathname || '/' };
+    return { host: upstreamCookieHost || originHost, path: pathname || '/' };
   }
 
   const rest = pathname.slice(SESSION_ALT_HOST_PREFIX.length);
@@ -522,6 +581,41 @@ export function rewriteSessionHostLocation(location, proxyHostname, originHost, 
   }
 }
 
+export function rewriteSessionHostLocationWithUpstreamCookie(
+  location,
+  proxyHostname,
+  originHost,
+  currentTargetHost,
+  proxyableHosts
+) {
+  const fallback = { location, upstreamCookie: null };
+  if (!location) return fallback;
+
+  try {
+    const loc = new URL(location);
+    const targetHost = normalizeHost(loc.hostname);
+    if (!targetHost || !proxyableHosts.has(targetHost)) return fallback;
+
+    const rewrittenLocation = `https://${proxyHostname}${loc.pathname || '/'}${loc.search}${loc.hash}`;
+    return {
+      location: rewrittenLocation,
+      upstreamCookie: targetHost === originHost
+        ? clearUpstreamHostCookie(proxyHostname)
+        : buildUpstreamHostCookie(proxyHostname, targetHost),
+    };
+  } catch {
+    if (!location.startsWith('/')) return fallback;
+
+    const targetHost = normalizeHost(currentTargetHost);
+    return {
+      location,
+      upstreamCookie: targetHost && targetHost !== originHost
+        ? buildUpstreamHostCookie(proxyHostname, targetHost)
+        : clearUpstreamHostCookie(proxyHostname),
+    };
+  }
+}
+
 function sessionHostPathFor(targetHost, originHost, pathname) {
   const path = pathname || '/';
   if (targetHost === originHost) return path;
@@ -536,6 +630,21 @@ function shouldRewriteSessionTextResponse(target, upstreamResp) {
   // this file avoids touching large application bundles while fixing mobile XHRs.
   return target.host === 'm.emis.com'
     && /^\/config\/application(?:_[a-z0-9-]+)?\.js$/i.test(target.path);
+}
+
+function shouldRewriteCurrentHostTextResponse(target, originHost, contentType) {
+  if (!target || target.host === originHost) return false;
+  return /\b(javascript|ecmascript|json|text\/html|text\/plain|text\/css)/i.test(contentType || '');
+}
+
+export function rewriteCurrentHostUrls(text, proxyHostname, currentTargetHost) {
+  const host = normalizeHost(currentTargetHost);
+  if (!host) return String(text || '');
+
+  return String(text || '')
+    .replaceAll(`https://${host}`, `https://${proxyHostname}`)
+    .replaceAll(`http://${host}`, `https://${proxyHostname}`)
+    .replaceAll(`//${host}`, `//${proxyHostname}`);
 }
 
 export function rewriteSessionTextProxyUrls(text, proxyHostname, originHost, proxyableHosts) {
@@ -645,11 +754,33 @@ function readCookie(header, name) {
   return null;
 }
 
+function readAllowedUpstreamHostCookie(cookieHeader, proxyableHosts) {
+  const host = normalizeHost(readCookie(cookieHeader, UPSTREAM_HOST_COOKIE));
+  if (!host || !proxyableHosts.has(host)) return null;
+  return host;
+}
+
 function buildSessionCookie(sid, baseHost) {
   return (
     `${SESSION_COOKIE}=${encodeURIComponent(sid)}; ` +
     `Domain=${baseHost}; Path=/; HttpOnly; Secure; SameSite=Lax; ` +
     `Max-Age=${SESSION_TTL_SEC}`
+  );
+}
+
+function buildUpstreamHostCookie(proxyHostname, host) {
+  return (
+    `${UPSTREAM_HOST_COOKIE}=${encodeURIComponent(host)}; ` +
+    `Domain=${proxyHostname}; Path=/; HttpOnly; Secure; SameSite=Lax; ` +
+    `Max-Age=${SESSION_TTL_SEC}`
+  );
+}
+
+function clearUpstreamHostCookie(proxyHostname) {
+  return (
+    `${UPSTREAM_HOST_COOKIE}=; ` +
+    `Domain=${proxyHostname}; Path=/; HttpOnly; Secure; SameSite=Lax; ` +
+    'Max-Age=0'
   );
 }
 
@@ -659,10 +790,92 @@ export function stripSessionCookie(header) {
   for (const part of String(header).split(';').map(s => s.trim()).filter(Boolean)) {
     const idx = part.indexOf('=');
     if (idx <= 0) continue;
-    if (part.slice(0, idx).trim() === SESSION_COOKIE) continue;
+    const name = part.slice(0, idx).trim();
+    if (name === SESSION_COOKIE || name === UPSTREAM_HOST_COOKIE) continue;
     kept.push(part);
   }
   return kept.join('; ');
+}
+
+async function loadSessionHostCookieJar(env, sessionId, targetHost) {
+  try {
+    return await env.RA_UPSTREAM_SESSIONS.get(sessionHostCookieJarKey(sessionId, targetHost)) || '';
+  } catch (err) {
+    console.warn('session host cookie jar read failed', err);
+    return '';
+  }
+}
+
+async function persistSessionHostCookieJar(env, sessionId, targetHost, currentCookieHeader, responseHeaders) {
+  const setCookies = collectSetCookies(responseHeaders);
+  if (!setCookies.length) return;
+  const merged = mergeSessionHostSetCookies(currentCookieHeader, setCookies);
+  try {
+    await env.RA_UPSTREAM_SESSIONS.put(
+      sessionHostCookieJarKey(sessionId, targetHost),
+      merged,
+      { expirationTtl: SESSION_TTL_SEC }
+    );
+  } catch (err) {
+    console.warn('session host cookie jar write failed', err);
+  }
+}
+
+function sessionHostCookieJarKey(sessionId, targetHost) {
+  return `rhostjar:${sessionId}:${targetHost}`;
+}
+
+export function mergeSessionHostCookieJar(stored, browser) {
+  const map = new Map();
+  for (const source of [stored, browser]) {
+    if (!source) continue;
+    for (const pair of String(source).split(';').map(s => s.trim()).filter(Boolean)) {
+      const idx = pair.indexOf('=');
+      if (idx <= 0) continue;
+      const name = pair.slice(0, idx).trim();
+      const value = pair.slice(idx + 1).trim();
+      if (name) map.set(name, value);
+    }
+  }
+  return [...map.entries()].map(([name, value]) => `${name}=${value}`).join('; ');
+}
+
+export function mergeSessionHostSetCookies(existingCookieHeader, setCookies) {
+  const map = new Map();
+  for (const pair of String(existingCookieHeader || '').split(';').map(s => s.trim()).filter(Boolean)) {
+    const idx = pair.indexOf('=');
+    if (idx <= 0) continue;
+    map.set(pair.slice(0, idx).trim(), pair.slice(idx + 1).trim());
+  }
+
+  for (const sc of setCookies || []) {
+    const parts = String(sc || '').split(';').map(s => s.trim()).filter(Boolean);
+    if (!parts.length) continue;
+    const idx = parts[0].indexOf('=');
+    if (idx <= 0) continue;
+    const name = parts[0].slice(0, idx).trim();
+    const value = parts[0].slice(idx + 1).trim();
+    if (!name) continue;
+    if (isExpiredSetCookie(parts)) {
+      map.delete(name);
+    } else {
+      map.set(name, value);
+    }
+  }
+
+  return [...map.entries()].map(([name, value]) => `${name}=${value}`).join('; ');
+}
+
+function isExpiredSetCookie(parts) {
+  for (let i = 1; i < parts.length; i += 1) {
+    const lower = parts[i].toLowerCase();
+    if (lower === 'max-age=0' || lower === 'max-age=-1') return true;
+    if (lower.startsWith('expires=')) {
+      const ts = Date.parse(parts[i].slice(8).trim());
+      if (!Number.isNaN(ts) && ts <= Date.now()) return true;
+    }
+  }
+  return false;
 }
 
 export function rewriteSessionHostSetCookie(setCookie, proxyHostname) {
@@ -752,6 +965,51 @@ function addStagingDebugHeaders(headers, env, info) {
   if (info.referer) headers.set('X-RA-Debug-Referer', truncateHeader(info.referer, 180));
   if (info.upstreamOrigin) headers.set('X-RA-Debug-Upstream-Origin', truncateHeader(info.upstreamOrigin, 120));
   if (info.upstreamReferer) headers.set('X-RA-Debug-Upstream-Referer', truncateHeader(info.upstreamReferer, 180));
+}
+
+function addOidcCallbackDebugHeaders(headers, target, search, browserCookieHeader, upstreamCookieHeader) {
+  if (!target || target.host !== 'scifinder-n.cas.org' || target.path !== '/pa/oidc/cb') {
+    return;
+  }
+  const suffix = decodeOidcStateSuffix(search);
+  headers.set('X-RA-Debug-Oidc-State-Suffix', suffix || '-');
+  if (!suffix) {
+    headers.set('X-RA-Debug-Oidc-Nonce-Cookie', '-');
+    headers.set('X-RA-Debug-Oidc-Upstream-Nonce-Cookie', '-');
+    return;
+  }
+  const cookieName = `nonce.${suffix}`;
+  headers.set(
+    'X-RA-Debug-Oidc-Nonce-Cookie',
+    hasCookieName(browserCookieHeader, cookieName) ? 'present' : 'missing'
+  );
+  headers.set(
+    'X-RA-Debug-Oidc-Upstream-Nonce-Cookie',
+    hasCookieName(upstreamCookieHeader, cookieName) ? 'present' : 'missing'
+  );
+}
+
+export function decodeOidcStateSuffix(search) {
+  const state = new URLSearchParams(String(search || '').replace(/^\?/, '')).get('state');
+  if (!state) return '';
+  const [protectedHeader] = state.split('.');
+  if (!protectedHeader) return '';
+  try {
+    const json = atob(protectedHeader.replace(/-/g, '+').replace(/_/g, '/'));
+    const parsed = JSON.parse(json);
+    return typeof parsed.suffix === 'string' ? parsed.suffix : '';
+  } catch {
+    return '';
+  }
+}
+
+function hasCookieName(cookieHeader, name) {
+  if (!cookieHeader || !name) return false;
+  for (const part of String(cookieHeader).split(';').map(s => s.trim())) {
+    const idx = part.indexOf('=');
+    if (idx > 0 && part.slice(0, idx).trim() === name) return true;
+  }
+  return false;
 }
 
 function cookieNames(cookieHeader) {

@@ -11,7 +11,12 @@ import {
   rewriteSessionHostSetCookie,
   rewriteClientContextHeader,
   rewriteSessionHostLocation,
+  rewriteSessionHostLocationWithUpstreamCookie,
   rewriteSessionTextProxyUrls,
+  rewriteCurrentHostUrls,
+  decodeOidcStateSuffix,
+  mergeSessionHostCookieJar,
+  mergeSessionHostSetCookies,
 } from '../../workers/proxy/src/index.js';
 
 describe('buildCookieJarKey', () => {
@@ -82,8 +87,8 @@ describe('rewriteSetCookieForProxy', () => {
 });
 
 describe('session-host proxy cookie handling', () => {
-  it('strips only the LibEdge proxy session cookie before forwarding upstream', () => {
-    const out = stripSessionCookie('ra_proxy_session=abc; cf_clearance=xyz; __cf_bm=bm; theme=dark');
+  it('strips LibEdge control cookies before forwarding upstream', () => {
+    const out = stripSessionCookie('ra_proxy_session=abc; __ra_upstream=sso.cas.org; cf_clearance=xyz; __cf_bm=bm; theme=dark');
     expect(out).toBe('cf_clearance=xyz; __cf_bm=bm; theme=dark');
   });
 
@@ -203,6 +208,93 @@ describe('session-host proxy cookie handling', () => {
     );
 
     expect(out).toBe('/__ra-host/cas-emis-com/login');
+  });
+
+  it('rewrites allowlisted cross-origin redirects onto the session host and stores upstream host', () => {
+    const hosts = new Set(['scifinder-n.cas.org', 'sso.cas.org']);
+    const out = rewriteSessionHostLocationWithUpstreamCookie(
+      'https://sso.cas.org/as/authorization.oauth2?redirect_uri=https%3A%2F%2Fscifinder-n.cas.org%2Fpa%2Foidc%2Fcb',
+      'rabc1234.selmiye.com',
+      'scifinder-n.cas.org',
+      'scifinder-n.cas.org',
+      hosts
+    );
+
+    expect(out.location).toBe(
+      'https://rabc1234.selmiye.com/as/authorization.oauth2?redirect_uri=https%3A%2F%2Fscifinder-n.cas.org%2Fpa%2Foidc%2Fcb'
+    );
+    expect(out.upstreamCookie).toContain('__ra_upstream=sso.cas.org');
+    expect(out.upstreamCookie).toContain('Domain=rabc1234.selmiye.com');
+    expect(out.upstreamCookie).toContain('Path=/');
+  });
+
+  it('clears the upstream host cookie when redirecting back to the origin host', () => {
+    const hosts = new Set(['scifinder-n.cas.org', 'sso.cas.org']);
+    const out = rewriteSessionHostLocationWithUpstreamCookie(
+      'https://scifinder-n.cas.org/pa/oidc/cb?code=abc',
+      'rabc1234.selmiye.com',
+      'scifinder-n.cas.org',
+      'sso.cas.org',
+      hosts
+    );
+
+    expect(out.location).toBe('https://rabc1234.selmiye.com/pa/oidc/cb?code=abc');
+    expect(out.upstreamCookie).toContain('__ra_upstream=');
+    expect(out.upstreamCookie).toContain('Max-Age=0');
+  });
+
+  it('keeps relative redirects on the current alternate upstream with the cookie', () => {
+    const hosts = new Set(['scifinder-n.cas.org', 'sso.cas.org']);
+    const out = rewriteSessionHostLocationWithUpstreamCookie(
+      '/as/login',
+      'rabc1234.selmiye.com',
+      'scifinder-n.cas.org',
+      'sso.cas.org',
+      hosts
+    );
+
+    expect(out.location).toBe('/as/login');
+    expect(out.upstreamCookie).toContain('__ra_upstream=sso.cas.org');
+  });
+
+  it('rewrites absolute URLs for the current cookie-selected upstream host', () => {
+    const out = rewriteCurrentHostUrls(
+      '<form action="https://sso.cas.org/as/login"><script src="//sso.cas.org/assets/app.js"></script>',
+      'rabc1234.selmiye.com',
+      'sso.cas.org'
+    );
+
+    expect(out).toContain('action="https://rabc1234.selmiye.com/as/login"');
+    expect(out).toContain('src="//rabc1234.selmiye.com/assets/app.js"');
+  });
+
+  it('extracts the CAS OIDC state suffix for callback cookie diagnostics', () => {
+    const out = decodeOidcStateSuffix(
+      '?state=eyJ6aXAiOiJERUYiLCJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2Iiwia2lkIjoiX18xcU5MVDN2V000TEYxRUlpWFcyc0hKOFhjIiwic3VmZml4IjoiZVZzc0JDLjE3Nzc2NTU4MjIifQ..GZ78'
+    );
+
+    expect(out).toBe('eVssBC.1777655822');
+  });
+
+  it('merges stored session-host cookies before browser cookies', () => {
+    const out = mergeSessionHostCookieJar(
+      'nonce.abc=stored; PF=old',
+      'PF=new; browser=yes'
+    );
+
+    expect(out).toBe('nonce.abc=stored; PF=new; browser=yes');
+  });
+
+  it('persists and expires upstream Set-Cookie values for session-host proxy', () => {
+    const out = mergeSessionHostSetCookies(
+      'nonce.old=keep; route=a',
+      [
+        'nonce.new=abc; Path=/; Secure; HttpOnly',
+        'route=; Max-Age=0; Path=/',
+      ]
+    );
+
+    expect(out).toBe('nonce.old=keep; nonce.new=abc');
   });
 
   it('rewrites EMIS mobile config origins through the session host proxy', () => {

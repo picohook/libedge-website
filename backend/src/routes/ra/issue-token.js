@@ -202,9 +202,10 @@ export function registerRaIssueToken(app) {
       // /research?t=JWT → proxy token doğrular → 302 /research → JoVE /research
       redirectUrl = `https://r${sid}.${baseHost}${landingPath}?t=${token}`;
     } else {
-      const tgt = encodeHost(sub.ra_origin_host);
-      const proxyHost = c.env.RA_PROXY_HOST || 'proxy.selmiye.com';
-      redirectUrl = `https://${proxyHost}/${tgt}${landingPath}?t=${token}`;
+      // path_proxy: selmiye.com/{encoded-host}{landingPath}?t={token}
+      const baseHost = c.env.RA_PROXY_HOST || c.env.RA_PROXY_BASE_HOST || 'selmiye.com';
+      const encodedLabel = encodeHost(sub.ra_origin_host);
+      redirectUrl = `https://${baseHost}/${encodedLabel}${landingPath}?t=${token}`;
     }
 
     // ─── Compliance log (non-blocking) ───────────────────────────────────────
