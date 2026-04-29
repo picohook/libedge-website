@@ -492,6 +492,30 @@ async function ensureAdminActionLogsTable(db) {
   `).run();
 }
 
+function createAdminActionLogStmt(db, { id, actor, entityType, entityId, action, before, after = null, undoExpiresAt }) {
+  return db.prepare(`
+    INSERT INTO admin_action_logs (
+      id, actor_user_id, entity_type, entity_id, action,
+      before_json, after_json, undo_expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    actor?.user_id || actor?.id || null,
+    entityType,
+    String(entityId),
+    action,
+    before == null ? null : JSON.stringify(before),
+    after == null ? null : JSON.stringify(after),
+    undoExpiresAt || null
+  );
+}
+
+function createAdminActionUndoneStmt(db, id) {
+  return db.prepare(`
+    UPDATE admin_action_logs SET undone_at = ? WHERE id = ?
+  `).bind(new Date().toISOString(), id);
+}
+
 async function isSuperAdmin(c) {
   const role = await getUserRole(c);
   return role === 'super_admin';
@@ -3294,21 +3318,10 @@ app.put('/api/admin/product/:slug', async (c) => {
     ra.ra_host_allowlist_json,
     slug
   );
-  const logStmt = db.prepare(`
-    INSERT INTO admin_action_logs (
-      id, actor_user_id, entity_type, entity_id, action,
-      before_json, after_json, undo_expires_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    undoId,
-    actor?.user_id || actor?.id || null,
-    'product',
-    slug,
-    'update',
-    JSON.stringify(existing),
-    null,
-    undoExpiresAt
-  );
+  const logStmt = createAdminActionLogStmt(db, {
+    id: undoId, actor, entityType: 'product', entityId: slug,
+    action: 'update', before: existing, undoExpiresAt
+  });
   await db.batch([updateStmt, logStmt]);
 
   return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
@@ -3343,9 +3356,7 @@ async function restoreProductAction(db, id, { enforceExpiry = false } = {}) {
     UPDATE products SET ${columns.map((col) => `${col} = ?`).join(', ')}
     WHERE slug = ?
   `).bind(...columns.map((col) => before[col] ?? null), before.slug);
-  const markStmt = db.prepare(`
-    UPDATE admin_action_logs SET undone_at = ? WHERE id = ?
-  `).bind(new Date().toISOString(), id);
+  const markStmt = createAdminActionUndoneStmt(db, id);
   await db.batch([updateStmt, markStmt]);
   return { success: true };
 }
@@ -3379,9 +3390,7 @@ async function restoreSubscriptionAction(db, id, { enforceExpiry = false } = {})
       UPDATE ${table} SET ${updateColumns.map((col) => `${col} = ?`).join(', ')}
       WHERE id = ?
     `).bind(...updateColumns.map((col) => before[col] ?? null), before.id);
-  const markStmt = db.prepare(`
-    UPDATE admin_action_logs SET undone_at = ? WHERE id = ?
-  `).bind(new Date().toISOString(), id);
+  const markStmt = createAdminActionUndoneStmt(db, id);
   await db.batch([restoreStmt, markStmt]);
   return { success: true };
 }
@@ -3403,9 +3412,7 @@ async function restoreInstitutionAction(db, id, { enforceExpiry = false } = {}) 
     UPDATE institutions SET ${columns.map((col) => `${col} = ?`).join(', ')}
     WHERE id = ?
   `).bind(...columns.map((col) => before[col] ?? null), before.id);
-  const markStmt = db.prepare(`
-    UPDATE admin_action_logs SET undone_at = ? WHERE id = ?
-  `).bind(new Date().toISOString(), id);
+  const markStmt = createAdminActionUndoneStmt(db, id);
   await db.batch([updateStmt, markStmt]);
   return { success: true };
 }
@@ -3999,21 +4006,10 @@ app.put('/api/admin/subscription/:id', async (c) => {
     SET user_id = ?, product_slug = ?, status = ?, end_date = ?
     WHERE id = ?
   `).bind(user_id, product_slug, status || 'active', end_date || null, id);
-  const logStmt = db.prepare(`
-    INSERT INTO admin_action_logs (
-      id, actor_user_id, entity_type, entity_id, action,
-      before_json, after_json, undo_expires_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    undoId,
-    actor?.user_id || actor?.id || null,
-    'subscription',
-    String(id),
-    'update',
-    JSON.stringify(existing),
-    null,
-    undoExpiresAt
-  );
+  const logStmt = createAdminActionLogStmt(db, {
+    id: undoId, actor, entityType: 'subscription', entityId: id,
+    action: 'update', before: existing, undoExpiresAt
+  });
   await db.batch([updateStmt, logStmt]);
 
   return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
@@ -4043,21 +4039,10 @@ app.delete('/api/admin/subscription/:id', async (c) => {
   const undoExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
   const actor = await getTokenPayloadFromCookie(c);
   const deleteStmt = db.prepare(`DELETE FROM subscriptions WHERE id=?`).bind(id);
-  const logStmt = db.prepare(`
-    INSERT INTO admin_action_logs (
-      id, actor_user_id, entity_type, entity_id, action,
-      before_json, after_json, undo_expires_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    undoId,
-    actor?.user_id || actor?.id || null,
-    'subscription',
-    String(id),
-    'delete',
-    JSON.stringify(existing),
-    null,
-    undoExpiresAt
-  );
+  const logStmt = createAdminActionLogStmt(db, {
+    id: undoId, actor, entityType: 'subscription', entityId: id,
+    action: 'delete', before: existing, undoExpiresAt
+  });
   await db.batch([deleteStmt, logStmt]);
   return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
 });
@@ -4137,21 +4122,10 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
     String(access_notes_en || '').trim() || null,
     id
   );
-  const logStmt = db.prepare(`
-    INSERT INTO admin_action_logs (
-      id, actor_user_id, entity_type, entity_id, action,
-      before_json, after_json, undo_expires_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    undoId,
-    actor?.user_id || actor?.id || null,
-    'institution_subscription',
-    String(id),
-    'update',
-    JSON.stringify(existing),
-    null,
-    undoExpiresAt
-  );
+  const logStmt = createAdminActionLogStmt(db, {
+    id: undoId, actor, entityType: 'institution_subscription', entityId: id,
+    action: 'update', before: existing, undoExpiresAt
+  });
   await db.batch([updateStmt, logStmt]);
 
   return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
@@ -4198,21 +4172,10 @@ app.delete('/api/admin/institution-subscription/:id', async (c) => {
   const undoExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
   const actor = await getTokenPayloadFromCookie(c);
   const deleteStmt = db.prepare(`DELETE FROM institution_subscriptions WHERE id = ?`).bind(id);
-  const logStmt = db.prepare(`
-    INSERT INTO admin_action_logs (
-      id, actor_user_id, entity_type, entity_id, action,
-      before_json, after_json, undo_expires_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    undoId,
-    actor?.user_id || actor?.id || null,
-    'institution_subscription',
-    String(id),
-    'delete',
-    JSON.stringify(sub),
-    null,
-    undoExpiresAt
-  );
+  const logStmt = createAdminActionLogStmt(db, {
+    id: undoId, actor, entityType: 'institution_subscription', entityId: id,
+    action: 'delete', before: sub, undoExpiresAt
+  });
   await db.batch([deleteStmt, logStmt]);
   return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
 });
@@ -6800,21 +6763,10 @@ app.put('/api/admin/institution/:id', async (c) => {
     const st = validStatuses.includes(status) ? status : null;
     updateStmt = db.prepare(`UPDATE institutions SET domain = ?, website_url = ?, status = COALESCE(?, status) WHERE id = ?`).bind(domain ?? null, website_url ?? null, st, id);
   }
-  const logStmt = db.prepare(`
-    INSERT INTO admin_action_logs (
-      id, actor_user_id, entity_type, entity_id, action,
-      before_json, after_json, undo_expires_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    undoId,
-    actor?.user_id || actor?.id || null,
-    'institution',
-    String(id),
-    'update',
-    JSON.stringify(existing),
-    null,
-    undoExpiresAt
-  );
+  const logStmt = createAdminActionLogStmt(db, {
+    id: undoId, actor, entityType: 'institution', entityId: id,
+    action: 'update', before: existing, undoExpiresAt
+  });
   await db.batch([updateStmt, logStmt]);
 
   return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });

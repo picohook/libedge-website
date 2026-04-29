@@ -4119,6 +4119,33 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         await loadProductHistory();
     }
 
+    function showAdminUndoToast({ undoId, message, successMessage, onSuccess }) {
+        if (!undoId) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification fixed z-50 top-5 right-5 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-white text-blue-700 border-l-4 border-blue-500 flex items-center gap-3';
+        toast.innerHTML = `<span><i class="fas fa-history mr-2"></i>${escapeHtml(message || 'Değişiklik geri alınabilir.')}</span><button type="button" class="px-2 py-1 rounded bg-blue-600 text-white text-xs">Geri al</button>`;
+        document.body.appendChild(toast);
+        const timer = setTimeout(() => toast.remove(), 8000);
+        toast.querySelector('button')?.addEventListener('click', async () => {
+            clearTimeout(timer);
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/actions/${encodeURIComponent(undoId)}/undo`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || 'Geri alma başarısız');
+                }
+                toast.remove();
+                showToast(successMessage || 'Değişiklik geri alındı.', 'success');
+                if (typeof onSuccess === 'function') onSuccess();
+            } catch (err) {
+                showActionError('Geri alma', err.message);
+            }
+        });
+    }
+
     async function uploadProductLogo(input) {
         const file = input?.files?.[0];
         if (!file) return;
@@ -5161,7 +5188,12 @@ function composeFullName(firstName, lastName) {
             if (res.ok) {
                 const data = await res.json().catch(() => ({}));
                 showToast('Abonelik başarıyla silindi!', 'success');
-                if (data.undo_id) showSubscriptionUndoToast(data.undo_id, 'Abonelik silme işlemi geri alınabilir.');
+                if (data.undo_id) showAdminUndoToast({
+                    undoId: data.undo_id,
+                    message: 'Abonelik silme işlemi geri alınabilir.',
+                    successMessage: 'Abonelik silme işlemi geri alındı.',
+                    onSuccess: loadSubscriptions
+                });
             } else {
                 const body = await res.json().catch(() => ({}));
                 showToast(body.error || `İşlem başarısız (HTTP ${res.status})`, 'error');
@@ -5361,7 +5393,12 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
                         : (isEditing ? 'Abonelik başarıyla güncellendi!' : 'Abonelik başarıyla eklendi!'),
                     'success'
                 );
-                if (isEditing && data.undo_id) showSubscriptionUndoToast(data.undo_id);
+                if (isEditing && data.undo_id) showAdminUndoToast({
+                    undoId: data.undo_id,
+                    message: 'Abonelik değişikliği geri alınabilir.',
+                    successMessage: 'Abonelik değişikliği geri alındı.',
+                    onSuccess: loadSubscriptions
+                });
             } else {
                 const body = await res.json().catch(() => ({}));
                 showActionError('Abonelik kaydetme işlemi', body.error);
@@ -5373,32 +5410,6 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         loadSubscriptions();
         loadDashboard();
     });
-
-    function showSubscriptionUndoToast(undoId, message = 'Abonelik değişikliği geri alınabilir.') {
-        const toast = document.createElement('div');
-        toast.className = 'toast-notification fixed z-50 top-5 right-5 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-white text-blue-700 border-l-4 border-blue-500 flex items-center gap-3';
-        toast.innerHTML = `<span><i class="fas fa-history mr-2"></i>${escapeHtml(message)}</span><button type="button" class="px-2 py-1 rounded bg-blue-600 text-white text-xs">Geri al</button>`;
-        document.body.appendChild(toast);
-        const timer = setTimeout(() => toast.remove(), 8000);
-        toast.querySelector('button')?.addEventListener('click', async () => {
-            clearTimeout(timer);
-            try {
-                const res = await fetch(`${API_BASE}/api/admin/actions/${encodeURIComponent(undoId)}/undo`, {
-                    method: 'POST',
-                    credentials: 'include'
-                });
-                if (!res.ok) {
-                    const body = await res.json().catch(() => ({}));
-                    throw new Error(body.error || 'Geri alma başarısız');
-                }
-                toast.remove();
-                showToast('Abonelik değişikliği geri alındı.', 'success');
-                loadSubscriptions();
-            } catch (err) {
-                showActionError('Geri alma', err.message);
-            }
-        });
-    }
 
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -5502,7 +5513,12 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             if (res.ok) {
                 const data = await res.json().catch(() => ({}));
                 showToast(isNew ? 'Ürün oluşturuldu!' : 'Ürün güncellendi!', 'success');
-                if (!isNew && data.undo_id) showProductUndoToast(data.undo_id);
+                if (!isNew && data.undo_id) showAdminUndoToast({
+                    undoId: data.undo_id,
+                    message: 'Değişiklik geri alınabilir.',
+                    successMessage: 'Ürün değişikliği geri alındı.',
+                    onSuccess: loadProducts
+                });
                 closeProductModal();
                 loadProducts();
             } else {
@@ -5513,32 +5529,6 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             showActionError('Ürün kaydetme', err.message);
         }
     });
-
-    function showProductUndoToast(undoId) {
-        const toast = document.createElement('div');
-        toast.className = 'toast-notification fixed z-50 top-5 right-5 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-white text-blue-700 border-l-4 border-blue-500 flex items-center gap-3';
-        toast.innerHTML = '<span><i class="fas fa-history mr-2"></i>Değişiklik geri alınabilir.</span><button type="button" class="px-2 py-1 rounded bg-blue-600 text-white text-xs">Geri al</button>';
-        document.body.appendChild(toast);
-        const timer = setTimeout(() => toast.remove(), 8000);
-        toast.querySelector('button')?.addEventListener('click', async () => {
-            clearTimeout(timer);
-            try {
-                const res = await fetch(`${API_BASE}/api/admin/actions/${encodeURIComponent(undoId)}/undo`, {
-                    method: 'POST',
-                    credentials: 'include'
-                });
-                if (!res.ok) {
-                    const body = await res.json().catch(() => ({}));
-                    throw new Error(body.error || 'Geri alma başarısız');
-                }
-                toast.remove();
-                showToast('Ürün değişikliği geri alındı.', 'success');
-                loadProducts();
-            } catch (err) {
-                showActionError('Geri alma', err.message);
-            }
-        });
-    }
 
     [
         'productAccessType',
@@ -10636,7 +10626,12 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
                 }
             }
             showToast('Kurum güncellendi!', 'success');
-            if (data.undo_id) showInstitutionUndoToast(data.undo_id);
+            if (data.undo_id) showAdminUndoToast({
+                undoId: data.undo_id,
+                message: 'Kurum değişikliği geri alınabilir.',
+                successMessage: 'Kurum değişikliği geri alındı.',
+                onSuccess: loadInstitutions
+            });
             closeEditInstitutionModal();
             loadInstitutions();
         } else {
@@ -10647,32 +10642,6 @@ document.getElementById('editInstitutionForm').addEventListener('submit', async 
         showToast(err.message || 'Bağlantı hatası oluştu.', 'error');
     }
 });
-
-function showInstitutionUndoToast(undoId) {
-    const toast = document.createElement('div');
-    toast.className = 'toast-notification fixed z-50 top-5 right-5 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-white text-blue-700 border-l-4 border-blue-500 flex items-center gap-3';
-    toast.innerHTML = '<span><i class="fas fa-history mr-2"></i>Kurum değişikliği geri alınabilir.</span><button type="button" class="px-2 py-1 rounded bg-blue-600 text-white text-xs">Geri al</button>';
-    document.body.appendChild(toast);
-    const timer = setTimeout(() => toast.remove(), 8000);
-    toast.querySelector('button')?.addEventListener('click', async () => {
-        clearTimeout(timer);
-        try {
-            const res = await fetch(`${API_BASE}/api/admin/actions/${encodeURIComponent(undoId)}/undo`, {
-                method: 'POST',
-                credentials: 'include'
-            });
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({}));
-                throw new Error(body.error || 'Geri alma başarısız');
-            }
-            toast.remove();
-            showToast('Kurum değişikliği geri alındı.', 'success');
-            loadInstitutions();
-        } catch (err) {
-            showActionError('Geri alma', err.message);
-        }
-    });
-}
 
 function openBulkInstitutionModal() {
     document.getElementById('bulkPasteArea').value = '';
