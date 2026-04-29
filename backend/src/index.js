@@ -640,13 +640,16 @@ async function ensureInstitutionMetadataColumns(db) {
   for (const sql of [
     `ALTER TABLE institutions ADD COLUMN logo_url TEXT`,
     `ALTER TABLE institutions ADD COLUMN website_url TEXT`,
-    `ALTER TABLE institutions ADD COLUMN city TEXT`
+    `ALTER TABLE institutions ADD COLUMN city TEXT`,
+    `ALTER TABLE institutions ADD COLUMN category TEXT DEFAULT 'University'`,
+    `ALTER TABLE institutions ADD COLUMN status TEXT DEFAULT 'Customer'`,
+    `ALTER TABLE institutions ADD COLUMN airtable_id TEXT`
   ]) {
     try {
       await db.prepare(sql).run();
     } catch (err) {
       const message = String(err?.message || '').toLowerCase();
-      if (!message.includes('duplicate column name')) {
+      if (!/duplicate column/i.test(message)) {
         throw err;
       }
     }
@@ -3943,17 +3946,20 @@ app.get('/api/admin/institutions', async (c) => {
       LOWER(inst.name) LIKE ?
       OR LOWER(COALESCE(inst.domain, '')) LIKE ?
       OR LOWER(COALESCE(inst.city, '')) LIKE ?
+      OR LOWER(COALESCE(inst.website_url, '')) LIKE ?
+      OR LOWER(COALESCE(inst.category, '')) LIKE ?
+      OR LOWER(COALESCE(inst.status, '')) LIKE ?
     )`);
     const like = `%${search.toLowerCase()}%`;
-    params.push(like, like, like);
+    params.push(like, like, like, like, like, like);
   }
   if (category) {
-    whereParts.push(`inst.category = ?`);
-    params.push(category);
+    whereParts.push(`LOWER(TRIM(COALESCE(inst.category, ''))) = ?`);
+    params.push(category.toLowerCase());
   }
   if (status) {
-    whereParts.push(`inst.status = ?`);
-    params.push(status);
+    whereParts.push(`LOWER(TRIM(COALESCE(inst.status, ''))) = ?`);
+    params.push(status.toLowerCase());
   }
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
 
