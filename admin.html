@@ -4290,7 +4290,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             }
 
             // RA alert badge (super_admin için sessizce çek)
-            apiFetch('/api/ra/admin/alerts').then((d) => typeof _raUpdateAlertBadge === 'function' && _raUpdateAlertBadge((d.alerts || []).length)).catch(() => {});
+            fetch(`${API_BASE}/api/ra/admin/alerts`, { credentials: 'include' }).then((r) => r.ok ? r.json() : null).then((d) => d && typeof _raUpdateAlertBadge === 'function' && _raUpdateAlertBadge((d.alerts || []).length)).catch(() => {});
 
             if (summaryEl) summaryEl.textContent = `${activePeriodLabel} görünümü`;
             if (registrationsLabelEl) registrationsLabelEl.textContent = `${activePeriodLabel} Kaydı`;
@@ -5985,7 +5985,7 @@ function _initRemoteAccessTab() {
     document.getElementById('raAlertsRefreshBtn')?.addEventListener('click', () => _raLoadAlerts(true));
     document.getElementById('raAlertsDismissAllBtn')?.addEventListener('click', async () => {
         if (!confirm('Tüm uyarılar kapatılsın mı?')) return;
-        await apiFetch('/api/ra/admin/alerts/dismiss-all', { method: 'POST' });
+        await fetch(`${API_BASE}/api/ra/admin/alerts/dismiss-all`, { method: 'POST', credentials: 'include' });
         await _raLoadAlerts(true);
         _raUpdateAlertBadge(0);
     });
@@ -6452,7 +6452,9 @@ async function _raLoadAlerts(force = false) {
 
     let data;
     try {
-        data = await apiFetch('/api/ra/admin/alerts');
+        const res = await fetch(`${API_BASE}/api/ra/admin/alerts`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-red-400 text-sm">Yüklenemedi: ${escapeHtml(String(err.message || err))}</td></tr>`;
         return;
@@ -6492,7 +6494,7 @@ async function _raLoadAlerts(force = false) {
         btn.addEventListener('click', async () => {
             const id = btn.dataset.alertDismiss;
             btn.disabled = true;
-            await apiFetch(`/api/ra/admin/alerts/${id}/dismiss`, { method: 'POST' });
+            await fetch(`${API_BASE}/api/ra/admin/alerts/${id}/dismiss`, { method: 'POST', credentials: 'include' });
             await _raLoadAlerts(true);
         });
     });
