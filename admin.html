@@ -460,7 +460,7 @@
                 <a href="#" class="sidebar-link" data-tab="files" id="filesTab"><i class="fas fa-folder-open w-5"></i><span>Merkezi Dosyalar</span></a>
                 <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
                 <a href="#" class="sidebar-link" data-tab="products" id="productsTab"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
-                <a href="#" class="sidebar-link" data-tab="remote-access" id="remoteAccessTab" style="display:none"><i class="fas fa-network-wired w-5"></i><span>Uzaktan Erişim</span></a>
+                <a href="#" class="sidebar-link" data-tab="remote-access" id="remoteAccessTab" style="display:none"><i class="fas fa-network-wired w-5"></i><span>Uzaktan Erişim</span><span id="sidebarBadgeAlerts" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
                 <a href="#" class="sidebar-link" data-tab="settings" id="settingsTab"><i class="fas fa-cog w-5"></i><span>Ayarlar</span></a>
             </nav>
             <div class="absolute bottom-6 left-6">
@@ -1463,6 +1463,10 @@
             <button type="button" data-ra-subtab="logs" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
                 <i class="fas fa-clipboard-list mr-2"></i>Erişim Logları
             </button>
+            <button type="button" data-ra-subtab="alerts" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500 inline-flex items-center gap-1.5">
+                <i class="fas fa-exclamation-triangle mr-1"></i>Uyarılar
+                <span id="raAlertsBadge" class="hidden bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span>
+            </button>
         </div>
 
         <!-- Kurum Tünelleri sub-view -->
@@ -1648,6 +1652,44 @@
             </div>
         </div>
     </div>
+
+        <!-- Uyarılar sub-view -->
+        <div id="ra-subview-alerts" class="ra-subview hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-800">Upstream Erişim Uyarıları</h3>
+                    <p class="text-xs text-gray-500">Son 7 günde proxy'nin upstream'den aldığı 401/403 hataları. Her ürün+kurum kombinasyonu için 15 dakikada bir kayıt açılır.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" id="raAlertsRefreshBtn" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2">
+                        <i class="fas fa-sync-alt"></i><span>Yenile</span>
+                    </button>
+                    <button type="button" id="raAlertsDismissAllBtn" class="text-sm px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 inline-flex items-center gap-2">
+                        <i class="fas fa-check-double"></i><span>Tümünü Kapat</span>
+                    </button>
+                </div>
+            </div>
+            <div id="raAlertsTableWrap" class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Zaman</th>
+                                <th class="px-4 py-2 text-left">Ürün</th>
+                                <th class="px-4 py-2 text-left">Kurum</th>
+                                <th class="px-4 py-2 text-left">Host</th>
+                                <th class="px-4 py-2 text-left">HTTP</th>
+                                <th class="px-4 py-2 text-left">Email</th>
+                                <th class="px-4 py-2 text-left"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="raAlertsTableBody" class="divide-y divide-gray-100 text-gray-700">
+                            <tr><td colspan="7" class="px-4 py-6 text-center text-gray-400 text-sm">Yükleniyor…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
     <!-- RA Tunnel edit modal -->
     <div id="raTunnelModal" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
@@ -4225,6 +4267,9 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 else { supBadge.classList.add('hidden'); }
             }
 
+            // RA alert badge (super_admin için sessizce çek)
+            apiFetch('/api/ra/admin/alerts').then((d) => _raUpdateAlertBadge((d.alerts || []).length)).catch(() => {});
+
             if (summaryEl) summaryEl.textContent = `${activePeriodLabel} görünümü`;
             if (registrationsLabelEl) registrationsLabelEl.textContent = `${activePeriodLabel} Kaydı`;
             
@@ -5810,7 +5855,7 @@ const _ra = {
     editingProductSlug: null,
 };
 
-const RA_SUBTABS = ['tunnels', 'subscriptions', 'products', 'logs'];
+const RA_SUBTABS = ['tunnels', 'subscriptions', 'products', 'logs', 'alerts'];
 
 const RA_RECIPE_TEMPLATES = {
     form_post: JSON.stringify({
@@ -5887,6 +5932,7 @@ async function _raRunActiveSubtab() {
         case 'subscriptions': await _raLoadSubscriptions(); break;
         case 'products': await _raLoadProducts(); break;
         case 'logs': await _raLoadLogs(); break;
+        case 'alerts': await _raLoadAlerts(); break;
     }
 }
 
@@ -5913,6 +5959,14 @@ function _initRemoteAccessTab() {
     if (refreshSubsBtn) refreshSubsBtn.addEventListener('click', () => _raLoadSubscriptions(true));
     const refreshProductsBtn = document.getElementById('raRefreshProductsBtn');
     if (refreshProductsBtn) refreshProductsBtn.addEventListener('click', () => _raLoadProducts(true));
+
+    document.getElementById('raAlertsRefreshBtn')?.addEventListener('click', () => _raLoadAlerts(true));
+    document.getElementById('raAlertsDismissAllBtn')?.addEventListener('click', async () => {
+        if (!confirm('Tüm uyarılar kapatılsın mı?')) return;
+        await apiFetch('/api/ra/admin/alerts/dismiss-all', { method: 'POST' });
+        await _raLoadAlerts(true);
+        _raUpdateAlertBadge(0);
+    });
 
     const applyFilterBtn = document.getElementById('raApplyLogsFilterBtn');
     if (applyFilterBtn) applyFilterBtn.addEventListener('click', () => {
@@ -6353,6 +6407,73 @@ async function _raExportLogsCsv() {
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i><span>CSV</span>'; }
     }
+}
+
+// ─── Upstream Uyarıları ───────────────────────────────────────────────────
+
+function _raUpdateAlertBadge(count) {
+    const sidebar = document.getElementById('sidebarBadgeAlerts');
+    const tab = document.getElementById('raAlertsBadge');
+    const label = count > 99 ? '99+' : String(count);
+    for (const el of [sidebar, tab]) {
+        if (!el) continue;
+        if (count > 0) { el.textContent = label; el.classList.remove('hidden'); }
+        else { el.classList.add('hidden'); }
+    }
+}
+
+async function _raLoadAlerts(force = false) {
+    const tbody = document.getElementById('raAlertsTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-gray-400 text-sm">Yükleniyor…</td></tr>';
+
+    let data;
+    try {
+        data = await apiFetch('/api/ra/admin/alerts');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-red-400 text-sm">Yüklenemedi: ${escapeHtml(String(err.message || err))}</td></tr>`;
+        return;
+    }
+
+    const alerts = data.alerts || [];
+    _raUpdateAlertBadge(alerts.length);
+
+    if (!alerts.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-gray-400 text-sm"><i class="fas fa-check-circle mr-1 text-green-400"></i>Aktif uyarı yok.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = alerts.map((a) => {
+        const ts = new Date(a.created_at * 1000).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+        const statusClass = a.upstream_status === 401 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
+        const notified = a.notified_at
+            ? `<span class="text-green-600 text-xs"><i class="fas fa-envelope-open-text mr-0.5"></i>${new Date(a.notified_at * 1000).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>`
+            : '<span class="text-gray-300 text-xs">—</span>';
+        return `<tr>
+            <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">${ts}</td>
+            <td class="px-4 py-2 font-medium">${escapeHtml(a.product_slug || '—')}</td>
+            <td class="px-4 py-2 text-gray-600">${escapeHtml(a.institution_name || String(a.institution_id || '—'))}</td>
+            <td class="px-4 py-2 text-gray-500 text-xs font-mono">${escapeHtml(a.target_host || '—')}</td>
+            <td class="px-4 py-2"><span class="px-1.5 py-0.5 rounded text-xs font-bold ${statusClass}">${a.upstream_status}</span></td>
+            <td class="px-4 py-2">${notified}</td>
+            <td class="px-4 py-2 text-right">
+                <button type="button" class="text-xs text-gray-400 hover:text-red-500" data-alert-dismiss="${a.id}" title="Kapat">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    // Dismiss butonları
+    tbody.querySelectorAll('[data-alert-dismiss]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const id = btn.dataset.alertDismiss;
+            btn.disabled = true;
+            await apiFetch(`/api/ra/admin/alerts/${id}/dismiss`, { method: 'POST' });
+            await _raLoadAlerts(true);
+        });
+    });
 }
 
 // ─── Kurumsal Abonelik Credential'ları ────────────────────────────────────
