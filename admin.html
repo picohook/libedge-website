@@ -1651,7 +1651,6 @@
                 </div>
             </div>
         </div>
-    </div>
 
         <!-- Uyarılar sub-view -->
         <div id="ra-subview-alerts" class="ra-subview hidden">
@@ -1690,6 +1689,7 @@
                 </div>
             </div>
         </div>
+    </div>
 
     <!-- RA Tunnel edit modal -->
     <div id="raTunnelModal" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
@@ -3150,11 +3150,33 @@ function redirectToHome(msg) {
 }
 
 let _adminSessionRedirecting = false;
+let _adminTokenRefreshing = null; // in-flight refresh promise (tek seferlik)
 const _nativeAdminFetch = window.fetch.bind(window);
 window.fetch = async function(...args) {
     const response = await _nativeAdminFetch(...args);
 
     if (response.status === 401 && !_adminSessionRedirecting) {
+        // Refresh endpoint'inin kendisinden 401 geldiyse sonsuz döngüyü önle
+        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+        if (url.includes('/api/auth/refresh')) {
+            _adminSessionRedirecting = true;
+            redirectToHome('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.');
+            return response;
+        }
+
+        // Paralel çoklu 401'de tek bir refresh isteği açılır
+        if (!_adminTokenRefreshing) {
+            _adminTokenRefreshing = _nativeAdminFetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+                .finally(() => { _adminTokenRefreshing = null; });
+        }
+
+        const refreshResp = await _adminTokenRefreshing;
+        if (refreshResp && refreshResp.ok) {
+            // Token yenilendi — orijinal isteği bir kez daha dene
+            return _nativeAdminFetch(...args);
+        }
+
+        // Refresh da başarısız → gerçek logout
         _adminSessionRedirecting = true;
         redirectToHome('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.');
     }
@@ -4268,7 +4290,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             }
 
             // RA alert badge (super_admin için sessizce çek)
-            apiFetch('/api/ra/admin/alerts').then((d) => _raUpdateAlertBadge((d.alerts || []).length)).catch(() => {});
+            apiFetch('/api/ra/admin/alerts').then((d) => typeof _raUpdateAlertBadge === 'function' && _raUpdateAlertBadge((d.alerts || []).length)).catch(() => {});
 
             if (summaryEl) summaryEl.textContent = `${activePeriodLabel} görünümü`;
             if (registrationsLabelEl) registrationsLabelEl.textContent = `${activePeriodLabel} Kaydı`;
