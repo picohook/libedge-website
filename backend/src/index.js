@@ -2220,7 +2220,8 @@ app.get('/api/admin/users', async (c) => {
     url.searchParams.has('role') ||
     url.searchParams.has('institution');
 
-  const search = (url.searchParams.get('search') || '').trim().toLowerCase();
+  const searchRaw = (url.searchParams.get('search') || '').trim();
+  const search = searchRaw.toLowerCase();
   const roleFilter = (url.searchParams.get('role') || '').trim();
   const institutionFilter = (url.searchParams.get('institution') || '').trim();
   const requestedPage = Math.max(1, Number(url.searchParams.get('page') || 1));
@@ -2264,13 +2265,17 @@ app.get('/api/admin/users', async (c) => {
   }
 
   if (search) {
+    // SQLite LOWER() Türkçe büyük harfleri küçültemez — ham terim OR koşuluyla eklenir.
     whereParts.push(`(
       LOWER(COALESCE(u.full_name, '')) LIKE ?
       OR LOWER(u.email) LIKE ?
       OR LOWER(COALESCE(i.name, u.institution, '')) LIKE ?
+      OR COALESCE(u.full_name, '') LIKE ?
+      OR COALESCE(i.name, u.institution, '') LIKE ?
     )`);
     const like = `%${search}%`;
-    params.push(like, like, like);
+    const likeRaw = `%${searchRaw}%`;
+    params.push(like, like, like, likeRaw, likeRaw);
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
@@ -3921,9 +3926,11 @@ app.get('/api/admin/institutions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   await ensureInstitutionMetadataColumns(db);
+  await ensureRemoteAccessSchema(db); // p.ra_enabled ve institution_ra_settings için gerekli
   const role = await getUserRole(c);
   const url = new URL(c.req.url);
-  const search = (url.searchParams.get('search') || '').trim();
+  const searchRaw = (url.searchParams.get('search') || '').trim();
+  const search = searchRaw.toLowerCase();
   const category = (url.searchParams.get('category') || '').trim();
   const status = (url.searchParams.get('status') || '').trim();
   const sort = (url.searchParams.get('sort') || 'name').trim();
@@ -3942,6 +3949,8 @@ app.get('/api/admin/institutions', async (c) => {
   const whereParts = [];
   const params = [];
   if (search) {
+    // SQLite LOWER() Türkçe büyük harfleri (Ü,Ğ,Ş,İ) küçültemez.
+    // Ham arama terimi OR koşuluyla eklenerek büyük harfli Türkçe eşleşmeler de yakalanır.
     whereParts.push(`(
       LOWER(inst.name) LIKE ?
       OR LOWER(COALESCE(inst.domain, '')) LIKE ?
@@ -3949,9 +3958,12 @@ app.get('/api/admin/institutions', async (c) => {
       OR LOWER(COALESCE(inst.website_url, '')) LIKE ?
       OR LOWER(COALESCE(inst.category, '')) LIKE ?
       OR LOWER(COALESCE(inst.status, '')) LIKE ?
+      OR inst.name LIKE ?
+      OR COALESCE(inst.city, '') LIKE ?
     )`);
-    const like = `%${search.toLowerCase()}%`;
-    params.push(like, like, like, like, like, like);
+    const like = `%${search}%`;
+    const likeRaw = `%${searchRaw}%`;
+    params.push(like, like, like, like, like, like, likeRaw, likeRaw);
   }
   if (category) {
     whereParts.push(`LOWER(TRIM(COALESCE(inst.category, ''))) = ?`);
