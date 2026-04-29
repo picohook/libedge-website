@@ -112,7 +112,12 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   if (!target) {
     return htmlError(403, 'Bu oturum bu yayıncı hostuna erişemez.');
   }
-  const rateLimit = await enforceProxyRateLimit(env, sessionId, session, url.pathname);
+  // Static asset tespitini upstream path'iyle yap. /__ra-host/<host>/... alt
+  // host akışında url.pathname o prefix'le başlar; isStaticAssetPath'in prefix
+  // kontrolleri (/static/, /_next/image, /assets/, ...) eşleşmez ve asset'ler
+  // gereksiz yere KV write üretir. target.path üst-prefix kırpıldıktan sonraki
+  // upstream path'tir; path-proxy modundaki remainingPath ile aynı semantiği taşır.
+  const rateLimit = await enforceProxyRateLimit(env, sessionId, session, target.path);
   if (rateLimit) return proxyRateLimitResponse(rateLimit);
 
   // Upstream relay — path ve query aynen korunur, sadece host değişir.
