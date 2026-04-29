@@ -181,6 +181,7 @@
             }
         }
         .product-preview-card {
+            position: relative;
             min-height: 230px;
             border-radius: 0.75rem;
             border: 1px solid #e5e7eb;
@@ -197,6 +198,26 @@
         .product-preview-back {
             background: #eff6ff;
             align-items: stretch;
+        }
+        .product-preview-back > :not(.product-preview-video):not(.product-preview-video-overlay) {
+            position: relative;
+            z-index: 2;
+        }
+        .product-preview-video,
+        .product-preview-video-overlay {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .product-preview-video {
+            object-fit: cover;
+            z-index: 0;
+            opacity: 0.7;
+        }
+        .product-preview-video-overlay {
+            z-index: 1;
         }
         .product-preview-logo {
             width: 100%;
@@ -3551,6 +3572,7 @@ document.addEventListener('click', function(e) {
         'lecturio': { image: 'assets/images/lect_back.webp' },
         'nejmhealer': { image: 'assets/images/nejm.webp' },
         'imachek': { image: 'assets/images/imachek0.webp' },
+        'jove-dergiler': { video: 'https://app.jove.com/assets/bg_video_teaser_v3_.mp4', overlay: 'rgba(255, 255, 255, 0.3)' },
         'jove-education': { image: 'assets/images/educa.webp' },
         'jove-business': { image: 'assets/images/business.webp' },
         'biorender': { image: 'assets/images/bio.webp' },
@@ -3611,6 +3633,7 @@ document.addEventListener('click', function(e) {
         if (front) front.style.borderTopColor = color;
         if (back) {
             back.style.borderTopColor = color;
+            back.querySelectorAll('.product-preview-video, .product-preview-video-overlay').forEach(el => el.remove());
             if (cardBackgroundUrl) {
                 const overlay = fallbackBg?.overlay || getOverlayCss(cardBackgroundOverlay);
                 back.style.background = `linear-gradient(to bottom, ${overlay}, rgba(255, 255, 255, 0.05)), url('${cardBackgroundUrl}')`;
@@ -3618,6 +3641,24 @@ document.addEventListener('click', function(e) {
                 back.style.backgroundPosition = 'center';
                 back.style.backgroundRepeat = 'no-repeat';
                 back.style.color = backTextColor;
+            } else if (fallbackBg?.video) {
+                back.style.background = '#eff6ff';
+                back.style.backgroundSize = '';
+                back.style.backgroundPosition = '';
+                back.style.backgroundRepeat = '';
+                back.style.color = backTextColor;
+                const video = document.createElement('video');
+                video.className = 'product-preview-video';
+                video.autoplay = true;
+                video.muted = true;
+                video.loop = true;
+                video.playsInline = true;
+                video.src = fallbackBg.video;
+                const overlay = document.createElement('div');
+                overlay.className = 'product-preview-video-overlay';
+                overlay.style.background = fallbackBg.overlay || getOverlayCss(cardBackgroundOverlay);
+                back.prepend(overlay);
+                back.prepend(video);
             } else {
                 back.style.background = '#eff6ff';
                 back.style.backgroundSize = '';
