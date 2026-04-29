@@ -3353,7 +3353,7 @@ async function restoreProductAction(db, id, { enforceExpiry = false } = {}) {
 async function restoreSubscriptionAction(db, id, { enforceExpiry = false } = {}) {
   const log = await db.prepare(`
     SELECT * FROM admin_action_logs
-    WHERE id = ? AND entity_type IN ('subscription', 'institution_subscription') AND action = 'update'
+    WHERE id = ? AND entity_type IN ('subscription', 'institution_subscription') AND action IN ('update', 'delete')
   `).bind(id).first();
   if (!log) return { error: 'Geri alınacak işlem bulunamadı', status: 404 };
   if (log.undone_at) return { error: 'Bu işlem zaten geri alınmış', status: 409 };
@@ -3363,18 +3363,26 @@ async function restoreSubscriptionAction(db, id, { enforceExpiry = false } = {})
   const before = JSON.parse(log.before_json || '{}');
   if (!before.id) return { error: 'Geri alma verisi eksik', status: 400 };
   const isInstitution = log.entity_type === 'institution_subscription';
-  const columns = isInstitution
+  const table = isInstitution ? 'institution_subscriptions' : 'subscriptions';
+  const updateColumns = isInstitution
     ? ['institution_id', 'product_slug', 'status', 'end_date', 'access_type', 'access_url', 'registration_url', 'requires_institution_email', 'requires_vpn', 'access_notes_tr', 'access_notes_en']
     : ['user_id', 'product_slug', 'status', 'end_date'];
-  const table = isInstitution ? 'institution_subscriptions' : 'subscriptions';
-  const updateStmt = db.prepare(`
-    UPDATE ${table} SET ${columns.map((col) => `${col} = ?`).join(', ')}
-    WHERE id = ?
-  `).bind(...columns.map((col) => before[col] ?? null), before.id);
+  const insertColumns = isInstitution
+    ? ['id', 'institution_id', 'product_slug', 'status', 'access_type', 'access_url', 'registration_url', 'requires_institution_email', 'requires_vpn', 'access_notes_tr', 'access_notes_en', 'start_date', 'end_date', 'created_by', 'created_at']
+    : ['id', 'user_id', 'product_slug', 'status', 'start_date', 'end_date', 'created_at'];
+  const restoreStmt = log.action === 'delete'
+    ? db.prepare(`
+      INSERT INTO ${table} (${insertColumns.join(', ')})
+      VALUES (${insertColumns.map(() => '?').join(', ')})
+    `).bind(...insertColumns.map((col) => before[col] ?? null))
+    : db.prepare(`
+      UPDATE ${table} SET ${updateColumns.map((col) => `${col} = ?`).join(', ')}
+      WHERE id = ?
+    `).bind(...updateColumns.map((col) => before[col] ?? null), before.id);
   const markStmt = db.prepare(`
     UPDATE admin_action_logs SET undone_at = ? WHERE id = ?
   `).bind(new Date().toISOString(), id);
-  await db.batch([updateStmt, markStmt]);
+  await db.batch([restoreStmt, markStmt]);
   return { success: true };
 }
 
@@ -4015,20 +4023,43 @@ app.delete('/api/admin/subscription/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const id = c.req.param('id');
   const db = c.env.DB;
+  await ensureAdminActionLogsTable(db);
   const role = await getUserRole(c);
   const adminInstitution = await getUserInstitution(c);
+  const existing = await db.prepare(`
+    SELECT s.*, u.institution
+    FROM subscriptions s
+    LEFT JOIN users u ON s.user_id = u.id
+    WHERE s.id = ?
+  `).bind(id).first();
+  if (!existing) return c.json({ error: 'Abonelik bulunamadı' }, 404);
   
   if (role === 'admin') {
-    const sub = await db.prepare(`
-      SELECT u.institution FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id WHERE s.id = ?
-    `).bind(id).first();
-    if (!sub || sub.institution !== adminInstitution) {
+    if (existing.institution !== adminInstitution) {
       return c.json({ error: 'Sadece kendi kurumunuzdaki abonelikleri silebilirsiniz' }, 403);
     }
   }
-  
-  await db.prepare(`DELETE FROM subscriptions WHERE id=?`).bind(id).run();
-  return c.json({ success: true });
+  const undoId = crypto.randomUUID();
+  const undoExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const actor = await getTokenPayloadFromCookie(c);
+  const deleteStmt = db.prepare(`DELETE FROM subscriptions WHERE id=?`).bind(id);
+  const logStmt = db.prepare(`
+    INSERT INTO admin_action_logs (
+      id, actor_user_id, entity_type, entity_id, action,
+      before_json, after_json, undo_expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    undoId,
+    actor?.user_id || actor?.id || null,
+    'subscription',
+    String(id),
+    'delete',
+    JSON.stringify(existing),
+    null,
+    undoExpiresAt
+  );
+  await db.batch([deleteStmt, logStmt]);
+  return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
 });
 
 // ====================== KURUM ABONELİK YÖNETİMİ ======================
@@ -4159,10 +4190,31 @@ app.delete('/api/admin/institution-subscription/:id', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const id = c.req.param('id');
   const db = c.env.DB;
-  const sub = await db.prepare(`SELECT id FROM institution_subscriptions WHERE id = ?`).bind(id).first();
+  await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureAdminActionLogsTable(db);
+  const sub = await db.prepare(`SELECT * FROM institution_subscriptions WHERE id = ?`).bind(id).first();
   if (!sub) return c.json({ error: 'Abonelik bulunamadı' }, 404);
-  await db.prepare(`DELETE FROM institution_subscriptions WHERE id = ?`).bind(id).run();
-  return c.json({ success: true });
+  const undoId = crypto.randomUUID();
+  const undoExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const actor = await getTokenPayloadFromCookie(c);
+  const deleteStmt = db.prepare(`DELETE FROM institution_subscriptions WHERE id = ?`).bind(id);
+  const logStmt = db.prepare(`
+    INSERT INTO admin_action_logs (
+      id, actor_user_id, entity_type, entity_id, action,
+      before_json, after_json, undo_expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    undoId,
+    actor?.user_id || actor?.id || null,
+    'institution_subscription',
+    String(id),
+    'delete',
+    JSON.stringify(sub),
+    null,
+    undoExpiresAt
+  );
+  await db.batch([deleteStmt, logStmt]);
+  return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
 });
 
 

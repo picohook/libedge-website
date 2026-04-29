@@ -5158,8 +5158,11 @@ function composeFullName(firstName, lastName) {
                 ? `${API_BASE}/api/admin/institution-subscription/${id}`
                 : `${API_BASE}/api/admin/subscription/${id}`;
             const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
-            if (res.ok) showToast('Abonelik başarıyla silindi!', 'success');
-            else {
+            if (res.ok) {
+                const data = await res.json().catch(() => ({}));
+                showToast('Abonelik başarıyla silindi!', 'success');
+                if (data.undo_id) showSubscriptionUndoToast(data.undo_id, 'Abonelik silme işlemi geri alınabilir.');
+            } else {
                 const body = await res.json().catch(() => ({}));
                 showToast(body.error || `İşlem başarısız (HTTP ${res.status})`, 'error');
             }
@@ -5200,7 +5203,8 @@ function composeFullName(firstName, lastName) {
                 try { before = JSON.parse(a.before_json || '{}'); } catch (_) { before = {}; }
                 const isInstitution = a.entity_type === 'institution_subscription';
                 const typeLabel = isInstitution ? 'Kurum' : 'Bireysel';
-                const title = `${typeLabel} abonelik #${a.entity_id}`;
+                const actionLabel = a.action === 'delete' ? 'Silme' : 'Güncelleme';
+                const title = `${typeLabel} abonelik #${a.entity_id} • ${actionLabel}`;
                 const when = a.created_at ? new Date(a.created_at).toLocaleString('tr-TR') : '-';
                 const disabled = a.undone_at ? 'disabled opacity-50 cursor-not-allowed' : '';
                 const label = a.undone_at ? 'Geri yüklendi' : 'Geri yükle';
@@ -5370,10 +5374,10 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         loadDashboard();
     });
 
-    function showSubscriptionUndoToast(undoId) {
+    function showSubscriptionUndoToast(undoId, message = 'Abonelik değişikliği geri alınabilir.') {
         const toast = document.createElement('div');
         toast.className = 'toast-notification fixed z-50 top-5 right-5 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-white text-blue-700 border-l-4 border-blue-500 flex items-center gap-3';
-        toast.innerHTML = '<span><i class="fas fa-history mr-2"></i>Abonelik değişikliği geri alınabilir.</span><button type="button" class="px-2 py-1 rounded bg-blue-600 text-white text-xs">Geri al</button>';
+        toast.innerHTML = `<span><i class="fas fa-history mr-2"></i>${escapeHtml(message)}</span><button type="button" class="px-2 py-1 rounded bg-blue-600 text-white text-xs">Geri al</button>`;
         document.body.appendChild(toast);
         const timer = setTimeout(() => toast.remove(), 8000);
         toast.querySelector('button')?.addEventListener('click', async () => {
