@@ -8,10 +8,12 @@ on:
     paths:
       - 'backend/**'
       - 'wrangler.toml'
+      - 'workers/proxy/**'
+      - '.github/workflows/deploy-workers.yml'
 
 jobs:
-  deploy-staging:
-    name: Deploy → form-handler-staging
+  deploy-backend-staging:
+    name: Deploy backend → libedge-api-staging
     if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     steps:
@@ -21,8 +23,8 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy --env staging
 
-  deploy-prod:
-    name: Deploy → form-handler-prod
+  deploy-backend-prod:
+    name: Deploy backend → libedge-api-prod
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -30,4 +32,28 @@ jobs:
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy --env production
+
+  deploy-proxy-staging:
+    name: Deploy proxy → libedge-ra-proxy-staging
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: workers/proxy
+          command: deploy --env staging
+
+  deploy-proxy-prod:
+    name: Deploy proxy → libedge-ra-proxy-production
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: workers/proxy
           command: deploy --env production
