@@ -116,6 +116,26 @@ formats_json
 recommendation_weight
 ```
 
+### Toplu Ürün Onboarding
+
+Yeni kaynak listeleri önce minimal metadata ile içeri alınmalı, sonra admin ürün
+modalından görsel/renk/RA ayrıntıları tamamlanmalıdır. İlk import formatı:
+
+```text
+slug, name, category, default_access_type, default_access_url,
+ra_enabled, ra_origin_host, ra_delivery_mode, ra_origin_landing_path,
+ra_host_allowlist_json
+```
+
+Kural:
+
+- IP kontrollü kaynaklar `default_access_type=ip`, `ra_enabled=1` olur.
+- Direkt link kaynakları `default_access_type=direct`, `default_access_url` dolu,
+  `ra_enabled=0` olur.
+- Aynı slug tekrar gelirse açıkça update istenmeden mevcut ürün ezilmez.
+- Import sonrası public kart görünürlüğü, sıralama, logo, arka plan ve yazı renkleri
+  mevcut admin ürün tasarım alanlarından yönetilir.
+
 ## 4. Ana Sayfa Davranışı
 
 Profil sayfası erişim arama yeri olmamalıdır. Kullanıcı login olur olmaz ana

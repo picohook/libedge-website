@@ -1,7 +1,7 @@
 # LibEdge — Remote Access Platform Mimarisi
 
-> Son güncelleme: 2026-04-28
-> Durum: Staging'de aktif · JoVE/EMIS/ACS/CAS SciFinder mobil erişim uçtan uca çalışıyor ✅
+> Son güncelleme: 2026-04-29
+> Durum: Staging'de aktif · JoVE/EMIS/ACS/CAS SciFinder mobil erişim uçtan uca çalışıyor · proxy rate limit ve tünel heartbeat devrede ✅
 
 ---
 
@@ -37,10 +37,13 @@ libedge-website/
 │       ├── schema.js          # ensureRemoteAccessSchema — runtime kolonlar
 │       ├── crypto.js          # AES-GCM egress secret encrypt/decrypt
 │       ├── host.js            # encodeHost / decodeHost (path-proxy URL)
-│       └── proxy-url.js       # buildRARedirectUrl (trailing slash temizleme)
+│       ├── proxy-url.js       # buildRARedirectUrl (trailing slash temizleme)
+│       └── tunnel-health.js   # cron heartbeat + /health kontrol helper'ı
 ├── workers/proxy/src/
 │   ├── index.js               # Proxy Worker — path_proxy + session_host_proxy
-│   └── egress-client.js       # HMAC-signed egress fetch
+│   ├── egress-client.js       # HMAC-signed egress fetch
+│   ├── error-page.js          # LibEdge HTML hata sayfası
+│   └── rate-limit.js          # session/kurum bazlı proxy rate limit
 ├── ra-egress/
 │   ├── main.go                # Go egress agent (HMAC verify → upstream fetch)
 │   ├── Dockerfile
@@ -136,7 +139,28 @@ arka plan ve yazı renkleriyle yönetir. Dosya upload endpoint'leri:
 | `egress_endpoint` | Tunnel URL, örn. `https://ra-egress.selmiye.com` |
 | `egress_secret_enc` | AES-GCM şifreli HMAC secret (NULL ise RA_EGRESS_DEFAULT_SECRET kullanılır) |
 | `enabled` | 0/1 |
-| `tunnel_status` | `healthy` / `unknown` / `degraded` |
+| `tunnel_status` | `ok` / `error` / `unknown` / `unconfigured` |
+| `tunnel_last_seen` | Son başarılı heartbeat unix timestamp |
+
+### `admin_action_logs`
+
+Admin panelindeki kritik değişiklikler için geri alma/audit kayıtları tutulur.
+
+| Kolon | Açıklama |
+|---|---|
+| `id` | Undo/restore token'ı (`crypto.randomUUID()`) |
+| `actor_*` | İşlemi yapan admin kimliği |
+| `entity_type` | `product`, `subscription`, `institution_subscription`, `institution` |
+| `entity_id` | Değişen kayıt id/slug |
+| `action` | `update` veya `delete` |
+| `before_json` / `after_json` | Geri yükleme için snapshot |
+| `undo_expires_at` | Hızlı "Geri al" süresi |
+| `undone_at` | İşlem geri yüklendiyse timestamp |
+
+`/api/admin/actions/:id/undo` hızlı geri alma için süreyi kontrol eder.
+`/api/admin/actions/:id/restore` işlem geçmişinden daha sonra restore edebilir.
+İlk kapsam: ürün update, abonelik update/delete, kurum aboneliği update/delete,
+kurum update.
 
 ### Staging D1 Mevcut Değerler
 
@@ -344,6 +368,51 @@ Staging debug header'ları:
 | `X-RA-Debug-Oidc-State-Suffix` | CAS `state` protected header içindeki `suffix` |
 | `X-RA-Debug-Oidc-Nonce-Cookie` | Browser request cookie'sinde nonce var mı |
 | `X-RA-Debug-Oidc-Upstream-Nonce-Cookie` | Upstream'e gönderilen efektif cookie'de nonce var mı |
+
+---
+
+## §7.1 Operasyonel Koruma ve Hata UX'i (2026-04-29)
+
+Proxy katmanında kullanıcıya ham upstream/egress hata mesajı gösterilmez.
+`workers/proxy/src/error-page.js` LibEdge markalı HTML hata sayfası döner; response
+`no-store`, `noindex`, `no-referrer` ve dar CSP header'ları taşır. İç hata detayları
+Cloudflare loglarında kalır, kullanıcıya yalnız güvenli açıklama gösterilir.
+
+Proxy rate limit `workers/proxy/src/rate-limit.js` ile KV fixed-window olarak uygulanır.
+Varsayılanlar:
+
+| Scope | Varsayılan |
+|---|---:|
+| Proxy session | 300 istek/dk |
+| Kurum | 5000 istek/dk |
+| Pencere | 60 sn |
+
+Env override'ları:
+
+| Değişken | Açıklama |
+|---|---|
+| `RA_PROXY_RATE_LIMIT_ENABLED=0` | Limitleri geçici kapatır |
+| `RA_PROXY_RATE_WINDOW_SEC` | Pencere süresi |
+| `RA_PROXY_SESSION_RPM` | Session bazlı limit |
+| `RA_PROXY_INSTITUTION_RPM` | Kurum bazlı limit |
+
+Limit aşılırsa proxy `429` + `Retry-After` döner. KV hatasında fail-open davranır;
+yayıncı erişimini KV arızası yüzünden kesmez.
+
+Ana API cron'u (`wrangler.toml` içinde `*/5 * * * *`) artık upstream alert mail kontrolüne
+ek olarak `runTunnelHeartbeat()` çalıştırır. Aktif ve endpoint'i olan kurum tünellerinde
+`{egress_endpoint}/health` test edilir; başarılıysa `tunnel_status='ok'` ve
+`tunnel_last_seen=now`, başarısızsa `tunnel_status='error'` yazılır.
+
+Admin panelinde 2026-04-29 itibarıyla:
+
+- Ürün, abonelik ve kurum değişikliklerinde `undo_id` döner.
+- UI hızlı "Geri al" toast'ı gösterir.
+- Süre kaçırılırsa işlem geçmişinden "Geri yükle" mümkündür.
+- Admin auth kontrolü token refresh döngüsünü tekrar başlatır; oturumun
+  gereksiz kapanması azaltıldı.
+- Kurum arama/filtrelemede Türkçe karakter ve `tunnel_last_seen` numeric/string
+  uyumsuzluğu giderildi.
 
 ---
 

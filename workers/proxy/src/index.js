@@ -14,6 +14,7 @@ import { encodeHost, decodeHost, isValidEncodedHost } from '../../../backend/src
 import { egressFetch } from './egress-client.js';
 import { writeUpstreamAlert } from './alert-writer.js';
 import { htmlError } from './error-page.js';
+import { enforceProxyRateLimit } from './rate-limit.js';
 
 const SESSION_COOKIE  = 'ra_proxy_session';
 const UPSTREAM_HOST_COOKIE = '__ra_upstream';
@@ -111,6 +112,8 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   if (!target) {
     return htmlError(403, 'Bu oturum bu yayıncı hostuna erişemez.');
   }
+  const rateLimit = await enforceProxyRateLimit(env, sessionId, session);
+  if (rateLimit) return proxyRateLimitResponse(rateLimit);
 
   // Upstream relay — path ve query aynen korunur, sadece host değişir.
   // Query params içindeki proxy hostname'i (r*.selmiye.com) origin'e rewrite et;
@@ -330,6 +333,8 @@ async function handlePathProxy(request, env, ctx, url) {
   if (!session) {
     return htmlError(401, 'Oturum bulunamadı. Lütfen portal üzerinden tekrar erişin.');
   }
+  const rateLimit = await enforceProxyRateLimit(env, sessionId, session);
+  if (rateLimit) return proxyRateLimitResponse(rateLimit);
 
   // Oturum ana host'unu mevcut URL label'ıyla kıyasla.
   // OIDC ve multi-origin akışlarında (örn. scifinder-n.cas.org → sso.cas.org →
@@ -786,6 +791,16 @@ function buildSessionCookie(sid, baseHost) {
     `Domain=${baseHost}; Path=/; HttpOnly; Secure; SameSite=Lax; ` +
     `Max-Age=${SESSION_TTL_SEC}`
   );
+}
+
+function proxyRateLimitResponse(rateLimit) {
+  const resp = htmlError(
+    429,
+    'Bu oturumdan çok fazla istek geldi. Lütfen kısa bir süre sonra tekrar deneyin.'
+  );
+  resp.headers.set('Retry-After', String(rateLimit.retryAfter || 60));
+  resp.headers.set('X-RA-Rate-Limit-Scope', rateLimit.scope || 'proxy');
+  return resp;
 }
 
 function buildUpstreamHostCookie(proxyHostname, host) {

@@ -13,6 +13,7 @@ import { registerRaAdminOverview } from './routes/ra/admin-overview.js';
 import { registerRaAdminConfig } from './routes/ra/admin-config.js';
 import { registerRaEgressAllowedHosts } from './routes/ra/egress-allowed-hosts.js';
 import { registerRaAdminAlerts } from './routes/ra/admin-alerts.js';
+import { runTunnelHeartbeat } from './ra/tunnel-health.js';
 import { ensureRemoteAccessSchema } from './ra/schema.js';
 
 const app = new Hono();
@@ -8866,5 +8867,6 @@ export default {
   request: app.request.bind(app),
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(handleScheduledAlerts(env));
+    ctx.waitUntil(runTunnelHeartbeat(env).catch((err) => console.error('tunnel heartbeat failed', err)));
   },
 };

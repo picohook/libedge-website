@@ -22,6 +22,7 @@
 import { requireAuth, parseAndValidate } from '../../index.js';
 import { encryptCredential } from '../../ra/crypto.js';
 import { ensureRemoteAccessSchema } from '../../ra/schema.js';
+import { checkEgressHealth } from '../../ra/tunnel-health.js';
 
 /**
  * @param {import('hono').Hono} app
@@ -214,26 +215,7 @@ export function registerRaAdminTunnel(app) {
       return c.json({ ok: false, error: 'egress_endpoint tanımlı değil' }, 400);
     }
 
-    const healthUrl = `${row.egress_endpoint.replace(/\/$/, '')}/health`;
-    const start = Date.now();
-    let status = 0;
-    let bodyText = '';
-    let errorMsg = null;
-
-    try {
-      const resp = await fetch(healthUrl, {
-        method: 'GET',
-        redirect: 'manual',
-        signal: AbortSignal.timeout(8000),
-      });
-      status = resp.status;
-      bodyText = (await resp.text()).slice(0, 256);
-    } catch (err) {
-      errorMsg = String(err && err.message ? err.message : err);
-    }
-    const latencyMs = Date.now() - start;
-
-    const ok = status === 200 && !errorMsg;
+    const health = await checkEgressHealth(row.egress_endpoint);
     const now = Math.floor(Date.now() / 1000);
     await c.env.DB.prepare(
       `UPDATE institution_ra_settings
@@ -242,16 +224,16 @@ export function registerRaAdminTunnel(app) {
               updated_at       = ?
         WHERE institution_id   = ?`
     )
-      .bind(ok ? 'ok' : 'error', ok ? 1 : 0, now, now, institutionId)
+      .bind(health.ok ? 'ok' : 'error', health.ok ? 1 : 0, now, now, institutionId)
       .run();
 
     return c.json({
-      ok,
-      status,
-      latency_ms: latencyMs,
-      body: bodyText,
-      error: errorMsg,
-      tested_url: healthUrl,
+      ok: health.ok,
+      status: health.status,
+      latency_ms: health.latency_ms,
+      body: health.body,
+      error: health.error,
+      tested_url: health.tested_url,
     });
   });
 }

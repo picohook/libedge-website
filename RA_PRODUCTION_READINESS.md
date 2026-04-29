@@ -158,9 +158,44 @@ Domain taşınmadan önce yeni ürün onboarding UI büyütülmemeli. Öncelik:
 
 1. `libedge.com` domain ve wildcard proxy route.
 2. Kurum egress kurulum rehberi ve destek akışı.
-3. Mevcut ürün edit modalında RA alanlarını güvenli hale getirme.
+3. Toplu ürün ekleme/import akışı.
 4. Recipe template'lerini dropdown/seçilebilir hale getirme.
-5. Yeni ürün ekleme flow'u.
+5. Yeni ürün ekleme flow'unu batch import ile aynı doğrulama kurallarına bağlama.
+
+### Toplu Ürün Ekleme Taslağı
+
+Toplu ekleme için tek kaynak CSV/TSV veya admin paste modalı olabilir. İlk sürümde
+şu kolonlar yeterli:
+
+```text
+slug, name, category, default_access_type, default_access_url,
+ra_enabled, ra_origin_host, ra_delivery_mode, ra_origin_landing_path,
+ra_host_allowlist_json
+```
+
+IP kontrollü publisher için tipik satır:
+
+```text
+default_access_type=ip
+ra_enabled=1
+ra_origin_host=publisher.example.com
+ra_delivery_mode=session_host_proxy
+```
+
+Direkt link ürünleri için:
+
+```text
+default_access_type=direct
+default_access_url=https://...
+ra_enabled=0
+```
+
+Import davranışı:
+
+- Mevcut slug varsa varsayılan olarak hata/skip; açık `update_existing` olmadan ezmez.
+- `ra_origin_host` hostname olarak normalize edilir, URL kabul edilirse host kısmı alınır.
+- `ra_host_allowlist_json` boşsa origin host tek başına yeterlidir.
+- Import sonrası ürünler admin product modalında normal şekilde düzenlenebilir.
 
 ## 8. Source Of Truth
 
@@ -181,3 +216,32 @@ aynı commit içinde şu dosyalar kontrol edilir:
 
 Legacy `proxy` ve `direct_login` sadece migration/normalization katmanında okunur
 ve `path_proxy` olarak saklanır.
+
+## 9. 2026-04-29 Operasyonel Güncelleme
+
+Bugünkü staging değişiklikleri:
+
+- Admin işlemlerinde audit/geri alma eklendi:
+  - ürün update
+  - abonelik update/delete
+  - kurum aboneliği update/delete
+  - kurum update
+  - hızlı "Geri al" ve işlem geçmişinden "Geri yükle"
+- Proxy hata sayfası LibEdge markalı ve güvenli hale getirildi; ham `err.message`
+  kullanıcıya gösterilmiyor.
+- Proxy katmanına KV fixed-window rate limit eklendi:
+  - session: 300 istek/dk
+  - kurum: 5000 istek/dk
+  - limit aşımı: `429` + `Retry-After`
+- Main Worker cron heartbeat eklendi. Her 5 dakikada aktif egress endpoint'leri
+  `/health` üzerinden kontrol edip `tunnel_status` ve `tunnel_last_seen` alanlarını
+  günceller.
+- Admin oturum yenileme ve kurum arama/filtreleme tarafında staging sorunları
+  giderildi; Türkçe karakterli arama ve `tunnel_last_seen` tipi daha toleranslı.
+- Test kapsamı genişledi: error page, proxy rate limit, tunnel health.
+
+Kalan production işleri:
+
+- Limit değerleri production trafik ölçümüne göre env üzerinden kalibre edilecek.
+- Tünel heartbeat sonuçları admin panelde uyarı/badge davranışına bağlanacak.
+- Toplu ürün import UI/API eklenecek.

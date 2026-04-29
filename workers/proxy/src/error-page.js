@@ -1,6 +1,14 @@
 export function htmlError(status, message) {
+  const statusCode = Number(status);
+  const safeStatus =
+    Number.isInteger(statusCode) && statusCode >= 400 && statusCode <= 599
+      ? statusCode
+      : 500;
   const portalUrl = 'https://selmiye.com/profile.html';
-  const title = status >= 500 ? 'Remote access is temporarily unavailable' : 'Remote access could not continue';
+  const title =
+    safeStatus >= 500
+      ? 'Uzaktan erişim geçici olarak kullanılamıyor'
+      : 'Uzaktan erişim devam edemedi';
   const body = `<!doctype html>
 <html lang="tr">
 <head>
@@ -20,7 +28,7 @@ a{display:inline-block;background:#220f60;color:#fff;text-decoration:none;border
 <body>
 <main>
 <div class="brand">LibEdge</div>
-<div class="code">HTTP ${Number(status) || 500}</div>
+<div class="code">HTTP ${safeStatus}</div>
 <h1>${escapeHtml(title)}</h1>
 <p>${escapeHtml(message || 'Please return to the portal and try again.')}</p>
 <a href="${portalUrl}">Return to portal</a>
@@ -28,8 +36,15 @@ a{display:inline-block;background:#220f60;color:#fff;text-decoration:none;border
 </body>
 </html>`;
   return new Response(body, {
-    status,
-    headers: { 'content-type': 'text/html; charset=utf-8' },
+    status: safeStatus,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-robots-tag': 'noindex, nofollow',
+      'referrer-policy': 'no-referrer',
+      'content-security-policy':
+        "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    },
   });
 }
 

@@ -14,6 +14,10 @@ test/
     jwt.test.js        — HS256 JWT signing/verification, tamper detection
     crypto.test.js     — AES-GCM credential encryption, HMAC, SHA-256
     routes.test.js     — issue-token delivery-mode normalization + admin RA listing coverage
+    upstream.test.js   — proxy rewrite, cookies, session-host routing helpers
+    error-page.test.js — branded proxy error page, escaping, no raw detail leak
+    proxy-rate-limit.test.js — KV fixed-window proxy session/institution limits
+    tunnel-health.test.js — egress /health probe helper behavior
   backend/       → unit tests for helpers exported from backend/src/index.js
     password.test.js   — PBKDF2 hash/verify + legacy SHA-256 path
     rate-limit.test.js — KV-backed fixed-window rate limiter

@@ -48,7 +48,11 @@ kurumunuzun gerçek internet IP'sinden yayıncıya ulaşır.
    ```
 
 4. LibEdge admin panelinde kurum sayfanızda **"Tüneli Test Et"** butonuna basın.
-   Yeşil tik (🟢 Bağlı) gördüğünüzde hazırsınız.
+   Yeşil tik gördüğünüzde hazırsınız.
+
+LibEdge ayrıca 5 dakikada bir otomatik heartbeat çalıştırır. Agent'ın `/health`
+endpoint'i yanıt verirse admin panelindeki `tunnel_status` ve `tunnel_last_seen`
+alanları güncel kalır; agent kapanırsa durum sonraki heartbeat'te hata olarak görünür.
 
 ## Yönetim
 
@@ -57,8 +61,8 @@ Loglara bak: `docker compose logs -f`
 Güncelleme: `docker compose pull && docker compose up -d`
 
 Platformu geçici olarak devre dışı bırakmak için: `docker compose down`
-→ LibEdge kullanıcıları "Kurum erişim sunucusu şu anda kapalı" uyarısı görür,
-veri kaybı olmaz.
+→ LibEdge kullanıcıları markalı hata sayfasında kurum erişim sunucusuna
+ulaşılamadığını görür, veri kaybı olmaz.
 
 ## Güvenlik
 

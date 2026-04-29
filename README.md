@@ -36,7 +36,8 @@ libedge-website/
 │       │   ├── jwt.js                # HS256 proxy token sign/verify
 │       │   ├── crypto.js             # AES-GCM credential şifreleme
 │       │   ├── host.js               # host encode/decode (hyphen-label)
-│       │   └── proxy-url.js          # landing path builder
+│       │   ├── proxy-url.js          # landing path builder
+│       │   └── tunnel-health.js      # cron heartbeat / egress health helper
 │       └── routes/ra/
 │           ├── issue-token.js        # POST /api/ra/issue-token
 │           ├── admin-overview.js     # GET /api/ra/admin/institutions, /logs
@@ -48,6 +49,8 @@ libedge-website/
 │       └── src/
 │           ├── index.js              # RA Proxy Worker (path_proxy + session_host_proxy)
 │           ├── egress-client.js      # Kurum tüneline HMAC-imzalı istek
+│           ├── error-page.js         # LibEdge HTML hata sayfası
+│           ├── rate-limit.js         # proxy session/kurum rate limit
 │           ├── upstream.js           # Cookie jar + login recipe executor
 │           └── recipe.js             # form_post / js_spa recipe motoru
 ├── migrations/                       # D1 SQL migration'ları (sıralı)
@@ -191,6 +194,24 @@ cd ../..
 3. Tarayıcı proxy Worker'a yönlenir → JWT doğrulanır (tek kullanımlık `jti`) → session cookie set → içerik proxylenir
 4. Proxy Worker kurum egress agent'ına HMAC-imzalı istek atar; içerik kurum IP'sinden yayıncıya ulaşır
 
+### Operasyonel Koruma
+
+- Proxy hata yanıtları LibEdge HTML sayfası olarak döner; ham upstream/egress hata
+  detayları kullanıcıya gösterilmez.
+- Proxy Worker KV tabanlı rate limit uygular:
+  - oturum başına varsayılan `300/dk`
+  - kurum başına varsayılan `5000/dk`
+  - limit aşımında `429` + `Retry-After`
+- Main Worker cron'u 5 dakikada bir aktif egress endpoint'leri `/health` ile
+  kontrol eder ve `tunnel_status` / `tunnel_last_seen` alanlarını günceller.
+
+### Admin Geri Alma / Audit
+
+Kritik admin değişiklikleri `admin_action_logs` tablosuna snapshot ile yazılır.
+Ürün, abonelik ve kurum değişikliklerinde API `undo_id` döner; admin UI hızlı
+"Geri al" toast'ı gösterir. Hızlı süre kaçarsa işlem geçmişindeki "Geri yükle"
+aksiyonu aynı snapshot üzerinden kaydı restore eder.
+
 ---
 
 ## Kurum Onboarding — RA Tünel Kurulumu
@@ -257,7 +278,11 @@ Geçiş için sadece Cloudflare Worker env değişkenlerini güncellemek yeterli
 ## Bilinen Eksikler / Sonraki Adımlar
 
 - [x] `direct_login` delivery mode'u kaldırıldı; legacy değerler `path_proxy` olarak normalize ediliyor
+- [x] Proxy hata sayfası güvenli hale getirildi
+- [x] Proxy rate limit eklendi
+- [x] Egress tunnel heartbeat cron'a bağlandı
+- [x] Ürün/abonelik/kurum işlemleri için undo + işlem geçmişinden restore eklendi
 - [ ] Production'da `*.libedge.com` wildcard route aktif edilecek (session_host_proxy için zorunlu)
-- [ ] Admin UI'dan ürün onboarding (manuel D1 SQL ihtiyacını azaltmak)
+- [ ] Admin UI/API'dan toplu ürün onboarding (manuel D1 SQL ihtiyacını azaltmak)
 - [ ] MIMARI.md ile migration'lar arasındaki terminoloji tutarsızlıklarını gider
 - [ ] KVKK/Gizlilik metni kayıtlı kullanıcı, RA ve AI araçlarını kapsayacak şekilde güncellenecek
