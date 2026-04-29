@@ -86,13 +86,22 @@ describe('proxy rate limiting', () => {
 });
 
 describe('isStaticAssetPath', () => {
-  it('matches by extension', () => {
+  it('matches page-render asset extensions', () => {
     expect(isStaticAssetPath('/foo/bar.css')).toBe(true);
     expect(isStaticAssetPath('/foo/bar.JS')).toBe(true);
     expect(isStaticAssetPath('/foo/bar.woff2')).toBe(true);
     expect(isStaticAssetPath('/foo/bar.png')).toBe(true);
     expect(isStaticAssetPath('/foo/bar.svg')).toBe(true);
-    expect(isStaticAssetPath('/foo/bar.pdf')).toBe(true);
+  });
+
+  it('does NOT bypass valuable publisher content (PDF/video/data dumps)', () => {
+    // Bunlar academic proxy'nin korumakla yükümlü olduğu asıl scraping
+    // vektörleridir — rate-limit aktif kalmalı.
+    expect(isStaticAssetPath('/articles/2024/paper.pdf')).toBe(false);
+    expect(isStaticAssetPath('/download/dataset.zip')).toBe(false);
+    expect(isStaticAssetPath('/videos/lecture.mp4')).toBe(false);
+    expect(isStaticAssetPath('/audio/podcast.mp3')).toBe(false);
+    expect(isStaticAssetPath('/dump/data.tar.gz')).toBe(false);
   });
 
   it('matches well-known static path prefixes', () => {

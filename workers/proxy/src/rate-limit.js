@@ -4,19 +4,18 @@ const DEFAULT_INSTITUTION_RPM = 5000;
 
 // Static asset path/extensions — proxy bunlar için rate-limit KV yazmaz.
 // Bir sayfa açılışında 50-200 asset isteği olabilir; bunlar KV write quota'sını
-// hızla tüketiyordu (Cloudflare free tier: 1000 write/day). Asset'ler abonelik
-// kontrolünden geçti, kötüye kullanım riski düşük.
+// hızla tüketiyordu (Cloudflare free tier: 1000 write/day). Bypass listesi
+// SADECE sayfa render etmek için browser'ın çektiği asset'leri içerir.
+// Yayıncının asıl korunan içerikleri (PDF makale, ZIP veri dump'ı, JoVE
+// videosu gibi) listede DEĞİLDİR — bunlar rate-limit'in koruduğu asıl
+// scraping vektörüdür ve quota'nın anlamlı bir miktarını üretmezler.
 const STATIC_ASSET_EXTENSIONS = new Set([
   // styles & scripts
   'css', 'js', 'mjs', 'map',
   // fonts
   'woff', 'woff2', 'ttf', 'otf', 'eot',
-  // images
+  // küçük UI image'ları (logo, favicon, thumb) — yayıncı içeriği değil
   'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'avif', 'bmp',
-  // media
-  'mp4', 'webm', 'mp3', 'ogg', 'wav', 'm4a', 'm4v', 'mov',
-  // documents/data binary
-  'pdf', 'zip', 'gz', 'br',
 ]);
 
 const STATIC_ASSET_PATH_PREFIXES = [
