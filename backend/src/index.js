@@ -2264,18 +2264,13 @@ app.get('/api/admin/users', async (c) => {
     }
   }
 
-  if (search) {
-    // SQLite LOWER() Türkçe büyük harfleri küçültemez — ham terim OR koşuluyla eklenir.
-    whereParts.push(`(
-      LOWER(COALESCE(u.full_name, '')) LIKE ?
-      OR LOWER(u.email) LIKE ?
-      OR LOWER(COALESCE(i.name, u.institution, '')) LIKE ?
-      OR COALESCE(u.full_name, '') LIKE ?
-      OR COALESCE(i.name, u.institution, '') LIKE ?
-    )`);
-    const like = `%${search}%`;
-    const likeRaw = `%${searchRaw}%`;
-    params.push(like, like, like, likeRaw, likeRaw);
+  if (searchRaw) {
+    const tLikes = turkishLikes(searchRaw);
+    const nameOr  = tLikes.map(() => 'COALESCE(u.full_name, \'\') LIKE ?').join(' OR ');
+    const emailOr = tLikes.map(() => 'u.email LIKE ?').join(' OR ');
+    const instOr  = tLikes.map(() => 'COALESCE(i.name, u.institution, \'\') LIKE ?').join(' OR ');
+    whereParts.push(`(${nameOr} OR ${emailOr} OR ${instOr})`);
+    for (const l of tLikes) params.push(l, l, l);
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
@@ -3922,6 +3917,29 @@ app.get('/api/admin/my-institution', async (c) => {
   });
 });
 
+// Türkçe küçük harfleri büyüğe çevirir: i→İ, ı→I, ü→Ü, ö→Ö, ş→Ş, ğ→Ğ, ç→Ç
+// SQLite LOWER() non-ASCII karakterleri işleyemez; bu sayede kullanıcı 'istanbul'
+// yazsa da 'İSTANBUL' satırları yakalanır.
+function turkishUpper(s) {
+  return s
+    .replace(/i/g, 'İ').replace(/ı/g, 'I')
+    .replace(/ü/g, 'Ü').replace(/ö/g, 'Ö')
+    .replace(/ş/g, 'Ş').replace(/ğ/g, 'Ğ').replace(/ç/g, 'Ç');
+}
+
+// Verilen arama terimi için üç LIKE değeri döner:
+// 1. JS-lowercase (ASCII karakterler için)
+// 2. Ham orijinal (kullanıcının tam yazdığı, Shift+İ gibi)
+// 3. Türkçe büyük harf versiyonu ('istanbul' → 'İSTANBUL')
+function turkishLikes(raw) {
+  const lo = raw.toLowerCase();
+  const tu = turkishUpper(lo);
+  const likes = [`%${lo}%`];
+  if (raw !== lo) likes.push(`%${raw}%`);      // orijinal farklıysa ekle
+  if (tu !== lo && tu !== raw) likes.push(`%${tu}%`); // Türkçe büyük farklıysa ekle
+  return likes;
+}
+
 app.get('/api/admin/institutions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
@@ -3948,22 +3966,15 @@ app.get('/api/admin/institutions', async (c) => {
 
   const whereParts = [];
   const params = [];
-  if (search) {
-    // SQLite LOWER() Türkçe büyük harfleri (Ü,Ğ,Ş,İ) küçültemez.
-    // Ham arama terimi OR koşuluyla eklenerek büyük harfli Türkçe eşleşmeler de yakalanır.
-    whereParts.push(`(
-      LOWER(inst.name) LIKE ?
-      OR LOWER(COALESCE(inst.domain, '')) LIKE ?
-      OR LOWER(COALESCE(inst.city, '')) LIKE ?
-      OR LOWER(COALESCE(inst.website_url, '')) LIKE ?
-      OR LOWER(COALESCE(inst.category, '')) LIKE ?
-      OR LOWER(COALESCE(inst.status, '')) LIKE ?
-      OR inst.name LIKE ?
-      OR COALESCE(inst.city, '') LIKE ?
-    )`);
-    const like = `%${search}%`;
-    const likeRaw = `%${searchRaw}%`;
-    params.push(like, like, like, like, like, like, likeRaw, likeRaw);
+  if (searchRaw) {
+    const tLikes = turkishLikes(searchRaw); // [lowercase, raw?, turkishUpper?]
+    // Her alan için tüm LIKE varyantlarını OR ile dizer
+    const nameOr  = tLikes.map(() => 'inst.name LIKE ?').join(' OR ');
+    const domOr   = tLikes.map(() => 'COALESCE(inst.domain, \'\') LIKE ?').join(' OR ');
+    const cityOr  = tLikes.map(() => 'COALESCE(inst.city, \'\') LIKE ?').join(' OR ');
+    const webOr   = tLikes.map(() => 'COALESCE(inst.website_url, \'\') LIKE ?').join(' OR ');
+    whereParts.push(`(${nameOr} OR ${domOr} OR ${cityOr} OR ${webOr})`);
+    for (const l of tLikes) params.push(l, l, l, l); // her alan için aynı like
   }
   if (category) {
     whereParts.push(`LOWER(TRIM(COALESCE(inst.category, ''))) = ?`);
