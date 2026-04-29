@@ -3483,11 +3483,124 @@ app.get('/api/admin/subscriptions', async (c) => {
     url.searchParams.has('status');
   const requestedPage = Math.max(1, Number(url.searchParams.get('page') || 1));
   const requestedPageSize = Math.max(1, Math.min(100, Number(url.searchParams.get('page_size') || 25)));
-  const search = (url.searchParams.get('search') || '').trim().toLowerCase();
+  const searchRaw = (url.searchParams.get('search') || '').trim();
+  const search = normSearch(searchRaw);
   const typeFilter = (url.searchParams.get('type') || '').trim();
   const statusFilter = (url.searchParams.get('status') || '').trim();
   const sort = (url.searchParams.get('sort') || 'id').trim();
   const order = (url.searchParams.get('order') || 'desc').trim().toLowerCase() === 'asc' ? 1 : -1;
+
+  if (hasPagedRequest) {
+    const individualParams = [];
+    const institutionParams = [];
+    const individualWhere = [];
+    const institutionWhere = [];
+
+    if (role !== 'super_admin') {
+      if (adminInstitutionId) {
+        individualWhere.push('u.institution_id = ?');
+        institutionWhere.push('is2.institution_id = ?');
+        individualParams.push(adminInstitutionId);
+        institutionParams.push(adminInstitutionId);
+      } else {
+        individualWhere.push('u.institution = ?');
+        institutionWhere.push('1 = 0');
+        individualParams.push(adminInstitution);
+      }
+    }
+    if (typeFilter === 'individual') institutionWhere.push('1 = 0');
+    if (typeFilter === 'institution') individualWhere.push('1 = 0');
+    if (statusFilter) {
+      individualWhere.push('s.status = ?');
+      institutionWhere.push('is2.status = ?');
+      individualParams.push(statusFilter);
+      institutionParams.push(statusFilter);
+    }
+    if (searchRaw) {
+      const like = `%${search}%`;
+      individualWhere.push(`(
+        ${trNorm("COALESCE(u.full_name, '')")} LIKE ?
+        OR ${trNorm("COALESCE(u.institution, '')")} LIKE ?
+        OR ${trNorm("COALESCE(s.product_slug, '')")} LIKE ?
+      )`);
+      institutionWhere.push(`(
+        ${trNorm("COALESCE(i.name, '')")} LIKE ?
+        OR ${trNorm("COALESCE(is2.product_slug, '')")} LIKE ?
+      )`);
+      individualParams.push(like, like, like);
+      institutionParams.push(like, like);
+    }
+    const pagedParams = [...individualParams, ...institutionParams];
+
+    const individualWhereSql = individualWhere.length ? `WHERE ${individualWhere.join(' AND ')}` : '';
+    const institutionWhereSql = institutionWhere.length ? `WHERE ${institutionWhere.join(' AND ')}` : '';
+    const unionSql = `
+      SELECT s.id, 'individual' as type, s.product_slug, s.status, s.start_date, s.end_date,
+             u.full_name as subject_name, u.institution as institution_name, s.user_id, NULL as institution_id,
+             NULL AS raw_access_type, NULL AS raw_access_url, 0 AS raw_requires_institution_email,
+             0 AS raw_requires_vpn, NULL AS raw_registration_url, NULL AS raw_access_notes_tr,
+             NULL AS raw_access_notes_en, NULL AS access_type, NULL AS access_url,
+             NULL AS ra_delivery_mode, 0 AS requires_institution_email, 0 AS requires_vpn,
+             NULL AS registration_url, NULL AS access_notes_tr, NULL AS access_notes_en
+      FROM subscriptions s
+      LEFT JOIN users u ON s.user_id = u.id
+      ${individualWhereSql}
+      UNION ALL
+      SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
+             i.name as subject_name, i.name as institution_name, NULL as user_id, is2.institution_id,
+             is2.access_type AS raw_access_type,
+             is2.access_url AS raw_access_url,
+             COALESCE(is2.requires_institution_email, 0) AS raw_requires_institution_email,
+             COALESCE(is2.requires_vpn, 0) AS raw_requires_vpn,
+             is2.registration_url AS raw_registration_url,
+             is2.access_notes_tr AS raw_access_notes_tr,
+             is2.access_notes_en AS raw_access_notes_en,
+             COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
+             COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
+             CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
+               WHEN 'session_host_proxy' THEN 'session_host_proxy'
+               ELSE 'path_proxy'
+             END AS ra_delivery_mode,
+             CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
+             CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
+             NULLIF(TRIM(is2.registration_url), '') AS registration_url,
+             COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
+             COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en
+      FROM institution_subscriptions is2
+      LEFT JOIN institutions i ON is2.institution_id = i.id
+      LEFT JOIN products p ON p.slug = is2.product_slug
+      ${institutionWhereSql}
+    `;
+    const sortSql = {
+      id: 'id',
+      type: 'type',
+      subject_name: "LOWER(COALESCE(subject_name, institution_name, ''))",
+      product_slug: "LOWER(COALESCE(product_slug, ''))",
+      status: "LOWER(COALESCE(status, ''))",
+      start_date: "COALESCE(start_date, '')",
+      end_date: "COALESCE(end_date, '')"
+    }[sort] || 'id';
+    const orderSql = order === 1 ? 'ASC' : 'DESC';
+    const totalStmt = db.prepare(`SELECT COUNT(*) AS total FROM (${unionSql}) combined`);
+    const totalRow = await (pagedParams.length ? totalStmt.bind(...pagedParams) : totalStmt).first();
+    const total = Number(totalRow?.total || 0);
+    const totalPages = Math.max(1, Math.ceil(total / requestedPageSize));
+    const page = Math.min(requestedPage, totalPages);
+    const offset = (page - 1) * requestedPageSize;
+    const rows = await db.prepare(`
+      SELECT * FROM (${unionSql}) combined
+      ORDER BY ${sortSql} ${orderSql}, id DESC
+      LIMIT ? OFFSET ?
+    `).bind(...pagedParams, requestedPageSize, offset).all();
+
+    return c.json({
+      items: rows.results || [],
+      total,
+      page,
+      page_size: requestedPageSize,
+      total_pages: totalPages
+    });
+  }
 
   let individualResults = [], institutionalResults = [];
 
@@ -3590,13 +3703,13 @@ app.get('/api/admin/subscriptions', async (c) => {
   if (statusFilter) {
     allResults = allResults.filter(item => item.status === statusFilter);
   }
-  if (search) {
+  if (searchRaw) {
     allResults = allResults.filter(item => {
-      const haystack = [
+      const haystack = normSearch([
         item.subject_name || '',
         item.institution_name || '',
         item.product_slug || ''
-      ].join(' ').toLowerCase();
+      ].join(' '));
       return haystack.includes(search);
     });
   }
