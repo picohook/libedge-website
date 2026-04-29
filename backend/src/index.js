@@ -471,6 +471,27 @@ async function getUserInstitutionId(c) {
   return payload?.institution_id || null;
 }
 
+async function ensureAdminActionLogsTable(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS admin_action_logs (
+      id TEXT PRIMARY KEY,
+      actor_user_id INTEGER,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      before_json TEXT,
+      after_json TEXT,
+      undo_expires_at TEXT,
+      undone_at TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_admin_action_logs_entity
+    ON admin_action_logs(entity_type, entity_id, created_at)
+  `).run();
+}
+
 async function isSuperAdmin(c) {
   const role = await getUserRole(c);
   return role === 'super_admin';
@@ -3198,6 +3219,7 @@ app.put('/api/admin/product/:slug', async (c) => {
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
   await ensureRemoteAccessSchema(db);
+  await ensureAdminActionLogsTable(db);
   const raConfig = validateProductRaConfig(body);
   if (raConfig.error) return c.json({ error: raConfig.error }, 400);
   const ra = raConfig.values;
@@ -3205,14 +3227,17 @@ app.put('/api/admin/product/:slug', async (c) => {
   if (presentationConfig.error) return c.json({ error: presentationConfig.error }, 400);
   const presentation = presentationConfig.values;
 
-  const existing = await db.prepare(`SELECT slug, logo_url, card_background_url FROM products WHERE slug = ?`).bind(slug).first();
+  const existing = await db.prepare(`SELECT * FROM products WHERE slug = ?`).bind(slug).first();
   if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
   const logoChanged = String(existing.logo_url || '') !== String(presentation.logo_url || '');
   const logoUpdatedAt = logoChanged ? new Date().toISOString() : null;
   const cardBackgroundChanged = String(existing.card_background_url || '') !== String(presentation.card_background_url || '');
   const cardBackgroundUpdatedAt = cardBackgroundChanged ? new Date().toISOString() : null;
 
-  await db.prepare(`
+  const undoId = crypto.randomUUID();
+  const undoExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const actor = await getTokenPayloadFromCookie(c);
+  const updateStmt = db.prepare(`
     UPDATE products
     SET name = ?, category = ?, region = ?,
         default_access_type = ?, default_access_url = ?,
@@ -3266,8 +3291,67 @@ app.put('/api/admin/product/:slug', async (c) => {
     ra.ra_login_recipe_json,
     ra.ra_host_allowlist_json,
     slug
-  ).run();
+  );
+  const logStmt = db.prepare(`
+    INSERT INTO admin_action_logs (
+      id, actor_user_id, entity_type, entity_id, action,
+      before_json, after_json, undo_expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    undoId,
+    actor?.id || null,
+    'product',
+    slug,
+    'update',
+    JSON.stringify(existing),
+    null,
+    undoExpiresAt
+  );
+  await db.batch([updateStmt, logStmt]);
 
+  return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
+});
+
+app.post('/api/admin/actions/:id/undo', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const id = String(c.req.param('id') || '').trim();
+  if (!id) return c.json({ error: 'Geçersiz işlem' }, 400);
+  const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
+  await ensureRemoteAccessSchema(db);
+  await ensureAdminActionLogsTable(db);
+  const log = await db.prepare(`
+    SELECT * FROM admin_action_logs
+    WHERE id = ? AND entity_type = 'product' AND action = 'update'
+  `).bind(id).first();
+  if (!log) return c.json({ error: 'Geri alınacak işlem bulunamadı' }, 404);
+  if (log.undone_at) return c.json({ error: 'Bu işlem zaten geri alınmış' }, 409);
+  if (log.undo_expires_at && Date.now() > Date.parse(log.undo_expires_at)) {
+    return c.json({ error: 'Geri alma süresi dolmuş' }, 410);
+  }
+  const before = JSON.parse(log.before_json || '{}');
+  if (!before.slug) return c.json({ error: 'Geri alma verisi eksik' }, 400);
+  const columns = [
+    'name', 'category', 'region',
+    'default_access_type', 'default_access_url',
+    'default_requires_institution_email', 'default_requires_vpn',
+    'default_access_notes_tr', 'default_access_notes_en',
+    'logo_asset_key', 'logo_url', 'logo_updated_at', 'brand_color',
+    'card_background_asset_key', 'card_background_url', 'card_background_updated_at',
+    'card_background_overlay', 'card_front_text_color', 'card_back_text_color',
+    'short_description_tr', 'short_description_en', 'subjects_json',
+    'card_visible', 'display_order', 'is_featured',
+    'ra_enabled', 'ra_delivery_mode', 'ra_origin_host', 'ra_origin_landing_path',
+    'ra_requires_tunnel', 'ra_login_recipe_json', 'ra_host_allowlist_json'
+  ];
+  const updateStmt = db.prepare(`
+    UPDATE products SET ${columns.map((col) => `${col} = ?`).join(', ')}
+    WHERE slug = ?
+  `).bind(...columns.map((col) => before[col] ?? null), before.slug);
+  const markStmt = db.prepare(`
+    UPDATE admin_action_logs SET undone_at = ? WHERE id = ?
+  `).bind(new Date().toISOString(), id);
+  await db.batch([updateStmt, markStmt]);
   return c.json({ success: true });
 });
 

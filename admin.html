@@ -5274,7 +5274,9 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
+                const data = await res.json().catch(() => ({}));
                 showToast(isNew ? 'Ürün oluşturuldu!' : 'Ürün güncellendi!', 'success');
+                if (!isNew && data.undo_id) showProductUndoToast(data.undo_id);
                 closeProductModal();
                 loadProducts();
             } else {
@@ -5285,6 +5287,32 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             showActionError('Ürün kaydetme', err.message);
         }
     });
+
+    function showProductUndoToast(undoId) {
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification fixed z-50 top-5 right-5 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-white text-blue-700 border-l-4 border-blue-500 flex items-center gap-3';
+        toast.innerHTML = '<span><i class="fas fa-history mr-2"></i>Değişiklik geri alınabilir.</span><button type="button" class="px-2 py-1 rounded bg-blue-600 text-white text-xs">Geri al</button>';
+        document.body.appendChild(toast);
+        const timer = setTimeout(() => toast.remove(), 8000);
+        toast.querySelector('button')?.addEventListener('click', async () => {
+            clearTimeout(timer);
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/actions/${encodeURIComponent(undoId)}/undo`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || 'Geri alma başarısız');
+                }
+                toast.remove();
+                showToast('Ürün değişikliği geri alındı.', 'success');
+                loadProducts();
+            } catch (err) {
+                showActionError('Geri alma', err.message);
+            }
+        });
+    }
 
     [
         'productAccessType',
