@@ -11,6 +11,7 @@
  * Managed prefixes covered:
  *   avatars/
  *   institution-logos/
+ *   product-logos/
  *   announcement-covers/
  *
  * Not touched — these have their own lifecycles / permission model
@@ -68,6 +69,10 @@ const PREFIXES = {
   },
   'institution-logos/': {
     sql: `SELECT logo_url FROM institutions WHERE logo_url IS NOT NULL AND logo_url != ''`,
+    column: 'logo_url',
+  },
+  'product-logos/': {
+    sql: `SELECT logo_url FROM products WHERE logo_url IS NOT NULL AND logo_url != ''`,
     column: 'logo_url',
   },
   'announcement-covers/': {

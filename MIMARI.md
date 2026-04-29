@@ -97,6 +97,30 @@ libedge-website/
 | `ra_host_allowlist_json` | TEXT | JSON array — egress SSRF koruması için |
 | `ra_requires_tunnel` | INTEGER | 1 = egress gerekli |
 
+### `products` (kart ve görsel kimlik kolonları)
+
+Ürün kartları için logo ve temel görünürlük bilgisi ürün kaydının parçasıdır.
+Repo içindeki eski `assets/images/...` logoları başlangıç seed/default değer olarak
+kalabilir; panelden yüklenen yeni logolar R2 altında `product-logos/{slug}/...`
+prefix'iyle saklanır.
+
+| Kolon | Tip | Açıklama |
+|---|---|---|
+| `logo_asset_key` | TEXT | R2 object key, örn. `product-logos/scopus/logo-...webp` |
+| `logo_url` | TEXT | Public R2 URL veya mevcut local asset yolu |
+| `logo_updated_at` | TEXT | Cache busting için versiyon zamanı |
+| `brand_color` | TEXT | Opsiyonel `#RRGGBB` vurgu rengi |
+| `short_description_tr` / `short_description_en` | TEXT | Kart/API kısa açıklaması |
+| `subjects_json` | TEXT | JSON array konu slugları |
+| `card_visible` | INTEGER | 1 = public ürün kartlarında göster |
+| `display_order` | INTEGER | Public kart sıralaması |
+| `is_featured` | INTEGER | Öne çıkarma/carousel adaylığı |
+
+Public liste `GET /api/products` ile gelir. Admin tarafı aynı veriyi
+`GET /api/admin/products` üzerinden logo preview, kart sırası ve görünürlük
+alanlarıyla yönetir. Dosya upload endpoint'i:
+`POST /api/admin/product/:slug/logo`.
+
 ### `institution_ra_settings`
 
 | Kolon | Açıklama |

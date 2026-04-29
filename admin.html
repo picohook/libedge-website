@@ -1056,10 +1056,12 @@
                 <table class="w-full">
                     <thead>
                         <tr>
+                            <th>Logo</th>
                             <th class="cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="slug">Slug <span id="prodSort_slug" class="text-gray-400">↕</span></th>
                             <th class="cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="name">Ürün Adı <span id="prodSort_name" class="text-gray-400">↕</span></th>
                             <th class="cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="category">Kategori <span id="prodSort_category" class="text-gray-400">↕</span></th>
                             <th class="cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="default_access_type">Varsayılan Erişim <span id="prodSort_default_access_type" class="text-gray-400">↕</span></th>
+                            <th class="text-center cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="display_order">Kart <span id="prodSort_display_order" class="text-gray-400">↕</span></th>
                             <th class="text-center cursor-pointer select-none" data-admin-action="sort-products" data-sort-key="ra_enabled">RA <span id="prodSort_ra_enabled" class="text-gray-400">↕</span></th>
                             <th></th>
                         </tr>
@@ -1109,6 +1111,64 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Yetkili Bölge</label>
                         <input type="text" id="productRegion" class="w-full border p-2 rounded" placeholder="TR, Global...">
+                    </div>
+                    <div class="md:col-span-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <div class="w-20 h-20 rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
+                                <img id="productLogoPreviewImg" src="" alt="" class="w-full h-full object-contain p-2 hidden">
+                                <span id="productLogoPreviewInitials" class="text-gray-400 text-lg font-bold">?</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-2 mb-2">
+                                    <input type="file" id="productLogoFile" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
+                                    <input type="hidden" id="productLogoAssetKey">
+                                    <input type="hidden" id="productLogoUpdatedAt">
+                                    <button type="button" data-admin-action="trigger-product-logo-file"
+                                        class="text-sm text-primary border border-primary px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
+                                        <i class="fas fa-upload mr-1"></i> Logo Seç
+                                    </button>
+                                    <button type="button" data-admin-action="clear-product-logo"
+                                        class="text-sm text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-white transition">
+                                        Temizle
+                                    </button>
+                                </div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+                                <input type="text" id="productLogoUrl" class="w-full border p-2 rounded text-sm" placeholder="assets/images/logo.webp veya R2 URL">
+                                <p class="text-xs text-gray-400 mt-1">JPG, PNG, WEBP veya SVG · maks. 2MB. Yeni üründe önce kaydet, sonra dosya yükle.</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" id="productCardVisible" checked>
+                                <span>Kartlarda göster</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" id="productIsFeatured">
+                                <span>Öne çıkan</span>
+                            </label>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Kart Sırası</label>
+                                <input type="number" id="productDisplayOrder" class="w-full border p-2 rounded" min="0" step="1" placeholder="999">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Kısa Açıklama (TR)</label>
+                                <textarea id="productShortDescriptionTr" rows="2" class="w-full border p-2 rounded"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Kısa Açıklama (EN)</label>
+                                <textarea id="productShortDescriptionEn" rows="2" class="w-full border p-2 rounded"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Konu Slugları (JSON)</label>
+                                <textarea id="productSubjectsJson" rows="2" class="w-full border p-2 rounded font-mono text-xs" placeholder='["yapay-zeka","saglik"]'></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Marka Rengi</label>
+                                <input type="text" id="productBrandColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#2563eb">
+                            </div>
+                        </div>
                     </div>
                     <div class="flex items-center gap-4">
                         <label class="inline-flex items-center gap-2 text-sm text-gray-700">
@@ -2990,6 +3050,12 @@ function bindRemainingAdminFormEvents() {
 
     bindAdminElementEvent('announcementImageFile', 'change', uploadAnnouncementImage);
     bindAdminElementEvent('editInstLogoFile', 'change', (e) => previewInstLogo(e.target));
+    bindAdminElementEvent('productLogoFile', 'change', (e) => uploadProductLogo(e.target));
+    bindAdminElementEvent('productLogoUrl', 'input', () => {
+        document.getElementById('productLogoAssetKey').value = '';
+        document.getElementById('productLogoUpdatedAt').value = '';
+        updateProductLogoPreview(products.find(p => p.slug === editingProductSlug) || {});
+    });
 
     bindAdminElementEvent('adminMoveModalSearch', 'input', (e) => {
         adminMoveModalState.search = e.target.value;
@@ -3146,7 +3212,7 @@ document.addEventListener('click', function(e) {
 
     function getEffectiveAccessTypeForDisplay(item) {
         const accessType = String(item?.access_type || '').trim();
-        return accessType;
+        return accessType || String(item?.default_access_type || '').trim();
     }
 
     function getProductAccessLabel(product) {
@@ -3195,6 +3261,55 @@ document.addEventListener('click', function(e) {
         }
     }
 
+    function getProductInitials(product) {
+        const name = String(product?.name || product?.slug || '?').trim();
+        return name
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map(part => part[0]?.toUpperCase() || '')
+            .join('') || '?';
+    }
+
+    function getVersionedLogoUrl(url, updatedAt) {
+        if (!url) return '';
+        if (!updatedAt) return url;
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}v=${encodeURIComponent(updatedAt)}`;
+    }
+
+    function updateProductLogoPreview(product = {}) {
+        const urlInput = document.getElementById('productLogoUrl');
+        const img = document.getElementById('productLogoPreviewImg');
+        const initials = document.getElementById('productLogoPreviewInitials');
+        if (!img || !initials) return;
+
+        const rawUrl = urlInput ? urlInput.value.trim() : (product.logo_url || '');
+        const updatedAt = document.getElementById('productLogoUpdatedAt')?.value || product.logo_updated_at || '';
+        const url = getVersionedLogoUrl(rawUrl, updatedAt);
+        if (url) {
+            img.src = url;
+            img.alt = `${product.name || product.slug || 'Ürün'} logo`;
+            img.classList.remove('hidden');
+            initials.classList.add('hidden');
+        } else {
+            img.removeAttribute('src');
+            img.classList.add('hidden');
+            initials.textContent = getProductInitials(product);
+            initials.classList.remove('hidden');
+        }
+    }
+
+    function renderProductLogoCell(product) {
+        const logoUrl = getVersionedLogoUrl(product.logo_url || '', product.logo_updated_at || '');
+        if (logoUrl) {
+            return `<div class="w-11 h-11 rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
+                <img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(product.name || product.slug)} logo" class="w-full h-full object-contain p-1.5">
+            </div>`;
+        }
+        return `<div class="w-11 h-11 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs font-bold text-gray-400">${escapeHtml(getProductInitials(product))}</div>`;
+    }
+
     function setGuideText(id, text) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -3223,7 +3338,7 @@ document.addEventListener('click', function(e) {
     const _prodSort = { key: 'name', dir: 1 };
 
     function _applyProductSortArrows() {
-        ['slug','name','category','default_access_type','ra_enabled'].forEach(k => {
+        ['slug','name','category','default_access_type','display_order','ra_enabled'].forEach(k => {
             const el = document.getElementById(`prodSort_${k}`);
             if (!el) return;
             el.textContent = k === _prodSort.key ? (_prodSort.dir === 1 ? '↑' : '↓') : '↕';
@@ -3258,15 +3373,23 @@ document.addEventListener('click', function(e) {
         if (count) count.textContent = list.length < products.length ? `(${list.length} / ${products.length})` : `(${products.length})`;
 
         document.getElementById('productsList').innerHTML = list.length === 0
-            ? `<tr><td colspan="6" class="text-center py-8 text-gray-400">Sonuç bulunamadı.</td></tr>`
+            ? `<tr><td colspan="8" class="text-center py-8 text-gray-400">Sonuç bulunamadı.</td></tr>`
             : list.map(p => `
              <tr class="product-row hover:bg-gray-50 cursor-pointer" data-product-slug="${escapeHtml(p.slug)}">
+                <td class="px-4 py-2">${renderProductLogoCell(p)}</td>
                 <td class="px-4 py-2 font-mono text-xs text-gray-600">${escapeHtml(p.slug)}</td>
                 <td class="px-4 py-2 font-medium">${escapeHtml(p.name)}</td>
                 <td class="px-4 py-2 text-sm text-gray-500">${escapeHtml(p.category || '—')}</td>
                 <td class="px-4 py-2">
                     <div class="text-sm text-gray-700">${escapeHtml(getProductAccessLabel(p) || '—')}</div>
                     ${p.default_access_url ? `<a href="${escapeHtml(p.default_access_url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all" onclick="event.stopPropagation()">${escapeHtml(p.default_access_url)}</a>` : ''}
+                </td>
+                <td class="px-4 py-2 text-center">
+                    <div class="text-xs text-gray-500">${Number(p.display_order ?? 999)}</div>
+                    ${p.card_visible
+                        ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium">Açık</span>'
+                        : '<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">Gizli</span>'}
+                    ${p.is_featured ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">Öne</span>' : ''}
                 </td>
                 <td class="px-4 py-2 text-center">
                     ${p.ra_enabled
@@ -3323,6 +3446,17 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         document.getElementById('productRegion').value = product.region || '';
         document.getElementById('productAccessType').value = product.default_access_type || '';
         document.getElementById('productAccessUrl').value = product.default_access_url || '';
+        document.getElementById('productLogoAssetKey').value = product.logo_asset_key || '';
+        document.getElementById('productLogoUrl').value = product.logo_url || '';
+        document.getElementById('productLogoUpdatedAt').value = product.logo_updated_at || '';
+        document.getElementById('productCardVisible').checked = product.card_visible == null ? true : !!product.card_visible;
+        document.getElementById('productIsFeatured').checked = !!product.is_featured;
+        document.getElementById('productDisplayOrder').value = product.display_order == null ? '' : product.display_order;
+        document.getElementById('productShortDescriptionTr').value = product.short_description_tr || '';
+        document.getElementById('productShortDescriptionEn').value = product.short_description_en || '';
+        document.getElementById('productSubjectsJson').value = prettyJson(product.subjects_json);
+        document.getElementById('productBrandColor').value = product.brand_color || '';
+        updateProductLogoPreview(product);
         document.getElementById('productRequiresEmail').checked = !!product.default_requires_institution_email;
         document.getElementById('productRequiresVpn').checked = !!product.default_requires_vpn;
         document.getElementById('productAccessNotesTr').value = product.default_access_notes_tr || '';
@@ -3361,6 +3495,54 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         document.getElementById('productModal').classList.add('hidden');
         document.getElementById('productForm').reset();
         editingProductSlug = null;
+    }
+
+    async function uploadProductLogo(input) {
+        const file = input?.files?.[0];
+        if (!file) return;
+        input.value = '';
+
+        if (!editingProductSlug) {
+            showToast('Logo yüklemek için önce ürünü kaydedin.', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('logo', file);
+
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/product/${encodeURIComponent(editingProductSlug)}/logo`, {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Logo yükleme başarısız');
+
+            document.getElementById('productLogoAssetKey').value = data.logo_asset_key || '';
+            document.getElementById('productLogoUrl').value = data.logo_url || '';
+            document.getElementById('productLogoUpdatedAt').value = data.logo_updated_at || '';
+            const product = products.find(p => p.slug === editingProductSlug);
+            if (product) {
+                product.logo_asset_key = data.logo_asset_key || null;
+                product.logo_url = data.logo_url || null;
+                product.logo_updated_at = data.logo_updated_at || null;
+                updateProductLogoPreview(product);
+            } else {
+                updateProductLogoPreview({ slug: editingProductSlug, logo_url: data.logo_url, logo_updated_at: data.logo_updated_at });
+            }
+            showToast('Logo yüklendi', 'success');
+            loadProducts();
+        } catch (err) {
+            showActionError('Logo yükleme', err.message);
+        }
+    }
+
+    function clearProductLogoFields() {
+        document.getElementById('productLogoAssetKey').value = '';
+        document.getElementById('productLogoUrl').value = '';
+        document.getElementById('productLogoUpdatedAt').value = '';
+        updateProductLogoPreview(products.find(p => p.slug === editingProductSlug) || {});
     }
 
     function goToAdminTab(tab) {
@@ -4459,6 +4641,8 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
 
         const recipeJson = document.getElementById('productRaLoginRecipe').value.trim();
         const allowlistJson = document.getElementById('productRaHostAllowlist').value.trim();
+        const subjectsJson = document.getElementById('productSubjectsJson').value.trim();
+        const brandColor = document.getElementById('productBrandColor').value.trim();
         if (recipeJson) {
             try {
                 const parsed = JSON.parse(recipeJson);
@@ -4477,6 +4661,21 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
                 return;
             }
         }
+        if (subjectsJson) {
+            try {
+                const parsed = JSON.parse(subjectsJson);
+                if (!Array.isArray(parsed)) throw new Error('array olmalı');
+            } catch (err) {
+                showToast(`Konu slugları JSON geçersiz: ${err.message}`, 'error');
+                return;
+            }
+        }
+        if (brandColor && !/^#[0-9a-f]{6}$/i.test(brandColor)) {
+            showToast('Marka rengi #RRGGBB formatında olmalı', 'error');
+            return;
+        }
+
+        const logoUrl = document.getElementById('productLogoUrl').value.trim();
 
         const payload = {
             slug,
@@ -4485,6 +4684,15 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             region: document.getElementById('productRegion').value.trim() || null,
             default_access_type: document.getElementById('productAccessType').value || null,
             default_access_url: document.getElementById('productAccessUrl').value.trim() || null,
+            logo_asset_key: logoUrl ? (document.getElementById('productLogoAssetKey').value.trim() || null) : null,
+            logo_url: logoUrl || null,
+            brand_color: brandColor || null,
+            short_description_tr: document.getElementById('productShortDescriptionTr').value.trim() || null,
+            short_description_en: document.getElementById('productShortDescriptionEn').value.trim() || null,
+            subjects_json: subjectsJson || null,
+            card_visible: document.getElementById('productCardVisible').checked,
+            display_order: Number(document.getElementById('productDisplayOrder').value || 999),
+            is_featured: document.getElementById('productIsFeatured').checked,
             default_requires_institution_email: document.getElementById('productRequiresEmail').checked,
             default_requires_vpn: document.getElementById('productRequiresVpn').checked,
             default_access_notes_tr: document.getElementById('productAccessNotesTr').value.trim() || null,
@@ -4623,6 +4831,8 @@ document.addEventListener('click', (e) => {
         case 'close-admin-file-modal': closeAdminFileModal(); break;
         case 'open-new-product-modal': openNewProductModal(); break;
         case 'close-product-modal': closeProductModal(); break;
+        case 'trigger-product-logo-file': document.getElementById('productLogoFile')?.click(); break;
+        case 'clear-product-logo': clearProductLogoFields(); break;
         case 'edit-product': openProductModal(actionEl.dataset.productSlug || ''); break;
         case 'sort-products': {
             const k = actionEl.dataset.sortKey;

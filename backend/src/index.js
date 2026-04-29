@@ -26,31 +26,34 @@ const ALLOWED_ORIGINS = [
 ];
 
 const DEFAULT_PRODUCT_CATALOG = [
-  { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
-  { slug: 'chatpdf', name: 'ChatPDF', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
-  { slug: 'wonders', name: 'Wonders', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
-  { slug: 'assistin', name: 'Assistin', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
-  { slug: 'primal-pictures', name: 'Primal Pictures', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
-  { slug: 'lecturio', name: 'Lecturio', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
-  { slug: 'nejmhealer', name: 'NEJMHealer', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
-  { slug: 'imachek', name: 'ImaChek', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
-  { slug: 'cochrane-library', name: 'Cochrane Library', category: 'Sağlık', region: 'Türkiye (EKUAL dışı)' },
+  { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/pangram_logo.webp', subjects_json: '["yapay-zeka","akademik-durustluk"]', display_order: 10 },
+  { slug: 'chatpdf', name: 'ChatPDF', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/ChatPDF_LOGO.webp', subjects_json: '["yapay-zeka"]', display_order: 20 },
+  { slug: 'wonders', name: 'Wonders', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/wonders_logo.svg', subjects_json: '["yapay-zeka"]', display_order: 30 },
+  { slug: 'assistin', name: 'Assistin', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/assistin_logo.webp', subjects_json: '["yapay-zeka"]', display_order: 40 },
+  { slug: 'primal-pictures', name: 'Primal Pictures', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/primalpictures_logo.svg', subjects_json: '["saglik"]', display_order: 50 },
+  { slug: 'lecturio', name: 'Lecturio', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/Lecturio_logo.PNG', subjects_json: '["saglik"]', display_order: 60 },
+  { slug: 'nejmhealer', name: 'NEJMHealer', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/nejmhealer_logo.svg', subjects_json: '["saglik"]', display_order: 70 },
+  { slug: 'imachek', name: 'ImaChek', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/imachek.webp', subjects_json: '["saglik"]', display_order: 80 },
+  { slug: 'cochrane-library', name: 'Cochrane Library', category: 'Sağlık', region: 'Türkiye (EKUAL dışı)', logo_url: 'assets/images/CochraneLibrary_LOGO.PNG', subjects_json: '["saglik"]', display_order: 170 },
   {
     slug: 'jove-research',
     name: 'JoVE Research',
     category: 'Fen & Matematik',
     region: 'Türkiye',
+    logo_url: 'assets/images/JOVE_LOGO.PNG',
+    subjects_json: '["fen-matematik","muhendislik","saglik","sosyal-bilimler"]',
+    display_order: 100,
     default_access_type: 'ip',
     default_access_notes_tr: 'Uzaktan erişim LibEdge kurumsal erişim hattı üzerinden sağlanır.',
     default_access_notes_en: 'Remote access is provided via the LibEdge institutional access path.',
   },
-  { slug: 'jove-education', name: 'JoVE Education', category: 'Fen & Matematik', region: 'Türkiye' },
-  { slug: 'jove-business', name: 'JoVE Business', category: 'İş & Hukuk', region: 'Türkiye' },
-  { slug: 'biorender', name: 'BioRender', category: 'Mühendislik', region: 'Türkiye' },
-  { slug: 'wiley-journals', name: 'Wiley Dergiler', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)' },
-  { slug: 'wiley-books', name: 'Wiley Kitaplar', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)' },
-  { slug: 'klasik-muzik', name: 'Klasik Müzik Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' },
-  { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu' }
+  { slug: 'jove-education', name: 'JoVE Education', category: 'Fen & Matematik', region: 'Türkiye', logo_url: 'assets/images/JOVE_LOGO.PNG', subjects_json: '["fen-matematik","muhendislik","saglik","sosyal-bilimler"]', display_order: 110 },
+  { slug: 'jove-business', name: 'JoVE Business', category: 'İş & Hukuk', region: 'Türkiye', logo_url: 'assets/images/JOVE_LOGO.PNG', subjects_json: '["is-hukuk"]', display_order: 120 },
+  { slug: 'biorender', name: 'BioRender', category: 'Mühendislik', region: 'Türkiye', logo_url: 'assets/images/biorender_logo.webp', subjects_json: '["muhendislik","saglik"]', display_order: 130 },
+  { slug: 'wiley-journals', name: 'Wiley Dergiler', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)', logo_url: 'assets/images/wiley_logo.svg', subjects_json: '["fen-matematik","muhendislik","saglik"]', display_order: 150 },
+  { slug: 'wiley-books', name: 'Wiley Kitaplar', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)', logo_url: 'assets/images/wiley_logo.svg', subjects_json: '["fen-matematik","muhendislik","saglik"]', display_order: 160 },
+  { slug: 'klasik-muzik', name: 'Klasik Müzik Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/mcgraw-hill_logo.svg', subjects_json: '["sanat"]', display_order: 140 },
+  { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/mcgraw-hill_logo.svg', subjects_json: '["sanat"]', display_order: 145 }
 ];
 
 // 1. CORS Middleware (En üstte, her şeyden önce)
@@ -515,6 +518,7 @@ function buildManagedFileKey(hash, extension) {
 const MANAGED_R2_PREFIXES = [
   'announcement-covers/',
   'institution-logos/',
+  'product-logos/',
   'avatars/',
 ];
 
@@ -681,6 +685,16 @@ async function ensureProductsTableAndSeed(db) {
       default_requires_vpn INTEGER DEFAULT 0,
       default_access_notes_tr TEXT,
       default_access_notes_en TEXT,
+      logo_asset_key TEXT,
+      logo_url TEXT,
+      logo_updated_at TEXT,
+      brand_color TEXT,
+      short_description_tr TEXT,
+      short_description_en TEXT,
+      subjects_json TEXT,
+      card_visible INTEGER DEFAULT 1,
+      display_order INTEGER DEFAULT 999,
+      is_featured INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
@@ -691,7 +705,17 @@ async function ensureProductsTableAndSeed(db) {
     'ALTER TABLE products ADD COLUMN default_requires_institution_email INTEGER DEFAULT 0',
     'ALTER TABLE products ADD COLUMN default_requires_vpn INTEGER DEFAULT 0',
     'ALTER TABLE products ADD COLUMN default_access_notes_tr TEXT',
-    'ALTER TABLE products ADD COLUMN default_access_notes_en TEXT'
+    'ALTER TABLE products ADD COLUMN default_access_notes_en TEXT',
+    'ALTER TABLE products ADD COLUMN logo_asset_key TEXT',
+    'ALTER TABLE products ADD COLUMN logo_url TEXT',
+    'ALTER TABLE products ADD COLUMN logo_updated_at TEXT',
+    'ALTER TABLE products ADD COLUMN brand_color TEXT',
+    'ALTER TABLE products ADD COLUMN short_description_tr TEXT',
+    'ALTER TABLE products ADD COLUMN short_description_en TEXT',
+    'ALTER TABLE products ADD COLUMN subjects_json TEXT',
+    'ALTER TABLE products ADD COLUMN card_visible INTEGER DEFAULT 1',
+    'ALTER TABLE products ADD COLUMN display_order INTEGER DEFAULT 999',
+    'ALTER TABLE products ADD COLUMN is_featured INTEGER DEFAULT 0'
   ]) {
     try {
       await db.prepare(sql).run();
@@ -709,9 +733,12 @@ async function ensureProductsTableAndSeed(db) {
         slug, name, category, region,
         default_access_type, default_access_url,
         default_requires_institution_email, default_requires_vpn,
-        default_access_notes_tr, default_access_notes_en
+        default_access_notes_tr, default_access_notes_en,
+        logo_asset_key, logo_url, logo_updated_at, brand_color,
+        short_description_tr, short_description_en, subjects_json,
+        card_visible, display_order, is_featured
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       product.slug,
       product.name,
@@ -722,7 +749,17 @@ async function ensureProductsTableAndSeed(db) {
       product.default_requires_institution_email ? 1 : 0,
       product.default_requires_vpn ? 1 : 0,
       product.default_access_notes_tr || null,
-      product.default_access_notes_en || null
+      product.default_access_notes_en || null,
+      product.logo_asset_key || null,
+      product.logo_url || null,
+      product.logo_url ? new Date().toISOString() : null,
+      product.brand_color || null,
+      product.short_description_tr || null,
+      product.short_description_en || null,
+      product.subjects_json || null,
+      product.card_visible == null ? 1 : (product.card_visible ? 1 : 0),
+      product.display_order == null ? 999 : Number(product.display_order),
+      product.is_featured ? 1 : 0
     ).run();
 
     if (
@@ -731,7 +768,10 @@ async function ensureProductsTableAndSeed(db) {
       product.default_access_notes_tr ||
       product.default_access_notes_en ||
       product.default_requires_institution_email ||
-      product.default_requires_vpn
+      product.default_requires_vpn ||
+      product.logo_url ||
+      product.subjects_json ||
+      product.display_order != null
     ) {
       await db.prepare(`
         UPDATE products
@@ -739,13 +779,28 @@ async function ensureProductsTableAndSeed(db) {
           default_access_type = COALESCE(NULLIF(default_access_type, ''), ?),
           default_access_url = COALESCE(NULLIF(default_access_url, ''), ?),
           default_access_notes_tr = COALESCE(NULLIF(default_access_notes_tr, ''), ?),
-          default_access_notes_en = COALESCE(NULLIF(default_access_notes_en, ''), ?)
+          default_access_notes_en = COALESCE(NULLIF(default_access_notes_en, ''), ?),
+          logo_url = COALESCE(NULLIF(logo_url, ''), ?),
+          logo_updated_at = CASE
+            WHEN COALESCE(NULLIF(logo_url, ''), ?) IS NOT NULL AND logo_updated_at IS NULL THEN ?
+            ELSE logo_updated_at
+          END,
+          subjects_json = COALESCE(NULLIF(subjects_json, ''), ?),
+          display_order = CASE
+            WHEN display_order IS NULL OR display_order = 999 THEN ?
+            ELSE display_order
+          END
         WHERE slug = ?
       `).bind(
         product.default_access_type || null,
         product.default_access_url || null,
         product.default_access_notes_tr || null,
         product.default_access_notes_en || null,
+        product.logo_url || null,
+        product.logo_url || null,
+        product.logo_url ? new Date().toISOString() : null,
+        product.subjects_json || null,
+        product.display_order == null ? 999 : Number(product.display_order),
         product.slug
       ).run();
     }
@@ -2821,6 +2876,7 @@ app.post('/api/admin/set-role/:id', async (c) => {
 
 const MAX_PRODUCT_RA_RECIPE_BYTES = 16 * 1024;
 const MAX_PRODUCT_RA_ALLOWLIST_BYTES = 4 * 1024;
+const MAX_PRODUCT_SUBJECTS_BYTES = 2 * 1024;
 
 function normalizeProductRaDeliveryMode(raw) {
   const mode = String(raw || '').trim().toLowerCase();
@@ -2849,6 +2905,82 @@ function normalizeProductRaLandingPath(raw) {
   if (trimmed.includes('..')) return null;
   if (trimmed.length > 512) return null;
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
+function cleanProductText(raw, max = 500) {
+  if (raw == null) return null;
+  const value = String(raw).trim();
+  if (!value) return null;
+  return value.slice(0, max);
+}
+
+function normalizeProductLogoUrl(raw) {
+  const value = cleanProductText(raw, 1024);
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith('/api/files/') || value.startsWith('/assets/') || value.startsWith('assets/')) return value;
+  return null;
+}
+
+function normalizeProductAssetKey(raw) {
+  const value = cleanProductText(raw, 512);
+  if (!value) return null;
+  return value.startsWith('product-logos/') ? value : null;
+}
+
+function normalizeProductBrandColor(raw) {
+  const value = cleanProductText(raw, 32);
+  if (!value) return null;
+  return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : null;
+}
+
+function normalizeProductDisplayOrder(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 999;
+  return Math.max(0, Math.min(999999, Math.round(n)));
+}
+
+function normalizeProductSubjectsJson(raw) {
+  if (raw == null || raw === '') return { value: null };
+  const text = String(raw).trim();
+  if (!text) return { value: null };
+  if (text.length > MAX_PRODUCT_SUBJECTS_BYTES) return { error: 'subjects_json çok uzun' };
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) return { error: 'subjects_json bir dizi olmalı' };
+    const subjects = parsed
+      .map((item) => String(item || '').trim().toLowerCase())
+      .filter(Boolean);
+    if (subjects.some((item) => !/^[a-z0-9_-]{1,80}$/.test(item))) {
+      return { error: 'subjects_json geçersiz konu slug içeriyor' };
+    }
+    return { value: JSON.stringify([...new Set(subjects)]) };
+  } catch (err) {
+    return { error: `subjects_json parse hatası: ${err.message}` };
+  }
+}
+
+function normalizeProductPresentation(body) {
+  const logoUrl = normalizeProductLogoUrl(body.logo_url);
+  if (body.logo_url && !logoUrl) return { error: 'Logo URL geçersiz' };
+
+  const logoAssetKey = logoUrl ? normalizeProductAssetKey(body.logo_asset_key) : null;
+  const subjects = normalizeProductSubjectsJson(body.subjects_json);
+  if (subjects.error) return { error: subjects.error };
+
+  return {
+    values: {
+      logo_asset_key: logoAssetKey,
+      logo_url: logoUrl,
+      brand_color: normalizeProductBrandColor(body.brand_color),
+      short_description_tr: cleanProductText(body.short_description_tr, 240),
+      short_description_en: cleanProductText(body.short_description_en, 240),
+      subjects_json: subjects.value,
+      card_visible: body.card_visible == null ? 1 : (body.card_visible ? 1 : 0),
+      display_order: normalizeProductDisplayOrder(body.display_order),
+      is_featured: body.is_featured ? 1 : 0,
+    },
+  };
 }
 
 function validateProductRaConfig(body) {
@@ -2920,11 +3052,53 @@ app.get('/api/admin/products', async (c) => {
            ra_origin_landing_path,
            COALESCE(ra_requires_tunnel, 1) AS ra_requires_tunnel,
            ra_login_recipe_json,
-           ra_host_allowlist_json
+           ra_host_allowlist_json,
+           logo_asset_key,
+           logo_url,
+           logo_updated_at,
+           brand_color,
+           short_description_tr,
+           short_description_en,
+           subjects_json,
+           COALESCE(card_visible, 1) AS card_visible,
+           COALESCE(display_order, 999) AS display_order,
+           COALESCE(is_featured, 0) AS is_featured
     FROM products
-    ORDER BY name COLLATE NOCASE ASC
+    ORDER BY COALESCE(display_order, 999) ASC, name COLLATE NOCASE ASC
   `).all();
   return c.json(rows.results || []);
+});
+
+app.get('/api/products', async (c) => {
+  const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
+
+  const rows = await db.prepare(`
+    SELECT slug, name, category, region,
+           logo_url, logo_updated_at, brand_color,
+           short_description_tr, short_description_en,
+           subjects_json,
+           COALESCE(card_visible, 1) AS card_visible,
+           COALESCE(display_order, 999) AS display_order,
+           COALESCE(is_featured, 0) AS is_featured
+    FROM products
+    WHERE COALESCE(card_visible, 1) = 1
+    ORDER BY COALESCE(display_order, 999) ASC, name COLLATE NOCASE ASC
+  `).all();
+
+  const products = (rows.results || []).map((row) => ({
+    ...row,
+    subjects: (() => {
+      try {
+        const parsed = JSON.parse(row.subjects_json || '[]');
+        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+      } catch (_) {
+        return [];
+      }
+    })(),
+  }));
+
+  return c.json({ products });
 });
 
 app.get('/api/admin/runtime-info', async (c) => {
@@ -2958,9 +3132,14 @@ app.put('/api/admin/product/:slug', async (c) => {
   const raConfig = validateProductRaConfig(body);
   if (raConfig.error) return c.json({ error: raConfig.error }, 400);
   const ra = raConfig.values;
+  const presentationConfig = normalizeProductPresentation(body);
+  if (presentationConfig.error) return c.json({ error: presentationConfig.error }, 400);
+  const presentation = presentationConfig.values;
 
-  const existing = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(slug).first();
+  const existing = await db.prepare(`SELECT slug, logo_url FROM products WHERE slug = ?`).bind(slug).first();
   if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
+  const logoChanged = String(existing.logo_url || '') !== String(presentation.logo_url || '');
+  const logoUpdatedAt = logoChanged ? new Date().toISOString() : null;
 
   await db.prepare(`
     UPDATE products
@@ -2968,6 +3147,10 @@ app.put('/api/admin/product/:slug', async (c) => {
         default_access_type = ?, default_access_url = ?,
         default_requires_institution_email = ?, default_requires_vpn = ?,
         default_access_notes_tr = ?, default_access_notes_en = ?,
+        logo_asset_key = ?, logo_url = ?,
+        logo_updated_at = CASE WHEN ? IS NULL THEN logo_updated_at ELSE ? END,
+        brand_color = ?, short_description_tr = ?, short_description_en = ?,
+        subjects_json = ?, card_visible = ?, display_order = ?, is_featured = ?,
         ra_enabled = ?, ra_delivery_mode = ?,
         ra_origin_host = ?, ra_origin_landing_path = ?,
         ra_requires_tunnel = ?, ra_login_recipe_json = ?, ra_host_allowlist_json = ?
@@ -2982,6 +3165,17 @@ app.put('/api/admin/product/:slug', async (c) => {
     default_requires_vpn ? 1 : 0,
     String(default_access_notes_tr || '').trim() || null,
     String(default_access_notes_en || '').trim() || null,
+    presentation.logo_asset_key,
+    presentation.logo_url,
+    logoUpdatedAt,
+    logoUpdatedAt,
+    presentation.brand_color,
+    presentation.short_description_tr,
+    presentation.short_description_en,
+    presentation.subjects_json,
+    presentation.card_visible,
+    presentation.display_order,
+    presentation.is_featured,
     ra_enabled ? 1 : 0,
     ra.ra_delivery_mode,
     ra.ra_origin_host,
@@ -3023,6 +3217,10 @@ app.post('/api/admin/products', async (c) => {
   const raConfig = validateProductRaConfig(body);
   if (raConfig.error) return c.json({ error: raConfig.error }, 400);
   const ra = raConfig.values;
+  const presentationConfig = normalizeProductPresentation(body);
+  if (presentationConfig.error) return c.json({ error: presentationConfig.error }, 400);
+  const presentation = presentationConfig.values;
+  const logoUpdatedAt = presentation.logo_url ? new Date().toISOString() : null;
 
   await db.prepare(`
     INSERT INTO products (
@@ -3030,9 +3228,12 @@ app.post('/api/admin/products', async (c) => {
       default_access_type, default_access_url,
       default_requires_institution_email, default_requires_vpn,
       default_access_notes_tr, default_access_notes_en,
+      logo_asset_key, logo_url, logo_updated_at, brand_color,
+      short_description_tr, short_description_en, subjects_json,
+      card_visible, display_order, is_featured,
       ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path,
       ra_requires_tunnel, ra_login_recipe_json, ra_host_allowlist_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     slugNorm,
     String(name).trim(),
@@ -3044,6 +3245,16 @@ app.post('/api/admin/products', async (c) => {
     default_requires_vpn ? 1 : 0,
     String(default_access_notes_tr || '').trim() || null,
     String(default_access_notes_en || '').trim() || null,
+    presentation.logo_asset_key,
+    presentation.logo_url,
+    logoUpdatedAt,
+    presentation.brand_color,
+    presentation.short_description_tr,
+    presentation.short_description_en,
+    presentation.subjects_json,
+    presentation.card_visible,
+    presentation.display_order,
+    presentation.is_featured,
     ra_enabled ? 1 : 0,
     ra.ra_delivery_mode,
     ra.ra_origin_host,
@@ -3054,6 +3265,60 @@ app.post('/api/admin/products', async (c) => {
   ).run();
 
   return c.json({ success: true, slug: slugNorm }, 201);
+});
+
+app.post('/api/admin/product/:slug/logo', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+
+  const slug = String(c.req.param('slug') || '').trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9_-]{0,79}$/.test(slug)) {
+    return c.json({ error: 'Geçersiz ürün slug' }, 400);
+  }
+
+  const db = c.env.DB;
+  const bucket = c.env.FILES_BUCKET;
+  const r2PublicUrl = c.env.R2_PUBLIC_URL;
+  await ensureProductsTableAndSeed(db);
+
+  if (!bucket) return c.json({ error: 'FILES_BUCKET tanımlı değil' }, 500);
+  if (!r2PublicUrl) return c.json({ error: 'R2_PUBLIC_URL tanımlı değil' }, 500);
+
+  const existing = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(slug).first();
+  if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
+
+  let formData;
+  try { formData = await c.req.formData(); } catch { return c.json({ error: 'Form verisi okunamadı' }, 400); }
+  const file = formData.get('logo');
+  if (!file || typeof file === 'string') return c.json({ error: 'Logo dosyası gerekli' }, 400);
+
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+  if (!allowed.includes(file.type)) return c.json({ error: 'Sadece JPG, PNG, WEBP veya SVG' }, 400);
+  if (file.size > 2 * 1024 * 1024) return c.json({ error: "Logo 2MB'dan küçük olmalı" }, 400);
+
+  try {
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+    const key = `product-logos/${slug}/logo-${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const arrayBuffer = await file.arrayBuffer();
+    await bucket.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
+
+    const logoUrl = `${r2PublicUrl}/${key}`;
+    const logoUpdatedAt = new Date().toISOString();
+    await db.prepare(`
+      UPDATE products
+      SET logo_asset_key = ?, logo_url = ?, logo_updated_at = ?
+      WHERE slug = ?
+    `).bind(key, logoUrl, logoUpdatedAt, slug).run();
+
+    return c.json({
+      success: true,
+      logo_asset_key: key,
+      logo_url: logoUrl,
+      logo_updated_at: logoUpdatedAt,
+    });
+  } catch (err) {
+    console.error('Product logo upload error:', err);
+    return c.json({ error: 'Logo yükleme başarısız' }, 500);
+  }
 });
 
 app.get('/api/admin/subscriptions', async (c) => {

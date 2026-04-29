@@ -63,6 +63,48 @@ document.addEventListener('DOMContentLoaded', function() {
             await register(fullName, email, password, institution);
         });
     }
+
+    async function applyProductPresentationFromApi() {
+        const productsGrid = document.getElementById('products-grid');
+        if (!productsGrid) return;
+
+        try {
+            const apiBase = window.API_BASE || '';
+            const res = await fetch(`${apiBase}/api/products`, { credentials: 'same-origin' });
+            if (!res.ok) return;
+            const data = await res.json();
+            const products = Array.isArray(data.products) ? data.products : [];
+            const aliases = {
+                'jove-research': 'jove-dergiler',
+                'wiley-journals': 'wiley-dergiler',
+                'wiley-books': 'wiley-kitaplar',
+            };
+
+            products.forEach(product => {
+                const id = aliases[product.slug] || product.slug;
+                const card = document.getElementById(id);
+                if (!card) return;
+                if (product.logo_url) {
+                    const img = card.querySelector('.product-image');
+                    if (img) {
+                        const separator = product.logo_url.includes('?') ? '&' : '?';
+                        const versioned = product.logo_updated_at
+                            ? `${product.logo_url}${separator}v=${encodeURIComponent(product.logo_updated_at)}`
+                            : product.logo_url;
+                        img.src = versioned;
+                        img.alt = `${product.name || product.slug} Logo`;
+                    }
+                }
+                if (product.card_visible === 0 || product.card_visible === false) {
+                    card.dataset.cardVisible = '0';
+                    card.style.display = 'none';
+                }
+            });
+        } catch (err) {
+            console.warn('Product presentation could not be loaded', err);
+        }
+    }
+    applyProductPresentationFromApi();
     
     // --- Product Cards ---
     document.querySelectorAll('.flip-card').forEach(card => {
@@ -130,9 +172,10 @@ document.addEventListener('DOMContentLoaded', function() {
             let cardsToDisplay = [];
 
             if (isAllActive || activeSubjects.length === 0) {
-                cardsToDisplay = [...originalOrder];
+                cardsToDisplay = originalOrder.filter(card => card.dataset.cardVisible !== '0');
             } else {
                 cardsToDisplay = productCards.filter(card => {
+                    if (card.dataset.cardVisible === '0') return false;
                     const cardSubjects = card.dataset.subjects.split(',');
                     return activeSubjects.some(s => cardSubjects.includes(s));
                 });

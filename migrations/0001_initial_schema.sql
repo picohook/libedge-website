@@ -76,6 +76,16 @@ CREATE TABLE IF NOT EXISTS products (
   default_requires_vpn INTEGER DEFAULT 0,
   default_access_notes_tr TEXT,
   default_access_notes_en TEXT,
+  logo_asset_key TEXT,
+  logo_url TEXT,
+  logo_updated_at TEXT,
+  brand_color TEXT,
+  short_description_tr TEXT,
+  short_description_en TEXT,
+  subjects_json TEXT,
+  card_visible INTEGER DEFAULT 1,
+  display_order INTEGER DEFAULT 999,
+  is_featured INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
