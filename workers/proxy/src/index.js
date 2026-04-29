@@ -236,7 +236,7 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   });
 }
 
-async function acceptSessionHostToken(request, env, token, url, sessionId) {
+export async function acceptSessionHostToken(request, env, token, url, sessionId) {
   // Token doğrula
   let payload;
   try {
@@ -245,21 +245,38 @@ async function acceptSessionHostToken(request, env, token, url, sessionId) {
     return htmlError(401, 'Erişim bağlantısı geçersiz veya süresi dolmuş.', err.message);
   }
 
-  // jti tek kullanımlık
+  // jti tek kullanımlık. Ancak Chrome'un yeni-tab açarken yaptığı speculative
+  // duplicate fetch (aynı URL'i iki defa istemesi) bu kontrolü tetikleyip
+  // kullanıcıyı 401'e düşürüyor. jti consumed ama cookie+session zaten valid'se
+  // bu duplicate fetch race'idir — sessizce 302 ile redirect et, kullanıcıya
+  // hata gösterme.
   const jtiKey = `ra:jti:${payload.jti}`;
   const used = await env.RATE_LIMIT_KV.get(jtiKey);
-  if (used) {
-    return htmlError(401, 'Bu bağlantı daha önce kullanılmış. Portal üzerinden yeni bağlantı alın.');
-  }
-  await env.RATE_LIMIT_KV.put(jtiKey, 'used', { expirationTtl: 600 });
+  const cookieSid = readCookie(request.headers.get('Cookie'), SESSION_COOKIE);
 
-  // mod uyumu kontrolü
+  // mod uyumu kontrolü (jti henüz tüketilmemiş veya sadece doğrulama amaçlı)
   if (payload.mod !== 'session_host_proxy') {
     return htmlError(400, 'Token modu bu proxy ile uyumsuz.');
   }
 
   // KV session'ı doğrula (issue-token tarafından önceden yazılmış)
   const session = await env.RA_UPSTREAM_SESSIONS.get(`rhost:${sessionId}`, 'json');
+
+  if (used) {
+    // Idempotent yol: jti kullanılmış ama bu istek zaten doğru sessionId
+    // cookie'sini taşıyor ve KV'da geçerli session var → graceful 302.
+    if (cookieSid === sessionId && session && session.expires_at >= Math.floor(Date.now() / 1000)) {
+      const clean = new URL(url);
+      clean.searchParams.delete('t');
+      return new Response(null, {
+        status: 302,
+        headers: { Location: clean.toString() },
+      });
+    }
+    return htmlError(401, 'Bu bağlantı daha önce kullanılmış. Portal üzerinden yeni bağlantı alın.');
+  }
+  await env.RATE_LIMIT_KV.put(jtiKey, 'used', { expirationTtl: 600 });
+
   if (!session) {
     return htmlError(401, 'Oturum kaydı bulunamadı. Token ile session eşleşmiyor.');
   }
