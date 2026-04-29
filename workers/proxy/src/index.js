@@ -515,6 +515,11 @@ function isCasPrivateHeader(lower) {
 export function buildUpstreamHeaders(incoming, context = {}) {
   const out = new Headers();
   let sawUserAgent = false;
+  // Browser HTML document navigasyonu mu? Üst seviye sayfa isteğinde
+  // Sec-Fetch-Dest=document ve/veya Accept text/html olur. Bu tespit edilirse
+  // Cloudflare/Imperva gibi bot detection'a takılmamak için tarayıcının
+  // address-bar yazımı sırasındaki "natural navigation" header setini taklit ederiz.
+  const isDocNav = isDocumentNavigation(incoming);
   for (const [k, v] of incoming.entries()) {
     const lower = k.toLowerCase();
     if (HOP_BY_HOP.has(lower) || STRIP_REQUEST.has(lower) || isCasPrivateHeader(lower)) continue;
@@ -531,12 +536,35 @@ export function buildUpstreamHeaders(incoming, context = {}) {
       out.set('Sec-CH-UA-Platform', '"Windows"');
       continue;
     }
+    // Document navigasyonunda Sec-Fetch-Site=cross-site forward edilirse
+    // Cloudflare WAF "external link from suspicious origin" görür ve
+    // ACS gibi sertleşmiş publisher'larda root sayfayı 403 ile döner.
+    // Tarayıcının doğrudan address-bar'a yazma davranışına çevir.
+    if (isDocNav && lower === 'sec-fetch-site') {
+      out.set('Sec-Fetch-Site', 'none');
+      continue;
+    }
+    if (isDocNav && lower === 'sec-fetch-mode') {
+      out.set('Sec-Fetch-Mode', 'navigate');
+      continue;
+    }
+    if (isDocNav && lower === 'sec-fetch-user') {
+      out.set('Sec-Fetch-User', '?1');
+      continue;
+    }
+    if (isDocNav && lower === 'sec-fetch-dest') {
+      out.set('Sec-Fetch-Dest', 'document');
+      continue;
+    }
     if (lower === 'cookie') {
       const cleaned = stripSessionCookie(v);
       if (cleaned) out.set(k, cleaned);
       continue;
     }
     if (lower === 'origin' || lower === 'referer') {
+      // Document navigasyonunda Referer'ı tamamen sil — proxy domain'i
+      // Cloudflare bot detection'a "external referrer" sinyali gönderiyor.
+      if (isDocNav && lower === 'referer') continue;
       const rewritten = rewriteClientContextHeader(k, v, context);
       if (rewritten) out.set(k, rewritten);
       continue;
@@ -546,7 +574,33 @@ export function buildUpstreamHeaders(incoming, context = {}) {
   if (context.forceDesktopUserAgent && !sawUserAgent) {
     out.set('User-Agent', DESKTOP_USER_AGENT);
   }
+  // Document navigasyonunda eksik olan natural-navigation hint'lerini doldur.
+  if (isDocNav) {
+    if (!out.has('Sec-Fetch-Site')) out.set('Sec-Fetch-Site', 'none');
+    if (!out.has('Sec-Fetch-Mode')) out.set('Sec-Fetch-Mode', 'navigate');
+    if (!out.has('Sec-Fetch-User')) out.set('Sec-Fetch-User', '?1');
+    if (!out.has('Sec-Fetch-Dest')) out.set('Sec-Fetch-Dest', 'document');
+    if (!out.has('Upgrade-Insecure-Requests')) out.set('Upgrade-Insecure-Requests', '1');
+    if (!out.has('Accept-Language')) out.set('Accept-Language', 'tr-TR,tr;q=0.9,en;q=0.8');
+  }
   return out;
+}
+
+/**
+ * Browser HTML document navigasyonu tespiti.
+ *
+ * Üst seviye HTML sayfası isteği iki sinyalden tanınır:
+ *  - Sec-Fetch-Dest: document  (modern tarayıcılar her zaman gönderir)
+ *  - Accept: text/html ile başlar  (Sec-Fetch-Dest yoksa fallback)
+ *
+ * Asset request'leri (CSS/JS/image/font/XHR) için false döner; onların doğal
+ * Sec-Fetch değerleri korunur.
+ */
+function isDocumentNavigation(headers) {
+  const dest = headers.get('Sec-Fetch-Dest');
+  if (dest) return dest.toLowerCase() === 'document';
+  const accept = headers.get('Accept') || '';
+  return /^text\/html\b/i.test(accept);
 }
 
 const STRIP_RESPONSE = new Set([
