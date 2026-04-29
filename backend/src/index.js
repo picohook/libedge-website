@@ -3312,25 +3312,18 @@ app.put('/api/admin/product/:slug', async (c) => {
   return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
 });
 
-app.post('/api/admin/actions/:id/undo', async (c) => {
-  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
-  const id = String(c.req.param('id') || '').trim();
-  if (!id) return c.json({ error: 'Geçersiz işlem' }, 400);
-  const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
-  await ensureRemoteAccessSchema(db);
-  await ensureAdminActionLogsTable(db);
+async function restoreProductAction(db, id, { enforceExpiry = false } = {}) {
   const log = await db.prepare(`
     SELECT * FROM admin_action_logs
     WHERE id = ? AND entity_type = 'product' AND action = 'update'
   `).bind(id).first();
-  if (!log) return c.json({ error: 'Geri alınacak işlem bulunamadı' }, 404);
-  if (log.undone_at) return c.json({ error: 'Bu işlem zaten geri alınmış' }, 409);
-  if (log.undo_expires_at && Date.now() > Date.parse(log.undo_expires_at)) {
-    return c.json({ error: 'Geri alma süresi dolmuş' }, 410);
+  if (!log) return { error: 'Geri alınacak işlem bulunamadı', status: 404 };
+  if (log.undone_at) return { error: 'Bu işlem zaten geri alınmış', status: 409 };
+  if (enforceExpiry && log.undo_expires_at && Date.now() > Date.parse(log.undo_expires_at)) {
+    return { error: 'Hızlı geri alma süresi dolmuş', status: 410 };
   }
   const before = JSON.parse(log.before_json || '{}');
-  if (!before.slug) return c.json({ error: 'Geri alma verisi eksik' }, 400);
+  if (!before.slug) return { error: 'Geri alma verisi eksik', status: 400 };
   const columns = [
     'name', 'category', 'region',
     'default_access_type', 'default_access_url',
@@ -3352,6 +3345,51 @@ app.post('/api/admin/actions/:id/undo', async (c) => {
     UPDATE admin_action_logs SET undone_at = ? WHERE id = ?
   `).bind(new Date().toISOString(), id);
   await db.batch([updateStmt, markStmt]);
+  return { success: true };
+}
+
+app.get('/api/admin/actions', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const db = c.env.DB;
+  await ensureAdminActionLogsTable(db);
+  const url = new URL(c.req.url);
+  const entityType = (url.searchParams.get('entity_type') || 'product').trim();
+  if (entityType !== 'product') return c.json({ actions: [] });
+  const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') || 50)));
+  const rows = await db.prepare(`
+    SELECT id, actor_user_id, entity_type, entity_id, action,
+           before_json, undo_expires_at, undone_at, created_at
+    FROM admin_action_logs
+    WHERE entity_type = 'product'
+    ORDER BY created_at DESC
+    LIMIT ?
+  `).bind(limit).all();
+  return c.json({ actions: rows.results || [] });
+});
+
+app.post('/api/admin/actions/:id/undo', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const id = String(c.req.param('id') || '').trim();
+  if (!id) return c.json({ error: 'Geçersiz işlem' }, 400);
+  const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
+  await ensureRemoteAccessSchema(db);
+  await ensureAdminActionLogsTable(db);
+  const result = await restoreProductAction(db, id, { enforceExpiry: true });
+  if (result.error) return c.json({ error: result.error }, result.status || 400);
+  return c.json({ success: true });
+});
+
+app.post('/api/admin/actions/:id/restore', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const id = String(c.req.param('id') || '').trim();
+  if (!id) return c.json({ error: 'Geçersiz işlem' }, 400);
+  const db = c.env.DB;
+  await ensureProductsTableAndSeed(db);
+  await ensureRemoteAccessSchema(db);
+  await ensureAdminActionLogsTable(db);
+  const result = await restoreProductAction(db, id);
+  if (result.error) return c.json({ error: result.error }, result.status || 400);
   return c.json({ success: true });
 });
 

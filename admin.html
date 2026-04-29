@@ -1136,9 +1136,14 @@
         <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold">Ürünler <span id="productsCount" class="text-sm font-normal text-gray-400"></span></h3>
-                <button type="button" data-admin-action="open-new-product-modal" class="btn btn-primary text-sm inline-flex items-center gap-2">
-                    <i class="fas fa-plus"></i> Yeni Ürün
-                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" data-admin-action="open-product-history-modal" class="btn bg-gray-100 text-gray-700 text-sm inline-flex items-center gap-2">
+                        <i class="fas fa-history"></i> İşlem Geçmişi
+                    </button>
+                    <button type="button" data-admin-action="open-new-product-modal" class="btn btn-primary text-sm inline-flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Yeni Ürün
+                    </button>
+                </div>
             </div>
             <!-- Filtreler -->
             <div class="flex flex-col sm:flex-row flex-wrap gap-2 mb-4">
@@ -1178,6 +1183,23 @@
                     </thead>
                     <tbody id="productsList"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="productHistoryModal" class="modal-overlay modal-center hidden">
+        <div class="modal-panel modal-3xl">
+            <div class="modal-content">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold">Ürün İşlem Geçmişi</h3>
+                        <p class="text-sm text-gray-500 mt-1">Ürün güncellemelerini eski snapshot değerlerine geri yükleyebilirsiniz.</p>
+                    </div>
+                    <button type="button" data-admin-action="close-product-history-modal" class="text-gray-400 hover:text-gray-600 text-lg leading-none px-2 py-1">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="productHistoryList" class="space-y-2 max-h-[60vh] overflow-y-auto"></div>
             </div>
         </div>
     </div>
@@ -3991,6 +4013,62 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         editingProductSlug = null;
     }
 
+    async function openProductHistoryModal() {
+        document.getElementById('productHistoryModal')?.classList.remove('hidden');
+        await loadProductHistory();
+    }
+
+    function closeProductHistoryModal() {
+        document.getElementById('productHistoryModal')?.classList.add('hidden');
+    }
+
+    async function loadProductHistory() {
+        const list = document.getElementById('productHistoryList');
+        if (!list) return;
+        list.innerHTML = '<div class="text-sm text-gray-400 py-4 text-center">Yükleniyor...</div>';
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/actions?entity_type=product&limit=50`, { credentials: 'include' });
+            if (!res.ok) throw new Error('Geçmiş yüklenemedi');
+            const data = await res.json();
+            const actions = data.actions || [];
+            list.innerHTML = actions.length ? actions.map((a) => {
+                let before = {};
+                try { before = JSON.parse(a.before_json || '{}'); } catch (_) { before = {}; }
+                const when = a.created_at ? new Date(a.created_at).toLocaleString('tr-TR') : '-';
+                const disabled = a.undone_at ? 'disabled opacity-50 cursor-not-allowed' : '';
+                const label = a.undone_at ? 'Geri yüklendi' : 'Geri yükle';
+                return `
+                    <div class="border rounded-lg p-3 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="font-medium text-sm">${escapeHtml(before.name || a.entity_id)}</div>
+                            <div class="text-xs text-gray-500">${escapeHtml(a.entity_id)} • ${escapeHtml(when)}</div>
+                        </div>
+                        <button type="button" data-admin-action="restore-product-action" data-action-id="${escapeHtml(a.id)}" class="px-3 py-1.5 rounded bg-blue-600 text-white text-xs ${disabled}" ${a.undone_at ? 'disabled' : ''}>${label}</button>
+                    </div>
+                `;
+            }).join('') : '<div class="text-sm text-gray-400 py-4 text-center">Kayıt yok.</div>';
+        } catch (err) {
+            list.innerHTML = `<div class="text-sm text-red-500 py-4 text-center">${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    async function restoreProductAction(actionId) {
+        if (!actionId) return;
+        if (!window.confirm('Bu ürün, seçili işlemden önceki değerlerine geri yüklenecek. Devam edilsin mi?')) return;
+        const res = await fetch(`${API_BASE}/api/admin/actions/${encodeURIComponent(actionId)}/restore`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            showActionError('Geri yükleme', body.error || `HTTP ${res.status}`);
+            return;
+        }
+        showToast('Ürün eski değerlerine geri yüklendi.', 'success');
+        await loadProducts();
+        await loadProductHistory();
+    }
+
     async function uploadProductLogo(input) {
         const file = input?.files?.[0];
         if (!file) return;
@@ -5416,6 +5494,9 @@ document.addEventListener('click', (e) => {
         case 'trigger-file-input': document.getElementById('fileInput')?.click(); break;
         case 'clear-file-selection': clearFileSelection(); break;
         case 'close-admin-file-modal': closeAdminFileModal(); break;
+        case 'open-product-history-modal': openProductHistoryModal(); break;
+        case 'close-product-history-modal': closeProductHistoryModal(); break;
+        case 'restore-product-action': restoreProductAction(actionEl.dataset.actionId || ''); break;
         case 'open-new-product-modal': openNewProductModal(); break;
         case 'close-product-modal': closeProductModal(); break;
         case 'trigger-product-logo-file': document.getElementById('productLogoFile')?.click(); break;
@@ -5542,6 +5623,7 @@ const _accessibleModalIds = [
     'folderMoveModal',
     'adminFolderRenameModal',
     'adminFolderModal',
+    'productHistoryModal',
     'productModal',
     'submissionModal',
     'supportModal',
