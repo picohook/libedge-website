@@ -12,6 +12,7 @@ import { registerRaAdminTunnel } from './routes/ra/admin-tunnel.js';
 import { registerRaAdminOverview } from './routes/ra/admin-overview.js';
 import { registerRaAdminConfig } from './routes/ra/admin-config.js';
 import { registerRaEgressAllowedHosts } from './routes/ra/egress-allowed-hosts.js';
+import { registerRaAdminAlerts } from './routes/ra/admin-alerts.js';
 import { ensureRemoteAccessSchema } from './ra/schema.js';
 
 const app = new Hono();
@@ -8246,6 +8247,8 @@ registerRaAdminOverview(app);
 registerRaAdminConfig(app);
 // GET /api/ra/egress/allowed-hosts — egress agent'lar için dinamik host listesi
 registerRaEgressAllowedHosts(app);
+// GET /api/ra/admin/alerts ; POST .../dismiss ; POST .../dismiss-all
+registerRaAdminAlerts(app);
 
 
 // ====================== PAGE VIEWS ROUTES ======================
@@ -8360,4 +8363,102 @@ app.onError((err, c) => {
 
 app.notFound((c) => c.json({ error: 'Endpoint bulunamadı', code: 404 }, 404));
 
-export default app;
+// ─── Scheduled handler: upstream hata alertları için email bildirimi ──────────
+// Cloudflare cron trigger ile tetiklenir (wrangler.toml'da tanımlı olmalı).
+// Örnek wrangler.toml:
+//   [[triggers.crons]]
+//   crons = ["*/5 * * * *"]
+//
+// Çalışma mantığı:
+//   1. Son 1 saatte oluşmuş, henüz email gönderilmemiş (notified_at IS NULL)
+//      ve kapatılmamış (dismissed = 0) alertları çek.
+//   2. Varsa Resend API üzerinden RESEND_ALERT_TO adresine özet email at.
+//   3. notified_at'ı güncelle (bir daha gönderilmesin).
+//
+// Gerekli env değişkenleri (wrangler.toml [vars] veya Cloudflare secret):
+//   RESEND_API_KEY   — Resend API anahtarı
+//   RESEND_ALERT_TO  — bildirim alacak admin email adresi (örn. admin@libedge.com)
+async function handleScheduledAlerts(env) {
+  if (!env.DB) return;
+
+  const since = Math.floor(Date.now() / 1000) - 3600; // son 1 saat
+
+  let rows;
+  try {
+    const result = await env.DB
+      .prepare(
+        `SELECT id, product_slug, institution_id, target_host, upstream_status, created_at
+         FROM ra_alerts
+         WHERE dismissed = 0 AND notified_at IS NULL AND created_at >= ?
+         ORDER BY created_at DESC
+         LIMIT 50`
+      )
+      .bind(since)
+      .all();
+    rows = result.results || [];
+  } catch (err) {
+    console.error('scheduled alerts query failed', err);
+    return;
+  }
+
+  if (!rows.length) return;
+
+  const resendKey = env.RESEND_API_KEY;
+  const alertTo = env.RESEND_ALERT_TO;
+
+  if (resendKey && alertTo) {
+    const lines = rows.map((r) => {
+      const ts = new Date(Number(r.created_at) * 1000).toISOString();
+      return `• ${r.product_slug || '?'} | ${r.target_host || '?'} | HTTP ${r.upstream_status} | ${ts}`;
+    });
+
+    const body = {
+      from: 'LibEdge Alerts <noreply@libedge.com>',
+      to: [alertTo],
+      subject: `[LibEdge] ${rows.length} upstream erişim hatası tespit edildi`,
+      text: [
+        'Aşağıdaki upstream hatalar son 1 saat içinde algılandı:',
+        '',
+        ...lines,
+        '',
+        'Admin paneli: https://libedge.com/admin.html',
+      ].join('\n'),
+    };
+
+    try {
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) {
+        console.error('resend alert failed', resp.status, await resp.text());
+      }
+    } catch (err) {
+      console.error('resend fetch failed', err);
+    }
+  }
+
+  // notified_at güncelle — email gönderilemese bile tekrar denemesin
+  const ids = rows.map((r) => Number(r.id));
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    // D1 batch ile toplu güncelleme
+    const stmts = ids.map((id) =>
+      env.DB.prepare(`UPDATE ra_alerts SET notified_at = ? WHERE id = ?`).bind(now, id)
+    );
+    await env.DB.batch(stmts);
+  } catch (err) {
+    console.error('alert notified_at update failed', err);
+  }
+}
+
+export default {
+  fetch: app.fetch,
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(handleScheduledAlerts(env));
+  },
+};

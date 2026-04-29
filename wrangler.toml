@@ -47,11 +47,16 @@ id = "d742f0d165234385bacf6ddfc0cd43e1"
 # RA_CREDS_MASTER_KEY:   npx wrangler secret put RA_CREDS_MASTER_KEY   [--env staging|production]
 # RA_EGRESS_DEFAULT_SECRET: npx wrangler secret put RA_EGRESS_DEFAULT_SECRET [--env staging|production]
 # RA_PROXY_HOST: [vars] içinde env bazlı set edilir (aşağıda tanımlı)
+# RESEND_API_KEY:   npx wrangler secret put RESEND_API_KEY   [--env staging|production]
+# RESEND_ALERT_TO:  npx wrangler secret put RESEND_ALERT_TO  [--env staging|production]
 
 # Staging environment
 [env.staging]
 name = "libedge-api-staging"
 workers_dev = true
+
+[env.staging.triggers]
+crons = ["*/5 * * * *"]
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
@@ -81,6 +86,9 @@ id = "a3a0f76dca834921b4b1000bce675037"
 # Production environment
 [env.production]
 name = "libedge-api-prod"
+
+[env.production.triggers]
+crons = ["*/5 * * * *"]
 
 [env.production.vars]
 ENVIRONMENT = "production"

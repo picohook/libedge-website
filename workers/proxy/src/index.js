@@ -12,6 +12,7 @@
 import { verifyProxyToken } from '../../../backend/src/ra/jwt.js';
 import { encodeHost, decodeHost, isValidEncodedHost } from '../../../backend/src/ra/host.js';
 import { egressFetch } from './egress-client.js';
+import { writeUpstreamAlert } from './alert-writer.js';
 
 const SESSION_COOKIE  = 'ra_proxy_session';
 const UPSTREAM_HOST_COOKIE = '__ra_upstream';
@@ -54,18 +55,18 @@ async function handle(request, env, ctx) {
   // örn: rx7f3a9b.selmiye.com  → sessionId = "rx7f3a9b"
   const sessionHostMatch = hostname.match(/^(r[a-z0-9]{6,8})\./);
   if (sessionHostMatch) {
-    return await handleSessionHost(request, env, url, sessionHostMatch[1]);
+    return await handleSessionHost(request, env, ctx, url, sessionHostMatch[1]);
   }
 
   // Path-proxy modu (mevcut)
-  return await handlePathProxy(request, env, url);
+  return await handlePathProxy(request, env, ctx, url);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SESSION-HOST PROXY
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function handleSessionHost(request, env, url, sessionId) {
+async function handleSessionHost(request, env, ctx, url, sessionId) {
   // Token var mı? (issue-token'dan gelen ilk yönlendirme)
   const token = url.searchParams.get('t');
   if (token) {
@@ -141,6 +142,15 @@ async function handleSessionHost(request, env, url, sessionId) {
   } catch (err) {
     console.error('egress error (session-host)', err);
     return htmlError(502, 'Kurumun erişim sunucusuna ulaşılamadı.', err.message);
+  }
+
+  if (upstreamResp.status === 401 || upstreamResp.status === 403) {
+    ctx.waitUntil(writeUpstreamAlert(env, {
+      product_slug: session.product_slug,
+      institution_id: session.institution_id,
+      target_host: target.host,
+      status: upstreamResp.status,
+    }));
   }
 
   await persistSessionHostCookieJar(
@@ -293,7 +303,7 @@ function buildSessionHostResponseHeaders(incoming, proxyHostname, originHost, cu
 // PATH-PROXY (mevcut akış — ayrı fonksiyona alındı)
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function handlePathProxy(request, env, url) {
+async function handlePathProxy(request, env, ctx, url) {
   // 1. Path parse: /www-jove-com/article/123
   const parsed = parseProxyPath(url.pathname);
   if (!parsed) {
@@ -350,6 +360,15 @@ async function handlePathProxy(request, env, url) {
   } catch (err) {
     console.error('egress error', err);
     return htmlError(502, 'Kurumun erişim sunucusuna ulaşılamadı.', err.message);
+  }
+
+  if (upstreamResp.status === 401 || upstreamResp.status === 403) {
+    ctx.waitUntil(writeUpstreamAlert(env, {
+      product_slug: session.product_slug,
+      institution_id: session.institution_id,
+      target_host: targetUrl.hostname,
+      status: upstreamResp.status,
+    }));
   }
 
   const baseHost = env.RA_PROXY_BASE_HOST || url.hostname;

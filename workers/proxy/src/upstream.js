@@ -1,4 +1,4 @@
-/**
+﻿/**
  * workers/proxy/src/upstream.js
  *
  * Upstream fetch + response rewrite. POC:
@@ -23,7 +23,7 @@ import {
 function getUpstreamHostFromCookie(request, defaultHost) {
   const cookie = request.headers.get('Cookie');
   if (!cookie) return defaultHost;
-  
+
   const match = cookie.match(/__ra_upstream=([^;]+)/);
   if (match && match[1]) {
     try {
@@ -66,11 +66,11 @@ export function buildCookieJarKey(session, targetHost) {
  */
 export async function proxyToUpstream(env, session, sessionId, clientReq, proxyHost, pathInfo) {
   const url = new URL(clientReq.url);
-  
+
   // Cookie'den upstream host'u al (multi-origin için)
   let targetHost = getUpstreamHostFromCookie(clientReq, session.target_host);
   const originalTargetHost = session.target_host;
-  
+
   // Eğer cookie'den farklı bir host geldiyse, targetHost'u güncelle
   if (targetHost !== originalTargetHost) {
     console.log(`Multi-origin: switching from ${originalTargetHost} to ${targetHost} (from cookie)`);
@@ -243,16 +243,15 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Egress yapılandırılmışsa agent üzerinden gider; hata fırlatılırsa yukarıya
+// iletilir (caller 502 döner). Egress yoksa direkt fetch.
+// Fallback yok: tünel düşerse Cloudflare IP'siyle erişim sessizce başarısız
+// olur; kullanıcıya yanlış sinyal vermek yerine açık hata tercih edilir.
+// ──────────────────────────────────────────────────────────────────────────
 async function tryEgressOrDirect(env, settings, targetUrl, init) {
-  // Egress agent check
-  try {
-    if (settings && settings.enabled && settings.egress_endpoint) {
-      return await egressFetch(env, settings.institution_id, targetUrl, init);
-    }
-  } catch (err) {
-    console.warn('egress lookup failed, falling back to direct', err);
+  if (settings && settings.enabled && settings.egress_endpoint) {
+    return await egressFetch(env, settings.institution_id, targetUrl, init);
   }
-  // Direct fetch
   return await fetch(targetUrl, init);
 }
 
@@ -269,14 +268,11 @@ function rewriteUrl(u, proxyableHosts, proxyHost, encodedLabel) {
     if (!/^https?:\/\//i.test(u) && !u.startsWith('//')) return u;
     const abs = u.startsWith('//') ? `https:${u}` : u;
     const parsed = new URL(abs);
-    
-    if (proxyableHosts.has(parsed.hostname)) {
-      // FIX: her host kendi label'ı ile encode edilmeli; encodedLabel sadece
-      // orijinal targetHost içindir — farklı bir proxyable host gelirse yanlış
-      // label üretilir (örn. sso.cas.org için scifinder-n label'ı kullanılır).
-      // NOT: redirect_uri query param'ına dokunma — OIDC sunucusu kayıtlı değerle
-      // karşılaştırır, değiştirirsen invalid_redirect_uri hatası alırsın.
-      const hostLabel = encodeHost(parsed.hostname);
+    const hostname = parsed.hostname.toLowerCase();
+    if (proxyableHosts.has(hostname)) {
+      // Her host kendi label'ı ile encode edilmeli; encodedLabel sadece orijinal
+      // targetHost içindir. redirect_uri'ye dokunma — OIDC kayıtlı değerle karşılaştırır.
+      const hostLabel = encodeHost(hostname);
       return `https://${proxyHost}/${hostLabel}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
     return u;
@@ -355,11 +351,10 @@ async function loadProductProxyConfig(db, slug) {
     .first();
 }
 
-// FIX: egressEndpoint parametresi kaldırıldı. Egress endpoint dahili bir servis
-// URL'sidir (publisher host'u değil); rewrite set'ine eklenmemeli.
 function buildProxyableHosts(targetHost, allowlistJson) {
-  const hosts = new Set([targetHost]);
-  addCommonHostAliases(hosts, targetHost);
+  const normalizedTarget = String(targetHost || '').trim().toLowerCase();
+  const hosts = new Set([normalizedTarget]);
+  addCommonHostAliases(hosts, normalizedTarget);
 
   if (allowlistJson) {
     try {

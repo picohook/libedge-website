@@ -166,6 +166,31 @@ export async function ensureRemoteAccessSchema(db) {
       WHERE slug = 'jove-research'`
   ).run();
 
+  // ra_alerts — proxy'nin upstream'den aldığı 401/403 hataları burada toplanır.
+  // Her kayıt bir publisher+kurum+status kombinasyonu için 15 dakikalık pencereyi temsil eder.
+  // dismissed=0 olanlar admin panelinde badge olarak gösterilir.
+  // Cron handler notified_at set edildikten sonra email gönderip tekrarlamaz.
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS ra_alerts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_slug TEXT,
+        institution_id INTEGER,
+        target_host TEXT,
+        upstream_status INTEGER NOT NULL,
+        dismissed INTEGER NOT NULL DEFAULT 0,
+        notified_at INTEGER,
+        created_at INTEGER NOT NULL
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_ra_alerts_active ON ra_alerts(dismissed, created_at DESC)`
+    )
+    .run();
+
   schemaEnsured = true;
 }
 
