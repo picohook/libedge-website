@@ -2,8 +2,63 @@ const DEFAULT_WINDOW_SEC = 60;
 const DEFAULT_SESSION_RPM = 300;
 const DEFAULT_INSTITUTION_RPM = 5000;
 
-export async function enforceProxyRateLimit(env, sessionId, session = {}) {
+// Static asset path/extensions — proxy bunlar için rate-limit KV yazmaz.
+// Bir sayfa açılışında 50-200 asset isteği olabilir; bunlar KV write quota'sını
+// hızla tüketiyordu (Cloudflare free tier: 1000 write/day). Bypass listesi
+// SADECE sayfa render etmek için browser'ın çektiği asset'leri içerir.
+// Yayıncının asıl korunan içerikleri (PDF makale, ZIP veri dump'ı, JoVE
+// videosu gibi) listede DEĞİLDİR — bunlar rate-limit'in koruduğu asıl
+// scraping vektörüdür ve quota'nın anlamlı bir miktarını üretmezler.
+const STATIC_ASSET_EXTENSIONS = new Set([
+  // styles & scripts
+  'css', 'js', 'mjs', 'map',
+  // fonts
+  'woff', 'woff2', 'ttf', 'otf', 'eot',
+  // küçük UI image'ları (logo, favicon, thumb) — yayıncı içeriği değil
+  'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'avif', 'bmp',
+]);
+
+// Sadece browser asset path prefix'leri. /_next/data/ BURADA OLMAMALI: Next.js
+// SSR/SSG JSON çıktılarını (getServerSideProps/getStaticProps) o path’te servisliyor;
+// JoVE/Annual Reviews gibi yayıncılarda makale içeriği tam o JSON'larda gelir.
+const STATIC_ASSET_PATH_PREFIXES = [
+  '/_next/static/',
+  '/_next/image',
+  '/_nuxt/',
+  '/static/',
+  '/assets/',
+  '/dist/',
+  '/build/',
+  '/wp-content/',
+  '/wp-includes/',
+];
+
+export function isStaticAssetPath(pathname) {
+  if (!pathname) return false;
+  const lower = pathname.toLowerCase();
+  if (lower === '/favicon.ico' || lower === '/robots.txt') return true;
+  for (const prefix of STATIC_ASSET_PATH_PREFIXES) {
+    if (lower.startsWith(prefix)) return true;
+  }
+  // Last path segment extension check
+  const lastSlash = lower.lastIndexOf('/');
+  const last = lastSlash >= 0 ? lower.slice(lastSlash + 1) : lower;
+  // Strip query if present (defensive — pathname'de ?query olmaz ama emin olalım)
+  const dotIdx = last.lastIndexOf('.');
+  if (dotIdx <= 0) return false;
+  const ext = last.slice(dotIdx + 1);
+  return STATIC_ASSET_EXTENSIONS.has(ext);
+}
+
+export async function enforceProxyRateLimit(env, sessionId, session = {}, pathname = '') {
   if (!env?.RATE_LIMIT_KV || String(env.RA_PROXY_RATE_LIMIT_ENABLED || '1') === '0') {
+    return null;
+  }
+
+  // Static asset'ler için rate-limit'i atla — KV write maliyeti tasarrufu.
+  // Bir publisher sayfası ortalama 50-200 asset isteği üretir; bunların her
+  // birinde KV.put çağırmak quota'yı çabuk tüketiyordu.
+  if (isStaticAssetPath(pathname)) {
     return null;
   }
 

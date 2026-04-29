@@ -112,7 +112,12 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   if (!target) {
     return htmlError(403, 'Bu oturum bu yayıncı hostuna erişemez.');
   }
-  const rateLimit = await enforceProxyRateLimit(env, sessionId, session);
+  // Static asset tespitini upstream path'iyle yap. /__ra-host/<host>/... alt
+  // host akışında url.pathname o prefix'le başlar; isStaticAssetPath'in prefix
+  // kontrolleri (/static/, /_next/image, /assets/, ...) eşleşmez ve asset'ler
+  // gereksiz yere KV write üretir. target.path üst-prefix kırpıldıktan sonraki
+  // upstream path'tir; path-proxy modundaki remainingPath ile aynı semantiği taşır.
+  const rateLimit = await enforceProxyRateLimit(env, sessionId, session, target.path);
   if (rateLimit) return proxyRateLimitResponse(rateLimit);
 
   // Upstream relay — path ve query aynen korunur, sadece host değişir.
@@ -333,7 +338,11 @@ async function handlePathProxy(request, env, ctx, url) {
   if (!session) {
     return htmlError(401, 'Oturum bulunamadı. Lütfen portal üzerinden tekrar erişin.');
   }
-  const rateLimit = await enforceProxyRateLimit(env, sessionId, session);
+  // Path-proxy modunda url.pathname encoded host prefix'iyle başlar
+  // (/www-jove-com/...). Static asset tespiti için upstream'e yönelik olan
+  // remainingPath'i geç; aksi hâlde /_next/static/, /assets/ gibi prefix'ler
+  // session-host modundaki gibi yakalanmaz, modlar arasında tutarsızlık olur.
+  const rateLimit = await enforceProxyRateLimit(env, sessionId, session, remainingPath);
   if (rateLimit) return proxyRateLimitResponse(rateLimit);
 
   // Oturum ana host'unu mevcut URL label'ıyla kıyasla.
