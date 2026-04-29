@@ -138,6 +138,33 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 0.75rem;
         }
+        .product-form-section {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            background: #fff;
+            padding: 1rem;
+        }
+        .product-form-section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            color: #374151;
+            font-size: 0.875rem;
+            font-weight: 700;
+        }
+        .product-preview-panel {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            background: #fff;
+            padding: 1rem;
+        }
+        @media (min-width: 1024px) {
+            .product-preview-panel {
+                position: sticky;
+                top: 1rem;
+            }
+        }
         .product-preview-card {
             min-height: 230px;
             border-radius: 0.75rem;
@@ -1120,205 +1147,261 @@
     </div>
 
     <div id="productModal" class="modal-overlay modal-center hidden">
-        <div class="modal-panel modal-4xl modal-panel-scroll">
+        <div class="modal-panel modal-5xl modal-panel-scroll">
             <div class="modal-content">
-            <h3 id="productModalTitle" class="text-xl font-bold mb-4">Ürün Düzenle</h3>
-            <form id="productForm">
-                <!-- Temel Bilgiler -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Slug <span id="productSlugHint" class="text-xs text-gray-400 font-normal"></span></label>
-                        <input type="text" id="productSlug" class="w-full border p-2 rounded font-mono text-sm" placeholder="ornek-urun" pattern="[a-z0-9][a-z0-9_\-]{0,79}" title="Küçük harf, rakam, tire veya alt çizgi">
-                    </div>
+                <div class="flex items-start justify-between gap-4 mb-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Ürün Adı</label>
-                        <input type="text" id="productName" class="w-full border p-2 rounded" required>
+                        <h3 id="productModalTitle" class="text-xl font-bold">Ürün Düzenle</h3>
+                        <p class="text-xs text-gray-400 mt-1">Katalog bilgisi, kart görünümü ve erişim ayarları tek ürün kaydında tutulur.</p>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                        <input type="text" id="productCategory" class="w-full border p-2 rounded" placeholder="Tıp, Kimya, Dil...">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Erişim Tipi</label>
-                        <select id="productAccessType" class="w-full border p-2 rounded">
-                            <option value="">— Tanımsız —</option>
-                            <option value="direct">Ücretsiz / Doğrudan Link</option>
-                            <option value="ip">Kurum IP'si / Uzaktan Erişim</option>
-                            <option value="institution_link">Kurumsal Giriş Sayfası (Lecturio gibi)</option>
-                            <option value="sso">SSO (Kurumsal Giriş)</option>
-                            <option value="email_password_external">Kullanıcı Adı + Şifre</option>
-                            <option value="mixed">Karma (birden fazla yöntem)</option>
-                        </select>
-                        <div id="productAccessTypeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 hidden"></div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Erişim URL</label>
-                        <input type="text" id="productAccessUrl" class="w-full border p-2 rounded" placeholder="https://...">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Yetkili Bölge</label>
-                        <input type="text" id="productRegion" class="w-full border p-2 rounded" placeholder="TR, Global...">
-                    </div>
-                    <div class="md:col-span-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
-                        <div class="flex flex-col sm:flex-row gap-3">
-                            <div class="w-20 h-20 rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
-                                <img id="productLogoPreviewImg" src="" alt="" class="w-full h-full object-contain p-2 hidden">
-                                <span id="productLogoPreviewInitials" class="text-gray-400 text-lg font-bold">?</span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex flex-wrap items-center gap-2 mb-2">
-                                    <input type="file" id="productLogoFile" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
-                                    <input type="hidden" id="productLogoAssetKey">
-                                    <input type="hidden" id="productLogoUpdatedAt">
-                                    <button type="button" data-admin-action="trigger-product-logo-file"
-                                        class="text-sm text-primary border border-primary px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
-                                        <i class="fas fa-upload mr-1"></i> Logo Seç
-                                    </button>
-                                    <button type="button" data-admin-action="clear-product-logo"
-                                        class="text-sm text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-white transition">
-                                        Temizle
-                                    </button>
-                                </div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
-                                <input type="text" id="productLogoUrl" class="w-full border p-2 rounded text-sm" placeholder="assets/images/logo.webp veya R2 URL">
-                                <p class="text-xs text-gray-400 mt-1">JPG, PNG, WEBP veya SVG · maks. 2MB. Yeni üründe önce kaydet, sonra dosya yükle.</p>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-                            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" id="productCardVisible" checked>
-                                <span>Kartlarda göster</span>
-                            </label>
-                            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" id="productIsFeatured">
-                                <span>Öne çıkan</span>
-                            </label>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Kart Sırası</label>
-                                <input type="number" id="productDisplayOrder" class="w-full border p-2 rounded" min="0" step="1" placeholder="999">
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Kısa Açıklama (TR)</label>
-                                <textarea id="productShortDescriptionTr" rows="2" class="w-full border p-2 rounded"></textarea>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Kısa Açıklama (EN)</label>
-                                <textarea id="productShortDescriptionEn" rows="2" class="w-full border p-2 rounded"></textarea>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Konu Slugları (JSON)</label>
-                                <textarea id="productSubjectsJson" rows="2" class="w-full border p-2 rounded font-mono text-xs" placeholder='["yapay-zeka","saglik"]'></textarea>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Marka Rengi</label>
-                                <input type="text" id="productBrandColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#2563eb">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="md:col-span-2 border border-gray-200 rounded-lg p-3 bg-white">
-                        <div class="flex items-center justify-between gap-3 mb-3">
-                            <h4 class="text-sm font-semibold text-gray-700">Kart Önizleme</h4>
-                            <span id="productPreviewStatus" class="text-[11px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">Kartlarda gösteriliyor</span>
-                        </div>
-                        <div class="product-preview-grid">
-                            <div id="productPreviewFront" class="product-preview-card">
-                                <div class="w-full flex flex-col items-center min-w-0">
-                                    <img id="productPreviewLogo" src="" alt="" class="product-preview-logo hidden">
-                                    <div id="productPreviewLogoFallback" class="product-preview-placeholder">?</div>
-                                    <h3 id="productPreviewNameFront" class="text-lg font-semibold text-center text-primary break-words w-full">Ürün</h3>
-                                </div>
-                                <div class="w-full">
-                                    <div class="text-[11px] font-medium text-gray-500 text-center mb-1">Yetkili Bölge</div>
-                                    <div id="productPreviewRegions" class="flex flex-wrap gap-1 justify-center"></div>
-                                </div>
-                            </div>
-                            <div id="productPreviewBack" class="product-preview-card product-preview-back">
-                                <div>
-                                    <h4 id="productPreviewNameBack" class="text-base font-bold mb-2 text-blue-800 break-words">Ürün</h4>
-                                    <ul id="productPreviewDetails" class="text-xs text-gray-900 space-y-1 mb-3"></ul>
-                                </div>
-                                <div class="flex flex-wrap justify-center gap-2 mt-auto">
-                                    <span class="bg-primary text-white py-2 px-3 rounded-lg text-xs">Broşür</span>
-                                    <span id="productPreviewAccessButton" class="bg-blue-500 text-white py-2 px-3 rounded-lg text-xs whitespace-nowrap">Erişim Linki</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" id="productRequiresEmail">
-                            <span>Kurum e-postası gerekli</span>
-                        </label>
-                        <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" id="productRequiresVpn">
-                            <span>VPN gerekli</span>
-                        </label>
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Not (TR)</label>
-                        <textarea id="productAccessNotesTr" rows="2" class="w-full border p-2 rounded"></textarea>
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Not (EN)</label>
-                        <textarea id="productAccessNotesEn" rows="2" class="w-full border p-2 rounded"></textarea>
-                    </div>
+                    <button type="button" data-admin-action="close-product-modal" class="text-gray-400 hover:text-gray-600 px-2 py-1 rounded">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
 
-                <!-- RA Yapılandırması -->
-                <div class="mt-5 pt-4 border-t border-gray-200">
-                    <div class="flex items-center gap-3 mb-3">
-                        <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
-                            <input type="checkbox" id="productRaEnabled" class="rounded">
-                            <span><i class="fas fa-shield-halved text-indigo-500 mr-1"></i>Uzaktan Erişim (RA) Etkin</span>
-                        </label>
-                    </div>
-                    <div id="productRaFields" class="grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
-                        <label class="md:col-span-2 inline-flex items-start gap-2 text-sm text-gray-700">
-                            <input type="checkbox" id="productRaRequiresTunnel" class="rounded mt-0.5" checked>
-                            <span>
-                                <span class="font-medium">Kurum tüneli zorunlu</span>
-                                <span class="block text-[11px] text-gray-400">IP-kilitli publisher'lar için açık, Pangram gibi public login/session akışlarında kapalı bırak.</span>
-                            </span>
-                        </label>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Dağıtım Modu</label>
-                            <select id="productRaDeliveryMode" class="w-full border p-2 rounded">
-                                <option value="path_proxy">path_proxy — proxy.libedge.com/{host}/path</option>
-                                <option value="session_host_proxy">session_host_proxy — r{sid}.libedge.com (JoVE, EMIS...)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Origin Host</label>
-                            <input type="text" id="productRaOriginHost" class="w-full border p-2 rounded font-mono text-sm" placeholder="www.jove.com">
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Landing Path <span class="text-xs text-gray-400 font-normal">(opsiyonel, başlangıç sayfası)</span></label>
-                            <input type="text" id="productRaLandingPath" class="w-full border p-2 rounded font-mono text-sm" placeholder="/login veya /tr/home">
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Host Allowlist (JSON array)</label>
-                            <textarea id="productRaHostAllowlist" rows="3" class="w-full border p-2 rounded font-mono text-xs" placeholder='["www.iop.org","iopscience.iop.org"]'></textarea>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Login Recipe (JSON)</label>
-                            <div class="flex flex-wrap items-center gap-2 mb-1">
-                                <button type="button" data-product-ra-recipe-template="form_post" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: form_post</button>
-                                <button type="button" data-product-ra-recipe-template="spa_token" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: spa_token</button>
-                                <button type="button" data-product-ra-recipe-template="spa_capture" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: spa_capture (Pangram)</button>
-                                <button type="button" data-product-ra-recipe-template="clear" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Temizle</button>
-                            </div>
-                            <textarea id="productRaLoginRecipe" rows="10" class="w-full border p-2 rounded font-mono text-xs" placeholder='{"mode":"form_post",...}'></textarea>
-                        </div>
-                    </div>
-                </div>
+                <form id="productForm">
+                    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 items-start">
+                        <div class="space-y-4 min-w-0">
+                            <section class="product-form-section">
+                                <h4 class="product-form-section-title"><i class="fas fa-cube text-primary"></i> Temel Bilgiler</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Slug <span id="productSlugHint" class="text-xs text-gray-400 font-normal"></span></label>
+                                        <input type="text" id="productSlug" class="w-full border p-2 rounded font-mono text-sm" placeholder="ornek-urun" pattern="[a-z0-9][a-z0-9_\-]{0,79}" title="Küçük harf, rakam, tire veya alt çizgi">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Ürün Adı</label>
+                                        <input type="text" id="productName" class="w-full border p-2 rounded" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                                        <input type="text" id="productCategory" class="w-full border p-2 rounded" placeholder="Tıp, Kimya, Dil...">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Yetkili Bölge</label>
+                                        <input type="text" id="productRegion" class="w-full border p-2 rounded" placeholder="Türkiye, Orta Doğu">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Konu Slugları (JSON)</label>
+                                        <textarea id="productSubjectsJson" rows="2" class="w-full border p-2 rounded font-mono text-xs" placeholder='["yapay-zeka","saglik"]'></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Kısa Açıklama (TR)</label>
+                                        <textarea id="productShortDescriptionTr" rows="2" class="w-full border p-2 rounded"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Kısa Açıklama (EN)</label>
+                                        <textarea id="productShortDescriptionEn" rows="2" class="w-full border p-2 rounded"></textarea>
+                                    </div>
+                                </div>
+                            </section>
 
-                <div class="modal-actions mt-4">
-                    <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
-                    <button type="button" data-admin-action="close-product-modal" class="btn bg-gray-300 flex-1">İptal</button>
-                </div>
-            </form>
+                            <section class="product-form-section">
+                                <h4 class="product-form-section-title"><i class="fas fa-layer-group text-primary"></i> Kart Yayını</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                        <input type="checkbox" id="productCardVisible" checked>
+                                        <span>Kartlarda göster</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                        <input type="checkbox" id="productIsFeatured">
+                                        <span>Öne çıkan</span>
+                                    </label>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Kart Sırası</label>
+                                        <input type="number" id="productDisplayOrder" class="w-full border p-2 rounded" min="0" step="1" placeholder="999">
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="product-form-section">
+                                <h4 class="product-form-section-title"><i class="fas fa-image text-primary"></i> Medya</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-[96px_minmax(0,1fr)] gap-3">
+                                    <div class="w-24 h-24 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                                        <img id="productLogoPreviewImg" src="" alt="" class="w-full h-full object-contain p-2 hidden">
+                                        <span id="productLogoPreviewInitials" class="text-gray-400 text-lg font-bold">?</span>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                                            <input type="file" id="productLogoFile" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
+                                            <input type="hidden" id="productLogoAssetKey">
+                                            <input type="hidden" id="productLogoUpdatedAt">
+                                            <button type="button" data-admin-action="trigger-product-logo-file" class="text-sm text-primary border border-primary px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
+                                                <i class="fas fa-upload mr-1"></i> Logo Seç
+                                            </button>
+                                            <button type="button" data-admin-action="clear-product-logo" class="text-sm text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">Temizle</button>
+                                        </div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+                                        <input type="text" id="productLogoUrl" class="w-full border p-2 rounded text-sm" placeholder="assets/images/logo.webp veya R2 URL">
+                                        <p class="text-xs text-gray-400 mt-1">JPG, PNG, WEBP veya SVG · maks. 2MB. Yeni üründe önce kaydet, sonra dosya yükle.</p>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 pt-4 border-t border-gray-200">
+                                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                                        <input type="file" id="productCardBackgroundFile" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
+                                        <input type="hidden" id="productCardBackgroundAssetKey">
+                                        <input type="hidden" id="productCardBackgroundUpdatedAt">
+                                        <button type="button" data-admin-action="trigger-product-card-background-file" class="text-sm text-primary border border-primary px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
+                                            <i class="fas fa-image mr-1"></i> Arka Yüz Görseli Seç
+                                        </button>
+                                        <button type="button" data-admin-action="clear-product-card-background" class="text-sm text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">Temizle</button>
+                                    </div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Arka Yüz Görsel URL</label>
+                                    <input type="text" id="productCardBackgroundUrl" class="w-full border p-2 rounded text-sm" placeholder="assets/images/arka-plan.webp veya R2 URL">
+                                    <p class="text-xs text-gray-400 mt-1">JPG, PNG, WEBP veya SVG · maks. 5MB.</p>
+                                </div>
+                            </section>
+
+                            <section class="product-form-section">
+                                <h4 class="product-form-section-title"><i class="fas fa-palette text-primary"></i> Kart Tasarımı</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Marka Rengi</label>
+                                        <input type="text" id="productBrandColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#2563eb">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Arka Plan Perdesi</label>
+                                        <select id="productCardBackgroundOverlay" class="w-full border p-2 rounded text-sm">
+                                            <option value="light">Açık perde</option>
+                                            <option value="dark">Koyu perde</option>
+                                            <option value="none">Perdesiz</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Ön Yüz Yazı Rengi</label>
+                                        <input type="text" id="productCardFrontTextColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#220f60">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Arka Yüz Yazı Rengi</label>
+                                        <input type="text" id="productCardBackTextColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#111827">
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="product-form-section">
+                                <h4 class="product-form-section-title"><i class="fas fa-link text-primary"></i> Varsayılan Erişim</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Erişim Tipi</label>
+                                        <select id="productAccessType" class="w-full border p-2 rounded">
+                                            <option value="">— Tanımsız —</option>
+                                            <option value="direct">Ücretsiz / Doğrudan Link</option>
+                                            <option value="ip">Kurum IP'si / Uzaktan Erişim</option>
+                                            <option value="institution_link">Kurumsal Giriş Sayfası (Lecturio gibi)</option>
+                                            <option value="sso">SSO (Kurumsal Giriş)</option>
+                                            <option value="email_password_external">Kullanıcı Adı + Şifre</option>
+                                            <option value="mixed">Karma (birden fazla yöntem)</option>
+                                        </select>
+                                        <div id="productAccessTypeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 hidden"></div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Erişim URL</label>
+                                        <input type="text" id="productAccessUrl" class="w-full border p-2 rounded" placeholder="https://...">
+                                    </div>
+                                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                        <input type="checkbox" id="productRequiresEmail">
+                                        <span>Kurum e-postası gerekli</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                        <input type="checkbox" id="productRequiresVpn">
+                                        <span>VPN gerekli</span>
+                                    </label>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Not (TR)</label>
+                                        <textarea id="productAccessNotesTr" rows="2" class="w-full border p-2 rounded"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Varsayılan Not (EN)</label>
+                                        <textarea id="productAccessNotesEn" rows="2" class="w-full border p-2 rounded"></textarea>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="product-form-section">
+                                <div class="flex items-center gap-3">
+                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                                        <input type="checkbox" id="productRaEnabled" class="rounded">
+                                        <span><i class="fas fa-shield-halved text-indigo-500 mr-1"></i>Uzaktan Erişim (RA) Etkin</span>
+                                    </label>
+                                </div>
+                                <div id="productRaFields" class="grid grid-cols-1 md:grid-cols-2 gap-3 hidden mt-3 pt-3 border-t border-gray-200">
+                                    <label class="md:col-span-2 inline-flex items-start gap-2 text-sm text-gray-700">
+                                        <input type="checkbox" id="productRaRequiresTunnel" class="rounded mt-0.5" checked>
+                                        <span>
+                                            <span class="font-medium">Kurum tüneli zorunlu</span>
+                                            <span class="block text-[11px] text-gray-400">IP-kilitli publisher'lar için açık, Pangram gibi public login/session akışlarında kapalı bırak.</span>
+                                        </span>
+                                    </label>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Dağıtım Modu</label>
+                                        <select id="productRaDeliveryMode" class="w-full border p-2 rounded">
+                                            <option value="path_proxy">path_proxy — proxy.libedge.com/{host}/path</option>
+                                            <option value="session_host_proxy">session_host_proxy — r{sid}.libedge.com (JoVE, EMIS...)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Origin Host</label>
+                                        <input type="text" id="productRaOriginHost" class="w-full border p-2 rounded font-mono text-sm" placeholder="www.jove.com">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Landing Path <span class="text-xs text-gray-400 font-normal">(opsiyonel, başlangıç sayfası)</span></label>
+                                        <input type="text" id="productRaLandingPath" class="w-full border p-2 rounded font-mono text-sm" placeholder="/login veya /tr/home">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Host Allowlist (JSON array)</label>
+                                        <textarea id="productRaHostAllowlist" rows="3" class="w-full border p-2 rounded font-mono text-xs" placeholder='["www.iop.org","iopscience.iop.org"]'></textarea>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Login Recipe (JSON)</label>
+                                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                                            <button type="button" data-product-ra-recipe-template="form_post" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: form_post</button>
+                                            <button type="button" data-product-ra-recipe-template="spa_token" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: spa_token</button>
+                                            <button type="button" data-product-ra-recipe-template="spa_capture" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Template: spa_capture (Pangram)</button>
+                                            <button type="button" data-product-ra-recipe-template="clear" class="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">Temizle</button>
+                                        </div>
+                                        <textarea id="productRaLoginRecipe" rows="10" class="w-full border p-2 rounded font-mono text-xs" placeholder='{"mode":"form_post",...}'></textarea>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <aside class="product-preview-panel">
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                                <h4 class="text-sm font-semibold text-gray-700">Kart Önizleme</h4>
+                                <span id="productPreviewStatus" class="text-[11px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">Kartlarda gösteriliyor</span>
+                            </div>
+                            <div class="product-preview-grid">
+                                <div id="productPreviewFront" class="product-preview-card">
+                                    <div class="w-full flex flex-col items-center min-w-0">
+                                        <img id="productPreviewLogo" src="" alt="" class="product-preview-logo hidden">
+                                        <div id="productPreviewLogoFallback" class="product-preview-placeholder">?</div>
+                                        <h3 id="productPreviewNameFront" class="text-lg font-semibold text-center text-primary break-words w-full">Ürün</h3>
+                                    </div>
+                                    <div class="w-full">
+                                        <div class="text-[11px] font-medium text-gray-500 text-center mb-1">Yetkili Bölge</div>
+                                        <div id="productPreviewRegions" class="flex flex-wrap gap-1 justify-center"></div>
+                                    </div>
+                                </div>
+                                <div id="productPreviewBack" class="product-preview-card product-preview-back">
+                                    <div>
+                                        <h4 id="productPreviewNameBack" class="text-base font-bold mb-2 text-blue-800 break-words">Ürün</h4>
+                                        <ul id="productPreviewDetails" class="text-xs text-gray-900 space-y-1 mb-3"></ul>
+                                    </div>
+                                    <div class="flex flex-wrap justify-center gap-2 mt-auto">
+                                        <span class="bg-primary text-white py-2 px-3 rounded-lg text-xs">Broşür</span>
+                                        <span id="productPreviewAccessButton" class="bg-blue-500 text-white py-2 px-3 rounded-lg text-xs whitespace-nowrap">Erişim Linki</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+
+                    <div class="modal-actions mt-4 pt-4 border-t border-gray-200">
+                        <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
+                        <button type="button" data-admin-action="close-product-modal" class="btn bg-gray-300 flex-1">İptal</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -3132,6 +3215,12 @@ function bindRemainingAdminFormEvents() {
         document.getElementById('productLogoUpdatedAt').value = '';
         updateProductLogoPreview(products.find(p => p.slug === editingProductSlug) || {});
     });
+    bindAdminElementEvent('productCardBackgroundFile', 'change', (e) => uploadProductCardBackground(e.target));
+    bindAdminElementEvent('productCardBackgroundUrl', 'input', () => {
+        document.getElementById('productCardBackgroundAssetKey').value = '';
+        document.getElementById('productCardBackgroundUpdatedAt').value = '';
+        updateProductCardPreview();
+    });
     [
         'productSlug',
         'productName',
@@ -3141,10 +3230,13 @@ function bindRemainingAdminFormEvents() {
         'productShortDescriptionTr',
         'productShortDescriptionEn',
         'productBrandColor',
+        'productCardFrontTextColor',
+        'productCardBackTextColor',
+        'productCardBackgroundOverlay',
         'productCardVisible',
         'productIsFeatured',
     ].forEach((id) => {
-        bindAdminElementEvent(id, ['productCardVisible', 'productIsFeatured'].includes(id) ? 'change' : 'input', updateProductCardPreview);
+        bindAdminElementEvent(id, ['productCardVisible', 'productIsFeatured', 'productCardBackgroundOverlay'].includes(id) ? 'change' : 'input', updateProductCardPreview);
     });
 
     bindAdminElementEvent('adminMoveModalSearch', 'input', (e) => {
@@ -3424,6 +3516,12 @@ document.addEventListener('click', function(e) {
         return PRODUCT_CARD_BACKGROUNDS[normalized] || PRODUCT_CARD_BACKGROUNDS[aliases[normalized]] || null;
     }
 
+    function getOverlayCss(mode) {
+        if (mode === 'dark') return 'rgba(15, 23, 42, 0.48)';
+        if (mode === 'none') return 'rgba(255, 255, 255, 0)';
+        return 'rgba(255, 255, 255, 0.5)';
+    }
+
     function splitPreviewRegions(raw) {
         const regions = String(raw || '').split(',').map(r => r.trim()).filter(Boolean);
         return regions.length ? regions : ['Tanımsız'];
@@ -3441,30 +3539,37 @@ document.addEventListener('click', function(e) {
         const visible = document.getElementById('productCardVisible')?.checked ?? true;
         const featured = document.getElementById('productIsFeatured')?.checked ?? false;
         const color = normalizePreviewColor(document.getElementById('productBrandColor')?.value);
+        const frontTextColor = normalizePreviewColor(document.getElementById('productCardFrontTextColor')?.value || '#220f60');
+        const backTextColorInput = document.getElementById('productCardBackTextColor')?.value;
+        const cardBackgroundUrlInput = document.getElementById('productCardBackgroundUrl')?.value.trim() || '';
+        const cardBackgroundUpdatedAt = document.getElementById('productCardBackgroundUpdatedAt')?.value || '';
+        const cardBackgroundOverlay = document.getElementById('productCardBackgroundOverlay')?.value || 'light';
         const logoUrl = getVersionedLogoUrl(
             document.getElementById('productLogoUrl')?.value.trim() || '',
             document.getElementById('productLogoUpdatedAt')?.value || ''
         );
+        const fallbackBg = getProductCardBackground(slug || current.slug);
+        const cardBackgroundUrl = getVersionedLogoUrl(cardBackgroundUrlInput || fallbackBg?.image || '', cardBackgroundUpdatedAt);
+        const backTextColor = normalizePreviewColor(backTextColorInput || (fallbackBg?.lightText ? '#ffffff' : '#111827'));
 
         const front = document.getElementById('productPreviewFront');
         const back = document.getElementById('productPreviewBack');
         if (front) front.style.borderTopColor = color;
         if (back) {
             back.style.borderTopColor = color;
-            const bg = getProductCardBackground(slug || current.slug);
-            if (bg?.image) {
-                const overlay = bg.overlay || 'rgba(255, 255, 255, 0.5)';
-                back.style.background = `linear-gradient(to bottom, ${overlay}, rgba(255, 255, 255, 0.05)), url('${bg.image}')`;
+            if (cardBackgroundUrl) {
+                const overlay = fallbackBg?.overlay || getOverlayCss(cardBackgroundOverlay);
+                back.style.background = `linear-gradient(to bottom, ${overlay}, rgba(255, 255, 255, 0.05)), url('${cardBackgroundUrl}')`;
                 back.style.backgroundSize = 'cover';
                 back.style.backgroundPosition = 'center';
                 back.style.backgroundRepeat = 'no-repeat';
-                back.style.color = bg.lightText ? '#ffffff' : '#111827';
+                back.style.color = backTextColor;
             } else {
                 back.style.background = '#eff6ff';
                 back.style.backgroundSize = '';
                 back.style.backgroundPosition = '';
                 back.style.backgroundRepeat = '';
-                back.style.color = '#111827';
+                back.style.color = backTextColor;
             }
         }
 
@@ -3488,10 +3593,8 @@ document.addEventListener('click', function(e) {
         const backName = document.getElementById('productPreviewNameBack');
         if (frontName) frontName.textContent = name;
         if (backName) backName.textContent = name;
-        if (backName) {
-            const bg = getProductCardBackground(slug || current.slug);
-            backName.style.color = bg?.lightText ? '#ffffff' : '#1e40af';
-        }
+        if (frontName) frontName.style.color = frontTextColor;
+        if (backName) backName.style.color = backTextColor;
 
         const status = document.getElementById('productPreviewStatus');
         if (status) {
@@ -3510,8 +3613,7 @@ document.addEventListener('click', function(e) {
 
         const details = document.getElementById('productPreviewDetails');
         if (details) {
-            const bg = getProductCardBackground(slug || current.slug);
-            details.style.color = bg?.lightText ? '#ffffff' : '#111827';
+            details.style.color = backTextColor;
             const lines = [
                 descTr || descEn || 'Kısa açıklama girildiğinde kartın arka yüzünde burada görünür.',
                 category ? `Kategori: ${category}` : '',
@@ -3683,6 +3785,12 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         document.getElementById('productShortDescriptionEn').value = product.short_description_en || '';
         document.getElementById('productSubjectsJson').value = prettyJson(product.subjects_json);
         document.getElementById('productBrandColor').value = product.brand_color || '';
+        document.getElementById('productCardBackgroundAssetKey').value = product.card_background_asset_key || '';
+        document.getElementById('productCardBackgroundUrl').value = product.card_background_url || '';
+        document.getElementById('productCardBackgroundUpdatedAt').value = product.card_background_updated_at || '';
+        document.getElementById('productCardBackgroundOverlay').value = product.card_background_overlay || 'light';
+        document.getElementById('productCardFrontTextColor').value = product.card_front_text_color || '';
+        document.getElementById('productCardBackTextColor').value = product.card_back_text_color || '';
         updateProductLogoPreview(product);
         document.getElementById('productRequiresEmail').checked = !!product.default_requires_institution_email;
         document.getElementById('productRequiresVpn').checked = !!product.default_requires_vpn;
@@ -3770,6 +3878,52 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         document.getElementById('productLogoUrl').value = '';
         document.getElementById('productLogoUpdatedAt').value = '';
         updateProductLogoPreview(products.find(p => p.slug === editingProductSlug) || {});
+    }
+
+    async function uploadProductCardBackground(input) {
+        const file = input?.files?.[0];
+        if (!file) return;
+        input.value = '';
+
+        if (!editingProductSlug) {
+            showToast('Arka plan yüklemek için önce ürünü kaydedin.', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('background', file);
+
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/product/${encodeURIComponent(editingProductSlug)}/card-background`, {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Arka plan yükleme başarısız');
+
+            document.getElementById('productCardBackgroundAssetKey').value = data.card_background_asset_key || '';
+            document.getElementById('productCardBackgroundUrl').value = data.card_background_url || '';
+            document.getElementById('productCardBackgroundUpdatedAt').value = data.card_background_updated_at || '';
+            const product = products.find(p => p.slug === editingProductSlug);
+            if (product) {
+                product.card_background_asset_key = data.card_background_asset_key || null;
+                product.card_background_url = data.card_background_url || null;
+                product.card_background_updated_at = data.card_background_updated_at || null;
+            }
+            updateProductCardPreview();
+            showToast('Kart arka planı yüklendi', 'success');
+            loadProducts();
+        } catch (err) {
+            showActionError('Kart arka planı yükleme', err.message);
+        }
+    }
+
+    function clearProductCardBackgroundFields() {
+        document.getElementById('productCardBackgroundAssetKey').value = '';
+        document.getElementById('productCardBackgroundUrl').value = '';
+        document.getElementById('productCardBackgroundUpdatedAt').value = '';
+        updateProductCardPreview();
     }
 
     function goToAdminTab(tab) {
@@ -4870,6 +5024,8 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         const allowlistJson = document.getElementById('productRaHostAllowlist').value.trim();
         const subjectsJson = document.getElementById('productSubjectsJson').value.trim();
         const brandColor = document.getElementById('productBrandColor').value.trim();
+        const frontTextColor = document.getElementById('productCardFrontTextColor').value.trim();
+        const backTextColor = document.getElementById('productCardBackTextColor').value.trim();
         if (recipeJson) {
             try {
                 const parsed = JSON.parse(recipeJson);
@@ -4901,8 +5057,17 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             showToast('Marka rengi #RRGGBB formatında olmalı', 'error');
             return;
         }
+        if (frontTextColor && !/^#[0-9a-f]{6}$/i.test(frontTextColor)) {
+            showToast('Ön yüz yazı rengi #RRGGBB formatında olmalı', 'error');
+            return;
+        }
+        if (backTextColor && !/^#[0-9a-f]{6}$/i.test(backTextColor)) {
+            showToast('Arka yüz yazı rengi #RRGGBB formatında olmalı', 'error');
+            return;
+        }
 
         const logoUrl = document.getElementById('productLogoUrl').value.trim();
+        const cardBackgroundUrl = document.getElementById('productCardBackgroundUrl').value.trim();
 
         const payload = {
             slug,
@@ -4914,6 +5079,11 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             logo_asset_key: logoUrl ? (document.getElementById('productLogoAssetKey').value.trim() || null) : null,
             logo_url: logoUrl || null,
             brand_color: brandColor || null,
+            card_background_asset_key: cardBackgroundUrl ? (document.getElementById('productCardBackgroundAssetKey').value.trim() || null) : null,
+            card_background_url: cardBackgroundUrl || null,
+            card_background_overlay: document.getElementById('productCardBackgroundOverlay').value || 'light',
+            card_front_text_color: frontTextColor || null,
+            card_back_text_color: backTextColor || null,
             short_description_tr: document.getElementById('productShortDescriptionTr').value.trim() || null,
             short_description_en: document.getElementById('productShortDescriptionEn').value.trim() || null,
             subjects_json: subjectsJson || null,
@@ -5060,6 +5230,8 @@ document.addEventListener('click', (e) => {
         case 'close-product-modal': closeProductModal(); break;
         case 'trigger-product-logo-file': document.getElementById('productLogoFile')?.click(); break;
         case 'clear-product-logo': clearProductLogoFields(); break;
+        case 'trigger-product-card-background-file': document.getElementById('productCardBackgroundFile')?.click(); break;
+        case 'clear-product-card-background': clearProductCardBackgroundFields(); break;
         case 'edit-product': openProductModal(actionEl.dataset.productSlug || ''); break;
         case 'sort-products': {
             const k = actionEl.dataset.sortKey;

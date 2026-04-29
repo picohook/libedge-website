@@ -12,6 +12,7 @@
  *   avatars/
  *   institution-logos/
  *   product-logos/
+ *   product-card-backgrounds/
  *   announcement-covers/
  *
  * Not touched — these have their own lifecycles / permission model
@@ -74,6 +75,10 @@ const PREFIXES = {
   'product-logos/': {
     sql: `SELECT logo_url FROM products WHERE logo_url IS NOT NULL AND logo_url != ''`,
     column: 'logo_url',
+  },
+  'product-card-backgrounds/': {
+    sql: `SELECT card_background_url FROM products WHERE card_background_url IS NOT NULL AND card_background_url != ''`,
+    column: 'card_background_url',
   },
   'announcement-covers/': {
     sql: `SELECT cover_image_url FROM announcements WHERE cover_image_url IS NOT NULL AND cover_image_url != ''`,

@@ -110,6 +110,12 @@ prefix'iyle saklanır.
 | `logo_url` | TEXT | Public R2 URL veya mevcut local asset yolu |
 | `logo_updated_at` | TEXT | Cache busting için versiyon zamanı |
 | `brand_color` | TEXT | Opsiyonel `#RRGGBB` vurgu rengi |
+| `card_background_asset_key` | TEXT | R2 object key, örn. `product-card-backgrounds/scopus/background-...webp` |
+| `card_background_url` | TEXT | Arka yüz görsel URL'si veya mevcut local asset yolu |
+| `card_background_updated_at` | TEXT | Arka plan cache busting zamanı |
+| `card_background_overlay` | TEXT | `light`, `dark`, `none` |
+| `card_front_text_color` | TEXT | Ön yüz başlık rengi (`#RRGGBB`) |
+| `card_back_text_color` | TEXT | Arka yüz yazı rengi (`#RRGGBB`) |
 | `short_description_tr` / `short_description_en` | TEXT | Kart/API kısa açıklaması |
 | `subjects_json` | TEXT | JSON array konu slugları |
 | `card_visible` | INTEGER | 1 = public ürün kartlarında göster |
@@ -117,9 +123,10 @@ prefix'iyle saklanır.
 | `is_featured` | INTEGER | Öne çıkarma/carousel adaylığı |
 
 Public liste `GET /api/products` ile gelir. Admin tarafı aynı veriyi
-`GET /api/admin/products` üzerinden logo preview, kart sırası ve görünürlük
-alanlarıyla yönetir. Dosya upload endpoint'i:
-`POST /api/admin/product/:slug/logo`.
+`GET /api/admin/products` üzerinden logo preview, kart sırası, görünürlük,
+arka plan ve yazı renkleriyle yönetir. Dosya upload endpoint'leri:
+`POST /api/admin/product/:slug/logo` ve
+`POST /api/admin/product/:slug/card-background`.
 
 ### `institution_ra_settings`
 

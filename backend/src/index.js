@@ -26,14 +26,14 @@ const ALLOWED_ORIGINS = [
 ];
 
 const DEFAULT_PRODUCT_CATALOG = [
-  { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/pangram_logo.webp', subjects_json: '["yapay-zeka","akademik-durustluk"]', display_order: 10 },
-  { slug: 'chatpdf', name: 'ChatPDF', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/ChatPDF_LOGO.webp', subjects_json: '["yapay-zeka"]', display_order: 20 },
-  { slug: 'wonders', name: 'Wonders', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/wonders_logo.svg', subjects_json: '["yapay-zeka"]', display_order: 30 },
-  { slug: 'assistin', name: 'Assistin', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/assistin_logo.webp', subjects_json: '["yapay-zeka"]', display_order: 40 },
-  { slug: 'primal-pictures', name: 'Primal Pictures', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/primalpictures_logo.svg', subjects_json: '["saglik"]', display_order: 50 },
-  { slug: 'lecturio', name: 'Lecturio', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/Lecturio_logo.PNG', subjects_json: '["saglik"]', display_order: 60 },
-  { slug: 'nejmhealer', name: 'NEJMHealer', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/nejmhealer_logo.svg', subjects_json: '["saglik"]', display_order: 70 },
-  { slug: 'imachek', name: 'ImaChek', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/imachek.webp', subjects_json: '["saglik"]', display_order: 80 },
+  { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/pangram_logo.webp', card_background_url: 'assets/images/pangram.webp', subjects_json: '["yapay-zeka","akademik-durustluk"]', display_order: 10 },
+  { slug: 'chatpdf', name: 'ChatPDF', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/ChatPDF_LOGO.webp', card_background_url: 'assets/images/chat.webp', card_back_text_color: '#ffffff', subjects_json: '["yapay-zeka"]', display_order: 20 },
+  { slug: 'wonders', name: 'Wonders', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/wonders_logo.svg', card_background_url: 'assets/images/wond.webp', card_back_text_color: '#ffffff', subjects_json: '["yapay-zeka"]', display_order: 30 },
+  { slug: 'assistin', name: 'Assistin', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/assistin_logo.webp', card_background_url: 'assets/images/assistin.webp', subjects_json: '["yapay-zeka"]', display_order: 40 },
+  { slug: 'primal-pictures', name: 'Primal Pictures', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/primalpictures_logo.svg', card_background_url: 'assets/images/anatomy.png', subjects_json: '["saglik"]', display_order: 50 },
+  { slug: 'lecturio', name: 'Lecturio', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/Lecturio_logo.PNG', card_background_url: 'assets/images/lect_back.webp', subjects_json: '["saglik"]', display_order: 60 },
+  { slug: 'nejmhealer', name: 'NEJMHealer', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/nejmhealer_logo.svg', card_background_url: 'assets/images/nejm.webp', subjects_json: '["saglik"]', display_order: 70 },
+  { slug: 'imachek', name: 'ImaChek', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/imachek.webp', card_background_url: 'assets/images/imachek0.webp', subjects_json: '["saglik"]', display_order: 80 },
   { slug: 'cochrane-library', name: 'Cochrane Library', category: 'Sağlık', region: 'Türkiye (EKUAL dışı)', logo_url: 'assets/images/CochraneLibrary_LOGO.PNG', subjects_json: '["saglik"]', display_order: 170 },
   {
     slug: 'jove-research',
@@ -47,13 +47,13 @@ const DEFAULT_PRODUCT_CATALOG = [
     default_access_notes_tr: 'Uzaktan erişim LibEdge kurumsal erişim hattı üzerinden sağlanır.',
     default_access_notes_en: 'Remote access is provided via the LibEdge institutional access path.',
   },
-  { slug: 'jove-education', name: 'JoVE Education', category: 'Fen & Matematik', region: 'Türkiye', logo_url: 'assets/images/JOVE_LOGO.PNG', subjects_json: '["fen-matematik","muhendislik","saglik","sosyal-bilimler"]', display_order: 110 },
-  { slug: 'jove-business', name: 'JoVE Business', category: 'İş & Hukuk', region: 'Türkiye', logo_url: 'assets/images/JOVE_LOGO.PNG', subjects_json: '["is-hukuk"]', display_order: 120 },
-  { slug: 'biorender', name: 'BioRender', category: 'Mühendislik', region: 'Türkiye', logo_url: 'assets/images/biorender_logo.webp', subjects_json: '["muhendislik","saglik"]', display_order: 130 },
+  { slug: 'jove-education', name: 'JoVE Education', category: 'Fen & Matematik', region: 'Türkiye', logo_url: 'assets/images/JOVE_LOGO.PNG', card_background_url: 'assets/images/educa.webp', subjects_json: '["fen-matematik","muhendislik","saglik","sosyal-bilimler"]', display_order: 110 },
+  { slug: 'jove-business', name: 'JoVE Business', category: 'İş & Hukuk', region: 'Türkiye', logo_url: 'assets/images/JOVE_LOGO.PNG', card_background_url: 'assets/images/business.webp', subjects_json: '["is-hukuk"]', display_order: 120 },
+  { slug: 'biorender', name: 'BioRender', category: 'Mühendislik', region: 'Türkiye', logo_url: 'assets/images/biorender_logo.webp', card_background_url: 'assets/images/bio.webp', subjects_json: '["muhendislik","saglik"]', display_order: 130 },
   { slug: 'wiley-journals', name: 'Wiley Dergiler', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)', logo_url: 'assets/images/wiley_logo.svg', subjects_json: '["fen-matematik","muhendislik","saglik"]', display_order: 150 },
   { slug: 'wiley-books', name: 'Wiley Kitaplar', category: 'Fen & Matematik', region: 'Türkiye (EKUAL dışı)', logo_url: 'assets/images/wiley_logo.svg', subjects_json: '["fen-matematik","muhendislik","saglik"]', display_order: 160 },
-  { slug: 'klasik-muzik', name: 'Klasik Müzik Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/mcgraw-hill_logo.svg', subjects_json: '["sanat"]', display_order: 140 },
-  { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/mcgraw-hill_logo.svg', subjects_json: '["sanat"]', display_order: 145 }
+  { slug: 'klasik-muzik', name: 'Klasik Müzik Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/mcgraw-hill_logo.svg', card_background_url: 'assets/images/classic.webp', subjects_json: '["sanat"]', display_order: 140 },
+  { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/mcgraw-hill_logo.svg', card_background_url: 'assets/images/jazz.webp', subjects_json: '["sanat"]', display_order: 145 }
 ];
 
 // 1. CORS Middleware (En üstte, her şeyden önce)
@@ -519,6 +519,7 @@ const MANAGED_R2_PREFIXES = [
   'announcement-covers/',
   'institution-logos/',
   'product-logos/',
+  'product-card-backgrounds/',
   'avatars/',
 ];
 
@@ -689,6 +690,12 @@ async function ensureProductsTableAndSeed(db) {
       logo_url TEXT,
       logo_updated_at TEXT,
       brand_color TEXT,
+      card_background_asset_key TEXT,
+      card_background_url TEXT,
+      card_background_updated_at TEXT,
+      card_background_overlay TEXT DEFAULT 'light',
+      card_front_text_color TEXT,
+      card_back_text_color TEXT,
       short_description_tr TEXT,
       short_description_en TEXT,
       subjects_json TEXT,
@@ -710,6 +717,12 @@ async function ensureProductsTableAndSeed(db) {
     'ALTER TABLE products ADD COLUMN logo_url TEXT',
     'ALTER TABLE products ADD COLUMN logo_updated_at TEXT',
     'ALTER TABLE products ADD COLUMN brand_color TEXT',
+    'ALTER TABLE products ADD COLUMN card_background_asset_key TEXT',
+    'ALTER TABLE products ADD COLUMN card_background_url TEXT',
+    'ALTER TABLE products ADD COLUMN card_background_updated_at TEXT',
+    "ALTER TABLE products ADD COLUMN card_background_overlay TEXT DEFAULT 'light'",
+    'ALTER TABLE products ADD COLUMN card_front_text_color TEXT',
+    'ALTER TABLE products ADD COLUMN card_back_text_color TEXT',
     'ALTER TABLE products ADD COLUMN short_description_tr TEXT',
     'ALTER TABLE products ADD COLUMN short_description_en TEXT',
     'ALTER TABLE products ADD COLUMN subjects_json TEXT',
@@ -735,10 +748,12 @@ async function ensureProductsTableAndSeed(db) {
         default_requires_institution_email, default_requires_vpn,
         default_access_notes_tr, default_access_notes_en,
         logo_asset_key, logo_url, logo_updated_at, brand_color,
+        card_background_asset_key, card_background_url, card_background_updated_at,
+        card_background_overlay, card_front_text_color, card_back_text_color,
         short_description_tr, short_description_en, subjects_json,
         card_visible, display_order, is_featured
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       product.slug,
       product.name,
@@ -754,6 +769,12 @@ async function ensureProductsTableAndSeed(db) {
       product.logo_url || null,
       product.logo_url ? new Date().toISOString() : null,
       product.brand_color || null,
+      product.card_background_asset_key || null,
+      product.card_background_url || null,
+      product.card_background_url ? new Date().toISOString() : null,
+      product.card_background_overlay || 'light',
+      product.card_front_text_color || null,
+      product.card_back_text_color || null,
       product.short_description_tr || null,
       product.short_description_en || null,
       product.subjects_json || null,
@@ -770,6 +791,7 @@ async function ensureProductsTableAndSeed(db) {
       product.default_requires_institution_email ||
       product.default_requires_vpn ||
       product.logo_url ||
+      product.card_background_url ||
       product.subjects_json ||
       product.display_order != null
     ) {
@@ -785,6 +807,13 @@ async function ensureProductsTableAndSeed(db) {
             WHEN COALESCE(NULLIF(logo_url, ''), ?) IS NOT NULL AND logo_updated_at IS NULL THEN ?
             ELSE logo_updated_at
           END,
+          card_background_url = COALESCE(NULLIF(card_background_url, ''), ?),
+          card_background_updated_at = CASE
+            WHEN COALESCE(NULLIF(card_background_url, ''), ?) IS NOT NULL AND card_background_updated_at IS NULL THEN ?
+            ELSE card_background_updated_at
+          END,
+          card_background_overlay = COALESCE(NULLIF(card_background_overlay, ''), ?),
+          card_back_text_color = COALESCE(NULLIF(card_back_text_color, ''), ?),
           subjects_json = COALESCE(NULLIF(subjects_json, ''), ?),
           display_order = CASE
             WHEN display_order IS NULL OR display_order = 999 THEN ?
@@ -799,6 +828,11 @@ async function ensureProductsTableAndSeed(db) {
         product.logo_url || null,
         product.logo_url || null,
         product.logo_url ? new Date().toISOString() : null,
+        product.card_background_url || null,
+        product.card_background_url || null,
+        product.card_background_url ? new Date().toISOString() : null,
+        product.card_background_overlay || 'light',
+        product.card_back_text_color || null,
         product.subjects_json || null,
         product.display_order == null ? 999 : Number(product.display_order),
         product.slug
@@ -2928,10 +2962,22 @@ function normalizeProductAssetKey(raw) {
   return value.startsWith('product-logos/') ? value : null;
 }
 
+function normalizeProductCardBackgroundAssetKey(raw) {
+  const value = cleanProductText(raw, 512);
+  if (!value) return null;
+  return value.startsWith('product-card-backgrounds/') ? value : null;
+}
+
 function normalizeProductBrandColor(raw) {
   const value = cleanProductText(raw, 32);
   if (!value) return null;
   return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : null;
+}
+
+function normalizeProductCardOverlay(raw) {
+  const value = String(raw || '').trim().toLowerCase();
+  if (['none', 'light', 'dark'].includes(value)) return value;
+  return 'light';
 }
 
 function normalizeProductDisplayOrder(raw) {
@@ -2963,8 +3009,13 @@ function normalizeProductSubjectsJson(raw) {
 function normalizeProductPresentation(body) {
   const logoUrl = normalizeProductLogoUrl(body.logo_url);
   if (body.logo_url && !logoUrl) return { error: 'Logo URL geçersiz' };
+  const cardBackgroundUrl = normalizeProductLogoUrl(body.card_background_url);
+  if (body.card_background_url && !cardBackgroundUrl) return { error: 'Kart arka plan URL geçersiz' };
 
   const logoAssetKey = logoUrl ? normalizeProductAssetKey(body.logo_asset_key) : null;
+  const cardBackgroundAssetKey = cardBackgroundUrl
+    ? normalizeProductCardBackgroundAssetKey(body.card_background_asset_key)
+    : null;
   const subjects = normalizeProductSubjectsJson(body.subjects_json);
   if (subjects.error) return { error: subjects.error };
 
@@ -2973,6 +3024,11 @@ function normalizeProductPresentation(body) {
       logo_asset_key: logoAssetKey,
       logo_url: logoUrl,
       brand_color: normalizeProductBrandColor(body.brand_color),
+      card_background_asset_key: cardBackgroundAssetKey,
+      card_background_url: cardBackgroundUrl,
+      card_background_overlay: normalizeProductCardOverlay(body.card_background_overlay),
+      card_front_text_color: normalizeProductBrandColor(body.card_front_text_color),
+      card_back_text_color: normalizeProductBrandColor(body.card_back_text_color),
       short_description_tr: cleanProductText(body.short_description_tr, 240),
       short_description_en: cleanProductText(body.short_description_en, 240),
       subjects_json: subjects.value,
@@ -3057,6 +3113,12 @@ app.get('/api/admin/products', async (c) => {
            logo_url,
            logo_updated_at,
            brand_color,
+           card_background_asset_key,
+           card_background_url,
+           card_background_updated_at,
+           COALESCE(card_background_overlay, 'light') AS card_background_overlay,
+           card_front_text_color,
+           card_back_text_color,
            short_description_tr,
            short_description_en,
            subjects_json,
@@ -3076,6 +3138,9 @@ app.get('/api/products', async (c) => {
   const rows = await db.prepare(`
     SELECT slug, name, category, region,
            logo_url, logo_updated_at, brand_color,
+           card_background_url, card_background_updated_at,
+           COALESCE(card_background_overlay, 'light') AS card_background_overlay,
+           card_front_text_color, card_back_text_color,
            short_description_tr, short_description_en,
            subjects_json,
            COALESCE(card_visible, 1) AS card_visible,
@@ -3136,10 +3201,12 @@ app.put('/api/admin/product/:slug', async (c) => {
   if (presentationConfig.error) return c.json({ error: presentationConfig.error }, 400);
   const presentation = presentationConfig.values;
 
-  const existing = await db.prepare(`SELECT slug, logo_url FROM products WHERE slug = ?`).bind(slug).first();
+  const existing = await db.prepare(`SELECT slug, logo_url, card_background_url FROM products WHERE slug = ?`).bind(slug).first();
   if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
   const logoChanged = String(existing.logo_url || '') !== String(presentation.logo_url || '');
   const logoUpdatedAt = logoChanged ? new Date().toISOString() : null;
+  const cardBackgroundChanged = String(existing.card_background_url || '') !== String(presentation.card_background_url || '');
+  const cardBackgroundUpdatedAt = cardBackgroundChanged ? new Date().toISOString() : null;
 
   await db.prepare(`
     UPDATE products
@@ -3149,7 +3216,11 @@ app.put('/api/admin/product/:slug', async (c) => {
         default_access_notes_tr = ?, default_access_notes_en = ?,
         logo_asset_key = ?, logo_url = ?,
         logo_updated_at = CASE WHEN ? IS NULL THEN logo_updated_at ELSE ? END,
-        brand_color = ?, short_description_tr = ?, short_description_en = ?,
+        brand_color = ?,
+        card_background_asset_key = ?, card_background_url = ?,
+        card_background_updated_at = CASE WHEN ? IS NULL THEN card_background_updated_at ELSE ? END,
+        card_background_overlay = ?, card_front_text_color = ?, card_back_text_color = ?,
+        short_description_tr = ?, short_description_en = ?,
         subjects_json = ?, card_visible = ?, display_order = ?, is_featured = ?,
         ra_enabled = ?, ra_delivery_mode = ?,
         ra_origin_host = ?, ra_origin_landing_path = ?,
@@ -3170,6 +3241,13 @@ app.put('/api/admin/product/:slug', async (c) => {
     logoUpdatedAt,
     logoUpdatedAt,
     presentation.brand_color,
+    presentation.card_background_asset_key,
+    presentation.card_background_url,
+    cardBackgroundUpdatedAt,
+    cardBackgroundUpdatedAt,
+    presentation.card_background_overlay,
+    presentation.card_front_text_color,
+    presentation.card_back_text_color,
     presentation.short_description_tr,
     presentation.short_description_en,
     presentation.subjects_json,
@@ -3221,6 +3299,7 @@ app.post('/api/admin/products', async (c) => {
   if (presentationConfig.error) return c.json({ error: presentationConfig.error }, 400);
   const presentation = presentationConfig.values;
   const logoUpdatedAt = presentation.logo_url ? new Date().toISOString() : null;
+  const cardBackgroundUpdatedAt = presentation.card_background_url ? new Date().toISOString() : null;
 
   await db.prepare(`
     INSERT INTO products (
@@ -3229,11 +3308,13 @@ app.post('/api/admin/products', async (c) => {
       default_requires_institution_email, default_requires_vpn,
       default_access_notes_tr, default_access_notes_en,
       logo_asset_key, logo_url, logo_updated_at, brand_color,
+      card_background_asset_key, card_background_url, card_background_updated_at,
+      card_background_overlay, card_front_text_color, card_back_text_color,
       short_description_tr, short_description_en, subjects_json,
       card_visible, display_order, is_featured,
       ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path,
       ra_requires_tunnel, ra_login_recipe_json, ra_host_allowlist_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     slugNorm,
     String(name).trim(),
@@ -3249,6 +3330,12 @@ app.post('/api/admin/products', async (c) => {
     presentation.logo_url,
     logoUpdatedAt,
     presentation.brand_color,
+    presentation.card_background_asset_key,
+    presentation.card_background_url,
+    cardBackgroundUpdatedAt,
+    presentation.card_background_overlay,
+    presentation.card_front_text_color,
+    presentation.card_back_text_color,
     presentation.short_description_tr,
     presentation.short_description_en,
     presentation.subjects_json,
@@ -3318,6 +3405,60 @@ app.post('/api/admin/product/:slug/logo', async (c) => {
   } catch (err) {
     console.error('Product logo upload error:', err);
     return c.json({ error: 'Logo yükleme başarısız' }, 500);
+  }
+});
+
+app.post('/api/admin/product/:slug/card-background', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+
+  const slug = String(c.req.param('slug') || '').trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9_-]{0,79}$/.test(slug)) {
+    return c.json({ error: 'Geçersiz ürün slug' }, 400);
+  }
+
+  const db = c.env.DB;
+  const bucket = c.env.FILES_BUCKET;
+  const r2PublicUrl = c.env.R2_PUBLIC_URL;
+  await ensureProductsTableAndSeed(db);
+
+  if (!bucket) return c.json({ error: 'FILES_BUCKET tanımlı değil' }, 500);
+  if (!r2PublicUrl) return c.json({ error: 'R2_PUBLIC_URL tanımlı değil' }, 500);
+
+  const existing = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(slug).first();
+  if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
+
+  let formData;
+  try { formData = await c.req.formData(); } catch { return c.json({ error: 'Form verisi okunamadı' }, 400); }
+  const file = formData.get('background');
+  if (!file || typeof file === 'string') return c.json({ error: 'Arka plan dosyası gerekli' }, 400);
+
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+  if (!allowed.includes(file.type)) return c.json({ error: 'Sadece JPG, PNG, WEBP veya SVG' }, 400);
+  if (file.size > 5 * 1024 * 1024) return c.json({ error: "Arka plan 5MB'dan küçük olmalı" }, 400);
+
+  try {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const key = `product-card-backgrounds/${slug}/background-${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const arrayBuffer = await file.arrayBuffer();
+    await bucket.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
+
+    const cardBackgroundUrl = `${r2PublicUrl}/${key}`;
+    const cardBackgroundUpdatedAt = new Date().toISOString();
+    await db.prepare(`
+      UPDATE products
+      SET card_background_asset_key = ?, card_background_url = ?, card_background_updated_at = ?
+      WHERE slug = ?
+    `).bind(key, cardBackgroundUrl, cardBackgroundUpdatedAt, slug).run();
+
+    return c.json({
+      success: true,
+      card_background_asset_key: key,
+      card_background_url: cardBackgroundUrl,
+      card_background_updated_at: cardBackgroundUpdatedAt,
+    });
+  } catch (err) {
+    console.error('Product card background upload error:', err);
+    return c.json({ error: 'Arka plan yükleme başarısız' }, 500);
   }
 });
 

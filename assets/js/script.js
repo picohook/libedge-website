@@ -79,6 +79,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 'wiley-journals': 'wiley-dergiler',
                 'wiley-books': 'wiley-kitaplar',
             };
+            const versionedUrl = (url, updatedAt) => {
+                if (!url) return '';
+                if (!updatedAt) return url;
+                const separator = url.includes('?') ? '&' : '?';
+                return `${url}${separator}v=${encodeURIComponent(updatedAt)}`;
+            };
+            const overlayColor = (mode) => {
+                if (mode === 'dark') return 'rgba(15, 23, 42, 0.48)';
+                if (mode === 'none') return 'rgba(255, 255, 255, 0)';
+                return 'rgba(255, 255, 255, 0.5)';
+            };
 
             products.forEach(product => {
                 const id = aliases[product.slug] || product.slug;
@@ -87,12 +98,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (product.logo_url) {
                     const img = card.querySelector('.product-image');
                     if (img) {
-                        const separator = product.logo_url.includes('?') ? '&' : '?';
-                        const versioned = product.logo_updated_at
-                            ? `${product.logo_url}${separator}v=${encodeURIComponent(product.logo_updated_at)}`
-                            : product.logo_url;
-                        img.src = versioned;
+                        img.src = versionedUrl(product.logo_url, product.logo_updated_at);
                         img.alt = `${product.name || product.slug} Logo`;
+                    }
+                }
+                if (product.brand_color) {
+                    const front = card.querySelector('.flip-front');
+                    const accessLink = card.querySelector('.flip-back a[href^="http"]');
+                    if (front) front.style.borderTopColor = product.brand_color;
+                    if (accessLink) accessLink.style.backgroundColor = product.brand_color;
+                }
+                if (product.card_front_text_color) {
+                    card.querySelectorAll('.flip-front h3').forEach(el => { el.style.color = product.card_front_text_color; });
+                }
+                if (product.card_back_text_color) {
+                    card.querySelectorAll('.flip-back h4, .flip-back li').forEach(el => { el.style.color = product.card_back_text_color; });
+                }
+                if (product.card_background_url) {
+                    const back = card.querySelector('.flip-back');
+                    if (back) {
+                        const bgUrl = versionedUrl(product.card_background_url, product.card_background_updated_at);
+                        back.style.background = `linear-gradient(to bottom, ${overlayColor(product.card_background_overlay)}, rgba(255, 255, 255, 0.05)), url('${bgUrl}')`;
+                        back.style.backgroundSize = 'cover';
+                        back.style.backgroundPosition = 'center';
+                        back.style.backgroundRepeat = 'no-repeat';
                     }
                 }
                 if (product.card_visible === 0 || product.card_visible === false) {
