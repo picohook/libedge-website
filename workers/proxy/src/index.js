@@ -112,7 +112,7 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   if (!target) {
     return htmlError(403, 'Bu oturum bu yayıncı hostuna erişemez.');
   }
-  const rateLimit = await enforceProxyRateLimit(env, sessionId, session);
+  const rateLimit = await enforceProxyRateLimit(env, sessionId, session, url.pathname);
   if (rateLimit) return proxyRateLimitResponse(rateLimit);
 
   // Upstream relay — path ve query aynen korunur, sadece host değişir.
@@ -333,7 +333,7 @@ async function handlePathProxy(request, env, ctx, url) {
   if (!session) {
     return htmlError(401, 'Oturum bulunamadı. Lütfen portal üzerinden tekrar erişin.');
   }
-  const rateLimit = await enforceProxyRateLimit(env, sessionId, session);
+  const rateLimit = await enforceProxyRateLimit(env, sessionId, session, url.pathname);
   if (rateLimit) return proxyRateLimitResponse(rateLimit);
 
   // Oturum ana host'unu mevcut URL label'ıyla kıyasla.
