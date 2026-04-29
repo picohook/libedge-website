@@ -249,19 +249,16 @@ func refreshDynamicHosts(apiURL, serviceKey string) error {
 	return nil
 }
 
-// isHostAllowed — dinamik listede varsa true; yoksa static regex'e fallback.
+// isHostAllowed — regex VEYA dinamik listede varsa true.
+// İkisi birbirini devre dışı bırakmaz; her ikisi de her zaman kontrol edilir.
 func isHostAllowed(hostname string) bool {
-	h := strings.ToLower(hostname)
-
-	dynamicHostsMu.RLock()
-	dl := dynamicHosts
-	dynamicHostsMu.RUnlock()
-
-	if len(dl) > 0 {
-		return dl[h]
+	if allowedHostRegex != nil && allowedHostRegex.MatchString(hostname) {
+		return true
 	}
-	// Dinamik liste henüz yüklenmediyse regex'e bak
-	return allowedHostRegex != nil && allowedHostRegex.MatchString(hostname)
+	dynamicHostsMu.RLock()
+	allowed := dynamicHosts[strings.ToLower(hostname)]
+	dynamicHostsMu.RUnlock()
+	return allowed
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
