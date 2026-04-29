@@ -2221,7 +2221,6 @@ app.get('/api/admin/users', async (c) => {
     url.searchParams.has('institution');
 
   const searchRaw = (url.searchParams.get('search') || '').trim();
-  const search = searchRaw.toLowerCase();
   const roleFilter = (url.searchParams.get('role') || '').trim();
   const institutionFilter = (url.searchParams.get('institution') || '').trim();
   const requestedPage = Math.max(1, Number(url.searchParams.get('page') || 1));
@@ -2265,12 +2264,13 @@ app.get('/api/admin/users', async (c) => {
   }
 
   if (searchRaw) {
-    const tLikes = turkishLikes(searchRaw);
-    const nameOr  = tLikes.map(() => 'COALESCE(u.full_name, \'\') LIKE ?').join(' OR ');
-    const emailOr = tLikes.map(() => 'u.email LIKE ?').join(' OR ');
-    const instOr  = tLikes.map(() => 'COALESCE(i.name, u.institution, \'\') LIKE ?').join(' OR ');
-    whereParts.push(`(${nameOr} OR ${emailOr} OR ${instOr})`);
-    for (const l of tLikes) params.push(l, l, l);
+    const like = `%${normSearch(searchRaw)}%`;
+    whereParts.push(`(
+      ${trNorm("COALESCE(u.full_name, '')")} LIKE ?
+      OR ${trNorm("COALESCE(u.email, '')")} LIKE ?
+      OR ${trNorm("COALESCE(i.name, u.institution, '')")} LIKE ?
+    )`);
+    params.push(like, like, like);
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
@@ -3917,27 +3917,35 @@ app.get('/api/admin/my-institution', async (c) => {
   });
 });
 
-// Türkçe küçük harfleri büyüğe çevirir: i→İ, ı→I, ü→Ü, ö→Ö, ş→Ş, ğ→Ğ, ç→Ç
-// SQLite LOWER() non-ASCII karakterleri işleyemez; bu sayede kullanıcı 'istanbul'
-// yazsa da 'İSTANBUL' satırları yakalanır.
-function turkishUpper(s) {
-  return s
-    .replace(/i/g, 'İ').replace(/ı/g, 'I')
-    .replace(/ü/g, 'Ü').replace(/ö/g, 'Ö')
-    .replace(/ş/g, 'Ş').replace(/ğ/g, 'Ğ').replace(/ç/g, 'Ç');
+// SQLite LOWER() Türkçe non-ASCII karakterleri (İ,ı,Ü,ü,Ö,ö,Ş,ş,Ğ,ğ,Ç,ç)
+// küçültemez. Çözüm: hem DB kolonunu hem arama terimini Türkçe→ASCII normalize
+// edip LIKE ile karşılaştırmak.
+
+// SQL ifadesi: verilen kolonu REPLACE zinciriyle ASCII'ye normalize eder + LOWER
+function trNorm(col) {
+  const repls = [
+    ['İ','i'],['ı','i'],
+    ['Ü','u'],['ü','u'],
+    ['Ö','o'],['ö','o'],
+    ['Ş','s'],['ş','s'],
+    ['Ğ','g'],['ğ','g'],
+    ['Ç','c'],['ç','c'],
+  ];
+  let expr = col;
+  for (const [from, to] of repls) {
+    expr = `REPLACE(${expr},'${from}','${to}')`;
+  }
+  return `LOWER(${expr})`;
 }
 
-// Verilen arama terimi için üç LIKE değeri döner:
-// 1. JS-lowercase (ASCII karakterler için)
-// 2. Ham orijinal (kullanıcının tam yazdığı, Shift+İ gibi)
-// 3. Türkçe büyük harf versiyonu ('istanbul' → 'İSTANBUL')
-function turkishLikes(raw) {
-  const lo = raw.toLowerCase();
-  const tu = turkishUpper(lo);
-  const likes = [`%${lo}%`];
-  if (raw !== lo) likes.push(`%${raw}%`);      // orijinal farklıysa ekle
-  if (tu !== lo && tu !== raw) likes.push(`%${tu}%`); // Türkçe büyük farklıysa ekle
-  return likes;
+// JS tarafında arama terimini aynı şekilde normalize eder
+function normSearch(s) {
+  return s
+    .replace(/[İ]/g, 'i').replace(/ı/g, 'i')
+    .replace(/[Üü]/g, 'u').replace(/[Öö]/g, 'o')
+    .replace(/[Şş]/g, 's').replace(/[Ğğ]/g, 'g')
+    .replace(/[Çç]/g, 'c')
+    .toLowerCase();
 }
 
 app.get('/api/admin/institutions', async (c) => {
@@ -3948,7 +3956,6 @@ app.get('/api/admin/institutions', async (c) => {
   const role = await getUserRole(c);
   const url = new URL(c.req.url);
   const searchRaw = (url.searchParams.get('search') || '').trim();
-  const search = searchRaw.toLowerCase();
   const category = (url.searchParams.get('category') || '').trim();
   const status = (url.searchParams.get('status') || '').trim();
   const sort = (url.searchParams.get('sort') || 'name').trim();
@@ -3967,14 +3974,16 @@ app.get('/api/admin/institutions', async (c) => {
   const whereParts = [];
   const params = [];
   if (searchRaw) {
-    const tLikes = turkishLikes(searchRaw); // [lowercase, raw?, turkishUpper?]
-    // Her alan için tüm LIKE varyantlarını OR ile dizer
-    const nameOr  = tLikes.map(() => 'inst.name LIKE ?').join(' OR ');
-    const domOr   = tLikes.map(() => 'COALESCE(inst.domain, \'\') LIKE ?').join(' OR ');
-    const cityOr  = tLikes.map(() => 'COALESCE(inst.city, \'\') LIKE ?').join(' OR ');
-    const webOr   = tLikes.map(() => 'COALESCE(inst.website_url, \'\') LIKE ?').join(' OR ');
-    whereParts.push(`(${nameOr} OR ${domOr} OR ${cityOr} OR ${webOr})`);
-    for (const l of tLikes) params.push(l, l, l, l); // her alan için aynı like
+    const like = `%${normSearch(searchRaw)}%`;
+    whereParts.push(`(
+      ${trNorm("COALESCE(inst.name, '')")} LIKE ?
+      OR ${trNorm("COALESCE(inst.domain, '')")} LIKE ?
+      OR ${trNorm("COALESCE(inst.city, '')")} LIKE ?
+      OR ${trNorm("COALESCE(inst.website_url, '')")} LIKE ?
+      OR ${trNorm("COALESCE(inst.category, '')")} LIKE ?
+      OR ${trNorm("COALESCE(inst.status, '')")} LIKE ?
+    )`);
+    params.push(like, like, like, like, like, like);
   }
   if (category) {
     whereParts.push(`LOWER(TRIM(COALESCE(inst.category, ''))) = ?`);
