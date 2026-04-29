@@ -15,6 +15,7 @@ import { egressFetch } from './egress-client.js';
 import { writeUpstreamAlert } from './alert-writer.js';
 import { htmlError } from './error-page.js';
 import { enforceProxyRateLimit } from './rate-limit.js';
+import { handleOidcProxy } from './oidc-proxy.js';
 
 const SESSION_COOKIE  = 'ra_proxy_session';
 const UPSTREAM_HOST_COOKIE = '__ra_upstream';
@@ -58,6 +59,13 @@ async function handle(request, env, ctx) {
   const sessionHostMatch = hostname.match(/^(r[a-z0-9]{6,8})\./);
   if (sessionHostMatch) {
     return await handleSessionHost(request, env, ctx, url, sessionHostMatch[1]);
+  }
+
+  // OIDC thin proxy: {40-hex-char-hash}.selmiye.com
+  // SciFinder OIDC auth akışını kurumun egress IP'siyle sso.cas.org'a iletir.
+  const oidcHashMatch = hostname.match(/^([0-9a-f]{40})\./i);
+  if (oidcHashMatch) {
+    return await handleOidcProxy(request, env, url, oidcHashMatch[1].toLowerCase());
   }
 
   // Path-proxy modu (mevcut)
@@ -120,6 +128,11 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   const rateLimit = await enforceProxyRateLimit(env, sessionId, session, target.path);
   if (rateLimit) return proxyRateLimitResponse(rateLimit);
 
+  // OIDC hash: HTML/JS body içindeki sso.cas.org referanslarını ve 302 Location'ı
+  // {oidcHash}.selmiye.com'a yeniden yazmak için önceden yükle. Kurumun OIDC
+  // proxy'si yoksa null döner; bu durumda hiçbir rewrite uygulanmaz.
+  const oidcHash = await loadInstitutionOidcHash(env.DB, session.institution_id);
+
   // Upstream relay — path ve query aynen korunur, sadece host değişir.
   // Query params içindeki proxy hostname'i (r*.selmiye.com) origin'e rewrite et;
   // aksi hâlde EMIS gibi "ref=<current_url>" echo'layan siteler redirect loop oluşturur.
@@ -178,6 +191,25 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     proxyableHosts
   );
 
+  // sso.cas.org → {oidcHash}.selmiye.com Location override.
+  // buildSessionHostResponseHeaders Location'ı /__ra-host/sso-cas-org/ olarak
+  // yazmış olabilir; kurumun OIDC proxy'si varsa subdomain'e gönder.
+  if (oidcHash) {
+    const rawLoc = upstreamResp.headers.get('Location');
+    if (rawLoc) {
+      try {
+        const locUrl = new URL(rawLoc);
+        if (locUrl.hostname === 'sso.cas.org') {
+          const proxyDomain = env.RA_PROXY_BASE_HOST || 'selmiye.com';
+          respHeaders.set(
+            'Location',
+            `https://${oidcHash}.${proxyDomain}${locUrl.pathname}${locUrl.search}${locUrl.hash}`
+          );
+        }
+      } catch { /* relative URL — host yok, dokunma */ }
+    }
+  }
+
   addStagingDebugHeaders(respHeaders, env, {
     targetUrl,
     upstreamStatus: upstreamResp.status,
@@ -195,6 +227,7 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   if (String(env?.ENVIRONMENT || '').toLowerCase() === 'staging') {
     respHeaders.set('X-RA-Debug-Content-Type', contentType.slice(0, 60));
     respHeaders.set('X-RA-Debug-Upstream-Cookie-Host', upstreamCookieHost || '-');
+    respHeaders.set('X-RA-Debug-Oidc-Hash', oidcHash ? oidcHash.slice(0, 8) + '...' : 'null');
     addOidcCallbackDebugHeaders(
       respHeaders,
       target,
@@ -205,10 +238,24 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   }
   const needsTextRewrite =
     shouldRewriteSessionTextResponse(target, upstreamResp) ||
-    shouldRewriteCurrentHostTextResponse(target, session.origin_host, contentType);
+    shouldRewriteCurrentHostTextResponse(target, session.origin_host, contentType) ||
+    (oidcHash && shouldRewriteSsoCasHost(contentType));
 
   if (needsTextRewrite) {
     let text = await upstreamResp.text();
+
+    // OIDC rewrite ÖNCE: sso.cas.org → {hash}.selmiye.com.
+    // Generic session/current-host rewrite'tan önce çalışmalı; aksi hâlde
+    // sso.cas.org önce /__ra-host/sso-cas-org/'a dönüşer ve sonraki replaceAll
+    // bunu bulamaz.
+    if (oidcHash && shouldRewriteSsoCasHost(contentType)) {
+      const proxyDomain = env.RA_PROXY_BASE_HOST || 'selmiye.com';
+      const to = `${oidcHash}.${proxyDomain}`;
+      text = text
+        .replaceAll('https://sso.cas.org', `https://${to}`)
+        .replaceAll('http://sso.cas.org',  `https://${to}`)
+        .replaceAll('//sso.cas.org',        `//${to}`);
+    }
 
     if (target.host !== session.origin_host) {
       text = rewriteCurrentHostUrls(text, url.hostname, target.host);
@@ -400,6 +447,28 @@ async function handlePathProxy(request, env, ctx, url) {
     upstreamOrigin: upstreamHeaders.get('Origin'),
     upstreamReferer: upstreamHeaders.get('Referer'),
   });
+
+  // OIDC rewrite: SciFinder JS/HTML içindeki sso.cas.org referanslarını
+  // kurumun {hash}.selmiye.com OIDC proxy subdomain'iyle değiştir.
+  // Böylece tarayıcı auth isteğini doğrudan proxy'ye gönderir; CAS
+  // tarafında OAuth client redirect_uri config'i değiştirmeye gerek kalmaz.
+  const oidcHash = await loadInstitutionOidcHash(env.DB, session.institution_id);
+  if (oidcHash && shouldRewriteSsoCasHost(upstreamResp.headers.get('Content-Type'))) {
+    const text = await upstreamResp.text();
+    const proxyDomain = env.RA_PROXY_BASE_HOST || 'selmiye.com';
+    const to = `${oidcHash}.${proxyDomain}`;
+    const rewritten = text
+      .replaceAll('https://sso.cas.org', `https://${to}`)
+      .replaceAll('http://sso.cas.org',  `https://${to}`)
+      .replaceAll('//sso.cas.org',        `//${to}`);
+    respHeaders.delete('Content-Length');
+    respHeaders.delete('Content-Encoding');
+    return new Response(rewritten, {
+      status: upstreamResp.status,
+      statusText: upstreamResp.statusText,
+      headers: respHeaders,
+    });
+  }
 
   return new Response(upstreamResp.body, {
     status: upstreamResp.status,
@@ -1081,3 +1150,40 @@ function truncateHeader(value, maxLen) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// OIDC thin proxy helpers (CAS SciFinder)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Kurumun OIDC proxy hash'ini D1'den yükler. Yoksa null döner.
+ * Bu hash {hash}.selmiye.com subdomain'ine maplenir; oidc-proxy.js o subdomain'de
+ * sso.cas.org'a egress IP ile relay yapar.
+ */
+async function loadInstitutionOidcHash(db, institutionId) {
+  if (!institutionId) return null;
+  const row = await db
+    .prepare(
+      `SELECT oidc_hash FROM institution_ra_settings
+        WHERE institution_id = ? AND enabled = 1 AND oidc_hash IS NOT NULL`
+    )
+    .bind(institutionId)
+    .first();
+  return row?.oidc_hash || null;
+}
+
+/**
+ * Response body'sinde sso.cas.org referanslarını rewrite etmeli mi?
+ * SciFinder SPA HTML/JS içinde hardcoded sso.cas.org URL'leri var; bunları
+ * {hash}.selmiye.com'a çevirmek tarayıcının proxy'den çıkmasını engeller.
+ */
+function shouldRewriteSsoCasHost(contentType) {
+  if (!contentType) return false;
+  const ct = String(contentType).toLowerCase();
+  return (
+    ct.includes('text/html') ||
+    ct.includes('text/javascript') ||
+    ct.includes('application/javascript') ||
+    ct.includes('application/x-javascript') ||
+    ct.includes('application/json')
+  );
+}
