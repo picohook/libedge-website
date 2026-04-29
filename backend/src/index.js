@@ -3299,7 +3299,7 @@ app.put('/api/admin/product/:slug', async (c) => {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     undoId,
-    actor?.id || null,
+    actor?.user_id || actor?.id || null,
     'product',
     slug,
     'update',
@@ -3348,22 +3348,50 @@ async function restoreProductAction(db, id, { enforceExpiry = false } = {}) {
   return { success: true };
 }
 
+async function restoreSubscriptionAction(db, id, { enforceExpiry = false } = {}) {
+  const log = await db.prepare(`
+    SELECT * FROM admin_action_logs
+    WHERE id = ? AND entity_type IN ('subscription', 'institution_subscription') AND action = 'update'
+  `).bind(id).first();
+  if (!log) return { error: 'Geri alınacak işlem bulunamadı', status: 404 };
+  if (log.undone_at) return { error: 'Bu işlem zaten geri alınmış', status: 409 };
+  if (enforceExpiry && log.undo_expires_at && Date.now() > Date.parse(log.undo_expires_at)) {
+    return { error: 'Hızlı geri alma süresi dolmuş', status: 410 };
+  }
+  const before = JSON.parse(log.before_json || '{}');
+  if (!before.id) return { error: 'Geri alma verisi eksik', status: 400 };
+  const isInstitution = log.entity_type === 'institution_subscription';
+  const columns = isInstitution
+    ? ['institution_id', 'product_slug', 'status', 'end_date', 'access_type', 'access_url', 'registration_url', 'requires_institution_email', 'requires_vpn', 'access_notes_tr', 'access_notes_en']
+    : ['user_id', 'product_slug', 'status', 'end_date'];
+  const table = isInstitution ? 'institution_subscriptions' : 'subscriptions';
+  const updateStmt = db.prepare(`
+    UPDATE ${table} SET ${columns.map((col) => `${col} = ?`).join(', ')}
+    WHERE id = ?
+  `).bind(...columns.map((col) => before[col] ?? null), before.id);
+  const markStmt = db.prepare(`
+    UPDATE admin_action_logs SET undone_at = ? WHERE id = ?
+  `).bind(new Date().toISOString(), id);
+  await db.batch([updateStmt, markStmt]);
+  return { success: true };
+}
+
 app.get('/api/admin/actions', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
   await ensureAdminActionLogsTable(db);
   const url = new URL(c.req.url);
   const entityType = (url.searchParams.get('entity_type') || 'product').trim();
-  if (entityType !== 'product') return c.json({ actions: [] });
+  if (!['product', 'subscription', 'institution_subscription'].includes(entityType)) return c.json({ actions: [] });
   const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') || 50)));
   const rows = await db.prepare(`
     SELECT id, actor_user_id, entity_type, entity_id, action,
            before_json, undo_expires_at, undone_at, created_at
     FROM admin_action_logs
-    WHERE entity_type = 'product'
+    WHERE entity_type = ?
     ORDER BY created_at DESC
     LIMIT ?
-  `).bind(limit).all();
+  `).bind(entityType, limit).all();
   return c.json({ actions: rows.results || [] });
 });
 
@@ -3375,7 +3403,10 @@ app.post('/api/admin/actions/:id/undo', async (c) => {
   await ensureProductsTableAndSeed(db);
   await ensureRemoteAccessSchema(db);
   await ensureAdminActionLogsTable(db);
-  const result = await restoreProductAction(db, id, { enforceExpiry: true });
+  const log = await db.prepare(`SELECT entity_type FROM admin_action_logs WHERE id = ?`).bind(id).first();
+  const result = log?.entity_type === 'product'
+    ? await restoreProductAction(db, id, { enforceExpiry: true })
+    : await restoreSubscriptionAction(db, id, { enforceExpiry: true });
   if (result.error) return c.json({ error: result.error }, result.status || 400);
   return c.json({ success: true });
 });
@@ -3387,8 +3418,12 @@ app.post('/api/admin/actions/:id/restore', async (c) => {
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
   await ensureRemoteAccessSchema(db);
+  await ensureInstitutionSubscriptionAccessColumns(db);
   await ensureAdminActionLogsTable(db);
-  const result = await restoreProductAction(db, id);
+  const log = await db.prepare(`SELECT entity_type FROM admin_action_logs WHERE id = ?`).bind(id).first();
+  const result = log?.entity_type === 'product'
+    ? await restoreProductAction(db, id)
+    : await restoreSubscriptionAction(db, id);
   if (result.error) return c.json({ error: result.error }, result.status || 400);
   return c.json({ success: true });
 });
@@ -3872,6 +3907,7 @@ app.post('/api/admin/subscription', async (c) => {
   const { user_id, product_slug, status, end_date } = await c.req.json();
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
+  await ensureAdminActionLogsTable(db);
   const role = await getUserRole(c);
   const adminInstitution = await getUserInstitution(c);
   const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
@@ -3902,7 +3938,7 @@ app.put('/api/admin/subscription/:id', async (c) => {
   if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
 
   const existing = await db.prepare(`
-    SELECT s.id, u.institution
+    SELECT s.*, u.institution
     FROM subscriptions s
     LEFT JOIN users u ON s.user_id = u.id
     WHERE s.id = ?
@@ -3916,13 +3952,32 @@ app.put('/api/admin/subscription/:id', async (c) => {
     }
   }
 
-  await db.prepare(`
+  const undoId = crypto.randomUUID();
+  const undoExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const actor = await getTokenPayloadFromCookie(c);
+  const updateStmt = db.prepare(`
     UPDATE subscriptions
     SET user_id = ?, product_slug = ?, status = ?, end_date = ?
     WHERE id = ?
-  `).bind(user_id, product_slug, status || 'active', end_date || null, id).run();
+  `).bind(user_id, product_slug, status || 'active', end_date || null, id);
+  const logStmt = db.prepare(`
+    INSERT INTO admin_action_logs (
+      id, actor_user_id, entity_type, entity_id, action,
+      before_json, after_json, undo_expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    undoId,
+    actor?.user_id || actor?.id || null,
+    'subscription',
+    String(id),
+    'update',
+    JSON.stringify(existing),
+    null,
+    undoExpiresAt
+  );
+  await db.batch([updateStmt, logStmt]);
 
-  return c.json({ success: true });
+  return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
 });
 
 app.delete('/api/admin/subscription/:id', async (c) => {
@@ -3955,6 +4010,7 @@ app.post('/api/admin/institution-subscription', async (c) => {
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
   await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureAdminActionLogsTable(db);
   const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
   if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
   const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
@@ -3994,10 +4050,13 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
   if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
   const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
 
-  const existing = await db.prepare(`SELECT id FROM institution_subscriptions WHERE id = ?`).bind(id).first();
+  const existing = await db.prepare(`SELECT * FROM institution_subscriptions WHERE id = ?`).bind(id).first();
   if (!existing) return c.json({ error: 'Abonelik bulunamadı' }, 404);
 
-  await db.prepare(`
+  const undoId = crypto.randomUUID();
+  const undoExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const actor = await getTokenPayloadFromCookie(c);
+  const updateStmt = db.prepare(`
     UPDATE institution_subscriptions
     SET institution_id = ?, product_slug = ?, status = ?, end_date = ?,
         access_type = ?, access_url = ?, registration_url = ?, requires_institution_email = ?, requires_vpn = ?, access_notes_tr = ?, access_notes_en = ?
@@ -4015,9 +4074,25 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
     String(access_notes_tr || '').trim() || null,
     String(access_notes_en || '').trim() || null,
     id
-  ).run();
+  );
+  const logStmt = db.prepare(`
+    INSERT INTO admin_action_logs (
+      id, actor_user_id, entity_type, entity_id, action,
+      before_json, after_json, undo_expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    undoId,
+    actor?.user_id || actor?.id || null,
+    'institution_subscription',
+    String(id),
+    'update',
+    JSON.stringify(existing),
+    null,
+    undoExpiresAt
+  );
+  await db.batch([updateStmt, logStmt]);
 
-  return c.json({ success: true });
+  return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
 });
 
 app.get('/api/admin/institution/:id/subscriptions', async (c) => {

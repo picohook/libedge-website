@@ -708,6 +708,9 @@
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
                 <h3 class="text-lg font-semibold">Abonelikler</h3>
                 <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <button type="button" data-admin-action="open-subscription-history-modal" class="btn bg-gray-100 text-gray-700 w-full sm:w-auto">
+                        <i class="fas fa-history mr-2"></i>İşlem Geçmişi
+                    </button>
                     <button id="addInstSubscriptionBtn" class="btn btn-primary w-full sm:w-auto" data-admin-action="open-inst-subscription-modal" style="display:none">
                         <i class="fas fa-building mr-2"></i>Kurum Aboneliği Ekle
                     </button>
@@ -754,6 +757,22 @@
                 </table>
             </div>
             <div id="subscriptionsPagination" class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-500"></div>
+        </div>
+    </div>
+    <div id="subscriptionHistoryModal" class="modal-overlay modal-center hidden">
+        <div class="modal-panel modal-3xl">
+            <div class="modal-content">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold">Abonelik İşlem Geçmişi</h3>
+                        <p class="text-sm text-gray-500 mt-1">Abonelik güncellemelerini eski değerlere geri yükleyebilirsiniz.</p>
+                    </div>
+                    <button type="button" data-admin-action="close-subscription-history-modal" class="text-gray-400 hover:text-gray-600 text-lg leading-none px-2 py-1">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="subscriptionHistoryList" class="space-y-2 max-h-[60vh] overflow-y-auto"></div>
+            </div>
         </div>
     </div>
 <!-- Kurum Dosyaları Tab -->
@@ -3110,6 +3129,9 @@ async function checkAdminAuth() {
         
         const user = await res.json();
         currentAdmin = user;
+        if (typeof syncCurrentUser === 'function') syncCurrentUser(user);
+        if (typeof updateAuthUI === 'function') updateAuthUI(true);
+        if (typeof startTokenRefresh === 'function') startTokenRefresh();
         
         if (user.role !== 'admin' && user.role !== 'super_admin') {
             redirectToHome('Bu sayfaya erişim yetkiniz yok.');
@@ -3174,6 +3196,20 @@ function redirectToHome(msg) {
 let _adminSessionRedirecting = false;
 let _adminTokenRefreshing = null; // in-flight refresh promise (tek seferlik)
 const _nativeAdminFetch = window.fetch.bind(window);
+function getAdminApiBase() {
+    return window.API_BASE || '';
+}
+
+function refreshAdminTokenOnce() {
+    if (!_adminTokenRefreshing) {
+        _adminTokenRefreshing = _nativeAdminFetch(`${getAdminApiBase()}/api/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include'
+        }).finally(() => { _adminTokenRefreshing = null; });
+    }
+    return _adminTokenRefreshing;
+}
+
 window.fetch = async function(...args) {
     const response = await _nativeAdminFetch(...args);
 
@@ -3187,12 +3223,7 @@ window.fetch = async function(...args) {
         }
 
         // Paralel çoklu 401'de tek bir refresh isteği açılır
-        if (!_adminTokenRefreshing) {
-            _adminTokenRefreshing = _nativeAdminFetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
-                .finally(() => { _adminTokenRefreshing = null; });
-        }
-
-        const refreshResp = await _adminTokenRefreshing;
+        const refreshResp = await refreshAdminTokenOnce();
         if (refreshResp && refreshResp.ok) {
             // Token yenilendi — orijinal isteği bir kez daha dene
             return _nativeAdminFetch(...args);
@@ -5120,6 +5151,72 @@ function composeFullName(firstName, lastName) {
         }
     }
 
+    async function openSubscriptionHistoryModal() {
+        document.getElementById('subscriptionHistoryModal')?.classList.remove('hidden');
+        await loadSubscriptionHistory();
+    }
+
+    function closeSubscriptionHistoryModal() {
+        document.getElementById('subscriptionHistoryModal')?.classList.add('hidden');
+    }
+
+    async function fetchSubscriptionActions(entityType) {
+        const res = await fetch(`${API_BASE}/api/admin/actions?entity_type=${entityType}&limit=50`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Geçmiş yüklenemedi');
+        const data = await res.json();
+        return data.actions || [];
+    }
+
+    async function loadSubscriptionHistory() {
+        const list = document.getElementById('subscriptionHistoryList');
+        if (!list) return;
+        list.innerHTML = '<div class="text-sm text-gray-400 py-4 text-center">Yükleniyor...</div>';
+        try {
+            const actions = [
+                ...(await fetchSubscriptionActions('subscription')),
+                ...(await fetchSubscriptionActions('institution_subscription'))
+            ].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))).slice(0, 50);
+            list.innerHTML = actions.length ? actions.map((a) => {
+                let before = {};
+                try { before = JSON.parse(a.before_json || '{}'); } catch (_) { before = {}; }
+                const isInstitution = a.entity_type === 'institution_subscription';
+                const typeLabel = isInstitution ? 'Kurum' : 'Bireysel';
+                const title = `${typeLabel} abonelik #${a.entity_id}`;
+                const when = a.created_at ? new Date(a.created_at).toLocaleString('tr-TR') : '-';
+                const disabled = a.undone_at ? 'disabled opacity-50 cursor-not-allowed' : '';
+                const label = a.undone_at ? 'Geri yüklendi' : 'Geri yükle';
+                return `
+                    <div class="border rounded-lg p-3 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="font-medium text-sm">${escapeHtml(title)}</div>
+                            <div class="text-xs text-gray-500">${escapeHtml(before.product_slug || '-')} • ${escapeHtml(when)}</div>
+                        </div>
+                        <button type="button" data-admin-action="restore-subscription-action" data-action-id="${escapeHtml(a.id)}" class="px-3 py-1.5 rounded bg-blue-600 text-white text-xs ${disabled}" ${a.undone_at ? 'disabled' : ''}>${label}</button>
+                    </div>
+                `;
+            }).join('') : '<div class="text-sm text-gray-400 py-4 text-center">Kayıt yok.</div>';
+        } catch (err) {
+            list.innerHTML = `<div class="text-sm text-red-500 py-4 text-center">${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    async function restoreSubscriptionAction(actionId) {
+        if (!actionId) return;
+        if (!window.confirm('Bu abonelik seçili işlemden önceki değerlerine geri yüklenecek. Devam edilsin mi?')) return;
+        const res = await fetch(`${API_BASE}/api/admin/actions/${encodeURIComponent(actionId)}/restore`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            showActionError('Geri yükleme', body.error || `HTTP ${res.status}`);
+            return;
+        }
+        showToast('Abonelik eski değerlerine geri yüklendi.', 'success');
+        await loadSubscriptions();
+        await loadSubscriptionHistory();
+    }
+
     // Form submit işlemleri
 document.getElementById('userForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -5234,12 +5331,14 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
+                const data = await res.json().catch(() => ({}));
                 showToast(
                     isInstitution
                         ? (isEditing ? 'Kurum aboneliği başarıyla güncellendi!' : 'Kurum aboneliği başarıyla eklendi!')
                         : (isEditing ? 'Abonelik başarıyla güncellendi!' : 'Abonelik başarıyla eklendi!'),
                     'success'
                 );
+                if (isEditing && data.undo_id) showSubscriptionUndoToast(data.undo_id);
             } else {
                 const body = await res.json().catch(() => ({}));
                 showActionError('Abonelik kaydetme işlemi', body.error);
@@ -5251,6 +5350,32 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         loadSubscriptions();
         loadDashboard();
     });
+
+    function showSubscriptionUndoToast(undoId) {
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification fixed z-50 top-5 right-5 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-white text-blue-700 border-l-4 border-blue-500 flex items-center gap-3';
+        toast.innerHTML = '<span><i class="fas fa-history mr-2"></i>Abonelik değişikliği geri alınabilir.</span><button type="button" class="px-2 py-1 rounded bg-blue-600 text-white text-xs">Geri al</button>';
+        document.body.appendChild(toast);
+        const timer = setTimeout(() => toast.remove(), 8000);
+        toast.querySelector('button')?.addEventListener('click', async () => {
+            clearTimeout(timer);
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/actions/${encodeURIComponent(undoId)}/undo`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || 'Geri alma başarısız');
+                }
+                toast.remove();
+                showToast('Abonelik değişikliği geri alındı.', 'success');
+                loadSubscriptions();
+            } catch (err) {
+                showActionError('Geri alma', err.message);
+            }
+        });
+    }
 
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -5475,6 +5600,9 @@ document.addEventListener('click', (e) => {
         case 'sort-users': if (sortKey) sortUsers(sortKey); break;
         case 'open-inst-subscription-modal': openInstSubscriptionModal(); break;
         case 'open-subscription-modal': openSubscriptionModal(); break;
+        case 'open-subscription-history-modal': openSubscriptionHistoryModal(); break;
+        case 'close-subscription-history-modal': closeSubscriptionHistoryModal(); break;
+        case 'restore-subscription-action': restoreSubscriptionAction(actionEl.dataset.actionId || ''); break;
         case 'sort-subscriptions': if (sortKey) sortSubscriptions(sortKey); break;
         case 'sync-d1-airtable': syncD1ToAirtable(); break;
         case 'sync-airtable-d1': syncAirtableToD1(); break;
@@ -5618,6 +5746,7 @@ const _accessibleModalIds = [
     'adminMoveModal',
     'announcementModal',
     'subscriptionEditorModal',
+    'subscriptionHistoryModal',
     'sendToInstitutionsModal',
     'adminFileModal',
     'folderMoveModal',
