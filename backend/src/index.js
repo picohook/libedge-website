@@ -8458,6 +8458,7 @@ async function handleScheduledAlerts(env) {
 
 export default {
   fetch: app.fetch,
+  request: app.request.bind(app),
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(handleScheduledAlerts(env));
   },

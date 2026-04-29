@@ -13,6 +13,7 @@ import { verifyProxyToken } from '../../../backend/src/ra/jwt.js';
 import { encodeHost, decodeHost, isValidEncodedHost } from '../../../backend/src/ra/host.js';
 import { egressFetch } from './egress-client.js';
 import { writeUpstreamAlert } from './alert-writer.js';
+import { htmlError } from './error-page.js';
 
 const SESSION_COOKIE  = 'ra_proxy_session';
 const UPSTREAM_HOST_COOKIE = '__ra_upstream';
@@ -1056,29 +1057,3 @@ function truncateHeader(value, maxLen) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-function htmlError(status, message, detail) {
-  const portalUrl = 'https://selmiye.com/profile.html';
-  const body = `<!doctype html><html><head><meta charset="utf-8">
-<title>Uzaktan Erişim — Hata</title>
-<style>body{font-family:system-ui,Segoe UI,sans-serif;background:#f5f5f5;color:#222;padding:3rem;max-width:640px;margin:auto}
-h1{color:#b00020;font-size:1.4rem}p{line-height:1.5}code{background:#eee;padding:2px 6px;border-radius:4px}</style>
-</head><body>
-<h1>Erişim hatası (${status})</h1>
-<p>${escapeHtml(message)}</p>
-${detail ? `<p><small>Detay: <code>${escapeHtml(detail)}</code></small></p>` : ''}
-<p><a href="${portalUrl}">← Portal'a dön</a></p>
-</body></html>`;
-  return new Response(body, {
-    status,
-    headers: { 'content-type': 'text/html; charset=utf-8' },
-  });
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}

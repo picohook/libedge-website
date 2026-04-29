@@ -12,6 +12,7 @@
 
 import { encodeHost } from '../../../backend/src/ra/host.js';
 import { egressFetch } from './egress-client.js';
+import { htmlError } from './error-page.js';
 import {
   ensureRecipeExecuted,
   loadRecipeForSession,
@@ -146,10 +147,7 @@ export async function proxyToUpstream(env, session, sessionId, clientReq, proxyH
     });
   } catch (err) {
     console.error('upstream fetch failed', err);
-    return new Response(
-      `Upstream fetch hatası: ${escapeHtml(err.message)}`,
-      { status: 502, headers: { 'content-type': 'text/plain; charset=utf-8' } }
-    );
+    return htmlError(502, 'Institution access is temporarily unavailable. Please contact your library.');
   }
 
   // Token capture: recipe'de capture_token_on_login_path tanımlıysa ve
@@ -488,13 +486,4 @@ function collectSetCookies(resp) {
     if (k.toLowerCase() === 'set-cookie') out.push(v);
   }
   return out;
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
