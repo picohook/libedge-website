@@ -159,6 +159,21 @@
             background: #fff;
             padding: 1rem;
         }
+        .product-color-control {
+            display: grid;
+            grid-template-columns: 3rem minmax(0, 1fr);
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .product-color-picker {
+            width: 3rem;
+            height: 2.5rem;
+            padding: 0.15rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background: #fff;
+            cursor: pointer;
+        }
         @media (min-width: 1024px) {
             .product-preview-panel {
                 position: sticky;
@@ -1258,7 +1273,10 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Marka Rengi</label>
-                                        <input type="text" id="productBrandColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#2563eb">
+                                        <div class="product-color-control">
+                                            <input type="color" id="productBrandColorPicker" class="product-color-picker" value="#2563eb" aria-label="Marka rengi seç">
+                                            <input type="text" id="productBrandColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#2563eb">
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Arka Plan Perdesi</label>
@@ -1270,11 +1288,17 @@
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Ön Yüz Yazı Rengi</label>
-                                        <input type="text" id="productCardFrontTextColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#220f60">
+                                        <div class="product-color-control">
+                                            <input type="color" id="productCardFrontTextColorPicker" class="product-color-picker" value="#220f60" aria-label="Ön yüz yazı rengi seç">
+                                            <input type="text" id="productCardFrontTextColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#220f60">
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Arka Yüz Yazı Rengi</label>
-                                        <input type="text" id="productCardBackTextColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#111827">
+                                        <div class="product-color-control">
+                                            <input type="color" id="productCardBackTextColorPicker" class="product-color-picker" value="#111827" aria-label="Arka yüz yazı rengi seç">
+                                            <input type="text" id="productCardBackTextColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#111827">
+                                        </div>
                                     </div>
                                 </div>
                             </section>
@@ -3222,6 +3246,21 @@ function bindRemainingAdminFormEvents() {
         updateProductCardPreview();
     });
     [
+        ['productBrandColor', 'productBrandColorPicker', '#2563eb'],
+        ['productCardFrontTextColor', 'productCardFrontTextColorPicker', '#220f60'],
+        ['productCardBackTextColor', 'productCardBackTextColorPicker', '#111827'],
+    ].forEach(([textId, pickerId, fallback]) => {
+        bindAdminElementEvent(pickerId, 'input', (e) => {
+            const text = document.getElementById(textId);
+            if (text) text.value = e.target.value;
+            updateProductCardPreview();
+        });
+        bindAdminElementEvent(textId, 'input', () => {
+            syncProductColorPicker(textId, pickerId, fallback);
+            updateProductCardPreview();
+        });
+    });
+    [
         'productSlug',
         'productName',
         'productCategory',
@@ -3229,9 +3268,6 @@ function bindRemainingAdminFormEvents() {
         'productAccessUrl',
         'productShortDescriptionTr',
         'productShortDescriptionEn',
-        'productBrandColor',
-        'productCardFrontTextColor',
-        'productCardBackTextColor',
         'productCardBackgroundOverlay',
         'productCardVisible',
         'productIsFeatured',
@@ -3486,6 +3522,24 @@ document.addEventListener('click', function(e) {
     function normalizePreviewColor(raw) {
         const value = String(raw || '').trim();
         return /^#[0-9a-f]{6}$/i.test(value) ? value : '#60a5fa';
+    }
+
+    function syncProductColorPicker(textId, pickerId, fallback) {
+        const text = document.getElementById(textId);
+        const picker = document.getElementById(pickerId);
+        if (!text || !picker) return;
+        const value = text.value.trim();
+        if (/^#[0-9a-f]{6}$/i.test(value)) {
+            picker.value = value;
+        } else if (!value) {
+            picker.value = fallback;
+        }
+    }
+
+    function setProductColorValue(textId, pickerId, value, fallback) {
+        const text = document.getElementById(textId);
+        if (text) text.value = value || '';
+        syncProductColorPicker(textId, pickerId, fallback);
     }
 
     const PRODUCT_CARD_BACKGROUNDS = {
@@ -3784,13 +3838,13 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         document.getElementById('productShortDescriptionTr').value = product.short_description_tr || '';
         document.getElementById('productShortDescriptionEn').value = product.short_description_en || '';
         document.getElementById('productSubjectsJson').value = prettyJson(product.subjects_json);
-        document.getElementById('productBrandColor').value = product.brand_color || '';
+        setProductColorValue('productBrandColor', 'productBrandColorPicker', product.brand_color, '#2563eb');
         document.getElementById('productCardBackgroundAssetKey').value = product.card_background_asset_key || '';
         document.getElementById('productCardBackgroundUrl').value = product.card_background_url || '';
         document.getElementById('productCardBackgroundUpdatedAt').value = product.card_background_updated_at || '';
         document.getElementById('productCardBackgroundOverlay').value = product.card_background_overlay || 'light';
-        document.getElementById('productCardFrontTextColor').value = product.card_front_text_color || '';
-        document.getElementById('productCardBackTextColor').value = product.card_back_text_color || '';
+        setProductColorValue('productCardFrontTextColor', 'productCardFrontTextColorPicker', product.card_front_text_color, '#220f60');
+        setProductColorValue('productCardBackTextColor', 'productCardBackTextColorPicker', product.card_back_text_color, '#111827');
         updateProductLogoPreview(product);
         document.getElementById('productRequiresEmail').checked = !!product.default_requires_institution_email;
         document.getElementById('productRequiresVpn').checked = !!product.default_requires_vpn;
