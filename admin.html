@@ -133,6 +133,53 @@
         .send-duplicate-warning { background: #fef3c7; color: #92400e; }
         .crop-stage { max-height: 60vh; overflow: hidden; }
         #coverCropImage { max-width: 100%; display: block; max-height: 55vh; }
+        .product-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .product-preview-card {
+            min-height: 230px;
+            border-radius: 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-top: 4px solid #60a5fa;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+        .product-preview-back {
+            background: #eff6ff;
+            align-items: stretch;
+        }
+        .product-preview-logo {
+            width: 100%;
+            height: 5rem;
+            object-fit: contain;
+            margin-bottom: 0.75rem;
+        }
+        .product-preview-placeholder {
+            width: 5rem;
+            height: 5rem;
+            border-radius: 0.75rem;
+            background: #f3f4f6;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        @media (max-width: 767px) {
+            .product-preview-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         .select-mode-active .selectable-row { cursor: pointer; }
         .select-mode-active .selectable-row:hover { background: #eff6ff; }
         .select-mode-active .folder-select-cb,
@@ -1073,7 +1120,7 @@
     </div>
 
     <div id="productModal" class="modal-overlay modal-center hidden">
-        <div class="modal-panel modal-2xl modal-panel-scroll">
+        <div class="modal-panel modal-4xl modal-panel-scroll">
             <div class="modal-content">
             <h3 id="productModalTitle" class="text-xl font-bold mb-4">Ürün Düzenle</h3>
             <form id="productForm">
@@ -1167,6 +1214,35 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Marka Rengi</label>
                                 <input type="text" id="productBrandColor" class="w-full border p-2 rounded font-mono text-sm" placeholder="#2563eb">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 border border-gray-200 rounded-lg p-3 bg-white">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <h4 class="text-sm font-semibold text-gray-700">Kart Önizleme</h4>
+                            <span id="productPreviewStatus" class="text-[11px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">Kartlarda gösteriliyor</span>
+                        </div>
+                        <div class="product-preview-grid">
+                            <div id="productPreviewFront" class="product-preview-card">
+                                <div class="w-full flex flex-col items-center min-w-0">
+                                    <img id="productPreviewLogo" src="" alt="" class="product-preview-logo hidden">
+                                    <div id="productPreviewLogoFallback" class="product-preview-placeholder">?</div>
+                                    <h3 id="productPreviewNameFront" class="text-lg font-semibold text-center text-primary break-words w-full">Ürün</h3>
+                                </div>
+                                <div class="w-full">
+                                    <div class="text-[11px] font-medium text-gray-500 text-center mb-1">Yetkili Bölge</div>
+                                    <div id="productPreviewRegions" class="flex flex-wrap gap-1 justify-center"></div>
+                                </div>
+                            </div>
+                            <div id="productPreviewBack" class="product-preview-card product-preview-back">
+                                <div>
+                                    <h4 id="productPreviewNameBack" class="text-base font-bold mb-2 text-blue-800 break-words">Ürün</h4>
+                                    <ul id="productPreviewDetails" class="text-xs text-gray-900 space-y-1 mb-3"></ul>
+                                </div>
+                                <div class="flex flex-wrap justify-center gap-2 mt-auto">
+                                    <span class="bg-primary text-white py-2 px-3 rounded-lg text-xs">Broşür</span>
+                                    <span id="productPreviewAccessButton" class="bg-blue-500 text-white py-2 px-3 rounded-lg text-xs whitespace-nowrap">Erişim Linki</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3056,6 +3132,20 @@ function bindRemainingAdminFormEvents() {
         document.getElementById('productLogoUpdatedAt').value = '';
         updateProductLogoPreview(products.find(p => p.slug === editingProductSlug) || {});
     });
+    [
+        'productSlug',
+        'productName',
+        'productCategory',
+        'productRegion',
+        'productAccessUrl',
+        'productShortDescriptionTr',
+        'productShortDescriptionEn',
+        'productBrandColor',
+        'productCardVisible',
+        'productIsFeatured',
+    ].forEach((id) => {
+        bindAdminElementEvent(id, ['productCardVisible', 'productIsFeatured'].includes(id) ? 'change' : 'input', updateProductCardPreview);
+    });
 
     bindAdminElementEvent('adminMoveModalSearch', 'input', (e) => {
         adminMoveModalState.search = e.target.value;
@@ -3297,6 +3387,92 @@ document.addEventListener('click', function(e) {
             img.classList.add('hidden');
             initials.textContent = getProductInitials(product);
             initials.classList.remove('hidden');
+        }
+        updateProductCardPreview();
+    }
+
+    function normalizePreviewColor(raw) {
+        const value = String(raw || '').trim();
+        return /^#[0-9a-f]{6}$/i.test(value) ? value : '#60a5fa';
+    }
+
+    function splitPreviewRegions(raw) {
+        const regions = String(raw || '').split(',').map(r => r.trim()).filter(Boolean);
+        return regions.length ? regions : ['Tanımsız'];
+    }
+
+    function updateProductCardPreview() {
+        const current = products.find(p => p.slug === editingProductSlug) || {};
+        const name = document.getElementById('productName')?.value.trim() || current.name || 'Ürün';
+        const slug = document.getElementById('productSlug')?.value.trim() || current.slug || '';
+        const category = document.getElementById('productCategory')?.value.trim() || current.category || '';
+        const region = document.getElementById('productRegion')?.value.trim() || current.region || '';
+        const accessUrl = document.getElementById('productAccessUrl')?.value.trim() || '';
+        const descTr = document.getElementById('productShortDescriptionTr')?.value.trim() || '';
+        const descEn = document.getElementById('productShortDescriptionEn')?.value.trim() || '';
+        const visible = document.getElementById('productCardVisible')?.checked ?? true;
+        const featured = document.getElementById('productIsFeatured')?.checked ?? false;
+        const color = normalizePreviewColor(document.getElementById('productBrandColor')?.value);
+        const logoUrl = getVersionedLogoUrl(
+            document.getElementById('productLogoUrl')?.value.trim() || '',
+            document.getElementById('productLogoUpdatedAt')?.value || ''
+        );
+
+        const front = document.getElementById('productPreviewFront');
+        const back = document.getElementById('productPreviewBack');
+        if (front) front.style.borderTopColor = color;
+        if (back) back.style.borderTopColor = color;
+
+        const logo = document.getElementById('productPreviewLogo');
+        const fallback = document.getElementById('productPreviewLogoFallback');
+        if (logo && fallback) {
+            if (logoUrl) {
+                logo.src = logoUrl;
+                logo.alt = `${name} Logo`;
+                logo.classList.remove('hidden');
+                fallback.classList.add('hidden');
+            } else {
+                logo.removeAttribute('src');
+                logo.classList.add('hidden');
+                fallback.textContent = getProductInitials({ name, slug });
+                fallback.classList.remove('hidden');
+            }
+        }
+
+        const frontName = document.getElementById('productPreviewNameFront');
+        const backName = document.getElementById('productPreviewNameBack');
+        if (frontName) frontName.textContent = name;
+        if (backName) backName.textContent = name;
+
+        const status = document.getElementById('productPreviewStatus');
+        if (status) {
+            status.textContent = visible ? (featured ? 'Kartlarda gösteriliyor · Öne çıkan' : 'Kartlarda gösteriliyor') : 'Kartlarda gizli';
+            status.className = visible
+                ? 'text-[11px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700'
+                : 'text-[11px] px-2 py-1 rounded-full bg-gray-100 text-gray-500';
+        }
+
+        const regions = document.getElementById('productPreviewRegions');
+        if (regions) {
+            regions.innerHTML = splitPreviewRegions(region)
+                .map(item => `<span class="text-[11px] px-2 py-1 rounded-full bg-blue-100 text-blue-800">${escapeHtml(item)}</span>`)
+                .join('');
+        }
+
+        const details = document.getElementById('productPreviewDetails');
+        if (details) {
+            const lines = [
+                descTr || descEn || 'Kısa açıklama girildiğinde kartın arka yüzünde burada görünür.',
+                category ? `Kategori: ${category}` : '',
+                accessUrl ? 'Erişim linki tanımlı' : 'Erişim linki tanımsız',
+            ].filter(Boolean);
+            details.innerHTML = lines.map(line => `<li>${escapeHtml(line)}</li>`).join('');
+        }
+
+        const accessButton = document.getElementById('productPreviewAccessButton');
+        if (accessButton) {
+            accessButton.textContent = accessUrl ? 'Erişim Linki' : 'Erişim Yok';
+            accessButton.style.backgroundColor = color;
         }
     }
 
