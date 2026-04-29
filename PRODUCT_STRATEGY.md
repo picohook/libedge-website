@@ -112,9 +112,19 @@ recommendation_weight:
 audience
 monetization
 subjects_json
+access_tags_json
 formats_json
 recommendation_weight
 ```
+
+`access_tags_json` ilk sürüm etiketleri:
+
+```text
+EKUAL, LibEdge, Açık Erişim, Abonelik, Satınalma, Deneme
+```
+
+Bir ürün birden fazla etiket taşıyabilir. Örn. temsilcisi olunan ve kurum aboneliği
+ile açılan bir ürün hem `LibEdge` hem `Abonelik` etiketi alabilir.
 
 ### Toplu Ürün Onboarding
 
@@ -132,6 +142,9 @@ Kural:
 - IP kontrollü kaynaklar `default_access_type=ip`, `ra_enabled=1` olur.
 - Direkt link kaynakları `default_access_type=direct`, `default_access_url` dolu,
   `ra_enabled=0` olur.
+- Kullanıcı adı/şifreyle dış sistemde açılan kaynaklar `email_password_external`
+  olarak saklanır.
+- EKUAL listesi `access_tags_json=["EKUAL"]` ile işaretlenir.
 - Aynı slug tekrar gelirse açıkça update istenmeden mevcut ürün ezilmez.
 - Import sonrası public kart görünürlüğü, sıralama, logo, arka plan ve yazı renkleri
   mevcut admin ürün tasarım alanlarından yönetilir.

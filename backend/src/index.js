@@ -749,6 +749,7 @@ async function ensureProductsTableAndSeed(db) {
       short_description_tr TEXT,
       short_description_en TEXT,
       subjects_json TEXT,
+      access_tags_json TEXT,
       card_visible INTEGER DEFAULT 1,
       display_order INTEGER DEFAULT 999,
       is_featured INTEGER DEFAULT 0,
@@ -776,6 +777,7 @@ async function ensureProductsTableAndSeed(db) {
     'ALTER TABLE products ADD COLUMN short_description_tr TEXT',
     'ALTER TABLE products ADD COLUMN short_description_en TEXT',
     'ALTER TABLE products ADD COLUMN subjects_json TEXT',
+    'ALTER TABLE products ADD COLUMN access_tags_json TEXT',
     'ALTER TABLE products ADD COLUMN card_visible INTEGER DEFAULT 1',
     'ALTER TABLE products ADD COLUMN display_order INTEGER DEFAULT 999',
     'ALTER TABLE products ADD COLUMN is_featured INTEGER DEFAULT 0'
@@ -800,10 +802,10 @@ async function ensureProductsTableAndSeed(db) {
         logo_asset_key, logo_url, logo_updated_at, brand_color,
         card_background_asset_key, card_background_url, card_background_updated_at,
         card_background_overlay, card_front_text_color, card_back_text_color,
-        short_description_tr, short_description_en, subjects_json,
+        short_description_tr, short_description_en, subjects_json, access_tags_json,
         card_visible, display_order, is_featured
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       product.slug,
       product.name,
@@ -828,6 +830,7 @@ async function ensureProductsTableAndSeed(db) {
       product.short_description_tr || null,
       product.short_description_en || null,
       product.subjects_json || null,
+      product.access_tags_json || null,
       product.card_visible == null ? 1 : (product.card_visible ? 1 : 0),
       product.display_order == null ? 999 : Number(product.display_order),
       product.is_featured ? 1 : 0
@@ -865,6 +868,7 @@ async function ensureProductsTableAndSeed(db) {
           card_background_overlay = COALESCE(NULLIF(card_background_overlay, ''), ?),
           card_back_text_color = COALESCE(NULLIF(card_back_text_color, ''), ?),
           subjects_json = COALESCE(NULLIF(subjects_json, ''), ?),
+          access_tags_json = COALESCE(NULLIF(access_tags_json, ''), ?),
           display_order = CASE
             WHEN display_order IS NULL OR display_order = 999 THEN ?
             ELSE display_order
@@ -884,6 +888,7 @@ async function ensureProductsTableAndSeed(db) {
         product.card_background_overlay || 'light',
         product.card_back_text_color || null,
         product.subjects_json || null,
+        product.access_tags_json || null,
         product.display_order == null ? 999 : Number(product.display_order),
         product.slug
       ).run();
@@ -2961,6 +2966,16 @@ app.post('/api/admin/set-role/:id', async (c) => {
 const MAX_PRODUCT_RA_RECIPE_BYTES = 16 * 1024;
 const MAX_PRODUCT_RA_ALLOWLIST_BYTES = 4 * 1024;
 const MAX_PRODUCT_SUBJECTS_BYTES = 2 * 1024;
+const MAX_PRODUCT_ACCESS_TAGS_BYTES = 1024;
+const PRODUCT_ACCESS_TAGS = ['EKUAL', 'LibEdge', 'Açık Erişim', 'Abonelik', 'Satınalma', 'Deneme'];
+const PRODUCT_ACCESS_TAG_LOOKUP = new Map(PRODUCT_ACCESS_TAGS.map((tag) => [tag.toLocaleLowerCase('tr'), tag]));
+const PRODUCT_ACCESS_TYPE_ALIASES = new Map([
+  ['username_password', 'email_password_external'],
+  ['email_password', 'email_password_external'],
+]);
+const VALID_PRODUCT_ACCESS_TYPES = new Set([
+  'direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed',
+]);
 
 function normalizeProductRaDeliveryMode(raw) {
   const mode = String(raw || '').trim().toLowerCase();
@@ -3056,6 +3071,34 @@ function normalizeProductSubjectsJson(raw) {
   }
 }
 
+function normalizeProductAccessTagsJson(raw) {
+  if (raw == null || raw === '') return { value: null };
+  const text = String(raw).trim();
+  if (!text) return { value: null };
+  if (text.length > MAX_PRODUCT_ACCESS_TAGS_BYTES) return { error: 'access_tags_json çok uzun' };
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) return { error: 'access_tags_json bir dizi olmalı' };
+    const tags = [];
+    for (const item of parsed) {
+      const key = String(item || '').trim().toLocaleLowerCase('tr');
+      const tag = PRODUCT_ACCESS_TAG_LOOKUP.get(key);
+      if (!tag) return { error: `Geçersiz ürün etiketi: ${item}` };
+      if (!tags.includes(tag)) tags.push(tag);
+    }
+    return { value: tags.length ? JSON.stringify(tags) : null };
+  } catch (err) {
+    return { error: `access_tags_json parse hatası: ${err.message}` };
+  }
+}
+
+function normalizeProductAccessType(raw) {
+  const value = String(raw || '').trim().toLowerCase();
+  if (!value) return null;
+  const normalized = PRODUCT_ACCESS_TYPE_ALIASES.get(value) || value;
+  return VALID_PRODUCT_ACCESS_TYPES.has(normalized) ? normalized : null;
+}
+
 function normalizeProductPresentation(body) {
   const logoUrl = normalizeProductLogoUrl(body.logo_url);
   if (body.logo_url && !logoUrl) return { error: 'Logo URL geçersiz' };
@@ -3068,6 +3111,8 @@ function normalizeProductPresentation(body) {
     : null;
   const subjects = normalizeProductSubjectsJson(body.subjects_json);
   if (subjects.error) return { error: subjects.error };
+  const accessTags = normalizeProductAccessTagsJson(body.access_tags_json);
+  if (accessTags.error) return { error: accessTags.error };
 
   return {
     values: {
@@ -3082,6 +3127,7 @@ function normalizeProductPresentation(body) {
       short_description_tr: cleanProductText(body.short_description_tr, 240),
       short_description_en: cleanProductText(body.short_description_en, 240),
       subjects_json: subjects.value,
+      access_tags_json: accessTags.value,
       card_visible: body.card_visible == null ? 1 : (body.card_visible ? 1 : 0),
       display_order: normalizeProductDisplayOrder(body.display_order),
       is_featured: body.is_featured ? 1 : 0,
@@ -3172,6 +3218,7 @@ app.get('/api/admin/products', async (c) => {
            short_description_tr,
            short_description_en,
            subjects_json,
+           access_tags_json,
            COALESCE(card_visible, 1) AS card_visible,
            COALESCE(display_order, 999) AS display_order,
            COALESCE(is_featured, 0) AS is_featured
@@ -3192,7 +3239,7 @@ app.get('/api/products', async (c) => {
            COALESCE(card_background_overlay, 'light') AS card_background_overlay,
            card_front_text_color, card_back_text_color,
            short_description_tr, short_description_en,
-           subjects_json,
+           subjects_json, access_tags_json,
            COALESCE(card_visible, 1) AS card_visible,
            COALESCE(display_order, 999) AS display_order,
            COALESCE(is_featured, 0) AS is_featured
@@ -3206,6 +3253,14 @@ app.get('/api/products', async (c) => {
     subjects: (() => {
       try {
         const parsed = JSON.parse(row.subjects_json || '[]');
+        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+      } catch (_) {
+        return [];
+      }
+    })(),
+    access_tags: (() => {
+      try {
+        const parsed = JSON.parse(row.access_tags_json || '[]');
         return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
       } catch (_) {
         return [];
@@ -3240,7 +3295,6 @@ app.put('/api/admin/product/:slug', async (c) => {
     ra_enabled
   } = body;
 
-  const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
   await ensureRemoteAccessSchema(db);
@@ -3277,7 +3331,7 @@ app.put('/api/admin/product/:slug', async (c) => {
         card_background_updated_at = CASE WHEN ? IS NULL THEN card_background_updated_at ELSE ? END,
         card_background_overlay = ?, card_front_text_color = ?, card_back_text_color = ?,
         short_description_tr = ?, short_description_en = ?,
-        subjects_json = ?, card_visible = ?, display_order = ?, is_featured = ?,
+        subjects_json = ?, access_tags_json = ?, card_visible = ?, display_order = ?, is_featured = ?,
         ra_enabled = ?, ra_delivery_mode = ?,
         ra_origin_host = ?, ra_origin_landing_path = ?,
         ra_requires_tunnel = ?, ra_login_recipe_json = ?, ra_host_allowlist_json = ?
@@ -3286,7 +3340,7 @@ app.put('/api/admin/product/:slug', async (c) => {
     String(name || '').trim() || slug,
     String(category || '').trim() || null,
     String(region || '').trim() || null,
-    validAccessTypes.includes(default_access_type) ? default_access_type : null,
+    normalizeProductAccessType(default_access_type),
     String(default_access_url || '').trim() || null,
     default_requires_institution_email ? 1 : 0,
     default_requires_vpn ? 1 : 0,
@@ -3307,6 +3361,7 @@ app.put('/api/admin/product/:slug', async (c) => {
     presentation.short_description_tr,
     presentation.short_description_en,
     presentation.subjects_json,
+    presentation.access_tags_json,
     presentation.card_visible,
     presentation.display_order,
     presentation.is_featured,
@@ -3348,7 +3403,7 @@ async function restoreProductAction(db, id, { enforceExpiry = false } = {}) {
     'logo_asset_key', 'logo_url', 'logo_updated_at', 'brand_color',
     'card_background_asset_key', 'card_background_url', 'card_background_updated_at',
     'card_background_overlay', 'card_front_text_color', 'card_back_text_color',
-    'short_description_tr', 'short_description_en', 'subjects_json',
+    'short_description_tr', 'short_description_en', 'subjects_json', 'access_tags_json',
     'card_visible', 'display_order', 'is_featured',
     'ra_enabled', 'ra_delivery_mode', 'ra_origin_host', 'ra_origin_landing_path',
     'ra_requires_tunnel', 'ra_login_recipe_json', 'ra_host_allowlist_json'
@@ -3499,7 +3554,6 @@ app.post('/api/admin/products', async (c) => {
   const conflict = await db.prepare('SELECT slug FROM products WHERE slug = ?').bind(slugNorm).first();
   if (conflict) return c.json({ error: 'Bu slug zaten kullanımda' }, 409);
 
-  const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
   const raConfig = validateProductRaConfig(body);
   if (raConfig.error) return c.json({ error: raConfig.error }, 400);
   const ra = raConfig.values;
@@ -3518,17 +3572,17 @@ app.post('/api/admin/products', async (c) => {
       logo_asset_key, logo_url, logo_updated_at, brand_color,
       card_background_asset_key, card_background_url, card_background_updated_at,
       card_background_overlay, card_front_text_color, card_back_text_color,
-      short_description_tr, short_description_en, subjects_json,
+      short_description_tr, short_description_en, subjects_json, access_tags_json,
       card_visible, display_order, is_featured,
       ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path,
       ra_requires_tunnel, ra_login_recipe_json, ra_host_allowlist_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     slugNorm,
     String(name).trim(),
     String(category || '').trim() || null,
     String(region || '').trim() || null,
-    validAccessTypes.includes(default_access_type) ? default_access_type : null,
+    normalizeProductAccessType(default_access_type),
     String(default_access_url || '').trim() || null,
     default_requires_institution_email ? 1 : 0,
     default_requires_vpn ? 1 : 0,
@@ -3547,6 +3601,7 @@ app.post('/api/admin/products', async (c) => {
     presentation.short_description_tr,
     presentation.short_description_en,
     presentation.subjects_json,
+    presentation.access_tags_json,
     presentation.card_visible,
     presentation.display_order,
     presentation.is_featured,

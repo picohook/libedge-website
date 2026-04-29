@@ -212,6 +212,12 @@ Kritik admin değişiklikleri `admin_action_logs` tablosuna snapshot ile yazıl�
 "Geri al" toast'ı gösterir. Hızlı süre kaçarsa işlem geçmişindeki "Geri yükle"
 aksiyonu aynı snapshot üzerinden kaydı restore eder.
 
+### Ürün Etiketleri
+
+Ürünlerde çoklu erişim etiketi `products.access_tags_json` alanında JSON array
+olarak tutulur. Geçerli etiketler: `EKUAL`, `LibEdge`, `Açık Erişim`,
+`Abonelik`, `Satınalma`, `Deneme`. Admin ürün modalında checkbox olarak yönetilir.
+
 ---
 
 ## Kurum Onboarding — RA Tünel Kurulumu

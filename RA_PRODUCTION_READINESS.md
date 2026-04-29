@@ -169,7 +169,7 @@ Toplu ekleme için tek kaynak CSV/TSV veya admin paste modalı olabilir. İlk s�
 
 ```text
 slug, name, category, default_access_type, default_access_url,
-ra_enabled, ra_origin_host, ra_delivery_mode, ra_origin_landing_path,
+access_tags_json, ra_enabled, ra_origin_host, ra_delivery_mode, ra_origin_landing_path,
 ra_host_allowlist_json
 ```
 
@@ -195,6 +195,8 @@ Import davranışı:
 - Mevcut slug varsa varsayılan olarak hata/skip; açık `update_existing` olmadan ezmez.
 - `ra_origin_host` hostname olarak normalize edilir, URL kabul edilirse host kısmı alınır.
 - `ra_host_allowlist_json` boşsa origin host tek başına yeterlidir.
+- `proxy` delivery değeri `path_proxy` olarak, `username_password` erişim tipi
+  `email_password_external` olarak saklanır.
 - Import sonrası ürünler admin product modalında normal şekilde düzenlenebilir.
 
 ## 8. Source Of Truth
@@ -238,6 +240,8 @@ Bugünkü staging değişiklikleri:
   günceller.
 - Admin oturum yenileme ve kurum arama/filtreleme tarafında staging sorunları
   giderildi; Türkçe karakterli arama ve `tunnel_last_seen` tipi daha toleranslı.
+- Ürünlere `access_tags_json` eklendi. EKUAL listesi 26 ürün olarak staging D1'e
+  işlendi.
 - Test kapsamı genişledi: error page, proxy rate limit, tunnel health.
 
 Kalan production işleri:

@@ -1263,6 +1263,17 @@
                                         <textarea id="productSubjectsJson" rows="2" class="w-full border p-2 rounded font-mono text-xs" placeholder='["yapay-zeka","saglik"]'></textarea>
                                     </div>
                                     <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Erişim Etiketleri</label>
+                                        <div class="grid grid-cols-2 gap-1 text-xs text-gray-700">
+                                            <label class="inline-flex items-center gap-1"><input type="checkbox" class="product-access-tag" value="EKUAL"> EKUAL</label>
+                                            <label class="inline-flex items-center gap-1"><input type="checkbox" class="product-access-tag" value="LibEdge"> LibEdge</label>
+                                            <label class="inline-flex items-center gap-1"><input type="checkbox" class="product-access-tag" value="Açık Erişim"> Açık Erişim</label>
+                                            <label class="inline-flex items-center gap-1"><input type="checkbox" class="product-access-tag" value="Abonelik"> Abonelik</label>
+                                            <label class="inline-flex items-center gap-1"><input type="checkbox" class="product-access-tag" value="Satınalma"> Satınalma</label>
+                                            <label class="inline-flex items-center gap-1"><input type="checkbox" class="product-access-tag" value="Deneme"> Deneme</label>
+                                        </div>
+                                    </div>
+                                    <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Kısa Açıklama (TR)</label>
                                         <textarea id="productShortDescriptionTr" rows="2" class="w-full border p-2 rounded"></textarea>
                                     </div>
@@ -3939,7 +3950,10 @@ document.addEventListener('click', function(e) {
                 <td class="px-4 py-2">${renderProductLogoCell(p)}</td>
                 <td class="px-4 py-2 font-mono text-xs text-gray-600">${escapeHtml(p.slug)}</td>
                 <td class="px-4 py-2 font-medium">${escapeHtml(p.name)}</td>
-                <td class="px-4 py-2 text-sm text-gray-500">${escapeHtml(p.category || '—')}</td>
+                <td class="px-4 py-2 text-sm text-gray-500">
+                    <div>${escapeHtml(p.category || '—')}</div>
+                    ${renderProductAccessTags(p)}
+                </td>
                 <td class="px-4 py-2">
                     <div class="text-sm text-gray-700">${escapeHtml(getProductAccessLabel(p) || '—')}</div>
                     ${p.default_access_url ? `<a href="${escapeHtml(p.default_access_url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all" onclick="event.stopPropagation()">${escapeHtml(p.default_access_url)}</a>` : ''}
@@ -3985,6 +3999,25 @@ document.addEventListener('click', function(e) {
         renderProductsList();
     }
 
+    function getProductAccessTags(product) {
+        try {
+            const parsed = Array.isArray(product?.access_tags)
+                ? product.access_tags
+                : JSON.parse(product?.access_tags_json || '[]');
+            return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function renderProductAccessTags(product) {
+        const tags = getProductAccessTags(product);
+        if (!tags.length) return '';
+        return `<div class="flex flex-wrap gap-1 mt-1">${tags.map((tag) =>
+            `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">${escapeHtml(tag)}</span>`
+        ).join('')}</div>`;
+    }
+
 document.getElementById('productsList')?.addEventListener('click', function(e) {
     if (e.target.closest('a')) return;
     const editBtn = e.target.closest('[data-admin-action="edit-product"]');
@@ -4015,6 +4048,10 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         document.getElementById('productShortDescriptionTr').value = product.short_description_tr || '';
         document.getElementById('productShortDescriptionEn').value = product.short_description_en || '';
         document.getElementById('productSubjectsJson').value = prettyJson(product.subjects_json);
+        const accessTags = new Set(getProductAccessTags(product));
+        document.querySelectorAll('.product-access-tag').forEach((input) => {
+            input.checked = accessTags.has(input.value);
+        });
         setProductColorValue('productBrandColor', 'productBrandColorPicker', product.brand_color, '#2563eb');
         document.getElementById('productCardBackgroundAssetKey').value = product.card_background_asset_key || '';
         document.getElementById('productCardBackgroundUrl').value = product.card_background_url || '';
@@ -5422,6 +5459,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         const recipeJson = document.getElementById('productRaLoginRecipe').value.trim();
         const allowlistJson = document.getElementById('productRaHostAllowlist').value.trim();
         const subjectsJson = document.getElementById('productSubjectsJson').value.trim();
+        const accessTagsJson = JSON.stringify([...document.querySelectorAll('.product-access-tag:checked')].map((input) => input.value));
         const brandColor = document.getElementById('productBrandColor').value.trim();
         const frontTextColor = document.getElementById('productCardFrontTextColor').value.trim();
         const backTextColor = document.getElementById('productCardBackTextColor').value.trim();
@@ -5486,6 +5524,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             short_description_tr: document.getElementById('productShortDescriptionTr').value.trim() || null,
             short_description_en: document.getElementById('productShortDescriptionEn').value.trim() || null,
             subjects_json: subjectsJson || null,
+            access_tags_json: accessTagsJson === '[]' ? null : accessTagsJson,
             card_visible: document.getElementById('productCardVisible').checked,
             display_order: Number(document.getElementById('productDisplayOrder').value || 999),
             is_featured: document.getElementById('productIsFeatured').checked,

@@ -121,6 +121,7 @@ prefix'iyle saklanır.
 | `card_back_text_color` | TEXT | Arka yüz yazı rengi (`#RRGGBB`) |
 | `short_description_tr` / `short_description_en` | TEXT | Kart/API kısa açıklaması |
 | `subjects_json` | TEXT | JSON array konu slugları |
+| `access_tags_json` | TEXT | JSON array erişim/ürün etiketleri: `EKUAL`, `LibEdge`, `Açık Erişim`, `Abonelik`, `Satınalma`, `Deneme` |
 | `card_visible` | INTEGER | 1 = public ürün kartlarında göster |
 | `display_order` | INTEGER | Public kart sıralaması |
 | `is_featured` | INTEGER | Öne çıkarma/carousel adaylığı |
@@ -413,6 +414,9 @@ Admin panelinde 2026-04-29 itibarıyla:
   gereksiz kapanması azaltıldı.
 - Kurum arama/filtrelemede Türkçe karakter ve `tunnel_last_seen` numeric/string
   uyumsuzluğu giderildi.
+- Ürünlere çoklu erişim etiketi eklendi (`access_tags_json`). EKUAL ürünleri
+  batch migration ile seed edilir; `proxy` delivery değeri `path_proxy`,
+  `username_password` erişim tipi `email_password_external` olarak normalize edilir.
 
 ---
 
