@@ -3219,6 +3219,8 @@ app.put('/api/admin/product/:slug', async (c) => {
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db);
   await ensureRemoteAccessSchema(db);
+  await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureInstitutionMetadataColumns(db);
   await ensureAdminActionLogsTable(db);
   const raConfig = validateProductRaConfig(body);
   if (raConfig.error) return c.json({ error: raConfig.error }, 400);
@@ -3376,13 +3378,37 @@ async function restoreSubscriptionAction(db, id, { enforceExpiry = false } = {})
   return { success: true };
 }
 
+async function restoreInstitutionAction(db, id, { enforceExpiry = false } = {}) {
+  const log = await db.prepare(`
+    SELECT * FROM admin_action_logs
+    WHERE id = ? AND entity_type = 'institution' AND action = 'update'
+  `).bind(id).first();
+  if (!log) return { error: 'Geri alınacak işlem bulunamadı', status: 404 };
+  if (log.undone_at) return { error: 'Bu işlem zaten geri alınmış', status: 409 };
+  if (enforceExpiry && log.undo_expires_at && Date.now() > Date.parse(log.undo_expires_at)) {
+    return { error: 'Hızlı geri alma süresi dolmuş', status: 410 };
+  }
+  const before = JSON.parse(log.before_json || '{}');
+  if (!before.id) return { error: 'Geri alma verisi eksik', status: 400 };
+  const columns = ['name', 'domain', 'website_url', 'city', 'category', 'status', 'logo_url', 'airtable_id'];
+  const updateStmt = db.prepare(`
+    UPDATE institutions SET ${columns.map((col) => `${col} = ?`).join(', ')}
+    WHERE id = ?
+  `).bind(...columns.map((col) => before[col] ?? null), before.id);
+  const markStmt = db.prepare(`
+    UPDATE admin_action_logs SET undone_at = ? WHERE id = ?
+  `).bind(new Date().toISOString(), id);
+  await db.batch([updateStmt, markStmt]);
+  return { success: true };
+}
+
 app.get('/api/admin/actions', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
   await ensureAdminActionLogsTable(db);
   const url = new URL(c.req.url);
   const entityType = (url.searchParams.get('entity_type') || 'product').trim();
-  if (!['product', 'subscription', 'institution_subscription'].includes(entityType)) return c.json({ actions: [] });
+  if (!['product', 'subscription', 'institution_subscription', 'institution'].includes(entityType)) return c.json({ actions: [] });
   const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') || 50)));
   const rows = await db.prepare(`
     SELECT id, actor_user_id, entity_type, entity_id, action,
@@ -3406,7 +3432,9 @@ app.post('/api/admin/actions/:id/undo', async (c) => {
   const log = await db.prepare(`SELECT entity_type FROM admin_action_logs WHERE id = ?`).bind(id).first();
   const result = log?.entity_type === 'product'
     ? await restoreProductAction(db, id, { enforceExpiry: true })
-    : await restoreSubscriptionAction(db, id, { enforceExpiry: true });
+    : log?.entity_type === 'institution'
+      ? await restoreInstitutionAction(db, id, { enforceExpiry: true })
+      : await restoreSubscriptionAction(db, id, { enforceExpiry: true });
   if (result.error) return c.json({ error: result.error }, result.status || 400);
   return c.json({ success: true });
 });
@@ -3419,11 +3447,14 @@ app.post('/api/admin/actions/:id/restore', async (c) => {
   await ensureProductsTableAndSeed(db);
   await ensureRemoteAccessSchema(db);
   await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureInstitutionMetadataColumns(db);
   await ensureAdminActionLogsTable(db);
   const log = await db.prepare(`SELECT entity_type FROM admin_action_logs WHERE id = ?`).bind(id).first();
   const result = log?.entity_type === 'product'
     ? await restoreProductAction(db, id)
-    : await restoreSubscriptionAction(db, id);
+    : log?.entity_type === 'institution'
+      ? await restoreInstitutionAction(db, id)
+      : await restoreSubscriptionAction(db, id);
   if (result.error) return c.json({ error: result.error }, result.status || 400);
   return c.json({ success: true });
 });
@@ -6698,21 +6729,43 @@ app.put('/api/admin/institution/:id', async (c) => {
   const validStatuses = ['Customer','Prospect','Partner','Inactive'];
   const db = c.env.DB;
   await ensureInstitutionMetadataColumns(db);
+  await ensureAdminActionLogsTable(db);
+  const existing = await db.prepare(`SELECT * FROM institutions WHERE id = ?`).bind(id).first();
+  if (!existing) return c.json({ error: 'Kurum bulunamadı' }, 404);
+  const undoId = crypto.randomUUID();
+  const undoExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const actor = await getTokenPayloadFromCookie(c);
+  let updateStmt;
 
   if (role === 'super_admin') {
     const cat = validCategories.includes(category) ? category : null;
     const st = validStatuses.includes(status) ? status : null;
-    await db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ?, website_url = ?, category = COALESCE(?, category), status = COALESCE(?, status) WHERE id = ?`)
-      .bind(name || null, domain ?? null, website_url ?? null, cat, st, id).run();
+    updateStmt = db.prepare(`UPDATE institutions SET name = COALESCE(?, name), domain = ?, website_url = ?, category = COALESCE(?, category), status = COALESCE(?, status) WHERE id = ?`)
+      .bind(name || null, domain ?? null, website_url ?? null, cat, st, id);
   } else {
     const payload = await getTokenPayloadFromCookie(c);
-    const target = await db.prepare(`SELECT name FROM institutions WHERE id = ?`).bind(id).first();
-    if (!target || !payload?.institution || target.name !== payload.institution) return c.json({ error: 'Bu kurumu düzenleme yetkiniz yok' }, 403);
+    if (!payload?.institution || existing.name !== payload.institution) return c.json({ error: 'Bu kurumu düzenleme yetkiniz yok' }, 403);
     const st = validStatuses.includes(status) ? status : null;
-    await db.prepare(`UPDATE institutions SET domain = ?, website_url = ?, status = COALESCE(?, status) WHERE id = ?`).bind(domain ?? null, website_url ?? null, st, id).run();
+    updateStmt = db.prepare(`UPDATE institutions SET domain = ?, website_url = ?, status = COALESCE(?, status) WHERE id = ?`).bind(domain ?? null, website_url ?? null, st, id);
   }
+  const logStmt = db.prepare(`
+    INSERT INTO admin_action_logs (
+      id, actor_user_id, entity_type, entity_id, action,
+      before_json, after_json, undo_expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    undoId,
+    actor?.user_id || actor?.id || null,
+    'institution',
+    String(id),
+    'update',
+    JSON.stringify(existing),
+    null,
+    undoExpiresAt
+  );
+  await db.batch([updateStmt, logStmt]);
 
-  return c.json({ success: true });
+  return c.json({ success: true, undo_id: undoId, undo_expires_at: undoExpiresAt });
 });
 
 app.post('/api/admin/institution/:id/logo', async (c) => {
