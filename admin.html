@@ -9472,14 +9472,15 @@ function tunnelStatusHtml(inst) {
     }
     const status = inst.tunnel_status || 'unknown';
     const lastSeen = inst.tunnel_last_seen;
-    const lastSeenLabel = lastSeen ? (() => {
-        const diff = Math.floor((Date.now() - new Date(lastSeen + (lastSeen.includes('Z') ? '' : 'Z')).getTime()) / 1000);
+    const lastSeenMs = parseTunnelLastSeenMs(lastSeen);
+    const lastSeenLabel = lastSeenMs ? (() => {
+        const diff = Math.max(0, Math.floor((Date.now() - lastSeenMs) / 1000));
         if (diff < 120) return `${diff}sn`;
         if (diff < 3600) return `${Math.floor(diff/60)}dk`;
         if (diff < 86400) return `${Math.floor(diff/3600)}sa`;
         return `${Math.floor(diff/86400)}g`;
     })() : null;
-    const tip = lastSeen ? `Son ping: ${lastSeenLabel} önce` : 'Henüz ping alınmadı';
+    const tip = lastSeenMs ? `Son ping: ${lastSeenLabel} önce` : 'Henüz ping alınmadı';
     const instId = inst.id;
     const linkAttrs = `class="cursor-pointer hover:underline" data-ra-tunnel-link="${instId}" title="${tip} — RA panelinde aç"`;
     if (status === 'ok') {
@@ -9489,6 +9490,18 @@ function tunnelStatusHtml(inst) {
         return `<span ${linkAttrs} style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#dc2626"><i class="fas fa-circle" style="font-size:8px;color:#ef4444"></i>Hata</span>`;
     }
     return `<span ${linkAttrs} style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#d97706"><i class="fas fa-circle" style="font-size:8px;color:#fbbf24"></i>?</span>`;
+}
+
+function parseTunnelLastSeenMs(value) {
+    if (value == null || value === '') return null;
+    if (typeof value === 'number') return value > 100000000000 ? value : value * 1000;
+    const raw = String(value).trim();
+    if (/^\d+$/.test(raw)) {
+        const n = Number(raw);
+        return n > 100000000000 ? n : n * 1000;
+    }
+    const ms = Date.parse(raw.includes('Z') ? raw : `${raw}Z`);
+    return Number.isFinite(ms) ? ms : null;
 }
 
 const RA_PRODUCT_LABELS = { jove: 'JoVE', emis: 'EMIS', acs: 'ACS', iopscience: 'IOP', 'primal-pictures': 'Primal' };
