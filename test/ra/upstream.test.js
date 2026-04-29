@@ -157,6 +157,46 @@ describe('session-host proxy cookie handling', () => {
     expect(headers.get('User-Agent')).toContain('Windows NT 10.0');
   });
 
+  it('overrides Sec-Fetch-Site to none on document navigation (ACS Cloudflare bypass)', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      'Sec-Fetch-Site': 'cross-site',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-User': '?1',
+      Accept: 'text/html,application/xhtml+xml',
+    }));
+
+    expect(headers.get('Sec-Fetch-Site')).toBe('none');
+    expect(headers.get('Sec-Fetch-Mode')).toBe('navigate');
+    expect(headers.get('Sec-Fetch-Dest')).toBe('document');
+    expect(headers.get('Sec-Fetch-User')).toBe('?1');
+    expect(headers.get('Upgrade-Insecure-Requests')).toBe('1');
+    expect(headers.get('Accept-Language')).toContain('tr');
+  });
+
+  it('strips Referer on document navigation to avoid leaking proxy domain', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      'Sec-Fetch-Dest': 'document',
+      Accept: 'text/html',
+      Referer: 'https://r4u69546.selmiye.com/',
+    }));
+
+    expect(headers.has('Referer')).toBe(false);
+  });
+
+  it('preserves natural Sec-Fetch values on sub-resource (asset) requests', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      'Sec-Fetch-Site': 'same-origin',
+      'Sec-Fetch-Mode': 'no-cors',
+      'Sec-Fetch-Dest': 'image',
+      Accept: 'image/avif,image/webp,*/*',
+    }));
+
+    expect(headers.get('Sec-Fetch-Site')).toBe('same-origin');
+    expect(headers.get('Sec-Fetch-Dest')).toBe('image');
+    expect(headers.has('Upgrade-Insecure-Requests')).toBe(false);
+  });
+
   it('rewrites path-proxy Referer by removing the encoded host prefix', () => {
     const out = rewriteClientContextHeader(
       'Referer',
