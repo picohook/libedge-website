@@ -333,7 +333,11 @@ async function handlePathProxy(request, env, ctx, url) {
   if (!session) {
     return htmlError(401, 'Oturum bulunamadı. Lütfen portal üzerinden tekrar erişin.');
   }
-  const rateLimit = await enforceProxyRateLimit(env, sessionId, session, url.pathname);
+  // Path-proxy modunda url.pathname encoded host prefix'iyle başlar
+  // (/www-jove-com/...). Static asset tespiti için upstream'e yönelik olan
+  // remainingPath'i geç; aksi hâlde /_next/static/, /assets/ gibi prefix'ler
+  // session-host modundaki gibi yakalanmaz, modlar arasında tutarsızlık olur.
+  const rateLimit = await enforceProxyRateLimit(env, sessionId, session, remainingPath);
   if (rateLimit) return proxyRateLimitResponse(rateLimit);
 
   // Oturum ana host'unu mevcut URL label'ıyla kıyasla.

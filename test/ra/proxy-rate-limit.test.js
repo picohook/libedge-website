@@ -111,6 +111,14 @@ describe('isStaticAssetPath', () => {
     expect(isStaticAssetPath('/assets/anything')).toBe(true);
   });
 
+  it('does NOT bypass /_next/data/ — Next.js SSR/SSG JSON page content', () => {
+    // Yayıncı (örn. JoVE) makale içeriğini /_next/data/<build>/<path>.json
+    // formatında servisliyor; bu rate-limit'in koruduğu birincil scraping
+    // hedefi, asset değil.
+    expect(isStaticAssetPath('/_next/data/abc123/articles/foo.json')).toBe(false);
+    expect(isStaticAssetPath('/_next/data/abc123/research/journal/biology.json')).toBe(false);
+  });
+
   it('treats favicon.ico and robots.txt as static', () => {
     expect(isStaticAssetPath('/favicon.ico')).toBe(true);
     expect(isStaticAssetPath('/robots.txt')).toBe(true);

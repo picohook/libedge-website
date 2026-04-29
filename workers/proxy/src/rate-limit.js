@@ -18,10 +18,12 @@ const STATIC_ASSET_EXTENSIONS = new Set([
   'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'avif', 'bmp',
 ]);
 
+// Sadece browser asset path prefix'leri. /_next/data/ BURADA OLMAMALI: Next.js
+// SSR/SSG JSON çıktılarını (getServerSideProps/getStaticProps) o path’te servisliyor;
+// JoVE/Annual Reviews gibi yayıncılarda makale içeriği tam o JSON'larda gelir.
 const STATIC_ASSET_PATH_PREFIXES = [
   '/_next/static/',
   '/_next/image',
-  '/_next/data/',
   '/_nuxt/',
   '/static/',
   '/assets/',
