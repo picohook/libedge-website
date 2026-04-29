@@ -3396,6 +3396,34 @@ document.addEventListener('click', function(e) {
         return /^#[0-9a-f]{6}$/i.test(value) ? value : '#60a5fa';
     }
 
+    const PRODUCT_CARD_BACKGROUNDS = {
+        'pangram': { image: 'assets/images/pangram.webp' },
+        'chatpdf': { image: 'assets/images/chat.webp', lightText: true },
+        'wonders': { image: 'assets/images/wond.webp', lightText: true },
+        'assistin': { image: 'assets/images/assistin.webp' },
+        'primal-pictures': { image: 'assets/images/anatomy.png', overlay: 'rgba(254, 242, 242, 0.3)' },
+        'lecturio': { image: 'assets/images/lect_back.webp' },
+        'nejmhealer': { image: 'assets/images/nejm.webp' },
+        'imachek': { image: 'assets/images/imachek0.webp' },
+        'jove-education': { image: 'assets/images/educa.webp' },
+        'jove-business': { image: 'assets/images/business.webp' },
+        'biorender': { image: 'assets/images/bio.webp' },
+        'klasik-muzik': { image: 'assets/images/classic.webp' },
+        'caz-koleksiyonu': { image: 'assets/images/jazz.webp' },
+        'piri-discovery': { image: 'assets/images/piri.webp' },
+        'transleyt': { image: 'assets/images/transl.webp' },
+    };
+
+    function getProductCardBackground(slug) {
+        const normalized = String(slug || '').trim().toLowerCase();
+        const aliases = {
+            'jove-research': 'jove-dergiler',
+            'wiley-journals': 'wiley-dergiler',
+            'wiley-books': 'wiley-kitaplar',
+        };
+        return PRODUCT_CARD_BACKGROUNDS[normalized] || PRODUCT_CARD_BACKGROUNDS[aliases[normalized]] || null;
+    }
+
     function splitPreviewRegions(raw) {
         const regions = String(raw || '').split(',').map(r => r.trim()).filter(Boolean);
         return regions.length ? regions : ['Tanımsız'];
@@ -3421,7 +3449,24 @@ document.addEventListener('click', function(e) {
         const front = document.getElementById('productPreviewFront');
         const back = document.getElementById('productPreviewBack');
         if (front) front.style.borderTopColor = color;
-        if (back) back.style.borderTopColor = color;
+        if (back) {
+            back.style.borderTopColor = color;
+            const bg = getProductCardBackground(slug || current.slug);
+            if (bg?.image) {
+                const overlay = bg.overlay || 'rgba(255, 255, 255, 0.5)';
+                back.style.background = `linear-gradient(to bottom, ${overlay}, rgba(255, 255, 255, 0.05)), url('${bg.image}')`;
+                back.style.backgroundSize = 'cover';
+                back.style.backgroundPosition = 'center';
+                back.style.backgroundRepeat = 'no-repeat';
+                back.style.color = bg.lightText ? '#ffffff' : '#111827';
+            } else {
+                back.style.background = '#eff6ff';
+                back.style.backgroundSize = '';
+                back.style.backgroundPosition = '';
+                back.style.backgroundRepeat = '';
+                back.style.color = '#111827';
+            }
+        }
 
         const logo = document.getElementById('productPreviewLogo');
         const fallback = document.getElementById('productPreviewLogoFallback');
@@ -3443,6 +3488,10 @@ document.addEventListener('click', function(e) {
         const backName = document.getElementById('productPreviewNameBack');
         if (frontName) frontName.textContent = name;
         if (backName) backName.textContent = name;
+        if (backName) {
+            const bg = getProductCardBackground(slug || current.slug);
+            backName.style.color = bg?.lightText ? '#ffffff' : '#1e40af';
+        }
 
         const status = document.getElementById('productPreviewStatus');
         if (status) {
@@ -3461,6 +3510,8 @@ document.addEventListener('click', function(e) {
 
         const details = document.getElementById('productPreviewDetails');
         if (details) {
+            const bg = getProductCardBackground(slug || current.slug);
+            details.style.color = bg?.lightText ? '#ffffff' : '#111827';
             const lines = [
                 descTr || descEn || 'Kısa açıklama girildiğinde kartın arka yüzünde burada görünür.',
                 category ? `Kategori: ${category}` : '',
