@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -29,6 +30,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	utls "github.com/refraction-networking/utls"
@@ -39,6 +41,11 @@ var (
 	allowedHostRegex *regexp.Regexp
 	maxRequestBytes  int64 = 10 * 1024 * 1024 // 10MB default
 	upstreamClient         = buildUpstreamClient()
+
+	// Dinamik host listesi — API'den 5 dakikada bir yenilenir.
+	// Boşken sadece allowedHostRegex kullanılır (fallback).
+	dynamicHostsMu sync.RWMutex
+	dynamicHosts   map[string]bool
 )
 
 // buildUpstreamClient — utls Chrome fingerprint + IPv4 + redirect-manual transport.
@@ -140,15 +147,27 @@ func main() {
 			maxRequestBytes = n
 		}
 	}
-	    apiURL := os.Getenv("LIBEDGE_API_URL")
-    serviceKey := os.Getenv("LIBEDGE_SERVICE_KEY")
-    
-    if apiURL != "" {
-        log.Printf("API URL configured: %s", apiURL)
-    }
-    if serviceKey != "" {
-        log.Printf("Service key length: %d", len(serviceKey))
-    }
+		apiURL := os.Getenv("LIBEDGE_API_URL")
+	serviceKey := os.Getenv("LIBEDGE_SERVICE_KEY")
+
+	if apiURL != "" && serviceKey != "" {
+		// İlk yükleme — agent açılırken host listesini hemen çek
+		if err := refreshDynamicHosts(apiURL, serviceKey); err != nil {
+			log.Printf("initial host refresh failed (fallback to regex): %v", err)
+		}
+		// 5 dakikada bir yenile
+		go func() {
+			ticker := time.NewTicker(5 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				if err := refreshDynamicHosts(apiURL, serviceKey); err != nil {
+					log.Printf("host refresh failed: %v", err)
+				}
+			}
+		}()
+	} else {
+		log.Printf("LIBEDGE_API_URL / LIBEDGE_SERVICE_KEY not set — using ALLOWED_HOST_REGEX only")
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handleHealth)
@@ -188,6 +207,63 @@ func mustEnv(k string) string {
 // ──────────────────────────────────────────────────────────────────────────
 // /health — cloudflared arkasında Worker'ın cron'u ping atar
 // ──────────────────────────────────────────────────────────────────────────
+// refreshDynamicHosts — /api/ra/egress/allowed-hosts endpoint'inden host listesini çeker.
+func refreshDynamicHosts(apiURL, serviceKey string) error {
+	url := strings.TrimRight(apiURL, "/") + "/api/ra/egress/allowed-hosts"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+serviceKey)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("allowed-hosts returned %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Hosts []string `json:"hosts"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return err
+	}
+
+	hosts := make(map[string]bool, len(body.Hosts))
+	for _, h := range body.Hosts {
+		if h != "" {
+			hosts[strings.ToLower(h)] = true
+		}
+	}
+
+	dynamicHostsMu.Lock()
+	dynamicHosts = hosts
+	dynamicHostsMu.Unlock()
+
+	log.Printf("dynamic host list refreshed: %d hosts", len(hosts))
+	return nil
+}
+
+// isHostAllowed — dinamik listede varsa true; yoksa static regex'e fallback.
+func isHostAllowed(hostname string) bool {
+	h := strings.ToLower(hostname)
+
+	dynamicHostsMu.RLock()
+	dl := dynamicHosts
+	dynamicHostsMu.RUnlock()
+
+	if len(dl) > 0 {
+		return dl[h]
+	}
+	// Dinamik liste henüz yüklenmediyse regex'e bak
+	return allowedHostRegex != nil && allowedHostRegex.MatchString(hostname)
+}
+
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -268,7 +344,7 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad target URL", http.StatusBadRequest)
 		return
 	}
-	if !allowedHostRegex.MatchString(req.URL.Hostname()) {
+	if !isHostAllowed(req.URL.Hostname()) {
 		log.Printf("blocked host: %s", req.URL.Hostname())
 		http.Error(w, "host not allowed", http.StatusForbidden)
 		return
