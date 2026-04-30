@@ -4029,9 +4029,23 @@ document.addEventListener('click', function(e) {
 document.getElementById('productsList')?.addEventListener('click', function(e) {
     if (e.target.closest('a')) return;
     const testBtn = e.target.closest('[data-admin-action="test-product-ra"]');
-    if (testBtn) { startAdminProductRaTest(testBtn); return; }
+    if (testBtn) {
+        // Document-level [data-admin-action] listener'a ulaşmasın: aksi
+        // halde edit-product duplicate çağrısı oluşturduğu gibi tutarsız
+        // davranışa kapı açar.
+        e.stopPropagation();
+        startAdminProductRaTest(testBtn);
+        return;
+    }
     const editBtn = e.target.closest('[data-admin-action="edit-product"]');
-    if (editBtn) { openProductModal(editBtn.dataset.productSlug || ''); return; }
+    if (editBtn) {
+        // Document-level listener da edit-product case'ini handle ediyor;
+        // burada handle ettik, propagasyonu kes ki openProductModal iki kez
+        // çağrılmasın.
+        e.stopPropagation();
+        openProductModal(editBtn.dataset.productSlug || '');
+        return;
+    }
     const row = e.target.closest('.product-row');
     if (row) openProductModal(row.dataset.productSlug || '');
 });
