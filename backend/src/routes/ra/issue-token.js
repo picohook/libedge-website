@@ -224,7 +224,7 @@ export function registerRaIssueToken(app) {
           institution_id:  institutionId,
           user_id:         userId,
           product_slug:    sub.product_slug,
-          subscription_id: sub.id,
+          subscription_id: adminTest ? 0 : sub.id, // admin_test: sentinel 0 (JWT sid ile tutarlı)
           created_at:      now,
           expires_at:      now + SESSION_TTL_SEC,
         }),
