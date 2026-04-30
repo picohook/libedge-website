@@ -351,4 +351,17 @@ describe('session-host proxy cookie handling', () => {
     expect(out).toContain("emisProPublicUrl: 'https://rabc1234.selmiye.com/'");
     expect(out).toContain("cookieDomain: 'rabc1234.selmiye.com'");
   });
+
+  it('keeps absolute origin links inside the session-host proxy', () => {
+    const hosts = new Set(['www.nature.com', 'nature.com']);
+    const out = rewriteSessionTextProxyUrls(
+      '<a href="https://www.nature.com/articles/test">Article</a><a href="//nature.com/search">Search</a>',
+      'rabc1234.selmiye.com',
+      'www.nature.com',
+      hosts
+    );
+
+    expect(out).toContain('href="https://rabc1234.selmiye.com/articles/test"');
+    expect(out).toContain('href="//rabc1234.selmiye.com/__ra-host/nature-com/search"');
+  });
 });

@@ -40,6 +40,8 @@ services:
     restart: unless-stopped
     environment:
       - EGRESS_SHARED_SECRET=${EGRESS_SHARED_SECRET}
+      - LIBEDGE_API_URL=${LIBEDGE_API_URL:-}
+      - LIBEDGE_SERVICE_KEY=${LIBEDGE_SERVICE_KEY:-}
       - ALLOWED_HOST_REGEX=${ALLOWED_HOST_REGEX:-^(www\.jove\.com|jove\.com|cdn\.jove\.com|player\.jove\.com)$$}
       # AWS WAF (JoVE) Go HTTP/2 fingerprint'ini bot diye işaretliyor → HTTP/1.1 zorla.
       # Cloudflare-fronted publisher'lar (ACS, AR, WoS, vb.) HTTP/2 bekliyor; default

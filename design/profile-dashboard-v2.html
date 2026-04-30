@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LibEdge Profile Dashboard V2</title>
+  <link rel="stylesheet" href="../assets/vendor/fontawesome/css/all.min.css">
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #e6eaf2;
+      --brand: #220f60;
+      --brand-2: #2f6fed;
+      --green: #16a34a;
+      --amber: #d97706;
+      --red: #dc2626;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      padding: 22px;
+      border-right: 1px solid var(--line);
+      background: #fbfcff;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .user-card,
+    .nav-card,
+    .module {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 24px rgba(17, 24, 39, 0.04);
+    }
+
+    .user-card { padding: 18px; }
+    .avatar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #220f60, #2f6fed);
+      color: #fff;
+      font-weight: 700;
+    }
+    .user-name { margin: 0; font-size: 15px; font-weight: 700; }
+    .user-meta { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+
+    .mini-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .mini-stat {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 9px 6px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      background: #fff;
+    }
+    .mini-stat strong {
+      display: block;
+      color: var(--ink);
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+
+    .nav-card {
+      margin-top: 14px;
+      padding: 10px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      color: #344054;
+      text-decoration: none;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .nav-item i { width: 16px; color: #7b8190; }
+    .nav-item.active {
+      background: #f0ecff;
+      color: var(--brand);
+    }
+    .nav-item.active i { color: var(--brand); }
+
+    .side-action {
+      width: 100%;
+      margin-top: 14px;
+      border: 1px solid #cdd6e6;
+      background: #fff;
+      color: #344054;
+      border-radius: var(--radius);
+      padding: 11px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .main {
+      padding: 22px 28px 42px;
+      max-width: 1280px;
+      width: 100%;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .search {
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 2px solid #c9dcff;
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 0 18px;
+      color: #344054;
+      font-size: 15px;
+      box-shadow: 0 10px 24px rgba(47, 111, 237, 0.08);
+    }
+    .search i {
+      color: var(--brand-2);
+      font-size: 16px;
+    }
+    .search-kbd {
+      margin-left: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 4px 7px;
+      color: var(--muted);
+      font-size: 11px;
+      background: #f8fafc;
+    }
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .pill-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #344054;
+      cursor: pointer;
+    }
+    .pill-btn.primary {
+      background: var(--brand);
+      color: #fff;
+      border-color: var(--brand);
+    }
+
+    .welcome {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      background: linear-gradient(135deg, #172033 0%, #220f60 52%, #2f6fed 100%);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 22px;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .welcome h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    .welcome p {
+      margin: 8px 0 0;
+      color: rgba(255,255,255,0.78);
+      max-width: 640px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .access-status {
+      display: grid;
+      gap: 8px;
+      min-width: 230px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+    .status-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.78);
+    }
+    .status-line strong { color: #fff; }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.75fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .stack { display: grid; gap: 18px; }
+
+    .module {
+      overflow: hidden;
+    }
+    .module-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 15px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff, #fbfcff);
+    }
+    .module-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .module-title i {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: #eef4ff;
+      color: var(--brand-2);
+    }
+    .module-actions {
+      display: flex;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      align-items: center;
+    }
+    .module-body { padding: 16px; }
+
+    .resource-toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      color: #344054;
+      font-weight: 650;
+    }
+    .chip.active {
+      background: #eef4ff;
+      color: var(--brand-2);
+      border-color: #c9dcff;
+    }
+
+    .resource-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .resource-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 13px;
+      background: #fff;
+      display: grid;
+      gap: 10px;
+      min-height: 126px;
+    }
+    .resource-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .resource-main {
+      display: flex;
+      gap: 11px;
+      min-width: 0;
+    }
+    .resource-logo {
+      width: 46px;
+      height: 46px;
+      flex: 0 0 46px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      padding: 6px;
+    }
+    .resource-logo img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .resource-logo span {
+      font-size: 10px;
+      font-weight: 900;
+      color: var(--brand);
+      text-align: center;
+      line-height: 1.1;
+    }
+    .resource-name {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .resource-sub {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 999px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .badge.green { background: #eaf8ef; color: var(--green); }
+    .badge.blue { background: #eef4ff; color: var(--brand-2); }
+    .badge.amber { background: #fff7e8; color: var(--amber); }
+    .badge.red { background: #fff0f0; color: var(--red); }
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-top: auto;
+    }
+    .quiet {
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .action {
+      border: 0;
+      border-radius: 7px;
+      padding: 8px 10px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .action.secondary {
+      background: #eef4ff;
+      color: var(--brand-2);
+    }
+
+    .ai-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .ai-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 13px;
+      background: linear-gradient(180deg, #fff, #fbfcff);
+    }
+    .ai-card h4 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .ai-card p {
+      margin: 6px 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+    .list-item {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid #f0f2f7;
+      padding-bottom: 10px;
+    }
+    .list-item:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+    .thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 7px;
+      background: #eef4ff;
+      display: grid;
+      place-items: center;
+      color: var(--brand-2);
+    }
+    .list-item h4 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .list-item p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .edit-layout {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      border: 0;
+      background: #172033;
+      color: #fff;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-weight: 800;
+      box-shadow: 0 14px 30px rgba(23, 32, 51, 0.25);
+      cursor: pointer;
+    }
+
+    .identity-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .identity-link {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px;
+      background: #fff;
+      color: #344054;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .identity-link i {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: #f0ecff;
+      color: var(--brand);
+    }
+    .notification-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      display: inline-block;
+      margin-left: 6px;
+    }
+
+    @media (max-width: 980px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .dashboard-grid,
+      .welcome,
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+      .access-status { min-width: 0; }
+    }
+
+    @media (max-width: 680px) {
+      .main { padding: 18px 14px 86px; }
+      .sidebar { padding: 14px; }
+      .resource-grid,
+      .ai-grid {
+        grid-template-columns: 1fr;
+      }
+      .top-actions {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <section class="user-card">
+        <div class="avatar-row">
+          <div class="avatar">SA</div>
+          <div>
+            <p class="user-name">Selmiye Alkan Gursel</p>
+          <p class="user-meta">Sabancı Üniversitesi</p>
+          </div>
+        </div>
+        <div class="mini-stats">
+          <div class="mini-stat"><strong>29</strong>Kaynak</div>
+          <div class="mini-stat"><strong>7</strong>Yeni</div>
+          <div class="mini-stat"><strong>3</strong>Talep</div>
+        </div>
+      </section>
+
+      <nav class="nav-card" aria-label="Dashboard">
+        <a class="nav-item active" href="#"><i class="fa-solid fa-table-cells-large"></i> Dashboard</a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-building-columns"></i> Kurum Kaynakları</a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Araçları</a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-box-open"></i> Bireysel Ürünler</a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-folder-open"></i> Kurum Dosyaları</a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-headset"></i> Destek</a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-gear"></i> Ayarlar</a>
+      </nav>
+
+      <button class="side-action"><i class="fa-solid fa-thumbtack"></i> Sık kullanılanları düzenle</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>Kaynak, ürün, konu, DOI veya veri tabanı ara...</span>
+          <span class="search-kbd">Ctrl K</span>
+        </div>
+        <div class="top-actions">
+          <button class="pill-btn">Bildirimler <span class="notification-dot"></span></button>
+          <button class="pill-btn">Kurum erişimimi kontrol et</button>
+          <button class="pill-btn primary">AI Kaynak Bulucu</button>
+        </div>
+      </header>
+
+      <section class="welcome">
+        <div>
+          <h1>Akademik erişim panelin hazır.</h1>
+          <p>Kurumunun aboneliklerine, sana önerilen kaynaklara ve bireysel akademik araçlara tek yerden ulaş.</p>
+        </div>
+        <div class="access-status">
+          <div class="status-line"><span>Kurum erişimi</span><strong>Aktif</strong></div>
+          <div class="status-line"><span>Tünel durumu</span><strong>Sağlıklı</strong></div>
+          <div class="status-line"><span>Son kontrol</span><strong>2 dk önce</strong></div>
+        </div>
+      </section>
+
+      <section class="dashboard-grid">
+        <div class="stack">
+          <article class="module">
+            <div class="module-header">
+              <h2 class="module-title"><i class="fa-solid fa-building-columns"></i> Kurum Kaynaklarım</h2>
+              <div class="module-actions">
+                <span>29 kaynak</span>
+                <i class="fa-solid fa-grip"></i>
+              </div>
+            </div>
+            <div class="module-body">
+              <div class="resource-toolbar">
+                <span class="chip active">Tüm kaynaklar</span>
+                <span class="chip">EKUAL</span>
+                <span class="chip">Sağlık</span>
+                <span class="chip">Fen & Matematik</span>
+                <span class="chip">Son kullanilan</span>
+              </div>
+
+              <div class="resource-grid">
+                <article class="resource-card">
+                  <div class="resource-top">
+                    <div class="resource-main">
+                      <div class="resource-logo"><span>Annual<br>Reviews</span></div>
+                      <div>
+                        <h3 class="resource-name">Annual Reviews</h3>
+                        <p class="resource-sub">Kurum aboneliği ile erişilebilir.</p>
+                      </div>
+                    </div>
+                    <span class="badge green">Aktif</span>
+                  </div>
+                  <div class="card-footer">
+                    <span class="quiet">EKUAL · Dergi</span>
+                    <button class="action">Erişime Git</button>
+                  </div>
+                </article>
+
+                <article class="resource-card">
+                  <div class="resource-top">
+                    <div class="resource-main">
+                      <div class="resource-logo"><span>JSTOR</span></div>
+                      <div>
+                        <h3 class="resource-name">JSTOR</h3>
+                        <p class="resource-sub">Arşiv dergi içeriği ve araştırma kaynakları.</p>
+                      </div>
+                    </div>
+                    <span class="badge green">Aktif</span>
+                  </div>
+                  <div class="card-footer">
+                    <span class="quiet">EKUAL · Genel</span>
+                    <button class="action">Erişime Git</button>
+                  </div>
+                </article>
+
+                <article class="resource-card">
+                  <div class="resource-top">
+                    <div class="resource-main">
+                      <div class="resource-logo"><span>Science<br>Direct</span></div>
+                      <div>
+                        <h3 class="resource-name">ScienceDirect</h3>
+                        <p class="resource-sub">Fen, mühendislik ve sağlık alanları.</p>
+                      </div>
+                    </div>
+                    <span class="badge amber">Kontrol</span>
+                  </div>
+                  <div class="card-footer">
+                    <span class="quiet">EKUAL · Makale</span>
+                    <button class="action secondary">Durumu Gör</button>
+                  </div>
+                </article>
+
+                <article class="resource-card">
+                  <div class="resource-top">
+                    <div class="resource-main">
+                      <div class="resource-logo"><span>WoS</span></div>
+                      <div>
+                        <h3 class="resource-name">Web of Science</h3>
+                        <p class="resource-sub">Atıf ve indeks araştırmaları için.</p>
+                      </div>
+                    </div>
+                    <span class="badge green">Aktif</span>
+                  </div>
+                  <div class="card-footer">
+                    <span class="quiet">EKUAL · İndeks</span>
+                    <button class="action">Erişime Git</button>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </article>
+
+          <article class="module">
+            <div class="module-header">
+              <h2 class="module-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Ücretsiz AI Araçları</h2>
+              <div class="module-actions"><i class="fa-solid fa-grip"></i></div>
+            </div>
+            <div class="module-body">
+              <div class="ai-grid">
+                <article class="ai-card">
+                  <h4>Akademik Kaynak Bulucu</h4>
+                  <p>Konunu yaz, kurumunda erişebildiğin kaynaklarla eşleştirelim.</p>
+                  <button class="action secondary">Başlat</button>
+                </article>
+                <article class="ai-card">
+                  <h4>Hangi veri tabanında aramalıyım?</h4>
+                  <p>Scopus, WoS, JSTOR veya DynaMed gibi kaynaklar arasında yol gösterir.</p>
+                  <button class="action secondary">Sor</button>
+                </article>
+                <article class="ai-card">
+                  <h4>Akademik Terim Açıklayıcı</h4>
+                  <p>Terimi sade dille açıklar ve ilgili kaynakları önerir.</p>
+                  <button class="action secondary">Açıkla</button>
+                </article>
+                <article class="ai-card">
+                  <h4>Çalışma Planı</h4>
+                  <p>Literatür taraması veya ders çalışması için kısa plan üretir.</p>
+                  <button class="action secondary">Plan Oluştur</button>
+                </article>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <aside class="stack">
+          <article class="module">
+            <div class="module-header">
+              <h2 class="module-title"><i class="fa-solid fa-bell"></i> Bildirimler ve Duyurular</h2>
+              <div class="module-actions"><i class="fa-solid fa-grip"></i></div>
+            </div>
+            <div class="module-body">
+              <div class="list">
+                <div class="list-item">
+                  <div class="thumb"><i class="fa-solid fa-circle-info"></i></div>
+                  <div>
+                    <h4>Yeni EKUAL kaynakları eklendi</h4>
+                    <p>Profilinden kurum aboneliklerine erişebilirsin.</p>
+                  </div>
+                </div>
+                <div class="list-item">
+                  <div class="thumb"><i class="fa-solid fa-chalkboard-user"></i></div>
+                  <div>
+                    <h4>Web of Science eğitimi</h4>
+                    <p>Bu hafta içi online eğitim duyurusu.</p>
+                  </div>
+                </div>
+                <div class="list-item">
+                  <div class="thumb"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                  <div>
+                    <h4>2 kaynak izleniyor</h4>
+                    <p>OUP ve Emerald erişim durumları teknik ekip tarafından takip ediliyor.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="module">
+            <div class="module-header">
+              <h2 class="module-title"><i class="fa-solid fa-id-badge"></i> Akademik Kimlikler</h2>
+              <div class="module-actions"><i class="fa-solid fa-grip"></i></div>
+            </div>
+            <div class="module-body">
+              <div class="identity-grid">
+                <a class="identity-link" href="#"><i class="fa-brands fa-orcid"></i> ORCID</a>
+                <a class="identity-link" href="#"><i class="fa-solid fa-database"></i> Scopus ID</a>
+                <a class="identity-link" href="#"><i class="fa-brands fa-google"></i> Scholar</a>
+                <a class="identity-link" href="#"><i class="fa-solid fa-flask"></i> ResearcherID</a>
+                <a class="identity-link" href="#"><i class="fa-solid fa-landmark"></i> YÖKSİS</a>
+                <a class="identity-link" href="#"><i class="fa-solid fa-plus"></i> Kimlik Ekle</a>
+              </div>
+            </div>
+          </article>
+
+          <article class="module">
+            <div class="module-header">
+              <h2 class="module-title"><i class="fa-solid fa-star"></i> Sana Önerilenler</h2>
+              <div class="module-actions"><i class="fa-solid fa-grip"></i></div>
+            </div>
+            <div class="module-body">
+              <div class="list">
+                <div class="list-item">
+                  <div class="thumb"><i class="fa-solid fa-file-lines"></i></div>
+                  <div>
+                    <h4>DynaMed</h4>
+                    <p>Sağlık alanındaki kurum erişimin nedeniyle önerildi.</p>
+                  </div>
+                </div>
+                <div class="list-item">
+                  <div class="thumb"><i class="fa-solid fa-robot"></i></div>
+                  <div>
+                    <h4>ChatPDF</h4>
+                    <p>PDF analizi için kurumsal veya bireysel seçenek.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="module">
+            <div class="module-header">
+              <h2 class="module-title"><i class="fa-solid fa-headset"></i> Destek</h2>
+              <div class="module-actions"><i class="fa-solid fa-grip"></i></div>
+            </div>
+            <div class="module-body">
+              <div class="list">
+                <div class="list-item">
+                  <div class="thumb"><i class="fa-solid fa-signal"></i></div>
+                  <div>
+                    <h4>Erişim sağlığı</h4>
+                    <p>2 kaynak kontrol bekliyor, 27 kaynak aktif.</p>
+                  </div>
+                </div>
+                <div class="list-item">
+                  <div class="thumb"><i class="fa-solid fa-ticket"></i></div>
+                  <div>
+                    <h4>Destek talebi aç</h4>
+                    <p>Erişim sorunu yaşarsan kaynakla birlikte bildir.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <button class="edit-layout"><i class="fa-solid fa-sliders"></i> Düzeni Düzenle</button>
+</body>
+</html>

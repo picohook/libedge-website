@@ -251,7 +251,7 @@ export async function acceptSessionHostToken(request, env, token, url, sessionId
   // bu duplicate fetch race'idir — sessizce 302 ile redirect et, kullanıcıya
   // hata gösterme.
   const jtiKey = `ra:jti:${payload.jti}`;
-  const used = await env.RATE_LIMIT_KV.get(jtiKey);
+  const used = await safeKvGet(env.RATE_LIMIT_KV, jtiKey);
   const cookieSid = readCookie(request.headers.get('Cookie'), SESSION_COOKIE);
 
   // mod uyumu kontrolü (jti henüz tüketilmemiş veya sadece doğrulama amaçlı)
@@ -275,7 +275,7 @@ export async function acceptSessionHostToken(request, env, token, url, sessionId
     }
     return htmlError(401, 'Bu bağlantı daha önce kullanılmış. Portal üzerinden yeni bağlantı alın.');
   }
-  await env.RATE_LIMIT_KV.put(jtiKey, 'used', { expirationTtl: 600 });
+  await safeKvPut(env.RATE_LIMIT_KV, jtiKey, 'used', { expirationTtl: 600 });
 
   if (!session) {
     return htmlError(401, 'Oturum kaydı bulunamadı. Token ile session eşleşmiyor.');
@@ -403,7 +403,9 @@ async function handlePathProxy(request, env, ctx, url) {
     }));
   }
 
-  const baseHost = env.RA_PROXY_BASE_HOST || url.hostname;
+  // Use the actual request host for path-proxy rewrites. RA_PROXY_BASE_HOST may
+  // be the bare apex (selmiye.com), which is served by Pages and causes 404s.
+  const baseHost = url.hostname;
   const respHeaders = buildResponseHeaders(upstreamResp.headers, baseHost, encodedLabel);
   addStagingDebugHeaders(respHeaders, env, {
     targetUrl: targetUrl.toString(),
@@ -452,11 +454,11 @@ async function acceptTokenAndRedirect(request, env, token, url, encodedLabel, re
 
   // jti tek kullanımlık
   const jtiKey = `ra:jti:${payload.jti}`;
-  const used = await env.RATE_LIMIT_KV.get(jtiKey);
+  const used = await safeKvGet(env.RATE_LIMIT_KV, jtiKey);
   if (used) {
     return htmlError(401, 'Bu erişim bağlantısı daha önce kullanılmış. Portal üzerinden yeni bağlantı alın.');
   }
-  await env.RATE_LIMIT_KV.put(jtiKey, 'used', { expirationTtl: 600 });
+  await safeKvPut(env.RATE_LIMIT_KV, jtiKey, 'used', { expirationTtl: 600 });
 
   // Token'daki encoded host ile path'teki uyuşuyor mu?
   if (payload.tgt !== encodedLabel) {
@@ -483,7 +485,8 @@ async function acceptTokenAndRedirect(request, env, token, url, encodedLabel, re
   // 302: token'ı URL'den sil
   const clean = new URL(url);
   clean.searchParams.delete('t');
-  const baseHost = env.RA_PROXY_BASE_HOST || url.hostname;
+  // Cookie must stay scoped to the active proxy host, not the bare apex.
+  const baseHost = url.hostname;
 
   return new Response(null, {
     status: 302,
@@ -506,6 +509,23 @@ async function loadProxySession(env, sid) {
     return s;
   } catch {
     return null;
+  }
+}
+
+async function safeKvGet(kv, key) {
+  try {
+    return kv ? await kv.get(key) : null;
+  } catch (err) {
+    console.warn('kv get failed open', err);
+    return null;
+  }
+}
+
+async function safeKvPut(kv, key, value, options) {
+  try {
+    if (kv) await kv.put(key, value, options);
+  } catch (err) {
+    console.warn('kv put failed open', err);
   }
 }
 
@@ -730,6 +750,7 @@ function sessionHostPathFor(targetHost, originHost, pathname) {
 function shouldRewriteSessionTextResponse(target, upstreamResp) {
   const contentType = upstreamResp.headers.get('Content-Type') || '';
   if (!/\b(javascript|ecmascript|json|text\/)/i.test(contentType)) return false;
+  if (/\btext\/html\b/i.test(contentType)) return true;
 
   // EMIS mobile keeps API origins in a tiny runtime config file. Rewriting only
   // this file avoids touching large application bundles while fixing mobile XHRs.
@@ -761,7 +782,8 @@ export function rewriteSessionTextProxyUrls(text, proxyHostname, originHost, pro
 
     out = out
       .replaceAll(`https://${targetHost}`, proxyOrigin)
-      .replaceAll(`http://${targetHost}`, proxyOrigin);
+      .replaceAll(`http://${targetHost}`, proxyOrigin)
+      .replaceAll(`//${targetHost}`, proxyOrigin.replace(/^https:/, ''));
   }
 
   return out.replace(
@@ -925,6 +947,7 @@ async function persistSessionHostCookieJar(env, sessionId, targetHost, currentCo
   const setCookies = collectSetCookies(responseHeaders);
   if (!setCookies.length) return;
   const merged = mergeSessionHostSetCookies(currentCookieHeader, setCookies);
+  if (merged === String(currentCookieHeader || '')) return;
   try {
     await env.RA_UPSTREAM_SESSIONS.put(
       sessionHostCookieJarKey(sessionId, targetHost),

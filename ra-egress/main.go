@@ -446,6 +446,15 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 	client := selectClient(req.URL.Hostname())
 	upstreamStart := time.Now()
 	resp, err := client.Do(req)
+	if err != nil && client != h1Client && isH2NotNegotiatedError(err) {
+		log.Printf("upstream h2 unavailable, retrying h1: %s", targetURL)
+		retryReq, retryErr := cloneUpstreamRequest(req, bodyBytes)
+		if retryErr == nil {
+			resp, err = h1Client.Do(retryReq)
+		} else {
+			err = retryErr
+		}
+	}
 	if err != nil {
 		log.Printf("upstream error: %v", err)
 		http.Error(w, "upstream unreachable", http.StatusBadGateway)
@@ -494,6 +503,20 @@ func isHopByHopHeader(k string) bool {
 		return true
 	}
 	return false
+}
+
+func isH2NotNegotiatedError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "h2 not negotiated")
+}
+
+func cloneUpstreamRequest(src *http.Request, bodyBytes []byte) (*http.Request, error) {
+	req, err := http.NewRequest(src.Method, src.URL.String(), bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, err
+	}
+	req.Header = src.Header.Clone()
+	req.Host = src.Host
+	return req, nil
 }
 
 // isIPRevealingHeader — Cloudflare Workers veya ara proxy'lerin eklediği

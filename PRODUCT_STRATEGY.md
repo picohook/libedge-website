@@ -151,8 +151,25 @@ Kural:
 
 ## 4. Ana Sayfa Davranışı
 
-Profil sayfası erişim arama yeri olmamalıdır. Kullanıcı login olur olmaz ana
-sayfa kişiselleşmelidir.
+Ana sayfa ve profil farklı niyetlere hizmet etmelidir.
+
+- Ana sayfa: tanıtım, ürün keşfi, bireysel dönüşüm ve kurumsal lead üretimi.
+- Profil: kullanıcının gerçek erişim paneli, kurum kaynakları ve kişisel çalışma
+  alanı.
+
+Login olmuş kullanıcı için ana sayfa kişiselleşebilir; ancak kurum kaynaklarının
+asıl çalışma yeri profil dashboard olmalıdır. Kullanıcı "kurumumun kaynaklarına
+nereden erişirim?" diye düşünmemeli, profil bu görevi sahiplenmelidir.
+
+Ana sayfa mevcut görünüme dokunmadan ileride üç ürün grubunu net ayıracak şekilde
+yeniden düzenlenmelidir:
+
+1. **LibEdge Kurumsal:** temsilcisi olunan ürünler ve kurumlara yönelik çözümler.
+2. **Bireysel Ürünler:** affiliate, ücretsiz, abonelik veya satın alma modeliyle
+   doğrudan sunulabilecek ürünler.
+3. **Kurum Kaynakları:** EKUAL ve kurum abonelikleri. Bunlar ana sayfada satış
+   kataloğu gibi listelenmez; yalnız "kurumunuzla giriş yapın, profilinizden
+   erişin" mesajıyla anlatılır.
 
 ### Login Olmayan Kullanıcı
 
@@ -185,6 +202,42 @@ Gösterilecek bölümler:
 5. LibEdge Kurumsal
 
 Kurum kullanıcısı için ilk ekranın ana değeri "Kurum Kaynaklarım" olmalıdır.
+
+### Profil Dashboard
+
+Profil sayfası klasik hesap ayarları sayfası değil, yerleşimi kişiselleştirilebilir
+bir akademik erişim dashboard'u olmalıdır.
+
+İlk sürümde tam drag-and-drop zorunlu değildir. Daha güvenli MVP:
+
+- Modülleri gizle/göster.
+- Modülü üste sabitle.
+- Kart/liste görünümü seç.
+- Sık kullanılan kaynakları pinle.
+
+İleride "Düzeni Düzenle" modu ile sürükle-bırak modül sıralama eklenebilir.
+
+Önerilen dashboard modülleri:
+
+- **Kurum Kaynaklarım:** EKUAL ve kurum abonelikleri, erişim butonlarıyla.
+- **Erişimlerim:** kullanıcının aktif erişimleri ve son kullanılan kaynaklar.
+- **Sana Önerilenler:** bölüm, kurum ve kullanım sinyallerine göre açıklanabilir
+  öneriler.
+- **Ücretsiz AI Araçları:** kaynak bulucu, veri tabanı rehberi, terim açıklayıcı,
+  çalışma planı.
+- **Bireysel Ürünler:** kullanıcıya doğrudan sunulabilecek ücretsiz, affiliate,
+  abonelik veya satın alma ürünleri.
+- **Kurum Duyuruları:** yeni erişimler, bakım, eğitim duyuruları.
+- **Kurum Dosyaları:** kurumun kullanıcıyla paylaştığı belgeler.
+- **Destek ve Erişim Sorunları:** açık talepler, erişim durumu, hızlı destek.
+
+Dashboard görsel dili:
+
+- Sakin, kurumsal ve yoğun bilgiye uygun olmalıdır.
+- Büyük pazarlama alanları yerine taranabilir kartlar kullanılmalıdır.
+- Modül başlıklarında küçük ikonlar ve durum rozetleri kullanılmalıdır.
+- Renkler işlevsel olmalı; erişim, uyarı, öneri ve duyuru ayrımı okunmalıdır.
+- Kurum kaynakları satış kartı gibi değil, "erişim paneli" gibi görünmelidir.
 
 ## 5. Home Feed API
 
@@ -451,6 +504,17 @@ UI'da "Araçlar" ve "Ürünler" ayrı görsel dil kullanmalıdır.
 Ücretsiz AI araçları kullanıcıyı siteye getirmek için kullanılmalıdır. Bunlar
 ChatPDF gibi temsilcisi olunan premium ürünü kanibalize etmemelidir.
 
+Bu araçlar yalnız "demo AI" değil, LibEdge'in ürün keşif motorudur. Kullanıcılar
+çoğu zaman ürün adıyla değil ihtiyaçla gelir:
+
+- "Bu konuda kaynak arıyorum."
+- "Hangi veri tabanında aramalıyım?"
+- "Bu akademik terim ne demek?"
+- "Literatür taramasına nasıl başlamalıyım?"
+
+AI araçları bu ihtiyacı ürün, kurum erişimi, ücretsiz kaynak veya talep akışına
+bağlamalıdır.
+
 AI araçları tasarlanırken KVKK ve veri minimizasyonu `KVKK_SECURITY.md` içindeki
 kurallara göre uygulanır. Kullanıcı adı, e-posta, ham IP, credential, JWT veya
 cookie gibi veriler AI sağlayıcısına gönderilmez.
@@ -458,9 +522,15 @@ cookie gibi veriler AI sağlayıcısına gönderilmez.
 İlk önerilen araçlar:
 
 1. Akademik Kaynak Bulucu
-2. Akademik Terim Açıklayıcı
-3. Çalışma Planı Oluşturucu
-4. Hangi veri tabanında aramalıyım asistanı
+2. Hangi veri tabanında aramalıyım asistanı
+3. Akademik Terim Açıklayıcı
+4. Çalışma Planı Oluşturucu
+
+Araçların konumu:
+
+- Ana sayfada kullanıcı çekme ve ilk değer üretme alanı.
+- Profil dashboard'da kişiselleştirilmiş çalışma modülü.
+- Ürün kartlarında doğru aksiyona yönlendiren yardımcı katman.
 
 Bu araçların ortak prensibi:
 
@@ -498,8 +568,33 @@ Kısıtlar:
 MVP notu:
 
 - Akademik Kaynak Bulucu stratejik olarak en değerli araçtır.
-- Çalışma Planı Oluşturucu teknik olarak daha kolay MVP olabilir.
+- Hangi veri tabanında aramalıyım asistanı, kurum kaynaklarıyla doğrudan bağ
+  kurduğu için profil dashboard'da özellikle değerlidir.
+- Çalışma Planı Oluşturucu teknik olarak daha kolay MVP olabilir ve anonim
+  kullanıcı çekmek için kullanılabilir.
 - PDF özetleme ücretsiz araç olarak yapılmaz; ChatPDF'e yönlendirilir.
+
+### AI Araç MVP Akışı
+
+İlk sürümde araçlar karmaşık ajan gibi değil, kontrollü katalog eşleştirici gibi
+çalışmalıdır.
+
+Akış:
+
+1. Kullanıcı ihtiyacını yazar.
+2. Sistem sorguyu konu, format ve niyet etiketlerine ayırır.
+3. Katalogdaki ürünlerle ve kurum erişimleriyle eşleştirir.
+4. Kullanıcıya açıklanabilir sonuçlar gösterir.
+5. Her sonuçta tek net aksiyon olur: `Erişime Git`, `Ücretsiz Eriş`,
+   `Dış Sağlayıcıda İncele`, `Kurumumdan Talep Et`, `Demo Talep Et`.
+
+Güvenlik ve maliyet:
+
+- Ham credential, JWT, cookie, IP veya kişisel veri AI sağlayıcısına gönderilmez.
+- AI'a yalnız kontrollü katalog metadata'sı ve kullanıcının açıkça verdiği ihtiyaç
+  metni gönderilir.
+- Login olmayan kullanıcıda düşük günlük limit uygulanır.
+- Aynı veya çok benzer sorgular cache'lenir.
 
 ## 12. ChatPDF'in Konumu
 

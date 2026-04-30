@@ -40,6 +40,10 @@ param(
     # D1 veritabanı adı
     [string]$D1Name       = "libedge-db",
 
+    # Dinamik host listesi için LibEdge API adresi ve servis anahtarı
+    [string]$LibEdgeApiUrl = "",
+    [string]$LibEdgeServiceKey = "",
+
     # D1 güncelleme yapma (sadece tunnel kur)
     [switch]$SkipD1
 )
@@ -55,6 +59,13 @@ function OK   { param($m) Write-Host "    ✓ $m" -ForegroundColor Green  }
 function INFO { param($m) Write-Host "    · $m" -ForegroundColor Gray   }
 function WARN { param($m) Write-Host "    ⚠ $m" -ForegroundColor Yellow }
 function FAIL { param($m) Write-Host "    ✗ $m" -ForegroundColor Red; exit 1 }
+function Read-ExistingEnvValue {
+    param($Path, $Name)
+    if (!(Test-Path $Path)) { return "" }
+    $line = Get-Content $Path | Where-Object { $_ -match "^$Name=" } | Select-Object -First 1
+    if (!$line) { return "" }
+    return $line -replace "^$Name=", ""
+}
 
 # ── 1) cloudflared ───────────────────────────────────────────────────────────
 Write-Step 1 "cloudflared kontrol"
@@ -128,13 +139,30 @@ OK "Token alındı (ilk 12 char): $($tunnelToken.Substring(0, [Math]::Min(12, $t
 Write-Step 6 ".env dosyası yazılıyor"
 
 $envFile = Join-Path $RaEgressDir ".env"
+$existingEgressSecret = Read-ExistingEnvValue $envFile "EGRESS_SHARED_SECRET"
+$existingApiUrl = Read-ExistingEnvValue $envFile "LIBEDGE_API_URL"
+$existingServiceKey = Read-ExistingEnvValue $envFile "LIBEDGE_SERVICE_KEY"
+if (!$existingEgressSecret) { $existingEgressSecret = [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32)) }
+if (!$LibEdgeApiUrl) {
+    if ($existingApiUrl) {
+        $LibEdgeApiUrl = $existingApiUrl
+    } elseif ($WranglerEnv -eq "production") {
+        $LibEdgeApiUrl = "https://libedge-api-prod.agursel.workers.dev"
+    } else {
+        $LibEdgeApiUrl = "https://libedge-api-staging.agursel.workers.dev"
+    }
+}
+if (!$LibEdgeServiceKey -and $existingServiceKey) { $LibEdgeServiceKey = $existingServiceKey }
+
 $envContent = @"
 # ra-egress .env — kalıcı tunnel kurulumu
 # Üretim tarihi: $(Get-Date -Format "yyyy-MM-dd HH:mm")
 # Bu dosyayı git'e commit ETME.
 
 TUNNEL_TOKEN=$tunnelToken
-EGRESS_SHARED_SECRET=$(if (Test-Path $envFile) { (Get-Content $envFile | Where-Object { $_ -match '^EGRESS_SHARED_SECRET=' }) -replace '^EGRESS_SHARED_SECRET=','' } else { [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32)) })
+EGRESS_SHARED_SECRET=$existingEgressSecret
+LIBEDGE_API_URL=$LibEdgeApiUrl
+LIBEDGE_SERVICE_KEY=$LibEdgeServiceKey
 ALLOWED_HOST_REGEX=^(www\.jove\.com|jove\.com|cdn\.jove\.com|player\.jove\.com|assets\.jove\.com)`$
 "@
 

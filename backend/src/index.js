@@ -1152,27 +1152,36 @@ export async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10,
   const key = `rate:${safeEndpoint}:${safeIdentifier}`;
   const now = Date.now();
 
-  const raw = await kv.get(key);
-  let record = raw ? JSON.parse(raw) : null;
+  try {
+    const raw = await kv.get(key);
+    let record = raw ? JSON.parse(raw) : null;
 
-  if (!record || now > Number(record.resetTime || 0)) {
-    record = {
-      count: 1,
+    if (!record || now > Number(record.resetTime || 0)) {
+      record = {
+        count: 1,
+        resetTime: now + windowSeconds * 1000
+      };
+    } else {
+      record.count += 1;
+    }
+
+    await kv.put(key, JSON.stringify(record), {
+      expirationTtl: windowSeconds
+    });
+
+    return {
+      isLimited: record.count > maxRequests,
+      remaining: Math.max(0, maxRequests - record.count),
+      resetTime: record.resetTime
+    };
+  } catch (err) {
+    console.warn('rate limit failed open', err);
+    return {
+      isLimited: false,
+      remaining: maxRequests,
       resetTime: now + windowSeconds * 1000
     };
-  } else {
-    record.count += 1;
   }
-
-  await kv.put(key, JSON.stringify(record), {
-    expirationTtl: windowSeconds
-  });
-
-  return {
-    isLimited: record.count > maxRequests,
-    remaining: Math.max(0, maxRequests - record.count),
-    resetTime: record.resetTime
-  };
 }
 
 async function canAccessUser(c, targetUserId) {

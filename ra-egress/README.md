@@ -19,10 +19,12 @@ kurumunuzun gerçek internet IP'sinden yayıncıya ulaşır.
 - Docker ve Docker Compose (en kolay: [Docker Desktop](https://docs.docker.com/get-docker/) veya Linux'ta `apt install docker.io docker-compose-plugin`)
 - Çalışan bir makine (RPi, eski PC, VM) — 7/24 açık olmalı
 - Kurum internet bağlantısı (outbound 443 HTTPS)
-- LibEdge admin panelinizden alacağınız üç değer:
+- LibEdge admin panelinizden alacağınız değerler:
   - `TUNNEL_TOKEN`
   - `EGRESS_SHARED_SECRET`
-  - `ALLOWED_HOST_REGEX` (LibEdge önceden dolduruyor, değiştirmeniz gerekmez)
+  - `LIBEDGE_API_URL`
+  - `LIBEDGE_SERVICE_KEY`
+  - `ALLOWED_HOST_REGEX` (fallback; dinamik liste çalışıyorsa değiştirmeniz gerekmez)
 
 ## Kurulum (5 dakika)
 
@@ -38,7 +40,9 @@ kurumunuzun gerçek internet IP'sinden yayıncıya ulaşır.
    ```
    TUNNEL_TOKEN=ey...            # uzun base64 string
    EGRESS_SHARED_SECRET=...      # 32 byte random
-   ALLOWED_HOST_REGEX=...        # örn: ^(www\.)?sciencedirect\.com$
+   LIBEDGE_API_URL=https://...   # LibEdge API adresi
+   LIBEDGE_SERVICE_KEY=...       # RA_SERVICE_KEY ile aynı değer
+   ALLOWED_HOST_REGEX=...        # fallback, örn: ^(www\.)?sciencedirect\.com$
    ```
 
 3. Başlatın:
@@ -67,8 +71,9 @@ ulaşılamadığını görür, veri kaybı olmaz.
 ## Güvenlik
 
 - **HMAC imza:** Yalnızca LibEdge Worker'ından imzalanmış istekler kabul edilir.
-- **Host allowlist:** `ALLOWED_HOST_REGEX`'te listelenen publisher'lar dışına çıkış
-  engellidir — kurum iç ağınıza SSRF yapılamaz.
+- **Host allowlist:** Agent, LibEdge API'den aktif RA ürün host'larını çeker.
+  API erişilemezse `ALLOWED_HOST_REGEX` fallback olarak kullanılır. Liste dışına
+  çıkış engellidir — kurum iç ağınıza SSRF yapılamaz.
 - **Boyut ve timeout limitleri:** Request 10MB, timeout 30sn varsayılan.
 - **No privileged mount:** Container'lar host dosya sistemine erişmez.
 
@@ -92,7 +97,11 @@ A: Şu anda tek tünel destekli — aynı kurum için bir tane yeterli. Yüksek 
 ## Sorun Giderme
 
 - **"Tüneli Test Et" kırmızı:** `docker compose logs cloudflared` → TUNNEL_TOKEN doğru mu?
-- **Publisher 403:** `ALLOWED_HOST_REGEX` yayıncı hostname'ini kapsıyor mu? LibEdge admin panelinden kontrol edin.
+- **"host not allowed":** `LIBEDGE_API_URL` / `LIBEDGE_SERVICE_KEY` doğru mu?
+  Agent loglarında `dynamic host list refreshed` görülmeli. Görülmüyorsa fallback
+  `ALLOWED_HOST_REGEX` yayıncı hostname'ini kapsıyor mu kontrol edin.
+- **Publisher 403:** Host izinlidir ama yayıncı/WAF erişimi reddediyordur; ürün
+  bazında ayrıca incelenmelidir.
 - **Publisher 401/login:** Kurum credential'ı LibEdge admin panelinde güncel mi?
 
 Destek: `support@libedge.com`
