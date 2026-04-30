@@ -64,55 +64,84 @@ export function registerRaIssueToken(app) {
       return c.json({ error: 'Kullanıcı bir kuruma bağlı değil' }, 403);
     }
 
-    // Body doğrulama — subscription_id (INTEGER) YA DA product_slug (TEXT)
+    // Body doğrulama — subscription_id (INTEGER) YA DA product_slug (TEXT).
+    // admin_test=true: admin/super_admin'in abonelik gerektirmeden bir ürünü test
+    // etmesi için (ör. ekleme sırasında kendi kurumuna abonelik açmaya gerek
+    // kalmadan smoke test). Sadece product_slug ile beraber kullanılır.
     const body = await parseAndValidate(c, {
       subscription_id: { type: 'number', integer: true, min: 1 },
       product_slug: { type: 'string', maxLength: 128 },
+      admin_test: { type: 'boolean' },
     });
     if (body instanceof Response) return body;
 
-    if (!body.subscription_id && !body.product_slug) {
+    const adminTest = body.admin_test === true;
+
+    if (adminTest) {
+      const role = String(auth.user.role || '').toLowerCase();
+      if (role !== 'admin' && role !== 'super_admin') {
+        return c.json({ error: 'Test erişimi yalnızca admin/super_admin için' }, 403);
+      }
+      if (!body.product_slug) {
+        return c.json({ error: 'admin_test → product_slug zorunlu' }, 400);
+      }
+    } else if (!body.subscription_id && !body.product_slug) {
       return c.json(
         { error: 'subscription_id veya product_slug verilmelidir' },
         400
       );
     }
 
-    // institution_subscriptions + products JOIN
-    const sub = await lookupSubscription(c.env.DB, {
-      institutionId,
-      subscriptionId: body.subscription_id,
-      productSlug: body.product_slug,
-    });
+    // adminTest=true ise abonelik aramazız, sadece products tablosundan publisher
+    // konfigürasyonunu alırız. Diğer kontroller (ra_enabled, ra_origin_host,
+    // tunnel) gerçek RA flow'la aynı kalır — admin'in kurumunda tunnel kapalı
+    // ise hala 409 üretiriz (bu zaten teyit etmek istediğimiz şey).
+    const sub = adminTest
+      ? await lookupProductForTest(c.env.DB, body.product_slug)
+      : await lookupSubscription(c.env.DB, {
+          institutionId,
+          subscriptionId: body.subscription_id,
+          productSlug: body.product_slug,
+        });
 
     if (!sub) {
-      return c.json({ error: 'Abonelik bulunamadı' }, 403);
-    }
-
-    // ra_enabled birincil RA sinyali; legacy access_type 'proxy' veya 'ip' de kabul edilir
-    const isRaSubscription =
-      !!sub.ra_enabled ||
-      sub.access_type === 'proxy' ||
-      sub.access_type === 'ip';
-
-    if (!isRaSubscription) {
       return c.json(
-        {
-          error: 'Bu abonelik uzaktan erişim proxy üzerinden değil, ' +
-                 'doğrudan publisher linki ile açılır.',
-          access_type: sub.access_type,
-        },
-        409
+        { error: adminTest ? 'Ürün bulunamadı' : 'Abonelik bulunamadı' },
+        adminTest ? 404 : 403
       );
     }
 
-    // Süre kontrolü: ra_valid_until (unix ts override) veya end_date (YYYY-MM-DD string)
+    // ra_enabled birincil RA sinyali; legacy access_type 'proxy' veya 'ip' de
+    // kabul edilir. adminTest mode'unda sub'da access_type/end_date alanları
+    // yoktur — sadece ra_enabled ve ra_origin_host kontrolü anlamlıdır.
+    if (!adminTest) {
+      const isRaSubscription =
+        !!sub.ra_enabled ||
+        sub.access_type === 'proxy' ||
+        sub.access_type === 'ip';
+
+      if (!isRaSubscription) {
+        return c.json(
+          {
+            error: 'Bu abonelik uzaktan erişim proxy üzerinden değil, ' +
+                   'doğrudan publisher linki ile açılır.',
+            access_type: sub.access_type,
+          },
+          409
+        );
+      }
+    }
+
+    // Süre kontrolü: ra_valid_until (unix ts override) veya end_date (YYYY-MM-DD string).
+    // adminTest mode'unda abonelik yok, süre kontrolü atlanır.
     const now = Math.floor(Date.now() / 1000);
-    const raExp = sub.ra_valid_until ? Number(sub.ra_valid_until) : null;
-    const endExp = sub.end_date ? Math.floor(new Date(sub.end_date).getTime() / 1000) : null;
-    const exp = raExp ?? endExp ?? null;
-    if (exp && exp < now) {
-      return c.json({ error: 'Abonelik süresi dolmuş' }, 410);
+    if (!adminTest) {
+      const raExp = sub.ra_valid_until ? Number(sub.ra_valid_until) : null;
+      const endExp = sub.end_date ? Math.floor(new Date(sub.end_date).getTime() / 1000) : null;
+      const exp = raExp ?? endExp ?? null;
+      if (exp && exp < now) {
+        return c.json({ error: 'Abonelik süresi dolmuş' }, 410);
+      }
     }
 
     // products.ra_enabled = 1 olmalı (isRaSubscription kontrolü zaten bunu kapsıyor ama açık bırakıyoruz)
@@ -153,7 +182,9 @@ export function registerRaIssueToken(app) {
       return c.json({ error: `ra_delivery_mode geçersiz: ${deliveryMode}` }, 500);
     }
 
-    // Kısa ömürlü proxy JWT (HS256)
+    // Kısa ömürlü proxy JWT (HS256). adminTest mode'unda sub.id yok — 0
+    // sentinel'i ile imzala (proxy Worker token'ı kullanır ama sid'i abonelik
+    // tablosuyla eşleştirmeye çalışmaz).
     const jti = newJti();
     const token = await signProxyToken(
       {
@@ -161,7 +192,7 @@ export function registerRaIssueToken(app) {
         aud: 'ra-proxy',
         sub: userId,
         iid: institutionId,
-        sid: sub.id,
+        sid: adminTest ? 0 : sub.id,
         pid: sub.product_slug,
         tgt: deliveryMode === 'session_host_proxy'
           ? sub.ra_origin_host          // düz hostname, encode edilmez
@@ -193,7 +224,7 @@ export function registerRaIssueToken(app) {
           institution_id:  institutionId,
           user_id:         userId,
           product_slug:    sub.product_slug,
-          subscription_id: sub.id,
+          subscription_id: adminTest ? 0 : sub.id, // admin_test: sentinel 0 (JWT sid ile tutarlı)
           created_at:      now,
           expires_at:      now + SESSION_TTL_SEC,
         }),
@@ -284,6 +315,37 @@ async function lookupSubscription(db, { institutionId, subscriptionId, productSl
   return await db
     .prepare(`${base} AND isub.product_slug = ? LIMIT 1`)
     .bind(institutionId, productSlug)
+    .first();
+}
+
+/**
+ * adminTest mode için ürün konfigürasyonunu products tablosundan tek başına
+ * çeker — institution_subscriptions ile JOIN'siz. Geri dönen şekil
+ * lookupSubscription ile uyumludur (id=null, end_date=null gibi abonelik-özel
+ * alanlar yoktur, kalan tüm RA alanları aynıdır).
+ */
+async function lookupProductForTest(db, productSlug) {
+  return await db
+    .prepare(`
+      SELECT
+        NULL                                       AS id,
+        p.slug                                     AS product_slug,
+        NULL                                       AS end_date,
+        NULL                                       AS ra_credential_scope,
+        NULL                                       AS ra_credential_enc,
+        NULL                                       AS ra_recipe_override_json,
+        NULL                                       AS ra_valid_until,
+        NULL                                       AS access_type,
+        COALESCE(p.ra_enabled, 0)                  AS ra_enabled,
+        p.ra_origin_host,
+        p.ra_login_recipe_json,
+        COALESCE(p.ra_delivery_mode, 'path_proxy') AS ra_delivery_mode,
+        p.ra_origin_landing_path
+      FROM products p
+      WHERE p.slug = ?
+      LIMIT 1
+    `)
+    .bind(productSlug)
     .first();
 }
 
