@@ -488,7 +488,9 @@ async function acceptTokenAndRedirect(request, env, token, url, encodedLabel, re
   // 302: token'ı URL'den sil
   const clean = new URL(url);
   clean.searchParams.delete('t');
-  const baseHost = env.RA_PROXY_BASE_HOST || url.hostname;
+  // Session cookie Domain'i de gerçek istek host'una bağla; apex'e (selmiye.com)
+  // taşırmak cookie'yi gereksiz yere her subdomain'e gönderir.
+  const baseHost = url.hostname;
 
   return new Response(null, {
     status: 302,
