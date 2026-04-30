@@ -403,7 +403,12 @@ async function handlePathProxy(request, env, ctx, url) {
     }));
   }
 
-  const baseHost = env.RA_PROXY_BASE_HOST || url.hostname;
+  // Location/Set-Cookie rewrite host'u DAİMA gerçek istek host'u olmalı.
+  // RA_PROXY_BASE_HOST = "selmiye.com" (apex) ayarlandığında publisher
+  // redirect'leri https://selmiye.com/... olarak yeniden yazılıyor — bare apex
+  // proxy worker route'una bağlı değil (yalnızca *.selmiye.com), bu yüzden
+  // Cloudflare Pages 404 dönüyordu (Springer/IEEE bug).
+  const baseHost = url.hostname;
   const respHeaders = buildResponseHeaders(upstreamResp.headers, baseHost, encodedLabel);
   addStagingDebugHeaders(respHeaders, env, {
     targetUrl: targetUrl.toString(),
