@@ -96,8 +96,13 @@ func buildAutoClient() *http.Client {
 				// ALPN h2 negotiate edilmediyse http2.Transport bu conn üzerinde
 				// h2 frame yollamaya kalkar ve patlar. Burada erkenden hatayı
 				// yüzeye çıkarıyoruz.
+				//
+				// NOT: utls v1.8.2'de HandshakeState.ServerHello.AlpnProtocol
+				// negotiate edilse bile "" dönüyor (utls internal field hiç
+				// populate edilmiyor). ConnectionState().NegotiatedProtocol'u
+				// kullan — bu, alttaki crypto/tls katmanından doğru gelir.
 				if uc, ok := conn.(*utls.UConn); ok {
-					proto := uc.HandshakeState.ServerHello.AlpnProtocol
+					proto := uc.ConnectionState().NegotiatedProtocol
 					if proto != "h2" {
 						_ = conn.Close()
 						return nil, fmt.Errorf("h2 not negotiated (got %q)", proto)
