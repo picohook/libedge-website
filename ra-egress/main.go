@@ -59,10 +59,14 @@ var (
 	dynamicHosts   map[string]bool
 )
 
-// HTTP1_FORCE_HOSTS_REGEX default — JoVE'un AWS WAF'ı Go HTTP/2 fingerprint'ini
-// bot diye sınıflandırıyor. Cloudflare-fronted publisher'lar HTTP/2'yi gerektiriyor;
-// JoVE varyantlarını HTTP/1.1'e zorlamak diğer publisher'ları kırmıyor.
-const defaultForceH1Regex = `^([a-z0-9-]+\.)*jove\.com$`
+// HTTP1_FORCE_HOSTS_REGEX default — JoVE'un AWS WAF'ı ve sso.cas.org'un
+// Imperva/Incapsula WAF'ı Go HTTP/2 fingerprint'ini bot diye sınıflandırıyor
+// (sso.cas.org'da angular.min.js / jquery.slim.min.js / bootstrap.min.css gibi
+// statik asset'ler 500 dönüyor + her request 13 saniye yavaşlıyordu). Cloudflare-
+// fronted publisher'lar (ACS, AR, WoS, IOP, scifinder-n, vb.) HTTP/2'yi gerektiriyor;
+// bu host'ları HTTP/1.1'e zorlamak diğerlerini kırmıyor — regex sadece tam match
+// olduğu için scifinder-n.cas.org gibi kardeş subdomain'ler etkilenmez.
+const defaultForceH1Regex = `^(([a-z0-9-]+\.)*jove\.com|sso\.cas\.org)$`
 
 // noFollowRedirect — 302/301 response'u olduğu gibi Proxy Worker'a döndür.
 // Worker Location header'ı rewrite eder, Set-Cookie'leri tarayıcıya iletir.
