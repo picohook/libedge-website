@@ -3970,7 +3970,17 @@ document.addEventListener('click', function(e) {
                         ? `<span title="${escapeHtml(p.ra_origin_host || '')}" class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium cursor-pointer"><i class="fas fa-shield-halved mr-0.5"></i>${p.ra_delivery_mode === 'session_host_proxy' ? 'SHP' : 'PP'}</span>`
                         : '<span class="text-gray-300 text-xs">—</span>'}
                 </td>
-                <td class="px-4 py-2 text-right">
+                <td class="px-4 py-2 text-right whitespace-nowrap">
+                    ${p.ra_enabled
+                        ? `<button type="button"
+                            data-admin-action="test-product-ra"
+                            data-product-slug="${escapeHtml(p.slug)}"
+                            title="Bu ürün için aboneliğe ihtiyaç olmadan smoke test başlat (admin)"
+                            class="text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition mr-1"
+                            onclick="event.stopPropagation()">
+                            <i class="fas fa-flask"></i>
+                        </button>`
+                        : ''}
                     <button type="button"
                         data-admin-action="edit-product"
                         data-product-slug="${escapeHtml(p.slug)}"
@@ -4020,11 +4030,71 @@ document.addEventListener('click', function(e) {
 
 document.getElementById('productsList')?.addEventListener('click', function(e) {
     if (e.target.closest('a')) return;
+    const testBtn = e.target.closest('[data-admin-action="test-product-ra"]');
+    if (testBtn) { startAdminProductRaTest(testBtn); return; }
     const editBtn = e.target.closest('[data-admin-action="edit-product"]');
     if (editBtn) { openProductModal(editBtn.dataset.productSlug || ''); return; }
     const row = e.target.closest('.product-row');
     if (row) openProductModal(row.dataset.productSlug || '');
 });
+
+// Admin "test erişimi" — abonelik gerektirmeden bir RA-enabled ürünün proxy
+// flow'unu (token issue + tunnel + egress) ucundan ucuna doğrular. Backend
+// /api/ra/issue-token'ı admin_test=true ile çağırır; sadece admin/super_admin
+// için 200 döner. Normal kullanıcı erişimi hiç etkilenmez.
+async function startAdminProductRaTest(btn) {
+    if (!btn || btn.dataset.raBusy === '1') return;
+    const slug = String(btn.dataset.productSlug || '').trim();
+    if (!slug) return;
+    const notify = (msg, type) => {
+        if (typeof window.showToast === 'function') window.showToast(msg, type || 'info');
+        else if (type === 'error') console.error(msg);
+    };
+
+    btn.dataset.raBusy = '1';
+    btn.disabled = true;
+    btn.classList.add('opacity-70', 'cursor-wait');
+
+    // iOS Safari pop-up blocker fix (profile.html ile aynı pattern):
+    // window.open kullanıcı gesture'ı sırasında, await'ten ÖNCE çağrılmalı.
+    const newTab = window.open('', '_blank');
+
+    try {
+        const res = await fetch(`${API_BASE}/api/ra/issue-token`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product_slug: slug, admin_test: true }),
+        });
+        let data = null;
+        try { data = await res.json(); } catch (_) { /* non-JSON body */ }
+        if (!res.ok) {
+            const msg = (data && data.error) || `Test erişimi başarısız (HTTP ${res.status})`;
+            if (newTab) newTab.close();
+            notify(msg, 'error');
+            return;
+        }
+        const redirectUrl = data && data.redirect_url;
+        if (!redirectUrl) {
+            if (newTab) newTab.close();
+            notify('Sunucu geçerli bir yönlendirme adresi döndürmedi.', 'error');
+            return;
+        }
+        if (newTab) {
+            newTab.location.href = redirectUrl;
+        } else {
+            window.open(redirectUrl, '_blank', 'noopener,noreferrer');
+        }
+    } catch (err) {
+        console.error('startAdminProductRaTest error:', err);
+        if (newTab) newTab.close();
+        notify('Test erişimi başlatılamadı. Lütfen tekrar deneyin.', 'error');
+    } finally {
+        btn.dataset.raBusy = '0';
+        btn.disabled = false;
+        btn.classList.remove('opacity-70', 'cursor-wait');
+    }
+}
 
     function _fillProductModal(product, isNew) {
         const slugInput = document.getElementById('productSlug');
