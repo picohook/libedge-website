@@ -110,6 +110,177 @@ describe('RA issue-token route', () => {
   });
 });
 
+describe('RA issue-token admin_test path', () => {
+  function makeProductTestDb({ product, raSettings = { enabled: 1, tunnel_status: 'ok' } } = {}) {
+    return new FakeD1([
+      // adminTest path queries products only (no JOIN to institution_subscriptions)
+      {
+        match: 'FROM products p',
+        first: async () => product,
+      },
+      // tunnel check still runs (we want to surface tunnel misconfig)
+      {
+        match: 'FROM institution_ra_settings',
+        first: async () => raSettings,
+      },
+    ]);
+  }
+
+  const baseProduct = {
+    id: null,
+    product_slug: 'pubs-acs-org',
+    end_date: null,
+    ra_credential_scope: null,
+    ra_credential_enc: null,
+    ra_recipe_override_json: null,
+    ra_valid_until: null,
+    access_type: null,
+    ra_enabled: 1,
+    ra_origin_host: 'pubs.acs.org',
+    ra_login_recipe_json: null,
+    ra_delivery_mode: 'path_proxy',
+    ra_origin_landing_path: null,
+  };
+
+  it('admin can test an RA-enabled product without an institution subscription', async () => {
+    const db = makeProductTestDb({ product: baseProduct });
+    const secret = 'test-jwt-secret';
+    const authHeader = await makeAuthHeader(
+      { user_id: 7, institution_id: 188, role: 'admin' },
+      secret
+    );
+
+    const res = await app.request(
+      '/api/ra/issue-token',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: authHeader },
+        body: JSON.stringify({ product_slug: 'pubs-acs-org', admin_test: true }),
+      },
+      {
+        DB: db,
+        JWT_SECRET: secret,
+        RA_PROXY_TOKEN_SECRET: 'proxy-secret',
+        RA_PROXY_HOST: 'proxy-staging.selmiye.com',
+      }
+    );
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.redirect_url).toMatch(
+      /^https:\/\/proxy-staging\.selmiye\.com\/pubs-acs-org\/\?t=/
+    );
+  });
+
+  it('rejects admin_test for non-admin users', async () => {
+    const db = makeProductTestDb({ product: baseProduct });
+    const secret = 'test-jwt-secret';
+    const authHeader = await makeAuthHeader(
+      { user_id: 12, institution_id: 188, role: 'user' },
+      secret
+    );
+
+    const res = await app.request(
+      '/api/ra/issue-token',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: authHeader },
+        body: JSON.stringify({ product_slug: 'pubs-acs-org', admin_test: true }),
+      },
+      {
+        DB: db,
+        JWT_SECRET: secret,
+        RA_PROXY_TOKEN_SECRET: 'proxy-secret',
+        RA_PROXY_HOST: 'proxy-staging.selmiye.com',
+      }
+    );
+
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toMatch(/admin/i);
+  });
+
+  it('returns 409 when admin tests a product that is not RA-enabled', async () => {
+    const db = makeProductTestDb({
+      product: { ...baseProduct, ra_enabled: 0 },
+    });
+    const secret = 'test-jwt-secret';
+    const authHeader = await makeAuthHeader(
+      { user_id: 7, institution_id: 188, role: 'admin' },
+      secret
+    );
+
+    const res = await app.request(
+      '/api/ra/issue-token',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: authHeader },
+        body: JSON.stringify({ product_slug: 'pubs-acs-org', admin_test: true }),
+      },
+      {
+        DB: db,
+        JWT_SECRET: secret,
+        RA_PROXY_TOKEN_SECRET: 'proxy-secret',
+        RA_PROXY_HOST: 'proxy-staging.selmiye.com',
+      }
+    );
+
+    expect(res.status).toBe(409);
+  });
+
+  it('returns 404 when admin tests an unknown product slug', async () => {
+    const db = makeProductTestDb({ product: null });
+    const secret = 'test-jwt-secret';
+    const authHeader = await makeAuthHeader(
+      { user_id: 7, institution_id: 188, role: 'super_admin' },
+      secret
+    );
+
+    const res = await app.request(
+      '/api/ra/issue-token',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: authHeader },
+        body: JSON.stringify({ product_slug: 'nonexistent', admin_test: true }),
+      },
+      {
+        DB: db,
+        JWT_SECRET: secret,
+        RA_PROXY_TOKEN_SECRET: 'proxy-secret',
+        RA_PROXY_HOST: 'proxy-staging.selmiye.com',
+      }
+    );
+
+    expect(res.status).toBe(404);
+  });
+
+  it('rejects admin_test without product_slug', async () => {
+    const db = makeProductTestDb({ product: baseProduct });
+    const secret = 'test-jwt-secret';
+    const authHeader = await makeAuthHeader(
+      { user_id: 7, institution_id: 188, role: 'admin' },
+      secret
+    );
+
+    const res = await app.request(
+      '/api/ra/issue-token',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: authHeader },
+        body: JSON.stringify({ admin_test: true }),
+      },
+      {
+        DB: db,
+        JWT_SECRET: secret,
+        RA_PROXY_TOKEN_SECRET: 'proxy-secret',
+        RA_PROXY_HOST: 'proxy-staging.selmiye.com',
+      }
+    );
+
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('RA admin subscriptions route', () => {
   it('normalizes legacy delivery modes in RA subscriptions listing', async () => {
     const db = new FakeD1([

@@ -42,3 +42,4 @@ backend/src/*.backup.js
 backend/src/*.broken.js
 backend/src/*.bak
 *.bak
+ra-egress/ra-egress

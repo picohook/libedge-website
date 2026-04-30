@@ -14,9 +14,11 @@ import (
 // HTTP/2'yi kapattı. Cloudflare-fronted publisher'lar (ACS, AR, WoS) HTTP/2
 // fingerprint bekliyor, HTTP/1.1 forced gelirse bot diye 403 veriyor.
 //
-// Fix: forceH1Regex sadece JoVE (AWS WAF) için match etsin; kalan tümü
-// autoClient (HTTP/2 öncelikli) ile gitsin.
-func TestSelectClient_DefaultJoVEForcedToH1(t *testing.T) {
+// Fix: forceH1Regex sadece bot-aware WAF arkasındaki host'lar (JoVE = AWS WAF,
+// sso.cas.org = Imperva/Incapsula) için match etsin; kalan tümü autoClient
+// (HTTP/2 öncelikli) ile gitsin. scifinder-n.cas.org gibi kardeş subdomain'ler
+// regex tam match olduğu için ETKİLENMEZ — h2 ile devam eder.
+func TestSelectClient_DefaultBotWAFHostsForcedToH1(t *testing.T) {
 	autoClient = &http.Client{}
 	h1Client = &http.Client{}
 	forceH1Regex = regexp.MustCompile(defaultForceH1Regex)
@@ -31,6 +33,11 @@ func TestSelectClient_DefaultJoVEForcedToH1(t *testing.T) {
 		{"player.jove.com", true, "JoVE player subdomain"},
 		{"cdn.jove.com", true, "JoVE CDN"},
 		{"assets.jove.com", true, "JoVE assets"},
+		{"sso.cas.org", true, "CAS SSO → Imperva, force HTTP/1.1"},
+		{"SSO.CAS.ORG", true, "CAS SSO case-insensitive"},
+		{"scifinder-n.cas.org", false, "SciFinder → Cloudflare, HTTP/2 (sibling of sso.cas.org)"},
+		{"cas.org", false, "CAS root → Cloudflare, must NOT match (only sso.cas.org)"},
+		{"www.cas.org", false, "CAS www → Cloudflare"},
 		{"pubs.acs.org", false, "ACS → Cloudflare, HTTP/2 needed"},
 		{"www.annualreviews.org", false, "Annual Reviews → Cloudflare"},
 		{"www.webofscience.com", false, "Web of Science → Cloudflare"},
