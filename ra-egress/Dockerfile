@@ -2,7 +2,7 @@
 #
 # Multi-stage build — sonuç ~10MB scratch image, statik binary.
 
-FROM golang:1.24-alpine AS build
+FROM golang:1.25-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 COPY main.go ./

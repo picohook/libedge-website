@@ -34,13 +34,24 @@ import (
 	"time"
 
 	utls "github.com/refraction-networking/utls"
+	"golang.org/x/net/http2"
 )
 
 var (
 	sharedSecret     []byte
 	allowedHostRegex *regexp.Regexp
 	maxRequestBytes  int64 = 10 * 1024 * 1024 // 10MB default
-	upstreamClient         = buildUpstreamClient()
+
+	// İki ayrı upstream client:
+	//   autoClient — uTLS Chrome JA3 + HTTP/2 (h2+http/1.1 ALPN). Cloudflare
+	//                bot detection HTTP/2 fingerprint bekliyor; HTTP/1.1 forced
+	//                geldiğinde otomatik bot diye işaretliyor (ACS, AR, WoS).
+	//   h1Client   — uTLS Chrome JA3 + sadece HTTP/1.1 ALPN. AWS WAF (JoVE),
+	//                Go HTTP/2 SETTINGS frame fingerprint'ini bot diye sınıflandırıyor.
+	// forceH1Regex'e göre per-host seçim yapılır (default: jove.com varyantları).
+	autoClient   *http.Client
+	h1Client     *http.Client
+	forceH1Regex *regexp.Regexp
 
 	// Dinamik host listesi — API'den 5 dakikada bir yenilenir.
 	// Boşken sadece allowedHostRegex kullanılır (fallback).
@@ -48,44 +59,90 @@ var (
 	dynamicHosts   map[string]bool
 )
 
-// buildUpstreamClient — utls Chrome fingerprint + IPv4 + redirect-manual transport.
+// HTTP1_FORCE_HOSTS_REGEX default — JoVE'un AWS WAF'ı Go HTTP/2 fingerprint'ini
+// bot diye sınıflandırıyor. Cloudflare-fronted publisher'lar HTTP/2'yi gerektiriyor;
+// JoVE varyantlarını HTTP/1.1'e zorlamak diğer publisher'ları kırmıyor.
+const defaultForceH1Regex = `^([a-z0-9-]+\.)*jove\.com$`
+
+// noFollowRedirect — 302/301 response'u olduğu gibi Proxy Worker'a döndür.
+// Worker Location header'ı rewrite eder, Set-Cookie'leri tarayıcıya iletir.
+// ra-egress burada takip ederse ara 302'deki Set-Cookie kaybolur (EMIS sorunu).
+func noFollowRedirect(_ *http.Request, _ []*http.Request) error {
+	return http.ErrUseLastResponse
+}
+
+// buildAutoClient — uTLS Chrome JA3 + ALPN[h2,http/1.1] üzerinden HTTP/2.
 //
-// Neden utls?
-//   Go'nun standart net/tls JA3 fingerprint'i Cloudflare bot detection tarafından
-//   tanınır (ACS/pubs.acs.org gibi CF-korumalı yayıncılarda 403). Chrome fingerprint
-//   taklit ederek Cloudflare'i aşarız.
+// Neden net/http Transport DEĞİL?
+//   net/http Transport'un h2 upgrade'i `TLSNextProto["h2"]` üzerinden çalışıyor
+//   ve handler imzası `func(string, *tls.Conn) http.RoundTripper` — yani
+//   `*crypto/tls.Conn` bekliyor. Bizim DialTLSContext `*utls.UConn` döndürüyor;
+//   tip uyumsuz, h2 handler hiç çağrılmıyor → server h2 negotiate ettiği için h2
+//   frame bekliyor ama transport HTTP/1.1 metni gönderiyor → connection close.
+//   Cf: https://github.com/refraction-networking/utls/issues/16
 //
-// Neden HTTP/1.1?
-//   AWS WAF (JoVE) Go HTTP/2 SETTINGS frame sıralamasını bot olarak sınıflandırıyor.
-//   ALPN'den h2 çıkararak HTTP/1.1 fingerprint nötr kalır.
-func buildUpstreamClient() *http.Client {
+// Çözüm: golang.org/x/net/http2 Transport'u DOĞRUDAN RoundTripper olarak kullan.
+//   http2.Transport.DialTLSContext herhangi bir net.Conn'u kabul ediyor; utls
+//   UConn'u doğrudan veriyoruz. ALPN ile h2 negotiate edilmediyse erken hata
+//   döner — sessizce protokol uyumsuzluğuna düşmek yerine.
+func buildAutoClient() *http.Client {
 	return &http.Client{
-		Transport: &http.Transport{
-			// utls ile TLS bağlantısı kur — Chrome fingerprint (JA3) taklit eder.
-			// DialTLSContext, DialContext'in yerini HTTPS için alır.
-			DialTLSContext: dialTLSChrome,
-			// HTTP (plain) bağlantılar için IPv4 zorla.
-			DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
-				return (&net.Dialer{}).DialContext(ctx, "tcp4", addr)
+		Transport: &http2.Transport{
+			DialTLSContext: func(ctx context.Context, _, addr string, _ *tls.Config) (net.Conn, error) {
+				conn, err := dialTLSChrome(ctx, addr, []string{"h2", "http/1.1"})
+				if err != nil {
+					return nil, err
+				}
+				// ALPN h2 negotiate edilmediyse http2.Transport bu conn üzerinde
+				// h2 frame yollamaya kalkar ve patlar. Burada erkenden hatayı
+				// yüzeye çıkarıyoruz.
+				if uc, ok := conn.(*utls.UConn); ok {
+					proto := uc.HandshakeState.ServerHello.AlpnProtocol
+					if proto != "h2" {
+						_ = conn.Close()
+						return nil, fmt.Errorf("h2 not negotiated (got %q)", proto)
+					}
+				}
+				return conn, nil
 			},
-			// HTTP/2 devre dışı — h2 handler'ı yoksa Transport h2 negotiate etmez.
-			// utls ALPN'den h2 zaten çıkarılıyor; çift güvence.
-			TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
 		},
-		Timeout: 30 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// Redirect'leri takip ETME — 302/301 response'u olduğu gibi
-			// Proxy Worker'a döndür. Worker Location header'ı rewrite eder,
-			// Set-Cookie'leri tarayıcıya iletir. ra-egress burada takip ederse
-			// ara 302'deki Set-Cookie kaybolur (EMIS session cookie sorunu).
-			return http.ErrUseLastResponse
-		},
+		Timeout:       30 * time.Second,
+		CheckRedirect: noFollowRedirect,
 	}
 }
 
-// dialTLSChrome — Chrome TLS fingerprint + IPv4 + HTTP/1.1 ALPN.
-func dialTLSChrome(ctx context.Context, _, addr string) (net.Conn, error) {
-	// TCP bağlantısı: IPv4 zorla
+// buildH1Client — uTLS Chrome JA3 + ALPN[http/1.1] sadece.
+//   AWS WAF (JoVE) Go HTTP/2 SETTINGS frame sıralamasını bot diye işaretliyor.
+//   TLSNextProto boş map ile h2 negotiation tamamen kapatılıyor (çift güvence).
+func buildH1Client() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			DialTLSContext: dialTLSChromeH1,
+			DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, "tcp4", addr)
+			},
+			TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
+		},
+		Timeout:       30 * time.Second,
+		CheckRedirect: noFollowRedirect,
+	}
+}
+
+// selectClient — host'a göre h1 zorla mı, otomatik (h2 öncelikli) mi seç.
+func selectClient(hostname string) *http.Client {
+	if forceH1Regex != nil && forceH1Regex.MatchString(strings.ToLower(hostname)) {
+		return h1Client
+	}
+	return autoClient
+}
+
+// dialTLSChromeH1 — Chrome JA3 + ALPN[http/1.1].
+func dialTLSChromeH1(ctx context.Context, _, addr string) (net.Conn, error) {
+	return dialTLSChrome(ctx, addr, []string{"http/1.1"})
+}
+
+// dialTLSChrome — Chrome TLS fingerprint + IPv4 + verilen ALPN listesi.
+func dialTLSChrome(ctx context.Context, addr string, alpnProtocols []string) (net.Conn, error) {
 	tcpConn, err := (&net.Dialer{}).DialContext(ctx, "tcp4", addr)
 	if err != nil {
 		return nil, err
@@ -97,7 +154,6 @@ func dialTLSChrome(ctx context.Context, _, addr string) (net.Conn, error) {
 		return nil, err
 	}
 
-	// Chrome_Auto fingerprint'ini al, sonra ALPN'i override et
 	spec, err := utls.UTLSIdToSpec(utls.HelloChrome_Auto)
 	if err != nil {
 		tcpConn.Close()
@@ -105,9 +161,7 @@ func dialTLSChrome(ctx context.Context, _, addr string) (net.Conn, error) {
 	}
 	for i, ext := range spec.Extensions {
 		if alpn, ok := ext.(*utls.ALPNExtension); ok {
-			// HTTP/2 çıkar — Go transport h2 konuşamaz, HTTP/1.1 fingerprint
-			// AWS WAF için de nötr.
-			alpn.AlpnProtocols = []string{"http/1.1"}
+			alpn.AlpnProtocols = alpnProtocols
 			spec.Extensions[i] = alpn
 			break
 		}
@@ -147,7 +201,21 @@ func main() {
 			maxRequestBytes = n
 		}
 	}
-		apiURL := os.Getenv("LIBEDGE_API_URL")
+
+	forceH1Pattern := os.Getenv("HTTP1_FORCE_HOSTS_REGEX")
+	if forceH1Pattern == "" {
+		forceH1Pattern = defaultForceH1Regex
+	}
+	h1re, err := regexp.Compile(forceH1Pattern)
+	if err != nil {
+		log.Fatalf("invalid HTTP1_FORCE_HOSTS_REGEX: %v", err)
+	}
+	forceH1Regex = h1re
+
+	autoClient = buildAutoClient()
+	h1Client = buildH1Client()
+
+	apiURL := os.Getenv("LIBEDGE_API_URL")
 	serviceKey := os.Getenv("LIBEDGE_SERVICE_KEY")
 
 	if apiURL != "" && serviceKey != "" {
@@ -179,6 +247,7 @@ func main() {
 		addr = v
 	}
 	log.Printf("ra-egress listening on %s, host regex: %s", addr, hostPattern)
+	log.Printf("http/1.1 force regex: %s", forceH1Pattern)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
@@ -368,9 +437,10 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 	// Host header target'a göre set
 	req.Host = req.URL.Host
 
-	// Upstream fetch
+	// Upstream fetch — host'a göre HTTP/2 (default) veya HTTP/1.1 (JoVE vb.) seç
+	client := selectClient(req.URL.Hostname())
 	upstreamStart := time.Now()
-	resp, err := upstreamClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("upstream error: %v", err)
 		http.Error(w, "upstream unreachable", http.StatusBadGateway)

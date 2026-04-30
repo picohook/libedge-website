@@ -41,6 +41,10 @@ services:
     environment:
       - EGRESS_SHARED_SECRET=${EGRESS_SHARED_SECRET}
       - ALLOWED_HOST_REGEX=${ALLOWED_HOST_REGEX:-^(www\.jove\.com|jove\.com|cdn\.jove\.com|player\.jove\.com)$$}
+      # AWS WAF (JoVE) Go HTTP/2 fingerprint'ini bot diye işaretliyor → HTTP/1.1 zorla.
+      # Cloudflare-fronted publisher'lar (ACS, AR, WoS, vb.) HTTP/2 bekliyor; default
+      # autoClient HTTP/2 önceliklidir. Buradaki regex'e match eden host'lar h1Client.
+      - HTTP1_FORCE_HOSTS_REGEX=${HTTP1_FORCE_HOSTS_REGEX:-^([a-z0-9-]+\.)*jove\.com$$}
       - MAX_REQUEST_BYTES=10485760
       - LISTEN_ADDR=:8080
     # Port dışarıya açılmıyor — sadece cloudflared container'ı erişir.
