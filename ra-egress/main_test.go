@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"regexp"
 	"testing"
+
+	"golang.org/x/net/http2"
 )
 
 // selectClient host'a göre h1Client mı autoClient mı seçiyor — regression koruması.
@@ -87,5 +89,37 @@ func TestSelectClient_NoRegexMeansAuto(t *testing.T) {
 func TestDefaultForceH1Regex_Compiles(t *testing.T) {
 	if _, err := regexp.Compile(defaultForceH1Regex); err != nil {
 		t.Fatalf("defaultForceH1Regex compile: %v", err)
+	}
+}
+
+// autoClient'ın transport'u *http2.Transport olmalı — net/http Transport DEĞİL.
+//
+// Regression korumas: net/http Transport + http2.ConfigureTransport kombinasyonu
+// utls UConn ile çalışmıyor (TLSNextProto["h2"] handler *crypto/tls.Conn bekliyor,
+// biz *utls.UConn veriyoruz → h2 upgrade asla tetiklenmez, server h2 frame
+// beklerken biz HTTP/1.1 metni gönderiyoruz → connection close).
+//
+// Çözüm: doğrudan *http2.Transport. Bu test yanlışlıkla http.Transport'a dönülmesini
+// engelliyor.
+func TestAutoClient_UsesHTTP2Transport(t *testing.T) {
+	c := buildAutoClient()
+	if _, ok := c.Transport.(*http2.Transport); !ok {
+		t.Fatalf("autoClient transport: want *http2.Transport, got %T", c.Transport)
+	}
+}
+
+// h1Client'ın transport'u *http.Transport olmalı (HTTP/2 negotiation kapalı).
+func TestH1Client_UsesHTTPTransport(t *testing.T) {
+	c := buildH1Client()
+	tr, ok := c.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("h1Client transport: want *http.Transport, got %T", c.Transport)
+	}
+	// TLSNextProto boş olmalı (h2 upgrade kapalı).
+	if tr.TLSNextProto == nil {
+		t.Fatalf("h1Client TLSNextProto: nil — h2 negotiation will leak")
+	}
+	if _, hasH2 := tr.TLSNextProto["h2"]; hasH2 {
+		t.Fatalf("h1Client TLSNextProto: h2 handler present — should be empty map")
 	}
 }

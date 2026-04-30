@@ -71,24 +71,41 @@ func noFollowRedirect(_ *http.Request, _ []*http.Request) error {
 	return http.ErrUseLastResponse
 }
 
-// buildAutoClient — uTLS Chrome JA3 + ALPN[h2,http/1.1].
-//   Cloudflare bot detection HTTP/2 fingerprint bekliyor; HTTP/1.1 forced
-//   gelirse server-side process'i bot diye işaretliyor.
-//   net/http Transport, ALPN'de h2 negotiate edilince standart http2 paketinin
-//   handler'ını kullanıp HTTP/2 ClientConn açar (http2.ConfigureTransport).
+// buildAutoClient — uTLS Chrome JA3 + ALPN[h2,http/1.1] üzerinden HTTP/2.
+//
+// Neden net/http Transport DEĞİL?
+//   net/http Transport'un h2 upgrade'i `TLSNextProto["h2"]` üzerinden çalışıyor
+//   ve handler imzası `func(string, *tls.Conn) http.RoundTripper` — yani
+//   `*crypto/tls.Conn` bekliyor. Bizim DialTLSContext `*utls.UConn` döndürüyor;
+//   tip uyumsuz, h2 handler hiç çağrılmıyor → server h2 negotiate ettiği için h2
+//   frame bekliyor ama transport HTTP/1.1 metni gönderiyor → connection close.
+//   Cf: https://github.com/refraction-networking/utls/issues/16
+//
+// Çözüm: golang.org/x/net/http2 Transport'u DOĞRUDAN RoundTripper olarak kullan.
+//   http2.Transport.DialTLSContext herhangi bir net.Conn'u kabul ediyor; utls
+//   UConn'u doğrudan veriyoruz. ALPN ile h2 negotiate edilmediyse erken hata
+//   döner — sessizce protokol uyumsuzluğuna düşmek yerine.
 func buildAutoClient() *http.Client {
-	t := &http.Transport{
-		DialTLSContext: dialTLSChromeH2,
-		DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, "tcp4", addr)
-		},
-		ForceAttemptHTTP2: true,
-	}
-	if err := http2.ConfigureTransport(t); err != nil {
-		log.Fatalf("http2.ConfigureTransport: %v", err)
-	}
 	return &http.Client{
-		Transport:     t,
+		Transport: &http2.Transport{
+			DialTLSContext: func(ctx context.Context, _, addr string, _ *tls.Config) (net.Conn, error) {
+				conn, err := dialTLSChrome(ctx, addr, []string{"h2", "http/1.1"})
+				if err != nil {
+					return nil, err
+				}
+				// ALPN h2 negotiate edilmediyse http2.Transport bu conn üzerinde
+				// h2 frame yollamaya kalkar ve patlar. Burada erkenden hatayı
+				// yüzeye çıkarıyoruz.
+				if uc, ok := conn.(*utls.UConn); ok {
+					proto := uc.HandshakeState.ServerHello.AlpnProtocol
+					if proto != "h2" {
+						_ = conn.Close()
+						return nil, fmt.Errorf("h2 not negotiated (got %q)", proto)
+					}
+				}
+				return conn, nil
+			},
+		},
 		Timeout:       30 * time.Second,
 		CheckRedirect: noFollowRedirect,
 	}
@@ -117,11 +134,6 @@ func selectClient(hostname string) *http.Client {
 		return h1Client
 	}
 	return autoClient
-}
-
-// dialTLSChromeH2 — Chrome JA3 + ALPN[h2,http/1.1].
-func dialTLSChromeH2(ctx context.Context, _, addr string) (net.Conn, error) {
-	return dialTLSChrome(ctx, addr, []string{"h2", "http/1.1"})
 }
 
 // dialTLSChromeH1 — Chrome JA3 + ALPN[http/1.1].
