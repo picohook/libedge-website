@@ -414,10 +414,33 @@ async function checkAuth() {
     authCheckPromise = (async () => {
         let isLoggedIn = false;
 
+        // 401 olduğunda authToken cookie'si expire olmuş olabilir (15 dk TTL)
+        // ama refreshToken (7 gün) hâlâ valid olabilir — bir kez refresh dene,
+        // başarılıysa profile'ı tekrar çağır. Bu "uzun süre tab'a dönmeyince
+        // logout görünme" davranışını engeller.
+        const fetchProfile = () =>
+            fetch(`${API_BASE}/api/user/profile`, { credentials: 'include' });
+
         try {
-            const res = await fetch(`${API_BASE}/api/user/profile`, {
-                credentials: 'include'
-            });
+            let res = await fetchProfile();
+
+            if (res.status === 401) {
+                let refreshed = false;
+                try {
+                    const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
+                        method: 'POST',
+                        credentials: 'include',
+                    });
+                    refreshed = refreshRes.ok;
+                } catch (e) {
+                    queueMicrotask(() => {
+                        console.warn('checkAuth: refresh fallback ağ hatası:', e.toString());
+                    });
+                }
+                if (refreshed) {
+                    res = await fetchProfile();
+                }
+            }
 
             if (res.ok) {
                 const user = await res.json();
