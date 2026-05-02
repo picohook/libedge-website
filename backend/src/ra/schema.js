@@ -166,6 +166,53 @@ export async function ensureRemoteAccessSchema(db) {
       WHERE slug = 'jove-research'`
   ).run();
 
+  // SciFinder: sso.cas.org OIDC akışı için host allowlist.
+  // Session proxy /__ra-host/sso-cas-org/ üzerinden yönetir; ayrı oidc-proxy.js gerekmez.
+  // Sadece boşsa doldurur — admin override'ı ezmez.
+  await db.prepare(
+    `UPDATE products
+        SET ra_host_allowlist_json = COALESCE(
+              NULLIF(ra_host_allowlist_json, ''),
+              '["sso.cas.org"]'
+            )
+      WHERE slug = 'cas-scifinder-discovery-platform'`
+  ).run();
+
+  // ra_debug_events — staging ortamında publisher cookie namespacing debug kayıtları.
+  // writeRaDebugEvent sadece ENVIRONMENT=staging'de yazar; prod'da tamamen noop.
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS ra_debug_events (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at      INTEGER NOT NULL,
+        product_slug    TEXT,
+        institution_id  INTEGER,
+        target_host     TEXT,
+        target_path     TEXT,
+        request_path    TEXT,
+        request_url     TEXT,
+        upstream_status INTEGER,
+        cf_mitigated    TEXT,
+        cf_ray          TEXT,
+        request_cookie_names  TEXT,
+        upstream_cookie_names TEXT,
+        set_cookie_names      TEXT,
+        request_ch_names      TEXT,
+        upstream_ch_names     TEXT,
+        referer         TEXT,
+        upstream_referer TEXT,
+        user_agent      TEXT
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_ra_debug_events_created
+         ON ra_debug_events (created_at DESC)`
+    )
+    .run();
+
   // ra_alerts — proxy'nin upstream'den aldığı 401/403 hataları burada toplanır.
   // Her kayıt bir publisher+kurum+status kombinasyonu için 15 dakikalık pencereyi temsil eder.
   // dismissed=0 olanlar admin panelinde badge olarak gösterilir.
@@ -210,8 +257,7 @@ async function ensureColumns(db, table, cols) {
       try {
         await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${name} ${def}`).run();
       } catch (err) {
-        // Race koşulunda iki request aynı anda ekleyebilir — "duplicate column"
-        // hatası güvenle yutulur.
+        // Duplicate column hatasi guvence ile yutulur.
         const msg = String((err && err.message) || err);
         if (!/duplicate column/i.test(msg)) throw err;
       }

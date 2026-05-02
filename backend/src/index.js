@@ -1956,6 +1956,7 @@ app.get('/api/subscription/list', async (c) => {
            p.default_access_url AS access_url,
            CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
              WHEN 'session_host_proxy' THEN 'session_host_proxy'
+             WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
              ELSE 'path_proxy'
            END AS ra_delivery_mode,
            COALESCE(p.ra_enabled, 0) AS ra_enabled,
@@ -1976,6 +1977,7 @@ app.get('/api/subscription/list', async (c) => {
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
              CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
                WHEN 'session_host_proxy' THEN 'session_host_proxy'
+               WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
                ELSE 'path_proxy'
              END AS ra_delivery_mode,
              COALESCE(p.ra_enabled, 0) AS ra_enabled,
@@ -2017,6 +2019,7 @@ app.get('/api/user/subscriptions', async (c) => {
            p.default_access_url AS access_url,
            CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
              WHEN 'session_host_proxy' THEN 'session_host_proxy'
+             WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
              ELSE 'path_proxy'
            END AS ra_delivery_mode,
            COALESCE(p.default_requires_institution_email, 0) AS requires_institution_email,
@@ -2037,6 +2040,7 @@ app.get('/api/user/subscriptions', async (c) => {
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
              CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
                WHEN 'session_host_proxy' THEN 'session_host_proxy'
+               WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
                ELSE 'path_proxy'
              END AS ra_delivery_mode,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
@@ -2989,6 +2993,7 @@ const VALID_PRODUCT_ACCESS_TYPES = new Set([
 function normalizeProductRaDeliveryMode(raw) {
   const mode = String(raw || '').trim().toLowerCase();
   if (mode === 'session_host_proxy') return 'session_host_proxy';
+  if (mode === 'stable_host_proxy') return 'stable_host_proxy';
   return 'path_proxy';
 }
 
@@ -3827,6 +3832,7 @@ app.get('/api/admin/subscriptions', async (c) => {
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
              CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
                WHEN 'session_host_proxy' THEN 'session_host_proxy'
+               WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
                ELSE 'path_proxy'
              END AS ra_delivery_mode,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
@@ -3915,6 +3921,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
                CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
                  WHEN 'session_host_proxy' THEN 'session_host_proxy'
+                 WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
                  ELSE 'path_proxy'
                END AS ra_delivery_mode,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
@@ -3943,6 +3950,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
                CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
                  WHEN 'session_host_proxy' THEN 'session_host_proxy'
+                 WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
                  ELSE 'path_proxy'
                END AS ra_delivery_mode,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,

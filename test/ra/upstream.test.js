@@ -7,13 +7,19 @@ import {
 } from '../../workers/proxy/src/upstream.js';
 import {
   buildUpstreamHeaders,
+  buildSessionHostResponseHeaders,
   stripSessionCookie,
   rewriteSessionHostSetCookie,
   rewriteClientContextHeader,
   rewriteSessionHostLocation,
   rewriteSessionHostLocationWithUpstreamCookie,
   rewriteSessionTextProxyUrls,
+  rewriteCloudflareChallengePaths,
+  rewriteCloudflareChallengeRuntimeLocation,
+  rewritePublisherHostJavaScriptText,
   rewriteCurrentHostUrls,
+  relaxProxyMetaContentSecurityPolicy,
+  injectPublisherCookieNamespaceScript,
   decodeOidcStateSuffix,
   mergeSessionHostCookieJar,
   mergeSessionHostSetCookies,
@@ -102,6 +108,78 @@ describe('session-host proxy cookie handling', () => {
     expect(headers.get('User-Agent')).toBe('Mozilla/5.0');
   });
 
+  it('drops publisher-namespaced cookies when the current product has no namespace', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: '__cp_emerald.com|__cf_bm=emerald; JSESSIONID=iop; theme=dark',
+    }));
+
+    expect(headers.get('Cookie')).toBe('JSESSIONID=iop; theme=dark');
+  });
+
+  it('converts publisher-namespaced cookies before forwarding upstream', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: [
+        'ra_proxy_session=abc',
+        '__cp_emerald.com|cf_clearance=ok',
+        '__cp_emerald.com|EMER_SessionId=sid',
+        '__cp_nejm.org|cf_clearance=other',
+        'theme=dark',
+      ].join('; '),
+    }), {
+      publisherCookieScopeHost: 'emerald.com',
+    });
+
+    expect(headers.get('Cookie')).toBe('cf_clearance=ok; EMER_SessionId=sid; theme=dark');
+  });
+
+  it('lets a matching namespaced publisher cookie override the raw browser cookie', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: 'cf_clearance=stale; __cp_emerald.com|cf_clearance=fresh',
+    }), {
+      publisherCookieScopeHost: 'emerald.com',
+    });
+
+    expect(headers.get('Cookie')).toBe('cf_clearance=fresh');
+  });
+
+  it('does not forward raw Cloudflare clearance for namespaced WAF publishers', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: 'cf_clearance=stale; __cf_bm=raw; __cp_emerald.com|__cf_bm=scoped; theme=dark',
+    }), {
+      publisherCookieScopeHost: 'emerald.com',
+    });
+
+    expect(headers.get('Cookie')).toBe('__cf_bm=scoped; theme=dark');
+  });
+
+  it('drops tracking cookies for namespaced WAF publishers', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: [
+        '_ga=ga',
+        '_ga_3KB7RE25QT=ga2',
+        '__gtm_referrer=https%3A%2F%2Fstaging.libedge-website.pages.dev%2F',
+        '_fbp=fb',
+        '__cp_emerald.com|cf_clearance=clear',
+        '__cp_emerald.com|__cf_bm=bm',
+        'EMER_SessionId=sid',
+      ].join('; '),
+    }), {
+      publisherCookieScopeHost: 'emerald.com',
+    });
+
+    expect(headers.get('Cookie')).toBe('cf_clearance=clear; __cf_bm=bm; EMER_SessionId=sid');
+  });
+
+  it('forwards namespaced Cloudflare bot cookies only with a matching clearance cookie', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: '__cp_emerald.com|cf_clearance=ok; __cp_emerald.com|__cf_bm=scoped',
+    }), {
+      publisherCookieScopeHost: 'emerald.com',
+    });
+
+    expect(headers.get('Cookie')).toBe('cf_clearance=ok; __cf_bm=scoped');
+  });
+
   it('strips Cloudflare and forwarding headers before upstream requests', () => {
     const headers = buildUpstreamHeaders(new Headers({
       'CF-Connecting-IP': '203.0.113.1',
@@ -184,6 +262,50 @@ describe('session-host proxy cookie handling', () => {
     expect(headers.has('Referer')).toBe(false);
   });
 
+  it('rewrites Referer on namespace document navigation for WAF-sensitive publishers', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      'Sec-Fetch-Dest': 'document',
+      Accept: 'text/html',
+      Referer: 'https://r4u69546.selmiye.com/__ra-redirect?to=%2F',
+    }), {
+      proxyHostname: 'r4u69546.selmiye.com',
+      originHost: 'www.emerald.com',
+      publisherCookieScopeHost: 'emerald.com',
+    });
+
+    expect(headers.get('Referer')).toBe('https://www.emerald.com/__ra-redirect?to=%2F');
+  });
+
+  it('normalizes external portal Referer on namespace document navigation', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Site': 'cross-site',
+      Accept: 'text/html',
+      Referer: 'https://staging.libedge-website.pages.dev/',
+    }), {
+      proxyHostname: 'r4u69546.selmiye.com',
+      originHost: 'www.emerald.com',
+      publisherCookieScopeHost: 'emerald.com',
+    });
+
+    expect(headers.get('Referer')).toBe('https://www.emerald.com/');
+    expect(headers.get('Sec-Fetch-Site')).toBe('same-origin');
+  });
+
+  it('normalizes stable entry redirect Referer to the final publisher path', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      'Sec-Fetch-Dest': 'document',
+      Accept: 'text/html',
+      Referer: 'https://3010836a0478e29e647497fafec3209d16e8c585.selmiye.com/coproxy/redirect?redirectUrl=https%3A%2F%2F3010836a0478e29e647497fafec3209d16e8c585.selmiye.com%2Finsight%2F',
+    }), {
+      proxyHostname: '3010836a0478e29e647497fafec3209d16e8c585.selmiye.com',
+      originHost: 'www.emerald.com',
+      publisherCookieScopeHost: 'emerald.com',
+    });
+
+    expect(headers.get('Referer')).toBe('https://www.emerald.com/insight/');
+  });
+
   it('preserves natural Sec-Fetch values on sub-resource (asset) requests', () => {
     const headers = buildUpstreamHeaders(new Headers({
       'Sec-Fetch-Site': 'same-origin',
@@ -220,6 +342,137 @@ describe('session-host proxy cookie handling', () => {
     expect(out).toBe(
       'cf_clearance=abc; HttpOnly; SameSite=None; Domain=rabc1234.selmiye.com; Path=/; Secure'
     );
+  });
+
+  it('rewrites selected publisher cookies with a namespaced parent-domain name', () => {
+    const out = rewriteSessionHostSetCookie(
+      'cf_clearance=abc; Domain=.emerald.com; Path=/; Secure; HttpOnly; SameSite=None',
+      'rabc1234.selmiye.com',
+      {
+        publisherCookieScopeHost: 'emerald.com',
+        publisherCookieDomain: 'selmiye.com',
+      }
+    );
+
+    expect(out).toBe(
+      '__cp_emerald.com|cf_clearance=abc; HttpOnly; SameSite=None; Domain=selmiye.com; Path=/; Secure'
+    );
+  });
+
+  it('removes HTML meta CSP tags that block publisher challenge scripts', () => {
+    const html = [
+      '<html><head>',
+      '<meta http-equiv="Content-Security-Policy" content="script-src https://challenges.cloudflare.com">',
+      '<meta name="viewport" content="width=device-width">',
+      '</head><body></body></html>',
+    ].join('');
+
+    const out = relaxProxyMetaContentSecurityPolicy(html);
+    expect(out).not.toContain('Content-Security-Policy');
+    expect(out).toContain('name="viewport"');
+  });
+
+  it('injects publisher cookie namespacing before challenge scripts', () => {
+    const html = '<html><head><script src="/cdn-cgi/challenge-platform/x.js"></script></head><body></body></html>';
+    const out = injectPublisherCookieNamespaceScript(html, 'emerald.com', 'www.emerald.com');
+
+    expect(out).toContain('__raPublisherCookieNamespace');
+    expect(out).toContain('__raPublisherLocation');
+    expect(out).toContain('www.emerald.com');
+    expect(out.indexOf('__raPublisherCookieNamespace')).toBeLessThan(out.indexOf('/cdn-cgi/challenge-platform'));
+    expect(out).toContain('__cp_');
+    expect(out).toContain('domain=[^;]');
+    expect(injectPublisherCookieNamespaceScript(out, 'emerald.com')).toBe(out);
+  });
+
+  it('rewrites Cloudflare challenge paths away from reserved /cdn-cgi', () => {
+    const input = [
+      `a.src = '/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=abc';`,
+      `b.src = "/cdn-cgi/challenge-platform/x";`,
+      String.raw`c.src = "\/cdn-cgi\/challenge-platform\/y";`,
+      String.raw`d.src = "\u002fcdn-cgi\u002fchallenge-platform\u002fz";`,
+      `e.src = "%2Fcdn-cgi%2Fchallenge-platform%2Fq";`,
+    ].join('\n');
+
+    const out = rewriteCloudflareChallengePaths(input);
+
+    expect(out).toContain("'/__ra-cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=abc'");
+    expect(out).toContain('"/__ra-cdn-cgi/challenge-platform/x"');
+    expect(out).toContain(String.raw`"\/__ra-cdn-cgi\/challenge-platform\/y"`);
+    expect(out).toContain(String.raw`"\u002f__ra-cdn-cgi\u002fchallenge-platform\u002fz"`);
+    expect(out).toContain('"%2F__ra-cdn-cgi%2Fchallenge-platform%2Fq"');
+    expect(out).not.toContain('src = \'/cdn-cgi/');
+    expect(out).not.toContain(String.raw`\/cdn-cgi\/`);
+    expect(out).not.toContain(String.raw`\u002fcdn-cgi\u002f`);
+    expect(out).not.toContain('%2Fcdn-cgi%2F');
+  });
+
+  it('rewrites Cloudflare challenge location reads to the publisher-location shim', () => {
+    const input = [
+      'var a = location.hostname;',
+      'var b = window.location.origin;',
+      'var c = self.location.href;',
+      'var d = document.location.host;',
+    ].join('\n');
+
+    const out = rewriteCloudflareChallengeRuntimeLocation(input);
+
+    expect(out).toContain('var a = window.__raPublisherLocation.hostname;');
+    expect(out).toContain('var b = window.__raPublisherLocation.origin;');
+    expect(out).toContain('var c = window.__raPublisherLocation.href;');
+    expect(out).toContain('var d = window.__raPublisherLocation.host;');
+    expect(out).not.toContain('location.hostname');
+    expect(out).not.toContain('location.origin');
+  });
+
+  it('rewrites Emerald HJ/DJ-style bare host strings in script text', () => {
+    const input = [
+      `var h = 'www.emerald.com';`,
+      `var d = ".emerald.com";`,
+      `var root = "emerald.com";`,
+      `var other = "notemerald.com";`,
+    ].join('\n');
+
+    const out = rewritePublisherHostJavaScriptText(
+      input,
+      '3010836a0478e29e647497fafec3209d16e8c585.selmiye.com',
+      'emerald.com',
+      new Set(['www.emerald.com', 'emerald.com'])
+    );
+
+    expect(out).toContain(`'3010836a0478e29e647497fafec3209d16e8c585.selmiye.com'`);
+    expect(out).toContain(`"3010836a0478e29e647497fafec3209d16e8c585.selmiye.com"`);
+    expect(out).toContain(`"notemerald.com"`);
+    expect(out).not.toContain('www.emerald.com');
+    expect(out).not.toContain('.emerald.com');
+  });
+
+  it('strips strict challenge policy headers only for namespaced publisher responses', () => {
+    const input = new Headers({
+      'Content-Type': 'text/html; charset=UTF-8',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Resource-Policy': 'same-origin',
+      'Critical-CH': 'Sec-CH-UA',
+      'Referrer-Policy': 'same-origin',
+    });
+
+    const out = buildSessionHostResponseHeaders(
+      input,
+      'rabc1234.selmiye.com',
+      'www.emerald.com',
+      'www.emerald.com',
+      new Set(['www.emerald.com']),
+      { publisherCookieScopeHost: 'emerald.com' }
+    );
+
+    expect(out.get('Content-Type')).toBe('text/html; charset=UTF-8');
+    expect(out.get('Content-Security-Policy')).toContain('default-src *');
+    expect(out.has('Cross-Origin-Embedder-Policy')).toBe(false);
+    expect(out.has('Cross-Origin-Opener-Policy')).toBe(false);
+    expect(out.has('Cross-Origin-Resource-Policy')).toBe(false);
+    expect(out.get('Critical-CH')).toBe('Sec-CH-UA');
+    expect(out.has('Referrer-Policy')).toBe(false);
   });
 
   it('rewrites alternate session-host locations through the encoded host prefix', () => {
@@ -335,6 +588,19 @@ describe('session-host proxy cookie handling', () => {
     );
 
     expect(out).toBe('nonce.old=keep; nonce.new=abc');
+  });
+
+  it('does not persist volatile Cloudflare challenge cookies in the session jar', () => {
+    const out = mergeSessionHostSetCookies(
+      '__cf_bm=old; cf_clearance=old; JSESSIONID=stable',
+      [
+        '__cf_bm=new; Path=/; Secure; HttpOnly',
+        'cf_clearance=new; Path=/; Secure; HttpOnly',
+        'EMER_SessionId=sid; Path=/; Secure; HttpOnly',
+      ]
+    );
+
+    expect(out).toBe('JSESSIONID=stable; EMER_SessionId=sid');
   });
 
   it('rewrites EMIS mobile config origins through the session host proxy', () => {

@@ -45,7 +45,7 @@ const ALLOWED_ACCESS_TYPES = [
   'email_password_external',
   'mixed',
 ];
-const ALLOWED_RA_DELIVERY_MODES = ['session_host_proxy', 'path_proxy'];
+const ALLOWED_RA_DELIVERY_MODES = ['session_host_proxy', 'stable_host_proxy', 'path_proxy'];
 
 const MAX_RECIPE_BYTES = 16 * 1024; // 16 KB — recipe genelde ~1-2 KB
 const MAX_ALLOWLIST_BYTES = 4 * 1024;
@@ -415,5 +415,6 @@ function normalizeDeliveryMode(raw) {
   const mode = String(raw || '').trim().toLowerCase();
   if (!mode) return 'path_proxy';
   if (mode === 'proxy' || mode === 'direct_login') return 'path_proxy';
+  if (mode === 'stable_host_proxy') return 'stable_host_proxy';
   return mode;
 }

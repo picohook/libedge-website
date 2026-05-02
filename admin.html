@@ -1435,6 +1435,7 @@
                                         <select id="productRaDeliveryMode" class="w-full border p-2 rounded">
                                             <option value="path_proxy">path_proxy — proxy.libedge.com/{host}/path</option>
                                             <option value="session_host_proxy">session_host_proxy — r{sid}.libedge.com (JoVE, EMIS...)</option>
+                                            <option value="stable_host_proxy">stable_host_proxy — sabit ürün hostu</option>
                                         </select>
                                     </div>
                                     <div>
@@ -1511,6 +1512,9 @@
             </button>
             <button type="button" data-ra-subtab="subscriptions" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
                 <i class="fas fa-key mr-2"></i>Kurumsal Abonelikler
+            </button>
+            <button type="button" data-ra-subtab="products" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
+                <i class="fas fa-cube mr-2"></i>Ürün RA Yapılandırması
             </button>
             <button type="button" data-ra-subtab="logs" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
                 <i class="fas fa-clipboard-list mr-2"></i>Erişim Logları
@@ -1882,9 +1886,10 @@
                     <label class="block text-xs font-medium text-gray-600 mb-1">Dağıtım Modu</label>
                     <select id="raProductDeliveryModeInput" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
                         <option value="session_host_proxy">Session host proxy</option>
+                        <option value="stable_host_proxy">Stable host proxy</option>
                         <option value="path_proxy">Path proxy</option>
                     </select>
-                    <p class="text-[11px] text-gray-400 mt-1">RA dağıtımı yalnızca session host proxy veya path proxy modlarıyla yapılır.</p>
+                    <p class="text-[11px] text-gray-400 mt-1">RA dağıtımı session host, stable host veya path proxy modlarıyla yapılır.</p>
                     <div id="raProductDeliveryModeGuide" class="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"></div>
                 </div>
                 <div>
@@ -3629,12 +3634,16 @@ document.addEventListener('click', function(e) {
         if (normalized === 'session_host_proxy') {
             return 'Her RA oturumu r{sid}.selmiye.com gibi tekil bir host üzerinden açılır. Cookie/domain hassas publisher\'lar için önerilir.';
         }
+        if (normalized === 'stable_host_proxy') {
+            return 'Ürün aynı hash subdomain üzerinden açılır. WAF/cookie bağlamı hassas publisher\'larda yeni genel model için kullanılır.';
+        }
         return 'Path proxy tek proxy hostu altında encoded publisher host path\'i kullanır. Basit IP-gated veya path tabanlı akışlar için uygundur.';
     }
 
     function normalizeRaDeliveryMode(mode) {
         const normalized = String(mode || '').trim().toLowerCase();
         if (normalized === 'session_host_proxy') return 'session_host_proxy';
+        if (normalized === 'stable_host_proxy') return 'stable_host_proxy';
         return 'path_proxy';
     }
 
@@ -3967,7 +3976,7 @@ document.addEventListener('click', function(e) {
                 </td>
                 <td class="px-4 py-2 text-center">
                     ${p.ra_enabled
-                        ? `<span title="${escapeHtml(p.ra_origin_host || '')}" class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium cursor-pointer"><i class="fas fa-shield-halved mr-0.5"></i>${p.ra_delivery_mode === 'session_host_proxy' ? 'SHP' : 'PP'}</span>`
+                        ? `<span title="${escapeHtml(p.ra_origin_host || '')}" class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium cursor-pointer"><i class="fas fa-shield-halved mr-0.5"></i>${p.ra_delivery_mode === 'stable_host_proxy' ? 'STH' : (p.ra_delivery_mode === 'session_host_proxy' ? 'SHP' : 'PP')}</span>`
                         : '<span class="text-gray-300 text-xs">—</span>'}
                 </td>
                 <td class="px-4 py-2 text-right whitespace-nowrap">

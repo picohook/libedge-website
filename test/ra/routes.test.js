@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { sign } from 'hono/jwt';
 
 import app from '../../backend/src/index.js';
+import { stableProxyHostLabel } from '../../backend/src/ra/proxy-url.js';
 
 class FakeD1 {
   constructor(handlers = []) {
@@ -106,6 +107,65 @@ describe('RA issue-token route', () => {
     const data = await res.json();
     expect(data.redirect_url).toMatch(
       /^https:\/\/proxy-staging\.selmiye\.com\/www-pangram-com\/login\?t=/
+    );
+  });
+
+  it('issues stable_host_proxy redirects on a deterministic product host', async () => {
+    const db = new FakeD1([
+      {
+        match: 'FROM institution_subscriptions isub',
+        first: async () => ({
+          id: 10,
+          product_slug: 'emerald-premier',
+          end_date: null,
+          ra_credential_scope: null,
+          ra_credential_enc: null,
+          ra_recipe_override_json: null,
+          ra_valid_until: null,
+          access_type: 'ip',
+          ra_enabled: 1,
+          ra_delivery_mode: 'stable_host_proxy',
+          ra_origin_host: 'www.emerald.com',
+          ra_login_recipe_json: null,
+          ra_requires_tunnel: 1,
+          ra_origin_landing_path: '/insight/',
+        }),
+      },
+      {
+        match: 'FROM institution_ra_settings',
+        first: async () => ({ enabled: 1, tunnel_status: 'ok' }),
+      },
+    ]);
+
+    const secret = 'test-jwt-secret';
+    const authHeader = await makeAuthHeader(
+      { user_id: 23, institution_id: 188, role: 'user' },
+      secret
+    );
+
+    const res = await app.request(
+      '/api/ra/issue-token',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: authHeader,
+        },
+        body: JSON.stringify({ subscription_id: 10 }),
+      },
+      {
+        DB: db,
+        JWT_SECRET: secret,
+        RA_PROXY_TOKEN_SECRET: 'proxy-secret',
+        RA_PROXY_BASE_HOST: 'selmiye.com',
+      }
+    );
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const label = await stableProxyHostLabel('emerald-premier', 'www.emerald.com');
+    expect(data.redirect_url).toMatch(
+      new RegExp(`^https://${label}\\.selmiye\\.com/insight/\\?t=`)
     );
   });
 });

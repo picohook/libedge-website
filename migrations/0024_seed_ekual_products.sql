@@ -10,7 +10,7 @@ INSERT INTO products (
 ('cab-abstracts', 'CAB Abstracts', 'Fen & Matematik', 'Türkiye', 'ip', 'https://www.cabidigitallibrary.org/product/ca', '["EKUAL"]', 1, 1, 'session_host_proxy', 'www.cabidigitallibrary.org', '/product/ca', 1, '["www.cabidigitallibrary.org","cabidigitallibrary.org","www.cabi.org","cabi.org"]'),
 ('cambridge-university-press', 'Cambridge University Press (CUP)', 'Genel', 'Türkiye', 'ip', 'https://www.cambridge.org/core', '["EKUAL"]', 1, 1, 'session_host_proxy', 'www.cambridge.org', '/core', 1, '["www.cambridge.org","cambridge.org"]'),
 ('dynamed', 'DynaMed', 'Sağlık', 'Türkiye', 'ip', 'https://www.dynamed.com', '["EKUAL"]', 1, 1, 'session_host_proxy', 'www.dynamed.com', NULL, 1, '["www.dynamed.com","dynamed.com"]'),
-('emerald-premier', 'Emerald Premier eJournal', 'İşletme, Ekonomi, Finans', 'Türkiye', 'ip', 'https://www.emerald.com/insight', '["EKUAL"]', 1, 1, 'session_host_proxy', 'www.emerald.com', '/insight', 1, '["www.emerald.com","emerald.com"]'),
+('emerald-premier', 'Emerald Premier eJournal', 'İşletme, Ekonomi, Finans', 'Türkiye', 'ip', 'https://www.emerald.com/insight/', '["EKUAL"]', 1, 1, 'stable_host_proxy', 'www.emerald.com', '/insight/', 1, '["www.emerald.com","emerald.com"]'),
 ('ieee', 'IEEE', 'Fen & Matematik', 'Türkiye', 'ip', 'https://ieeexplore.ieee.org', '["EKUAL"]', 1, 1, 'session_host_proxy', 'ieeexplore.ieee.org', NULL, 1, '["ieeexplore.ieee.org","ieee.org"]'),
 ('intihal-net', 'İntihal.net (Akademik İntihal)', 'Genel', 'Türkiye', 'email_password_external', 'https://www.intihal.net', '["EKUAL"]', 1, 0, 'path_proxy', NULL, NULL, 1, NULL),
 ('ithenticate', 'iThenticate', 'Genel', 'Türkiye', 'email_password_external', 'https://www.ithenticate.com', '["EKUAL"]', 1, 0, 'path_proxy', NULL, NULL, 1, NULL),

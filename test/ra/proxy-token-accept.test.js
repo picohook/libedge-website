@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { acceptSessionHostToken } from '../../workers/proxy/src/index.js';
+import { acceptSessionHostToken, acceptStableHostToken } from '../../workers/proxy/src/index.js';
 import { signProxyToken } from '../../backend/src/ra/jwt.js';
+import { stableProxyHostLabel } from '../../backend/src/ra/proxy-url.js';
 
 function memoryKV(initial = {}) {
   const map = new Map(Object.entries(initial));
@@ -95,6 +96,24 @@ describe('acceptSessionHostToken — duplicate fetch idempotency', () => {
     expect(env.RATE_LIMIT_KV._map.get(`ra:jti:${payload.jti}`)).toBe('used');
   });
 
+  it('routes WAF-sensitive session hosts through a same-origin entry redirect', async () => {
+    const payload = freshPayload({ pid: 'emerald-premier', tgt: 'www.emerald.com' });
+    const token = await signProxyToken(payload, SECRET);
+    const env = buildEnv({
+      session: freshSession({
+        origin_host: 'www.emerald.com',
+        product_slug: 'emerald-premier',
+      }),
+    });
+    const { request, url } = buildRequest({ token });
+
+    const resp = await acceptSessionHostToken(request, env, token, url, SESSION_ID);
+
+    expect(resp.status).toBe(302);
+    expect(resp.headers.get('Location')).toBe(`https://${HOST}/__ra-redirect?to=%2F`);
+    expect(resp.headers.get('Set-Cookie')).toContain(`ra_proxy_session=${SESSION_ID}`);
+  });
+
   it('duplicate fetch with valid cookie + session returns 302 (no 401)', async () => {
     const payload = freshPayload();
     const token = await signProxyToken(payload, SECRET);
@@ -175,5 +194,67 @@ describe('acceptSessionHostToken — duplicate fetch idempotency', () => {
     const resp = await acceptSessionHostToken(request, env, token, url, SESSION_ID);
 
     expect(resp.status).toBe(401);
+  });
+});
+
+describe('acceptStableHostToken', () => {
+  it('creates a normal proxy session on the stable product host', async () => {
+    const payload = freshPayload({
+      pid: 'emerald-premier',
+      tgt: 'www.emerald.com',
+      mod: 'stable_host_proxy',
+    });
+    const label = await stableProxyHostLabel(payload.pid, payload.tgt);
+    const host = `${label}.selmiye.com`;
+    const token = await signProxyToken(payload, SECRET);
+    const env = {
+      RA_PROXY_TOKEN_SECRET: SECRET,
+      RATE_LIMIT_KV: memoryKV(),
+      RA_UPSTREAM_SESSIONS: memoryKV(),
+    };
+    const url = new URL(`https://${host}/insight/?t=${token}`);
+    const request = new Request(url);
+
+    const resp = await acceptStableHostToken(request, env, token, url, label);
+
+    expect(resp.status).toBe(302);
+    expect(resp.headers.get('Location')).toBe(
+      `https://${host}/coproxy/redirect?redirectUrl=${encodeURIComponent(`https://${host}/insight/`)}`
+    );
+    const setCookie = resp.headers.get('Set-Cookie');
+    expect(setCookie).toContain('ra_proxy_session=');
+    expect(setCookie).toContain(`Domain=${host}`);
+    const sessionKey = [...env.RA_UPSTREAM_SESSIONS._map.keys()]
+      .find((key) => key.startsWith('proxysess:'));
+    expect(sessionKey).toBeTruthy();
+    const session = JSON.parse(env.RA_UPSTREAM_SESSIONS._map.get(sessionKey));
+    expect(session.origin_host).toBe('www.emerald.com');
+    expect(session.product_slug).toBe('emerald-premier');
+  });
+
+  it('rejects a stable token on the wrong product hash host', async () => {
+    const payload = freshPayload({
+      pid: 'emerald-premier',
+      tgt: 'www.emerald.com',
+      mod: 'stable_host_proxy',
+    });
+    const token = await signProxyToken(payload, SECRET);
+    const env = {
+      RA_PROXY_TOKEN_SECRET: SECRET,
+      RATE_LIMIT_KV: memoryKV(),
+      RA_UPSTREAM_SESSIONS: memoryKV(),
+    };
+    const url = new URL('https://0000000000000000000000000000000000000000.selmiye.com/?t=' + token);
+    const request = new Request(url);
+
+    const resp = await acceptStableHostToken(
+      request,
+      env,
+      token,
+      url,
+      '0000000000000000000000000000000000000000'
+    );
+
+    expect(resp.status).toBe(403);
   });
 });

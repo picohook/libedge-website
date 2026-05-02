@@ -31,10 +31,10 @@ import { requireAuth, parseAndValidate } from '../../index.js';
 import { signProxyToken, newJti } from '../../ra/jwt.js';
 import { encodeHost } from '../../ra/host.js';
 import { ensureRemoteAccessSchema } from '../../ra/schema.js';
-import { buildProxyLandingPath } from '../../ra/proxy-url.js';
+import { buildProxyLandingPath, stableProxyHostLabel } from '../../ra/proxy-url.js';
 
 const SESSION_TTL_SEC = 3600; // session_host_proxy oturumu süresi
-const ALLOWED_DELIVERY_MODES = new Set(['session_host_proxy', 'path_proxy']);
+const ALLOWED_DELIVERY_MODES = new Set(['session_host_proxy', 'stable_host_proxy', 'path_proxy']);
 
 /** 7 karakterlik base36 rastgele ID (cryptographically random) */
 function generateSessionId() {
@@ -175,7 +175,7 @@ export function registerRaIssueToken(app) {
       }
     }
 
-    // Delivery mode: path_proxy (default) veya session_host_proxy.
+    // Delivery mode: path_proxy (default), session_host_proxy veya stable_host_proxy.
     // Legacy DB değerleri ('proxy', 'direct_login') path_proxy olarak yürür.
     const deliveryMode = normalizeDeliveryMode(sub.ra_delivery_mode);
     if (!ALLOWED_DELIVERY_MODES.has(deliveryMode)) {
@@ -194,7 +194,7 @@ export function registerRaIssueToken(app) {
         iid: institutionId,
         sid: adminTest ? 0 : sub.id,
         pid: sub.product_slug,
-        tgt: deliveryMode === 'session_host_proxy'
+        tgt: deliveryMode === 'session_host_proxy' || deliveryMode === 'stable_host_proxy'
           ? sub.ra_origin_host          // düz hostname, encode edilmez
           : encodeHost(sub.ra_origin_host), // path_proxy: hyphen-encoded
         mod: deliveryMode,              // proxy Worker modu seçmek için
@@ -232,6 +232,10 @@ export function registerRaIssueToken(app) {
       );
       // /research?t=JWT → proxy token doğrular → 302 /research → JoVE /research
       redirectUrl = `https://r${sid}.${baseHost}${landingPath}?t=${token}`;
+    } else if (deliveryMode === 'stable_host_proxy') {
+      const baseHost = c.env.RA_PROXY_BASE_HOST || 'selmiye.com';
+      const label = await stableProxyHostLabel(sub.product_slug, sub.ra_origin_host);
+      redirectUrl = `https://${label}.${baseHost}${landingPath}?t=${token}`;
     } else {
       // path_proxy: selmiye.com/{encoded-host}{landingPath}?t={token}
       const baseHost = c.env.RA_PROXY_HOST || c.env.RA_PROXY_BASE_HOST || 'selmiye.com';
@@ -365,5 +369,6 @@ function normalizeDeliveryMode(raw) {
   const mode = String(raw || '').trim().toLowerCase();
   if (!mode) return 'path_proxy';
   if (mode === 'proxy' || mode === 'direct_login') return 'path_proxy';
+  if (mode === 'stable_host_proxy') return 'stable_host_proxy';
   return mode;
 }
