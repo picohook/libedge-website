@@ -1815,3 +1815,33 @@ body.menu-open {
         background: linear-gradient(to right, transparent, #1f2937);
     }
 }
+
+/* ====================== NAV GLASS & HERO SCROLL ====================== */
+
+/* Başlangıç: beyaz (normal görünüm) */
+.nav-glass {
+    background-color: rgba(255, 255, 255, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: background-color 0.4s ease, box-shadow 0.4s ease, backdrop-filter 0.4s ease;
+}
+
+/* Sticky olduktan sonra: saydam cam — arkası görünür */
+.nav-glass.nav-scrolled {
+    background-color: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.10);
+}
+
+/* Hero scroll shrink desteği */
+.hero-slider-container {
+    will-change: transform;
+    transform-origin: top center;
+    transition: transform 0.12s linear;
+}
+
+/* Hero'nun altındaki içerik ona yaslanır */
+.hero-slider-container + * {
+    position: relative;
+    z-index: 1;
+}

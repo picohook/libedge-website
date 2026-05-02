@@ -128,6 +128,39 @@ function initHeaderInteractions() {
     });
 }
 
+// Scroll effects: nav glass + hero shrink
+(function() {
+    if (window.__scrollEffectsInit) return;
+    window.__scrollEffectsInit = true;
+
+    function getHeaderHeight() {
+        const header = document.querySelector('#site-header header');
+        return header ? header.offsetHeight : 80;
+    }
+
+    function onScroll() {
+        const scrollY = window.scrollY;
+        const threshold = getHeaderHeight();
+
+        // Nav: saydam cam olur — header geçildikten sonra
+        const nav = document.querySelector('nav.nav-glass');
+        if (nav) nav.classList.toggle('nav-scrolled', scrollY > threshold);
+
+        // Hero: kaydırınca küçülür
+        const hero = document.querySelector('.hero-slider-container');
+        if (hero) {
+            if (scrollY <= 0) {
+                hero.style.transform = '';
+            } else {
+                const t = Math.min(1, scrollY / 400);
+                hero.style.transform = 'scale(' + (1 - t * 0.18).toFixed(3) + ')';
+            }
+        }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+})();
+
 document.addEventListener('DOMContentLoaded', function() {
     initTranslateButtonSync();
     initHeaderInteractions();

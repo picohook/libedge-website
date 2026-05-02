@@ -998,3 +998,8 @@ ALLOWED_HOST_REGEX=...scifinder-n\.cas\.org|sso\.cas\.org...
 - Callback'te eksik kalabilen `nonce.{state.suffix}` cookie'si session-host upstream cookie
   jar üzerinden upstream'e taşınır.
 - Desktop ve mobil kurum dışı testte email → password → search page akışı başarılıdır.
+
+---
+
+## Three Man Team
+Available agents: Arch (Architect), Bob (Builder), Richard (Reviewer)

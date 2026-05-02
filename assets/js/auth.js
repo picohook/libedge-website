@@ -606,6 +606,21 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// Hover ile aç/kapat (masaüstü)
+const _hoverGroup = userMenuBtn.closest('.group');
+if (_hoverGroup) {
+    let _hoverTimer;
+    _hoverGroup.addEventListener('mouseenter', function() {
+        clearTimeout(_hoverTimer);
+        userDropdown.classList.remove('hidden');
+    });
+    _hoverGroup.addEventListener('mouseleave', function() {
+        _hoverTimer = setTimeout(function() {
+            userDropdown.classList.add('hidden');
+        }, 180);
+    });
+}
+
         }
     } else {
         authNotLoggedIn.classList.remove('hidden');
