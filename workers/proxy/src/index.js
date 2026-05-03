@@ -12,7 +12,7 @@
 import { verifyProxyToken } from '../../../backend/src/ra/jwt.js';
 import { encodeHost, decodeHost, isValidEncodedHost } from '../../../backend/src/ra/host.js';
 import { stableProxyHostLabel } from '../../../backend/src/ra/proxy-url.js';
-import { egressFetch } from './egress-client.js';
+import { egressFetch, browserFetch } from './egress-client.js';
 import { writeUpstreamAlert } from './alert-writer.js';
 import { htmlError } from './error-page.js';
 import { enforceProxyRateLimit } from './rate-limit.js';
@@ -24,6 +24,7 @@ const SESSION_ALT_HOST_PREFIX = '/__ra-host/';
 const SESSION_ENTRY_REDIRECT_PATH = '/__ra-redirect';
 const STABLE_ENTRY_REDIRECT_PATH = '/coproxy/redirect';
 const CF_CHALLENGE_PROXY_PREFIX = '/__ra-cdn-cgi/';
+const CLIENT_DEBUG_PATH = '/__ra-client-debug';
 const DESKTOP_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
@@ -69,6 +70,11 @@ async function handle(request, env, ctx) {
     return await handleStableHost(request, env, ctx, url, stableHostMatch[1]);
   }
 
+  // Admin route — stored WAF clearance management (RA_ADMIN_SECRET protected)
+  if (url.pathname === '/__ra-admin/waf-clearance') {
+    return await handleAdminWafClearance(request, env);
+  }
+
   // Path-proxy modu (mevcut)
   return await handlePathProxy(request, env, ctx, url);
 }
@@ -105,6 +111,10 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   const session = await env.RA_UPSTREAM_SESSIONS.get(`rhost:${sessionId}`, 'json');
   if (!session || session.expires_at < Math.floor(Date.now() / 1000)) {
     return htmlError(401, 'Oturum süresi dolmuş. Portal üzerinden yeniden erişin.');
+  }
+
+  if (url.pathname === CLIENT_DEBUG_PATH) {
+    return await handleClientDebug(request, env, session, url);
   }
 
   if (url.pathname === SESSION_ENTRY_REDIRECT_PATH) {
@@ -144,6 +154,7 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     originHost: target.host,
     forceDesktopUserAgent: session.product_slug === 'emis',
     publisherCookieScopeHost,
+    targetPath: target.path,
   });
   const useSessionCookieJar = shouldUseSessionCookieJar(publisherCookieScopeHost);
   const storedUpstreamCookies = useSessionCookieJar
@@ -153,17 +164,28 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     storedUpstreamCookies,
     upstreamHeaders.get('Cookie') || ''
   );
+  const allowCfChl = { allowCloudflareChallengeRuntimeCookies: isCloudflareChallengeAssetPath(target.path) };
   if (effectiveUpstreamCookies && publisherCookieScopeHost) {
     effectiveUpstreamCookies = rewritePublisherCookieHeaderForUpstream(
       effectiveUpstreamCookies,
-      publisherCookieScopeHost
+      publisherCookieScopeHost,
+      allowCfChl
     );
   }
   if (publisherCookieScopeHost) {
     effectiveUpstreamCookies = ensurePublisherScopedCookiesForwarded(
       effectiveUpstreamCookies,
       request.headers.get('Cookie'),
-      publisherCookieScopeHost
+      publisherCookieScopeHost,
+      allowCfChl
+    );
+  }
+  if (publisherCookieScopeHost && !isCloudflareChallengeAssetPath(target.path)) {
+    effectiveUpstreamCookies = await injectStoredWafClearanceIfMissing(
+      env,
+      session.product_slug,
+      publisherCookieScopeHost,
+      effectiveUpstreamCookies
     );
   }
   if (effectiveUpstreamCookies) {
@@ -222,6 +244,13 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     publisherCookieScopeHost,
     proxyCookieDomainFromEnv(env, url.hostname)
   );
+  clearPublisherClearanceOnChallenge(
+    respHeaders,
+    upstreamResp,
+    publisherCookieScopeHost,
+    proxyCookieDomainFromEnv(env, url.hostname),
+    target.path
+  );
 
   addStagingDebugHeaders(respHeaders, env, {
     targetUrl,
@@ -264,6 +293,27 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     );
   }
   sanitizeWafChallengeResponseHeaders(respHeaders, publisherCookieScopeHost);
+
+  if (isCloudflareChallengeAssetPath(target.path) && /\btext\/html\b/i.test(contentType)) {
+    const text = relaxProxyMetaContentSecurityPolicy(await upstreamResp.text());
+    // Strip cf_clearance Set-Cookie from challenge frames — challenge platform
+    // sets/clears clearance cookies during challenge flow, which would overwrite
+    // a valid clearance the browser already holds. Only the verify endpoint on
+    // the publisher domain should issue the final cf_clearance.
+    const filteredHeaders = new Headers(
+      [...respHeaders.entries()].filter(([k, v]) =>
+        !(k.toLowerCase() === 'set-cookie' && v.toLowerCase().includes('cf_clearance'))
+      )
+    );
+    filteredHeaders.delete('Content-Length');
+    filteredHeaders.delete('Content-Encoding');
+    return new Response(text, {
+      status: upstreamResp.status,
+      statusText: upstreamResp.statusText,
+      headers: filteredHeaders,
+    });
+  }
+
   const needsTextRewrite =
     shouldRewriteSessionTextResponse(target, upstreamResp) ||
     shouldRewriteCurrentHostTextResponse(target, session.origin_host, contentType);
@@ -279,7 +329,7 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     if (shouldRewriteSessionTextResponse(target, upstreamResp)) {
       text = rewriteSessionTextProxyUrls(text, url.hostname, session.origin_host, proxyableHosts);
     }
-    if (publisherCookieScopeHost) {
+    if (publisherCookieScopeHost && shouldRewritePublisherTextBody(target, contentType)) {
       text = rewritePublisherHostJavaScriptText(text, url.hostname, publisherCookieScopeHost, proxyableHosts);
       if (isCloudflareChallengeSurface(target, upstreamResp)) {
         text = rewriteCloudflareChallengeRuntimeLocation(text);
@@ -288,7 +338,12 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     }
     if (publisherCookieScopeHost && /\btext\/html\b/i.test(contentType)) {
       text = relaxProxyMetaContentSecurityPolicy(text);
-      text = injectPublisherCookieNamespaceScript(text, publisherCookieScopeHost, target.host);
+      text = injectPublisherCookieNamespaceScript(
+        text,
+        publisherCookieScopeHost,
+        target.host,
+        isStagingEnv(env)
+      );
     }
 
     respHeaders.delete('Content-Length');
@@ -342,6 +397,10 @@ async function handleStableHost(request, env, ctx, url, stableLabel) {
     return htmlError(403, 'Bu sabit erişim hostu bu oturuma ait değil.');
   }
 
+  if (url.pathname === CLIENT_DEBUG_PATH) {
+    return await handleClientDebug(request, env, session, url);
+  }
+
   return await proxySessionSurface(request, env, ctx, url, session, sessionId);
 }
 
@@ -372,6 +431,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     originHost: target.host,
     forceDesktopUserAgent: session.product_slug === 'emis',
     publisherCookieScopeHost,
+    targetPath: target.path,
   });
   const useSessionCookieJar = shouldUseSessionCookieJar(publisherCookieScopeHost);
   const storedUpstreamCookies = useSessionCookieJar
@@ -381,17 +441,28 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     storedUpstreamCookies,
     upstreamHeaders.get('Cookie') || ''
   );
+  const allowCfChl = { allowCloudflareChallengeRuntimeCookies: isCloudflareChallengeAssetPath(target.path) };
   if (effectiveUpstreamCookies && publisherCookieScopeHost) {
     effectiveUpstreamCookies = rewritePublisherCookieHeaderForUpstream(
       effectiveUpstreamCookies,
-      publisherCookieScopeHost
+      publisherCookieScopeHost,
+      allowCfChl
     );
   }
   if (publisherCookieScopeHost) {
     effectiveUpstreamCookies = ensurePublisherScopedCookiesForwarded(
       effectiveUpstreamCookies,
       request.headers.get('Cookie'),
-      publisherCookieScopeHost
+      publisherCookieScopeHost,
+      allowCfChl
+    );
+  }
+  if (publisherCookieScopeHost && !isCloudflareChallengeAssetPath(target.path)) {
+    effectiveUpstreamCookies = await injectStoredWafClearanceIfMissing(
+      env,
+      session.product_slug,
+      publisherCookieScopeHost,
+      effectiveUpstreamCookies
     );
   }
   if (effectiveUpstreamCookies) {
@@ -400,13 +471,27 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     upstreamHeaders.delete('Cookie');
   }
 
+  // ra_waf_browser routing: for CF Managed Challenge publishers (Emerald, OUP,
+  // Wiley, CAB), use the Playwright/Chromium browser service instead of the
+  // Go HTTP client. Only applies to GET requests on non-challenge-platform paths.
+  const useBrowserFetch =
+    request.method.toUpperCase() === 'GET' &&
+    !isCloudflareChallengeAssetPath(target.path) &&
+    (await loadProductWafBrowserFlag(env.DB, session.product_slug));
+
   let upstreamResp;
   try {
-    upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
-      method: request.method,
-      headers: upstreamHeaders,
-      body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
-    });
+    if (useBrowserFetch) {
+      upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
+        headers: upstreamHeaders,
+      });
+    } else {
+      upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
+        method: request.method,
+        headers: upstreamHeaders,
+        body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
+      });
+    }
   } catch (err) {
     console.error('egress error (stable-host)', err);
     return htmlError(502, 'Kurumun erişim sunucusuna ulaşılamadı.', err.message);
@@ -450,6 +535,13 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     publisherCookieScopeHost,
     proxyCookieDomainFromEnv(env, url.hostname)
   );
+  clearPublisherClearanceOnChallenge(
+    respHeaders,
+    upstreamResp,
+    publisherCookieScopeHost,
+    proxyCookieDomainFromEnv(env, url.hostname),
+    target.path
+  );
 
   addStagingDebugHeaders(respHeaders, env, {
     targetUrl,
@@ -492,6 +584,23 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     );
   }
   sanitizeWafChallengeResponseHeaders(respHeaders, publisherCookieScopeHost);
+
+  if (isCloudflareChallengeAssetPath(target.path) && /\btext\/html\b/i.test(contentType)) {
+    const text = relaxProxyMetaContentSecurityPolicy(await upstreamResp.text());
+    const filteredHeaders = new Headers(
+      [...respHeaders.entries()].filter(([k, v]) =>
+        !(k.toLowerCase() === 'set-cookie' && v.toLowerCase().includes('cf_clearance'))
+      )
+    );
+    filteredHeaders.delete('Content-Length');
+    filteredHeaders.delete('Content-Encoding');
+    return new Response(text, {
+      status: upstreamResp.status,
+      statusText: upstreamResp.statusText,
+      headers: filteredHeaders,
+    });
+  }
+
   const needsTextRewrite =
     shouldRewriteSessionTextResponse(target, upstreamResp) ||
     shouldRewriteCurrentHostTextResponse(target, session.origin_host, contentType);
@@ -506,7 +615,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     if (shouldRewriteSessionTextResponse(target, upstreamResp)) {
       text = rewriteSessionTextProxyUrls(text, url.hostname, session.origin_host, proxyableHosts);
     }
-    if (publisherCookieScopeHost) {
+    if (publisherCookieScopeHost && shouldRewritePublisherTextBody(target, contentType)) {
       text = rewritePublisherHostJavaScriptText(text, url.hostname, publisherCookieScopeHost, proxyableHosts);
       if (isCloudflareChallengeSurface(target, upstreamResp)) {
         text = rewriteCloudflareChallengeRuntimeLocation(text);
@@ -515,7 +624,12 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     }
     if (publisherCookieScopeHost && /\btext\/html\b/i.test(contentType)) {
       text = relaxProxyMetaContentSecurityPolicy(text);
-      text = injectPublisherCookieNamespaceScript(text, publisherCookieScopeHost, target.host);
+      text = injectPublisherCookieNamespaceScript(
+        text,
+        publisherCookieScopeHost,
+        target.host,
+        isStagingEnv(env)
+      );
     }
 
     respHeaders.delete('Content-Length');
@@ -1059,7 +1173,10 @@ export function buildUpstreamHeaders(incoming, context = {}) {
       if (cleaned) {
         cleaned = rewritePublisherCookieHeaderForUpstream(
           cleaned,
-          context.publisherCookieScopeHost || ''
+          context.publisherCookieScopeHost || '',
+          {
+            allowCloudflareChallengeRuntimeCookies: isCloudflareChallengeAssetPath(context.targetPath),
+          }
         );
       }
       if (cleaned) out.set(k, cleaned);
@@ -1253,6 +1370,7 @@ function sessionHostPathFor(targetHost, originHost, pathname) {
 function shouldRewriteSessionTextResponse(target, upstreamResp) {
   const contentType = upstreamResp.headers.get('Content-Type') || '';
   if (!/\b(javascript|ecmascript|json|text\/)/i.test(contentType)) return false;
+  if (isCloudflareChallengeAssetTarget(target)) return false;
   if (/\btext\/html\b/i.test(contentType)) return true;
 
   // EMIS mobile keeps API origins in a tiny runtime config file. Rewriting only
@@ -1264,6 +1382,20 @@ function shouldRewriteSessionTextResponse(target, upstreamResp) {
 function shouldRewriteCurrentHostTextResponse(target, originHost, contentType) {
   if (!target || target.host === originHost) return false;
   return /\b(javascript|ecmascript|json|text\/html|text\/plain|text\/css)/i.test(contentType || '');
+}
+
+export function shouldRewritePublisherTextBody(target, contentType = '') {
+  if (!target) return true;
+  if (/\btext\/html\b/i.test(contentType || '')) return true;
+  return !isCloudflareChallengeAssetTarget(target);
+}
+
+function isCloudflareChallengeAssetTarget(target) {
+  return isCloudflareChallengeAssetPath(target?.path);
+}
+
+function isCloudflareChallengeAssetPath(path) {
+  return String(path || '').startsWith('/cdn-cgi/challenge-platform/');
 }
 
 export function rewriteCurrentHostUrls(text, proxyHostname, currentTargetHost) {
@@ -1310,10 +1442,15 @@ function isCloudflareChallengeSurface(target, upstreamResp) {
 }
 
 export function rewriteCloudflareChallengeRuntimeLocation(text) {
-  return String(text || '').replace(
-    /\b(?:(?:window|self|document)\.)?location\.(hostname|host|origin|href)\b/g,
-    (_match, prop) => `window.__raPublisherLocation.${prop}`
-  );
+  return String(text || '')
+    .replace(
+      /\b(?:(?:window|self|document)\.)?location\.(hostname|host|origin|protocol|pathname|search|hash)\b/g,
+      (_match, prop) => `window.__raPublisherLocation.${prop}`
+    )
+    .replace(
+      /\b(?:(?:window|self|document)\.)?location\.href\b(?!\s*(?:[+\-*/%]?=))/g,
+      'window.__raPublisherLocation.href'
+    );
 }
 
 export function rewritePublisherHostJavaScriptText(text, proxyHostname, scopeHost, proxyableHosts) {
@@ -1356,11 +1493,11 @@ export function relaxProxyMetaContentSecurityPolicy(text) {
   );
 }
 
-export function injectPublisherCookieNamespaceScript(text, scopeHost, originHost = '') {
+export function injectPublisherCookieNamespaceScript(text, scopeHost, originHost = '', debugEnabled = false) {
   const html = String(text || '');
   if (!scopeHost || html.includes('__raPublisherCookieNamespace')) return html;
 
-  const script = buildPublisherCookieNamespaceScript(scopeHost, originHost);
+  const script = buildPublisherCookieNamespaceScript(scopeHost, originHost, debugEnabled);
   if (/<head\b[^>]*>/i.test(html)) {
     return html.replace(/<head\b([^>]*)>/i, `<head$1>${script}`);
   }
@@ -1370,10 +1507,13 @@ export function injectPublisherCookieNamespaceScript(text, scopeHost, originHost
   return `${script}${html}`;
 }
 
-function buildPublisherCookieNamespaceScript(scopeHost, originHost = '') {
+function buildPublisherCookieNamespaceScript(scopeHost, originHost = '', debugEnabled = false) {
   const safeScope = JSON.stringify(String(scopeHost || '').toLowerCase()).replace(/<\/script/gi, '<\\/script');
   const safeOriginHost = JSON.stringify(normalizeHost(originHost) || String(originHost || '').toLowerCase()).replace(/<\/script/gi, '<\\/script');
-  return `<script>(function(){try{var scope=${safeScope};var originHost=${safeOriginHost}||('www.'+scope);var origin='https://'+originHost;window.__raPublisherLocation={hostname:originHost,host:originHost,origin:origin,get href(){return origin+location.pathname+location.search+location.hash;}};var prefix='__cp_'+scope+'|';var names={cf_clearance:1,__cf_bm:1,EMER_SessionId:1};var d=Object.getOwnPropertyDescriptor(Document.prototype,'cookie')||Object.getOwnPropertyDescriptor(HTMLDocument.prototype,'cookie');if(!d||!d.get||!d.set||window.__raPublisherCookieNamespace)return;Object.defineProperty(window,'__raPublisherCookieNamespace',{value:1});Object.defineProperty(document,'cookie',{configurable:true,get:function(){var raw=d.get.call(document)||'';return raw.split(/;\\s*/).filter(Boolean).map(function(p){var i=p.indexOf('=');if(i<1)return p;var n=p.slice(0,i);if(n.indexOf(prefix)===0)return n.slice(prefix.length)+p.slice(i);return p;}).join('; ');},set:function(v){var s=String(v||'');var semi=s.indexOf(';');var end=semi<0?s.length:semi;var eq=s.indexOf('=');if(eq>0&&eq<end){var n=s.slice(0,eq).trim();if(names[n]&&n.indexOf(prefix)!==0){s=prefix+n+s.slice(eq);s=s.replace(/;\\s*domain=[^;]*/ig,'');}}return d.set.call(document,s);}});}catch(e){}})();</script>`;
+  const debugScript = debugEnabled
+    ? `var dbg=function(k,m){try{var b=JSON.stringify({kind:k,message:String(m||'').slice(0,300),path:location.pathname});if(navigator.sendBeacon)navigator.sendBeacon('${CLIENT_DEBUG_PATH}',new Blob([b],{type:'application/json'}));else fetch('${CLIENT_DEBUG_PATH}',{method:'POST',headers:{'Content-Type':'application/json'},body:b,keepalive:true});}catch(e){}};var dbgurl=function(k,u){u=String(u||'');if(/cdn-cgi|challenge|chl_/i.test(u))dbg(k,u);};window.addEventListener('error',function(e){dbg('error',(e.message||'')+' '+(e.filename||'')+':'+(e.lineno||''));});window.addEventListener('unhandledrejection',function(e){dbg('unhandledrejection',e.reason&&e.reason.message?e.reason.message:e.reason);});setTimeout(function(){try{dbg('ready','publisher-cookie-shim path='+location.pathname+location.search+' cookies='+(document.cookie||'').split(/;\\s*/).map(function(p){return p.split('=')[0];}).filter(Boolean).join(','));}catch(e){dbg('ready','publisher-cookie-shim');}},0);`
+    : `var dbg=function(){};var dbgurl=function(){};`;
+  return `<script>(function(){try{var scope=${safeScope};var originHost=${safeOriginHost}||('www.'+scope);var origin='https://'+originHost;${debugScript}var fixu=function(u){try{if(typeof u==='string')return u.replace(/^\\/cdn-cgi\\//,'${CF_CHALLENGE_PROXY_PREFIX}').replace(location.origin+'/cdn-cgi/',location.origin+'${CF_CHALLENGE_PROXY_PREFIX}');return u;}catch(e){return u;}};try{var of=window.fetch;if(of)window.fetch=function(i,o){dbgurl('fetch',typeof i==='string'?i:(i&&i.url));if(typeof i==='string')i=fixu(i);else if(i&&i.url&&typeof Request==='function'){var fu=fixu(i.url);if(fu!==i.url)i=new Request(fu,i);}return of.call(this,i,o);};var xo=XMLHttpRequest&&XMLHttpRequest.prototype&&XMLHttpRequest.prototype.open;if(xo)XMLHttpRequest.prototype.open=function(m,u){dbgurl('xhr',u);arguments[1]=fixu(u);return xo.apply(this,arguments);};var ap=Node&&Node.prototype&&Node.prototype.appendChild;if(ap)Node.prototype.appendChild=function(n){try{dbgurl('append',(n&&(n.src||n.href||n.action))||'');}catch(e){}return ap.apply(this,arguments);};var ib=Node&&Node.prototype&&Node.prototype.insertBefore;if(ib)Node.prototype.insertBefore=function(n,r){try{dbgurl('insert',(n&&(n.src||n.href||n.action))||'');}catch(e){}return ib.apply(this,arguments);};}catch(e){}window.__raPublisherLocation={protocol:'https:',hostname:originHost,host:originHost,origin:origin,get pathname(){return location.pathname;},get search(){return location.search;},get hash(){return location.hash;},get href(){return origin+location.pathname+location.search+location.hash;}};var prefix='__cp_'+scope+'|';var names={cf_clearance:1,__cf_bm:1,EMER_SessionId:1};var d=Object.getOwnPropertyDescriptor(Document.prototype,'cookie')||Object.getOwnPropertyDescriptor(HTMLDocument.prototype,'cookie');if(!d||!d.get||!d.set||window.__raPublisherCookieNamespace)return;Object.defineProperty(window,'__raPublisherCookieNamespace',{value:1});Object.defineProperty(document,'cookie',{configurable:true,get:function(){var raw=d.get.call(document)||'';var scoped={};return raw.split(/;\\s*/).filter(Boolean).map(function(p){var i=p.indexOf('=');if(i<1)return p;var n=p.slice(0,i);if(n.indexOf(prefix)===0){var clean=n.slice(prefix.length);scoped[clean]=1;return clean+p.slice(i);}return p;}).filter(function(p){var i=p.indexOf('=');if(i<1)return true;var n=p.slice(0,i);if(names[n]&&scoped[n])return false;return true;}).join('; ');},set:function(v){var s=String(v||'');var semi=s.indexOf(';');var end=semi<0?s.length:semi;var eq=s.indexOf('=');if(eq>0&&eq<end){var n=s.slice(0,eq).trim();if(names[n]||n.indexOf('cf_chl_')===0)dbg('cookie-set',n);if(names[n]&&n.indexOf(prefix)!==0){s=prefix+n+s.slice(eq);s=s.replace(/;\\s*domain=[^;]*/ig,'');}}return d.set.call(document,s);}});}catch(e){}})();</script>`;
 }
 
 // path_proxy cross-domain kontrolü için — ürünün ra_host_allowlist_json'unu yükler.
@@ -1426,6 +1566,28 @@ async function loadSessionProxyableHosts(db, session) {
     }
   }
   return hosts;
+}
+
+/**
+ * loadProductWafBrowserFlag — returns true if the product has ra_waf_browser = 1.
+ * Used to route CF Managed Challenge publishers (Emerald, OUP, Wiley, CAB) to
+ * the ra-browser Playwright service instead of the Go HTTP client.
+ *
+ * @param {D1Database} db
+ * @param {string} productSlug
+ * @returns {Promise<boolean>}
+ */
+async function loadProductWafBrowserFlag(db, productSlug) {
+  try {
+    const row = await db
+      .prepare('SELECT ra_waf_browser FROM products WHERE slug = ?')
+      .bind(productSlug)
+      .first();
+    return row?.ra_waf_browser === 1;
+  } catch {
+    // Column may not exist yet (pre-migration). Fall through to egressFetch.
+    return false;
+  }
 }
 
 function normalizeHost(rawHost) {
@@ -1487,6 +1649,62 @@ function proxyRateLimitResponse(rateLimit) {
   resp.headers.set('Retry-After', String(rateLimit.retryAfter || 60));
   resp.headers.set('X-RA-Rate-Limit-Scope', rateLimit.scope || 'proxy');
   return resp;
+}
+
+function isStagingEnv(env) {
+  return String(env?.ENVIRONMENT || '').toLowerCase() === 'staging';
+}
+
+async function handleClientDebug(request, env, session, url) {
+  if (!isStagingEnv(env) || request.method !== 'POST' || !env?.DB) {
+    return new Response(null, { status: 204 });
+  }
+
+  let payload = {};
+  try {
+    payload = await request.json();
+  } catch {
+    payload = {};
+  }
+
+  const kind = String(payload.kind || 'client').slice(0, 60);
+  const message = String(payload.message || '').slice(0, 300);
+  const path = String(payload.path || '').slice(0, 180);
+  try {
+    await env.DB.prepare(
+      `INSERT INTO ra_debug_events (
+         created_at, product_slug, institution_id, target_host, target_path,
+         request_path, request_url, upstream_status, cf_mitigated, cf_ray,
+         request_cookie_names, upstream_cookie_names, set_cookie_names,
+         request_ch_names, upstream_ch_names, referer, upstream_referer, user_agent
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        Math.floor(Date.now() / 1000),
+        session?.product_slug || null,
+        session?.institution_id || null,
+        session?.origin_host || null,
+        path || '[client]',
+        CLIENT_DEBUG_PATH,
+        truncateHeader(url.toString(), 500),
+        null,
+        `client:${kind}`,
+        truncateHeader(message, 240),
+        JSON.stringify(cookieNames(request.headers.get('Cookie')).sort()),
+        JSON.stringify([]),
+        JSON.stringify([]),
+        JSON.stringify(clientHintHeaderNames(request.headers || new Headers())),
+        JSON.stringify([]),
+        truncateHeader(request.headers.get('Referer') || '', 500),
+        null,
+        truncateHeader(request.headers.get('User-Agent') || '', 240)
+      )
+      .run();
+  } catch (err) {
+    console.warn('ra client debug write failed', err);
+  }
+
+  return new Response(null, { status: 204 });
 }
 
 function buildUpstreamHostCookie(proxyHostname, host) {
@@ -1741,12 +1959,14 @@ function proxyCookieDomainFromEnv(env, fallback) {
   return raw || fallback;
 }
 
-function rewritePublisherCookieHeaderForUpstream(cookieHeader, scopeHost) {
+export function rewritePublisherCookieHeaderForUpstream(cookieHeader, scopeHost, options = {}) {
   const scopedNames = new Set();
+  const allowChallengeRuntime = !!options.allowCloudflareChallengeRuntimeCookies;
   for (const pair of String(cookieHeader || '').split(';').map(s => s.trim()).filter(Boolean)) {
     const idx = pair.indexOf('=');
     if (idx <= 0) continue;
-    const prefixed = parsePublisherCookieName(pair.slice(0, idx).trim());
+    const name = pair.slice(0, idx).trim();
+    const prefixed = parsePublisherCookieName(name);
     if (prefixed?.scopeHost === scopeHost && prefixed.name) {
       scopedNames.add(prefixed.name.toLowerCase());
     }
@@ -1763,11 +1983,13 @@ function rewritePublisherCookieHeaderForUpstream(cookieHeader, scopeHost) {
     const prefixed = parsePublisherCookieName(name);
     if (prefixed) {
       if (prefixed.scopeHost === scopeHost && prefixed.name) {
+        if (scopeHost && isCloudflareChallengeRuntimeCookieName(prefixed.name) && !allowChallengeRuntime) continue;
         map.set(prefixed.name, value);
       }
       continue;
     }
 
+    if (scopeHost && isCloudflareChallengeRuntimeCookieName(name) && !allowChallengeRuntime) continue;
     if (scopeHost && isPublisherTrackingCookieName(name)) continue;
     if (scopeHost && isPublisherScopedCookieName(name) && scopedNames.has(name.toLowerCase())) continue;
     if (scopeHost && isPublisherScopedCookieName(name) && !shouldAllowRawPublisherCookieFallback(name)) continue;
@@ -1776,24 +1998,26 @@ function rewritePublisherCookieHeaderForUpstream(cookieHeader, scopeHost) {
   return [...map.entries()].map(([name, value]) => `${name}=${value}`).join('; ');
 }
 
-function ensurePublisherScopedCookiesForwarded(cookieHeader, browserCookieHeader, scopeHost) {
+export function ensurePublisherScopedCookiesForwarded(cookieHeader, browserCookieHeader, scopeHost, options = {}) {
   const browserCookies = rewritePublisherCookieHeaderForUpstream(
     stripSessionCookie(browserCookieHeader),
-    scopeHost
+    scopeHost,
+    options
   );
   if (!browserCookies) return cookieHeader || '';
   return mergeSessionHostCookieJar(cookieHeader || '', browserCookies);
 }
 
 function addPublisherCookiePromotionHeaders(headers, browserCookieHeader, scopeHost, domain) {
-  if (!scopeHost || !browserCookieHeader) return;
-  const cookies = parseCookiePairs(browserCookieHeader);
+  // Preserve raw Cloudflare clearance cookies during a challenge loop. The
+  // upstream WAF decides whether a clearance is valid; deleting it here can
+  // keep the browser from ever settling into a completed challenge state.
+}
 
-  for (const name of ['cf_clearance']) {
-    if (!cookies.has(name)) continue;
-    headers.append('Set-Cookie', `${name}=; Path=/; Secure; SameSite=Lax; Max-Age=0`);
-    headers.append('Set-Cookie', `${name}=; Domain=${domain}; Path=/; Secure; SameSite=Lax; Max-Age=0`);
-  }
+export function clearPublisherClearanceOnChallenge(headers, upstreamResp, scopeHost, domain, currentPath = '/') {
+  // Do not clear cf_chl_* runtime cookies on challenge responses. They are
+  // part of Cloudflare's in-browser challenge state and may be required by the
+  // next /cdn-cgi/challenge-platform request.
 }
 
 function parseCookiePairs(cookieHeader) {
@@ -1813,8 +2037,12 @@ function isPublisherScopedCookieName(name) {
   return lower === 'cf_clearance' || lower === '__cf_bm';
 }
 
+function isCloudflareChallengeRuntimeCookieName(name) {
+  return String(name || '').toLowerCase().startsWith('cf_chl_');
+}
+
 function shouldAllowRawPublisherCookieFallback(name) {
-  return false;
+  return String(name || '').toLowerCase() === 'cf_clearance';
 }
 
 function isPublisherTrackingCookieName(name) {
@@ -2017,3 +2245,173 @@ function truncateHeader(value, maxLen) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ADMIN — WAF clearance management
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /__ra-admin/waf-clearance
+ *
+ * Body (JSON):
+ *   { product_slug: string, scope_host: string, clearance: string, updated_by?: string }
+ *
+ * Auth: Authorization: Bearer <RA_ADMIN_SECRET>
+ *
+ * Upserts a cf_clearance value for the given (product_slug, scope_host) pair.
+ * The proxy egress IP that solved the Cloudflare challenge should call this
+ * endpoint after obtaining a fresh clearance value so that subsequent user
+ * sessions can bootstrap from it.
+ *
+ * GET /__ra-admin/waf-clearance?product_slug=...&scope_host=...
+ *   Returns the stored clearance row (for diagnostics).
+ */
+async function handleAdminWafClearance(request, env) {
+  const secret = String(env?.RA_ADMIN_SECRET || '').trim();
+  if (!secret) {
+    return htmlError(503, 'Admin route tanımlanmamış.');
+  }
+
+  const auth = request.headers.get('Authorization') || '';
+  const provided = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!provided || provided !== secret) {
+    return new Response(JSON.stringify({ error: 'Yetkisiz' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (!env?.DB) {
+    return new Response(JSON.stringify({ error: 'DB bağlantısı yok' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const url = new URL(request.url);
+
+  if (request.method === 'GET') {
+    const productSlug = url.searchParams.get('product_slug') || '';
+    const scopeHost   = url.searchParams.get('scope_host') || '';
+    if (!productSlug || !scopeHost) {
+      return new Response(JSON.stringify({ error: 'product_slug ve scope_host gerekli' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const row = await env.DB.prepare(
+      'SELECT product_slug, scope_host, clearance, updated_at, updated_by FROM ra_waf_clearance WHERE product_slug = ? AND scope_host = ?'
+    ).bind(productSlug, scopeHost).first();
+    if (!row) {
+      return new Response(JSON.stringify({ found: false }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify({ found: true, row }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (request.method === 'POST') {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'JSON body gerekli' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const productSlug = String(body?.product_slug || '').trim();
+    const scopeHost   = String(body?.scope_host   || '').trim().toLowerCase();
+    const clearance   = String(body?.clearance     || '').trim();
+    const updatedBy   = String(body?.updated_by    || '').trim().slice(0, 120) || null;
+
+    if (!productSlug || !scopeHost || !clearance) {
+      return new Response(JSON.stringify({ error: 'product_slug, scope_host ve clearance gerekli' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (productSlug.length > 120 || scopeHost.length > 253 || clearance.length > 2048) {
+      return new Response(JSON.stringify({ error: 'Alan değeri çok uzun' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare(
+      `INSERT INTO ra_waf_clearance (product_slug, scope_host, clearance, updated_at, updated_by)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (product_slug, scope_host)
+       DO UPDATE SET clearance = excluded.clearance,
+                     updated_at = excluded.updated_at,
+                     updated_by = excluded.updated_by`
+    ).bind(productSlug, scopeHost, clearance, now, updatedBy).run();
+
+    return new Response(JSON.stringify({ success: true, product_slug: productSlug, scope_host: scopeHost, updated_at: now }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    status: 405,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAF clearance injection helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * injectStoredWafClearanceIfMissing
+ *
+ * If the effective upstream Cookie header does not contain a cf_clearance for
+ * the given scope_host, look up the stored clearance value in D1 and inject
+ * it so the egress IP can present a known-good clearance on the first request
+ * of a new session.
+ *
+ * The injection is a best-effort hint. If the stored value is stale, the
+ * upstream WAF will reject it and issue a new challenge. Update the stored
+ * value via POST /__ra-admin/waf-clearance after the egress resolves it.
+ *
+ * @param {object} env         - Cloudflare env (env.DB required)
+ * @param {string} productSlug - Product slug for DB lookup
+ * @param {string} scopeHost   - Publisher cookie scope host (e.g. "nejm.org")
+ * @param {string} cookieHeader - Current effective upstream Cookie header value
+ * @returns {Promise<string>} Updated cookie header (possibly with injected cf_clearance)
+ */
+async function injectStoredWafClearanceIfMissing(env, productSlug, scopeHost, cookieHeader) {
+  if (!scopeHost || !productSlug || !env?.DB) return cookieHeader || '';
+
+  // Only inject when the upstream cookie header carries neither a raw
+  // cf_clearance nor a namespaced __cp_<scope>|cf_clearance.
+  const existing = String(cookieHeader || '');
+  if (hasCookieName(existing, 'cf_clearance')) return existing;
+  const namespacedKey = `${PUBLISHER_COOKIE_PREFIX}${scopeHost}|cf_clearance`;
+  if (hasCookieName(existing, namespacedKey)) return existing;
+
+  let row;
+  try {
+    row = await env.DB.prepare(
+      'SELECT clearance FROM ra_waf_clearance WHERE product_slug = ? AND scope_host = ?'
+    ).bind(productSlug, scopeHost).first();
+  } catch (err) {
+    console.warn('waf clearance db read failed', err);
+    return existing;
+  }
+
+  if (!row?.clearance) return existing;
+
+  const clearanceVal = String(row.clearance).trim();
+  if (!clearanceVal) return existing;
+
+  // Inject as raw cf_clearance — rewritePublisherCookieHeaderForUpstream has
+  // already run at this point, so the namespaced prefix is never stripped.
+  const injected = `cf_clearance=${clearanceVal}`;
+  return existing ? `${existing}; ${injected}` : injected;
+}

@@ -26,6 +26,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -97,14 +99,6 @@ func buildAutoClient() *http.Client {
 				if err != nil {
 					return nil, err
 				}
-				// ALPN h2 negotiate edilmediyse http2.Transport bu conn üzerinde
-				// h2 frame yollamaya kalkar ve patlar. Burada erkenden hatayı
-				// yüzeye çıkarıyoruz.
-				//
-				// NOT: utls v1.8.2'de HandshakeState.ServerHello.AlpnProtocol
-				// negotiate edilse bile "" dönüyor (utls internal field hiç
-				// populate edilmiyor). ConnectionState().NegotiatedProtocol'u
-				// kullan — bu, alttaki crypto/tls katmanından doğru gelir.
 				if uc, ok := conn.(*utls.UConn); ok {
 					proto := uc.ConnectionState().NegotiatedProtocol
 					if proto != "h2" {
@@ -112,12 +106,129 @@ func buildAutoClient() *http.Client {
 						return nil, fmt.Errorf("h2 not negotiated (got %q)", proto)
 					}
 				}
-				return conn, nil
+				// Chrome HTTP/2 SETTINGS_INITIAL_WINDOW_SIZE patch.
+				// Go'nun http2.Transport'u INITIAL_WINDOW_SIZE'ı public API üzerinden
+				// ayarlamaya izin vermiyor. İlk Write() çağrısında SETTINGS frame'ini
+				// intercept edip Chrome değeri olan 6291456 (0x00600000) ile patch
+				// ediyoruz. Böylece JA3 (utls) + SETTINGS fingerprint tam Chrome oluyor.
+				return &chromeSettingsConn{Conn: conn}, nil
 			},
+			// Chrome HTTP/2 SETTINGS fingerprint (public API ile ayarlanabilenler).
+			MaxDecoderHeaderTableSize: 65536,  // SETTINGS_HEADER_TABLE_SIZE
+			MaxHeaderListSize:         262144, // SETTINGS_MAX_HEADER_LIST_SIZE
 		},
 		Timeout:       30 * time.Second,
 		CheckRedirect: noFollowRedirect,
 	}
+}
+
+// h2ClientPreface — RFC 7540 §3.5 client connection preface (24 bytes).
+const h2ClientPreface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
+// chromeSettingsConn patches the initial HTTP/2 SETTINGS frame written by
+// http2.Transport so that SETTINGS_INITIAL_WINDOW_SIZE matches Chrome's value
+// (6291456) instead of Go's default (65535).
+type chromeSettingsConn struct {
+	net.Conn
+	patched bool
+}
+
+func (c *chromeSettingsConn) Write(b []byte) (int, error) {
+	if !c.patched {
+		c.patched = true
+		patched := patchH2InitialWindowSize(b)
+		if patched != nil {
+			n, err := c.Conn.Write(patched)
+			if err != nil {
+				return n, err
+			}
+			return len(b), nil // callers expect len(b) on success
+		}
+	}
+	return c.Conn.Write(b)
+}
+
+// patchH2InitialWindowSize rewrites the HTTP/2 SETTINGS frame (immediately
+// after the client connection preface) so that its payload exactly matches
+// Chrome's four parameters in Chrome's order:
+//
+//	ID=1  HEADER_TABLE_SIZE      = 65536
+//	ID=2  ENABLE_PUSH            = 0
+//	ID=4  INITIAL_WINDOW_SIZE    = 6291456
+//	ID=6  MAX_HEADER_LIST_SIZE   = 262144
+//
+// It also patches the WINDOW_UPDATE frame that follows (type=0x08) to use
+// Chrome's connection-level increment of 15663105 instead of Go's default.
+// Returns nil if the input cannot be parsed as expected.
+func patchH2InitialWindowSize(data []byte) []byte {
+	// Chrome's exact SETTINGS payload: 4 parameters × 6 bytes = 24 bytes.
+	chromeSettings := []byte{
+		0x00, 0x01, 0x00, 0x01, 0x00, 0x00, // ID=1 HEADER_TABLE_SIZE      = 65536
+		0x00, 0x02, 0x00, 0x00, 0x00, 0x00, // ID=2 ENABLE_PUSH            = 0
+		0x00, 0x04, 0x00, 0x60, 0x00, 0x00, // ID=4 INITIAL_WINDOW_SIZE    = 6291456
+		0x00, 0x06, 0x00, 0x04, 0x00, 0x00, // ID=6 MAX_HEADER_LIST_SIZE   = 262144
+	}
+	const chromeWindowUpdateIncrement uint32 = 15663105 // 0x00EF0001
+
+	prefaceLen := len(h2ClientPreface)
+	if len(data) < prefaceLen+9 {
+		return nil
+	}
+	if string(data[:prefaceLen]) != h2ClientPreface {
+		return nil
+	}
+
+	// SETTINGS frame header starts immediately after the preface.
+	pos := prefaceLen
+	origFrameLen := int(data[pos])<<16 | int(data[pos+1])<<8 | int(data[pos+2])
+	frameType := data[pos+3]
+	frameFlags := data[pos+4]
+	if frameType != 0x04 || frameFlags != 0x00 { // must be SETTINGS, not ACK
+		return nil
+	}
+	origPayloadStart := pos + 9
+	origPayloadEnd := origPayloadStart + origFrameLen
+	if origPayloadEnd > len(data) {
+		return nil
+	}
+
+	// Rebuild: preface + new SETTINGS frame header + Chrome payload + remainder.
+	newPayloadLen := len(chromeSettings) // 24
+	out := make([]byte, 0, prefaceLen+9+newPayloadLen+(len(data)-origPayloadEnd))
+	out = append(out, data[:pos]...)                                // preface (24 bytes)
+	out = append(out, byte(newPayloadLen>>16), byte(newPayloadLen>>8), byte(newPayloadLen)) // new 3-byte length
+	out = append(out, data[pos+3:origPayloadStart]...)              // type(0x04), flags(0x00), stream ID (4 bytes)
+	out = append(out, chromeSettings...)                            // Chrome's exact 4-param payload
+	remainder := data[origPayloadEnd:]
+	out = append(out, remainder...)
+
+	// Patch the WINDOW_UPDATE frame (type=0x08) if present in the remainder.
+	// The remainder offset within out starts at: prefaceLen + 9 + newPayloadLen.
+	remStart := prefaceLen + 9 + newPayloadLen
+	for i := remStart; i+13 <= len(out); i++ {
+		// Frame header: 3-byte length, 1-byte type, 1-byte flags, 4-byte stream ID.
+		wuLen := int(out[i])<<16 | int(out[i+1])<<8 | int(out[i+2])
+		wuType := out[i+3]
+		if wuType == 0x08 && wuLen == 4 {
+			// WINDOW_UPDATE payload is 4 bytes starting at i+9.
+			if i+9+4 <= len(out) {
+				v := chromeWindowUpdateIncrement
+				out[i+9] = byte(v >> 24)
+				out[i+10] = byte(v >> 16)
+				out[i+11] = byte(v >> 8)
+				out[i+12] = byte(v)
+			}
+			break
+		}
+		// Skip non-matching frames: advance by full frame size (9-byte header + payload).
+		if wuLen >= 0 && i+9+wuLen <= len(out) {
+			i += 9 + wuLen - 1 // -1 because loop does i++
+		} else {
+			break
+		}
+	}
+
+	return out
 }
 
 // buildH1Client — uTLS Chrome JA3 + ALPN[http/1.1] sadece.
@@ -246,9 +357,17 @@ func main() {
 		log.Printf("LIBEDGE_API_URL / LIBEDGE_SERVICE_KEY not set — using ALLOWED_HOST_REGEX only")
 	}
 
+	browserURL, _ := url.Parse("http://ra-browser:8081")
+	if v := os.Getenv("RA_BROWSER_URL"); v != "" {
+		if parsed, err := url.Parse(v); err == nil {
+			browserURL = parsed
+		}
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handleHealth)
 	mux.HandleFunc("/proxy", handleProxy)
+	mux.HandleFunc("/browser-proxy", handleBrowserProxy(browserURL))
 	mux.HandleFunc("/", handleNotFound)
 
 	addr := ":8080"
@@ -351,48 +470,55 @@ func handleNotFound(w http.ResponseWriter, r *http.Request) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// /proxy — Worker'dan gelen imzalı proxy isteği
+// raRequestError — shared HMAC validation result
 // ──────────────────────────────────────────────────────────────────────────
-func handleProxy(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
-	targetURL := r.Header.Get("X-RA-Target-URL")
+type raValidationResult struct {
+	targetURL      string
+	upstreamMethod string
+	bodyBytes      []byte
+}
+
+// validateRARequest extracts and validates the RA HMAC headers from an
+// incoming Worker request. Returns the parsed fields on success, or writes
+// an HTTP error to w and returns nil.
+//
+// bodyBytes is read and returned so the caller can use it without re-reading
+// (r.Body is consumed). For GET requests bodyBytes will be empty.
+func validateRARequest(w http.ResponseWriter, r *http.Request) *raValidationResult {
+	targetURL      := r.Header.Get("X-RA-Target-URL")
 	upstreamMethod := r.Header.Get("X-RA-Method")
-	tsStr := r.Header.Get("X-RA-Timestamp")
-	sigHex := r.Header.Get("X-RA-Signature")
+	tsStr          := r.Header.Get("X-RA-Timestamp")
+	sigHex         := r.Header.Get("X-RA-Signature")
 
 	if targetURL == "" || upstreamMethod == "" || tsStr == "" || sigHex == "" {
 		http.Error(w, "missing RA headers", http.StatusBadRequest)
-		return
+		return nil
 	}
 
-	// Timestamp ±30sn
 	ts, err := strconv.ParseInt(tsStr, 10, 64)
 	if err != nil {
 		http.Error(w, "bad timestamp", http.StatusBadRequest)
-		return
+		return nil
 	}
 	now := time.Now().Unix()
 	if ts < now-30 || ts > now+30 {
 		http.Error(w, "timestamp skew", http.StatusUnauthorized)
-		return
+		return nil
 	}
 
-	// Body oku (max limit)
+	// Read body (may be empty for GET)
 	var bodyBytes []byte
 	if r.Body != nil {
 		limited := io.LimitReader(r.Body, maxRequestBytes+1)
 		bodyBytes, err = io.ReadAll(limited)
 		if err != nil {
 			http.Error(w, "body read error", http.StatusBadRequest)
-			return
+			return nil
 		}
 		if int64(len(bodyBytes)) > maxRequestBytes {
 			http.Error(w, "request too large", http.StatusRequestEntityTooLarge)
-			return
+			return nil
 		}
 	}
 
@@ -403,15 +529,91 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 		bodyHash = hex.EncodeToString(h[:])
 	}
 
-	// İmza doğrula
+	// Verify HMAC
 	msg := fmt.Sprintf("%s|%s|%d|%s", upstreamMethod, targetURL, ts, bodyHash)
 	mac := hmac.New(sha256.New, sharedSecret)
 	mac.Write([]byte(msg))
 	expected := hex.EncodeToString(mac.Sum(nil))
 	if !hmac.Equal([]byte(expected), []byte(sigHex)) {
 		http.Error(w, "bad signature", http.StatusUnauthorized)
+		return nil
+	}
+
+	return &raValidationResult{
+		targetURL:      targetURL,
+		upstreamMethod: upstreamMethod,
+		bodyBytes:      bodyBytes,
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// /browser-proxy — pass-through to ra-browser container
+// ──────────────────────────────────────────────────────────────────────────
+
+// handleBrowserProxy validates the HMAC-signed request from the Worker, then
+// forwards it verbatim to the ra-browser container at /proxy. ra-browser
+// validates the same HMAC independently using the shared secret.
+//
+// The path rewrite: /browser-proxy → /proxy (ra-browser's endpoint).
+func handleBrowserProxy(browserBaseURL *url.URL) http.HandlerFunc {
+	proxy := httputil.NewSingleHostReverseProxy(browserBaseURL)
+
+	// Rewrite /browser-proxy to /proxy before forwarding to ra-browser.
+	origDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		origDirector(req)
+		req.URL.Path = "/proxy"
+		req.URL.RawPath = "/proxy"
+		req.Host = browserBaseURL.Host
+	}
+
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		log.Printf("browser-proxy forward error: %v", err)
+		http.Error(w, "ra-browser unreachable", http.StatusBadGateway)
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Validate HMAC before forwarding — SSRF and replay protection.
+		// We must validate here so ra-egress does not blindly forward
+		// arbitrary unsigned requests to the internal ra-browser container.
+		result := validateRARequest(w, r)
+		if result == nil {
+			return // validateRARequest already wrote the error response
+		}
+
+		// Reconstruct the body reader for the reverse proxy (r.Body was consumed).
+		r.Body = io.NopCloser(bytes.NewReader(result.bodyBytes))
+		r.ContentLength = int64(len(result.bodyBytes))
+
+		log.Printf("browser-proxy forwarding: %s %s → ra-browser:8081/proxy",
+			result.upstreamMethod, result.targetURL)
+
+		proxy.ServeHTTP(w, r)
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// /proxy — Worker'dan gelen imzalı proxy isteği
+// ──────────────────────────────────────────────────────────────────────────
+func handleProxy(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Validate HMAC signature and read body using shared helper.
+	validated := validateRARequest(w, r)
+	if validated == nil {
+		return
+	}
+	targetURL := validated.targetURL
+	upstreamMethod := validated.upstreamMethod
+	bodyBytes := validated.bodyBytes
 
 	// Host allowlist — SSRF koruması, en kritik kontrol
 	req, err := http.NewRequest(upstreamMethod, targetURL, bytes.NewReader(bodyBytes))

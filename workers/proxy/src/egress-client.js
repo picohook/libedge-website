@@ -114,6 +114,107 @@ export async function egressFetch(env, institutionId, targetUrl, init = {}) {
   throw lastError || new Error('egress fetch failed');
 }
 
+/**
+ * browserFetch — calls /browser-proxy on the ra-egress agent.
+ *
+ * ra-egress receives the HMAC-signed request and forwards it to the internal
+ * ra-browser (Playwright/Chromium) container at /proxy. ra-browser navigates
+ * to the target URL using a real Chrome engine, bypassing CF Managed Challenge.
+ *
+ * Response is a JSON envelope:
+ *   { status, headers: {}, body: "<base64-utf8-html>", finalUrl }
+ *
+ * Returns a reconstructed Response object for use by the proxy handler.
+ * Only supports GET (browser navigation; no request body).
+ *
+ * @param {any} env Worker env
+ * @param {string} institutionId
+ * @param {URL | string} targetUrl publisher origin URL
+ * @param {RequestInit & { headers?: Headers }} init  (method and headers only; body ignored)
+ * @returns {Promise<Response>}
+ */
+export async function browserFetch(env, institutionId, targetUrl, init = {}) {
+  const settings = await loadInstitutionRaSettings(env.DB, institutionId);
+  if (!settings || !settings.enabled) {
+    throw new Error(`egress not configured for institution ${institutionId}`);
+  }
+  if (!settings.egress_endpoint) {
+    throw new Error('egress_endpoint missing');
+  }
+
+  // Secret resolution — same priority as egressFetch.
+  let secret;
+  if (settings.egress_secret_enc && env.RA_CREDS_MASTER_KEY) {
+    secret = await decryptCredential(settings.egress_secret_enc, env.RA_CREDS_MASTER_KEY);
+  } else if (env.RA_EGRESS_DEFAULT_SECRET) {
+    secret = env.RA_EGRESS_DEFAULT_SECRET;
+  } else {
+    throw new Error('no egress secret configured (set egress_secret_enc in D1 or RA_EGRESS_DEFAULT_SECRET)');
+  }
+
+  // Browser fetch is GET only — no body hash.
+  const method = 'GET';
+  const urlStr = typeof targetUrl === 'string' ? targetUrl : targetUrl.toString();
+  const ts = Math.floor(Date.now() / 1000);
+
+  // Signature format: "${method}|${url}|${ts}|" (empty body hash for GET)
+  const sig = await hmacSha256(secret, `${method}|${urlStr}|${ts}|`);
+
+  const agentUrl = `${settings.egress_endpoint.replace(/\/$/, '')}/browser-proxy`;
+
+  const headers = new Headers(init.headers || undefined);
+  headers.set('X-RA-Target-URL', urlStr);
+  headers.set('X-RA-Method', method);
+  headers.set('X-RA-Timestamp', String(ts));
+  headers.set('X-RA-Signature', sig);
+
+  const envelopeResp = await fetch(agentUrl, {
+    method: 'POST',
+    headers,
+    body: null,
+    redirect: 'manual',
+  });
+
+  if (!envelopeResp.ok) {
+    throw new Error(`browser-proxy agent returned ${envelopeResp.status}`);
+  }
+
+  const envelope = await envelopeResp.json();
+  // envelope: { status, headers: {}, body: "<base64>", finalUrl }
+
+  // Decode base64 body back to bytes.
+  const bodyBytes = base64Decode(envelope.body || '');
+
+  const respHeaders = new Headers();
+  for (const [k, v] of Object.entries(envelope.headers || {})) {
+    respHeaders.set(k, v);
+  }
+  // Ensure content-type is text/html if not set (page.content() always returns HTML).
+  if (!respHeaders.has('content-type')) {
+    respHeaders.set('content-type', 'text/html; charset=UTF-8');
+  }
+
+  return new Response(bodyBytes, {
+    status: envelope.status || 200,
+    headers: respHeaders,
+  });
+}
+
+/**
+ * base64Decode — decodes a base64 string to Uint8Array (Workers runtime).
+ * @param {string} b64
+ * @returns {Uint8Array}
+ */
+function base64Decode(b64) {
+  if (!b64) return new Uint8Array(0);
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 async function loadInstitutionRaSettings(db, institutionId) {
   return await db
     .prepare(
