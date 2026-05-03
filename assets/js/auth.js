@@ -395,6 +395,19 @@ async function refreshToken() {
     }
 }
 
+// checkAuth içinde 401 alındığında currentUser olmadan refresh dener
+async function tryRefreshOnInit() {
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
 function startTokenRefresh() {
     if (refreshInterval) clearInterval(refreshInterval);
 
@@ -436,6 +449,34 @@ async function checkAuth() {
                 });
                 isLoggedIn = true;
                 startTokenRefresh();
+            } else if (res.status === 401) {
+                // authToken süresi dolmuş olabilir — refresh dene
+                const refreshed = await tryRefreshOnInit();
+                if (refreshed) {
+                    const retryRes = await fetch(`${API_BASE}/api/user/profile`, { credentials: 'include' });
+                    if (retryRes.ok) {
+                        const user = await retryRes.json();
+                        syncCurrentUser({
+                            id: user.id,
+                            email: user.email,
+                            full_name: user.full_name,
+                            institution: user.institution,
+                            institution_id: user.institution_id || null,
+                            institution_name: user.institution_name || null,
+                            institution_logo_url: user.institution_logo_url || null,
+                            institution_domain: user.institution_domain || null,
+                            institution_website_url: user.institution_website_url || null,
+                            role: user.role,
+                            avatar_url: user.avatar_url || null
+                        });
+                        isLoggedIn = true;
+                        startTokenRefresh();
+                    } else {
+                        syncCurrentUser(null);
+                    }
+                } else {
+                    syncCurrentUser(null);
+                }
             } else {
                 syncCurrentUser(null);
             }
@@ -640,5 +681,12 @@ document.addEventListener('header:ready', bindAuthForms);
 
 consumeAuthRedirectMessage();
 
+// Sayfa tekrar görünür olduğunda (laptop açıldığında, sekme değiştirildiğinde)
+// token'ı yenile — böylece 15 dakika sonra dönüldüğünde logout olmaz
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentUser) {
+        refreshToken();
+    }
+});
 
 
