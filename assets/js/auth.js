@@ -415,7 +415,7 @@ function startTokenRefresh() {
         if (currentUser) {
             refreshToken();
         }
-    }, 14 * 60 * 1000);
+    }, 50 * 60 * 1000);
 }
 
 async function checkAuth() {
@@ -680,6 +680,25 @@ document.addEventListener('DOMContentLoaded', bindAuthForms);
 document.addEventListener('header:ready', bindAuthForms);
 
 consumeAuthRedirectMessage();
+
+// Global fetch interceptor — herhangi bir API 401 dönünce refresh dene
+(function() {
+    const _fetch = window.fetch;
+    window.fetch = async function(input, init) {
+        const res = await _fetch(input, init);
+        if (res.status === 401 && currentUser) {
+            const url = typeof input === 'string' ? input : (input?.url || '');
+            // Auth endpoint'lerin kendisi 401 dönerse loop'a girme
+            if (!url.includes('/auth/')) {
+                const refreshed = await tryRefreshOnInit();
+                if (refreshed) {
+                    return _fetch(input, init);
+                }
+            }
+        }
+        return res;
+    };
+})();
 
 // Sayfa tekrar görünür olduğunda (laptop açıldığında, sekme değiştirildiğinde)
 // token'ı yenile — böylece 15 dakika sonra dönüldüğünde logout olmaz

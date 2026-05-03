@@ -1366,7 +1366,7 @@ app.post('/api/auth/login', async (c) => {
       role: user.role || "user",
       type: 'access',
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (15 * 60)
+      exp: Math.floor(Date.now() / 1000) + (60 * 60)
     };
     
     // Refresh Token: 7 gün
@@ -1386,7 +1386,7 @@ app.post('/api/auth/login', async (c) => {
       httpOnly: true,
       secure: true,
       sameSite: 'None',
-      maxAge: 900,
+      maxAge: 3600,
       path: '/',
     });
     
@@ -1487,7 +1487,7 @@ app.post('/api/auth/refresh', async (c) => {
     role: user.role || "user",
     type: 'access',
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (15 * 60)
+    exp: Math.floor(Date.now() / 1000) + (60 * 60)
   };
   
   // Yeni Refresh Token (7 gün)
@@ -1505,7 +1505,7 @@ app.post('/api/auth/refresh', async (c) => {
     httpOnly: true,
     secure: true,
     sameSite: 'None',
-    maxAge: 900,
+    maxAge: 3600,
     path: '/'
   });
   
