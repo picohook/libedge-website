@@ -3153,10 +3153,16 @@ function toggleAdminSidebar() {
 
 async function checkAdminAuth() {
     try {
-        const res = await fetch('/api/user/profile', {
-            credentials: 'include'
-        });
-        
+        let res = await fetch('/api/user/profile', { credentials: 'include' });
+
+        // Login tamamlanmadan admin'e gelinirse race condition: 401 alınır.
+        // 2 saniye bekleyip bir kez daha dene (interceptor refresh'ten bağımsız).
+        if (res.status === 401) {
+            await new Promise(r => setTimeout(r, 2000));
+            _adminSessionRedirecting = false; // intercept redirect'i sıfırla
+            res = await fetch('/api/user/profile', { credentials: 'include' });
+        }
+
         if (!res.ok) {
             redirectToHome('Oturumunuz sona erdi.');
             return false;
