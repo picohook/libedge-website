@@ -3153,19 +3153,28 @@ function toggleAdminSidebar() {
 
 async function checkAdminAuth() {
     try {
-        // _nativeAdminFetch kullanarak interceptor'ı bypass et — interceptor erken
-        // redirectToHome() çağırmasın. Auth kontrolünü kendimiz yönetiyoruz.
-        let res = await _nativeAdminFetch('/api/user/profile', { credentials: 'include' });
-
-        if (res.status === 401) {
-            // Token süresi dolmuş ya da login tamamlanmadan gelindi — refresh dene
-            const ref = await _nativeAdminFetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
-            if (ref.ok) {
-                res = await _nativeAdminFetch('/api/user/profile', { credentials: 'include' });
+        // _nativeAdminFetch kullanarak interceptor'ı bypass et.
+        // Login race condition: admin'e login tamamlanmadan gelinirse 401 alınır.
+        // 3 deneme × 1 saniye bekleme — login bu sürede tamamlanırsa geçer.
+        let res = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            if (attempt > 0) {
+                await new Promise(r => setTimeout(r, 1000));
+            }
+            res = await _nativeAdminFetch('/api/user/profile', { credentials: 'include' });
+            if (res.ok) break;
+            if (res.status === 401) {
+                const ref = await _nativeAdminFetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+                if (ref.ok) {
+                    res = await _nativeAdminFetch('/api/user/profile', { credentials: 'include' });
+                    if (res.ok) break;
+                }
+            } else {
+                break; // 401 değilse (403, 500 vb.) tekrar deneme
             }
         }
 
-        if (!res.ok) {
+        if (!res || !res.ok) {
             redirectToHome('Oturumunuz sona erdi.');
             return false;
         }
