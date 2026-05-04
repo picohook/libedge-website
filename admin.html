@@ -3264,7 +3264,12 @@ window.fetch = async function(...args) {
             return _nativeAdminFetch(...args);
         }
 
-        // Refresh da başarısız → gerçek logout
+        // 429 rate limit — redirect etme, sadece 401 döndür
+        if (refreshResp && refreshResp.status === 429) {
+            return response;
+        }
+
+        // Refresh da başarısız (gerçek 401) → gerçek logout
         _adminSessionRedirecting = true;
         redirectToHome('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.');
     }

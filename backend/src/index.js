@@ -1440,9 +1440,9 @@ app.post('/api/auth/logout', async (c) => {
 
 // ====================== REFRESH ENDPOINT ======================
 app.post('/api/auth/refresh', async (c) => {
-  // Rate limiting: 10 requests per 5 minutes
+  // Rate limiting: 30 requests per 5 minutes
   const identifier = c.req.header('x-forwarded-for') || c.req.header('cf-connecting-ip') || 'unknown';
-  const rateLimitCheck = await checkRateLimit(c.env.RATE_LIMIT_KV, 'refresh', identifier, 10, 300);
+  const rateLimitCheck = await checkRateLimit(c.env.RATE_LIMIT_KV, 'refresh', identifier, 30, 300);
   
   if (rateLimitCheck.isLimited) {
     c.header('Retry-After', Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000).toString());
