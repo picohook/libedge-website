@@ -31,6 +31,10 @@ function applyAvatarFallback(container, initials, avatarColor, sizeClass, textCl
 }
 
 const API_BASE = '';
+// Admin.html kendi window.fetch interceptor'ını kurmadan önce orijinal fetch'i sakla.
+// tryRefreshOnInit bu referansı kullanır — admin interceptor'ının refreshToken
+// 401'ini yakalayıp redirectToHome() çağırmasını önler.
+const _authOriginalFetch = window.fetch.bind(window);
 let currentUser = null;
 let refreshInterval = null;
 let isAuthChecking = true;
@@ -395,10 +399,11 @@ async function refreshToken() {
     }
 }
 
-// checkAuth içinde 401 alındığında currentUser olmadan refresh dener
+// checkAuth içinde 401 alındığında currentUser olmadan refresh dener.
+// _authOriginalFetch kullanır — admin.html'in window.fetch interceptor'ını bypass eder.
 async function tryRefreshOnInit() {
     try {
-        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+        const res = await _authOriginalFetch(`${API_BASE}/api/auth/refresh`, {
             method: 'POST',
             credentials: 'include'
         });
@@ -415,7 +420,7 @@ function startTokenRefresh() {
         if (currentUser) {
             refreshToken();
         }
-    }, 50 * 60 * 1000);
+    }, 12 * 60 * 1000);
 }
 
 async function checkAuth() {
