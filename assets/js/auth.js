@@ -681,25 +681,6 @@ document.addEventListener('header:ready', bindAuthForms);
 
 consumeAuthRedirectMessage();
 
-// Global fetch interceptor — herhangi bir API 401 dönünce refresh dene
-// Not: currentUser kontrolü yok — page load sırasında henüz set edilmemiş olabilir
-(function() {
-    const _fetch = window.fetch;
-    window.fetch = async function(input, init) {
-        const res = await _fetch(input, init);
-        if (res.status === 401) {
-            const url = typeof input === 'string' ? input : (input?.url || '');
-            // Auth endpoint'lerin kendisi 401 dönerse loop'a girme
-            if (!url.includes('/auth/')) {
-                const refreshed = await tryRefreshOnInit();
-                if (refreshed) {
-                    return _fetch(input, init);
-                }
-            }
-        }
-        return res;
-    };
-})();
 
 // Sayfa tekrar görünür olduğunda (laptop açıldığında, sekme değiştirildiğinde)
 // token'ı yenile — böylece 15 dakika sonra dönüldüğünde logout olmaz

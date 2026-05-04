@@ -756,7 +756,14 @@ async function markAllNotificationsRead() {
 // ====================== PROFİL YÜKLEME ======================
 async function checkAuthAndLoad() {
     try {
-        const res = await fetch('/api/user/profile', { credentials: 'include' });
+        let res = await fetch('/api/user/profile', { credentials: 'include' });
+        if (res.status === 401) {
+            // authToken süresi dolmuş olabilir — refresh dene
+            const ref = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+            if (ref.ok) {
+                res = await fetch('/api/user/profile', { credentials: 'include' });
+            }
+        }
         if (!res.ok) { window.location.href = 'index.html'; return; }
         
         const user = await res.json();
