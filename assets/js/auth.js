@@ -682,11 +682,12 @@ document.addEventListener('header:ready', bindAuthForms);
 consumeAuthRedirectMessage();
 
 // Global fetch interceptor — herhangi bir API 401 dönünce refresh dene
+// Not: currentUser kontrolü yok — page load sırasında henüz set edilmemiş olabilir
 (function() {
     const _fetch = window.fetch;
     window.fetch = async function(input, init) {
         const res = await _fetch(input, init);
-        if (res.status === 401 && currentUser) {
+        if (res.status === 401) {
             const url = typeof input === 'string' ? input : (input?.url || '');
             // Auth endpoint'lerin kendisi 401 dönerse loop'a girme
             if (!url.includes('/auth/')) {
