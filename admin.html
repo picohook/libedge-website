@@ -3153,14 +3153,16 @@ function toggleAdminSidebar() {
 
 async function checkAdminAuth() {
     try {
-        let res = await fetch('/api/user/profile', { credentials: 'include' });
+        // _nativeAdminFetch kullanarak interceptor'ı bypass et — interceptor erken
+        // redirectToHome() çağırmasın. Auth kontrolünü kendimiz yönetiyoruz.
+        let res = await _nativeAdminFetch('/api/user/profile', { credentials: 'include' });
 
-        // Login tamamlanmadan admin'e gelinirse race condition: 401 alınır.
-        // 2 saniye bekleyip bir kez daha dene (interceptor refresh'ten bağımsız).
         if (res.status === 401) {
-            await new Promise(r => setTimeout(r, 2000));
-            _adminSessionRedirecting = false; // intercept redirect'i sıfırla
-            res = await fetch('/api/user/profile', { credentials: 'include' });
+            // Token süresi dolmuş ya da login tamamlanmadan gelindi — refresh dene
+            const ref = await _nativeAdminFetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+            if (ref.ok) {
+                res = await _nativeAdminFetch('/api/user/profile', { credentials: 'include' });
+            }
         }
 
         if (!res.ok) {
