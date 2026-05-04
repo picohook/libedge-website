@@ -42,4 +42,19 @@ backend/src/*.backup.js
 backend/src/*.broken.js
 backend/src/*.bak
 *.bak
+
+# RA Egress binary
 ra-egress/ra-egress
+ra-egress/ra-egress.exe
+
+# AI assistant / handoff artifacts (not project source)
+.claude/
+handoff/
+BUILDER.md
+CLAUDE.md
+REVIEWER.md
+new-setup.md
+
+# Local scripts / temp queries
+scripts/execution-monitor.ps1
+workers/proxy/query.sql

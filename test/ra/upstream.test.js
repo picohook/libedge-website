@@ -16,13 +16,18 @@ import {
   rewriteSessionTextProxyUrls,
   rewriteCloudflareChallengePaths,
   rewriteCloudflareChallengeRuntimeLocation,
+  shouldRewritePublisherTextBody,
   rewritePublisherHostJavaScriptText,
   rewriteCurrentHostUrls,
   relaxProxyMetaContentSecurityPolicy,
   injectPublisherCookieNamespaceScript,
+  injectSessionHostLinkProxyScript,
+  clearPublisherClearanceOnChallenge,
   decodeOidcStateSuffix,
   mergeSessionHostCookieJar,
   mergeSessionHostSetCookies,
+  rewritePublisherCookieHeaderForUpstream,
+  ensurePublisherScopedCookiesForwarded,
 } from '../../workers/proxy/src/index.js';
 
 describe('buildCookieJarKey', () => {
@@ -142,14 +147,123 @@ describe('session-host proxy cookie handling', () => {
     expect(headers.get('Cookie')).toBe('cf_clearance=fresh');
   });
 
-  it('does not forward raw Cloudflare clearance for namespaced WAF publishers', () => {
+  it('uses raw Cloudflare clearance as a fallback for namespaced WAF publishers', () => {
     const headers = buildUpstreamHeaders(new Headers({
       Cookie: 'cf_clearance=stale; __cf_bm=raw; __cp_emerald.com|__cf_bm=scoped; theme=dark',
     }), {
       publisherCookieScopeHost: 'emerald.com',
     });
 
+    expect(headers.get('Cookie')).toBe('cf_clearance=stale; __cf_bm=scoped; theme=dark');
+  });
+
+  it('strips Cloudflare challenge runtime cookies for namespaced WAF publishers', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: 'cf_chl_rc_ni=1; __cp_emerald.com|__cf_bm=scoped; theme=dark',
+    }), {
+      publisherCookieScopeHost: 'emerald.com',
+    });
+
     expect(headers.get('Cookie')).toBe('__cf_bm=scoped; theme=dark');
+  });
+
+  it('forwards Cloudflare challenge runtime cookies to challenge endpoints', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: 'cf_chl_rc_ni=1; __cp_emerald.com|__cf_bm=scoped; theme=dark',
+    }), {
+      publisherCookieScopeHost: 'emerald.com',
+      targetPath: '/cdn-cgi/challenge-platform/h/g/flow/ov1/token',
+    });
+
+    expect(headers.get('Cookie')).toBe('cf_chl_rc_ni=1; __cf_bm=scoped; theme=dark');
+  });
+
+  it('forwards scoped clearance while a Cloudflare challenge runtime cookie is present', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: [
+        'cf_chl_rc_ni=1',
+        '__cp_emerald.com|cf_clearance=possibly-stale',
+        '__cp_emerald.com|__cf_bm=scoped',
+        'theme=dark',
+      ].join('; '),
+    }), {
+      publisherCookieScopeHost: 'emerald.com',
+    });
+
+    expect(headers.get('Cookie')).toBe('cf_clearance=possibly-stale; __cf_bm=scoped; theme=dark');
+  });
+
+  it('still forwards clearance on challenge endpoints while forwarding runtime cookies', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: [
+        'cf_chl_rc_ni=1',
+        '__cp_emerald.com|cf_clearance=possibly-stale',
+        '__cp_emerald.com|__cf_bm=scoped',
+        'theme=dark',
+      ].join('; '),
+    }), {
+      publisherCookieScopeHost: 'emerald.com',
+      targetPath: '/cdn-cgi/challenge-platform/h/g/flow/ov1/token',
+    });
+
+    expect(headers.get('Cookie')).toBe('cf_chl_rc_ni=1; cf_clearance=possibly-stale; __cf_bm=scoped; theme=dark');
+  });
+
+  it('rewritePublisherCookieHeaderForUpstream forwards cf_chl_* when allowCloudflareChallengeRuntimeCookies is true', () => {
+    const result = rewritePublisherCookieHeaderForUpstream(
+      'cf_chl_rc_ni=1; __cf_bm=bm; apt.sid=s',
+      'emerald.com',
+      { allowCloudflareChallengeRuntimeCookies: true }
+    );
+    expect(result).toContain('cf_chl_rc_ni=1');
+  });
+
+  it('rewritePublisherCookieHeaderForUpstream strips cf_chl_* by default (non-challenge path)', () => {
+    const result = rewritePublisherCookieHeaderForUpstream(
+      'cf_chl_rc_ni=1; apt.sid=s',
+      'emerald.com'
+    );
+    expect(result).not.toContain('cf_chl_rc_ni');
+    expect(result).toContain('apt.sid=s');
+  });
+
+  it('full cookie preparation sequence forwards cf_chl_rc_ni for challenge-platform path', () => {
+    // Simulate what the handler does: buildUpstreamHeaders already strips ra_proxy_session,
+    // so mergeSessionHostCookieJar receives the pre-stripped cookie string.
+    const strippedBrowserCookie = stripSessionCookie([
+      'cf_chl_rc_ni=runtime-val',
+      '__cp_emerald.com|__cf_bm=scoped-bm',
+      'ra_proxy_session=sess',
+    ].join('; '));
+
+    const allowCfChl = { allowCloudflareChallengeRuntimeCookies: true };
+    const scopeHost = 'emerald.com';
+
+    let effective = mergeSessionHostCookieJar('', strippedBrowserCookie);
+    effective = rewritePublisherCookieHeaderForUpstream(effective, scopeHost, allowCfChl);
+    effective = ensurePublisherScopedCookiesForwarded(effective, strippedBrowserCookie, scopeHost, allowCfChl);
+
+    expect(effective).toContain('cf_chl_rc_ni=runtime-val');
+    expect(effective).toContain('__cf_bm=scoped-bm');
+    expect(effective).not.toContain('ra_proxy_session');
+  });
+
+  it('full cookie preparation sequence strips cf_chl_rc_ni for normal publisher path', () => {
+    const strippedBrowserCookie = stripSessionCookie([
+      'cf_chl_rc_ni=runtime-val',
+      '__cp_emerald.com|__cf_bm=scoped-bm',
+      'ra_proxy_session=sess',
+    ].join('; '));
+
+    const allowCfChl = { allowCloudflareChallengeRuntimeCookies: false };
+    const scopeHost = 'emerald.com';
+
+    let effective = mergeSessionHostCookieJar('', strippedBrowserCookie);
+    effective = rewritePublisherCookieHeaderForUpstream(effective, scopeHost, allowCfChl);
+    effective = ensurePublisherScopedCookiesForwarded(effective, strippedBrowserCookie, scopeHost, allowCfChl);
+
+    expect(effective).not.toContain('cf_chl_rc_ni');
+    expect(effective).toContain('__cf_bm=scoped-bm');
   });
 
   it('drops tracking cookies for namespaced WAF publishers', () => {
@@ -374,15 +488,97 @@ describe('session-host proxy cookie handling', () => {
 
   it('injects publisher cookie namespacing before challenge scripts', () => {
     const html = '<html><head><script src="/cdn-cgi/challenge-platform/x.js"></script></head><body></body></html>';
-    const out = injectPublisherCookieNamespaceScript(html, 'emerald.com', 'www.emerald.com');
+    const out = injectPublisherCookieNamespaceScript(html, 'emerald.com', 'www.emerald.com', true);
 
     expect(out).toContain('__raPublisherCookieNamespace');
     expect(out).toContain('__raPublisherLocation');
+    expect(out).toContain('__ra-client-debug');
+    expect(out).toContain("dbgurl('fetch'");
+    expect(out).toContain("dbgurl('append'");
+    expect(out).toContain("dbg('cookie-set',n)");
+    expect(out).toContain("var fixu=function(u)");
+    expect(out).toContain("arguments[1]=fixu(u)");
+    expect(out).toContain("i=fixu(i)");
     expect(out).toContain('www.emerald.com');
     expect(out.indexOf('__raPublisherCookieNamespace')).toBeLessThan(out.indexOf('/cdn-cgi/challenge-platform'));
     expect(out).toContain('__cp_');
     expect(out).toContain('domain=[^;]');
+    expect(out).toContain("n.indexOf('cf_chl_')===0");
+    expect(out).toContain('scoped[n]');
+    expect(out).toContain('if(scoped[n])return false');
+    expect(out).toContain('publisherDomain');
+    expect(out).toContain("domains['.'+scope]=1");
+    expect(out).toContain('OptanonConsent');
+    expect(out).toContain('OptanonAlertBoxClosed');
+    expect(out).toContain('localStorage.setItem');
+    expect(out).toContain('recall(parts,seen)');
+    expect(out).toContain('#onetrust-accept-btn-handler');
+    expect(out).toContain('stopImmediatePropagation');
+    expect(out).toContain('OptanonAlertBoxClosed');
+    expect(out).toContain('onetrust-banner-sdk');
     expect(injectPublisherCookieNamespaceScript(out, 'emerald.com')).toBe(out);
+  });
+
+  it('preserves Cloudflare challenge cookies on challenge responses', () => {
+    const headers = new Headers();
+    const upstreamResp = new Response('', {
+      status: 403,
+      headers: { 'cf-mitigated': 'challenge' },
+    });
+
+    clearPublisherClearanceOnChallenge(
+      headers,
+      upstreamResp,
+      'emerald.com',
+      'selmiye.com',
+      '/insight/'
+    );
+
+    const cookies = headers.getSetCookie();
+    expect(cookies).not.toContain('cf_clearance=; Path=/; Secure; SameSite=Lax; Max-Age=0');
+    expect(cookies).not.toContain('cf_chl_rc_ni=; Path=/insight/; Secure; SameSite=Lax; Max-Age=0');
+    expect(cookies).not.toContain('__cp_emerald.com|cf_clearance=; Domain=selmiye.com; Path=/insight/; Secure; SameSite=Lax; Max-Age=0');
+    expect(cookies).toHaveLength(0);
+  });
+
+  it('strips X-Requested-With before forwarding to upstream', () => {
+    const headers = new Headers({
+      'X-Requested-With': 'XMLHttpRequest',
+      Accept: 'text/html',
+    });
+    const out = buildUpstreamHeaders(headers, {
+      proxyHostname: 'rabc1234.selmiye.com',
+      originHost: 'www.cambridge.org',
+      targetPath: '/core',
+    });
+
+    expect(out.has('X-Requested-With')).toBe(false);
+    expect(out.has('x-requested-with')).toBe(false);
+  });
+
+  it('strips Web of Science stanza request headers before upstream', () => {
+    const headers = new Headers({
+      'X-1P-WOS-SID': 'session',
+      'X-1P-WOS-No-Action': '1',
+      AWSEnv: 'prod',
+      ak_bmsc: 'akamai',
+      bm_sv: 'akamai',
+      bm_mi: 'akamai',
+      bm_sz: 'akamai',
+      _abck: 'akamai',
+      Accept: 'text/html',
+    });
+    const out = buildUpstreamHeaders(headers, {
+      proxyHostname: 'rabc1234.selmiye.com',
+      originHost: 'www.webofscience.com',
+      targetPath: '/',
+    });
+
+    expect(out.get('Accept')).toBe('text/html');
+    for (const name of ['X-1P-WOS-SID', 'X-1P-WOS-No-Action', 'AWSEnv', 'ak_bmsc', 'bm_sv', 'bm_mi', 'bm_sz', '_abck']) {
+      expect(out.has(name)).toBe(false);
+      expect(out.has(name.toLowerCase())).toBe(false);
+    }
   });
 
   it('rewrites Cloudflare challenge paths away from reserved /cdn-cgi', () => {
@@ -407,12 +603,30 @@ describe('session-host proxy cookie handling', () => {
     expect(out).not.toContain('%2Fcdn-cgi%2F');
   });
 
+  it('does not rewrite Cloudflare challenge asset bodies', () => {
+    expect(shouldRewritePublisherTextBody(
+      { path: '/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1' },
+      'application/javascript'
+    )).toBe(false);
+    expect(shouldRewritePublisherTextBody(
+      { path: '/cdn-cgi/challenge-platform/h/g/flow/ov1/token' },
+      'application/json'
+    )).toBe(false);
+    expect(shouldRewritePublisherTextBody(
+      { path: '/insight/' },
+      'text/html; charset=UTF-8'
+    )).toBe(true);
+  });
+
   it('rewrites Cloudflare challenge location reads to the publisher-location shim', () => {
     const input = [
       'var a = location.hostname;',
       'var b = window.location.origin;',
       'var c = self.location.href;',
       'var d = document.location.host;',
+      'var e = location.protocol + location.pathname + location.search + location.hash;',
+      'location.href = "/insight/";',
+      'window.location.href += "#x";',
     ].join('\n');
 
     const out = rewriteCloudflareChallengeRuntimeLocation(input);
@@ -421,6 +635,9 @@ describe('session-host proxy cookie handling', () => {
     expect(out).toContain('var b = window.__raPublisherLocation.origin;');
     expect(out).toContain('var c = window.__raPublisherLocation.href;');
     expect(out).toContain('var d = window.__raPublisherLocation.host;');
+    expect(out).toContain('window.__raPublisherLocation.protocol + window.__raPublisherLocation.pathname + window.__raPublisherLocation.search + window.__raPublisherLocation.hash');
+    expect(out).toContain('location.href = "/insight/";');
+    expect(out).toContain('window.location.href += "#x";');
     expect(out).not.toContain('location.hostname');
     expect(out).not.toContain('location.origin');
   });
@@ -629,5 +846,70 @@ describe('session-host proxy cookie handling', () => {
 
     expect(out).toContain('href="https://rabc1234.selmiye.com/articles/test"');
     expect(out).toContain('href="//rabc1234.selmiye.com/__ra-host/nature-com/search"');
+  });
+
+  it('rewrites Cambridge globalNav theme path like the EZproxy stanza', () => {
+    const out = rewriteSessionTextProxyUrls(
+      "globalNav('//www.cambridge.org/tools/packages/cambridge_themes/core.js')",
+      'rabc1234.selmiye.com',
+      'www.cambridge.org',
+      new Set(['www.cambridge.org', 'cambridge.org'])
+    );
+
+    expect(out).toContain("globalNav('/tools/packages/cambridge_themes/core.js')");
+    expect(out).not.toContain('//www.cambridge.org/tools/packages/cambridge_themes/');
+  });
+
+  it('rewrites escaped Cambridge URLs embedded in JSON/JS payloads', () => {
+    const out = rewriteSessionTextProxyUrls(
+      '{"href":"https:\\/\\/www.cambridge.org\\/core\\/journals","alt":"https:\\/\\/journals.cambridge.org\\/action","encoded":"https%3A%2F%2Fwww.cambridge.org%2Fcore%2Fpublications%2Fbooks"}',
+      'rabc1234.selmiye.com',
+      'www.cambridge.org',
+      new Set(['www.cambridge.org', 'journals.cambridge.org'])
+    );
+
+    expect(out).toContain('https:\\/\\/rabc1234.selmiye.com\\/core\\/journals');
+    expect(out).toContain('https:\\/\\/rabc1234.selmiye.com\\/__ra-host\\/journals-cambridge-org\\/action');
+    expect(out).toContain('https%3A%2F%2Frabc1234.selmiye.com%2Fcore%2Fpublications%2Fbooks');
+    expect(out).not.toContain('www.cambridge.org');
+    expect(out).not.toContain('journals.cambridge.org');
+  });
+
+  it('rewrites Web of Science frame and double-encoded navigation URLs', () => {
+    const out = rewriteSessionTextProxyUrls(
+      [
+        'location.href="https://www.webofscience.com/wos/?Func=Frame&path=%2Fwos%2Fwoscc%2Fsmart-search"',
+        'referrer=TARGET%3Dhttps%253A%252F%252Fwww.webofscience.com%252Fwos%252F%253FInit%253DYes',
+        'goto=https%3A%2F%2Fwww.webofknowledge.com%2F',
+      ].join(';'),
+      'rabc1234.selmiye.com',
+      'www.webofscience.com',
+      new Set(['www.webofscience.com', 'www.webofknowledge.com', 'access.clarivate.com'])
+    );
+
+    expect(out).toContain('location.href="https://rabc1234.selmiye.com/wos/?Func=Frame');
+    expect(out).toContain('referrer=TARGET%3Dhttps%253A%252F%252Frabc1234.selmiye.com%252Fwos%252F%253FInit%253DYes');
+    expect(out).toContain('goto=https%3A%2F%2Frabc1234.selmiye.com%2F__ra-host%2Fwww-webofknowledge-com%2F');
+    expect(out).not.toContain('www.webofscience.com');
+    expect(out).not.toContain('www.webofknowledge.com');
+  });
+
+  it('injects a client-side guard for dynamically rendered Cambridge links', () => {
+    const out = injectSessionHostLinkProxyScript(
+      '<html><head></head><body><a href="https://www.cambridge.org/core/journals">Journals</a></body></html>',
+      'rabc1234.selmiye.com',
+      'www.cambridge.org',
+      new Set(['www.cambridge.org', 'journals.cambridge.org'])
+    );
+
+    expect(out).toContain('__raSessionHostLinkProxy');
+    expect(out).toContain('journals.cambridge.org');
+    expect(out).toContain('/__ra-host/');
+    expect(out).toContain('data-href');
+    expect(out).toContain('attributeFilter:attrs');
+    expect(out).toContain('[data-url]');
+    expect(out).toContain('window.open=function');
+    expect(out).toContain('lp.assign=function');
+    expect(out).toContain('lp.replace=function');
   });
 });

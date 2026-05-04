@@ -455,7 +455,7 @@
                 <a href="#" class="sidebar-link" data-tab="users"><i class="fas fa-users w-5"></i><span>Kullanıcılar</span></a>
                 <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-ticket-alt w-5"></i><span>Abonelikler</span></a>
                 <a href="#" class="sidebar-link" data-tab="requests" id="requestsTab"><i class="fas fa-envelope w-5"></i><span>Talepler</span><span id="sidebarBadgeRequests" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
-                <a href="#" class="sidebar-link" data-tab="support" id="supportTab"><i class="fas fa-headset w-5"></i><span>Destek Talepleri</span><span id="sidebarBadgeSupport" class="hidden ml-auto bg-orange-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
+                <a href="#" class="sidebar-link" data-tab="support" id="supportTab"><i class="fas fa-headset w-5"></i><span>Destek Talepleri</span><span id="sidebarBadgeSupport" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
                 <a href="#" class="sidebar-link" data-tab="announcements" id="announcementsTab"><i class="fas fa-bullhorn w-5"></i><span>Duyurular</span></a>
                 <a href="#" class="sidebar-link" data-tab="files" id="filesTab"><i class="fas fa-folder-open w-5"></i><span>Merkezi Dosyalar</span></a>
                 <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
@@ -3117,8 +3117,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-<script src="assets/js/auth.js?v=20260420b"></script>
-<script src="assets/js/script.js?v=20260420b"></script>
+<script src="assets/js/auth.js?v=20260504c"></script>
+<script src="assets/js/script.js?v=20260504c"></script>
 <script>
 // ====================== ADMIN AUTH GATE ======================
 let currentAdmin = null; 
@@ -3891,11 +3891,11 @@ document.addEventListener('click', function(e) {
     function renderProductLogoCell(product) {
         const logoUrl = getVersionedLogoUrl(product.logo_url || '', product.logo_updated_at || '');
         if (logoUrl) {
-            return `<div class="w-11 h-11 rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
-                <img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(product.name || product.slug)} logo" class="w-full h-full object-contain p-1.5">
+            return `<div class="w-8 h-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
+                <img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(product.name || product.slug)} logo" class="w-full h-full object-contain p-1">
             </div>`;
         }
-        return `<div class="w-11 h-11 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs font-bold text-gray-400">${escapeHtml(getProductInitials(product))}</div>`;
+        return `<div class="w-8 h-8 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs font-bold text-gray-400">${escapeHtml(getProductInitials(product))}</div>`;
     }
 
     function setGuideText(id, text) {

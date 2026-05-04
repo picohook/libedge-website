@@ -55,7 +55,13 @@ async function ensureBrowser() {
   if (!browser || !browser.isConnected()) {
     browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-infobars',
+      ],
     });
     console.log('Chromium launched');
   }
@@ -178,10 +184,47 @@ async function handleProxy(req, res) {
   try {
     const b = await ensureBrowser();
 
-    context = await b.newContext({ ignoreHTTPSErrors: false });
+    context = await b.newContext({
+      ignoreHTTPSErrors: false,
+      userAgent: passthroughHeaders['user-agent'] ||
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    });
 
-    // Inject passthrough headers into all requests from this context
-    await context.setExtraHTTPHeaders(passthroughHeaders);
+    // Hide automation signals before any page script runs
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      if (!window.chrome) window.chrome = {};
+      if (!window.chrome.runtime) window.chrome.runtime = {};
+    });
+
+    // Inject cookies into the browser's cookie store for the target domain
+    const cookieHeader = passthroughHeaders['cookie'] || passthroughHeaders['Cookie'] || '';
+    if (cookieHeader) {
+      const targetHostname = new URL(targetUrl).hostname;
+      const domain = targetHostname.startsWith('www.')
+        ? targetHostname.slice(4)
+        : targetHostname;
+      const cookies = cookieHeader.split(';')
+        .map(c => c.trim())
+        .filter(Boolean)
+        .map(c => {
+          const eqIdx = c.indexOf('=');
+          const name = eqIdx > 0 ? c.slice(0, eqIdx).trim() : c.trim();
+          const value = eqIdx > 0 ? c.slice(eqIdx + 1).trim() : '';
+          return { name, value, domain: `.${domain}`, path: '/' };
+        })
+        .filter(c => c.name);
+      if (cookies.length) await context.addCookies(cookies);
+    }
+
+    // Inject non-cookie passthrough headers
+    const fwdHeaders = { ...passthroughHeaders };
+    delete fwdHeaders['user-agent'];
+    delete fwdHeaders['cookie'];
+    delete fwdHeaders['Cookie'];
+    if (Object.keys(fwdHeaders).length) {
+      await context.setExtraHTTPHeaders(fwdHeaders);
+    }
 
     const page = await context.newPage();
 
@@ -206,8 +249,16 @@ async function handleProxy(req, res) {
       title.includes('Just a moment');
 
     if (isCfChallenge) {
-      console.log(`CF challenge detected for ${targetUrl}, waiting 8s`);
-      await page.waitForTimeout(8000);
+      console.log(`CF challenge detected for ${targetUrl}, waiting for resolution`);
+      try {
+        await page.waitForFunction(
+          () => !document.title.includes('Just a moment') && !location.href.includes('__cf_chl'),
+          { timeout: 20000, polling: 500 }
+        );
+        console.log(`CF challenge resolved for ${targetUrl}`);
+      } catch {
+        console.log(`CF challenge timeout for ${targetUrl}`);
+      }
     }
 
     // Collect response info

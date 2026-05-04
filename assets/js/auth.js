@@ -37,6 +37,9 @@ const API_BASE = '';
 const _authOriginalFetch = window.fetch.bind(window);
 let currentUser = null;
 let refreshInterval = null;
+let refreshInFlight = null;
+let lastRefreshAttemptAt = 0;
+let lastRefreshFailedAt = 0;
 let isAuthChecking = true;
 let authCheckPromise = null;
 let authInitialized = false;
@@ -376,27 +379,48 @@ async function logoutWithReason(message = '', type = 'warning') {
 
 async function refreshToken() {
     if (!currentUser) return false;
+    const now = Date.now();
 
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+    if (refreshInFlight) return refreshInFlight;
+    if (lastRefreshFailedAt && now - lastRefreshFailedAt < 5 * 60 * 1000) {
+        return false;
+    }
+    if (lastRefreshAttemptAt && now - lastRefreshAttemptAt < 30 * 1000) {
+        return false;
+    }
+
+    lastRefreshAttemptAt = now;
+
+    refreshInFlight = (async () => {
+        try {
+            const res = await _authOriginalFetch(`${API_BASE}/api/auth/refresh`, {
             method: 'POST',
             credentials: 'include'
         });
 
-        if (res.ok) return true;
-        if (res.status === 401) {
-            await logoutWithReason('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.', 'warning');
-            return false;
-        }
+            if (res.ok) {
+                lastRefreshFailedAt = 0;
+                return true;
+            }
+            if (res.status === 401) {
+                lastRefreshFailedAt = Date.now();
+                console.warn('Token yenileme 401 döndü; otomatik logout yapılmadı.');
+                return false;
+            }
 
-        console.warn('Token yenileme başarısız, HTTP', res.status);
-        return false;
-    } catch (e) {
-        queueMicrotask(() => {
-            console.error('Token refresh network hatası:', e.toString());
-        });
-        return false;
-    }
+            console.warn('Token yenileme başarısız, HTTP', res.status);
+            return false;
+        } catch (e) {
+            queueMicrotask(() => {
+                console.error('Token refresh network hatası:', e.toString());
+            });
+            return false;
+        } finally {
+            refreshInFlight = null;
+        }
+    })();
+
+    return refreshInFlight;
 }
 
 // checkAuth içinde 401 alındığında currentUser olmadan refresh dener.
@@ -691,7 +715,9 @@ consumeAuthRedirectMessage();
 // token'ı yenile — böylece 15 dakika sonra dönüldüğünde logout olmaz
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && currentUser) {
-        refreshToken();
+        if (!lastRefreshAttemptAt || Date.now() - lastRefreshAttemptAt > 10 * 60 * 1000) {
+            refreshToken();
+        }
     }
 });
 

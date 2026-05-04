@@ -38,6 +38,33 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.requires-auth').forEach(btn => {
             btn.disabled = false;
         });
+
+        if (user) {
+            // Giriş yapmış kullanıcı deneyimi
+            const anonHero = document.getElementById('anonymous-hero');
+            const authHero = document.getElementById('auth-dashboard-hero');
+            const greetingName = document.getElementById('user-greeting-name');
+            
+            if (anonHero) anonHero.classList.add('hidden');
+            if (authHero) {
+                authHero.classList.remove('hidden');
+                if (greetingName) greetingName.textContent = user.full_name.split(' ')[0];
+            }
+
+            // Dashboard arama entegrasyonu
+            const dashSearch = document.getElementById('dashboard-search');
+            if (dashSearch) {
+                dashSearch.addEventListener('input', (e) => {
+                    const q = e.target.value;
+                    // Mevcut filtreleme fonksiyonunu tetikle
+                    if (typeof filterProfileContent === 'function') {
+                        filterProfileContent(q); 
+                    }
+                    // Ürün grid'ine odaklan
+                    document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+                });
+            }
+        }
     });
 
     // --- Auth Forms ---
