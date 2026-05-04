@@ -3256,30 +3256,16 @@ function refreshAdminTokenOnce() {
 window.fetch = async function(...args) {
     const response = await _nativeAdminFetch(...args);
 
-    if (response.status === 401 && !_adminSessionRedirecting) {
-        // Refresh endpoint'inin kendisinden 401 geldiyse sonsuz döngüyü önle
+    // Sadece refresh + retry — redirectToHome hiç çağrılmaz.
+    // checkAdminAuth kendi 401'ini yönetir; diğer endpoint'ler sessizce başarısız olur.
+    if (response.status === 401) {
         const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-        if (url.includes('/api/auth/refresh')) {
-            _adminSessionRedirecting = true;
-            redirectToHome('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.');
-            return response;
+        if (!url.includes('/api/auth/refresh')) {
+            const refreshResp = await refreshAdminTokenOnce();
+            if (refreshResp && refreshResp.ok) {
+                return _nativeAdminFetch(...args);
+            }
         }
-
-        // Paralel çoklu 401'de tek bir refresh isteği açılır
-        const refreshResp = await refreshAdminTokenOnce();
-        if (refreshResp && refreshResp.ok) {
-            // Token yenilendi — orijinal isteği bir kez daha dene
-            return _nativeAdminFetch(...args);
-        }
-
-        // 429 rate limit — redirect etme, sadece 401 döndür
-        if (refreshResp && refreshResp.status === 429) {
-            return response;
-        }
-
-        // Refresh da başarısız (gerçek 401) → gerçek logout
-        _adminSessionRedirecting = true;
-        redirectToHome('Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.');
     }
 
     return response;
