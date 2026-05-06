@@ -1,4 +1,4 @@
-﻿import { Hono } from 'hono';
+import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { getCookie, setCookie } from 'hono/cookie';
 import { sign, verify } from 'hono/jwt';
@@ -13,6 +13,7 @@ import { registerRaAdminOverview } from './routes/ra/admin-overview.js';
 import { registerRaAdminConfig } from './routes/ra/admin-config.js';
 import { registerRaEgressAllowedHosts } from './routes/ra/egress-allowed-hosts.js';
 import { registerRaAdminAlerts } from './routes/ra/admin-alerts.js';
+import { registerRaAdminLinkAudit } from './routes/ra/admin-link-audit.js';
 import { runTunnelHeartbeat } from './ra/tunnel-health.js';
 import { ensureRemoteAccessSchema } from './ra/schema.js';
 
@@ -1440,9 +1441,11 @@ app.post('/api/auth/logout', async (c) => {
 
 // ====================== REFRESH ENDPOINT ======================
 app.post('/api/auth/refresh', async (c) => {
-  // Rate limiting: 30 requests per 5 minutes
+  // Rate limiting: refresh is called by multiple tabs and by the admin fetch
+  // retry layer when access cookies expire together. Keep this generous so a
+  // transient burst does not look like an early logout to the user.
   const identifier = c.req.header('x-forwarded-for') || c.req.header('cf-connecting-ip') || 'unknown';
-  const rateLimitCheck = await checkRateLimit(c.env.RATE_LIMIT_KV, 'refresh', identifier, 30, 300);
+  const rateLimitCheck = await checkRateLimit(c.env.RATE_LIMIT_KV, 'refresh', identifier, 120, 300);
   
   if (rateLimitCheck.isLimited) {
     c.header('Retry-After', Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000).toString());
@@ -3010,6 +3013,12 @@ function isValidProductRaHost(host) {
   return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(host);
 }
 
+function isValidProductRaHostPattern(host) {
+  if (typeof host !== 'string') return false;
+  if (host.startsWith('*.')) return isValidProductRaHost(host.slice(2));
+  return isValidProductRaHost(host);
+}
+
 function normalizeProductRaLandingPath(raw) {
   if (raw == null) return null;
   const trimmed = String(raw).trim();
@@ -3179,7 +3188,7 @@ function validateProductRaConfig(body) {
       if (!Array.isArray(parsed)) return { error: 'host allowlist bir dizi olmalı' };
       for (const h of parsed) {
         const host = normalizeProductRaHost(h);
-        if (!host || !isValidProductRaHost(host)) {
+        if (!host || !isValidProductRaHostPattern(host)) {
           return { error: `allowlist geçersiz host içeriyor: ${h}` };
         }
       }
@@ -3813,7 +3822,7 @@ app.get('/api/admin/subscriptions', async (c) => {
              NULL AS raw_access_type, NULL AS raw_access_url, 0 AS raw_requires_institution_email,
              0 AS raw_requires_vpn, NULL AS raw_registration_url, NULL AS raw_access_notes_tr,
              NULL AS raw_access_notes_en, NULL AS access_type, NULL AS access_url,
-             NULL AS ra_delivery_mode, 0 AS requires_institution_email, 0 AS requires_vpn,
+             NULL AS ra_delivery_mode, 0 AS ra_enabled, 0 AS requires_institution_email, 0 AS requires_vpn,
              NULL AS registration_url, NULL AS access_notes_tr, NULL AS access_notes_en
       FROM subscriptions s
       LEFT JOIN users u ON s.user_id = u.id
@@ -3835,6 +3844,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
                ELSE 'path_proxy'
              END AS ra_delivery_mode,
+             COALESCE(p.ra_enabled, 0) AS ra_enabled,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              NULLIF(TRIM(is2.registration_url), '') AS registration_url,
@@ -3924,6 +3934,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                  WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
                  ELSE 'path_proxy'
                END AS ra_delivery_mode,
+               COALESCE(p.ra_enabled, 0) AS ra_enabled,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
                NULLIF(TRIM(is2.registration_url), '') AS registration_url,
@@ -3953,6 +3964,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                  WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
                  ELSE 'path_proxy'
                END AS ra_delivery_mode,
+               COALESCE(p.ra_enabled, 0) AS ra_enabled,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
                NULLIF(TRIM(is2.registration_url), '') AS registration_url,
@@ -6983,7 +6995,7 @@ app.get('/api/files/*', async (c) => {
   const needsNoRefAuth = refs.length === 0 && !isPublicPrefix;
   const isPrivate = isPrivateReference || needsNoRefAuth;
 
-  if (isPrivateReference) {
+  if (isPrivateReference && !isTokenValid) {
     const auth = await requireAuth(c);
     if (auth.response) {
       return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
@@ -7000,7 +7012,7 @@ app.get('/api/files/*', async (c) => {
         return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
       }
     }
-  } else if (needsNoRefAuth) {
+  } else if (needsNoRefAuth && !isTokenValid) {
     const auth = await requireAuth(c);
     if (auth.response) {
       return c.json({ error: 'Bu dosyaya erişim yetkiniz yok' }, 403);
@@ -8727,6 +8739,8 @@ registerRaAdminConfig(app);
 registerRaEgressAllowedHosts(app);
 // GET /api/ra/admin/alerts ; POST .../dismiss ; POST .../dismiss-all
 registerRaAdminAlerts(app);
+// GET/DELETE /api/ra/admin/link-audit — rendered page escaped-link findings
+registerRaAdminLinkAudit(app);
 
 
 // ====================== PAGE VIEWS ROUTES ======================
@@ -8942,3 +8956,4 @@ export default {
     ctx.waitUntil(runTunnelHeartbeat(env).catch((err) => console.error('tunnel heartbeat failed', err)));
   },
 };
+
