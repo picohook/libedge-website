@@ -6953,12 +6953,40 @@ app.delete('/api/admin/institution/:id', async (c) => {
 
 // ====================== FILE ROUTES ======================
 
+app.get('/api/files-token', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  
+  const path = c.req.query('path');
+  if (!path) return c.json({ error: 'Path gerekli' }, 400);
+
+  const token = await sign({
+    path,
+    exp: Math.floor(Date.now() / 1000) + (15 * 60)
+  }, c.env.JWT_SECRET, 'HS256');
+
+  return c.json({ token });
+});
+
 app.get('/api/files/*', async (c) => {
   const bucket = c.env.FILES_BUCKET;
   if (!bucket) return c.json({ error: 'R2 bucket bagli degil' }, 500);
 
   const key = c.req.path.replace(/^\/api\/files\//, '');
   if (!key) return c.json({ error: 'Dosya bulunamadı' }, 404);
+
+  const queryToken = c.req.query('token');
+  let isTokenValid = false;
+  if (queryToken) {
+    try {
+      const payload = await verify(queryToken, c.env.JWT_SECRET, 'HS256');
+      if (payload && payload.path === key) {
+        isTokenValid = true;
+      }
+    } catch {
+      // Geçersiz token
+    }
+  }
 
   const db = c.env.DB;
   const stored = await getStoredFileByKey(db, key);
