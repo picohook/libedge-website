@@ -3505,14 +3505,15 @@ function normalizeProductPresentation(body) {
   };
 }
 
-function validateProductRaConfig(body) {
-  const raOriginHost = normalizeProductRaHost(body.ra_origin_host);
-  if (raOriginHost && !isValidProductRaHost(raOriginHost)) {
+function validateProductRaConfig(body, existing = {}) {
+  const raEnabled = !!body.ra_enabled;
+  const raOriginHost = raEnabled ? normalizeProductRaHost(body.ra_origin_host) : null;
+  if (raEnabled && raOriginHost && !isValidProductRaHost(raOriginHost)) {
     return { error: 'ra_origin_host geçersiz bir hostname' };
   }
 
   let raLoginRecipeJson = null;
-  if (body.ra_login_recipe_json != null && body.ra_login_recipe_json !== '') {
+  if (raEnabled && body.ra_login_recipe_json != null && body.ra_login_recipe_json !== '') {
     const raw = String(body.ra_login_recipe_json);
     if (raw.length > MAX_PRODUCT_RA_RECIPE_BYTES) return { error: 'ra_login_recipe_json çok uzun' };
     try {
@@ -3527,7 +3528,7 @@ function validateProductRaConfig(body) {
   }
 
   let raHostAllowlistJson = null;
-  if (body.ra_host_allowlist_json != null && body.ra_host_allowlist_json !== '') {
+  if (raEnabled && body.ra_host_allowlist_json != null && body.ra_host_allowlist_json !== '') {
     const raw = String(body.ra_host_allowlist_json);
     if (raw.length > MAX_PRODUCT_RA_ALLOWLIST_BYTES) return { error: 'ra_host_allowlist_json çok uzun' };
     try {
@@ -3548,11 +3549,13 @@ function validateProductRaConfig(body) {
   return {
     values: {
       ra_delivery_mode: normalizeProductRaDeliveryMode(body.ra_delivery_mode),
-      ra_origin_host: raOriginHost,
-      ra_origin_landing_path: normalizeProductRaLandingPath(body.ra_origin_landing_path),
-      ra_requires_tunnel: body.ra_requires_tunnel == null ? 1 : (body.ra_requires_tunnel ? 1 : 0),
-      ra_login_recipe_json: raLoginRecipeJson,
-      ra_host_allowlist_json: raHostAllowlistJson,
+      ra_origin_host: raEnabled ? raOriginHost : (existing?.ra_origin_host || null),
+      ra_origin_landing_path: raEnabled ? normalizeProductRaLandingPath(body.ra_origin_landing_path) : (existing?.ra_origin_landing_path || null),
+      ra_requires_tunnel: raEnabled
+        ? (body.ra_requires_tunnel == null ? 1 : (body.ra_requires_tunnel ? 1 : 0))
+        : (existing?.ra_requires_tunnel == null ? 1 : (existing.ra_requires_tunnel ? 1 : 0)),
+      ra_login_recipe_json: raEnabled ? raLoginRecipeJson : (existing?.ra_login_recipe_json || null),
+      ra_host_allowlist_json: raEnabled ? raHostAllowlistJson : (existing?.ra_host_allowlist_json || null),
     },
   };
 }
@@ -3794,15 +3797,16 @@ app.put('/api/admin/product/:slug', async (c) => {
   await ensureInstitutionSubscriptionAccessColumns(db);
   await ensureInstitutionMetadataColumns(db);
   await ensureAdminActionLogsTable(db);
-  const raConfig = validateProductRaConfig(body);
+
+  const existing = await db.prepare(`SELECT * FROM products WHERE slug = ?`).bind(slug).first();
+  if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
+
+  const raConfig = validateProductRaConfig(body, existing);
   if (raConfig.error) return c.json({ error: raConfig.error }, 400);
   const ra = raConfig.values;
   const presentationConfig = normalizeProductPresentation(body);
   if (presentationConfig.error) return c.json({ error: presentationConfig.error }, 400);
   const presentation = presentationConfig.values;
-
-  const existing = await db.prepare(`SELECT * FROM products WHERE slug = ?`).bind(slug).first();
-  if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
   const logoChanged = String(existing.logo_url || '') !== String(presentation.logo_url || '');
   const logoUpdatedAt = logoChanged ? new Date().toISOString() : null;
   const cardBackgroundChanged = String(existing.card_background_url || '') !== String(presentation.card_background_url || '');

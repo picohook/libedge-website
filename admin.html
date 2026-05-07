@@ -3791,15 +3791,6 @@ document.addEventListener('click', function(e) {
         }
     }
     
-    // Set role button
-    if (e.target.closest('.set-role-btn')) {
-        const btn = e.target.closest('.set-role-btn');
-        if (btn.dataset.adminAction === 'set-role') return;
-        const userId = String(btn.dataset.userId || '').trim();
-        const newRole = btn.dataset.newRole;
-        if (userId && newRole) setRole(userId, newRole, btn);
-    }
-    
     // Delete user button
     if (e.target.closest('.delete-user-btn')) {
         const btn = e.target.closest('.delete-user-btn');
@@ -6044,6 +6035,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             : editingProductSlug;
         if (!slug) { showToast('Slug zorunludur', 'error'); return; }
 
+        const raEnabled = document.getElementById('productRaEnabled').checked;
         const recipeJson = document.getElementById('productRaLoginRecipe').value.trim();
         const allowlistJson = document.getElementById('productRaHostAllowlist').value.trim();
         const subjectsJson = document.getElementById('productSubjectsJson').value.trim();
@@ -6051,7 +6043,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         const brandColor = document.getElementById('productBrandColor').value.trim();
         const frontTextColor = document.getElementById('productCardFrontTextColor').value.trim();
         const backTextColor = document.getElementById('productCardBackTextColor').value.trim();
-        if (recipeJson) {
+        if (raEnabled && recipeJson) {
             try {
                 const parsed = JSON.parse(recipeJson);
                 if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('obje olmalı');
@@ -6060,7 +6052,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
                 return;
             }
         }
-        if (allowlistJson) {
+        if (raEnabled && allowlistJson) {
             try {
                 const parsed = JSON.parse(allowlistJson);
                 if (!Array.isArray(parsed)) throw new Error('array olmalı');
@@ -6126,8 +6118,8 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             ra_requires_tunnel: document.getElementById('productRaRequiresTunnel').checked,
             ra_origin_host: document.getElementById('productRaOriginHost').value.trim() || null,
             ra_origin_landing_path: document.getElementById('productRaLandingPath').value.trim() || null,
-            ra_host_allowlist_json: allowlistJson || null,
-            ra_login_recipe_json: recipeJson || null,
+            ra_host_allowlist_json: raEnabled ? allowlistJson || null : null,
+            ra_login_recipe_json: raEnabled ? recipeJson || null : null,
         };
 
         try {
@@ -9779,6 +9771,9 @@ function setBtnLoading(btn, loading, originalHTML = '') {
 let _adminConfirmCallback = null;
 let _confirmListenersAttached = false;
 
+function _adminConfirmClose() {
+    document.getElementById('adminConfirmModal')?.classList.add('hidden');
+}
 
 function _ensureConfirmListeners() {
     if (_confirmListenersAttached) return true;
