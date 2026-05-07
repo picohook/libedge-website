@@ -1202,7 +1202,7 @@ async function loadProfileIndividualTools() {
         const data = await res.json();
         profileIndividualTools = Array.isArray(data.tools) ? data.tools : [];
         el.innerHTML = profileIndividualTools.length
-            ? profileIndividualTools.map(renderProfileIndividualToolCard).join('')
+            ? profileIndividualTools.filter(Boolean).map(renderProfileIndividualToolCard).join('')
             : '<p class="text-gray-500 text-sm">Henüz bireysel araç atanmamış.</p>';
         applyProfileResourceFilter();
     } catch (err) {
@@ -1494,7 +1494,7 @@ async function loadSubscriptions() {
                 </article>`;
         };
 
-        const activeSubs = profileSubscriptions.filter(s => s.status === 'active' || s.status === 'trial');
+        const activeSubs = profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial'));
         const visibleActiveSubs = activeSubs;
 
         const overviewSubCount = document.getElementById('overviewSubCount');
