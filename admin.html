@@ -3794,9 +3794,9 @@ document.addEventListener('click', function(e) {
     // Set role button
     if (e.target.closest('.set-role-btn')) {
         const btn = e.target.closest('.set-role-btn');
-        const userId = parseInt(btn.dataset.userId);
+        const userId = String(btn.dataset.userId || '').trim();
         const newRole = btn.dataset.newRole;
-        if (userId && newRole) setRole(userId, newRole);
+        if (userId && newRole) setRole(userId, newRole, btn);
     }
     
     // Delete user button
@@ -5065,6 +5065,23 @@ async function startAdminProductRaTest(btn) {
     function renderUsers(users) {
         const isSuper = currentAdmin?.role === 'super_admin';
         document.getElementById('usersList').innerHTML = users.length ? users.map(u => {
+            const userLabel = escapeHtml(u.full_name || u.email || 'Kullanıcı');
+            const isAdminUser = u.role === 'admin';
+            const roleAction = isAdminUser
+                ? {
+                    nextRole: 'user',
+                    title: 'Admin yetkisini kaldır',
+                    aria: `${userLabel} için admin yetkisini kaldır`,
+                    cls: 'text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 hover:text-red-700',
+                    icon: 'fa-user-minus'
+                }
+                : {
+                    nextRole: 'admin',
+                    title: 'Admin yap',
+                    aria: `${userLabel} için admin yetkisi ver`,
+                    cls: 'text-emerald-700 bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 hover:text-emerald-800',
+                    icon: 'fa-user-shield'
+                };
             return `
             <tr>
                 <td class="px-4 py-2">${u.id}</td>
@@ -5077,7 +5094,7 @@ async function startAdminProductRaTest(btn) {
                 <td class="px-4 py-2">
                     <button class="text-blue-600 mr-2 edit-user-btn" data-user-id="${u.id}" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} kaydını düzenle"><i class="fas fa-edit"></i></button>
                     <button class="text-indigo-500 hover:text-indigo-700 mr-2 user-files-btn" data-user-id="${u.id}" data-user-name="${escapeHtml(u.full_name || u.email)}" title="Dosyaları Gör" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} için dosyaları görüntüle"><i class="fas fa-folder-open"></i></button>
-                    ${isSuper && u.role !== 'super_admin' ? `<button class="text-green-600 mr-2 set-role-btn" data-user-id="${u.id}" data-new-role="${escapeHtml(u.role === 'admin' ? 'user' : 'admin')}" title="${u.role === 'admin' ? 'Admin yetkisini kaldır' : 'Admin yap'}" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} için ${u.role === 'admin' ? 'admin yetkisini kaldır' : 'admin yetkisi ver'}"><i class="fas fa-user-shield"></i></button>` : ''}
+                    ${isSuper && u.role !== 'super_admin' ? `<button type="button" class="mr-2 set-role-btn ${roleAction.cls}" data-user-id="${escapeHtml(String(u.id))}" data-new-role="${escapeHtml(roleAction.nextRole)}" title="${roleAction.title}" aria-label="${roleAction.aria}"><i class="fas ${roleAction.icon}"></i></button>` : ''}
                     <button class="text-red-600 delete-user-btn" data-user-id="${u.id}" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} kaydını sil"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
@@ -5496,20 +5513,41 @@ function composeFullName(firstName, lastName) {
 }
 
     // Rol değiştirme (sadece super admin)
-    async function setRole(userId, newRole) {
+    async function setRole(userId, newRole, triggerBtn = null) {
+        const isRemovingAdmin = newRole === 'user';
         showConfirmDialog(
             `Kullanıcı rolünü ${newRole === 'admin' ? 'Admin' : 'Kullanıcı'} yapmak istediğinize emin misiniz?`,
             async () => {
-                await fetch(`${API_BASE}/api/admin/set-role/${userId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ role: newRole })
-                });
-                loadUsers();
-                loadDashboard();
+                const originalDisabled = triggerBtn?.disabled;
+                if (triggerBtn) {
+                    triggerBtn.disabled = true;
+                    triggerBtn.classList.add('opacity-60', 'cursor-wait');
+                }
+                try {
+                    const res = await fetch(`${API_BASE}/api/admin/set-role/${encodeURIComponent(userId)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ role: newRole })
+                    });
+                    let data = null;
+                    try { data = await res.json(); } catch (_) { /* ignore non-json */ }
+                    if (!res.ok) {
+                        throw new Error(data?.error || `Rol değiştirilemedi (HTTP ${res.status})`);
+                    }
+                    showToast(newRole === 'admin' ? 'Kullanıcı admin yapıldı.' : 'Admin yetkisi kaldırıldı.', 'success');
+                    loadUsers();
+                    loadDashboard();
+                } catch (err) {
+                    showToast(err.message || 'Rol değiştirilemedi.', 'error');
+                } finally {
+                    if (triggerBtn) {
+                        triggerBtn.disabled = !!originalDisabled;
+                        triggerBtn.classList.remove('opacity-60', 'cursor-wait');
+                    }
+                }
             },
-            { danger: false }
+            { danger: isRemovingAdmin, confirmLabel: isRemovingAdmin ? 'Yetkiyi Kaldır' : 'Admin Yap' }
         );
     }
 
