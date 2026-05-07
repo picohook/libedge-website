@@ -128,6 +128,10 @@
             <a href="index.html#brochures" class="hover:text-primary font-semibold">Broşürler</a>
             <a href="index.html#contact" class="hover:text-primary font-semibold">İletişim</a>
             <a href="announcements.html" class="hover:text-primary font-semibold">Duyurular</a>
+            <button id="translateBtn" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center text-sm font-semibold">
+                <i class="fas fa-globe mr-1"></i>
+                <span id="translateText">English</span>
+            </button>
         </div>
     </div>
 </nav>`;
