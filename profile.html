@@ -1423,6 +1423,8 @@ const profileTranslations = {
     'İşletme': 'Business',
     'Ekonomi': 'Economics',
     'Finans': 'Finance',
+    'İşletme, Ekonomi, Finans': 'Business, Economics, Finance',
+    'İşletme, Ekonomi ve Finans': 'Business, Economics and Finance',
     'Ekonomi ve Finans': 'Economics and Finance',
     'Mühendislik': 'Engineering',
     'Sanat': 'Arts',
@@ -1530,9 +1532,12 @@ function getProfileCategoryFilterMeta(item) {
     const rawCategory = String(prod.category || item?.category || '').trim();
     const englishCategory = String(prod.category_en || item?.category_en || '').trim();
     const keySource = rawCategory || englishCategory;
+    const labelSource = isProfileEnglish()
+        ? (englishCategory || rawCategory)
+        : (rawCategory || englishCategory);
     const label = isProfileEnglish()
-        ? (englishCategory || translateProfileString(rawCategory, true))
-        : (rawCategory || translateProfileString(englishCategory, false));
+        ? translateProfileString(labelSource, true)
+        : translateProfileString(labelSource, false);
     return {
         key: keySource.toLowerCase(),
         label: label || keySource
@@ -2496,7 +2501,8 @@ async function loadSubscriptions() {
             const useEnglish = isProfileEnglish();
             const name = prod.name || sub.product_name || sub.product_slug || (useEnglish ? 'Unnamed product' : 'İsimsiz ürün');
             const rawCategory = prod.category || sub.category || '';
-            const category = (useEnglish && prod.category_en) ? prod.category_en : rawCategory;
+            const categorySource = useEnglish ? (prod.category_en || rawCategory) : (rawCategory || prod.category_en || '');
+            const category = translateProfileString(categorySource, useEnglish);
             const categoryKey = String(rawCategory || prod.category_en || '').toLowerCase();
             const logoUrl = prod.logo_url || null;
             const registrationUrl = sub.registration_url || sub.default_registration_url || null;
@@ -2880,7 +2886,8 @@ function renderProfileIndividualToolCard(tool) {
     const useEnglish = isProfileEnglish();
     const name = tool.name || (useEnglish ? 'Tool' : 'Araç');
     const rawCategory = tool.category || '';
-    const category = (useEnglish && tool.category_en) ? tool.category_en : (rawCategory || (useEnglish ? 'Personal tool' : 'Bireysel araç'));
+    const categorySource = useEnglish ? (tool.category_en || rawCategory) : (rawCategory || tool.category_en || '');
+    const category = translateProfileString(categorySource, useEnglish) || (useEnglish ? 'Personal tool' : 'Bireysel araç');
     const categoryKey = String(rawCategory || tool.category_en || '').toLowerCase();
     const summary = useEnglish ? (tool.summary_en || tool.summary_tr || '') : (tool.summary_tr || tool.summary_en || '');
     const isAffiliate = tool.access_type === 'affiliate';
