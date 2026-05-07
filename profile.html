@@ -1343,12 +1343,52 @@ const profileTranslations = {
     'Destek Taleplerim': 'My Support Requests',
     'Yeni Talep': 'New Request',
     'Yeni Destek Talebi': 'New Support Request',
+    'Hesap Ayarları': 'Account Settings',
+    'Ad Soyad': 'Full Name',
+    'Yeni Şifre': 'New Password',
+    'Bilgileri Güncelle': 'Update Information',
+    '(yönetici tarafından atanır)': '(assigned by an administrator)',
+    'Akademik Profillerim': 'My Academic Profiles',
+    'ORCID, Google Scholar, Scopus, ResearchGate, YÖKSİS ve diğer profil linklerinizi ekleyin.': 'Add your ORCID, Google Scholar, Scopus, ResearchGate, YOKSIS, and other profile links.',
+    'Link Ekle': 'Add Link',
     'Profil Bağlantılarım': 'My Profile Links',
     'Akademik Kimlikler': 'Academic Identities',
     'E-bülten Aboneliği': 'Newsletter Subscription',
     'Kişisel Bilgiler': 'Personal Information',
     'Kurum Dosyaları': 'Organization Files',
     'Merkezi Dosyalar': 'Central Files',
+    'Klasör Ekle': 'Add Folder',
+    'Dosya Ekle': 'Add File',
+    'Dosya Yükle': 'Upload File',
+    'Ana Klasör': 'Root Folder',
+    'Ana dizin': 'Root directory',
+    '(Ana dizin)': '(Root directory)',
+    '(Ana Dizin)': '(Root directory)',
+    'Yeni Klasör': 'New Folder',
+    'Oluştur': 'Create',
+    'Kaydet': 'Save',
+    'Taşı': 'Move',
+    'Geri': 'Back',
+    'Dosya ekle': 'Attach file',
+    'Gönder': 'Send',
+    'Gönderiliyor...': 'Sending...',
+    'İptal': 'Cancel',
+    'Görünürlük': 'Visibility',
+    'Herkese Açık': 'Public',
+    'Kurum İçi': 'Organization-only',
+    'İçi': 'Internal',
+    'Kategori': 'Category',
+    'Sözleşme': 'Contract',
+    'Fatura': 'Invoice',
+    'Lisans': 'License',
+    'Dokümantasyon': 'Documentation',
+    'Diğer': 'Other',
+    'Bilgisayar': 'Computer',
+    'URL': 'URL',
+    'Dosya URL': 'File URL',
+    'Dosya adı': 'File name',
+    'Dosya': 'File',
+    'Henüz klasör yok': 'No folders yet',
     'Abonelikler ve erişim durumları': 'Subscriptions and access statuses',
     'Kişisel araçlar ve erişimler': 'Personal tools and access',
     'Henüz bireysel ürün erişiminiz bulunmuyor.': 'You do not have access to any personal products yet.',
@@ -1357,6 +1397,8 @@ const profileTranslations = {
     'Talepler yüklenemedi.': 'Requests could not be loaded.',
     'Henüz destek talebiniz yok.': 'You do not have any support requests yet.',
     'Kullanıcı': 'User',
+    'Kurum Yöneticisi': 'Organization Admin',
+    'Atanmamış': 'Unassigned',
     'Üye': 'Member since',
     'Klasör veya dosya ara...': 'Search folders or files...',
     'Kaynak, ürün, konu, DOI veya ihtiyacını yaz...': 'Search resources, products, topics, DOI, or your need...',
@@ -1377,6 +1419,11 @@ const profileTranslations = {
     'Sağlık': 'Health',
     'Fen & Matematik': 'Science & Mathematics',
     'İş & Hukuk': 'Business & Law',
+    'Kimya': 'Chemistry',
+    'İşletme': 'Business',
+    'Ekonomi': 'Economics',
+    'Finans': 'Finance',
+    'Ekonomi ve Finans': 'Economics and Finance',
     'Mühendislik': 'Engineering',
     'Sanat': 'Arts',
     'Sosyal Bilimler': 'Social Sciences',
@@ -1515,7 +1562,9 @@ function replaceProfileTextNode(node, toEnglish) {
 }
 
 function applyProfileLanguageFromStorage() {
-    const roots = Array.from(document.querySelectorAll('.profile-dashboard-shell, footer'));
+    const roots = Array.from(document.querySelectorAll(
+        '.profile-dashboard-shell, footer, #addFolderModal, #addFileModal, #moveModal, #newTicketModal, #ticketDetail, #avatarCropModal'
+    ));
     if (!roots.length || profileLanguageApplying) return;
 
     const toEnglish = localStorage.getItem('language') === 'en';
@@ -1561,15 +1610,17 @@ function bindProfileLanguageButton() {
 
 function initProfileLanguageObserver() {
     if (profileLanguageObserverReady) return;
-    const root = document.querySelector('.profile-dashboard-shell');
-    if (!root) return;
+    const roots = Array.from(document.querySelectorAll(
+        '.profile-dashboard-shell, footer, #addFolderModal, #addFileModal, #moveModal, #newTicketModal, #ticketDetail, #avatarCropModal'
+    ));
+    if (!roots.length) return;
     profileLanguageObserverReady = true;
     const observer = new MutationObserver(() => {
         if (profileLanguageApplying) return;
         window.clearTimeout(initProfileLanguageObserver.timer);
         initProfileLanguageObserver.timer = window.setTimeout(applyProfileLanguageFromStorage, 60);
     });
-    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    roots.forEach((root) => observer.observe(root, { childList: true, subtree: true, characterData: true }));
 }
 
 function compactProfileHeader() {
@@ -1695,9 +1746,9 @@ const categoryColor = (category) => {
     const c = String(category || '').toLowerCase();
     if (c.includes('sağ') || c.includes('sag') || c.includes('tıp') || c.includes('tip')) return { border: '#f87171', bg: '#fef2f2', text: '#991b1b' };  // red
     if (c.includes('zeka') || c.includes('yapay') || c.includes('ai')) return { border: '#60a5fa', bg: '#eff6ff', text: '#1e40af' };  // blue
-    if (c.includes('fen') || c.includes('müh') || c.includes('muh') || c.includes('doğa')) return { border: '#2dd4bf', bg: '#f0fdfa', text: '#134e4a' };  // teal
+    if (c.includes('fen') || c.includes('müh') || c.includes('muh') || c.includes('doğa') || c.includes('kimya') || c.includes('chemistry')) return { border: '#2dd4bf', bg: '#f0fdfa', text: '#134e4a' };  // teal
     if (c.includes('sanat') || c.includes('müzik') || c.includes('muzik')) return { border: '#c084fc', bg: '#faf5ff', text: '#6b21a8' };  // purple
-    if (c.includes('hukuk') || c.includes('iş') || c.includes('is') || c.includes('ekonomi')) return { border: '#fb923c', bg: '#fff7ed', text: '#9a3412' };  // orange
+    if (c.includes('hukuk') || c.includes('iş') || c.includes('is') || c.includes('işletme') || c.includes('business') || c.includes('ekonomi') || c.includes('economics') || c.includes('finans') || c.includes('finance')) return { border: '#fb923c', bg: '#fff7ed', text: '#9a3412' };  // orange
     if (c.includes('sosyal') || c.includes('insan')) return { border: '#34d399', bg: '#ecfdf5', text: '#065f46' };  // green
     return { border: '#818cf8', bg: '#eef2ff', text: '#3730a3' };  // indigo (default)
 };
@@ -1717,7 +1768,8 @@ function getCategoryName(category) {
         'contract': 'Sözleşme', 'invoice': 'Fatura',
         'license': 'Lisans', 'documentation': 'Dokümantasyon', 'other': 'Diğer'
     };
-    return names[category] || category;
+    const label = names[category] || category;
+    return translateProfileString(label, isProfileEnglish());
 }
 
 function getVersionedProfileAsset(url, updatedAt) {
@@ -1912,14 +1964,17 @@ async function checkAuthAndLoad() {
                 };
             }
         }
-        const roleLabel = { super_admin: 'Super Admin', admin: 'Kurum Yöneticisi', user: 'Kullanıcı' };
-        if (el('overviewRoleText')) el('overviewRoleText').textContent = roleLabel[user.role] || 'Kullanıcı';
+        const useEnglishProfile = isProfileEnglish();
+        const roleLabel = useEnglishProfile
+            ? { super_admin: 'Super Admin', admin: 'Organization Admin', user: 'User' }
+            : { super_admin: 'Super Admin', admin: 'Kurum Yöneticisi', user: 'Kullanıcı' };
+        if (el('overviewRoleText')) el('overviewRoleText').textContent = roleLabel[user.role] || (useEnglishProfile ? 'User' : 'Kullanıcı');
         if (el('overviewSinceText')) el('overviewSinceText').textContent = user.created_at
-            ? 'Üye ' + new Date(user.created_at).toLocaleDateString('tr-TR') : '';
+            ? (useEnglishProfile ? 'Member since ' : 'Üye ') + new Date(user.created_at).toLocaleDateString(useEnglishProfile ? 'en-US' : 'tr-TR') : '';
 
         // Hesap Ayarları form
         if (el('settingsFullName')) el('settingsFullName').value = user.full_name || '';
-        if (el('settingsInstitution')) el('settingsInstitution').textContent = instName || 'Atanmamış';
+        if (el('settingsInstitution')) el('settingsInstitution').textContent = instName || (useEnglishProfile ? 'Unassigned' : 'Atanmamış');
 
         setProfileAvatar(user.avatar_url, user.full_name);
         updateFileTabMode();
@@ -2440,7 +2495,9 @@ async function loadSubscriptions() {
             const prod = profileProductMap.get(sub.product_slug) || {};
             const useEnglish = isProfileEnglish();
             const name = prod.name || sub.product_name || sub.product_slug || (useEnglish ? 'Unnamed product' : 'İsimsiz ürün');
-            const category = (useEnglish && prod.category_en) ? prod.category_en : (prod.category || '');
+            const rawCategory = prod.category || sub.category || '';
+            const category = (useEnglish && prod.category_en) ? prod.category_en : rawCategory;
+            const categoryKey = String(rawCategory || prod.category_en || '').toLowerCase();
             const logoUrl = prod.logo_url || null;
             const registrationUrl = sub.registration_url || sub.default_registration_url || null;
             const normalizedUrl = normalizeExternalUrl(sub.access_url || sub.default_access_url);
@@ -2448,10 +2505,10 @@ async function loadSubscriptions() {
             
             const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
             const expiry = daysLeft !== null
-                ? (daysLeft <= 0 ? '<span class="profile-tag bg-red-50 text-red-700"><i class="fas fa-clock text-[9px]"></i>Süresi doldu</span>'
-                    : daysLeft <= 7 ? `<span class="profile-tag bg-red-50 text-red-700"><i class="fas fa-clock text-[9px]"></i>${daysLeft} gün kaldı</span>`
-                    : daysLeft <= 30 ? `<span class="profile-tag bg-amber-50 text-amber-700"><i class="fas fa-clock text-[9px]"></i>${daysLeft} gün kaldı</span>`
-                    : `<span class="profile-tag">${new Date(sub.end_date).toLocaleDateString('tr-TR')}</span>`)
+                ? (daysLeft <= 0 ? `<span class="profile-tag bg-red-50 text-red-700"><i class="fas fa-clock text-[9px]"></i>${useEnglish ? 'Expired' : 'Süresi doldu'}</span>`
+                    : daysLeft <= 7 ? `<span class="profile-tag bg-red-50 text-red-700"><i class="fas fa-clock text-[9px]"></i>${daysLeft} ${useEnglish ? 'days left' : 'gün kaldı'}</span>`
+                    : daysLeft <= 30 ? `<span class="profile-tag bg-amber-50 text-amber-700"><i class="fas fa-clock text-[9px]"></i>${daysLeft} ${useEnglish ? 'days left' : 'gün kaldı'}</span>`
+                    : `<span class="profile-tag">${new Date(sub.end_date).toLocaleDateString(useEnglish ? 'en-US' : 'tr-TR')}</span>`)
                 : '';
             
             const logoHtml = logoUrl
@@ -2470,21 +2527,24 @@ async function loadSubscriptions() {
                         data-ra-enabled="${sub.ra_enabled ? '1' : '0'}"
                         onclick="openSubscriptionAccess(this)"
                         class="profile-action ${actionConfig.secondary ? 'secondary' : ''}">
-                        <i class="fas ${actionConfig.icon}"></i><span>${actionConfig.label}</span>
+                        <i class="fas ${actionConfig.icon}"></i><span>${escapeHtml(translateProfileString(actionConfig.label, useEnglish))}</span>
                     </button>`
                 : '';
                 
             const brochureHtml = prod.brochure_url 
-                ? `<button type="button" onclick="window.open('${jsStr(prod.brochure_url)}', '_blank')" class="profile-action secondary"><i class="fas fa-file-pdf"></i><span>Broşür</span></button>`
+                ? `<button type="button" onclick="window.open('${jsStr(prod.brochure_url)}', '_blank')" class="profile-action secondary"><i class="fas fa-file-pdf"></i><span>${useEnglish ? 'Brochure' : 'Broşür'}</span></button>`
                 : '';
 
             const registrationHtml = registrationUrl
-                ? `<button type="button" onclick="window.open('${jsStr(registrationUrl)}', '_blank', 'noopener,noreferrer')" class="profile-action secondary"><i class="fas fa-user-plus"></i><span>Kayıt</span></button>`
+                ? `<button type="button" onclick="window.open('${jsStr(registrationUrl)}', '_blank', 'noopener,noreferrer')" class="profile-action secondary"><i class="fas fa-user-plus"></i><span>${useEnglish ? 'Register' : 'Kayıt'}</span></button>`
                 : '';
             
+            const sourceText = sub.source === 'institution'
+                ? (useEnglish ? 'Organization' : 'Kurum')
+                : (useEnglish ? 'Personal' : 'Bireysel');
             const sourceTag = sub.source === 'institution'
-                ? '<span class="profile-tag bg-violet-50 text-violet-700"><i class="fas fa-building text-[9px]"></i>Kurum</span>'
-                : '<span class="profile-tag"><i class="fas fa-user text-[9px]"></i>Bireysel</span>';
+                ? `<span class="profile-tag bg-violet-50 text-violet-700"><i class="fas fa-building text-[9px]"></i>${sourceText}</span>`
+                : `<span class="profile-tag"><i class="fas fa-user text-[9px]"></i>${sourceText}</span>`;
 
             const descriptionText = useEnglish
                 ? (prod.short_description_en || prod.short_description_tr || '')
@@ -2493,19 +2553,19 @@ async function loadSubscriptions() {
 
             return `
                 <article class="profile-product-card" data-profile-product-card
-                    data-category="${escapeHtml(String(category).toLowerCase())}"
                     data-source="${escapeHtml(sub.source || 'institution')}"
-                    data-search-text="${escapeHtml([name, category].join(' ').toLowerCase())}"
+                    data-category="${escapeHtml(categoryKey)}"
+                    data-search-text="${escapeHtml([name, rawCategory, prod.category_en, category].join(' ').toLowerCase())}"
                     style="border-top:3px solid ${clr.border}">
                     <div class="profile-product-head" style="background:linear-gradient(120deg,${clr.bg},#fff 70%)">
                         <div class="profile-product-brand">
                             <div class="profile-product-logo" style="color:${clr.text}">${logoHtml}</div>
                             <div class="min-w-0">
                                 <h4>${escapeHtml(name)}</h4>
-                                <p>${escapeHtml(category || 'Akademik kaynak')}</p>
+                                <p>${escapeHtml(category || (useEnglish ? 'Academic resource' : 'Akademik kaynak'))}</p>
                             </div>
                         </div>
-                        <span class="profile-tag ${sub.status === 'trial' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}">${sub.status === 'trial' ? 'Deneme' : sub.status === 'active' ? 'Aktif' : 'Pasif'}</span>
+                        <span class="profile-tag ${sub.status === 'trial' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}">${sub.status === 'trial' ? (useEnglish ? 'Trial' : 'Deneme') : sub.status === 'active' ? (useEnglish ? 'Active' : 'Aktif') : (useEnglish ? 'Inactive' : 'Pasif')}</span>
                     </div>
                     <div class="profile-product-body">
                         <div class="flex flex-wrap gap-1.5">
@@ -2819,7 +2879,9 @@ function renderProfileIndividualToolCard(tool) {
     const slug = String(tool.slug || '').trim();
     const useEnglish = isProfileEnglish();
     const name = tool.name || (useEnglish ? 'Tool' : 'Araç');
-    const category = (useEnglish && tool.category_en) ? tool.category_en : (tool.category || (useEnglish ? 'Personal tool' : 'Bireysel araç'));
+    const rawCategory = tool.category || '';
+    const category = (useEnglish && tool.category_en) ? tool.category_en : (rawCategory || (useEnglish ? 'Personal tool' : 'Bireysel araç'));
+    const categoryKey = String(rawCategory || tool.category_en || '').toLowerCase();
     const summary = useEnglish ? (tool.summary_en || tool.summary_tr || '') : (tool.summary_tr || tool.summary_en || '');
     const isAffiliate = tool.access_type === 'affiliate';
     
@@ -2836,11 +2898,11 @@ function renderProfileIndividualToolCard(tool) {
         ? `<img src="${escapeHtml(tool.logo_url)}" alt="${escapeHtml(name)} logo" loading="lazy">`
         : `<span>${escapeHtml(name.slice(0, 2).toUpperCase())}</span>`;
     
-    const searchText = [name, category, summary, tool.access_type].join(' ').toLowerCase();
+    const searchText = [name, rawCategory, tool.category_en, category, summary, tool.access_type].join(' ').toLowerCase();
 
     return `
         <article class="profile-product-card" data-profile-product-card 
-            data-category="${escapeHtml(String(category).toLowerCase())}"
+            data-category="${escapeHtml(categoryKey)}"
             data-source="individual"
             data-search-text="${escapeHtml(searchText)}" 
             style="border-top:3px solid ${clr.border}">
