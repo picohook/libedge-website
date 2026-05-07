@@ -1188,7 +1188,7 @@ async function loadProfileIndividualTools() {
         const res = await fetch(`${API_BASE}/api/individual-tools`, { credentials: 'include' });
         if (!res.ok) throw new Error(res.status);
         const data = await res.json();
-        profileIndividualTools = Array.isArray(data) ? data : [];
+        profileIndividualTools = Array.isArray(data.tools) ? data.tools : [];
         el.innerHTML = profileIndividualTools.length
             ? profileIndividualTools.map(renderProfileIndividualToolCard).join('')
             : '<p class="text-gray-500 text-sm">Henüz bireysel araç atanmamış.</p>';
@@ -1500,7 +1500,7 @@ async function loadSubscriptions() {
         if (overviewSubCount) overviewSubCount.textContent = activeSubs.length;
         if (sidebarSubCount) sidebarSubCount.textContent = activeSubs.length;
         if (resourceCount) resourceCount.textContent = `${activeSubs.length} kaynak`;
-        renderProfileResourceFilters(activeSubs);
+        renderProfileResourceFilters([...activeSubs, ...profileIndividualTools]);
 
         if (activeEl) {
             activeEl.innerHTML = visibleActiveSubs.length
@@ -1554,13 +1554,16 @@ function renderProfileResourceFilters(activeSubs) {
     renderSecondaryFilters(activeSubs);
 }
 
-function renderSecondaryFilters(activeSubs) {
+function renderSecondaryFilters(allItems) {
     const el = document.getElementById('secondaryResourceFilters');
     if (!el) return;
 
-    const filteredSubs = profileActiveResourceFilter === 'all' 
-        ? activeSubs 
-        : activeSubs.filter(s => s.source === profileActiveResourceFilter);
+    const filteredItems = profileActiveResourceFilter === 'all' 
+        ? allItems 
+        : allItems.filter(s => {
+            const source = s.source || (s.product_slug ? 'institution' : 'individual');
+            return source === profileActiveResourceFilter;
+        });
 
     const categories = Array.from(new Set(filteredSubs
         .map(sub => String((profileProductMap.get(sub.product_slug) || {}).category || '').trim())
@@ -1613,7 +1616,6 @@ function applyProfileResourceFilter() {
 
     const containers = [
         { id: 'activeSubscriptionsList', source: 'institution' },
-        { id: 'allSubscriptionsList', source: 'institution' },
         { id: 'profileIndividualToolsList', source: 'individual' }
     ];
 
@@ -1622,32 +1624,34 @@ function applyProfileResourceFilter() {
         if (!grid) return;
         
         const module = grid.closest('.profile-module');
-        let visibleInGrid = 0;
+        if (!module) return;
 
-        grid.querySelectorAll('[data-profile-product-card]').forEach(card => {
+        let visibleInGrid = 0;
+        const cards = grid.querySelectorAll('[data-profile-product-card]');
+        
+        cards.forEach(card => {
             let show = true;
-            if (primary !== 'all' && card.dataset.source !== primary) show = false;
-            // For category filter, we only apply it if it's not 'all'
-            if (show && category !== 'all') {
-                if (card.dataset.category !== category) show = false;
-            }
+            const cardSource = card.dataset.source;
+            const cardCategory = card.dataset.category;
+
+            if (primary !== 'all' && cardSource !== primary) show = false;
+            if (show && category !== 'all' && cardCategory !== category) show = false;
             
             card.style.display = show ? '' : 'none';
             if (show) visibleInGrid++;
         });
 
-        if (module) {
-            if (primary !== 'all' && cfg.source !== primary) {
+        if (primary !== 'all' && cfg.source !== primary) {
+            module.classList.add('hidden');
+        } else {
+            module.classList.remove('hidden');
+            // Only hide if we are in a specific primary filter and nothing matches
+            if (primary !== 'all' && visibleInGrid === 0) {
                 module.classList.add('hidden');
-            } else {
-                module.classList.remove('hidden');
-                // We don't hide the whole module if it's the right source, 
-                // we let the "No items" message show if visibleInGrid is 0
-                // or we can hide it if you prefer, but let's be safe for now.
-                if (visibleInGrid === 0 && primary !== 'all') {
-                    module.classList.add('hidden');
-                }
             }
+        }
+    });
+}
         }
     });
 }
