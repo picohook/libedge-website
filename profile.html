@@ -1521,7 +1521,7 @@ async function loadSubscriptions() {
     }
 }
 
-function renderProfileResourceFilters(activeSubs) {
+function renderProfileResourceFilters(allItems) {
     const primaryEl = document.getElementById('primaryResourceFilters');
     const secondaryEl = document.getElementById('secondaryResourceFilters');
     if (!primaryEl || !secondaryEl) return;
@@ -1546,31 +1546,37 @@ function renderProfileResourceFilters(activeSubs) {
             profileActiveResourceFilter = btn.dataset.primaryFilter;
             profileCategoryFilter = 'all'; // Reset category when primary changes
             updateFilterUI();
-            renderSecondaryFilters(activeSubs);
+            renderSecondaryFilters(allItems);
             applyProfileResourceFilter();
         };
     });
 
-    renderSecondaryFilters(activeSubs);
+    renderSecondaryFilters(allItems);
 }
 
 function renderSecondaryFilters(allItems) {
     const el = document.getElementById('secondaryResourceFilters');
-    if (!el) return;
+    if (!el || !Array.isArray(allItems)) return;
 
     const filteredItems = profileActiveResourceFilter === 'all' 
         ? allItems 
         : allItems.filter(s => {
+            if (!s) return false;
             const source = s.source || (s.product_slug ? 'institution' : 'individual');
             return source === profileActiveResourceFilter;
         });
 
-    const categories = Array.from(new Set(filteredSubs
-        .map(sub => String((profileProductMap.get(sub.product_slug) || {}).category || '').trim())
+    const categories = Array.from(new Set(filteredItems
+        .filter(Boolean)
+        .map(item => {
+            const prod = profileProductMap.get(item.product_slug || item.slug) || item;
+            return String(prod.category || '').trim();
+        })
         .filter(Boolean))).sort();
 
     if (categories.length === 0) {
         el.classList.add('hidden');
+        el.innerHTML = '';
         return;
     }
 
@@ -1592,65 +1598,7 @@ function renderSecondaryFilters(allItems) {
         };
     });
 }
-
-function updateFilterUI() {
-    const primaryEl = document.getElementById('primaryResourceFilters');
-    const secondaryEl = document.getElementById('secondaryResourceFilters');
-    
-    primaryEl.querySelectorAll('[data-primary-filter]').forEach(btn => {
-        const isActive = btn.dataset.primaryFilter === profileActiveResourceFilter;
-        btn.className = `flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${isActive ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-600 border-gray-100 hover:border-gray-200'}`;
-        const icon = btn.querySelector('i');
-        if (icon) icon.className = `fas ${btn.dataset.primaryFilter === 'all' ? 'fa-list-ul' : btn.dataset.primaryFilter === 'institution' ? 'fa-building-columns' : 'fa-wand-magic-sparkles'} text-xs ${isActive ? 'text-white' : 'text-gray-400'}`;
-    });
-
-    secondaryEl.querySelectorAll('[data-category-filter]').forEach(btn => {
-        const isActive = btn.dataset.categoryFilter === profileCategoryFilter;
-        btn.className = `px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${isActive ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'}`;
-    });
-}
-
-function applyProfileResourceFilter() {
-    const primary = profileActiveResourceFilter;
-    const category = profileCategoryFilter;
-
-    const containers = [
-        { id: 'activeSubscriptionsList', source: 'institution' },
-        { id: 'profileIndividualToolsList', source: 'individual' }
-    ];
-
-    containers.forEach(cfg => {
-        const grid = document.getElementById(cfg.id);
-        if (!grid) return;
-        
-        const module = grid.closest('.profile-module');
-        if (!module) return;
-
-        let visibleInGrid = 0;
-        const cards = grid.querySelectorAll('[data-profile-product-card]');
-        
-        cards.forEach(card => {
-            let show = true;
-            const cardSource = card.dataset.source;
-            const cardCategory = card.dataset.category;
-
-            if (primary !== 'all' && cardSource !== primary) show = false;
-            if (show && category !== 'all' && cardCategory !== category) show = false;
-            
-            card.style.display = show ? '' : 'none';
-            if (show) visibleInGrid++;
-        });
-
-        if (primary !== 'all' && cfg.source !== primary) {
-            module.classList.add('hidden');
-        } else {
-            module.classList.remove('hidden');
-            // Only hide if we are in a specific primary filter and nothing matches
-            if (primary !== 'all' && visibleInGrid === 0) {
-                module.classList.add('hidden');
-            }
-        }
-    });
+);
 }
         }
     });
