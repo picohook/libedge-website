@@ -458,6 +458,46 @@ function normalizeIndividualToolPayload(body, existingSlug = '') {
   };
 }
 
+async function ensureUserProfileLinksSchema(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS user_profile_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      link_type TEXT NOT NULL,
+      label TEXT,
+      url TEXT NOT NULL,
+      display_order INTEGER DEFAULT 999,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT,
+      UNIQUE(user_id, link_type),
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `).run();
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_user_profile_links_user_order
+    ON user_profile_links(user_id, display_order ASC, id ASC)
+  `).run();
+}
+
+function normalizeUserProfileLink(raw, index = 0) {
+  const allowedTypes = new Set([
+    'orcid', 'google_scholar', 'scopus', 'researcherid',
+    'researchgate', 'yoksis', 'other',
+  ]);
+  const linkType = String(raw?.link_type || '').trim().toLowerCase();
+  if (!allowedTypes.has(linkType)) return null;
+
+  const url = String(raw?.url || '').trim();
+  if (!/^https?:\/\//i.test(url)) return null;
+
+  return {
+    link_type: linkType,
+    label: String(raw?.label || '').trim().slice(0, 80) || null,
+    url: url.slice(0, 800),
+    display_order: Number.isFinite(Number(raw?.display_order)) ? Number(raw.display_order) : (index + 1) * 10,
+  };
+}
+
 
 function splitFullName(fullName) {
   const cleaned = String(fullName || '').trim().replace(/\s+/g, ' ');
@@ -2038,9 +2078,9 @@ app.post('/api/user/avatar', async (c) => {
 app.post('/api/user/update', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
-  
+
   const userId = auth.user.user_id;
-  const { full_name, institution, new_password } = await c.req.json();
+  const { full_name, new_password } = await c.req.json();
   const db = c.env.DB;
 
   const profileFields = normalizeUserProfileFields({ full_name });
@@ -2051,14 +2091,68 @@ app.post('/api/user/update', async (c) => {
     }
     const password_hash = await hashPassword(new_password);
     await db.prepare(`
-      UPDATE users SET full_name = ?, first_name = ?, last_name = ?, institution = ?, password_hash = ? WHERE id = ?
-    `).bind(profileFields.full_name, profileFields.first_name, profileFields.last_name, institution || null, password_hash, userId).run();
+      UPDATE users SET full_name = ?, first_name = ?, last_name = ?, password_hash = ? WHERE id = ?
+    `).bind(profileFields.full_name, profileFields.first_name, profileFields.last_name, password_hash, userId).run();
   } else {
     await db.prepare(`
-      UPDATE users SET full_name = ?, first_name = ?, last_name = ?, institution = ? WHERE id = ?
-    `).bind(profileFields.full_name, profileFields.first_name, profileFields.last_name, institution || null, userId).run();
+      UPDATE users SET full_name = ?, first_name = ?, last_name = ? WHERE id = ?
+    `).bind(profileFields.full_name, profileFields.first_name, profileFields.last_name, userId).run();
   }
   return c.json({ success: true });
+});
+
+app.get('/api/user/profile-links', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+
+  const db = c.env.DB;
+  await ensureUserProfileLinksSchema(db);
+  const rows = await db.prepare(`
+    SELECT id, link_type, label, url, COALESCE(display_order, 999) AS display_order
+    FROM user_profile_links
+    WHERE user_id = ?
+    ORDER BY COALESCE(display_order, 999) ASC, id ASC
+  `).bind(auth.user.user_id).all();
+
+  return c.json({ links: rows.results || [] });
+});
+
+app.put('/api/user/profile-links', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+
+  const body = await c.req.json().catch(() => ({}));
+  const links = Array.isArray(body.links) ? body.links : [];
+  const normalized = links
+    .map((item, index) => normalizeUserProfileLink(item, index))
+    .filter(Boolean)
+    .slice(0, 12);
+
+  const seen = new Set();
+  const deduped = normalized.filter((item) => {
+    if (seen.has(item.link_type)) return false;
+    seen.add(item.link_type);
+    return true;
+  });
+
+  const db = c.env.DB;
+  await ensureUserProfileLinksSchema(db);
+  await db.batch([
+    db.prepare(`DELETE FROM user_profile_links WHERE user_id = ?`).bind(auth.user.user_id),
+    ...deduped.map((item, index) => db.prepare(`
+      INSERT INTO user_profile_links (user_id, link_type, label, url, display_order, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      auth.user.user_id,
+      item.link_type,
+      item.label,
+      item.url,
+      item.display_order || ((index + 1) * 10),
+      new Date().toISOString()
+    )),
+  ]);
+
+  return c.json({ success: true, links: deduped });
 });
 
 app.delete('/api/user/delete', async (c) => {
@@ -2073,6 +2167,8 @@ app.delete('/api/user/delete', async (c) => {
 
   await db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM subscriptions WHERE user_id = ?`).bind(userId).run();
+  await ensureUserProfileLinksSchema(db);
+  await db.prepare(`DELETE FROM user_profile_links WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
 
   if (userRow?.avatar_url) await deleteManagedR2Object(c.env, userRow.avatar_url);

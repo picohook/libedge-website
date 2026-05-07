@@ -19,6 +19,163 @@
             font-family: 'Inter', sans-serif;
             background-color: #f9fafb;
         }
+        body.profile-compact-header #site-header header {
+            display: none;
+        }
+        body.profile-compact-header nav.nav-glass {
+            top: 0;
+        }
+        body.profile-compact-header nav.nav-glass > div {
+            min-height: 58px;
+            gap: 1rem;
+        }
+        body.profile-compact-header nav.nav-glass .nav-links,
+        body.profile-compact-header nav.nav-glass .hamburger {
+            display: none !important;
+        }
+        body.profile-compact-header nav.nav-glass .nav-logo {
+            font-size: 1.1rem;
+            line-height: 1.1;
+        }
+        #headerAuthRoot.profile-nav-auth {
+            margin-left: auto;
+            padding-left: 0;
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        #headerAuthRoot.profile-nav-auth #authLoading {
+            color: #475569;
+        }
+        #headerAuthRoot.profile-nav-auth #authNotLoggedIn a,
+        #headerAuthRoot.profile-nav-auth #notifBellBtn,
+        #headerAuthRoot.profile-nav-auth #userMenuBtn {
+            color: #220f60;
+        }
+        #headerAuthRoot.profile-nav-auth #authNotLoggedIn a:hover,
+        #headerAuthRoot.profile-nav-auth #notifBellBtn:hover {
+            color: #6d28d9;
+        }
+        #headerAuthRoot.profile-nav-auth #userDropdown {
+            top: calc(100% + 0.45rem);
+            right: 0;
+        }
+        #headerAuthRoot.profile-nav-auth #notifPanel {
+            top: calc(100% + 0.75rem);
+        }
+        #translateBtn.profile-nav-language {
+            border: 1px solid #e8e2ff;
+            background: #f6f3ff;
+            color: #220f60;
+            padding: 0.42rem 0.62rem;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.78rem;
+            font-weight: 800;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        #translateBtn.profile-nav-language:hover {
+            background: #ede7ff;
+        }
+        .profile-announcement-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 10050;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.52);
+            backdrop-filter: blur(3px);
+        }
+        .profile-announcement-dialog {
+            width: min(620px, 100%);
+            max-height: min(760px, 88vh);
+            overflow: auto;
+            border-radius: 22px;
+            background: #fff;
+            box-shadow: 0 28px 80px rgba(15, 23, 42, 0.25);
+        }
+        .profile-announcement-cover {
+            width: 100%;
+            aspect-ratio: 16 / 7;
+            object-fit: cover;
+            background: #eef2ff;
+        }
+        .profile-announcement-body {
+            padding: 1.25rem;
+        }
+        .profile-announcement-tools {
+            display: flex;
+            gap: 0.45rem;
+            align-items: center;
+        }
+        .profile-announcement-tools input,
+        .profile-announcement-tools select {
+            min-width: 0;
+            border: 1px solid #eef0f6;
+            border-radius: 999px;
+            background: #fff;
+            color: #475569;
+            font-size: 0.75rem;
+            padding: 0.48rem 0.65rem;
+            outline: none;
+        }
+        .profile-announcement-tools input {
+            width: 108px;
+        }
+        .profile-announcement-tools select {
+            width: 92px;
+        }
+        .profile-announcement-list {
+            display: grid;
+            gap: 0.15rem;
+        }
+        .profile-announcement-item {
+            width: 100%;
+            text-align: left;
+            border: 0;
+            background: transparent;
+            border-radius: 12px;
+            padding: 0.68rem 0.35rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f3f8;
+        }
+        .profile-announcement-item:hover {
+            background: #fafbff;
+        }
+        .profile-announcement-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            color: #9aa3b5;
+            font-size: 0.7rem;
+            font-weight: 750;
+            margin-bottom: 0.28rem;
+        }
+        .profile-announcement-priority {
+            color: #ef4444;
+        }
+        .profile-announcement-item h4 {
+            margin: 0;
+            color: #172033;
+            font-size: 0.82rem;
+            font-weight: 850;
+            line-height: 1.32;
+        }
+        .profile-announcement-item p {
+            margin: 0.2rem 0 0;
+            color: #64748b;
+            font-size: 0.73rem;
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
         /* legacy badge classes removed — use profile-tag instead */
         .sidebar-link {
             display: flex;
@@ -114,7 +271,8 @@
             gap: 0.5rem;
             margin-top: 0.75rem;
         }
-        .profile-identity-icons a {
+        .profile-identity-icons a,
+        .profile-identity-icons span {
             width: 32px;
             height: 32px;
             display: inline-grid;
@@ -129,6 +287,31 @@
             color: #220f60;
             background: #f0ecff;
             border-color: #ddd6fe;
+        }
+        .profile-identity-icons img {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+        .profile-identity-icons .profile-link-empty {
+            width: auto;
+            padding: 0 0.65rem;
+            font-size: 0.72rem;
+            color: #667085;
+        }
+        .profile-link-row {
+            display: grid;
+            grid-template-columns: minmax(130px, 180px) minmax(0, 1fr) auto;
+            gap: 0.6rem;
+            align-items: center;
+        }
+        @media (max-width: 720px) {
+            .profile-link-row {
+                grid-template-columns: 1fr;
+            }
+            .profile-link-row button {
+                justify-self: start;
+            }
         }
         .profile-mini-stats {
             display: grid;
@@ -213,6 +396,28 @@
             gap: 0.45rem;
             margin-top: 0.65rem;
         }
+        .profile-filter-rail {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            overflow-x: auto;
+            padding-bottom: 0.35rem;
+            scrollbar-width: thin;
+        }
+        #primaryResourceFilters,
+        #secondaryResourceFilters {
+            flex: 0 0 auto;
+            flex-wrap: nowrap !important;
+            white-space: nowrap;
+            margin-bottom: 0 !important;
+        }
+        #secondaryResourceFilters {
+            padding: 0.35rem !important;
+            background: rgba(255,255,255,0.72) !important;
+        }
+        #secondaryResourceFilters.hidden {
+            display: none !important;
+        }
         .profile-dashboard-grid {
             display: grid;
             grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.8fr);
@@ -261,6 +466,40 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 0.85rem;
         }
+        .profile-product-grid.profile-product-grid-four {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+        .profile-product-grid.profile-product-deck {
+            --deck-card-closed: clamp(148px, 14vw, 174px);
+            --deck-logo-size: 66px;
+            --deck-visible-step: 88px;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 0.85rem clamp(7rem, 14vw, 11rem) 1.25rem 0.5rem;
+            margin: -0.35rem -0.35rem -0.55rem;
+            min-height: 220px;
+            contain: layout paint;
+            scroll-snap-type: x proximity;
+            scrollbar-width: thin;
+            overscroll-behavior-x: contain;
+            background:
+                linear-gradient(90deg, rgba(238, 242, 255, 0.9), rgba(255,255,255,0) 18%, rgba(255,255,255,0) 82%, rgba(238, 242, 255, 0.9)),
+                linear-gradient(to bottom, rgba(248,250,252,0), rgba(248,250,252,0.9));
+        }
+        .profile-product-grid.profile-product-deck::-webkit-scrollbar {
+            height: 8px;
+        }
+        .profile-product-grid.profile-product-deck::-webkit-scrollbar-track {
+            background: #f3f5fa;
+            border-radius: 999px;
+        }
+        .profile-product-grid.profile-product-deck::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
         .profile-product-card {
             position: relative;
             min-height: 178px;
@@ -271,6 +510,106 @@
             display: grid;
             grid-template-rows: auto 1fr auto;
             box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card {
+            flex: 0 0 var(--deck-card-closed);
+            min-width: 0;
+            height: 188px;
+            min-height: 188px;
+            scroll-snap-align: start;
+            transform-origin: bottom center;
+            transform: translateY(0);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, flex-basis 0.2s ease, margin 0.2s ease, border-color 0.2s ease;
+            z-index: var(--deck-z, 1);
+            border-radius: 16px;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card + .profile-product-card {
+            margin-left: calc(var(--deck-visible-step) - var(--deck-card-closed));
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card:nth-of-type(6n+1) { --deck-rotation: -1.4deg; --deck-z: 1; }
+        .profile-product-grid.profile-product-deck .profile-product-card:nth-of-type(6n+2) { --deck-rotation: 0.9deg; --deck-z: 2; }
+        .profile-product-grid.profile-product-deck .profile-product-card:nth-of-type(6n+3) { --deck-rotation: -0.7deg; --deck-z: 3; }
+        .profile-product-grid.profile-product-deck .profile-product-card:nth-of-type(6n+4) { --deck-rotation: 1.2deg; --deck-z: 4; }
+        .profile-product-grid.profile-product-deck .profile-product-card:nth-of-type(6n+5) { --deck-rotation: -1deg; --deck-z: 5; }
+        .profile-product-grid.profile-product-deck .profile-product-card:nth-of-type(6n+6) { --deck-rotation: 0.5deg; --deck-z: 6; }
+        .profile-product-grid.profile-product-deck .profile-product-card:hover,
+        .profile-product-grid.profile-product-deck .profile-product-card:focus-within,
+        .profile-product-grid.profile-product-deck .profile-product-card.is-selected {
+            flex-basis: clamp(220px, 23vw, 258px);
+            margin-left: 0;
+            margin-right: clamp(0.65rem, 2vw, 1.2rem);
+            transform: translateY(0);
+            z-index: 40;
+            border-color: rgba(34, 15, 96, 0.16);
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12);
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card:not(.is-selected):not(:hover):not(:focus-within) {
+            grid-template-rows: 1fr;
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card:not(.is-selected):not(:hover):not(:focus-within)::before {
+            height: 100%;
+            background: linear-gradient(145deg, var(--product-tint, #eef4ff), #fff 72%);
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card:not(.is-selected):not(:hover):not(:focus-within) .profile-product-body,
+        .profile-product-grid.profile-product-deck .profile-product-card:not(.is-selected):not(:hover):not(:focus-within) .profile-product-footer {
+            display: none;
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card:not(.is-selected):not(:hover):not(:focus-within) .profile-product-head {
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: center;
+            height: 100%;
+            padding: 0.72rem 0.6rem;
+            min-width: 0;
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card:not(.is-selected):not(:hover):not(:focus-within) .profile-product-brand {
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            min-width: 0;
+            width: auto;
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card:not(.is-selected):not(:hover):not(:focus-within) .profile-product-brand .min-w-0,
+        .profile-product-grid.profile-product-deck .profile-product-card:not(.is-selected):not(:hover):not(:focus-within) .profile-product-head > .profile-tag {
+            display: none;
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card:not(.is-selected):not(:hover):not(:focus-within) .profile-product-logo {
+            width: var(--deck-logo-size);
+            height: var(--deck-logo-size);
+            flex-basis: var(--deck-logo-size);
+            flex-shrink: 0;
+            border-radius: 18px;
+            box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card:first-child {
+            margin-left: 0;
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card.deck-first-visible {
+            margin-left: 0;
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card.is-selected::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 2px solid rgba(34, 15, 96, 0.18);
+            border-radius: inherit;
+            pointer-events: none;
+        }
+        .profile-product-grid.profile-product-deck .profile-product-logo {
+            width: 48px;
+            height: 48px;
+            flex-basis: 48px;
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card h4 {
+            font-size: 0.86rem;
+        }
+        .profile-product-grid.profile-product-deck .profile-product-card p {
+            font-size: 0.7rem;
+        }
+        .profile-product-grid.profile-product-deck .profile-action {
+            padding: 0.5rem 0.62rem;
         }
         .profile-product-card::before {
             content: "";
@@ -381,6 +720,9 @@
             .profile-sidebar-card {
                 position: static;
             }
+            .profile-product-grid.profile-product-grid-four {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
         }
         @media (max-width: 860px) {
             .profile-dashboard-shell {
@@ -392,6 +734,38 @@
                 grid-template-columns: 1fr;
             }
             .profile-product-grid {
+                grid-template-columns: 1fr;
+            }
+            .profile-product-grid.profile-product-grid-four {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .profile-product-grid.profile-product-deck {
+                --deck-card-closed: min(46vw, 154px);
+                --deck-logo-size: 64px;
+                --deck-visible-step: 84px;
+                display: flex;
+                padding-left: 0.25rem;
+                padding-right: 5.5rem;
+                min-height: 214px;
+            }
+            .profile-product-grid.profile-product-deck .profile-product-card {
+                flex-basis: var(--deck-card-closed);
+                transform: none;
+            }
+            .profile-product-grid.profile-product-deck .profile-product-card + .profile-product-card {
+                margin-left: calc(var(--deck-visible-step) - var(--deck-card-closed));
+            }
+            .profile-product-grid.profile-product-deck .profile-product-card:hover,
+            .profile-product-grid.profile-product-deck .profile-product-card:focus-within,
+            .profile-product-grid.profile-product-deck .profile-product-card.is-selected {
+                flex-basis: min(72vw, 246px);
+                margin-left: 0;
+                margin-right: 0.75rem;
+                transform: none;
+            }
+        }
+        @media (max-width: 560px) {
+            .profile-product-grid.profile-product-grid-four {
                 grid-template-columns: 1fr;
             }
         }
@@ -417,11 +791,8 @@
             <input type="file" id="avatarFileInput" accept="image/*" capture="user" class="hidden" onchange="onAvatarFileSelected(this)">
             <h3 id="profileName" class="text-base font-extrabold text-gray-900 leading-tight">Yükleniyor...</h3>
             <p id="profileEmail" class="text-xs text-gray-500 mt-1">-</p>
-            <div class="profile-identity-icons" aria-label="Akademik kimlikler">
-                <a href="#" title="ORCID"><i class="fa-brands fa-orcid"></i></a>
-                <a href="#" title="Google Scholar"><i class="fa-brands fa-google"></i></a>
-                <a href="#" title="Scopus ID"><i class="fas fa-database"></i></a>
-                <a href="#" title="ResearcherID"><i class="fas fa-flask"></i></a>
+            <div id="profileIdentityLinks" class="profile-identity-icons" aria-label="Akademik kimlikler">
+                <span class="profile-link-empty">Profil linki ekleyin</span>
             </div>
         </div>
 
@@ -433,7 +804,7 @@
 
         <nav class="space-y-1" aria-label="Profil menüsü">
             <a href="#" class="sidebar-link active" data-tab="overview"><i class="fas fa-table-cells-large w-5"></i><span>Dashboard</span></a>
-            <a href="tools.html" class="sidebar-link"><i class="fas fa-wand-magic-sparkles w-5"></i><span>Bireysel Araçlar</span></a>
+            <a href="#" class="sidebar-link" data-tab="individual"><i class="fas fa-wand-magic-sparkles w-5"></i><span>Bireysel Araçlar</span></a>
             <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-building-columns w-5"></i><span>Kurum Kaynakları</span></a>
             <a href="#" class="sidebar-link" data-tab="files"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
             <a href="#" class="sidebar-link" data-tab="support"><i class="fas fa-headset w-5"></i><span>Destek</span></a>
@@ -486,7 +857,7 @@
 
             
             <!-- Global Resource Filters -->
-            <div class="mb-6">
+            <div class="mb-6 profile-filter-rail">
                 <div id="primaryResourceFilters" class="flex flex-wrap gap-2 mb-3"></div>
                 <div id="secondaryResourceFilters" class="flex flex-wrap gap-2 p-3 bg-white/50 rounded-xl border border-gray-100 hidden"></div>
             </div>
@@ -495,7 +866,7 @@
                 <div class="profile-stack">
                     <article class="profile-module" style="--module-tint:#eee9ff;--module-icon-bg:#e7ddff;--module-icon:#7c3aed">
                         <div class="profile-module-header">
-                            <h2 class="profile-module-title"><i class="fas fa-building-columns"></i>Kurum Kaynaklarım</h2>
+                            <h2 class="profile-module-title"><i class="fas fa-building-columns"></i><span id="profileInstitutionModuleTitleText">Kurum Kaynaklarım</span></h2>
                             <span id="profileResourceCount" class="text-xs text-gray-400 font-semibold">Yükleniyor</span>
                         </div>
                         <div class="profile-module-body">
@@ -507,7 +878,7 @@
                     </article>
 
                     <article class="profile-module" style="--module-tint:#cffafe;--module-icon-bg:#a5f3fc;--module-icon:#0891b2">
-                        <div class="profile-module-header">
+                        <div id="profileIndividualModuleHeader" class="profile-module-header">
                             <h2 class="profile-module-title"><i class="fas fa-wand-magic-sparkles"></i>Bireysel Araçlar</h2>
                             <a href="tools.html" class="text-xs text-gray-500 hover:text-primary font-semibold">Tümünü gör</a>
                         </div>
@@ -554,6 +925,25 @@
                         </div>
                     </article>
 
+                    <article class="profile-module" style="--module-tint:#eee9ff;--module-icon-bg:#e7ddff;--module-icon:#7c3aed">
+                        <div class="profile-module-header">
+                            <h2 class="profile-module-title"><i class="fas fa-bullhorn"></i>Duyurular</h2>
+                            <div class="profile-announcement-tools">
+                                <input id="profileAnnouncementSearch" type="search" placeholder="Search" autocomplete="off">
+                                <select id="profileAnnouncementFilter" title="Duyuru filtresi">
+                                    <option value="all">Filter</option>
+                                    <option value="important">Important</option>
+                                    <option value="recent">Recent</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="profile-module-body">
+                            <div id="profileAnnouncementList" class="profile-announcement-list">
+                                <p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p>
+                            </div>
+                        </div>
+                    </article>
+
                     <article class="profile-module" style="--module-tint:#fce7f3;--module-icon-bg:#fbcfe8;--module-icon:#db2777">
                         <div class="profile-module-header">
                             <h2 class="profile-module-title"><i class="fas fa-envelope"></i>Taleplerim</h2>
@@ -575,16 +965,21 @@
                     <span class="text-xs text-gray-400">Abonelikler ve erişim durumları</span>
                 </div>
                 <div class="profile-module-body">
-                    <div class="border border-gray-100 rounded-2xl p-4 bg-gray-50 mb-5">
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div>
-                                <h3 class="font-semibold text-gray-800">E-bülten Aboneliği</h3>
-                                <p id="newsletterSubscriptionText" class="text-sm text-gray-500 mt-1">Durum yükleniyor...</p>
-                            </div>
-                            <button id="newsletterToggleBtn" type="button" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition text-sm">Yükleniyor...</button>
-                        </div>
+                    <div id="allSubscriptionsList" class="profile-product-grid profile-product-grid-four"><p class="text-gray-500 text-center py-8">Yükleniyor...</p></div>
+                </div>
+            </article>
+        </div>
+
+        <div id="tab-individual" class="tab-content hidden">
+            <article class="profile-module" style="--module-tint:#cffafe;--module-icon-bg:#a5f3fc;--module-icon:#0891b2">
+                <div class="profile-module-header">
+                    <h2 class="profile-module-title"><i class="fas fa-wand-magic-sparkles"></i>Bireysel Araçlarım</h2>
+                    <span class="text-xs text-gray-400">Kişisel araçlar ve erişimler</span>
+                </div>
+                <div class="profile-module-body">
+                    <div id="profilePersonalToolsList" class="profile-product-grid profile-product-grid-four">
+                        <p class="text-gray-500 text-center py-8">Henüz bireysel ürün erişiminiz bulunmuyor.</p>
                     </div>
-                    <div id="allSubscriptionsList" class="profile-product-grid"><p class="text-gray-500 text-center py-8">Yükleniyor...</p></div>
                 </div>
             </article>
         </div>
@@ -600,6 +995,30 @@
                         <div id="passwordStrength" class="text-xs text-gray-500"></div>
                         <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">Bilgileri Güncelle</button>
                     </form>
+                    <hr class="my-6">
+                    <section>
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                            <div>
+                                <h3 class="font-semibold text-gray-800">Akademik Profillerim</h3>
+                                <p class="text-sm text-gray-500 mt-1">ORCID, Google Scholar, Scopus, ResearchGate, YÖKSİS ve diğer profil linklerinizi ekleyin.</p>
+                            </div>
+                            <button id="addProfileLinkBtn" type="button" class="profile-action secondary"><i class="fas fa-plus"></i><span>Link Ekle</span></button>
+                        </div>
+                        <div id="profileLinksEditor" class="space-y-2"></div>
+                        <div class="mt-4">
+                            <button id="saveProfileLinksBtn" type="button" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">Profil Linklerini Kaydet</button>
+                        </div>
+                    </section>
+                    <hr class="my-6">
+                    <section class="border border-gray-100 rounded-2xl p-4 bg-gray-50">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <h3 class="font-semibold text-gray-800">E-bülten Aboneliği</h3>
+                                <p id="newsletterSubscriptionText" class="text-sm text-gray-500 mt-1">Durum yükleniyor...</p>
+                            </div>
+                            <button id="newsletterToggleBtn" type="button" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition text-sm">Yükleniyor...</button>
+                        </div>
+                    </section>
                     <hr class="my-6">
                     <div class="bg-red-50 border border-red-200 rounded-lg p-4">
                         <h3 class="text-red-800 font-semibold mb-2">Hesabı Sil</h3>
@@ -888,6 +1307,158 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     }
     return false;
 };
+
+const profileTranslations = {
+    'Akademik erişim paneli': 'Academic access panel',
+    'Merhaba,': 'Hello,',
+    'Aktif erişim': 'Active access',
+    'Yeni dosya': 'New file',
+    'Yükleniyor': 'Loading',
+    'Yükleniyor...': 'Loading...',
+    'Kurum Kaynaklarım': 'Organization Resources',
+    'Kurum Kaynaklarım & Bireysel Araçlar': 'Organization Resources & Personal Tools',
+    'Bireysel Araçlar': 'Personal Tools',
+    'Tümünü gör': 'View all',
+    'Bana Yeni Gelenler': 'New for Me',
+    'Bildirimler': 'Notifications',
+    'Tümünü okundu yap': 'Mark all as read',
+    'Henüz bildiriminiz yok.': 'You do not have any notifications yet.',
+    'Bildirimler yüklenemedi.': 'Notifications could not be loaded.',
+    'AI Araçları': 'AI Tools',
+    'Kaynak Bulucu': 'Resource Finder',
+    'DOI / Makale Ara': 'DOI / Article Search',
+    'Duyurular': 'Announcements',
+    'Taleplerim': 'My Requests',
+    'Profil Bağlantılarım': 'My Profile Links',
+    'Akademik Kimlikler': 'Academic Identities',
+    'E-bülten Aboneliği': 'Newsletter Subscription',
+    'Kişisel Bilgiler': 'Personal Information',
+    'Kurum Dosyaları': 'Organization Files',
+    'Merkezi Dosyalar': 'Central Files',
+    'Klasör veya dosya ara...': 'Search folders or files...',
+    'Ad': 'Name',
+    'Tarih': 'Date',
+    'Ara': 'Search',
+    'Filtre': 'Filter',
+    'Tümü': 'All',
+    'Önemli': 'Important',
+    'Son': 'Recent',
+    'Yeni': 'New',
+    'Duyuru': 'Announcement',
+    'Kapat': 'Close',
+    'İndir': 'Download',
+    'Yeni sekmede aç': 'Open in new tab',
+    'Dosya okundu olarak işaretlenemedi.': 'The file could not be marked as read.',
+    'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.': 'Your session has expired. Please sign in again.',
+    'Klasörler yüklenemedi.': 'Folders could not be loaded.'
+};
+const profileTranslationsReverse = Object.fromEntries(
+    Object.entries(profileTranslations).map(([tr, en]) => [en, tr])
+);
+let profileLanguageApplying = false;
+let profileLanguageObserverReady = false;
+
+function replaceProfileTextNode(node, dictionary) {
+    const value = node.nodeValue;
+    const trimmed = value.trim();
+    if (!trimmed || !dictionary[trimmed]) return;
+    node.nodeValue = value.replace(trimmed, dictionary[trimmed]);
+}
+
+function applyProfileLanguageFromStorage() {
+    const root = document.querySelector('.profile-dashboard-shell');
+    if (!root || profileLanguageApplying) return;
+
+    const toEnglish = localStorage.getItem('language') === 'en';
+    const dictionary = toEnglish ? profileTranslations : profileTranslationsReverse;
+    profileLanguageApplying = true;
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            const parent = node.parentElement;
+            if (!parent || ['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT'].includes(parent.tagName)) {
+                return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+        }
+    });
+
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => replaceProfileTextNode(node, dictionary));
+
+    root.querySelectorAll('input[placeholder], textarea[placeholder]').forEach((element) => {
+        const current = element.getAttribute('placeholder');
+        if (dictionary[current]) element.setAttribute('placeholder', dictionary[current]);
+    });
+    root.querySelectorAll('option').forEach((element) => {
+        const current = element.textContent.trim();
+        if (dictionary[current]) element.textContent = dictionary[current];
+    });
+
+    profileLanguageApplying = false;
+}
+
+function bindProfileLanguageButton() {
+    const translateBtn = document.getElementById('translateBtn');
+    if (!translateBtn || translateBtn.dataset.profileLanguageBound) return;
+    translateBtn.dataset.profileLanguageBound = 'true';
+    translateBtn.addEventListener('click', () => {
+        setTimeout(applyProfileLanguageFromStorage, 0);
+    });
+}
+
+function initProfileLanguageObserver() {
+    if (profileLanguageObserverReady) return;
+    const root = document.querySelector('.profile-dashboard-shell');
+    if (!root) return;
+    profileLanguageObserverReady = true;
+    const observer = new MutationObserver(() => {
+        if (profileLanguageApplying) return;
+        window.clearTimeout(initProfileLanguageObserver.timer);
+        initProfileLanguageObserver.timer = window.setTimeout(applyProfileLanguageFromStorage, 60);
+    });
+    observer.observe(root, { childList: true, subtree: true, characterData: true });
+}
+
+function compactProfileHeader() {
+    const nav = document.querySelector('nav.nav-glass');
+    const navInner = nav?.querySelector('.max-w-7xl');
+    const authRoot = document.getElementById('headerAuthRoot');
+    const translateBtn = document.getElementById('translateBtn');
+    if (!navInner || !authRoot) return;
+
+    if (authRoot.parentElement !== navInner) {
+        authRoot.classList.remove('ml-auto', 'pl-8');
+        authRoot.classList.add('profile-nav-auth');
+        navInner.appendChild(authRoot);
+    }
+
+    if (translateBtn) {
+        const loggedInRoot = document.getElementById('authLoggedIn');
+        const notifRoot = document.getElementById('notifRoot');
+        translateBtn.classList.remove('bg-primary', 'text-white', 'rounded-md');
+        translateBtn.classList.add('profile-nav-language');
+        if (loggedInRoot && notifRoot) {
+            loggedInRoot.insertBefore(translateBtn, notifRoot);
+        } else if (translateBtn.parentElement !== navInner) {
+            navInner.insertBefore(translateBtn, authRoot);
+        }
+        bindProfileLanguageButton();
+    }
+
+    document.body.classList.add('profile-compact-header');
+    applyProfileLanguageFromStorage();
+    initProfileLanguageObserver();
+
+    if (window.authInitialized && typeof window.updateAuthUI === 'function') {
+        window.updateAuthUI(!!window.currentUser);
+    }
+}
+
+document.addEventListener('header:ready', compactProfileHeader);
+document.addEventListener('DOMContentLoaded', compactProfileHeader);
+
 let currentFolderId = null;
 let currentFolderName = null;
 let folderStack = [];
@@ -908,8 +1479,21 @@ let profileProducts = [];
 let profileProductMap = new Map();
 let profileSubscriptions = [];
 let profileActiveResourceFilter = 'all';
-    let profileCategoryFilter = 'all';
+let profileCategoryFilter = 'all';
 let profileIndividualTools = [];
+let profileLinks = [];
+let profileAnnouncements = [];
+let profileAnnouncementFilter = 'all';
+
+const PROFILE_LINK_TYPES = [
+    { key: 'orcid', label: 'ORCID', iconClass: 'fa-brands fa-orcid' },
+    { key: 'google_scholar', label: 'Google Scholar', iconClass: 'fa-brands fa-google' },
+    { key: 'scopus', label: 'Scopus ID', iconClass: 'fas fa-database' },
+    { key: 'researcherid', label: 'ResearcherID / Web of Science', iconClass: 'fas fa-flask' },
+    { key: 'researchgate', label: 'ResearchGate', iconUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/ResearchGate_icon_SVG.svg/40px-ResearchGate_icon_SVG.svg.png' },
+    { key: 'yoksis', label: 'YÖKSİS', textIcon: 'YÖK' },
+    { key: 'other', label: 'Diğer', iconClass: 'fas fa-link' },
+];
 
 // ====================== YARDIMCI FONKSİYONLAR ======================
 function showToast(message, type = 'info') {
@@ -1193,12 +1777,13 @@ async function checkAuthAndLoad() {
         // Bağımsız API çağrıları paralel gönderilir — birinin hata alması diğerlerini bozmaz
         const safeLoad = (fn) => fn().catch(err => console.error('Failed to load:', err));
         
-        console.log('Starting parallel loads...');
         await Promise.all([
             safeLoad(loadSubscriptions),
             safeLoad(loadProfileIndividualTools),
+            safeLoad(loadProfileLinks),
             safeLoad(loadNewsletterSubscription),
             safeLoad(loadNotifications),
+            safeLoad(loadDashboardAnnouncements),
             safeLoad(loadUserSubmissions),
             safeLoad(loadSharedWithMe),
         ]);
@@ -1219,10 +1804,245 @@ async function loadProfileIndividualTools() {
         el.innerHTML = profileIndividualTools.length
             ? profileIndividualTools.filter(Boolean).map(renderProfileIndividualToolCard).join('')
             : '<p class="text-gray-500 text-sm">Henüz bireysel araç atanmamış.</p>';
+        renderProfilePersonalTools();
+        renderProfileResourceFilters([
+            ...profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')),
+            ...profileIndividualTools
+        ]);
+        updateProfileResourceCount(
+            profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')).length,
+            profileIndividualTools.length
+        );
         applyProfileResourceFilter();
     } catch (err) {
         console.error('loadProfileIndividualTools error:', err);
         el.innerHTML = '<p class="text-red-500 text-sm">Araçlar yüklenemedi: ' + escapeHtml(err.message || err) + '</p>';
+    }
+}
+
+function renderProfilePersonalTools() {
+    const el = document.getElementById('profilePersonalToolsList');
+    if (!el) return;
+
+    el.innerHTML = profileIndividualTools.length
+        ? profileIndividualTools.filter(Boolean).map(renderProfileIndividualToolCard).join('')
+        : '<p class="text-gray-500 text-center py-8">Henüz bireysel ürün erişiminiz bulunmuyor.</p>';
+}
+
+async function loadDashboardAnnouncements() {
+    const el = document.getElementById('profileAnnouncementList');
+    if (!el) return;
+    const res = await fetch(`${window.API_BASE || ''}/api/announcements`, { credentials: 'include' });
+    if (!res.ok) throw new Error(`Duyurular alınamadı (${res.status})`);
+    const announcements = await res.json();
+    profileAnnouncements = Array.isArray(announcements) ? announcements : [];
+    renderDashboardAnnouncements();
+}
+
+function renderDashboardAnnouncements() {
+    const el = document.getElementById('profileAnnouncementList');
+    if (!el) return;
+
+    const query = String(document.getElementById('profileAnnouncementSearch')?.value || '').trim().toLowerCase();
+    const now = Date.now();
+    const filtered = profileAnnouncements
+        .filter((announcement) => {
+            const haystack = [
+                announcement.title,
+                announcement.summary,
+                announcement.full_content,
+                announcement.category
+            ].join(' ').toLowerCase();
+            if (query && !haystack.includes(query)) return false;
+            if (profileAnnouncementFilter === 'important') {
+                return String(announcement.priority || '').toLowerCase() === 'important' || String(announcement.priority || '').toLowerCase() === 'high';
+            }
+            if (profileAnnouncementFilter === 'recent') {
+                const date = new Date(announcement.date || announcement.published_at || 0).getTime();
+                return Number.isFinite(date) && now - date <= 1000 * 60 * 60 * 24 * 30;
+            }
+            return true;
+        })
+        .slice(0, 6);
+
+    el.innerHTML = filtered.length
+        ? filtered.map(renderDashboardAnnouncementItem).join('')
+        : '<p class="text-gray-400 text-sm text-center py-6">Duyuru bulunamadı.</p>';
+}
+
+function renderDashboardAnnouncementItem(announcement) {
+    const date = announcement.date || announcement.published_at;
+    const priority = String(announcement.priority || '').toLowerCase();
+    const important = priority === 'important' || priority === 'high';
+    const id = Number(announcement.id);
+    return `
+        <button type="button" class="profile-announcement-item" onclick="openProfileAnnouncementDetail(${Number.isFinite(id) ? id : 0})">
+            <div class="profile-announcement-meta">
+                <span class="${important ? 'profile-announcement-priority' : ''}">${important ? 'Important' : escapeHtml(announcement.category || 'Duyuru')}</span>
+                <span>${date ? escapeHtml(new Date(date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })) : ''}</span>
+            </div>
+            <h4>${escapeHtml(announcement.title || 'Duyuru')}</h4>
+            ${announcement.summary ? `<p>${escapeHtml(announcement.summary)}</p>` : ''}
+        </button>`;
+}
+
+function openProfileAnnouncementDetail(id) {
+    const announcement = profileAnnouncements.find((item) => Number(item.id) === Number(id));
+    if (!announcement) return;
+    renderProfileAnnouncementModal(announcement);
+}
+window.openProfileAnnouncementDetail = openProfileAnnouncementDetail;
+
+function renderProfileAnnouncementModal(announcement) {
+    const existing = document.getElementById('profileAnnouncementModal');
+    if (existing) existing.remove();
+
+    const title = announcement.title || 'Duyuru';
+    const summary = announcement.summary || '';
+    const content = announcement.full_content || '';
+    const date = announcement.date || announcement.published_at;
+    const cover = announcement.cover_image_url || '';
+
+    const modal = document.createElement('div');
+    modal.id = 'profileAnnouncementModal';
+    modal.className = 'profile-announcement-modal';
+    modal.innerHTML = `
+        <article class="profile-announcement-dialog" role="dialog" aria-modal="true" aria-labelledby="profileAnnouncementTitle">
+            ${cover ? `<img class="profile-announcement-cover" src="${escapeHtml(cover)}" alt="">` : ''}
+            <div class="profile-announcement-body">
+                <div class="flex items-start justify-between gap-4 mb-3">
+                    <div>
+                        <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide">Duyuru</p>
+                        <h2 id="profileAnnouncementTitle" class="text-xl font-extrabold text-gray-900 mt-1">${escapeHtml(title)}</h2>
+                        ${date ? `<p class="text-xs text-gray-400 mt-1">${escapeHtml(new Date(date).toLocaleDateString('tr-TR'))}</p>` : ''}
+                    </div>
+                    <button type="button" class="text-gray-400 hover:text-gray-700" aria-label="Kapat" onclick="closeProfileAnnouncementModal()">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+                ${summary ? `<p class="text-sm text-gray-600 leading-relaxed mb-3">${escapeHtml(summary)}</p>` : ''}
+                ${content ? `<div class="text-sm text-gray-700 leading-relaxed max-h-56 overflow-y-auto border-t border-gray-100 pt-3">${escapeHtml(content).replace(/\n/g, '<br>')}</div>` : ''}
+                <div class="mt-5 flex flex-col sm:flex-row gap-2 sm:justify-end">
+                    <button type="button" class="profile-action secondary justify-center" onclick="closeProfileAnnouncementModal()">Kapat</button>
+                    <a href="announcements.html" class="profile-action justify-center"><i class="fas fa-bullhorn"></i><span>Tüm Duyurular</span></a>
+                </div>
+            </div>
+        </article>`;
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) closeProfileAnnouncementModal();
+    });
+
+    document.body.appendChild(modal);
+}
+
+function closeProfileAnnouncementModal() {
+    document.getElementById('profileAnnouncementModal')?.remove();
+}
+window.closeProfileAnnouncementModal = closeProfileAnnouncementModal;
+
+function getProfileLinkType(type) {
+    return PROFILE_LINK_TYPES.find((item) => item.key === type) || PROFILE_LINK_TYPES[PROFILE_LINK_TYPES.length - 1];
+}
+
+function renderProfileLinkIcon(type) {
+    const cfg = getProfileLinkType(type);
+    if (cfg.iconUrl) return `<img src="${escapeHtml(cfg.iconUrl)}" alt="${escapeHtml(cfg.label)}">`;
+    if (cfg.textIcon) return `<span class="text-[10px] font-extrabold leading-none">${escapeHtml(cfg.textIcon)}</span>`;
+    return `<i class="${escapeHtml(cfg.iconClass || 'fas fa-link')}"></i>`;
+}
+
+async function loadProfileLinks() {
+    try {
+        const res = await fetch(`${window.API_BASE || ""}/api/user/profile-links`, { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        profileLinks = Array.isArray(data.links) ? data.links : [];
+    } catch (err) {
+        console.error('loadProfileLinks error:', err);
+        profileLinks = [];
+    }
+    renderProfileLinks();
+    renderProfileLinksEditor();
+}
+
+function renderProfileLinks() {
+    const el = document.getElementById('profileIdentityLinks');
+    if (!el) return;
+    const links = profileLinks.filter((link) => link?.url);
+    if (!links.length) {
+        el.innerHTML = '<span class="profile-link-empty">Profil linki ekleyin</span>';
+        return;
+    }
+    el.innerHTML = links.map((link) => {
+        const cfg = getProfileLinkType(link.link_type);
+        const label = link.label || cfg.label;
+        return `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${renderProfileLinkIcon(link.link_type)}</a>`;
+    }).join('');
+}
+
+function renderProfileLinksEditor() {
+    const el = document.getElementById('profileLinksEditor');
+    if (!el) return;
+    if (!profileLinks.length) {
+        el.innerHTML = '<p class="text-sm text-gray-400 rounded-xl border border-dashed border-gray-200 p-4">Henüz profil linki eklenmedi.</p>';
+        return;
+    }
+    el.innerHTML = profileLinks.map((link, index) => renderProfileLinkEditorRow(link, index)).join('');
+}
+
+function renderProfileLinkEditorRow(link = {}, index = 0) {
+    const typeOptions = PROFILE_LINK_TYPES.map((item) => `
+        <option value="${escapeHtml(item.key)}" ${item.key === link.link_type ? 'selected' : ''}>${escapeHtml(item.label)}</option>
+    `).join('');
+    return `
+        <div class="profile-link-row" data-profile-link-row>
+            <select data-profile-link-type class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+                ${typeOptions}
+            </select>
+            <input data-profile-link-url type="url" value="${escapeHtml(link.url || '')}" placeholder="https://..." class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <button type="button" data-profile-link-remove class="profile-action secondary justify-center"><i class="fas fa-trash"></i><span>Sil</span></button>
+        </div>`;
+}
+
+function collectProfileLinksFromEditor() {
+    return Array.from(document.querySelectorAll('[data-profile-link-row]')).map((row, index) => ({
+        link_type: row.querySelector('[data-profile-link-type]')?.value || 'other',
+        url: row.querySelector('[data-profile-link-url]')?.value.trim() || '',
+        display_order: (index + 1) * 10,
+    })).filter((link) => link.url);
+}
+
+function addProfileLinkRow() {
+    profileLinks = collectProfileLinksFromEditor();
+    const used = new Set(profileLinks.map((link) => link.link_type));
+    const next = PROFILE_LINK_TYPES.find((item) => !used.has(item.key)) || PROFILE_LINK_TYPES[PROFILE_LINK_TYPES.length - 1];
+    profileLinks.push({ link_type: next.key, url: '' });
+    renderProfileLinksEditor();
+}
+
+async function saveProfileLinks() {
+    const links = collectProfileLinksFromEditor();
+    const invalid = links.find((link) => !/^https?:\/\//i.test(link.url));
+    if (invalid) {
+        showToast('Linkler http:// veya https:// ile başlamalı.', 'warning');
+        return;
+    }
+    try {
+        const res = await fetch(`${window.API_BASE || ""}/api/user/profile-links`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ links }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Profil linkleri kaydedilemedi.');
+        profileLinks = Array.isArray(data.links) ? data.links : links;
+        renderProfileLinks();
+        renderProfileLinksEditor();
+        showToast('Profil linkleri kaydedildi.', 'success');
+    } catch (err) {
+        showToast(err.message || 'Profil linkleri kaydedilemedi.', 'error');
     }
 }
 
@@ -1243,6 +2063,21 @@ function showProfileAuthRetry(status) {
 
 document.addEventListener('DOMContentLoaded', () => {
     checkAuthAndLoad();
+    document.getElementById('addProfileLinkBtn')?.addEventListener('click', addProfileLinkRow);
+    document.getElementById('saveProfileLinksBtn')?.addEventListener('click', saveProfileLinks);
+    document.getElementById('profileLinksEditor')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-profile-link-remove]');
+        if (!btn) return;
+        const row = btn.closest('[data-profile-link-row]');
+        if (row) row.remove();
+        profileLinks = collectProfileLinksFromEditor();
+        renderProfileLinksEditor();
+    });
+    document.getElementById('profileAnnouncementSearch')?.addEventListener('input', renderDashboardAnnouncements);
+    document.getElementById('profileAnnouncementFilter')?.addEventListener('change', (event) => {
+        profileAnnouncementFilter = event.target.value || 'all';
+        renderDashboardAnnouncements();
+    });
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.onclick = () => {
             const target = btn.dataset.tab;
@@ -1267,6 +2102,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     aiBtn?.addEventListener('click', () => runProfileSmartSearch(true));
+    document.getElementById('activeSubscriptionsList')?.addEventListener('click', (event) => {
+        const card = event.target.closest('[data-profile-product-card]');
+        const deck = event.currentTarget;
+        if (!card || !deck.classList.contains('profile-product-deck')) return;
+        const wasSelected = card.classList.contains('is-selected');
+        deck.querySelectorAll('[data-profile-product-card].is-selected').forEach((item) => {
+            item.classList.remove('is-selected');
+        });
+        if (!wasSelected) card.classList.add('is-selected');
+    });
 });
 
 async function openRemoteAccess(btn) {
@@ -1494,7 +2339,7 @@ async function loadSubscriptions() {
             return `
                 <article class="profile-product-card" data-profile-product-card
                     data-category="${escapeHtml(String(category).toLowerCase())}"
-                    data-source="${escapeHtml(sub.source || '')}"
+                    data-source="${escapeHtml(sub.source || 'institution')}"
                     data-search-text="${escapeHtml([name, category].join(' ').toLowerCase())}"
                     style="border-top:3px solid ${clr.border}">
                     <div class="profile-product-head" style="background:linear-gradient(120deg,${clr.bg},#fff 70%)">
@@ -1525,11 +2370,10 @@ async function loadSubscriptions() {
 
         const overviewSubCount = document.getElementById('overviewSubCount');
         const sidebarSubCount = document.getElementById('sidebarSubCount');
-        const resourceCount = document.getElementById('profileResourceCount');
         if (overviewSubCount) overviewSubCount.textContent = activeSubs.length;
         if (sidebarSubCount) sidebarSubCount.textContent = activeSubs.length;
-        if (resourceCount) resourceCount.textContent = `${activeSubs.length} kaynak`;
         renderProfileResourceFilters([...activeSubs, ...profileIndividualTools]);
+        updateProfileResourceCount(activeSubs.length, profileIndividualTools.length);
 
         if (activeEl) {
             activeEl.innerHTML = visibleActiveSubs.length
@@ -1555,32 +2399,24 @@ function renderProfileResourceFilters(allItems) {
     const secondaryEl = document.getElementById('secondaryResourceFilters');
     if (!primaryEl || !secondaryEl) return;
 
-    // Primary Filters
-    const primaryButtons = [
-        { key: 'all', label: 'Tümü', icon: 'fa-list-ul' },
-        { key: 'institution', label: 'Kurum Kaynakları', icon: 'fa-building-columns' },
-        { key: 'individual', label: 'Bireysel Araçlar', icon: 'fa-wand-magic-sparkles' }
-    ];
-
-    primaryEl.innerHTML = primaryButtons.map(item => `
-        <button type="button" data-primary-filter="${item.key}"
-            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${profileActiveResourceFilter === item.key ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-600 border-gray-100 hover:border-gray-200'}">
-            <i class="fas ${item.icon} text-xs ${profileActiveResourceFilter === item.key ? 'text-white' : 'text-gray-400'}"></i>
-            <span>${item.label}</span>
-        </button>
-    `).join('');
-
-    primaryEl.querySelectorAll('[data-primary-filter]').forEach(btn => {
-        btn.onclick = () => {
-            profileActiveResourceFilter = btn.dataset.primaryFilter;
-            profileCategoryFilter = 'all'; // Reset category when primary changes
-            updateFilterUI();
-            renderSecondaryFilters(allItems);
-            applyProfileResourceFilter();
-        };
-    });
+    primaryEl.innerHTML = '';
+    primaryEl.classList.add('hidden');
 
     renderSecondaryFilters(allItems);
+}
+
+function updateProfileResourceCount(institutionCount = 0, individualCount = 0) {
+    const resourceCount = document.getElementById('profileResourceCount');
+    if (!resourceCount) return;
+
+    const total = Number(institutionCount || 0) + Number(individualCount || 0);
+    if (profileActiveResourceFilter === 'all') {
+        resourceCount.textContent = `${total} kaynak`;
+    } else if (profileActiveResourceFilter === 'individual') {
+        resourceCount.textContent = `${Number(individualCount || 0)} araç`;
+    } else {
+        resourceCount.textContent = `${Number(institutionCount || 0)} kaynak`;
+    }
 }
 
 function renderSecondaryFilters(allItems) {
@@ -1661,6 +2497,18 @@ function updateFilterUI() {
 function applyProfileResourceFilter() {
     const primary = profileActiveResourceFilter;
     const category = profileCategoryFilter;
+    const institutionTitle = document.getElementById('profileInstitutionModuleTitleText');
+    if (institutionTitle) {
+        institutionTitle.textContent = primary === 'all'
+            ? 'Kurum Kaynaklarım & Bireysel Araçlar'
+            : 'Kurum Kaynaklarım';
+    }
+
+    syncProfileCombinedResourceLayout(primary);
+    updateProfileResourceCount(
+        profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')).length,
+        profileIndividualTools.length
+    );
 
     const containers = [
         { id: 'activeSubscriptionsList', source: 'institution' },
@@ -1674,7 +2522,7 @@ function applyProfileResourceFilter() {
         
         const module = grid.closest('.profile-module');
         if (!module) return;
-        
+
         const header = module.querySelector('.profile-module-header');
 
         let visibleInGrid = 0;
@@ -1692,27 +2540,120 @@ function applyProfileResourceFilter() {
             if (show) visibleInGrid++;
         });
 
-        // HIDE HEADER logic: Hide header if 'All' is selected (as per user request)
-        // or if specific filter is active (redundant title)
         if (header) {
-            if (primary === 'all' || primary === cfg.source) {
-                header.classList.add('hidden');
-            } else {
-                header.classList.remove('hidden');
-            }
+            header.classList.toggle('hidden', primary === 'all' && cfg.source === 'individual');
         }
 
         // Module visibility
         if (primary !== 'all' && cfg.source !== primary) {
             module.classList.add('hidden');
+        } else if (primary === 'all' && cfg.source === 'individual') {
+            module.classList.add('hidden');
         } else {
             module.classList.remove('hidden');
-            if (visibleInGrid === 0) {
+            if (visibleInGrid === 0 && !(primary === 'all' && cfg.source === 'institution')) {
                 module.classList.add('hidden');
             } else {
                 module.classList.remove('hidden');
             }
         }
+    });
+
+    syncProfileDeckStacking(primary);
+}
+
+function syncProfileCombinedResourceLayout(primary) {
+    const institutionGrid = document.getElementById('activeSubscriptionsList');
+    const individualGrid = document.getElementById('profileIndividualToolsList');
+    if (!institutionGrid || !individualGrid) return;
+
+    ensureProfileIndividualToolCards();
+
+    institutionGrid.classList.toggle('profile-product-deck', primary === 'all');
+    individualGrid.classList.remove('profile-product-deck');
+
+    const individualCards = [
+        ...Array.from(individualGrid.querySelectorAll('[data-profile-product-card][data-source="individual"]')),
+        ...Array.from(institutionGrid.querySelectorAll('[data-profile-product-card][data-source="individual"]'))
+    ];
+    const targetGrid = primary === 'all' ? institutionGrid : individualGrid;
+
+    individualCards.forEach((card) => {
+        if (card.parentElement !== targetGrid) targetGrid.appendChild(card);
+    });
+
+    const deckCards = Array.from(institutionGrid.querySelectorAll('[data-profile-product-card]'));
+    deckCards.forEach((card, index) => {
+        card.style.setProperty('--deck-z', String(index + 1));
+    });
+
+    const institutionHasCards = !!institutionGrid.querySelector('[data-profile-product-card]');
+    Array.from(institutionGrid.children).forEach((child) => {
+        if (!child.matches('[data-profile-product-card]')) {
+            child.classList.toggle('hidden', primary === 'all' && institutionHasCards);
+        }
+    });
+
+    if (primary !== 'all') {
+        Array.from(individualGrid.children).forEach((child) => {
+            if (!child.matches('[data-profile-product-card]')) child.classList.remove('hidden');
+        });
+    }
+}
+
+function ensureProfileIndividualToolCards() {
+    const individualGrid = document.getElementById('profileIndividualToolsList');
+    const institutionGrid = document.getElementById('activeSubscriptionsList');
+    if (!individualGrid || !Array.isArray(profileIndividualTools) || profileIndividualTools.length === 0) return;
+
+    const currentCards = [
+        ...Array.from(individualGrid.querySelectorAll('[data-profile-product-card][data-source="individual"]')),
+        ...Array.from(institutionGrid?.querySelectorAll('[data-profile-product-card][data-source="individual"]') || [])
+    ];
+    if (currentCards.length === profileIndividualTools.length) return;
+
+    individualGrid.innerHTML = profileIndividualTools
+        .filter(Boolean)
+        .map(renderProfileIndividualToolCard)
+        .join('');
+}
+
+function syncProfileDeckSelection(primary) {
+    const institutionGrid = document.getElementById('activeSubscriptionsList');
+    if (!institutionGrid) return;
+
+    const cards = Array.from(institutionGrid.querySelectorAll('[data-profile-product-card]'));
+    if (primary !== 'all') {
+        cards.forEach((card) => card.classList.remove('is-selected'));
+        return;
+    }
+
+    const visibleCards = cards.filter((card) => card.style.display !== 'none');
+    cards.forEach((card) => {
+        if (!visibleCards.includes(card)) card.classList.remove('is-selected');
+    });
+}
+
+function syncProfileDeckStacking(primary = profileActiveResourceFilter) {
+    const institutionGrid = document.getElementById('activeSubscriptionsList');
+    if (!institutionGrid) return;
+
+    const cards = Array.from(institutionGrid.querySelectorAll('[data-profile-product-card]'));
+    cards.forEach((card) => card.classList.remove('deck-first-visible'));
+
+    if (primary !== 'all') {
+        cards.forEach((card) => card.classList.remove('is-selected'));
+        return;
+    }
+
+    const visibleCards = cards.filter((card) => card.style.display !== 'none');
+    visibleCards.forEach((card, index) => {
+        card.style.setProperty('--deck-z', String(index + 1));
+        card.classList.toggle('deck-first-visible', index === 0);
+    });
+
+    cards.forEach((card) => {
+        if (!visibleCards.includes(card)) card.classList.remove('is-selected');
     });
 }
 
@@ -1740,7 +2681,7 @@ function renderProfileIndividualToolCard(tool) {
 
     return `
         <article class="profile-product-card" data-profile-product-card 
-            data-category="bireysel araç" 
+            data-category="${escapeHtml(String(category).toLowerCase())}"
             data-source="individual"
             data-search-text="${escapeHtml(searchText)}" 
             style="border-top:3px solid ${clr.border}">
@@ -1759,7 +2700,7 @@ function renderProfileIndividualToolCard(tool) {
             </div>
             <div class="profile-product-footer">
                 <div class="flex gap-2 flex-wrap justify-end">
-                    <button type="button" onclick="window.open('/api/individual-tools/${slug}/click', '_blank')" class="profile-action">
+                    <button type="button" onclick="window.open('/api/go/${encodeURIComponent(slug)}?source=profile_dashboard', '_blank', 'noopener,noreferrer')" class="profile-action">
                         <i class="fas ${icon}"></i><span>${cta}</span>
                     </button>
                 </div>
@@ -1783,7 +2724,7 @@ function runProfileSmartSearch(openPanel = true) {
     const query = String(input.value || '').trim().toLowerCase();
     const cards = Array.from(document.querySelectorAll('[data-profile-product-card]'));
     if (!query) {
-        cards.forEach((card) => { card.style.display = ''; });
+        applyProfileResourceFilter();
         panel.classList.add('hidden');
         panel.innerHTML = '';
         return;
@@ -1795,6 +2736,7 @@ function runProfileSmartSearch(openPanel = true) {
         return { card, score };
     });
     matches.forEach(({ card, score }) => { card.style.display = score > 0 ? '' : 'none'; });
+    syncProfileDeckStacking(profileActiveResourceFilter);
     const top = matches.filter((item) => item.score > 0).slice(0, 4);
     if (!openPanel) return;
     panel.innerHTML = top.length ? `
