@@ -941,6 +941,17 @@ function jsStr(text) {
     return out;
 }
 
+const categoryColor = (category) => {
+    const c = String(category || '').toLowerCase();
+    if (c.includes('sağ') || c.includes('sag') || c.includes('tıp') || c.includes('tip')) return { border: '#f87171', bg: '#fef2f2', text: '#991b1b' };  // red
+    if (c.includes('zeka') || c.includes('yapay') || c.includes('ai')) return { border: '#60a5fa', bg: '#eff6ff', text: '#1e40af' };  // blue
+    if (c.includes('fen') || c.includes('müh') || c.includes('muh') || c.includes('doğa')) return { border: '#2dd4bf', bg: '#f0fdfa', text: '#134e4a' };  // teal
+    if (c.includes('sanat') || c.includes('müzik') || c.includes('muzik')) return { border: '#c084fc', bg: '#faf5ff', text: '#6b21a8' };  // purple
+    if (c.includes('hukuk') || c.includes('iş') || c.includes('is') || c.includes('ekonomi')) return { border: '#fb923c', bg: '#fff7ed', text: '#9a3412' };  // orange
+    if (c.includes('sosyal') || c.includes('insan')) return { border: '#34d399', bg: '#ecfdf5', text: '#065f46' };  // green
+    return { border: '#818cf8', bg: '#eef2ff', text: '#3730a3' };  // indigo (default)
+};
+
 function getFileIcon(fileType) {
     const icons = {
         'pdf': 'fa-file-pdf', 'doc': 'fa-file-word', 'docx': 'fa-file-word',
@@ -1399,17 +1410,7 @@ async function loadSubscriptions() {
             return null;
         };
         const productInitials = (name) => String(name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?';
-        // Kategori → index.html ile uyumlu renk paleti (pastel yerine canlı)
-        const categoryColor = (category) => {
-            const c = String(category || '').toLowerCase();
-            if (c.includes('sağ') || c.includes('sag') || c.includes('tıp') || c.includes('tip')) return { border: '#f87171', bg: '#fef2f2', text: '#991b1b' };  // red
-            if (c.includes('zeka') || c.includes('yapay') || c.includes('ai')) return { border: '#60a5fa', bg: '#eff6ff', text: '#1e40af' };  // blue
-            if (c.includes('fen') || c.includes('müh') || c.includes('muh') || c.includes('doğa')) return { border: '#2dd4bf', bg: '#f0fdfa', text: '#134e4a' };  // teal
-            if (c.includes('sanat') || c.includes('müzik') || c.includes('muzik')) return { border: '#c084fc', bg: '#faf5ff', text: '#6b21a8' };  // purple
-            if (c.includes('hukuk') || c.includes('iş') || c.includes('is') || c.includes('ekonomi')) return { border: '#fb923c', bg: '#fff7ed', text: '#9a3412' };  // orange
-            if (c.includes('sosyal') || c.includes('insan')) return { border: '#34d399', bg: '#ecfdf5', text: '#065f46' };  // green
-            return { border: '#818cf8', bg: '#eef2ff', text: '#3730a3' };  // indigo (default)
-        };
+        
         const renderProductCard = (sub) => {
             const subId = sub.id;
             const prod = profileProductMap.get(sub.product_slug) || {};
@@ -1417,8 +1418,8 @@ async function loadSubscriptions() {
             const category = prod.category || '';
             const logoUrl = prod.logo_url || null;
             const registrationUrl = sub.registration_url || sub.default_registration_url || null;
-            const normalizedUrl = normalizeAccessUrl(sub.access_url || sub.default_access_url);
-            const actionConfig = getSubscriptionActionConfig(sub, normalizedUrl);
+            const normalizedUrl = normalizeExternalUrl(sub.access_url || sub.default_access_url);
+            const actionConfig = getActionConfig(sub, normalizedUrl);
             
             const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
             const expiry = daysLeft !== null
