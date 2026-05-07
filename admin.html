@@ -3794,6 +3794,7 @@ document.addEventListener('click', function(e) {
     // Set role button
     if (e.target.closest('.set-role-btn')) {
         const btn = e.target.closest('.set-role-btn');
+        if (btn.dataset.adminAction === 'set-role') return;
         const userId = String(btn.dataset.userId || '').trim();
         const newRole = btn.dataset.newRole;
         if (userId && newRole) setRole(userId, newRole, btn);
@@ -5094,7 +5095,7 @@ async function startAdminProductRaTest(btn) {
                 <td class="px-4 py-2">
                     <button class="text-blue-600 mr-2 edit-user-btn" data-user-id="${u.id}" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} kaydını düzenle"><i class="fas fa-edit"></i></button>
                     <button class="text-indigo-500 hover:text-indigo-700 mr-2 user-files-btn" data-user-id="${u.id}" data-user-name="${escapeHtml(u.full_name || u.email)}" title="Dosyaları Gör" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} için dosyaları görüntüle"><i class="fas fa-folder-open"></i></button>
-                    ${isSuper && u.role !== 'super_admin' ? `<button type="button" class="mr-2 set-role-btn ${roleAction.cls}" data-user-id="${escapeHtml(String(u.id))}" data-new-role="${escapeHtml(roleAction.nextRole)}" title="${roleAction.title}" aria-label="${roleAction.aria}"><i class="fas ${roleAction.icon}"></i></button>` : ''}
+                    ${isSuper && u.role !== 'super_admin' ? `<button type="button" class="mr-2 set-role-btn inline-flex items-center justify-center h-9 w-9 rounded-lg transition ${roleAction.cls}" data-admin-action="set-role" data-user-id="${escapeHtml(String(u.id))}" data-new-role="${escapeHtml(roleAction.nextRole)}" title="${roleAction.title}" aria-label="${roleAction.aria}"><i class="fas ${roleAction.icon}"></i></button>` : ''}
                     <button class="text-red-600 delete-user-btn" data-user-id="${u.id}" aria-label="${escapeHtml(u.full_name || u.email || 'Kullanıcı')} kaydını sil"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
@@ -6241,6 +6242,12 @@ document.addEventListener('click', (e) => {
         case 'sync-contacts': syncAirtableContactsToUsers(); break;
         case 'open-bulk-user-modal': openBulkUserModal(); break;
         case 'open-user-modal': openUserModal(); break;
+        case 'set-role': {
+            const userId = String(actionEl.dataset.userId || '').trim();
+            const newRole = actionEl.dataset.newRole;
+            if (userId && newRole) setRole(userId, newRole, actionEl);
+            break;
+        }
         case 'sort-users': if (sortKey) sortUsers(sortKey); break;
         case 'open-inst-subscription-modal': openInstSubscriptionModal(); break;
         case 'open-subscription-modal': openSubscriptionModal(); break;
