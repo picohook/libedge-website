@@ -1721,7 +1721,80 @@ async function loadNewsletterSubscription() {
             btn.disabled = false;
             btn.onclick = subscribeNewsletterFromProfile;
         }
-    } catch (error) {
+    }
+
+function updateFilterUI() {
+    document.querySelectorAll('[data-primary-filter]').forEach(btn => {
+        const active = btn.dataset.primaryFilter === profileActiveResourceFilter;
+        btn.classList.toggle('bg-indigo-600', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('border-indigo-600', active);
+        btn.classList.toggle('shadow-sm', active);
+        btn.classList.toggle('bg-white', !active);
+        btn.classList.toggle('text-gray-600', !active);
+        btn.classList.toggle('border-gray-100', !active);
+        
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.classList.toggle('text-white', active);
+            icon.classList.toggle('text-gray-400', !active);
+        }
+    });
+    
+    document.querySelectorAll('[data-category-filter]').forEach(btn => {
+        const active = btn.dataset.categoryFilter === profileCategoryFilter;
+        btn.classList.toggle('bg-indigo-50', active);
+        btn.classList.toggle('text-indigo-700', active);
+        btn.classList.toggle('border-indigo-200', active);
+        btn.classList.toggle('bg-white', !active);
+        btn.classList.toggle('text-gray-500', !active);
+        btn.classList.toggle('border-gray-100', !active);
+    });
+}
+
+function applyProfileResourceFilter() {
+    const primary = profileActiveResourceFilter;
+    const category = profileCategoryFilter;
+
+    const containers = [
+        { id: 'activeSubscriptionsList', source: 'institution' },
+        { id: 'allSubscriptionsList', source: 'institution' },
+        { id: 'profileIndividualToolsList', source: 'individual' }
+    ];
+
+    containers.forEach(cfg => {
+        const grid = document.getElementById(cfg.id);
+        if (!grid) return;
+        
+        const module = grid.closest('.profile-module');
+        if (!module) return;
+
+        let visibleInGrid = 0;
+        const cards = grid.querySelectorAll('[data-profile-product-card]');
+        
+        cards.forEach(card => {
+            let show = true;
+            const cardSource = card.dataset.source;
+            const cardCategory = (card.dataset.category || '').toLowerCase().replace(/["']/g, '');
+
+            if (primary !== 'all' && cardSource !== primary) show = false;
+            if (show && category !== 'all' && cardCategory !== category) show = false;
+            
+            card.style.display = show ? '' : 'none';
+            if (show) visibleInGrid++;
+        });
+
+        if (primary !== 'all' && cfg.source !== primary) {
+            module.classList.add('hidden');
+        } else {
+            module.classList.remove('hidden');
+            if (primary !== 'all' && visibleInGrid === 0) {
+                module.classList.add('hidden');
+            }
+        }
+    });
+}
+ catch (error) {
         textEl.textContent = 'E-bülten durumu alınamadı.';
         btn.textContent = 'Tekrar Dene';
         btn.classList.remove('bg-red-600', 'hover:bg-red-700');
