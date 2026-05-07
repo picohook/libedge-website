@@ -1501,7 +1501,6 @@ async function loadSubscriptions() {
         if (sidebarSubCount) sidebarSubCount.textContent = activeSubs.length;
         if (resourceCount) resourceCount.textContent = `${activeSubs.length} kaynak`;
         renderProfileResourceFilters(activeSubs);
-        applyProfileResourceFilter();
 
         if (activeEl) {
             activeEl.innerHTML = visibleActiveSubs.length
@@ -1513,6 +1512,7 @@ async function loadSubscriptions() {
                 ? profileSubscriptions.map(renderProductCard).join('')
                 : '<p class="text-gray-500 text-center py-8">Henüz aboneliğiniz bulunmuyor.</p>';
         }
+        applyProfileResourceFilter();
         runProfileSmartSearch(false);
     } catch (err) {
         console.error(err);
@@ -1637,13 +1637,16 @@ function applyProfileResourceFilter() {
         });
 
         if (module) {
-            // If primary filter is 'all', show both modules if they have content
-            // If primary filter is 'institution', hide individual module
-            // If primary filter is 'individual', hide institution module
             if (primary !== 'all' && cfg.source !== primary) {
                 module.classList.add('hidden');
             } else {
-                module.classList.toggle('hidden', visibleInGrid === 0);
+                module.classList.remove('hidden');
+                // We don't hide the whole module if it's the right source, 
+                // we let the "No items" message show if visibleInGrid is 0
+                // or we can hide it if you prefer, but let's be safe for now.
+                if (visibleInGrid === 0 && primary !== 'all') {
+                    module.classList.add('hidden');
+                }
             }
         }
     });
