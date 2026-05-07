@@ -4297,26 +4297,46 @@ function previewFile(url, name, type) {
     } else if (audio.includes(ext)) {
         body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;min-height:calc(100vh - 52px)"><div style="width:6rem;height:6rem;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem"><i class="fas fa-music" style="font-size:2.5rem;color:#7c3aed"></i></div><p style="font-weight:500;margin-bottom:1rem">${escapeHtml(name)}</p><audio controls style="width:100%;max-width:20rem"><source src="${url}"></audio></div>`;
     } else if (office.includes(ext)) {
-        const isSheet = ['xls', 'xlsx'].includes(ext);
-        const isPresentation = ['ppt', 'pptx'].includes(ext);
-        const icon = isSheet ? 'fa-file-excel' : isPresentation ? 'fa-file-powerpoint' : 'fa-file-word';
-        const color = isSheet ? '#15803d' : isPresentation ? '#c2410c' : '#2563eb';
-        const officeUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fullUrl)}`;
-        body.innerHTML = `
-            <div style="display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:2rem;background:#f9fafb">
-                <div style="width:100%;max-width:28rem;background:#fff;border:1px solid #e5e7eb;border-radius:0.75rem;padding:1.5rem;text-align:center;box-shadow:0 8px 24px rgba(15,23,42,0.08)">
-                    <div style="width:4.5rem;height:4.5rem;margin:0 auto 1rem;border-radius:1rem;background:#eff6ff;display:flex;align-items:center;justify-content:center">
-                        <i class="fas ${icon}" style="font-size:2.25rem;color:${color}"></i>
+        const renderOfficeFrame = (srcUrl) => {
+            const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(srcUrl)}`;
+            body.innerHTML = `<iframe src="${escapeHtml(viewerUrl)}" style="width:100%;height:calc(100vh - 52px);border:0;opacity:0;transition:opacity 0.3s" onload="this.style.opacity='1'"></iframe>`;
+        };
+        const renderOfficeFallback = () => {
+            const isSheet = ['xls', 'xlsx'].includes(ext);
+            const isPresentation = ['ppt', 'pptx'].includes(ext);
+            const icon = isSheet ? 'fa-file-excel' : isPresentation ? 'fa-file-powerpoint' : 'fa-file-word';
+            const color = isSheet ? '#15803d' : isPresentation ? '#c2410c' : '#2563eb';
+            body.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:2rem;background:#f9fafb">
+                    <div style="width:100%;max-width:28rem;background:#fff;border:1px solid #e5e7eb;border-radius:0.75rem;padding:1.5rem;text-align:center;box-shadow:0 8px 24px rgba(15,23,42,0.08)">
+                        <div style="width:4.5rem;height:4.5rem;margin:0 auto 1rem;border-radius:1rem;background:#eff6ff;display:flex;align-items:center;justify-content:center">
+                            <i class="fas ${icon}" style="font-size:2.25rem;color:${color}"></i>
+                        </div>
+                        <p style="font-weight:700;color:#111827;margin-bottom:0.35rem">${escapeHtml(name)}</p>
+                        <p style="font-size:0.875rem;color:#6b7280;margin-bottom:1.25rem;line-height:1.45">Önizleme başlatılamadı. Dosyayı indirerek veya yeni sekmede açarak görüntüleyebilirsiniz.</p>
+                        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center">
+                            <a href="${escapeHtml(url)}" download="${escapeHtml(name)}" style="background:#220f60;color:white;padding:0.6rem 0.9rem;border-radius:0.5rem;text-decoration:none;font-size:0.875rem;font-weight:600"><i class="fas fa-download" style="margin-right:0.45rem"></i>İndir</a>
+                            <a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="background:#f3f4f6;color:#374151;padding:0.6rem 0.9rem;border-radius:0.5rem;text-decoration:none;font-size:0.875rem;font-weight:600"><i class="fas fa-external-link-alt" style="margin-right:0.45rem"></i>Yeni sekmede aç</a>
+                        </div>
                     </div>
-                    <p style="font-weight:700;color:#111827;margin-bottom:0.35rem">${escapeHtml(name)}</p>
-                    <p style="font-size:0.875rem;color:#6b7280;margin-bottom:1.25rem;line-height:1.45">Bu belgeyi indirerek veya yeni sekmede açarak görüntüleyebilirsiniz.</p>
-                    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center">
-                        <a href="${escapeHtml(url)}" download="${escapeHtml(name)}" style="background:#220f60;color:white;padding:0.6rem 0.9rem;border-radius:0.5rem;text-decoration:none;font-size:0.875rem;font-weight:600"><i class="fas fa-download" style="margin-right:0.45rem"></i>İndir</a>
-                        <a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="background:#f3f4f6;color:#374151;padding:0.6rem 0.9rem;border-radius:0.5rem;text-decoration:none;font-size:0.875rem;font-weight:600"><i class="fas fa-external-link-alt" style="margin-right:0.45rem"></i>Yeni sekmede aç</a>
-                        <a href="${escapeHtml(officeUrl)}" target="_blank" rel="noopener" style="background:#eef2ff;color:#3730a3;padding:0.6rem 0.9rem;border-radius:0.5rem;text-decoration:none;font-size:0.875rem;font-weight:600"><i class="fas fa-eye" style="margin-right:0.45rem"></i>Office Online</a>
-                    </div>
-                </div>
-            </div>`;
+                </div>`;
+        };
+        const apiPathMatch = url.match(/^\/api\/files\/(.+)$/);
+        if (apiPathMatch) {
+            body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:2rem;text-align:center"><i class="fas fa-circle-notch fa-spin" style="font-size:2rem;color:#6366f1;margin-bottom:1rem"></i><p style="color:#6b7280;font-weight:500">Belge yükleniyor, lütfen bekleyin...</p></div>';
+            fetch(`${window.API_BASE || ""}/api/files-token?path=${encodeURIComponent(apiPathMatch[1])}`, { credentials: 'include' })
+                .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+                .then(data => {
+                    if (!data?.token) throw new Error('Token alınamadı');
+                    renderOfficeFrame(`${fullUrl}?token=${encodeURIComponent(data.token)}`);
+                })
+                .catch((err) => {
+                    console.warn('Office preview token error:', err);
+                    renderOfficeFallback();
+                });
+        } else {
+            renderOfficeFrame(fullUrl);
+        }
     } else {
         body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:2rem;text-align:center"><div style="width:5rem;height:5rem;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1rem"><i class="fas fa-file" style="font-size:2.5rem;color:#9ca3af"></i></div><p style="font-weight:500;margin-bottom:0.5rem">${escapeHtml(name)}</p><p style="font-size:0.875rem;color:#9ca3af;margin-bottom:1.5rem">Bu dosya türü önizlenemiyor</p><a href="${url}" target="_blank" style="background:#220f60;color:white;padding:0.5rem 1rem;border-radius:0.5rem;text-decoration:none"><i class="fas fa-external-link-alt" style="margin-right:0.5rem"></i>Aç / İndir</a></div>`;
     }
