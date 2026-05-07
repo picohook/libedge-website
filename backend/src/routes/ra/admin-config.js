@@ -75,6 +75,7 @@ export function registerRaAdminConfig(app) {
          ra_origin_host,
          ra_login_recipe_json,
          ra_host_allowlist_json,
+         ra_waf_browser,
          ra_requires_tunnel,
          ra_origin_landing_path
        FROM products
@@ -92,6 +93,7 @@ export function registerRaAdminConfig(app) {
       ra_origin_host: r.ra_origin_host || null,
       ra_login_recipe_json: r.ra_login_recipe_json || null,
       ra_host_allowlist_json: r.ra_host_allowlist_json || null,
+      ra_waf_browser: r.ra_waf_browser ? 1 : 0,
       ra_requires_tunnel: r.ra_requires_tunnel == null ? 1 : (r.ra_requires_tunnel ? 1 : 0),
       ra_origin_landing_path: r.ra_origin_landing_path || null,
     }));
@@ -168,7 +170,8 @@ export function registerRaAdminConfig(app) {
           return c.json({ error: 'host allowlist bir dizi olmalı' }, 400);
         }
         for (const h of parsed) {
-          if (typeof h !== 'string' || !isValidHost(h)) {
+          const host = normalizeHost(h);
+          if (typeof h !== 'string' || !isValidHostPattern(host)) {
             return c.json({ error: `allowlist geçersiz host içeriyor: ${h}` }, 400);
           }
         }
@@ -192,6 +195,11 @@ export function registerRaAdminConfig(app) {
     if (Object.prototype.hasOwnProperty.call(body, 'ra_requires_tunnel')) {
       setCols.push('ra_requires_tunnel = ?');
       bindVals.push(body.ra_requires_tunnel ? 1 : 0);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'ra_waf_browser')) {
+      setCols.push('ra_waf_browser = ?');
+      bindVals.push(body.ra_waf_browser ? 1 : 0);
     }
 
     if (Object.prototype.hasOwnProperty.call(body, 'ra_origin_landing_path')) {
@@ -398,6 +406,12 @@ function isValidHost(host) {
   if (host.length > 253) return false;
   // Basit hostname validation: label.label.tld
   return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(host);
+}
+
+function isValidHostPattern(host) {
+  if (typeof host !== 'string') return false;
+  if (host.startsWith('*.')) return isValidHost(host.slice(2));
+  return isValidHost(host);
 }
 
 function normalizeLandingPath(raw) {

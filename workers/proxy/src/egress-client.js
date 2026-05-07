@@ -76,6 +76,7 @@ export async function egressFetch(env, institutionId, targetUrl, init = {}) {
   const agentUrl = `${settings.egress_endpoint.replace(/\/$/, '')}/proxy`;
 
   const headers = new Headers(init.headers || undefined);
+  sanitizeBrowserFetchHeaders(headers);
   headers.set('X-RA-Target-URL', urlStr);
   headers.set('X-RA-Method', method);
   headers.set('X-RA-Timestamp', String(ts));
@@ -187,17 +188,49 @@ export async function browserFetch(env, institutionId, targetUrl, init = {}) {
 
   const respHeaders = new Headers();
   for (const [k, v] of Object.entries(envelope.headers || {})) {
-    respHeaders.set(k, v);
+    if (Array.isArray(v)) {
+      for (const item of v) respHeaders.append(k, item);
+    } else {
+      respHeaders.set(k, v);
+    }
+  }
+  if (envelope.finalUrl) {
+    respHeaders.set('X-RA-Browser-Final-URL', String(envelope.finalUrl).slice(0, 220));
   }
   // Ensure content-type is text/html if not set (page.content() always returns HTML).
   if (!respHeaders.has('content-type')) {
     respHeaders.set('content-type', 'text/html; charset=UTF-8');
   }
 
+  const envelopeStatus = Number(envelope.status || 200);
+  const status = bodyBytes.byteLength > 0 && envelopeStatus >= 300 && envelopeStatus < 400
+    ? 200
+    : envelopeStatus;
+  if (status !== envelopeStatus) {
+    respHeaders.delete('location');
+    respHeaders.delete('Location');
+    respHeaders.set('X-RA-Browser-Status-Normalized', String(envelopeStatus));
+  }
+
   return new Response(bodyBytes, {
-    status: envelope.status || 200,
+    status,
     headers: respHeaders,
   });
+}
+
+function sanitizeBrowserFetchHeaders(headers) {
+  for (const name of [...headers.keys()]) {
+    const lower = name.toLowerCase();
+    if (
+      lower.startsWith('sec-ch-') ||
+      lower.startsWith('sec-fetch-') ||
+      lower === 'accept-ch' ||
+      lower === 'critical-ch' ||
+      lower === 'upgrade-insecure-requests'
+    ) {
+      headers.delete(name);
+    }
+  }
 }
 
 /**

@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { getCookie, setCookie } from 'hono/cookie';
 import { sign, verify } from 'hono/jwt';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 
 // ─── Remote Access (RA) modülü ─────────────────────────────────────────────
 // Kurumsal publisher aboneliklerine uzaktan erişim proxy'si.
@@ -97,8 +99,10 @@ app.use('*', async (c, next) => {
  *   nullable        — required ile birlikte null'a izin verir
  *
  * Döner: { ok: true } | { ok: false, errors: string[], response: Response }
+ * @deprecated Yeni endpointlerde Zod ve @hono/zod-validator kullanın.
  */
 function validate(data, rules) {
+  console.warn('⚠️ validate() deprecated, Zod kullanın');
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   const errors = [];
 
@@ -1310,7 +1314,17 @@ app.get('/api/auth/status', (c) => {
 });
 
 // ====================== LOGIN ENDPOINT ======================
-app.post('/api/auth/login', async (c) => {
+const loginSchema = z.object({
+  email: z.string().email({ message: "Geçerli bir e-posta adresi girin." }).max(254),
+  password: z.string().min(1, { message: "Şifre boş bırakılamaz." }).max(128)
+});
+
+app.post('/api/auth/login', zValidator('json', loginSchema, (result, c) => {
+  if (!result.success) {
+    const errorMessages = result.error.issues.map(i => i.message);
+    return c.json({ error: errorMessages[0], errors: errorMessages }, 400);
+  }
+}), async (c) => {
   try {
     const ip = extractClientIp(c);
     const ipLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'login:ip', ip, 20, 15 * 60);
@@ -1318,12 +1332,7 @@ app.post('/api/auth/login', async (c) => {
       return rateLimitResponse(c, ipLimit, 'Çok fazla giriş denemesi. Lütfen birkaç dakika sonra tekrar deneyin.');
     }
 
-    const body = await parseAndValidate(c, {
-      email:    { required: true, type: 'string', email: true, maxLength: 254 },
-      password: { required: true, type: 'string', minLength: 1, maxLength: 128 },
-    });
-    if (body instanceof Response) return body;
-    const { email, password } = body;
+    const { email, password } = c.req.valid('json');
     const db = c.env.DB;
 
     const normalizedEmail = email.toLowerCase().trim();

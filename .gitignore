@@ -19,6 +19,7 @@ Thumbs.dbgit
 
 .wrangler/cache/
 .wrangler/state/
+.wrangler-dev*.log
 
 # Python virtual environment
 venv/

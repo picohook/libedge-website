@@ -1516,6 +1516,12 @@
             <button type="button" data-ra-subtab="products" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
                 <i class="fas fa-cube mr-2"></i>Ürün RA Yapılandırması
             </button>
+            <button type="button" data-ra-subtab="diagnostics" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
+                <i class="fas fa-stethoscope mr-2"></i>Diagnostics
+            </button>
+            <button type="button" data-ra-subtab="link-audit" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
+                <i class="fas fa-link mr-2"></i>Link Audit
+            </button>
             <button type="button" data-ra-subtab="logs" class="ra-subtab-btn px-4 py-2 text-sm font-medium text-gray-500">
                 <i class="fas fa-clipboard-list mr-2"></i>Erişim Logları
             </button>
@@ -1624,6 +1630,77 @@
                         </thead>
                         <tbody id="raProductsTableBody">
                             <tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RA Diagnostics sub-view -->
+        <div id="ra-subview-diagnostics" class="ra-subview hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-800">RA Diagnostics</h3>
+                    <p class="text-xs text-gray-500">Ürün konfigürasyonunda eksik host, hatalı JSON, riskli delivery mode ve bilinen publisher zincirlerini kontrol eder.</p>
+                </div>
+                <button type="button" id="raDiagnosticsRefreshBtn" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2">
+                    <i class="fas fa-sync-alt"></i><span>Yenile</span>
+                </button>
+            </div>
+            <div id="raDiagnosticsSummary" class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4"></div>
+            <div id="raDiagnosticsBody" class="space-y-3">
+                <div class="bg-white rounded-xl shadow-sm px-4 py-6 text-sm text-gray-400 text-center">Yükleniyor...</div>
+            </div>
+        </div>
+
+        <!-- RA Link Audit sub-view -->
+        <div id="ra-subview-link-audit" class="ra-subview hidden">
+            <div class="flex flex-col gap-3 mb-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-800">RA Link Audit</h3>
+                        <p class="text-xs text-gray-500">Admin test oturumlarında render edilmiş publisher sayfalarında proxy dışı kalan linkleri yakalar.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" id="raLinkAuditOpenTestBtn" class="text-sm px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 inline-flex items-center gap-2">
+                            <i class="fas fa-external-link-alt"></i><span>Seçili ürünü testte aç</span>
+                        </button>
+                        <button type="button" id="raLinkAuditRefreshBtn" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2">
+                            <i class="fas fa-sync-alt"></i><span>Yenile</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <select id="raLinkAuditProductFilter" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm sm:col-span-2">
+                        <option value="">Tüm RA ürünleri</option>
+                    </select>
+                    <select id="raLinkAuditClassificationFilter" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm">
+                        <option value="">Tüm bulgular</option>
+                        <option value="rewrite_failed">Rewrite failed</option>
+                        <option value="missing_allowlist">Missing allowlist</option>
+                        <option value="allowed_external">Allowed external</option>
+                    </select>
+                    <button type="button" id="raLinkAuditClearBtn" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 inline-flex items-center justify-center gap-2">
+                        <i class="fas fa-trash-alt"></i><span>Temizle</span>
+                    </button>
+                </div>
+            </div>
+            <div id="raLinkAuditSummary" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4"></div>
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Bulgu</th>
+                                <th class="px-4 py-2 text-left">Kaynak Sayfa</th>
+                                <th class="px-4 py-2 text-left">Hedef</th>
+                                <th class="px-4 py-2 text-left">Öğe</th>
+                                <th class="px-4 py-2 text-left">Son</th>
+                                <th class="px-4 py-2 text-right">#</th>
+                            </tr>
+                        </thead>
+                        <tbody id="raLinkAuditTableBody">
+                            <tr><td colspan="6" class="px-4 py-6 text-center text-sm text-gray-400">Admin test oturumundan link bulgusu bekleniyor.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1879,6 +1956,15 @@
                         <span class="block text-[11px] text-gray-400 font-normal">
                             Pangram gibi session-cookie bazlı (public) erişimlerde kapalı bırak.
                             Wiley/ScienceDirect gibi IP-kilitli kurumsal erişim için açık bırak.
+                        </span>
+                    </span>
+                </label>
+                <label class="flex items-start gap-2 text-sm text-gray-700">
+                    <input id="raProductWafBrowserInput" type="checkbox" class="h-4 w-4 mt-0.5" />
+                    <span>
+                        <strong>WAF browser fallback</strong>
+                        <span class="block text-[11px] text-gray-400 font-normal">
+                            Cloudflare/Turnstile challenge veren publisherlarda HTML document istekleri ra-browser servisiyle alınır.
                         </span>
                     </span>
                 </label>
@@ -3117,7 +3203,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-<script src="assets/js/auth.js?v=20260504c"></script>
+<script src="assets/js/auth.js?v=20260506a"></script>
 <script src="assets/js/script.js?v=20260504c"></script>
 <script>
 // ====================== ADMIN AUTH GATE ======================
@@ -3175,6 +3261,10 @@ async function checkAdminAuth() {
         }
 
         if (!res || !res.ok) {
+            if (res && isTransientAdminAuthStatus(res.status)) {
+                showAdminAuthTransientWarning(res.status);
+                return false;
+            }
             redirectToHome('Oturumunuz sona erdi.');
             return false;
         }
@@ -3223,9 +3313,23 @@ async function checkAdminAuth() {
         }
         return true;
     } catch (err) {
-        redirectToHome('Bağlantı hatası.');
+        showAdminAuthTransientWarning(0);
         return false;
     }
+}
+
+function isTransientAdminAuthStatus(status) {
+    return status === 0 || status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function showAdminAuthTransientWarning(status) {
+    const msg = status === 429
+        ? 'Oturum yenileme çok sık denendi. Biraz bekleyip tekrar kontrol edeceğim.'
+        : 'Geçici bağlantı sorunu var. Oturum kapatılmadı.';
+    if (typeof showToast === 'function') showToast(msg, 'warning');
+    setTimeout(() => {
+        checkAdminAuth().catch(() => {});
+    }, status === 429 ? 15000 : 5000);
 }
 
 function redirectToHome(msg) {
@@ -3623,6 +3727,22 @@ document.addEventListener('click', function(e) {
         return parts.join(' • ');
     }
 
+    function renderProductAccessUrlCell(product) {
+        const url = String(product?.default_access_url || '').trim();
+        if (!url) return '';
+        if (product.ra_enabled) {
+            return `
+                <div class="text-xs text-gray-500 break-all">${escapeHtml(url)}</div>
+                <button type="button"
+                    data-admin-action="test-product-ra"
+                    data-product-slug="${escapeHtml(product.slug || '')}"
+                    class="inline-flex items-center gap-1 mt-1 text-xs px-2 py-1 rounded border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition">
+                    <i class="fas fa-shield-halved"></i><span>RA ile test et</span>
+                </button>`;
+        }
+        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all" onclick="event.stopPropagation()">${escapeHtml(url)}</a>`;
+    }
+
     function getAccessTypeGuideText(accessType) {
         const normalized = String(accessType || '').trim();
         const guides = {
@@ -3973,7 +4093,7 @@ document.addEventListener('click', function(e) {
                 </td>
                 <td class="px-4 py-2">
                     <div class="text-sm text-gray-700">${escapeHtml(getProductAccessLabel(p) || '—')}</div>
-                    ${p.default_access_url ? `<a href="${escapeHtml(p.default_access_url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all" onclick="event.stopPropagation()">${escapeHtml(p.default_access_url)}</a>` : ''}
+                    ${renderProductAccessUrlCell(p)}
                 </td>
                 <td class="px-4 py-2 text-center">
                     <div class="text-xs text-gray-500">${Number(p.display_order ?? 999)}</div>
@@ -4934,6 +5054,21 @@ async function startAdminProductRaTest(btn) {
             if (s.requires_vpn) parts.push('VPN');
             return parts.join(' • ');
         };
+        const renderSubscriptionAccessUrl = (s) => {
+            const url = String(s.access_url || '').trim();
+            if (!url) return '';
+            if (s.ra_enabled) {
+                return `
+                    <div class="text-xs text-gray-500 break-all">${escapeHtml(url)}</div>
+                    <button type="button"
+                        data-admin-action="test-product-ra"
+                        data-product-slug="${escapeHtml(s.product_slug || '')}"
+                        class="inline-flex items-center gap-1 mt-1 text-xs px-2 py-1 rounded border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition">
+                        <i class="fas fa-shield-halved"></i><span>RA ile test et</span>
+                    </button>`;
+            }
+            return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 hover:underline break-all">${escapeHtml(url)}</a>`;
+        };
         const statusLabel = s => s.status === 'active' ? 'Aktif' : s.status === 'trial' ? 'Deneme' : 'Süresi Doldu';
         const statusClass = s => s.status === 'active' ? 'bg-green-100 text-green-800' : s.status === 'trial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
 
@@ -4952,7 +5087,7 @@ async function startAdminProductRaTest(btn) {
                   <td class="px-4 py-2">${getProductName(s.product_slug)}</td>
                   <td class="px-4 py-2 text-sm">
                       <div>${escapeHtml(getAccessLabel(s))}</div>
-                      ${s.access_url ? `<a href="${escapeHtml(s.access_url)}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 hover:underline break-all">${escapeHtml(s.access_url)}</a>` : ''}
+                      ${renderSubscriptionAccessUrl(s)}
                   </td>
                   <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${statusClass(s)}">${statusLabel(s)}</span></td>
                   <td class="px-4 py-2">${new Date(s.start_date).toLocaleDateString('tr-TR')}</td>
@@ -5004,6 +5139,13 @@ async function startAdminProductRaTest(btn) {
 document.getElementById('subscriptionsList')?.addEventListener('click', function(e) {
     const row = e.target.closest('.subscription-row');
     if (!row) return;
+
+    const testBtn = e.target.closest('[data-admin-action="test-product-ra"]');
+    if (testBtn) {
+        e.stopPropagation();
+        startAdminProductRaTest(testBtn);
+        return;
+    }
 
     const subscriptionId = Number(row.dataset.subscriptionId);
     const subscriptionType = row.dataset.subscriptionType || '';
@@ -6265,13 +6407,220 @@ const _ra = {
     institutions: [],
     subscriptions: [],
     products: [],
+    linkAudit: { items: [], summary: {}, productOptionsReady: false },
     logs: { items: [], total: 0, offset: 0, limit: 100 },
     editingInstitutionId: null,
     editingSubscriptionId: null,
     editingProductSlug: null,
 };
 
-const RA_SUBTABS = ['tunnels', 'subscriptions', 'products', 'logs', 'alerts'];
+const RA_SUBTABS = ['tunnels', 'subscriptions', 'products', 'diagnostics', 'link-audit', 'logs', 'alerts'];
+
+const RA_DIAGNOSTIC_RULES = {
+    sciencedirect: {
+        label: 'ScienceDirect',
+        requiredHosts: [
+            'www.sciencedirect.com', 'sciencedirect.com', 'doi.org', 'dx.doi.org',
+            'linkinghub.elsevier.com', 'id.elsevier.com', 'www.elsevier.com',
+            'admintool.elsevier.com', 'help-admintool.elsevier.com',
+            'tableau-admintool.elsevier.com', 'online.tableau.com', '*.els-cdn.com',
+            'sciverse-shindig.elsevier.com',
+        ],
+        recommendedMode: 'session_host_proxy',
+        smokeTests: [
+            'Ana sayfa /search formu 200 dönmeli.',
+            '/search/api çağrısında hostname upstream tarafında www.sciencedirect.com olmalı.',
+            'DOI linki doi.org → linkinghub.elsevier.com → www.sciencedirect.com zincirinde proxy içinde kalmalı.',
+        ],
+    },
+    scopus: {
+        label: 'Scopus',
+        requiredHosts: [
+            'www.scopus.com', 'scopus.com', 'www2.scopus.com',
+            'components.scopus.com', 'id.elsevier.com', 'www.elsevier.com',
+        ],
+        recommendedMode: 'session_host_proxy',
+        knownIssues: [
+            {
+                level: 'warning',
+                title: 'Bilinen problemli akış',
+                detail: 'Scopus arama ve sonuç ekranlarında SPA/API çağrıları hassas; ana sayfa 200 dönse bile sonraki /api veya yönlendirme istekleri 401/403 ile kırılabilir.',
+                action: 'Sorun olduğunda Network ve RA Logs içinde www.scopus.com üzerindeki ilk 401/403 API çağrısını, Referer/Origin rewrite değerlerini ve Set-Cookie dönüşlerini kontrol edin.',
+            },
+        ],
+        smokeTests: [
+            'Ana Scopus açılışı sonrası arama kutusu ve sonuç API çağrısı 200 dönmeli.',
+            'Arama sonrası Network tabında www.scopus.com dışına çıkan redirect varsa allowlist ve rewrite davranışı kontrol edilmeli.',
+            'Set-Cookie dönüşleri sonraki API çağrılarında upstream Cookie olarak görünmeli.',
+        ],
+    },
+    'web-of-science': {
+        label: 'Web of Science',
+        requiredHosts: ['www.webofscience.com', 'webofscience.com', 'www.webofknowledge.com', 'webofknowledge.com', 'ct.prod.getft.io'],
+        recommendedMode: 'session_host_proxy',
+        smokeTests: [
+            'Arama ve full record API çağrıları www.webofscience.com üzerinde kalmalı.',
+            'GetFTR/full text akışında ct.prod.getft.io ve publisher redirect hostu proxy içinde kalmalı.',
+            'Background api/esti ve api/wosnxcorews hataları kullanıcıyı yeniden auth döngüsüne sokmamalı.',
+        ],
+    },
+    'oxford-university-press': {
+        label: 'Oxford Academic / OUP',
+        requiredHosts: ['academic.oup.com', 'oup.com', 'global.oup.com', 'oup.silverchair-cdn.com'],
+        recommendedMode: 'session_host_proxy',
+        requiresWafBrowser: true,
+        smokeTests: [
+            'Cloudflare challenge /cdn-cgi istekleri proxy reserved path üzerinden geçmeli.',
+            'OUP cf_clearance cookie ham isimle proxy domaininde kalmamalı.',
+        ],
+    },
+    'emerald-premier': {
+        label: 'Emerald Premier',
+        requiredHosts: ['www.emerald.com', 'emerald.com', 'emeraldinsight.com'],
+        recommendedMode: 'stable_host_proxy',
+        requiresWafBrowser: true,
+        knownIssues: [
+            {
+                level: 'warning',
+                title: 'Bilinen hassas akış',
+                detail: 'Emerald Cloudflare/cookie davranışında hassas; WAF browser açık olsa bile 401/403 ve challenge cookie akışı ayrıca izlenmeli.',
+                action: 'Sorun olduğunda Alerts/Logs içinde emerald.com, 401/403, cf_clearance ve /cdn-cgi isteklerini birlikte kontrol edin.',
+            },
+        ],
+        smokeTests: [
+            'Cloudflare challenge sonrası cf_clearance upstream host cookie jarına taşınmalı.',
+            'Arama ve article detail sayfaları www.emerald.com/insight altında kalmalı.',
+        ],
+    },
+    'cab-abstracts': {
+        label: 'CAB Abstracts / CABI',
+        requiredHosts: ['www.cabidigitallibrary.org', 'cabidigitallibrary.org', 'www.cabi.org', 'cabi.org', 'www.cabdirect.org', 'cabdirect.org'],
+        recommendedMode: 'stable_host_proxy',
+        requiresWafBrowser: true,
+        knownIssues: [
+            {
+                level: 'warning',
+                title: 'Bilinen stable link riski',
+                detail: 'CABI/CABDirect stable link akışı cabidigitallibrary.org, cabi.org ve cabdirect.org arasında geçiş yapabiliyor; eksik host veya WAF cookie kaybı arama/full-text akışını sessizce kırabilir.',
+                action: 'Network ve RA Logs içinde cabidigitallibrary.org, cabi.org, cabdirect.org redirect zincirini ve ilk 401/403 cevabını kontrol edin.',
+            },
+        ],
+        smokeTests: [
+            'Ürün ana sayfası www.cabidigitallibrary.org/product/ca üzerinden 200 dönmeli.',
+            'CABDirect veya CABI yönlendirmeleri proxy içinde kalmalı ve host allowlist dışına çıkmamalı.',
+            'Arama sonrası ilk document/API 401/403 ise WAF browser ve cookie jar kaydı kontrol edilmeli.',
+        ],
+    },
+    nature: {
+        label: 'Nature',
+        requiredHosts: [
+            'www.nature.com', 'nature.com', 'search.nature.com', 'nano.nature.com',
+            'links.ealert.nature.com', 'arabicedition.nature.com', 'ajandrology.com',
+            'www.ajandrology.com', 'labanimal.com', 'www.labanimal.com',
+            'naturesj.com', 'www.naturesj.com', 'npgjournals.com',
+            'www.npgjournals.com', 'natureasia.com', 'ensighten.com',
+            'nexus.ensighten.com',
+        ],
+        recommendedMode: 'session_host_proxy',
+        knownIssues: [
+            {
+                level: 'warning',
+                title: 'Bilinen problemli akış',
+                detail: 'Nature/Springer Nature sayfalarında article, search ve asset/redirect zincirleri hassas; ana document 200 olsa bile sonraki kaynak veya arama istekleri proxy dışına kaçabilir.',
+                action: 'Sorun olduğunda Network içinde www.nature.com dışına çıkan ilk Location/fetch isteğini, RA Logs içinde ilk 401/403 hostunu ve rewritten linkleri kontrol edin.',
+            },
+        ],
+        smokeTests: [
+            'Ana Nature sayfası ve bir article URL 200 dönmeli.',
+            'Search/article sayfasındaki nature.com mutlak linkleri proxy hostuna rewrite edilmiş olmalı.',
+            'İlk 401/403 cevapta target host allowlist içinde mi ve Referer upstream hosta dönmüş mü kontrol edilmeli.',
+        ],
+    },
+    'proquest-dissertations': {
+        label: 'ProQuest',
+        requiredHosts: [
+            'www.proquest.com', 'proquest.com', 'search.proquest.com',
+            'gateway.proquest.com', 'openurl.proquest.com', 'media2.proquest.com',
+            'ebookcentral.proquest.com', 'explore.proquest.com', 'fedsearch.proquest.com',
+            'pqrc.proquest.com', 'prq.st', 'proquest.umi.com', 'sanborn.umi.com',
+            'li.proquest.com', 'literature.proquest.com', 'congressional.proquest.com',
+            'datasets.proquest.com', 'dialog.proquest.com', 'digitalmicrofilm.proquest.com',
+            'digitalmicrofilm1.proquest.com', 'newspaperslibrary.proquest.com',
+            'regulatoryinsight.proquest.com', 'statistical.proquest.com',
+            'statabs.proquest.com', 'wt3.proquest.com', 'hv.proquest.com',
+            'hv.conquestsystems.com', 'statab.conquestsystems.com',
+            'online.culturegrams.com', 'www.proquestk12.com',
+        ],
+        recommendedMode: 'session_host_proxy',
+        knownIssues: [
+            {
+                level: 'warning',
+                title: 'Bilinen problemli akış',
+                detail: 'ProQuest oturum ve arama akışı cookie/redirect hassas; login/entitlement sonrası ana sayfa çalışırken arama veya document view çağrıları 401/403 dönebilir.',
+                action: 'Sorun olduğunda www.proquest.com üzerindeki ilk 401/403 API/document çağrısını, Set-Cookie dönüşlerini ve sonraki upstream Cookie headerını karşılaştırın.',
+            },
+        ],
+        smokeTests: [
+            'Ana ProQuest açılışı sonrası arama yapılabilmeli.',
+            'Search result ve document detail çağrılarında Set-Cookie sonraki isteklerde upstream Cookie olarak taşınmalı.',
+            'Publisher başka ProQuest hostuna yönlendirirse host allowlist ve Location rewrite kontrol edilmeli.',
+        ],
+    },
+    springerlink: {
+        label: 'SpringerLink',
+        requiredHosts: [
+            'link.springer.com', 'rd.springer.com', 'springer.com',
+            'www.springer.com', 'www.link.springer.com', 'www.springerlink.com',
+            'springerlink.com', 'download.springer.com', 'ebooks.springerlink.com',
+            'adisonline.com', 'www.adisonline.com', 'link.springer.de',
+            'springer.de', 'aa.springer.de', 'link.springer-ny.com',
+            'springer-ny.com', 'sprn.gr',
+        ],
+        recommendedMode: 'session_host_proxy',
+        knownIssues: [
+            {
+                level: 'warning',
+                title: 'Bilinen problemli akış',
+                detail: 'SpringerLink full-text ve article redirect zincirleri hassas; DOI/article geçişlerinde link.springer.com dışı hosta kaçış veya cookie kaybı görülebilir.',
+                action: 'Sorun olduğunda article URL, PDF/full-text linki, Location header ve __ra_upstream cookie durumunu birlikte kontrol edin.',
+            },
+        ],
+        smokeTests: [
+            'Bir article URL doğrudan link.springer.com altında 200 dönmeli.',
+            'PDF/full-text linkine tıklayınca proxy hostu korunmalı veya hedef host allowlist içinde olmalı.',
+            'Location header başka yayıncı hostuna gidiyorsa diagnostic eksik host olarak görünmeli.',
+        ],
+    },
+    wiley: {
+        label: 'Wiley Online Library',
+        requiredHosts: [
+            'onlinelibrary.wiley.com', '*.onlinelibrary.wiley.com',
+            'www.onlinelibrary.wiley.com', 'api.wiley.com', 'doi.wiley.com',
+            'el.wiley.com', 'wiley.com', 'www.wiley.com',
+            'wileyonlinelibrary.com', 'www.wileyonlinelibrary.com',
+            'wileyopenaccess.com', 'www.wileyopenaccess.com',
+            'interscience.wiley.com', 'www.interscience.wiley.com',
+            'www3.interscience.wiley.com', 'mrw.interscience.wiley.com',
+            'www.mrw.interscience.wiley.com', 'pericles.one-lts.literatumonline.com',
+            'wires.wiley.com', 'www.wires.wiley.com',
+        ],
+        recommendedMode: 'session_host_proxy',
+        requiresWafBrowser: true,
+        knownIssues: [
+            {
+                level: 'warning',
+                title: 'Bilinen problemli akış',
+                detail: 'Wiley arama ve article akışında WAF/cookie/mixed-content davranışı hassas; ana HTML yüklenirken arama API veya article kaynakları ayrı 401/403 verebilir.',
+                action: 'Sorun olduğunda onlinelibrary.wiley.com üzerindeki ilk 401/403 isteğini, WAF browser açık mı, Set-Cookie taşındı mı ve mixed-content sadece görsel mi kontrol edin.',
+            },
+        ],
+        smokeTests: [
+            'Kurumsal logo/mixed-content uyarıları arama API sonucunu bloklamamalı.',
+            'Arama sonuç API çağrısı 200 dönmeli ve network issue mesajı göstermemeli.',
+            'Article sayfası sonrası cookie değerleri sonraki upstream isteklerde korunmalı.',
+        ],
+    },
+};
 
 const RA_RECIPE_TEMPLATES = {
     form_post: JSON.stringify({
@@ -6347,6 +6696,8 @@ async function _raRunActiveSubtab() {
         case 'tunnels': await _raLoadTunnels(); break;
         case 'subscriptions': await _raLoadSubscriptions(); break;
         case 'products': await _raLoadProducts(); break;
+        case 'diagnostics': await _raLoadDiagnostics(); break;
+        case 'link-audit': await _raLoadLinkAudit(); break;
         case 'logs': await _raLoadLogs(); break;
         case 'alerts': await _raLoadAlerts(); break;
     }
@@ -6375,6 +6726,13 @@ function _initRemoteAccessTab() {
     if (refreshSubsBtn) refreshSubsBtn.addEventListener('click', () => _raLoadSubscriptions(true));
     const refreshProductsBtn = document.getElementById('raRefreshProductsBtn');
     if (refreshProductsBtn) refreshProductsBtn.addEventListener('click', () => _raLoadProducts(true));
+    const diagnosticsRefreshBtn = document.getElementById('raDiagnosticsRefreshBtn');
+    if (diagnosticsRefreshBtn) diagnosticsRefreshBtn.addEventListener('click', () => _raLoadDiagnostics(true));
+    document.getElementById('raLinkAuditRefreshBtn')?.addEventListener('click', () => _raLoadLinkAudit(true));
+    document.getElementById('raLinkAuditProductFilter')?.addEventListener('change', () => _raLoadLinkAudit(true));
+    document.getElementById('raLinkAuditClassificationFilter')?.addEventListener('change', () => _raLoadLinkAudit(true));
+    document.getElementById('raLinkAuditOpenTestBtn')?.addEventListener('click', () => _raOpenSelectedLinkAuditProduct());
+    document.getElementById('raLinkAuditClearBtn')?.addEventListener('click', () => _raClearLinkAudit());
 
     document.getElementById('raAlertsRefreshBtn')?.addEventListener('click', () => _raLoadAlerts(true));
     document.getElementById('raAlertsDismissAllBtn')?.addEventListener('click', async () => {
@@ -7083,6 +7441,440 @@ async function _raClearSubscriptionCredential() {
     }
 }
 
+// ─── RA Diagnostics ────────────────────────────────────────────────────────
+
+async function _raLoadDiagnostics(force = false) {
+    const body = document.getElementById('raDiagnosticsBody');
+    const summary = document.getElementById('raDiagnosticsSummary');
+    if (!body || !summary) return;
+    if (force || !_ra.products.length) {
+        body.innerHTML = '<div class="bg-white rounded-xl shadow-sm px-4 py-6 text-sm text-gray-400 text-center">Kontroller çalışıyor...</div>';
+    }
+    try {
+        if (force || !_ra.products.length) {
+            await _raLoadProducts(true);
+        }
+        const reports = _ra.products
+            .filter((p) => p.ra_enabled || p.ra_origin_host || p.ra_host_allowlist_json)
+            .map(_raBuildProductDiagnostics)
+            .sort((a, b) => _raSeverityRank(b.severity) - _raSeverityRank(a.severity) || a.product.name.localeCompare(b.product.name, 'tr'));
+        _raRenderDiagnosticsSummary(reports);
+        _raRenderDiagnosticsReports(reports);
+    } catch (err) {
+        console.error('RA diagnostics failed', err);
+        summary.innerHTML = '';
+        body.innerHTML = `<div class="bg-white rounded-xl shadow-sm px-4 py-6 text-sm text-red-500 text-center">Diagnostics yüklenemedi: ${escapeHtml(err.message || 'bilinmeyen hata')}</div>`;
+    }
+}
+
+function _raBuildProductDiagnostics(product) {
+    const allow = _raParseHostList(product.ra_host_allowlist_json);
+    const hosts = new Set(allow.hosts);
+    const originHost = _raNormalizeHost(product.ra_origin_host);
+    if (originHost) hosts.add(originHost);
+
+    const rule = RA_DIAGNOSTIC_RULES[product.slug] || _raFindDiagnosticRule(product, originHost);
+    const checks = [];
+    const actions = [];
+
+    if (!product.ra_enabled) {
+        checks.push(_raDiagnosticCheck('info', 'RA pasif', 'Bu ürün RA üzerinden kullanılmıyor; diğer kontroller yalnızca hazırlık amaçlıdır.'));
+    }
+    if (!originHost && product.ra_enabled) {
+        checks.push(_raDiagnosticCheck('critical', 'Origin host eksik', 'session/stable host proxy akışı hedef publisher hostunu bilmeden token üretemez.'));
+        actions.push('Ürün RA Yapılandırması içinde ra_origin_host alanını publisher hostname ile doldurun.');
+    }
+    if (allow.error) {
+        checks.push(_raDiagnosticCheck('critical', 'Allowlist JSON hatalı', allow.error));
+        actions.push('Host allowlist alanını JSON array formatında düzeltin: ["www.publisher.com","publisher.com"].');
+    }
+    if (product.ra_enabled && normalizeRaDeliveryMode(product.ra_delivery_mode) === 'path_proxy' && product.ra_requires_tunnel) {
+        checks.push(_raDiagnosticCheck('warning', 'Path proxy seçili', 'IP-kilitli ve cookie/domain hassas publisherlarda session_host_proxy daha kararlı çalışır.'));
+    }
+
+    if (rule) {
+        const hostPatterns = [...hosts];
+        const missing = (rule.requiredHosts || []).filter((h) => !_raHostAllowed(h, hostPatterns));
+        if (missing.length) {
+            checks.push(_raDiagnosticCheck('critical', `${missing.length} zorunlu host eksik`, missing.join(', ')));
+            actions.push(`Host allowlist'e ekleyin: ${missing.join(', ')}`);
+        } else if (rule.requiredHosts?.length) {
+            checks.push(_raDiagnosticCheck('ok', 'Zorunlu hostlar tamam', rule.requiredHosts.join(', ')));
+        }
+        if (rule.recommendedMode && product.ra_enabled && normalizeRaDeliveryMode(product.ra_delivery_mode) !== rule.recommendedMode) {
+            checks.push(_raDiagnosticCheck('warning', 'Delivery mode öneriden farklı', `${rule.label} için önerilen mode: ${rule.recommendedMode}.`));
+            actions.push(`Delivery mode değerini ${rule.recommendedMode} yapın.`);
+        }
+        if (rule.requiresWafBrowser && product.ra_enabled && !product.ra_waf_browser) {
+            checks.push(_raDiagnosticCheck('warning', 'WAF browser kapalı', `${rule.label} Cloudflare/WAF challenge akışlarında ra-browser fallback gerektirebilir.`));
+            actions.push('Ürün için ra_waf_browser flag değerini açın.');
+        }
+        for (const issue of rule.knownIssues || []) {
+            checks.push(_raDiagnosticCheck(issue.level || 'warning', issue.title || 'Bilinen yayıncı riski', issue.detail || 'Bu yayıncı için geçmişte hassas RA davranışı gözlendi.'));
+            if (issue.action) actions.push(issue.action);
+        }
+    }
+
+    if (!checks.some((c) => c.level === 'critical' || c.level === 'warning')) {
+        checks.push(_raDiagnosticCheck('ok', 'Temel konfigürasyon temiz', 'Bilinen kritik eksik görünmüyor.'));
+    }
+
+    const severity = checks.some((c) => c.level === 'critical')
+        ? 'critical'
+        : checks.some((c) => c.level === 'warning')
+            ? 'warning'
+            : 'ok';
+
+    return {
+        product,
+        rule,
+        checks,
+        actions: [...new Set(actions)],
+        severity,
+        hosts: [...hosts].sort(),
+        smokeTests: rule?.smokeTests || _raDefaultSmokeTests(product),
+    };
+}
+
+function _raDiagnosticCheck(level, title, detail) {
+    return { level, title, detail };
+}
+
+function _raFindDiagnosticRule(product, originHost) {
+    const slug = String(product?.slug || '').toLowerCase();
+    if (slug.includes('emerald')) return RA_DIAGNOSTIC_RULES['emerald-premier'];
+    if (slug.includes('cab')) return RA_DIAGNOSTIC_RULES['cab-abstracts'];
+    if (slug.includes('scopus')) return RA_DIAGNOSTIC_RULES.scopus;
+    if (slug.includes('nature')) return RA_DIAGNOSTIC_RULES.nature;
+    if (slug.includes('proquest')) return RA_DIAGNOSTIC_RULES['proquest-dissertations'];
+    if (slug.includes('springer')) return RA_DIAGNOSTIC_RULES.springerlink;
+    if (slug.includes('wiley')) return RA_DIAGNOSTIC_RULES.wiley;
+    if (originHost && originHost.includes('sciencedirect.com')) return RA_DIAGNOSTIC_RULES.sciencedirect;
+    if (originHost && originHost.includes('scopus.com')) return RA_DIAGNOSTIC_RULES.scopus;
+    if (originHost && originHost.includes('nature.com')) return RA_DIAGNOSTIC_RULES.nature;
+    if (originHost && originHost.includes('proquest.com')) return RA_DIAGNOSTIC_RULES['proquest-dissertations'];
+    if (originHost && (originHost.includes('springer.com') || originHost.includes('springernature.com'))) return RA_DIAGNOSTIC_RULES.springerlink;
+    if (originHost && (originHost.includes('webofscience.com') || originHost.includes('webofknowledge.com'))) return RA_DIAGNOSTIC_RULES['web-of-science'];
+    if (originHost && originHost.includes('oup.com')) return RA_DIAGNOSTIC_RULES['oxford-university-press'];
+    if (originHost && originHost.includes('emerald')) return RA_DIAGNOSTIC_RULES['emerald-premier'];
+    if (originHost && (originHost.includes('cabidigitallibrary.org') || originHost.includes('cabi.org') || originHost.includes('cabdirect.org'))) return RA_DIAGNOSTIC_RULES['cab-abstracts'];
+    if (originHost && originHost.includes('wiley.com')) return RA_DIAGNOSTIC_RULES.wiley;
+    return null;
+}
+
+function _raDefaultSmokeTests(product) {
+    const mode = normalizeRaDeliveryMode(product.ra_delivery_mode);
+    if (mode === 'session_host_proxy' || mode === 'stable_host_proxy') {
+        return [
+            'Portal üzerinden yeni RA oturumu açın; ilk HTML document 200 dönmeli.',
+            'Network tabında 401/403 olan ilk API çağrısının target host ve cookie durumunu kontrol edin.',
+            'Publisher dış hosta yönlendiriyorsa host allowlist içinde olduğundan emin olun.',
+        ];
+    }
+    return [
+        'Ana publisher URL proxy üzerinden 200 dönmeli.',
+        'Location header başka hosta gidiyorsa allowlist ve rewrite davranışını kontrol edin.',
+    ];
+}
+
+function _raRenderDiagnosticsSummary(reports) {
+    const summary = document.getElementById('raDiagnosticsSummary');
+    if (!summary) return;
+    const critical = reports.filter((r) => r.severity === 'critical').length;
+    const warning = reports.filter((r) => r.severity === 'warning').length;
+    const ok = reports.filter((r) => r.severity === 'ok').length;
+    const enabled = _ra.products.filter((p) => p.ra_enabled).length;
+    summary.innerHTML = [
+        _raDiagnosticMetric('Kritik', critical, 'bg-red-50 text-red-700 border-red-100'),
+        _raDiagnosticMetric('Uyarı', warning, 'bg-amber-50 text-amber-700 border-amber-100'),
+        _raDiagnosticMetric('Temiz', ok, 'bg-emerald-50 text-emerald-700 border-emerald-100'),
+        _raDiagnosticMetric('RA Aktif Ürün', enabled, 'bg-indigo-50 text-indigo-700 border-indigo-100'),
+    ].join('');
+}
+
+function _raDiagnosticMetric(label, value, cls) {
+    return `<div class="rounded-xl border ${cls} px-4 py-3">
+        <div class="text-xs font-medium opacity-80">${escapeHtml(label)}</div>
+        <div class="text-2xl font-semibold mt-1">${Number(value || 0).toLocaleString('tr-TR')}</div>
+    </div>`;
+}
+
+function _raRenderDiagnosticsReports(reports) {
+    const body = document.getElementById('raDiagnosticsBody');
+    if (!body) return;
+    if (!reports.length) {
+        body.innerHTML = '<div class="bg-white rounded-xl shadow-sm px-4 py-6 text-sm text-gray-400 text-center">RA konfigürasyonu olan ürün bulunamadı.</div>';
+        return;
+    }
+    body.innerHTML = reports.map(_raDiagnosticReportHtml).join('');
+    body.querySelectorAll('[data-ra-diagnostics-edit]').forEach((btn) => {
+        btn.addEventListener('click', () => _raOpenProductModal(btn.dataset.raDiagnosticsEdit));
+    });
+    body.querySelectorAll('[data-ra-diagnostics-copy]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const value = btn.dataset.raDiagnosticsCopy || '';
+            try {
+                await navigator.clipboard.writeText(value);
+                showToast('Host listesi kopyalandı.', 'success');
+            } catch {
+                showToast(value, 'info');
+            }
+        });
+    });
+}
+
+function _raDiagnosticReportHtml(report) {
+    const p = report.product;
+    const badge = _raDiagnosticSeverityBadge(report.severity);
+    const mode = normalizeRaDeliveryMode(p.ra_delivery_mode);
+    const missingHosts = report.rule
+        ? (report.rule.requiredHosts || []).filter((h) => !_raHostAllowed(h, report.hosts))
+        : [];
+    const copyHosts = missingHosts.join(', ');
+    const checks = report.checks.map((c) => `<li class="flex gap-2 py-1">
+        <span class="mt-0.5">${_raDiagnosticIcon(c.level)}</span>
+        <span><span class="font-medium text-gray-800">${escapeHtml(c.title)}</span><span class="text-gray-500"> — ${escapeHtml(c.detail)}</span></span>
+    </li>`).join('');
+    const actions = report.actions.length
+        ? report.actions.map((a) => `<li>${escapeHtml(a)}</li>`).join('')
+        : '<li>Şu an yapılacak zorunlu konfigürasyon işi görünmüyor.</li>';
+    const tests = report.smokeTests.map((t) => `<li>${escapeHtml(t)}</li>`).join('');
+    return `<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-4 py-3 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div>
+                <div class="flex flex-wrap items-center gap-2">
+                    ${badge}
+                    <h4 class="font-semibold text-gray-800">${escapeHtml(p.name || p.slug)}</h4>
+                    <span class="text-[11px] text-gray-400 font-mono">${escapeHtml(p.slug)}</span>
+                </div>
+                <div class="mt-1 text-xs text-gray-500">
+                    Origin: <span class="font-mono">${escapeHtml(p.ra_origin_host || '—')}</span>
+                    <span class="mx-1 text-gray-300">•</span>
+                    Mode: <span class="font-mono">${escapeHtml(mode)}</span>
+                    <span class="mx-1 text-gray-300">•</span>
+                    WAF browser: ${p.ra_waf_browser ? 'açık' : 'kapalı'}
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                ${copyHosts ? `<button type="button" class="text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-50" data-ra-diagnostics-copy="${escapeHtml(copyHosts)}"><i class="fas fa-copy mr-1"></i>Eksik hostları kopyala</button>` : ''}
+                <button type="button" class="text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-50" data-ra-diagnostics-edit="${escapeHtml(p.slug)}"><i class="fas fa-pen mr-1"></i>Yapılandır</button>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 px-4 py-4 text-xs">
+            <div>
+                <div class="font-semibold text-gray-700 mb-2">Tespitler</div>
+                <ul>${checks}</ul>
+            </div>
+            <div>
+                <div class="font-semibold text-gray-700 mb-2">Ne Yapmalı</div>
+                <ul class="list-disc pl-4 space-y-1 text-gray-600">${actions}</ul>
+            </div>
+            <div>
+                <div class="font-semibold text-gray-700 mb-2">Smoke Test</div>
+                <ul class="list-disc pl-4 space-y-1 text-gray-600">${tests}</ul>
+            </div>
+        </div>
+    </div>`;
+}
+
+function _raDiagnosticSeverityBadge(severity) {
+    if (severity === 'critical') return '<span class="text-[11px] px-2 py-0.5 rounded bg-red-100 text-red-700 font-medium">kritik</span>';
+    if (severity === 'warning') return '<span class="text-[11px] px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">uyarı</span>';
+    return '<span class="text-[11px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium">temiz</span>';
+}
+
+function _raDiagnosticIcon(level) {
+    if (level === 'critical') return '<i class="fas fa-circle-exclamation text-red-500"></i>';
+    if (level === 'warning') return '<i class="fas fa-triangle-exclamation text-amber-500"></i>';
+    if (level === 'ok') return '<i class="fas fa-check-circle text-emerald-500"></i>';
+    return '<i class="fas fa-info-circle text-gray-400"></i>';
+}
+
+function _raSeverityRank(severity) {
+    if (severity === 'critical') return 3;
+    if (severity === 'warning') return 2;
+    if (severity === 'ok') return 1;
+    return 0;
+}
+
+function _raParseHostList(raw) {
+    if (!raw) return { hosts: [], error: '' };
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return { hosts: [], error: 'Host allowlist array olmalı.' };
+        const bad = parsed.find((h) => !_raNormalizeHostPattern(h));
+        if (bad) return { hosts: [], error: `Geçersiz host: ${bad}` };
+        return { hosts: [...new Set(parsed.map(_raNormalizeHostPattern).filter(Boolean))], error: '' };
+    } catch (err) {
+        return { hosts: [], error: `JSON parse hatası: ${err.message}` };
+    }
+}
+
+function _raNormalizeHost(raw) {
+    const s = String(raw || '').trim().toLowerCase();
+    if (!s) return '';
+    let host = s.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    host = host.replace(/:\d+$/, '');
+    return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(host) ? host : '';
+}
+
+function _raNormalizeHostPattern(raw) {
+    let host = String(raw || '').trim().toLowerCase();
+    if (!host) return '';
+    host = host.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '');
+    if (host.startsWith('*.')) {
+        const suffix = _raNormalizeHost(host.slice(2));
+        return suffix ? `*.${suffix}` : '';
+    }
+    return _raNormalizeHost(host);
+}
+
+function _raHostAllowed(requiredHost, hostPatterns) {
+    const required = _raNormalizeHostPattern(requiredHost);
+    if (!required) return false;
+    for (const rawPattern of hostPatterns || []) {
+        const pattern = _raNormalizeHostPattern(rawPattern);
+        if (!pattern) continue;
+        if (pattern === required) return true;
+        if (pattern.startsWith('*.')) {
+            const suffix = pattern.slice(2);
+            if (!required.startsWith('*.') && required.endsWith(`.${suffix}`)) return true;
+        }
+        if (required.startsWith('*.') && pattern.startsWith('*.') && pattern.slice(2) === required.slice(2)) return true;
+    }
+    return false;
+}
+
+// ─── RA Link Audit ─────────────────────────────────────────────────────────
+
+async function _raLoadLinkAudit(force = false) {
+    const tbody = document.getElementById('raLinkAuditTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-sm text-gray-400">Link audit yükleniyor...</td></tr>';
+    try {
+        if (force || !_ra.products.length) {
+            await _raLoadProducts(true);
+        }
+        _raPopulateLinkAuditProductFilter();
+        const product = document.getElementById('raLinkAuditProductFilter')?.value || '';
+        const classification = document.getElementById('raLinkAuditClassificationFilter')?.value || '';
+        const params = new URLSearchParams({ limit: '160' });
+        if (product) params.set('product_slug', product);
+        if (classification) params.set('classification', classification);
+        const res = await fetch(`${API_BASE}/api/ra/admin/link-audit?${params.toString()}`, { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        _ra.linkAudit.items = Array.isArray(data.findings) ? data.findings : [];
+        _ra.linkAudit.summary = data.summary || {};
+        _raRenderLinkAudit();
+    } catch (err) {
+        console.error('RA link audit failed', err);
+        document.getElementById('raLinkAuditSummary').innerHTML = '';
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-6 text-center text-sm text-red-500">Yüklenemedi: ${escapeHtml(err.message || 'bilinmeyen hata')}</td></tr>`;
+    }
+}
+
+function _raPopulateLinkAuditProductFilter() {
+    const select = document.getElementById('raLinkAuditProductFilter');
+    if (!select || _ra.linkAudit.productOptionsReady) return;
+    const current = select.value || '';
+    const options = _ra.products
+        .filter((p) => p.ra_enabled || p.ra_origin_host)
+        .sort((a, b) => String(a.name || a.slug).localeCompare(String(b.name || b.slug), 'tr'))
+        .map((p) => `<option value="${escapeHtml(p.slug)}">${escapeHtml(p.name || p.slug)} (${escapeHtml(p.slug)})</option>`)
+        .join('');
+    select.innerHTML = `<option value="">Tüm RA ürünleri</option>${options}`;
+    if (current) select.value = current;
+    _ra.linkAudit.productOptionsReady = true;
+}
+
+function _raRenderLinkAudit() {
+    const summary = document.getElementById('raLinkAuditSummary');
+    const tbody = document.getElementById('raLinkAuditTableBody');
+    if (!summary || !tbody) return;
+    const s = _ra.linkAudit.summary || {};
+    summary.innerHTML = [
+        _raLinkAuditMetric('Rewrite failed', s.rewrite_failed, 'bg-red-50 text-red-700 border-red-100'),
+        _raLinkAuditMetric('Missing allowlist', s.missing_allowlist, 'bg-amber-50 text-amber-700 border-amber-100'),
+        _raLinkAuditMetric('Allowed external', s.allowed_external, 'bg-sky-50 text-sky-700 border-sky-100'),
+    ].join('');
+
+    if (!_ra.linkAudit.items.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-sm text-gray-400">Bulgular boş. Seçili ürünü admin testte açıp sayfada biraz gezinin.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = _ra.linkAudit.items.map((f) => {
+        const badge = _raLinkAuditBadge(f.classification);
+        const product = f.product_name || f.product_slug || '—';
+        const foundUrl = f.found_url || '';
+        const sourcePath = f.source_path || '/';
+        return `<tr class="hover:bg-gray-50 align-top">
+            <td class="px-4 py-2">
+                <div>${badge}</div>
+                <div class="mt-1 text-xs font-medium text-gray-800">${escapeHtml(product)}</div>
+                <div class="text-[11px] text-gray-500">${escapeHtml(f.reason || '')}</div>
+            </td>
+            <td class="px-4 py-2">
+                <div class="text-xs font-mono text-gray-700 break-all">${escapeHtml(sourcePath)}</div>
+                <div class="text-[11px] text-gray-400">${escapeHtml(f.source_host || '')}</div>
+            </td>
+            <td class="px-4 py-2">
+                <div class="text-xs font-semibold text-gray-700">${escapeHtml(f.found_host || '—')}</div>
+                <a href="${escapeHtml(foundUrl)}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-indigo-600 hover:underline break-all">${escapeHtml(foundUrl)}</a>
+                ${f.sample_text ? `<div class="text-[11px] text-gray-400 mt-1">${escapeHtml(f.sample_text)}</div>` : ''}
+            </td>
+            <td class="px-4 py-2 text-xs font-mono text-gray-600">${escapeHtml(f.element || '—')}.${escapeHtml(f.attr || '—')}</td>
+            <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">${_raFormatTs(f.last_seen)}</td>
+            <td class="px-4 py-2 text-right text-xs font-semibold text-gray-700">${Number(f.count || 0).toLocaleString('tr-TR')}</td>
+        </tr>`;
+    }).join('');
+}
+
+function _raLinkAuditMetric(label, record, cls) {
+    const unique = Number(record?.unique_count || 0);
+    const hits = Number(record?.hit_count || 0);
+    return `<div class="rounded-xl border ${cls} px-4 py-3">
+        <div class="text-xs font-medium opacity-80">${escapeHtml(label)}</div>
+        <div class="text-2xl font-semibold mt-1">${unique.toLocaleString('tr-TR')}</div>
+        <div class="text-[11px] opacity-75">${hits.toLocaleString('tr-TR')} gözlem</div>
+    </div>`;
+}
+
+function _raLinkAuditBadge(kind) {
+    if (kind === 'rewrite_failed') return '<span class="text-[11px] px-2 py-0.5 rounded bg-red-100 text-red-700 font-medium">rewrite failed</span>';
+    if (kind === 'missing_allowlist') return '<span class="text-[11px] px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">missing allowlist</span>';
+    if (kind === 'allowed_external') return '<span class="text-[11px] px-2 py-0.5 rounded bg-sky-100 text-sky-700 font-medium">allowed external</span>';
+    return `<span class="text-[11px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-medium">${escapeHtml(kind || 'unknown')}</span>`;
+}
+
+function _raOpenSelectedLinkAuditProduct() {
+    const slug = document.getElementById('raLinkAuditProductFilter')?.value || '';
+    if (!slug) {
+        showToast('Önce bir ürün seçin.', 'warning');
+        return;
+    }
+    const btn = document.getElementById('raLinkAuditOpenTestBtn');
+    btn.dataset.productSlug = slug;
+    startAdminProductRaTest(btn);
+}
+
+async function _raClearLinkAudit() {
+    const product = document.getElementById('raLinkAuditProductFilter')?.value || '';
+    const msg = product ? `${product} link audit bulguları silinsin mi?` : 'Tüm link audit bulguları silinsin mi?';
+    if (!confirm(msg)) return;
+    const url = new URL(`${API_BASE}/api/ra/admin/link-audit`);
+    if (product) url.searchParams.set('product_slug', product);
+    const res = await fetch(url.toString(), { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Link audit temizlenemedi.', 'error');
+        return;
+    }
+    showToast('Link audit temizlendi.', 'success');
+    await _raLoadLinkAudit(true);
+}
+
 // ─── Ürün RA Ayarları ─────────────────────────────────────────────────────
 
 async function _raLoadProducts(force = false) {
@@ -7096,6 +7888,7 @@ async function _raLoadProducts(force = false) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         _ra.products = Array.isArray(data.products) ? data.products : [];
+        _ra.linkAudit.productOptionsReady = false;
         _raRenderProducts();
     } catch (err) {
         console.error('RA products load failed', err);
@@ -7164,6 +7957,7 @@ function _raOpenProductModal(slug) {
     // ra_requires_tunnel: null/undefined => default 1 (backwards compat)
     document.getElementById('raProductRequiresTunnelInput').checked =
         product.ra_requires_tunnel == null ? true : !!product.ra_requires_tunnel;
+    document.getElementById('raProductWafBrowserInput').checked = !!product.ra_waf_browser;
     document.getElementById('raProductOriginHostInput').value = product.ra_origin_host || '';
     document.getElementById('raProductOriginLandingPathInput').value = product.ra_origin_landing_path || '';
     document.getElementById('raProductRecipeInput').value = _raPrettyJson(product.ra_login_recipe_json);
@@ -7198,6 +7992,7 @@ async function _raSaveProduct() {
     const raEnabled = document.getElementById('raProductEnabledInput').checked ? 1 : 0;
     const raDeliveryMode = normalizeRaDeliveryMode(document.getElementById('raProductDeliveryModeInput').value);
     const raRequiresTunnel = document.getElementById('raProductRequiresTunnelInput').checked ? 1 : 0;
+    const raWafBrowser = document.getElementById('raProductWafBrowserInput').checked ? 1 : 0;
     const originHost = document.getElementById('raProductOriginHostInput').value.trim();
     const landingPath = document.getElementById('raProductOriginLandingPathInput').value.trim();
     const recipe = document.getElementById('raProductRecipeInput').value.trim();
@@ -7242,6 +8037,7 @@ async function _raSaveProduct() {
                 ra_enabled: raEnabled,
                 ra_delivery_mode: raDeliveryMode,
                 ra_requires_tunnel: raRequiresTunnel,
+                ra_waf_browser: raWafBrowser,
                 ra_origin_host: originHost || null,
                 ra_origin_landing_path: landingPath || null,
                 ra_login_recipe_json: recipe || null,

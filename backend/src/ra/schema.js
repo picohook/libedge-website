@@ -35,6 +35,7 @@ export async function ensureRemoteAccessSchema(db) {
     { name: 'ra_origin_host', def: 'TEXT' },
     { name: 'ra_login_recipe_json', def: 'TEXT' },
     { name: 'ra_host_allowlist_json', def: 'TEXT' },
+    { name: 'ra_waf_browser', def: 'INTEGER NOT NULL DEFAULT 0' },
     { name: 'ra_requires_tunnel', def: 'INTEGER NOT NULL DEFAULT 1' },
     // ra_origin_landing_path: session cookie set edildikten sonra kullanıcının
     // yönlendirileceği ilk path. Boş/null ise '/' kullanılır.
@@ -235,6 +236,40 @@ export async function ensureRemoteAccessSchema(db) {
   await db
     .prepare(
       `CREATE INDEX IF NOT EXISTS idx_ra_alerts_active ON ra_alerts(dismissed, created_at DESC)`
+    )
+    .run();
+
+  // ra_link_audit_findings — admin test oturumlarında proxy dışı kalan linkleri
+  // aggregate eder. Normal kullanıcı trafiği bu tabloya yazmaz.
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS ra_link_audit_findings (
+        key_hash TEXT PRIMARY KEY,
+        product_slug TEXT,
+        institution_id INTEGER,
+        user_id INTEGER,
+        session_id TEXT,
+        source_host TEXT,
+        source_path TEXT,
+        source_url TEXT,
+        found_host TEXT,
+        found_url TEXT,
+        element TEXT,
+        attr TEXT,
+        classification TEXT NOT NULL,
+        reason TEXT,
+        sample_text TEXT,
+        count INTEGER NOT NULL DEFAULT 1,
+        first_seen INTEGER NOT NULL,
+        last_seen INTEGER NOT NULL
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_ra_link_audit_product_seen
+         ON ra_link_audit_findings(product_slug, last_seen DESC)`
     )
     .run();
 

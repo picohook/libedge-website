@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hesabım - LibEdge</title>
     <link rel="stylesheet" href="assets/css/tailwind.css">
-    <script src="assets/js/auth.js?v=20260504c"></script>
+    <script src="assets/js/auth.js?v=20260506a"></script>
     <script src="assets/js/header.js?v=20260420c"></script>
     <script src="assets/js/header-controller.js?v=20260420b"></script>
     <script src="assets/js/notifications.js?v=20260420b"></script>
@@ -762,9 +762,19 @@ async function checkAuthAndLoad() {
             const ref = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
             if (ref.ok) {
                 res = await fetch('/api/user/profile', { credentials: 'include' });
+            } else if (isTransientProfileAuthStatus(ref.status)) {
+                showProfileAuthRetry(ref.status);
+                return;
             }
         }
-        if (!res.ok) { window.location.href = 'index.html'; return; }
+        if (!res.ok) {
+            if (isTransientProfileAuthStatus(res.status)) {
+                showProfileAuthRetry(res.status);
+                return;
+            }
+            window.location.href = 'index.html';
+            return;
+        }
         
         const user = await res.json();
         window.currentUser = user;
@@ -830,8 +840,22 @@ async function checkAuthAndLoad() {
         loadSharedWithMe();
     } catch (err) {
         console.error('checkAuthAndLoad error:', err);
-        window.location.href = 'index.html';
+        showProfileAuthRetry(0);
     }
+}
+
+function isTransientProfileAuthStatus(status) {
+    return status === 0 || status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function showProfileAuthRetry(status) {
+    const msg = status === 429
+        ? 'Oturum yenileme çok sık denendi. Biraz bekleyip tekrar kontrol edeceğim.'
+        : 'Geçici bağlantı sorunu var. Oturum kapatılmadı.';
+    if (typeof window.showToast === 'function') window.showToast(msg, 'warning');
+    setTimeout(() => {
+        checkAuthAndLoad().catch(() => {});
+    }, status === 429 ? 15000 : 5000);
 }
 
 document.addEventListener('DOMContentLoaded', checkAuthAndLoad);
@@ -839,7 +863,18 @@ document.addEventListener('DOMContentLoaded', checkAuthAndLoad);
 async function openRemoteAccess(btn) {
     if (!btn || btn.dataset.raBusy === '1') return;
     const subId = Number(btn.dataset.raSubId);
-    if (!Number.isFinite(subId) || subId <= 0) return;
+    const productSlug = String(btn.dataset.productSlug || '').trim();
+    const payload = {};
+    if (Number.isFinite(subId) && subId > 0) {
+        payload.subscription_id = subId;
+    } else if (productSlug) {
+        payload.product_slug = productSlug;
+    } else {
+        if (typeof window.showToast === 'function') {
+            window.showToast('Bu ürün için uzaktan erişim bilgisi eksik.', 'warning');
+        }
+        return;
+    }
     const notify = (msg, type) => {
         if (typeof window.showToast === 'function') window.showToast(msg, type || 'info');
         else if (type === 'error') console.error(msg);
@@ -861,7 +896,7 @@ async function openRemoteAccess(btn) {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subscription_id: subId }),
+            body: JSON.stringify(payload),
         });
         let data = null;
         try { data = await res.json(); } catch (_) { /* non-JSON body */ }
@@ -913,11 +948,8 @@ function openSubscriptionAccess(btn) {
     // 1. RA tüneli — birincil sinyal ra_enabled; ek güvence: ip / proxy (legacy)
     const isRaRoute = raEnabled || accessType === 'ip' || accessType === 'proxy';
     if (isRaRoute) {
-        if (Number.isFinite(subId) && subId > 0) {
-            openRemoteAccess(btn);
-            return;
-        }
-        // ra_enabled ama subId yoksa direkt URL'e düş (aşağıda ele alınır)
+        openRemoteAccess(btn);
+        return;
     }
 
     // 2. Kuruma özel giriş sayfası (Lecturio tipi)
@@ -983,10 +1015,11 @@ async function loadSubscriptions() {
             const accessType = getDisplayAccessType(sub);
             const subId = Number(sub.id);
             const hasSubId = Number.isFinite(subId) && subId > 0;
+            const hasProductSlug = !!String(sub.product_slug || '').trim();
             const isRaProduct = !!sub.ra_enabled || accessType === 'ip' || accessType === 'proxy';
 
             if (isRaProduct) {
-                if (!hasSubId) return null;
+                if (!hasSubId && !hasProductSlug) return null;
                 return { label: 'Uzaktan Erişim', icon: 'fa-shield-halved', style: 'bg-indigo-600 hover:bg-indigo-700' };
             }
             if (accessType === 'institution_link') {
@@ -1025,6 +1058,7 @@ async function loadSubscriptions() {
             const actionHtml = actionConfig
                 ? `<button type="button"
                         data-ra-sub-id="${Number.isFinite(subId) ? subId : ''}"
+                        data-product-slug="${escapeHtml(String(sub.product_slug || ''))}"
                         data-access-type="${escapeHtml(String(sub.access_type || ''))}"
                         data-delivery-mode="${escapeHtml(String(sub.ra_delivery_mode || ''))}"
                         data-access-url="${escapeHtml(normalizedUrl)}"

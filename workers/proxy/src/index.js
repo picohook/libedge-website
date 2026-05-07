@@ -18,6 +18,7 @@ import { htmlError } from './error-page.js';
 import { enforceProxyRateLimit } from './rate-limit.js';
 
 const SESSION_COOKIE  = 'ra_proxy_session';
+const COMPAT_SESSION_COOKIE = 'coproxy_session_id';
 const UPSTREAM_HOST_COOKIE = '__ra_upstream';
 const SESSION_TTL_SEC = 3600;
 const SESSION_ALT_HOST_PREFIX = '/__ra-host/';
@@ -25,10 +26,16 @@ const SESSION_ENTRY_REDIRECT_PATH = '/__ra-redirect';
 const STABLE_ENTRY_REDIRECT_PATH = '/coproxy/redirect';
 const CF_CHALLENGE_PROXY_PREFIX = '/__ra-cdn-cgi/';
 const CLIENT_DEBUG_PATH = '/__ra-client-debug';
+const LINK_AUDIT_PATH = '/__ra-link-audit';
 const COPROXY_REDIRECT_PATH = '/coproxy/redirect';
+const WOS_DYNAMIC_HOSTS_PREFIX = 'rhostdyn:';
 const DESKTOP_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
+const SESSION_KV_CACHE_TTL_MS = 30 * 1000;
+const SESSION_KV_CACHE_MAX = 500;
+const sessionKvCache = new Map();
+let linkAuditSchemaEnsured = false;
 
 export default {
   async fetch(request, env, ctx) {
@@ -85,6 +92,11 @@ async function handle(request, env, ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function handleSessionHost(request, env, ctx, url, sessionId) {
+  // Cloudflare RUM / beacon telemetry — upstream'de bu endpoint yok, 204 dön.
+  if (isCloudflareTelemetryPath(url.pathname)) {
+    return new Response(null, { status: 204 });
+  }
+
   // Token var mı? (issue-token'dan gelen ilk yönlendirme)
   const token = url.searchParams.get('t');
   if (token) {
@@ -108,8 +120,9 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     return htmlError(401, 'Oturum bulunamadı. Lütfen portal üzerinden tekrar erişin.');
   }
 
-  // KV'dan session yükle
-  const session = await env.RA_UPSTREAM_SESSIONS.get(`rhost:${sessionId}`, 'json');
+  // KV'dan session yükle. Kısa isolate-local cache asset fırtınasında aynı
+  // session kaydını her istek için tekrar KV'den okumayı azaltır.
+  const session = await loadCachedSessionHostSession(env, sessionId);
   if (!session || session.expires_at < Math.floor(Date.now() / 1000)) {
     return htmlError(401, 'Oturum süresi dolmuş. Portal üzerinden yeniden erişin.');
   }
@@ -118,8 +131,12 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     return await handleClientDebug(request, env, session, url);
   }
 
+  if (url.pathname === LINK_AUDIT_PATH) {
+    return await handleLinkAudit(request, env, session, url, sessionId);
+  }
+
   if (url.pathname === COPROXY_REDIRECT_PATH) {
-    return await handleSessionHostRedirectWrapper(request, env, url, session);
+    return await handleSessionHostRedirectWrapper(request, env, url, session, sessionId);
   }
 
   if (url.pathname === SESSION_ENTRY_REDIRECT_PATH) {
@@ -128,7 +145,7 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
 
   return await proxySessionSurface(request, env, ctx, url, session, sessionId);
 
-  const proxyableHosts = await loadSessionProxyableHosts(env.DB, session);
+  const proxyableHosts = await loadSessionProxyableHosts(env, session, sessionId);
   const upstreamCookieHost = readAllowedUpstreamHostCookie(
     request.headers.get('Cookie'),
     proxyableHosts
@@ -137,7 +154,8 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     url.pathname,
     session.origin_host,
     proxyableHosts,
-    upstreamCookieHost
+    upstreamCookieHost,
+    { productSlug: session.product_slug }
   );
   if (!target) {
     return htmlError(403, 'Bu oturum bu yayıncı hostuna erişemez.');
@@ -153,12 +171,15 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   // Upstream relay — path ve query aynen korunur, sadece host değişir.
   // Query params içindeki proxy hostname'i (r*.selmiye.com) origin'e rewrite et;
   // aksi hâlde EMIS gibi "ref=<current_url>" echo'layan siteler redirect loop oluşturur.
-  const search = rewriteQueryProxyUrls(url.search, url.hostname, target.host);
+  const search = rewriteQueryProxyUrls(url.search, url.hostname, target.host, {
+    sessionOriginHost: session.origin_host,
+  });
   const targetUrl = `https://${target.host}${target.path}${search}`;
   const publisherCookieScopeHost = getPublisherCookieScopeHost(target.host);
   const upstreamHeaders = buildUpstreamHeaders(request.headers, {
     proxyHostname: url.hostname,
     originHost: target.host,
+    targetHost: target.host,
     forceDesktopUserAgent: session.product_slug === 'emis',
     publisherCookieScopeHost,
     targetPath: target.path,
@@ -194,6 +215,12 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
       publisherCookieScopeHost,
       effectiveUpstreamCookies
     );
+  }
+  if (isWileyProxyHost(target.host)) {
+    effectiveUpstreamCookies = ensureCookiePair(effectiveUpstreamCookies, 'theproxy', 'ezproxy');
+  }
+  if (isScienceDirectProxyHost(target.host)) {
+    effectiveUpstreamCookies = ensureCookiePair(effectiveUpstreamCookies, 'BROWSER_SUPPORTS_COOKIES', '1');
   }
   if (effectiveUpstreamCookies) {
     upstreamHeaders.set('Cookie', effectiveUpstreamCookies);
@@ -302,51 +329,68 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   sanitizeWafChallengeResponseHeaders(respHeaders, publisherCookieScopeHost);
 
   if (isCloudflareChallengeAssetPath(target.path) && /\btext\/html\b/i.test(contentType)) {
-    const text = relaxProxyMetaContentSecurityPolicy(await upstreamResp.text());
-    // Strip cf_clearance Set-Cookie from challenge frames — challenge platform
-    // sets/clears clearance cookies during challenge flow, which would overwrite
-    // a valid clearance the browser already holds. Only the verify endpoint on
-    // the publisher domain should issue the final cf_clearance.
-    const filteredHeaders = new Headers(
-      [...respHeaders.entries()].filter(([k, v]) =>
-        !(k.toLowerCase() === 'set-cookie' && v.toLowerCase().includes('cf_clearance'))
-      )
+    let text = await upstreamResp.text();
+    text = relaxProxyMetaContentSecurityPolicy(text);
+    text = rewriteCloudflareChallengePaths(text);
+    text = injectCloudflareChallengeCookieNamespaceScript(text, publisherCookieScopeHost);
+    clearRawPublisherClearanceCookies(
+      respHeaders,
+      publisherCookieScopeHost,
+      proxyCookieDomainFromEnv(env, url.hostname)
     );
-    filteredHeaders.delete('Content-Length');
-    filteredHeaders.delete('Content-Encoding');
+    respHeaders.delete('Content-Length');
+    respHeaders.delete('Content-Encoding');
     return new Response(text, {
       status: upstreamResp.status,
       statusText: upstreamResp.statusText,
-      headers: filteredHeaders,
+      headers: respHeaders,
     });
   }
 
   const needsTextRewrite =
     shouldRewriteSessionTextResponse(target, upstreamResp) ||
-    shouldRewriteCurrentHostTextResponse(target, session.origin_host, contentType);
+    shouldRewriteCurrentHostTextResponse(target, session.origin_host, contentType) ||
+    shouldInjectRaLinkAuditScript(session, contentType);
 
   if (needsTextRewrite) {
     let text = await upstreamResp.text();
+    const challengeSurface = isCloudflareChallengeSurface(target, upstreamResp);
 
     if (target.host !== session.origin_host) {
       text = rewriteCurrentHostUrls(text, url.hostname, target.host);
     }
 
-    // Ürün-bazlı proxy URL rewrite (EMIS vb.)
-    if (shouldRewriteSessionTextResponse(target, upstreamResp)) {
+    // Ürün-bazlı proxy URL rewrite (EMIS vb.). Cloudflare challenge sayfasında
+    // publisher/global rewrite yapmak Turnstile callback/Trusted Types akışını
+    // bozuyor; challenge için sadece /cdn-cgi path rewrite yapılır.
+    if (!challengeSurface && shouldRewriteSessionTextResponse(target, upstreamResp)) {
       text = rewriteSessionTextProxyUrls(text, url.hostname, session.origin_host, proxyableHosts);
+      if (isWebOfScienceProxyHost(target.host)) {
+        text = rewriteCloudflareChallengePaths(text);
+      }
     }
-    if (/\btext\/html\b/i.test(contentType)) {
+    if (!challengeSurface && isWebOfScienceProxyHost(target.host) && isJavaScriptContentType(contentType)) {
+      text = injectSessionHostFullTextProxyRuntime(text, url.hostname, session.origin_host, proxyableHosts);
+    }
+    if (!challengeSurface && /\btext\/html\b/i.test(contentType)) {
       text = injectSessionHostLinkProxyScript(text, url.hostname, session.origin_host, proxyableHosts);
     }
-    if (publisherCookieScopeHost && shouldRewritePublisherTextBody(target, contentType)) {
+    if (publisherCookieScopeHost && !challengeSurface && shouldRewritePublisherTextBody(target, contentType)) {
+      text = rewriteSessionTextProxyUrls(text, url.hostname, session.origin_host, proxyableHosts);
       text = rewritePublisherHostJavaScriptText(text, url.hostname, publisherCookieScopeHost, proxyableHosts);
-      if (isCloudflareChallengeSurface(target, upstreamResp)) {
-        text = rewriteCloudflareChallengeRuntimeLocation(text);
-      }
       text = rewriteCloudflareChallengePaths(text);
     }
-    if (publisherCookieScopeHost && /\btext\/html\b/i.test(contentType)) {
+    if (challengeSurface) {
+      text = relaxProxyMetaContentSecurityPolicy(text);
+      text = rewriteCloudflareChallengePaths(text);
+      text = injectCloudflareChallengeCookieNamespaceScript(text, publisherCookieScopeHost);
+      clearRawPublisherClearanceCookies(
+        respHeaders,
+        publisherCookieScopeHost,
+        proxyCookieDomainFromEnv(env, url.hostname)
+      );
+    }
+    if (publisherCookieScopeHost && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
       text = relaxProxyMetaContentSecurityPolicy(text);
       text = injectPublisherCookieNamespaceScript(
         text,
@@ -354,6 +398,9 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
         target.host,
         isStagingEnv(env)
       );
+    }
+    if (!challengeSurface && /\btext\/html\b/i.test(contentType)) {
+      text = injectRaLinkAuditScript(text, session);
     }
 
     respHeaders.delete('Content-Length');
@@ -374,6 +421,10 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
 }
 
 async function handleStableHost(request, env, ctx, url, stableLabel) {
+  if (isCloudflareTelemetryPath(url.pathname)) {
+    return new Response(null, { status: 204 });
+  }
+
   const token = url.searchParams.get('t');
   if (token) {
     return await acceptStableHostToken(request, env, token, url, stableLabel);
@@ -392,7 +443,7 @@ async function handleStableHost(request, env, ctx, url, stableLabel) {
     );
   }
 
-  const sessionId = readCookie(request.headers.get('Cookie'), SESSION_COOKIE);
+  const sessionId = readProxySessionCookie(request.headers.get('Cookie'));
   if (!sessionId) {
     return htmlError(401, 'Oturum bulunamadı. Lütfen portal üzerinden tekrar erişin.');
   }
@@ -411,11 +462,15 @@ async function handleStableHost(request, env, ctx, url, stableLabel) {
     return await handleClientDebug(request, env, session, url);
   }
 
+  if (url.pathname === LINK_AUDIT_PATH) {
+    return await handleLinkAudit(request, env, session, url, sessionId);
+  }
+
   return await proxySessionSurface(request, env, ctx, url, session, sessionId);
 }
 
 async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
-  const proxyableHosts = await loadSessionProxyableHosts(env.DB, session);
+  const proxyableHosts = await loadSessionProxyableHosts(env, session, sessionId);
   const upstreamCookieHost = readAllowedUpstreamHostCookie(
     request.headers.get('Cookie'),
     proxyableHosts
@@ -424,7 +479,8 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     url.pathname,
     session.origin_host,
     proxyableHosts,
-    upstreamCookieHost
+    upstreamCookieHost,
+    { productSlug: session.product_slug }
   );
   if (!target) {
     return htmlError(403, 'Bu oturum bu yayıncı hostuna erişemez.');
@@ -433,12 +489,15 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   const rateLimit = await enforceProxyRateLimit(env, sessionId, session, target.path);
   if (rateLimit) return proxyRateLimitResponse(rateLimit);
 
-  const search = rewriteQueryProxyUrls(url.search, url.hostname, target.host);
+  const search = rewriteQueryProxyUrls(url.search, url.hostname, target.host, {
+    sessionOriginHost: session.origin_host,
+  });
   const targetUrl = `https://${target.host}${target.path}${search}`;
   const publisherCookieScopeHost = getPublisherCookieScopeHost(target.host);
   const upstreamHeaders = buildUpstreamHeaders(request.headers, {
     proxyHostname: url.hostname,
     originHost: target.host,
+    targetHost: target.host,
     forceDesktopUserAgent: session.product_slug === 'emis',
     publisherCookieScopeHost,
     targetPath: target.path,
@@ -475,10 +534,22 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
       effectiveUpstreamCookies
     );
   }
+  if (isWileyProxyHost(target.host)) {
+    effectiveUpstreamCookies = ensureCookiePair(effectiveUpstreamCookies, 'theproxy', 'ezproxy');
+  }
+  if (isScienceDirectProxyHost(target.host)) {
+    effectiveUpstreamCookies = ensureCookiePair(effectiveUpstreamCookies, 'BROWSER_SUPPORTS_COOKIES', '1');
+  }
   if (effectiveUpstreamCookies) {
     upstreamHeaders.set('Cookie', effectiveUpstreamCookies);
   } else {
     upstreamHeaders.delete('Cookie');
+  }
+
+  // WebSocket upgrade — proxy directly (ra-egress does not support WS upgrade).
+  if (request.headers.get('Upgrade')?.toLowerCase() === 'websocket') {
+    const wsUrl = `wss://${target.host}${target.path}${search}`;
+    return proxyWebSocket(wsUrl, upstreamHeaders);
   }
 
   // ra_waf_browser routing: for CF Managed Challenge publishers (Emerald, OUP,
@@ -528,6 +599,38 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
       target_host: target.host,
       status: upstreamResp.status,
     }));
+  }
+
+  // WoS background API calls that fail with 4xx → Angular's doFetchEsti throws
+  // Server.authorization/internalError → deferred session re-auth on next user action.
+  // Intercept known subscription-gated or session-state endpoints with empty 200s.
+  const wosFallbackResp = webOfScienceFailureFallbackResponse(target, upstreamResp, {
+    proxyHostname: url.hostname,
+    productSlug: session.product_slug,
+  });
+  if (wosFallbackResp) return wosFallbackResp;
+
+  const proQuestFallbackResp = proQuestFailureFallbackResponse(target, upstreamResp);
+  if (proQuestFallbackResp) return proQuestFallbackResp;
+
+  const dynamicWosRedirectHost = webOfScienceDynamicRedirectHost(
+    upstreamResp.headers.get('Location'),
+    target,
+    session
+  );
+  if (dynamicWosRedirectHost && !proxyableHosts.has(dynamicWosRedirectHost)) {
+    proxyableHosts.add(dynamicWosRedirectHost);
+    await persistDynamicSessionProxyHost(env, sessionId, dynamicWosRedirectHost);
+  }
+
+  const dynamicScienceDirectRedirectHost = scienceDirectDynamicRedirectHost(
+    upstreamResp.headers.get('Location'),
+    target,
+    session
+  );
+  if (dynamicScienceDirectRedirectHost && !proxyableHosts.has(dynamicScienceDirectRedirectHost)) {
+    proxyableHosts.add(dynamicScienceDirectRedirectHost);
+    await persistDynamicSessionProxyHost(env, sessionId, dynamicScienceDirectRedirectHost);
   }
 
   if (useSessionCookieJar) {
@@ -610,43 +713,62 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   sanitizeWafChallengeResponseHeaders(respHeaders, publisherCookieScopeHost);
 
   if (isCloudflareChallengeAssetPath(target.path) && /\btext\/html\b/i.test(contentType)) {
-    const text = relaxProxyMetaContentSecurityPolicy(await upstreamResp.text());
-    const filteredHeaders = new Headers(
-      [...respHeaders.entries()].filter(([k, v]) =>
-        !(k.toLowerCase() === 'set-cookie' && v.toLowerCase().includes('cf_clearance'))
-      )
+    let text = await upstreamResp.text();
+    text = relaxProxyMetaContentSecurityPolicy(text);
+    text = rewriteCloudflareChallengePaths(text);
+    text = injectCloudflareChallengeCookieNamespaceScript(text, publisherCookieScopeHost);
+    clearRawPublisherClearanceCookies(
+      respHeaders,
+      publisherCookieScopeHost,
+      proxyCookieDomainFromEnv(env, url.hostname)
     );
-    filteredHeaders.delete('Content-Length');
-    filteredHeaders.delete('Content-Encoding');
+    respHeaders.delete('Content-Length');
+    respHeaders.delete('Content-Encoding');
     return new Response(text, {
       status: upstreamResp.status,
       statusText: upstreamResp.statusText,
-      headers: filteredHeaders,
+      headers: respHeaders,
     });
   }
 
   const needsTextRewrite =
     shouldRewriteSessionTextResponse(target, upstreamResp) ||
-    shouldRewriteCurrentHostTextResponse(target, session.origin_host, contentType);
+    shouldRewriteCurrentHostTextResponse(target, session.origin_host, contentType) ||
+    shouldInjectRaLinkAuditScript(session, contentType);
 
   if (needsTextRewrite) {
     let text = await upstreamResp.text();
+    const challengeSurface = isCloudflareChallengeSurface(target, upstreamResp);
 
     if (target.host !== session.origin_host) {
       text = rewriteCurrentHostUrls(text, url.hostname, target.host);
     }
 
-    if (shouldRewriteSessionTextResponse(target, upstreamResp)) {
+    if (!challengeSurface && shouldRewriteSessionTextResponse(target, upstreamResp)) {
       text = rewriteSessionTextProxyUrls(text, url.hostname, session.origin_host, proxyableHosts);
-    }
-    if (publisherCookieScopeHost && shouldRewritePublisherTextBody(target, contentType)) {
-      text = rewritePublisherHostJavaScriptText(text, url.hostname, publisherCookieScopeHost, proxyableHosts);
-      if (isCloudflareChallengeSurface(target, upstreamResp)) {
-        text = rewriteCloudflareChallengeRuntimeLocation(text);
+      if (isWebOfScienceProxyHost(target.host)) {
+        text = rewriteCloudflareChallengePaths(text);
       }
+    }
+    if (!challengeSurface && isWebOfScienceProxyHost(target.host) && isJavaScriptContentType(contentType)) {
+      text = injectSessionHostFullTextProxyRuntime(text, url.hostname, session.origin_host, proxyableHosts);
+    }
+    if (publisherCookieScopeHost && !challengeSurface && shouldRewritePublisherTextBody(target, contentType)) {
+      text = rewriteSessionTextProxyUrls(text, url.hostname, session.origin_host, proxyableHosts);
+      text = rewritePublisherHostJavaScriptText(text, url.hostname, publisherCookieScopeHost, proxyableHosts);
       text = rewriteCloudflareChallengePaths(text);
     }
-    if (publisherCookieScopeHost && /\btext\/html\b/i.test(contentType)) {
+    if (challengeSurface) {
+      text = relaxProxyMetaContentSecurityPolicy(text);
+      text = rewriteCloudflareChallengePaths(text);
+      text = injectCloudflareChallengeCookieNamespaceScript(text, publisherCookieScopeHost);
+      clearRawPublisherClearanceCookies(
+        respHeaders,
+        publisherCookieScopeHost,
+        proxyCookieDomainFromEnv(env, url.hostname)
+      );
+    }
+    if (publisherCookieScopeHost && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
       text = relaxProxyMetaContentSecurityPolicy(text);
       text = injectPublisherCookieNamespaceScript(
         text,
@@ -689,7 +811,7 @@ export async function acceptSessionHostToken(request, env, token, url, sessionId
   // hata gösterme.
   const jtiKey = `ra:jti:${payload.jti}`;
   const used = await safeKvGet(env.RATE_LIMIT_KV, jtiKey);
-  const cookieSid = readCookie(request.headers.get('Cookie'), SESSION_COOKIE);
+  const cookieSid = readProxySessionCookie(request.headers.get('Cookie'));
 
   // mod uyumu kontrolü (jti henüz tüketilmemiş veya sadece doğrulama amaçlı)
   if (payload.mod !== 'session_host_proxy') {
@@ -697,7 +819,7 @@ export async function acceptSessionHostToken(request, env, token, url, sessionId
   }
 
   // KV session'ı doğrula (issue-token tarafından önceden yazılmış)
-  const session = await env.RA_UPSTREAM_SESSIONS.get(`rhost:${sessionId}`, 'json');
+  const session = await loadCachedSessionHostSession(env, sessionId);
 
   if (used) {
     // Idempotent yol: jti kullanılmış ama bu istek zaten doğru sessionId
@@ -798,14 +920,19 @@ export async function acceptStableHostToken(request, env, token, url, stableLabe
   const clean = new URL(url);
   clean.searchParams.delete('t');
 
+  const headers = new Headers({
+    Location: buildStableHostEntryRedirectUrl(clean),
+  });
+  headers.append(
+    'Set-Cookie',
+    `${SESSION_COOKIE}=${encodeURIComponent(sessionId)}; ` +
+      `Domain=${url.hostname}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_TTL_SEC}`
+  );
+  headers.append('Set-Cookie', buildCompatSessionCookie(sessionId, proxyCookieDomainFromEnv(env, url.hostname)));
+
   return new Response(null, {
     status: 302,
-    headers: {
-      Location: buildStableHostEntryRedirectUrl(clean),
-      'Set-Cookie':
-        `${SESSION_COOKIE}=${encodeURIComponent(sessionId)}; ` +
-        `Domain=${url.hostname}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_TTL_SEC}`,
-    },
+    headers,
   });
 }
 
@@ -938,6 +1065,13 @@ export function buildSessionHostResponseHeaders(incoming, proxyHostname, originH
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function handlePathProxy(request, env, ctx, url) {
+  if (url.pathname === LINK_AUDIT_PATH) {
+    const sessionId = readProxySessionCookie(request.headers.get('Cookie'));
+    const session = sessionId ? await loadProxySession(env, sessionId) : null;
+    if (!session) return new Response(null, { status: 204 });
+    return await handleLinkAudit(request, env, session, url, sessionId);
+  }
+
   // 1. Path parse: /www-jove-com/article/123
   const parsed = parseProxyPath(url.pathname);
   if (!parsed) {
@@ -987,6 +1121,7 @@ async function handlePathProxy(request, env, ctx, url) {
   const upstreamHeaders = buildUpstreamHeaders(request.headers, {
     proxyHostname: url.hostname,
     originHost: targetHost,
+    targetHost,
     pathPrefix: `/${encodedLabel}`,
   });
 
@@ -1139,6 +1274,28 @@ async function safeKvPut(kv, key, value, options) {
   }
 }
 
+async function loadCachedSessionHostSession(env, sessionId) {
+  const key = `rhost:${sessionId}`;
+  const now = Date.now();
+  const hit = sessionKvCache.get(key);
+  if (hit && hit.expiresAt > now) return hit.value;
+
+  const value = await env.RA_UPSTREAM_SESSIONS.get(key, 'json');
+  if (value) {
+    if (sessionKvCache.size >= SESSION_KV_CACHE_MAX) {
+      const oldest = sessionKvCache.keys().next().value;
+      if (oldest) sessionKvCache.delete(oldest);
+    }
+    sessionKvCache.set(key, {
+      value,
+      expiresAt: now + SESSION_KV_CACHE_TTL_MS,
+    });
+  } else {
+    sessionKvCache.delete(key);
+  }
+  return value;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Header helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1152,7 +1309,12 @@ const STRIP_REQUEST = new Set([
   'cdn-loop', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto',
   'x-real-ip', 'true-client-ip',
   // Akamai bot-detection cookies/headers — proxy infrastructure artifacts.
+  'x-1p-wos-no-action',
   'awsenv', 'ak_bmsc', 'bm_sv', 'bm_mi', 'bm_sz', '_abck',
+  // Wiley stanza: these client/app tracking headers should not be relayed.
+  'x-application-id', 'x-request-id', 'x-transient-subjectid',
+  // Scopus stanza.
+  'authentication-source',
 ]);
 
 // EZproxy stanza'sından: HTTPHeader -request -process x-cas*
@@ -1253,7 +1415,21 @@ export function buildUpstreamHeaders(incoming, context = {}) {
     if (!out.has('Upgrade-Insecure-Requests')) out.set('Upgrade-Insecure-Requests', '1');
     if (!out.has('Accept-Language')) out.set('Accept-Language', 'tr-TR,tr;q=0.9,en;q=0.8');
   }
+  if (shouldInjectOxfordProxyServerHeader(context) && !out.has('X-Proxy-Server')) {
+    out.set('X-Proxy-Server', context.proxyHostname);
+  }
+  if (isWileyProxyHost(context.originHost) || isWileyProxyHost(context.targetHost)) {
+    out.set('X-Forwarded-For', '127.0.0.1');
+  }
   return out;
+}
+
+function shouldInjectOxfordProxyServerHeader(context = {}) {
+  const host = normalizeHost(context.originHost);
+  return Boolean(context.proxyHostname) && (
+    host === 'oup.com' ||
+    host.endsWith('.oup.com')
+  );
 }
 
 /**
@@ -1285,6 +1461,7 @@ const STRIP_WAF_CHALLENGE_RESPONSE = new Set([
   'origin-agent-cluster',
   'permissions-policy',
   'referrer-policy',
+  'x-frame-options',
 ]);
 const RELAXED_PROXY_CSP = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors *;";
 
@@ -1320,19 +1497,91 @@ function buildResponseHeaders(incoming, baseHost, encodedLabel) {
 // Query string içindeki proxy hostname'i → origin hostname'e çevir.
 // EMIS gibi siteler "ref=<current_url>" ile redirect loop oluşturur;
 // upstream'e göndermeden önce proxy URL'lerini temizleriz.
-function rewriteQueryProxyUrls(search, proxyHostname, originHost) {
+export function rewriteQueryProxyUrls(search, proxyHostname, originHost, options = {}) {
   if (!search || !search.includes(proxyHostname)) return search;
+  const normalizedProxyHost = normalizeHost(proxyHostname);
+  const normalizedOriginHost = normalizeHost(originHost);
+  const normalizedSessionOriginHost = normalizeHost(options.sessionOriginHost);
+  const callbackParamNames = new Set(['redirect_uri', 'redirect_url', 'return_url', 'returnUrl']);
+
+  try {
+    const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+    let changed = false;
+
+    // ScienceDirect search APIs send hostname=<window.location.hostname>.
+    // Upstream validates this against its own host and rejects proxy hostnames
+    // with 401, so restore the publisher hostname before forwarding.
+    if (
+      normalizedProxyHost &&
+      normalizedOriginHost &&
+      normalizeHost(params.get('hostname')) === normalizedProxyHost
+    ) {
+      params.set('hostname', normalizedOriginHost);
+      changed = true;
+    }
+
+    if (normalizedProxyHost && normalizedSessionOriginHost) {
+      for (const key of callbackParamNames) {
+        const value = params.get(key);
+        const rewritten = rewriteQueryParamProxyUrlHost(value, normalizedProxyHost, normalizedSessionOriginHost);
+        if (rewritten && rewritten !== value) {
+          params.set(key, rewritten);
+          changed = true;
+        }
+      }
+    }
+
+    if (normalizedProxyHost && normalizedOriginHost) {
+      for (const [key, value] of params.entries()) {
+        if (callbackParamNames.has(key)) continue;
+        if (key === 'hostname') continue;
+        const rewritten = rewriteQueryParamProxyUrlHost(value, normalizedProxyHost, normalizedOriginHost);
+        if (rewritten && rewritten !== value) {
+          params.set(key, rewritten);
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      return `?${params.toString()}`;
+    }
+  } catch {
+    // Fall back to the plain string replacement below.
+  }
+
   // URL-encoded ve plain her iki forma da bak
-  return search
+  return rewritePlainProxyUrlsInSearch(search, proxyHostname, originHost);
+}
+
+function rewritePlainProxyUrlsInSearch(search, proxyHostname, originHost) {
+  return String(search || '')
     .replaceAll(encodeURIComponent(`https://${proxyHostname}`), encodeURIComponent(`https://${originHost}`))
     .replaceAll(`https://${proxyHostname}`, `https://${originHost}`);
 }
 
-function parseSessionHostTarget(pathname, originHost, proxyableHosts, upstreamCookieHost = null) {
+function rewriteQueryParamProxyUrlHost(value, proxyHostname, replacementHost) {
+  if (!value) return '';
+  try {
+    const parsed = new URL(value);
+    if (normalizeHost(parsed.hostname) !== proxyHostname) return value;
+    parsed.hostname = replacementHost;
+    return parsed.toString();
+  } catch {
+    return String(value)
+      .replaceAll(`https://${proxyHostname}`, `https://${replacementHost}`)
+      .replaceAll(encodeURIComponent(`https://${proxyHostname}`), encodeURIComponent(`https://${replacementHost}`));
+  }
+}
+
+function parseSessionHostTarget(pathname, originHost, proxyableHosts, upstreamCookieHost = null, context = {}) {
   if (!pathname.startsWith(SESSION_ALT_HOST_PREFIX)) {
+    const path = rewriteProxyChallengePath(pathname || '/');
     return {
-      host: upstreamCookieHost || originHost,
-      path: rewriteProxyChallengePath(pathname || '/'),
+      host: shouldRouteSessionPathToOrigin(path, originHost, context)
+        ? originHost
+        : upstreamCookieHost || originHost,
+      path,
     };
   }
 
@@ -1346,6 +1595,18 @@ function parseSessionHostTarget(pathname, originHost, proxyableHosts, upstreamCo
 
   const path = rewriteProxyChallengePath(slashIdx === -1 ? '/' : rest.slice(slashIdx));
   return { host, path };
+}
+
+export function shouldRouteSessionPathToOrigin(pathname, originHost, context = {}) {
+  const path = rewriteProxyChallengePath(pathname || '/');
+  if (!isWebOfScienceSurface({ host: originHost }, context)) return false;
+
+  return path.startsWith('/api/wosnx/') ||
+    path === '/api/wosnxcorews' ||
+    path.startsWith('/api/wosnxcorews/') ||
+    path.startsWith('/api/esti/') ||
+    path === '/api/gateway' ||
+    path.startsWith('/api/gateway/');
 }
 
 function rewriteProxyChallengePath(pathname) {
@@ -1383,6 +1644,7 @@ export function rewriteSessionHostLocationWithUpstreamCookie(
     const targetHost = normalizeHost(loc.hostname);
     if (!targetHost || !proxyableHosts.has(targetHost)) return fallback;
 
+    rewriteNestedSessionRedirectParams(loc, proxyHostname, originHost, proxyableHosts);
     const rewrittenLocation = `https://${proxyHostname}${loc.pathname || '/'}${loc.search}${loc.hash}`;
     return {
       location: rewrittenLocation,
@@ -1424,14 +1686,176 @@ function shouldRewriteSessionTextResponse(target, upstreamResp) {
   // Web of Science's SPA bundles contain absolute www.webofscience.com
   // navigation URLs (including location.href assignments). Those cannot be
   // intercepted reliably at runtime, so rewrite WoS/Clarivate text bundles.
-  return isWebOfScienceProxyHost(target.host);
+  return isWebOfScienceProxyHost(target.host) ||
+    isElsevierProxyHost(target.host) ||
+    isScopusProxyHost(target.host) ||
+    isWileyProxyHost(target.host) ||
+    isProQuestProxyHost(target.host) ||
+    isSpringerProxyHost(target.host) ||
+    isNatureProxyHost(target.host);
 }
 
-async function handleSessionHostRedirectWrapper(request, env, url, session) {
+function rewriteNestedSessionRedirectParams(loc, proxyHostname, originHost, proxyableHosts) {
+  const targetHost = normalizeHost(loc?.hostname);
+  if (!shouldRewriteNestedRedirectParamsForLocationHost(targetHost)) return;
+
+  for (const key of ['redirect_uri', 'redirect_url', 'return_url', 'returnUrl']) {
+    const rawValue = loc.searchParams.get(key);
+    const rewritten = rewriteNestedSessionRedirectParam(
+      rawValue,
+      proxyHostname,
+      originHost,
+      proxyableHosts
+    );
+    if (rewritten && rewritten !== rawValue) {
+      loc.searchParams.set(key, rewritten);
+    }
+  }
+}
+
+function shouldRewriteNestedRedirectParamsForLocationHost(host) {
+  return host === 'idp.springer.com' ||
+    host === 'idp.nature.com';
+}
+
+function rewriteNestedSessionRedirectParam(rawValue, proxyHostname, originHost, proxyableHosts) {
+  if (!rawValue) return '';
+  try {
+    const nested = new URL(rawValue);
+    const nestedHost = normalizeHost(nested.hostname);
+    if (!nestedHost || !proxyableHosts.has(nestedHost)) return rawValue;
+    if (nestedHost === 'www.nature.com' && nested.pathname === '/nature') {
+      nested.pathname = '/';
+    }
+    const path = sessionHostPathFor(nestedHost, originHost, nested.pathname || '/');
+    return `https://${proxyHostname}${path}${nested.search}${nested.hash}`;
+  } catch {
+    return rawValue;
+  }
+}
+
+function isJavaScriptContentType(contentType) {
+  return /\b(javascript|ecmascript)\b/i.test(contentType || '');
+}
+
+export function webOfScienceFailureFallbackResponse(target, upstreamResp, context = {}) {
+  if (!isWebOfScienceSurface(target, context) || upstreamResp?.ok) return null;
+
+  const p = String(target?.path || '');
+  const jsonHeaders = new Headers({
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store',
+  });
+
+  // esti Chat service — not subscribed → 403; return empty conversation list.
+  if (p.startsWith('/api/esti/')) {
+    return new Response('[]', { status: 200, headers: jsonHeaders });
+  }
+
+  // wosnx indicators — 400 when no marked items or session state missing.
+  if (p.startsWith('/api/wosnx/indic/')) {
+    return new Response('{"count":0,"total":0,"items":[],"records":[]}', {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }
+
+  // SignalR HTTP fallback can surface authorization/internal errors after the
+  // WebSocket leg closes. Send a normal hub close frame so Angular does not
+  // convert the failure into a full WoS session re-auth refresh.
+  if (p === '/api/wosnxcorews' || p.startsWith('/api/wosnxcorews/')) {
+    return new Response('{"type":7}\x1e', { status: 200, headers: jsonHeaders });
+  }
+
+  return null;
+}
+
+export function proQuestFailureFallbackResponse(target, upstreamResp) {
+  if (!isProQuestProxyHost(target?.host) || !upstreamResp || upstreamResp.status < 500) return null;
+
+  const path = String(target?.path || '').toLowerCase();
+  // ProQuest uses Tapestry deferred panels for optional related-content widgets.
+  // Some of those endpoints return a full exception page through the proxy and
+  // the client opens a disruptive "encountered a problem" popup. The primary
+  // page/search/docview flow is already loaded; suppress only deferred widgets.
+  if (path.includes('longdeferreddisplay:longdeferreddisplayaction')) {
+    return new Response(null, {
+      status: 204,
+      headers: new Headers({ 'Cache-Control': 'no-store' }),
+    });
+  }
+
+  return null;
+}
+
+export function webOfScienceDynamicRedirectHost(location, target, session = {}) {
+  if (!location) return '';
+  if (!isWebOfScienceSurface({ host: session.origin_host || target?.host }, {
+    productSlug: session.product_slug,
+  })) {
+    return '';
+  }
+  if (!isWebOfScienceGatewayRedirectSurface(target)) return '';
+
+  try {
+    const loc = new URL(location);
+    if (loc.protocol !== 'https:' && loc.protocol !== 'http:') return '';
+    const host = normalizeHost(loc.hostname);
+    if (!host) return '';
+    const currentHost = normalizeHost(target?.host);
+    return host === currentHost ? '' : host;
+  } catch {
+    return '';
+  }
+}
+
+function isWebOfScienceGatewayRedirectSurface(target) {
+  const host = normalizeHost(target?.host);
+  const path = String(target?.path || '');
+  return (isWebOfScienceProxyHost(host) && path.startsWith('/api/gateway')) ||
+    host === 'ct.prod.getft.io';
+}
+
+export function scienceDirectDynamicRedirectHost(location, target, session = {}) {
+  if (!location) return '';
+  if (!isScienceDirectSurface({ host: session.origin_host || target?.host }, {
+    productSlug: session.product_slug,
+  })) {
+    return '';
+  }
+  if (!isScienceDirectDoiRedirectSurface(target)) return '';
+
+  try {
+    const loc = new URL(location);
+    if (loc.protocol !== 'https:' && loc.protocol !== 'http:') return '';
+    const host = normalizeHost(loc.hostname);
+    if (!isScienceDirectDoiChainHost(host) && !isScienceDirectProxyHost(host)) return '';
+    const currentHost = normalizeHost(target?.host);
+    return host === currentHost ? '' : host;
+  } catch {
+    return '';
+  }
+}
+
+function isScienceDirectDoiRedirectSurface(target) {
+  const host = normalizeHost(target?.host);
+  return host === 'doi.org' ||
+    host === 'dx.doi.org' ||
+    host === 'linkinghub.elsevier.com';
+}
+
+function isScienceDirectDoiChainHost(host) {
+  const normalized = normalizeHost(host);
+  return normalized === 'doi.org' ||
+    normalized === 'dx.doi.org' ||
+    normalized === 'linkinghub.elsevier.com';
+}
+
+async function handleSessionHostRedirectWrapper(request, env, url, session, sessionId = '') {
   const raw = url.searchParams.get('redirectUrl') || url.searchParams.get('url') || '';
   if (!raw) return htmlError(400, 'redirectUrl eksik.');
 
-  const proxyableHosts = await loadSessionProxyableHosts(env.DB, session);
+  const proxyableHosts = await loadSessionProxyableHosts(env, session, sessionId);
   const fallback = new URL('/', url);
 
   let target;
@@ -1482,6 +1906,60 @@ function isCloudflareChallengeAssetPath(path) {
   return String(path || '').startsWith('/cdn-cgi/challenge-platform/');
 }
 
+function isCloudflareTelemetryPath(path) {
+  const p = rewriteProxyChallengePath(String(path || ''));
+  return p === '/cdn-cgi/rum' || p.startsWith('/cdn-cgi/rum?') ||
+    p === '/cdn-cgi/beacon/expect-ct' || p === '/cdn-cgi/trace';
+}
+
+async function proxyWebSocket(wsUrl, upstreamHeaders) {
+  upstreamHeaders.set('Upgrade', 'websocket');
+  upstreamHeaders.set('Connection', 'Upgrade');
+
+  const [client, server] = Object.values(new WebSocketPair());
+  server.accept();
+
+  let upstream = null;
+  try {
+    const upstreamResp = await fetch(wsUrl, { headers: upstreamHeaders });
+    if (upstreamResp.webSocket) {
+      upstream = upstreamResp.webSocket;
+      upstream.accept();
+    }
+  } catch {
+    // upstream connection failed
+  }
+
+  if (!upstream) {
+    // Close gracefully — Angular/SignalR treats 1001 as temporary unavailability,
+    // not auth failure, so it won't trigger a session re-auth page refresh.
+    server.close(1001, '');
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  server.addEventListener('message', ({ data }) => { try { upstream.send(data); } catch {} });
+
+  upstream.addEventListener('message', ({ data }) => {
+    // Filter SignalR authorization error messages — relaying them causes WoS
+    // Angular to trigger a full session re-auth redirect loop.
+    if (typeof data === 'string' && data.toLowerCase().includes('authorization')) return;
+    try { server.send(data); } catch {}
+  });
+
+  server.addEventListener('close', ({ code, reason }) => { try { upstream.close(code, reason); } catch {} });
+
+  upstream.addEventListener('close', ({ code, reason }) => {
+    // Map auth-related close reasons to 1001 so Angular doesn't re-auth.
+    const isAuth = String(reason || '').toLowerCase().includes('authorization');
+    try { server.close(isAuth ? 1001 : code, isAuth ? '' : reason); } catch {}
+  });
+
+  server.addEventListener('error', () => { try { upstream.close(1011); } catch {} });
+  upstream.addEventListener('error', () => { try { server.close(1001, ''); } catch {} });
+
+  return new Response(null, { status: 101, webSocket: client });
+}
+
 function isWebOfScienceProxyHost(host) {
   const normalized = normalizeHost(host);
   return normalized === 'webofscience.com' ||
@@ -1490,6 +1968,74 @@ function isWebOfScienceProxyHost(host) {
     normalized.endsWith('.webofknowledge.com') ||
     normalized === 'clarivate.com' ||
     normalized.endsWith('.clarivate.com');
+}
+
+function isWebOfScienceSurface(target, context = {}) {
+  return isWebOfScienceProxyHost(target?.host) ||
+    String(context.productSlug || '').toLowerCase().includes('web-of-science') ||
+    String(context.productSlug || '').toLowerCase().includes('webofscience') ||
+    String(context.productSlug || '').toLowerCase().includes('wos');
+}
+
+function isScienceDirectProxyHost(host) {
+  const normalized = normalizeHost(host);
+  return normalized === 'sciencedirect.com' ||
+    normalized.endsWith('.sciencedirect.com');
+}
+
+function isScienceDirectSurface(target, context = {}) {
+  const slug = String(context.productSlug || '').toLowerCase();
+  return isScienceDirectProxyHost(target?.host) ||
+    slug.includes('science-direct') ||
+    slug.includes('sciencedirect');
+}
+
+function isScopusProxyHost(host) {
+  const normalized = normalizeHost(host);
+  return normalized === 'scopus.com' || normalized.endsWith('.scopus.com');
+}
+
+function isElsevierProxyHost(host) {
+  const normalized = normalizeHost(host);
+  return normalized === 'elsevier.com' ||
+    normalized.endsWith('.elsevier.com') ||
+    normalized === 'id.elsevier.com' ||
+    normalized === 'els-cdn.com' ||
+    normalized.endsWith('.els-cdn.com') ||
+    normalized === 'components.scopus.com' ||
+    normalized === 'linkinghub.elsevier.com' ||
+    isScienceDirectProxyHost(normalized) ||
+    isScopusProxyHost(normalized);
+}
+
+function isWileyProxyHost(host) {
+  const normalized = normalizeHost(host);
+  return normalized === 'wiley.com' ||
+    normalized.endsWith('.wiley.com') ||
+    normalized === 'onlinelibrary.wiley.com' ||
+    normalized.endsWith('.onlinelibrary.wiley.com') ||
+    normalized === 'wileyonlinelibrary.com' ||
+    normalized.endsWith('.wileyonlinelibrary.com') ||
+    normalized === 'interscience.wiley.com' ||
+    normalized.endsWith('.interscience.wiley.com');
+}
+
+function isProQuestProxyHost(host) {
+  const normalized = normalizeHost(host);
+  return normalized === 'proquest.com' || normalized.endsWith('.proquest.com');
+}
+
+function isSpringerProxyHost(host) {
+  const normalized = normalizeHost(host);
+  return normalized === 'springer.com' ||
+    normalized.endsWith('.springer.com') ||
+    normalized === 'springerlink.com' ||
+    normalized.endsWith('.springerlink.com');
+}
+
+function isNatureProxyHost(host) {
+  const normalized = normalizeHost(host);
+  return normalized === 'nature.com' || normalized.endsWith('.nature.com');
 }
 
 export function rewriteCurrentHostUrls(text, proxyHostname, currentTargetHost) {
@@ -1507,7 +2053,7 @@ export function rewriteSessionTextProxyUrls(text, proxyHostname, originHost, pro
     `globalNav('//www.cambridge.org/tools/packages/cambridge_themes/`,
     `globalNav('/tools/packages/cambridge_themes/`
   );
-  for (const targetHost of proxyableHosts) {
+  for (const targetHost of exactProxyableHosts(proxyableHosts)) {
     const proxyOrigin = targetHost === originHost
       ? `https://${proxyHostname}`
       : `https://${proxyHostname}${SESSION_ALT_HOST_PREFIX}${encodeHost(targetHost)}`;
@@ -1519,6 +2065,10 @@ export function rewriteSessionTextProxyUrls(text, proxyHostname, originHost, pro
       .replaceAll(`https://${targetHost}`, proxyOrigin)
       .replaceAll(`http://${targetHost}`, proxyOrigin)
       .replaceAll(`//${targetHost}`, proxyOrigin.replace(/^https:/, ''))
+      .replaceAll(`"${targetHost}/`, `"${proxyOrigin.replace(/^https:\/\//, '')}/`)
+      .replaceAll(`'${targetHost}/`, `'${proxyOrigin.replace(/^https:\/\//, '')}/`)
+      .replaceAll(`=${targetHost}/`, `=${proxyOrigin.replace(/^https:\/\//, '')}/`)
+      .replaceAll(`&${targetHost}/`, `&${proxyOrigin.replace(/^https:\/\//, '')}/`)
       .replaceAll(`https:\\/\\/${targetHost}`, escapedProxyOrigin)
       .replaceAll(`http:\\/\\/${targetHost}`, escapedProxyOrigin)
       .replaceAll(`\\/\\/${targetHost}`, escapedProxyOrigin.replace(/^https:\\/, ''))
@@ -1536,22 +2086,66 @@ export function rewriteSessionTextProxyUrls(text, proxyHostname, originHost, pro
     }
   }
 
-  return out.replace(
-    /cookieDomain:\s*(['"])\.emis\.com\1/g,
-    `cookieDomain: '${proxyHostname}'`
-  );
+  out = applyStanzaTextRewrites(out, proxyHostname);
+
+  return out
+    .replace(
+      /cookieDomain:\s*(['"])\.emis\.com\1/g,
+      `cookieDomain: '${proxyHostname}'`
+    );
+}
+
+function applyStanzaTextRewrites(text, proxyHostname) {
+  const proxyOrigin = `https://${proxyHostname}`;
+  const proxyOriginEncoded = encodeURIComponent(proxyOrigin);
+  const proxyOriginDoubleEncoded = encodeURIComponent(proxyOriginEncoded);
+  return String(text || '')
+    .replaceAll('window.location.host=="congressional.proquest.com"', 'true')
+    .replace(
+      /if\(!document\.location\.hostname\.toLowerCase\(\)\.endsWith\(pqDomain\)\)/g,
+      'if(false)'
+    )
+    .replaceAll(
+      'window.location.replace(redirectURL)',
+      `window.location.replace(String(redirectURL||'').replace(/^https:\\/\\/www\\.proquest\\.com/i, ${JSON.stringify(proxyOrigin)}))`
+    )
+    .replaceAll('["APP_DOMAIN"] = "www.scopus.com";', `["APP_DOMAIN"] = "${proxyHostname}";`)
+    .replaceAll('["APP_DOMAIN"]="www.scopus.com";', `["APP_DOMAIN"]="${proxyHostname}";`)
+    .replaceAll('redirect_uri=https%3A%2F%2Fwww.scopus.com', `redirect_uri=${proxyOriginEncoded}`)
+    .replaceAll('redirect_uri=https%3A%2F%2Fwww.sciencedirect.com', `redirect_uri=${proxyOriginEncoded}`)
+    .replaceAll('redirect_uri=https://www.scopus.com', `redirect_uri=${proxyOrigin}`)
+    .replaceAll('redirect_uri=https://www.sciencedirect.com', `redirect_uri=${proxyOrigin}`)
+    .replaceAll('gsUrl%22%3A%22https%3A%2F%2Fwww.scopus.com%2F', `gsUrl%22%3A%22${proxyOriginEncoded}%2F`)
+    .replaceAll('gsUrl%22%3A%22https%3A%2F%2Fwww.sciencedirect.com%2F', `gsUrl%22%3A%22${proxyOriginEncoded}%2F`)
+    .replaceAll('pdfurl%3D%22https%3A%2F%2Fwww.sciencedirect.com%2F', `pdfurl%3D%22${proxyOriginEncoded}%2F`)
+    .replaceAll('pdfurl="//www.sciencedirect.com/', `pdfurl="//${proxyHostname}/`)
+    .replaceAll('%22%3A%22https%3A%2F%2Fsciverse-shindig.elsevier.com%2F', `%22%3A%22${proxyOriginEncoded}%2F__ra-host%2Fsciverse--shindig-elsevier-com%2F`)
+    .replaceAll('https%253A%252F%252Fwww.scopus.com', proxyOriginDoubleEncoded)
+    .replaceAll('https%253A%252F%252Fwww.sciencedirect.com', proxyOriginDoubleEncoded)
+    .replace(/"null\//g, `"//${proxyHostname}/`);
 }
 
 export function injectSessionHostLinkProxyScript(text, proxyHostname, originHost, proxyableHosts) {
   const html = String(text || '');
-  if (html.includes('__raSessionHostLinkProxy')) return html;
 
-  const hosts = [...(proxyableHosts || [])]
-    .map(normalizeHost)
-    .filter(Boolean);
+  const hosts = proxyableHostPatterns(proxyableHosts);
   if (!hosts.length || !normalizeHost(proxyHostname) || !normalizeHost(originHost)) return html;
 
-  const script = buildSessionHostLinkProxyScript(proxyHostname, originHost, hosts);
+  const scripts = [];
+  if (!html.includes('__raReservedPathProxy')) {
+    scripts.push(buildSessionHostReservedPathProxyScript());
+  }
+  if (!html.includes('__raFullTextProxyV1')) {
+    scripts.push(buildSessionHostFullTextProxyScript(proxyHostname, originHost, hosts));
+  }
+  if (!html.includes('__raSessionHostLinkProxy')) {
+    scripts.push(hardenSessionHostLinkProxyScript(
+      buildSessionHostLinkProxyScript(proxyHostname, originHost, hosts)
+    ));
+  }
+  if (!scripts.length) return html;
+
+  const script = scripts.join('');
   if (/<head\b[^>]*>/i.test(html)) {
     return html.replace(/<head\b([^>]*)>/i, `<head$1>${script}`);
   }
@@ -1565,7 +2159,71 @@ function buildSessionHostLinkProxyScript(proxyHostname, originHost, hosts) {
   const safeProxyHost = JSON.stringify(proxyHostname).replace(/<\/script/gi, '<\\/script');
   const safeOriginHost = JSON.stringify(originHost).replace(/<\/script/gi, '<\\/script');
   const safeHosts = JSON.stringify(hosts).replace(/<\/script/gi, '<\\/script');
-  return `<script>(function(){try{if(window.__raSessionHostLinkProxy)return;Object.defineProperty(window,'__raSessionHostLinkProxy',{value:1});var proxyHost=${safeProxyHost};var originHost=${safeOriginHost};var hosts=${safeHosts};var allowed={};for(var i=0;i<hosts.length;i++)allowed[hosts[i]]=1;var attrs=['href','action','data-href','data-url','data-link','data-target','data-destination'];function enc(h){h=String(h||'').toLowerCase();var o='';for(var i=0;i<h.length;i++){var c=h.charAt(i);o+=c==='.'?'-':(c==='-'?'--':c);}return o;}function proxify(raw){try{if(!raw||/^(#|mailto:|tel:|javascript:)/i.test(raw))return raw;var u=new URL(raw,location.href);var h=u.hostname.toLowerCase();if(h===proxyHost||!allowed[h])return raw;var p=u.pathname||'/';return location.origin+(h===originHost?p:('/__ra-host/'+enc(h)+p))+u.search+u.hash;}catch(e){return raw;}}try{var ow=window.open;if(ow)window.open=function(u,n,f){var nu=proxify(u);return ow.call(window,nu||u,n,f);};var lp=window.Location&&window.Location.prototype;if(lp){var oa=lp.assign;if(oa)lp.assign=function(u){return oa.call(this,proxify(u)||u);};var or=lp.replace;if(or)lp.replace=function(u){return or.call(this,proxify(u)||u);};}}catch(e){}function fixel(el){try{if(!el||!el.getAttribute)return;for(var i=0;i<attrs.length;i++){var a=attrs[i];var v=el.getAttribute(a);var n=proxify(v);if(n&&n!==v)el.setAttribute(a,n);}}catch(e){}}function scan(root){try{root=root||document;if(root.nodeType===1)fixel(root);(root.querySelectorAll?root.querySelectorAll('a[href],area[href],form[action],[data-href],[data-url],[data-link],[data-target],[data-destination]'):[]).forEach(fixel);}catch(e){}}document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('a[href],area[href],[data-href],[data-url],[data-link],[data-target],[data-destination]');if(!a)return;var before=a.getAttribute('href')||a.getAttribute('data-href')||a.getAttribute('data-url')||a.getAttribute('data-link')||a.getAttribute('data-target')||a.getAttribute('data-destination');fixel(a);var after=a.getAttribute('href')||a.getAttribute('data-href')||a.getAttribute('data-url')||a.getAttribute('data-link')||a.getAttribute('data-target')||a.getAttribute('data-destination');if(after&&after!==before&&!/^(a|area)$/i.test(a.tagName||'')){e.preventDefault();location.href=after;}},true);document.addEventListener('submit',function(e){var f=e.target;if(!f||!f.getAttribute)return;fixel(f);},true);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){scan(document);});else scan(document);try{new MutationObserver(function(ms){ms.forEach(function(m){if(m.type==='attributes')fixel(m.target);for(var i=0;i<m.addedNodes.length;i++)scan(m.addedNodes[i]);});}).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:attrs});}catch(e){}}catch(e){}})();</script>`;
+  return `<script>(function(){try{if(window.__raSessionHostLinkProxy)return;Object.defineProperty(window,'__raSessionHostLinkProxy',{value:1});var proxyHost=${safeProxyHost};var originHost=${safeOriginHost};var hosts=${safeHosts};var allowed={};var wild=[];for(var i=0;i<hosts.length;i++){var hh=hosts[i];if(String(hh).indexOf('*.')===0)wild.push(String(hh).slice(2));else allowed[hh]=1;}function ok(h){if(allowed[h])return true;for(var i=0;i<wild.length;i++){if(h.length>wild[i].length&&h.slice(-(wild[i].length+1))==='.'+wild[i])return true;}return false;}var attrs=['href','action','data-href','data-url','data-link','data-target','data-destination'];function enc(h){h=String(h||'').toLowerCase();var o='';for(var i=0;i<h.length;i++){var c=h.charAt(i);o+=c==='.'?'-':(c==='-'?'--':c);}return o;}function proxify(raw){try{if(!raw||/^(#|mailto:|tel:|javascript:)/i.test(raw))return raw;var u=new URL(raw,location.href);var h=u.hostname.toLowerCase();if(h===proxyHost||!ok(h))return raw;var p=u.pathname||'/';return location.origin+(h===originHost?p:('/__ra-host/'+enc(h)+p))+u.search+u.hash;}catch(e){return raw;}}try{var ow=window.open;if(ow)window.open=function(u,n,f){var nu=proxify(u);return ow.call(window,nu||u,n,f);};var lp=window.Location&&window.Location.prototype;if(lp){var oa=lp.assign;if(oa)lp.assign=function(u){return oa.call(this,proxify(u)||u);};var or=lp.replace;if(or)lp.replace=function(u){return or.call(this,proxify(u)||u);};}}catch(e){}function fixel(el){try{if(!el||!el.getAttribute)return;for(var i=0;i<attrs.length;i++){var a=attrs[i];var v=el.getAttribute(a);var n=proxify(v);if(n&&n!==v)el.setAttribute(a,n);}}catch(e){}}function scan(root){try{root=root||document;if(root.nodeType===1)fixel(root);(root.querySelectorAll?root.querySelectorAll('a[href],area[href],form[action],[data-href],[data-url],[data-link],[data-target],[data-destination]'):[]).forEach(fixel);}catch(e){}}document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('a[href],area[href],[data-href],[data-url],[data-link],[data-target],[data-destination]');if(!a)return;var before=a.getAttribute('href')||a.getAttribute('data-href')||a.getAttribute('data-url')||a.getAttribute('data-link')||a.getAttribute('data-target')||a.getAttribute('data-destination');fixel(a);var after=a.getAttribute('href')||a.getAttribute('data-href')||a.getAttribute('data-url')||a.getAttribute('data-link')||a.getAttribute('data-target')||a.getAttribute('data-destination');if(after&&after!==before&&!/^(a|area)$/i.test(a.tagName||'')){e.preventDefault();location.href=after;}},true);document.addEventListener('submit',function(e){var f=e.target;if(!f||!f.getAttribute)return;fixel(f);},true);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){scan(document);});else scan(document);try{new MutationObserver(function(ms){ms.forEach(function(m){if(m.type==='attributes')fixel(m.target);for(var i=0;i<m.addedNodes.length;i++)scan(m.addedNodes[i]);});}).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:attrs});}catch(e){}}catch(e){}})();</script>`;
+}
+
+function buildSessionHostReservedPathProxyScript() {
+  const prefix = CF_CHALLENGE_PROXY_PREFIX.replace(/<\/script/gi, '<\\/script');
+  return `<script>(function(){try{if(window.__raReservedPathProxy)return;Object.defineProperty(window,'__raReservedPathProxy',{value:1});var prefix='${prefix}';function fixu(u){try{var s=typeof u==='string'?u:(u&&u.href?String(u.href):(u&&u.url?String(u.url):''));if(!s)return u;if(s.indexOf('/cdn-cgi/')===0)return prefix+s.slice('/cdn-cgi/'.length);var o=location.origin+'/cdn-cgi/';if(s.indexOf(o)===0)return location.origin+prefix+s.slice(o.length);return u;}catch(e){return u;}}try{var sf=navigator&&navigator.sendBeacon;if(sf)navigator.sendBeacon=function(u,d){return sf.call(this,fixu(u),d);};}catch(e){}try{var of=window.fetch;if(of)window.fetch=function(i,o){try{if(typeof i==='string')i=fixu(i);else if(i&&i.url&&typeof Request==='function'){var fu=fixu(i.url);if(fu!==i.url)i=new Request(fu,i);}}catch(e){}return of.call(this,i,o);};}catch(e){}try{var xo=XMLHttpRequest&&XMLHttpRequest.prototype&&XMLHttpRequest.prototype.open;if(xo)XMLHttpRequest.prototype.open=function(m,u){arguments[1]=fixu(u);return xo.apply(this,arguments);};}catch(e){}}catch(e){}})();</script>`;
+}
+
+function buildSessionHostFullTextProxyScript(proxyHostname, originHost, hosts) {
+  const safeProxyHost = JSON.stringify(proxyHostname).replace(/<\/script/gi, '<\\/script');
+  const safeOriginHost = JSON.stringify(originHost).replace(/<\/script/gi, '<\\/script');
+  const safeHosts = JSON.stringify(hosts).replace(/<\/script/gi, '<\\/script');
+  return `<script>(function(){try{if(window.__raFullTextProxyV1)return;Object.defineProperty(window,'__raFullTextProxyV1',{value:1});var proxyHost=${safeProxyHost};var originHost=${safeOriginHost};var hosts=${safeHosts};var allowed={};var wild=[];for(var i=0;i<hosts.length;i++){var hh=hosts[i];if(String(hh).indexOf('*.')===0)wild.push(String(hh).slice(2));else allowed[hh]=1;}function ok(h){if(allowed[h])return true;for(var i=0;i<wild.length;i++){if(h.length>wild[i].length&&h.slice(-(wild[i].length+1))==='.'+wild[i])return true;}return false;}function enc(h){h=String(h||'').toLowerCase();var o='';for(var i=0;i<h.length;i++){var c=h.charAt(i);o+=c==='.'?'-':(c==='-'?'--':c);}return o;}function proxify(raw){try{if(!raw||/^(#|mailto:|tel:|javascript:)/i.test(raw))return raw;var s=String(raw);for(var ah in allowed){if(s===ah||s.indexOf(ah+'/')===0||s.indexOf(ah+'?')===0||s.indexOf(ah+'#')===0){s='https://'+s;break;}}var u=new URL(s,location.href);var h=u.hostname.toLowerCase();if(h===proxyHost||!ok(h))return raw;var p=u.pathname||'/';return location.origin+(h===originHost?p:('/__ra-host/'+enc(h)+p))+u.search+u.hash;}catch(e){return raw;}}function fix(a){try{if(!a||!a.getAttribute)return;var h=a.getAttribute('href')||a.href||'';var n=proxify(h);if(n&&n!==h)a.setAttribute('href',n);['data-href','data-url','data-target','data-link','data-fulltext-url','data-gateway-url'].forEach(function(k){var v=a.getAttribute(k);var nv=proxify(v);if(nv&&nv!==v)a.setAttribute(k,nv);});}catch(e){}}function scan(){try{document.querySelectorAll('a[href],a.full-record-links,.full-record-links a,[data-pendo*="GetFTR"],[id^="FRLinkTa-link"]').forEach(fix);}catch(e){}}document.addEventListener('click',function(e){try{var a=e.target&&e.target.closest&&e.target.closest('a[href],a.full-record-links,.full-record-links a,[data-pendo*="GetFTR"],[id^="FRLinkTa-link"]');if(!a)return;fix(a);var h=a.getAttribute('href')||'';var n=proxify(h);if(n&&n!==h){e.preventDefault();var tg=a.getAttribute('target')||'';if(tg&&tg.toLowerCase()!=='_self'&&window.open)window.open(n,tg);else location.href=n;}}catch(x){}},true);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scan);else scan();var count=0;var id=setInterval(function(){scan();if(++count>80)clearInterval(id);},250);try{new MutationObserver(scan).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['href','data-href','data-url','data-target','data-link','data-fulltext-url','data-gateway-url']});}catch(e){}}catch(e){}})();</script>`;
+}
+
+function buildSessionHostFullTextProxyRuntime(proxyHostname, originHost, hosts) {
+  return buildSessionHostFullTextProxyScript(proxyHostname, originHost, hosts)
+    .replace(/^<script>/, '')
+    .replace(/<\/script>$/, '');
+}
+
+export function injectSessionHostFullTextProxyRuntime(text, proxyHostname, originHost, proxyableHosts) {
+  const js = String(text || '');
+  if (js.includes('__raFullTextProxyV1')) return js;
+  const hosts = proxyableHostPatterns(proxyableHosts);
+  if (!hosts.length) return js;
+  return `${buildSessionHostFullTextProxyRuntime(proxyHostname, originHost, hosts)}\n${js}`;
+}
+
+function hardenSessionHostLinkProxyScript(script) {
+  const baseSelector = 'a[href],area[href],form[action],[data-href],[data-url],[data-link],[data-target],[data-destination]';
+  const extendedSelector = `${baseSelector},[data-fulltext-url],[data-full-text-url],[data-full-text-link],[data-link-url],[data-gateway-url],[data-external-url],[data-resolved-url],[data-redirect-url],[data-target-url]`;
+  const clickBaseSelector = 'a[href],area[href],[data-href],[data-url],[data-link],[data-target],[data-destination]';
+  const clickExtendedSelector = `${clickBaseSelector},[data-fulltext-url],[data-full-text-url],[data-full-text-link],[data-link-url],[data-gateway-url],[data-external-url],[data-resolved-url],[data-redirect-url],[data-target-url]`;
+  return String(script || '')
+    .replace(
+      "var attrs=['href','action','data-href','data-url','data-link','data-target','data-destination'];function enc",
+      "var attrs=['href','action','data-href','data-url','data-link','data-target','data-destination','data-fulltext-url','data-full-text-url','data-full-text-link','data-link-url','data-gateway-url','data-external-url','data-resolved-url','data-redirect-url','data-target-url'];var navattrs=['href','data-href','data-url','data-link','data-destination'];function enc"
+    )
+    .replaceAll(baseSelector, extendedSelector)
+    .replaceAll(clickBaseSelector, clickExtendedSelector)
+    .replace(
+      "var u=new URL(raw,location.href);var h=u.hostname.toLowerCase();",
+      "var s=String(raw);for(var ah in allowed){if(s===ah||s.indexOf(ah+'/')===0||s.indexOf(ah+'?')===0||s.indexOf(ah+'#')===0){s='https://'+s;break;}}var u=new URL(s,location.href);var h=u.hostname.toLowerCase();"
+    )
+    .replace(
+      "function fixel(el){",
+      "function navval(el){try{for(var i=0;i<navattrs.length;i++){var v=el.getAttribute(navattrs[i]);if(v)return v;}}catch(e){}return '';}function fixel(el){"
+    )
+    .replace(
+      "try{var ow=window.open;",
+      "try{var sa=Element&&Element.prototype&&Element.prototype.setAttribute;if(sa)Element.prototype.setAttribute=function(n,v){try{var ln=String(n||'').toLowerCase();if(ln==='href'||ln==='src'||ln==='action'||ln.indexOf('url')>=0||ln.indexOf('link')>=0||ln.indexOf('target')>=0||ln.indexOf('destination')>=0){var nv=proxify(v);if(nv&&nv!==v)v=nv;}}catch(e){}return sa.call(this,n,v);};var ap=HTMLAnchorElement&&HTMLAnchorElement.prototype;var hd=ap&&Object.getOwnPropertyDescriptor(ap,'href');if(ap&&hd&&hd.set&&hd.get)Object.defineProperty(ap,'href',{configurable:true,get:function(){return hd.get.call(this);},set:function(v){var nv=proxify(v);return hd.set.call(this,nv||v);}});}catch(e){}try{var ow=window.open;"
+    )
+    .replace(
+      "for(var i=0;i<attrs.length;i++){var a=attrs[i];var v=el.getAttribute(a);var n=proxify(v);if(n&&n!==v)el.setAttribute(a,n);}",
+      "for(var i=0;i<attrs.length;i++){var a=attrs[i];var v=el.getAttribute(a);var n=proxify(v);if(n&&n!==v)el.setAttribute(a,n);}try{var all=el.attributes||[];for(var j=0;j<all.length;j++){var at=all[j];if(!at||!at.name||!at.value)continue;if(attrs.indexOf(at.name)>=0)continue;var nn=proxify(at.value);if(nn&&nn!==at.value)el.setAttribute(at.name,nn);}}catch(e){}"
+    )
+    .replace(
+      `document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('${clickExtendedSelector}');if(!a)return;var before=a.getAttribute('href')||a.getAttribute('data-href')||a.getAttribute('data-url')||a.getAttribute('data-link')||a.getAttribute('data-target')||a.getAttribute('data-destination');fixel(a);var after=a.getAttribute('href')||a.getAttribute('data-href')||a.getAttribute('data-url')||a.getAttribute('data-link')||a.getAttribute('data-target')||a.getAttribute('data-destination');if(after&&after!==before&&!/^(a|area)$/i.test(a.tagName||'')){e.preventDefault();location.href=after;}},true);`,
+      `document.addEventListener('click',function(e){var t=e.target;if(t&&t.closest&&t.closest('input,textarea,select,[contenteditable=\"\"],[contenteditable=\"true\"]'))return;var a=t&&t.closest&&t.closest('${clickExtendedSelector}');if(!a)return;var before=navval(a);var direct=proxify(before);fixel(a);var after=navval(a);var dest=(direct&&direct!==before)?direct:after;if(dest&&dest!==before){e.preventDefault();if(/^(a|area)$/i.test(a.tagName||'')){var tg=a.getAttribute('target')||'';if(tg&&tg.toLowerCase()!=='_self'&&window.open)window.open(dest,tg);else location.href=dest;}else location.href=dest;}},true);`
+    )
+    .replace(
+      "document.addEventListener('submit',function(e){var f=e.target;if(!f||!f.getAttribute)return;fixel(f);},true);",
+      "document.addEventListener('click',function(e){try{var t=e.target;if(!t||!t.closest)return;var b=t.closest('.full-text-button,.viewPreprint,.mat-mdc-menu-trigger,[aria-haspopup=\"menu\"]');if(!b)return;[0,25,100,300].forEach(function(ms){setTimeout(function(){scan(document);},ms);});}catch(x){}},true);document.addEventListener('submit',function(e){var f=e.target;if(!f||!f.getAttribute)return;fixel(f);},true);"
+    );
 }
 
 export function rewriteCloudflareChallengePaths(text) {
@@ -1634,6 +2292,57 @@ export function relaxProxyMetaContentSecurityPolicy(text) {
   );
 }
 
+function injectCloudflareChallengeCookieNamespaceScript(text, scopeHost) {
+  if (scopeHost !== 'oup.com') return String(text || '');
+  const html = String(text || '');
+  if (html.includes('__raCfChallengeCookieNamespace')) return html;
+
+  const safeScope = JSON.stringify(scopeHost).replace(/<\/script/gi, '<\\/script');
+  const script = `<script>(function(){try{if(window.__raCfChallengeCookieNamespace)return;Object.defineProperty(window,'__raCfChallengeCookieNamespace',{value:1});var scope=${safeScope};var prefix='__cp_'+scope+'|';var names={cf_clearance:1,__cf_bm:1};function scoped(n){return names[n]||String(n||'').toLowerCase().indexOf('cf_chl_')===0;}var d=Object.getOwnPropertyDescriptor(Document.prototype,'cookie')||Object.getOwnPropertyDescriptor(HTMLDocument.prototype,'cookie');if(!d||!d.get||!d.set)return;Object.defineProperty(document,'cookie',{configurable:true,get:function(){var raw=d.get.call(document)||'';var out=[];raw.split(/;\\s*/).filter(Boolean).forEach(function(p){var i=p.indexOf('=');if(i<1){out.push(p);return;}var n=p.slice(0,i);if(n.indexOf(prefix)===0){var clean=n.slice(prefix.length);out.push(clean+p.slice(i));return;}if(scoped(n))return;out.push(p);});return out.join('; ');},set:function(v){var s=String(v||'');var semi=s.indexOf(';');var end=semi<0?s.length:semi;var eq=s.indexOf('=');if(eq>0&&eq<end){var n=s.slice(0,eq).trim();if(scoped(n)&&n.indexOf(prefix)!==0){s=prefix+n+s.slice(eq);s=s.replace(/;\\s*domain=[^;]*/ig,'');}}return d.set.call(document,s);}});}catch(e){}})();</script>`;
+  if (/<head\b[^>]*>/i.test(html)) {
+    return html.replace(/<head\b([^>]*)>/i, `<head$1>${script}`);
+  }
+  if (/<script\b/i.test(html)) {
+    return html.replace(/<script\b/i, `${script}<script`);
+  }
+  return `${script}${html}`;
+}
+
+function clearRawPublisherClearanceCookies(headers, scopeHost, domain) {
+  if (scopeHost !== 'oup.com') return;
+  const expiry = 'Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/; Secure';
+  headers.append('Set-Cookie', `cf_clearance=; ${expiry}; SameSite=Lax`);
+  headers.append('Set-Cookie', `cf_clearance=; ${expiry}; SameSite=None`);
+  headers.append('Set-Cookie', `cf_clearance=; ${expiry}; SameSite=None; Partitioned`);
+  if (domain) {
+    const clean = String(domain || '').replace(/^\.+/, '');
+    headers.append('Set-Cookie', `cf_clearance=; Domain=${clean}; ${expiry}; SameSite=Lax`);
+    headers.append('Set-Cookie', `cf_clearance=; Domain=${clean}; ${expiry}; SameSite=None`);
+    headers.append('Set-Cookie', `cf_clearance=; Domain=${clean}; ${expiry}; SameSite=None; Partitioned`);
+    headers.append('Set-Cookie', `cf_clearance=; Domain=.${clean}; ${expiry}; SameSite=Lax`);
+    headers.append('Set-Cookie', `cf_clearance=; Domain=.${clean}; ${expiry}; SameSite=None`);
+    headers.append('Set-Cookie', `cf_clearance=; Domain=.${clean}; ${expiry}; SameSite=None; Partitioned`);
+  }
+}
+
+function shouldInjectRaLinkAuditScript(session, contentType) {
+  return isAdminAuditSession(session) && /\btext\/html\b/i.test(contentType || '');
+}
+
+function injectRaLinkAuditScript(text, session) {
+  const html = String(text || '');
+  if (!isAdminAuditSession(session) || html.includes('__raLinkAudit')) return html;
+
+  const script = `<script>(function(){try{if(window.__raLinkAudit)return;Object.defineProperty(window,'__raLinkAudit',{value:1});var endpoint='${LINK_AUDIT_PATH}';var attrs=['href','src','action','data-href','data-url','data-link','data-target','data-destination','data-fulltext-url','data-full-text-url','data-link-url','data-gateway-url','data-external-url','data-resolved-url','data-redirect-url','data-target-url'];var selector='a[href],area[href],form[action],iframe[src],frame[src],script[src],link[href],[data-href],[data-url],[data-link],[data-target],[data-destination],[data-fulltext-url],[data-full-text-url],[data-link-url],[data-gateway-url],[data-external-url],[data-resolved-url],[data-redirect-url],[data-target-url]';var seen={};var queue=[];function norm(v){try{if(!v)return null;var s=String(v).trim();if(!s||/^(javascript|mailto|tel|data|blob):/i.test(s))return null;var u=new URL(s,location.href);if(!/^https?:$/.test(u.protocol))return null;if(u.hostname===location.hostname)return null;return u.href;}catch(e){return null;}}function add(el,a,v){var u=norm(v);if(!u)return;var key=(el.tagName||'').toLowerCase()+'|'+a+'|'+u;if(seen[key])return;seen[key]=1;queue.push({element:(el.tagName||'').toLowerCase(),attr:a,url:u,text:(el.textContent||el.getAttribute('aria-label')||'').replace(/\\s+/g,' ').trim().slice(0,120)});}function scan(root){try{var nodes=(root&&root.querySelectorAll)?root.querySelectorAll(selector):[];for(var i=0;i<nodes.length&&queue.length<120;i++){var el=nodes[i];for(var j=0;j<attrs.length;j++){var a=attrs[j];var v=el.getAttribute&&el.getAttribute(a);if(v)add(el,a,v);}}flushSoon();}catch(e){}}var timer=0;function flushSoon(){if(timer)return;timer=setTimeout(flush,700);}function flush(){timer=0;if(!queue.length)return;var items=queue.splice(0,80);var body=JSON.stringify({source_url:location.href,source_host:location.hostname,source_path:location.pathname+location.search,items:items});try{if(navigator.sendBeacon){navigator.sendBeacon(endpoint,new Blob([body],{type:'application/json'}));return;}}catch(e){}try{fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true,cache:'no-store'});}catch(e){}}setTimeout(function(){scan(document);},250);setTimeout(function(){scan(document);},1800);try{var mo=new MutationObserver(function(muts){for(var i=0;i<muts.length;i++){var n=muts[i].target;if(n&&n.nodeType===1)scan(n);}});mo.observe(document.documentElement||document,{childList:true,subtree:true,attributes:true,attributeFilter:attrs});}catch(e){}document.addEventListener('click',function(e){try{var t=e.target&&e.target.closest&&e.target.closest(selector);if(t){scan(t.parentNode||document);flush();}}catch(x){}},true);}catch(e){}})();</script>`;
+  if (/<head\b[^>]*>/i.test(html)) {
+    return html.replace(/<head\b([^>]*)>/i, `<head$1>${script}`);
+  }
+  if (/<script\b/i.test(html)) {
+    return html.replace(/<script\b/i, `${script}<script`);
+  }
+  return `${script}${html}`;
+}
+
 export function injectPublisherCookieNamespaceScript(text, scopeHost, originHost = '', debugEnabled = false) {
   const html = String(text || '');
   if (!scopeHost || html.includes('__raPublisherCookieNamespace')) return html;
@@ -1661,7 +2370,7 @@ function buildPublisherCookieNamespaceScript(scopeHost, originHost = '', debugEn
 // OIDC, federated SSO gibi multi-origin akışlarda aynı oturum farklı hostlara
 // yönlenebilir; bunların allowlist'te olması gerekir.
 async function loadProductAllowedHosts(db, productSlug, originHost) {
-  const hosts = new Set([originHost]);
+  const hosts = new HostAllowlist([originHost]);
   const product = await db
     .prepare('SELECT ra_host_allowlist_json FROM products WHERE slug = ?')
     .bind(productSlug)
@@ -1671,8 +2380,7 @@ async function loadProductAllowedHosts(db, productSlug, originHost) {
       const list = JSON.parse(product.ra_host_allowlist_json);
       if (Array.isArray(list)) {
         for (const h of list) {
-          const host = normalizeHost(h);
-          if (host) hosts.add(host);
+          hosts.add(h);
         }
       }
     } catch {
@@ -1682,8 +2390,9 @@ async function loadProductAllowedHosts(db, productSlug, originHost) {
   return hosts;
 }
 
-async function loadSessionProxyableHosts(db, session) {
-  const hosts = new Set([session.origin_host]);
+async function loadSessionProxyableHosts(envOrDb, session, sessionId = '') {
+  const db = envOrDb?.DB || envOrDb;
+  const hosts = new HostAllowlist([session.origin_host]);
   const product = await db
     .prepare(
       `SELECT ra_host_allowlist_json
@@ -1698,15 +2407,56 @@ async function loadSessionProxyableHosts(db, session) {
       const parsed = JSON.parse(product.ra_host_allowlist_json);
       if (Array.isArray(parsed)) {
         for (const rawHost of parsed) {
-          const host = normalizeHost(rawHost);
-          if (host) hosts.add(host);
+          hosts.add(rawHost);
         }
       }
     } catch {
       // Malformed admin config: keep origin-only rather than failing all access.
     }
   }
+  if (shouldLoadDynamicSessionProxyHosts(session)) {
+    for (const host of await loadDynamicSessionProxyHosts(envOrDb, sessionId)) {
+      hosts.add(host);
+    }
+  }
   return hosts;
+}
+
+function shouldLoadDynamicSessionProxyHosts(session = {}) {
+  return session.product_slug === 'web-of-science' ||
+    session.product_slug === 'sciencedirect';
+}
+
+async function loadDynamicSessionProxyHosts(envOrDb, sessionId) {
+  if (!sessionId || !envOrDb?.RA_UPSTREAM_SESSIONS) return [];
+  try {
+    const parsed = await envOrDb.RA_UPSTREAM_SESSIONS.get(
+      `${WOS_DYNAMIC_HOSTS_PREFIX}${sessionId}`,
+      'json'
+    );
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeHost).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+async function persistDynamicSessionProxyHost(env, sessionId, host) {
+  const normalized = normalizeHost(host);
+  if (!normalized || !sessionId || !env?.RA_UPSTREAM_SESSIONS) return;
+  const key = `${WOS_DYNAMIC_HOSTS_PREFIX}${sessionId}`;
+  const existing = await loadDynamicSessionProxyHosts(env, sessionId);
+  const hosts = new Set(existing);
+  hosts.add(normalized);
+  try {
+    await env.RA_UPSTREAM_SESSIONS.put(
+      key,
+      JSON.stringify([...hosts].slice(-50)),
+      { expirationTtl: SESSION_TTL_SEC }
+    );
+  } catch {
+    // Dynamic publisher hosts only improve full-text redirect continuity.
+  }
 }
 
 /**
@@ -1739,6 +2489,61 @@ function normalizeHost(rawHost) {
     : '';
 }
 
+function normalizeHostPattern(rawHost) {
+  let host = String(rawHost || '').trim().toLowerCase();
+  if (!host) return '';
+  host = host.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '');
+  if (host.startsWith('*.')) {
+    const suffix = normalizeHost(host.slice(2));
+    return suffix ? `*.${suffix}` : '';
+  }
+  return normalizeHost(host);
+}
+
+class HostAllowlist extends Set {
+  constructor(entries = []) {
+    super();
+    this.wildcardSuffixes = [];
+    for (const entry of entries) this.add(entry);
+  }
+
+  add(rawHost) {
+    const pattern = normalizeHostPattern(rawHost);
+    if (!pattern) return this;
+    if (pattern.startsWith('*.')) {
+      const suffix = pattern.slice(2);
+      if (!this.wildcardSuffixes.includes(suffix)) this.wildcardSuffixes.push(suffix);
+      return this;
+    }
+    return super.add(pattern);
+  }
+
+  has(rawHost) {
+    const host = normalizeHost(rawHost);
+    if (!host) return false;
+    if (super.has(host)) return true;
+    return this.wildcardSuffixes.some((suffix) => host.endsWith(`.${suffix}`));
+  }
+
+  patterns() {
+    return [...super.values(), ...this.wildcardSuffixes.map((suffix) => `*.${suffix}`)];
+  }
+}
+
+function proxyableHostPatterns(proxyableHosts) {
+  const raw = typeof proxyableHosts?.patterns === 'function'
+    ? proxyableHosts.patterns()
+    : [...(proxyableHosts || [])];
+  return [...new Set(raw.map(normalizeHostPattern).filter(Boolean))];
+}
+
+function exactProxyableHosts(proxyableHosts) {
+  return proxyableHostPatterns(proxyableHosts)
+    .filter((host) => !host.startsWith('*.'))
+    .map(normalizeHost)
+    .filter(Boolean);
+}
+
 // Publisher'ın Location header'ı (redirect) → proxy URL'e çevir
 function rewriteLocation(location, baseHost, currentEncodedLabel) {
   try {
@@ -1768,6 +2573,10 @@ function readCookie(header, name) {
   return null;
 }
 
+function readProxySessionCookie(header) {
+  return readCookie(header, SESSION_COOKIE) || readCookie(header, COMPAT_SESSION_COOKIE);
+}
+
 function readAllowedUpstreamHostCookie(cookieHeader, proxyableHosts) {
   const host = normalizeHost(readCookie(cookieHeader, UPSTREAM_HOST_COOKIE));
   if (!host || !proxyableHosts.has(host)) return null;
@@ -1777,6 +2586,14 @@ function readAllowedUpstreamHostCookie(cookieHeader, proxyableHosts) {
 function buildSessionCookie(sid, baseHost) {
   return (
     `${SESSION_COOKIE}=${encodeURIComponent(sid)}; ` +
+    `Domain=${baseHost}; Path=/; HttpOnly; Secure; SameSite=Lax; ` +
+    `Max-Age=${SESSION_TTL_SEC}`
+  );
+}
+
+function buildCompatSessionCookie(sid, baseHost) {
+  return (
+    `${COMPAT_SESSION_COOKIE}=${encodeURIComponent(sid)}; ` +
     `Domain=${baseHost}; Path=/; HttpOnly; Secure; SameSite=Lax; ` +
     `Max-Age=${SESSION_TTL_SEC}`
   );
@@ -1848,6 +2665,200 @@ async function handleClientDebug(request, env, session, url) {
   return new Response(null, { status: 204 });
 }
 
+async function handleLinkAudit(request, env, session, url, sessionId) {
+  if (request.method !== 'POST' || !env?.DB || !isAdminAuditSession(session)) {
+    return new Response(null, { status: 204 });
+  }
+
+  let payload = {};
+  try {
+    payload = await request.json();
+  } catch {
+    payload = {};
+  }
+
+  const items = Array.isArray(payload.items) ? payload.items.slice(0, 80) : [];
+  if (!items.length) return new Response(null, { status: 204 });
+
+  const originHost = sessionOriginHost(session);
+  const allowlist = await loadProductAllowedHosts(env.DB, session.product_slug, originHost);
+  const now = Math.floor(Date.now() / 1000);
+  const sourceUrl = sanitizeAuditUrl(payload.source_url || request.headers.get('Referer') || '');
+  const sourcePath = sanitizeAuditPath(payload.source_path || '');
+  const sourceHost = normalizeHost(payload.source_host || url.hostname);
+
+  try {
+    await ensureRaLinkAuditSchema(env.DB);
+    for (const item of items) {
+      const found = parseAuditUrl(item?.url, url);
+      if (!found) continue;
+      const classification = classifyAuditUrl(found, url.hostname, allowlist);
+      if (classification.kind === 'ok_proxy') continue;
+      const element = String(item?.element || '').slice(0, 24).toLowerCase();
+      const attr = String(item?.attr || '').slice(0, 40).toLowerCase();
+      const foundUrl = sanitizeAuditUrl(found.toString());
+      const foundHost = normalizeHost(found.hostname);
+      const keyHash = simpleAuditHash([
+        session.product_slug || '',
+        sourceHost,
+        sourcePath,
+        foundHost,
+        foundUrl,
+        element,
+        attr,
+        classification.kind,
+      ].join('|'));
+
+      await env.DB.prepare(
+        `INSERT INTO ra_link_audit_findings (
+           key_hash, product_slug, institution_id, user_id, session_id,
+           source_host, source_path, source_url,
+           found_host, found_url, element, attr,
+           classification, reason, sample_text, count, first_seen, last_seen
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+         ON CONFLICT(key_hash) DO UPDATE SET
+           count = count + 1,
+           last_seen = excluded.last_seen,
+           sample_text = COALESCE(NULLIF(excluded.sample_text, ''), sample_text)`
+      )
+        .bind(
+          keyHash,
+          session.product_slug || null,
+          session.institution_id || null,
+          session.user_id || null,
+          String(sessionId || '').slice(0, 80),
+          sourceHost || null,
+          sourcePath || null,
+          sourceUrl || null,
+          foundHost || null,
+          foundUrl || null,
+          element || null,
+          attr || null,
+          classification.kind,
+          classification.reason,
+          String(item?.text || '').replace(/\s+/g, ' ').trim().slice(0, 160) || null,
+          now,
+          now
+        )
+        .run();
+    }
+  } catch (err) {
+    console.warn('ra link audit write failed', err);
+  }
+
+  return new Response(null, { status: 204 });
+}
+
+function isAdminAuditSession(session) {
+  return Number(session?.subscription_id) === 0;
+}
+
+function sessionOriginHost(session = {}) {
+  return normalizeHost(session.origin_host || session.target_host);
+}
+
+async function ensureRaLinkAuditSchema(db) {
+  if (linkAuditSchemaEnsured) return;
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS ra_link_audit_findings (
+      key_hash TEXT PRIMARY KEY,
+      product_slug TEXT,
+      institution_id INTEGER,
+      user_id INTEGER,
+      session_id TEXT,
+      source_host TEXT,
+      source_path TEXT,
+      source_url TEXT,
+      found_host TEXT,
+      found_url TEXT,
+      element TEXT,
+      attr TEXT,
+      classification TEXT NOT NULL,
+      reason TEXT,
+      sample_text TEXT,
+      count INTEGER NOT NULL DEFAULT 1,
+      first_seen INTEGER NOT NULL,
+      last_seen INTEGER NOT NULL
+    )`
+  ).run();
+  await db.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_ra_link_audit_product_seen
+       ON ra_link_audit_findings(product_slug, last_seen DESC)`
+  ).run();
+  linkAuditSchemaEnsured = true;
+}
+
+function parseAuditUrl(raw, requestUrl) {
+  const value = String(raw || '').trim();
+  if (!value || value.length > 2000) return null;
+  if (/^(javascript|mailto|tel|data|blob):/i.test(value)) return null;
+  try {
+    const parsed = new URL(value, requestUrl.toString());
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function classifyAuditUrl(foundUrl, proxyHostname, allowlist) {
+  const foundHost = normalizeHost(foundUrl.hostname);
+  const proxyHost = normalizeHost(proxyHostname);
+  if (!foundHost) return { kind: 'invalid', reason: 'URL host parse edilemedi.' };
+  if (foundHost === proxyHost) return { kind: 'ok_proxy', reason: 'Proxy hostu.' };
+  if (foundHost.endsWith('.selmiye.com')) return { kind: 'ok_proxy', reason: 'RA proxy hostu.' };
+  if (isAllowedExternalAuditHost(foundHost)) {
+    return { kind: 'allowed_external', reason: 'Bilerek proxy dışı bırakılabilecek referans/identity linki.' };
+  }
+  if (allowlist?.has(foundHost)) {
+    return { kind: 'rewrite_failed', reason: 'Host allowlist içinde ama sayfada doğrudan publisher URL olarak kalmış.' };
+  }
+  return { kind: 'missing_allowlist', reason: 'Host allowlist içinde değil; proxylenmesi gerekiyorsa ürün allowlist veya rewrite kuralı eklenmeli.' };
+}
+
+function isAllowedExternalAuditHost(host) {
+  const h = normalizeHost(host);
+  return h === 'doi.org' ||
+    h === 'dx.doi.org' ||
+    h === 'orcid.org' ||
+    h === 'crossref.org' ||
+    h === 'creativecommons.org' ||
+    h === 'pubmed.ncbi.nlm.nih.gov' ||
+    h === 'scholar.google.com';
+}
+
+function sanitizeAuditPath(raw) {
+  const path = String(raw || '').trim();
+  if (!path || !path.startsWith('/')) return '/';
+  return path.replace(/[\r\n]/g, '').slice(0, 260);
+}
+
+function sanitizeAuditUrl(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  try {
+    const parsed = new URL(value);
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (/token|session|parent|sid|jti|state|code|auth|accountid|t$/i.test(key)) {
+        parsed.searchParams.set(key, '[redacted]');
+      }
+    }
+    parsed.hash = '';
+    return parsed.toString().slice(0, 700);
+  } catch {
+    return value.replace(/[\r\n]/g, '').slice(0, 700);
+  }
+}
+
+function simpleAuditHash(input) {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
 function buildUpstreamHostCookie(proxyHostname, host) {
   return (
     `${UPSTREAM_HOST_COOKIE}=${encodeURIComponent(host)}; ` +
@@ -1871,7 +2882,7 @@ export function stripSessionCookie(header) {
     const idx = part.indexOf('=');
     if (idx <= 0) continue;
     const name = part.slice(0, idx).trim();
-    if (name === SESSION_COOKIE || name === UPSTREAM_HOST_COOKIE) continue;
+    if (name === SESSION_COOKIE || name === COMPAT_SESSION_COOKIE || name === UPSTREAM_HOST_COOKIE) continue;
     kept.push(part);
   }
   return kept.join('; ');
@@ -1923,6 +2934,20 @@ export function mergeSessionHostCookieJar(stored, browser) {
     }
   }
   return [...map.entries()].map(([name, value]) => `${name}=${value}`).join('; ');
+}
+
+function ensureCookiePair(cookieHeader, name, value) {
+  const wantedName = String(name || '').trim();
+  if (!wantedName) return cookieHeader || '';
+  const map = new Map();
+  for (const pair of String(cookieHeader || '').split(';').map(s => s.trim()).filter(Boolean)) {
+    const idx = pair.indexOf('=');
+    if (idx <= 0) continue;
+    const n = pair.slice(0, idx).trim();
+    if (n) map.set(n, pair.slice(idx + 1).trim());
+  }
+  if (!map.has(wantedName)) map.set(wantedName, String(value || ''));
+  return [...map.entries()].map(([n, v]) => `${n}=${v}`).join('; ');
 }
 
 export function mergeSessionHostSetCookies(existingCookieHeader, setCookies) {
@@ -2079,6 +3104,12 @@ const PUBLISHER_COOKIE_SCOPE_HOSTS = new Map([
   ['emerald.com', 'emerald.com'],
   ['nejm.org', 'nejm.org'],
   ['cabdirect.org', 'cabdirect.org'],
+  ['acs.org', 'acs.org'],
+  ['nature.com', 'nature.com'],
+  ['proquest.com', 'proquest.com'],
+  ['onlinelibrary.wiley.com', 'onlinelibrary.wiley.com'],
+  ['wiley.com', 'wiley.com'],
+  ['oup.com', 'oup.com'],
 ]);
 
 function getPublisherCookieScopeHost(host) {
@@ -2134,7 +3165,7 @@ export function rewritePublisherCookieHeaderForUpstream(cookieHeader, scopeHost,
     if (scopeHost && isCloudflareChallengeRuntimeCookieName(name) && !allowChallengeRuntime) continue;
     if (scopeHost && isPublisherTrackingCookieName(name)) continue;
     if (scopeHost && isPublisherScopedCookieName(name) && scopedNames.has(name.toLowerCase())) continue;
-    if (scopeHost && isPublisherScopedCookieName(name) && !shouldAllowRawPublisherCookieFallback(name)) continue;
+    if (scopeHost && isPublisherScopedCookieName(name) && !shouldAllowRawPublisherCookieFallback(name, scopeHost)) continue;
     if (!map.has(name)) map.set(name, value);
   }
   return [...map.entries()].map(([name, value]) => `${name}=${value}`).join('; ');
@@ -2183,7 +3214,8 @@ function isCloudflareChallengeRuntimeCookieName(name) {
   return String(name || '').toLowerCase().startsWith('cf_chl_');
 }
 
-function shouldAllowRawPublisherCookieFallback(name) {
+function shouldAllowRawPublisherCookieFallback(name, scopeHost = '') {
+  if (scopeHost === 'oup.com') return false;
   return String(name || '').toLowerCase() === 'cf_clearance';
 }
 

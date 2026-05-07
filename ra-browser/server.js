@@ -228,15 +228,11 @@ async function handleProxy(req, res) {
 
     const page = await context.newPage();
 
-    // Capture the navigation response for status + response headers
-    let navResponse = null;
-    page.on('response', (response) => {
-      if (!navResponse) {
-        navResponse = response;
-      }
-    });
-
-    await page.goto(targetUrl, {
+    // page.goto resolves with the final main-frame navigation response after
+    // redirects. Capturing the first response breaks sites like Oxford Academic:
+    // their first hop is a 307 to the same canonical URL, but the rendered page
+    // is available after Playwright follows it.
+    const navResponse = await page.goto(targetUrl, {
       waitUntil: 'domcontentloaded',
       timeout: 30000,
     });
@@ -273,6 +269,11 @@ async function handleProxy(req, res) {
         responseHeaders[k] = v;
       }
     }
+    const browserCookies = await context.cookies(uniqueCookieUrls(targetUrl, page.url()));
+    const setCookies = browserCookies.map(serializeBrowserCookie).filter(Boolean);
+    if (setCookies.length) {
+      responseHeaders['set-cookie'] = setCookies;
+    }
 
     // page.content() returns the DOM-serialized HTML (JS-rendered, full DOM).
     // This is intentional — we need the rendered page, not raw bytes.
@@ -300,6 +301,24 @@ async function handleProxy(req, res) {
     }
     releaseSemaphore();
   }
+}
+
+function uniqueCookieUrls(...urls) {
+  return [...new Set(urls.filter(Boolean))];
+}
+
+function serializeBrowserCookie(cookie) {
+  if (!cookie || !cookie.name) return '';
+  const parts = [`${cookie.name}=${cookie.value || ''}`];
+  if (cookie.domain) parts.push(`Domain=${cookie.domain}`);
+  parts.push(`Path=${cookie.path || '/'}`);
+  if (cookie.expires && cookie.expires > 0) {
+    parts.push(`Expires=${new Date(cookie.expires * 1000).toUTCString()}`);
+  }
+  if (cookie.httpOnly) parts.push('HttpOnly');
+  if (cookie.secure) parts.push('Secure');
+  if (cookie.sameSite) parts.push(`SameSite=${cookie.sameSite}`);
+  return parts.join('; ');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

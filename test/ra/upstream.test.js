@@ -13,6 +13,7 @@ import {
   rewriteClientContextHeader,
   rewriteSessionHostLocation,
   rewriteSessionHostLocationWithUpstreamCookie,
+  rewriteQueryProxyUrls,
   rewriteSessionTextProxyUrls,
   rewriteCloudflareChallengePaths,
   rewriteCloudflareChallengeRuntimeLocation,
@@ -22,12 +23,18 @@ import {
   relaxProxyMetaContentSecurityPolicy,
   injectPublisherCookieNamespaceScript,
   injectSessionHostLinkProxyScript,
+  injectSessionHostFullTextProxyRuntime,
   clearPublisherClearanceOnChallenge,
   decodeOidcStateSuffix,
   mergeSessionHostCookieJar,
   mergeSessionHostSetCookies,
   rewritePublisherCookieHeaderForUpstream,
   ensurePublisherScopedCookiesForwarded,
+  webOfScienceFailureFallbackResponse,
+  proQuestFailureFallbackResponse,
+  webOfScienceDynamicRedirectHost,
+  scienceDirectDynamicRedirectHost,
+  shouldRouteSessionPathToOrigin,
 } from '../../workers/proxy/src/index.js';
 
 describe('buildCookieJarKey', () => {
@@ -556,7 +563,7 @@ describe('session-host proxy cookie handling', () => {
     expect(out.has('x-requested-with')).toBe(false);
   });
 
-  it('strips Web of Science stanza request headers before upstream', () => {
+  it('forwards WoS session auth while stripping proxy/bot artifacts', () => {
     const headers = new Headers({
       'X-1P-WOS-SID': 'session',
       'X-1P-WOS-No-Action': '1',
@@ -575,15 +582,40 @@ describe('session-host proxy cookie handling', () => {
     });
 
     expect(out.get('Accept')).toBe('text/html');
-    for (const name of ['X-1P-WOS-SID', 'X-1P-WOS-No-Action', 'AWSEnv', 'ak_bmsc', 'bm_sv', 'bm_mi', 'bm_sz', '_abck']) {
+    expect(out.get('X-1P-WOS-SID')).toBe('session');
+    for (const name of ['X-1P-WOS-No-Action', 'AWSEnv', 'ak_bmsc', 'bm_sv', 'bm_mi', 'bm_sz', '_abck']) {
       expect(out.has(name)).toBe(false);
       expect(out.has(name.toLowerCase())).toBe(false);
     }
   });
 
+  it('turns failing WoS SignalR HTTP fallback into a close frame', async () => {
+    const out = webOfScienceFailureFallbackResponse(
+      { host: 'www.webofscience.com', path: '/api/wosnxcorews' },
+      new Response('authorization failed', { status: 403 })
+    );
+
+    expect(out.status).toBe(200);
+    expect(out.headers.get('Content-Type')).toBe('application/json');
+    expect(out.headers.get('Cache-Control')).toBe('no-store');
+    expect(await out.text()).toBe('{"type":7}\x1e');
+  });
+
+  it('allows WoS product context to handle ESTI fallbacks without third-party domain matching', async () => {
+    const out = webOfScienceFailureFallbackResponse(
+      { host: 'custom-access.example.edu', path: '/api/esti/Chat/history' },
+      new Response('Server.authorization', { status: 403 }),
+      { productSlug: 'web-of-science' }
+    );
+
+    expect(out.status).toBe(200);
+    expect(await out.text()).toBe('[]');
+  });
+
   it('rewrites Cloudflare challenge paths away from reserved /cdn-cgi', () => {
     const input = [
       `a.src = '/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=abc';`,
+      `navigator.sendBeacon('/cdn-cgi/rum?', body);`,
       `b.src = "/cdn-cgi/challenge-platform/x";`,
       String.raw`c.src = "\/cdn-cgi\/challenge-platform\/y";`,
       String.raw`d.src = "\u002fcdn-cgi\u002fchallenge-platform\u002fz";`,
@@ -593,6 +625,7 @@ describe('session-host proxy cookie handling', () => {
     const out = rewriteCloudflareChallengePaths(input);
 
     expect(out).toContain("'/__ra-cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=abc'");
+    expect(out).toContain("'/__ra-cdn-cgi/rum?'");
     expect(out).toContain('"/__ra-cdn-cgi/challenge-platform/x"');
     expect(out).toContain(String.raw`"\/__ra-cdn-cgi\/challenge-platform\/y"`);
     expect(out).toContain(String.raw`"\u002f__ra-cdn-cgi\u002fchallenge-platform\u002fz"`);
@@ -664,6 +697,81 @@ describe('session-host proxy cookie handling', () => {
     expect(out).not.toContain('.emerald.com');
   });
 
+  it('rewrites OUP stanza scheme-relative global host through session proxy', () => {
+    const input = `domain="//global.oup.com"; src="https://oup.silverchair-cdn.com/site.js"`;
+    const out = rewriteSessionTextProxyUrls(
+      input,
+      'rabc1234.selmiye.com',
+      'academic.oup.com',
+      new Set(['academic.oup.com', 'global.oup.com', 'oup.silverchair-cdn.com'])
+    );
+
+    expect(out).toContain(`domain="//rabc1234.selmiye.com/__ra-host/global-oup-com"`);
+    expect(out).toContain(`src="https://rabc1234.selmiye.com/__ra-host/oup-silverchair--cdn-com/site.js"`);
+    expect(out).not.toContain('//global.oup.com');
+    expect(out).not.toContain('https://oup.silverchair-cdn.com');
+  });
+
+  it('does not force navigation from form-control clicks inside data-target widgets', () => {
+    const out = injectSessionHostLinkProxyScript(
+      '<html><head></head><body><div data-target="https://www.webofscience.com/wos"><input></div><button data-fulltext-url="https://ct.prod.getft.io/fulltext"></button></body></html>',
+      'rabc1234.selmiye.com',
+      'www.webofscience.com',
+      new Set(['www.webofscience.com', 'ct.prod.getft.io'])
+    );
+
+    expect(out).toContain('__raReservedPathProxy');
+    expect(out).toContain('__raFullTextProxyV1');
+    expect(out).toContain('a.full-record-links');
+    expect(out).toContain('[data-pendo*="GetFTR"]');
+    expect(out).toContain("u&&u.href?String(u.href):(u&&u.url?String(u.url):'')");
+    expect(out).toContain('navigator.sendBeacon=function(u,d){return sf.call(this,fixu(u),d);}');
+    expect(out).toContain("s.indexOf(ah+'/')===0");
+    expect(out).toContain("'data-fulltext-url'");
+    expect(out).toContain('[data-fulltext-url]');
+    expect(out).toContain('var all=el.attributes||[]');
+    expect(out).toContain('attrs.indexOf(at.name)>=0');
+    expect(out).toContain('Element.prototype.setAttribute=function(n,v)');
+    expect(out).toContain("Object.defineProperty(ap,'href'");
+    expect(out).toContain("closest('.full-text-button,.viewPreprint,.mat-mdc-menu-trigger,[aria-haspopup=\"menu\"]')");
+    expect(out).toContain('[0,25,100,300].forEach');
+    expect(out).toContain('var direct=proxify(before);');
+    expect(out).toContain('var dest=(direct&&direct!==before)?direct:after;');
+    expect(out).toContain("if(dest&&dest!==before){e.preventDefault();if(/^(a|area)$/i.test(a.tagName||''))");
+    expect(out).toContain('window.open(dest,tg)');
+    expect(out).toContain("var navattrs=['href','data-href','data-url','data-link','data-destination']");
+    expect(out).toContain("closest('input,textarea,select,[contenteditable=\"\"],[contenteditable=\"true\"]'))return");
+    expect(out).not.toContain('select,button,[contenteditable');
+    expect(out).toContain('var before=navval(a);');
+    expect(out).not.toContain("var before=a.getAttribute('href')||a.getAttribute('data-href')||a.getAttribute('data-url')||a.getAttribute('data-link')||a.getAttribute('data-target')");
+  });
+
+  it('still injects the full-text normalizer when the base link proxy marker already exists', () => {
+    const out = injectSessionHostLinkProxyScript(
+      '<html><head><script>window.__raSessionHostLinkProxy=1;</script></head><body></body></html>',
+      'rabc1234.selmiye.com',
+      'www.webofscience.com',
+      new Set(['www.webofscience.com', 'ct.prod.getft.io'])
+    );
+
+    expect(out).toContain('__raFullTextProxyV1');
+    expect(out).toContain('__raReservedPathProxy');
+  });
+
+  it('can inject the full-text normalizer into WoS JavaScript bundles', () => {
+    const out = injectSessionHostFullTextProxyRuntime(
+      'console.log("main bundle");',
+      'rabc1234.selmiye.com',
+      'www.webofscience.com',
+      new Set(['www.webofscience.com', 'ct.prod.getft.io'])
+    );
+
+    expect(out).toContain('__raFullTextProxyV1');
+    expect(out).toContain('a.full-record-links');
+    expect(out).toContain('console.log("main bundle");');
+    expect(out).not.toContain('<script>');
+  });
+
   it('strips strict challenge policy headers only for namespaced publisher responses', () => {
     const input = new Headers({
       'Content-Type': 'text/html; charset=UTF-8',
@@ -672,6 +780,7 @@ describe('session-host proxy cookie handling', () => {
       'Cross-Origin-Resource-Policy': 'same-origin',
       'Critical-CH': 'Sec-CH-UA',
       'Referrer-Policy': 'same-origin',
+      'X-Frame-Options': 'SAMEORIGIN',
     });
 
     const out = buildSessionHostResponseHeaders(
@@ -690,6 +799,7 @@ describe('session-host proxy cookie handling', () => {
     expect(out.has('Cross-Origin-Resource-Policy')).toBe(false);
     expect(out.get('Critical-CH')).toBe('Sec-CH-UA');
     expect(out.has('Referrer-Policy')).toBe(false);
+    expect(out.has('X-Frame-Options')).toBe(false);
   });
 
   it('rewrites alternate session-host locations through the encoded host prefix', () => {
@@ -738,6 +848,35 @@ describe('session-host proxy cookie handling', () => {
     expect(out.upstreamCookie).toContain('Path=/');
   });
 
+  it('rewrites Springer Nature IDP redirect_uri values back through the session host', () => {
+    const hosts = new Set(['link.springer.com', 'idp.springer.com']);
+    const out = rewriteSessionHostLocationWithUpstreamCookie(
+      'https://idp.springer.com/authorize?response_type=cookie&client_id=springerlink&redirect_uri=https%3A%2F%2Flink.springer.com%2F',
+      'rabc1234.selmiye.com',
+      'link.springer.com',
+      'link.springer.com',
+      hosts
+    );
+
+    expect(out.location).toContain('https://rabc1234.selmiye.com/authorize?');
+    expect(out.location).toContain('redirect_uri=https%3A%2F%2Frabc1234.selmiye.com%2F');
+    expect(out.upstreamCookie).toContain('__ra_upstream=idp.springer.com');
+  });
+
+  it('normalizes Nature IDP /nature callback back to the homepage', () => {
+    const hosts = new Set(['www.nature.com', 'idp.nature.com']);
+    const out = rewriteSessionHostLocationWithUpstreamCookie(
+      'https://idp.nature.com/authorize?response_type=cookie&client_id=grover&redirect_uri=https%3A%2F%2Fwww.nature.com%2Fnature',
+      'rabc1234.selmiye.com',
+      'www.nature.com',
+      'www.nature.com',
+      hosts
+    );
+
+    expect(out.location).toContain('redirect_uri=https%3A%2F%2Frabc1234.selmiye.com%2F');
+    expect(out.location).not.toContain('%2Fnature');
+  });
+
   it('clears the upstream host cookie when redirecting back to the origin host', () => {
     const hosts = new Set(['scifinder-n.cas.org', 'sso.cas.org']);
     const out = rewriteSessionHostLocationWithUpstreamCookie(
@@ -765,6 +904,200 @@ describe('session-host proxy cookie handling', () => {
 
     expect(out.location).toBe('/as/login');
     expect(out.upstreamCookie).toContain('__ra_upstream=sso.cas.org');
+  });
+
+  it('detects WoS GetFTR publisher redirect hosts dynamically', () => {
+    const host = webOfScienceDynamicRedirectHost(
+      'https://link.springer.com/article/10.1007/s40820-025-01804-2',
+      { host: 'ct.prod.getft.io', path: '/Y2xhcml2YXRl...' },
+      { origin_host: 'www.webofscience.com', product_slug: 'web-of-science' }
+    );
+
+    expect(host).toBe('link.springer.com');
+  });
+
+  it('does not trust arbitrary redirects outside the WoS GetFTR chain', () => {
+    const host = webOfScienceDynamicRedirectHost(
+      'https://example.com/',
+      { host: 'www.webofscience.com', path: '/api/random' },
+      { origin_host: 'www.webofscience.com', product_slug: 'web-of-science' }
+    );
+
+    expect(host).toBe('');
+  });
+
+  it('keeps Web of Science record APIs on the origin after publisher redirects', () => {
+    expect(shouldRouteSessionPathToOrigin(
+      '/api/wosnx/core/getFullRecordByQueryId',
+      'www.webofscience.com',
+      { productSlug: 'web-of-science' }
+    )).toBe(true);
+  });
+
+  it('does not pin publisher article paths back to Web of Science', () => {
+    expect(shouldRouteSessionPathToOrigin(
+      '/science/article/pii/S0272494419307376',
+      'www.webofscience.com',
+      { productSlug: 'web-of-science' }
+    )).toBe(false);
+  });
+
+  it('only applies Web of Science origin pinning to Web of Science sessions', () => {
+    expect(shouldRouteSessionPathToOrigin(
+      '/api/wosnx/core/getFullRecordByQueryId',
+      'www.sciencedirect.com',
+      { productSlug: 'science-direct' }
+    )).toBe(false);
+  });
+
+  it('rewrites dynamically allowed WoS GetFTR publisher redirects through the selected upstream cookie', () => {
+    const hosts = new Set(['www.webofscience.com', 'ct.prod.getft.io', 'link.springer.com']);
+    const out = rewriteSessionHostLocationWithUpstreamCookie(
+      'https://link.springer.com/article/10.1007/s40820-025-01804-2',
+      'rabc1234.selmiye.com',
+      'www.webofscience.com',
+      'ct.prod.getft.io',
+      hosts
+    );
+
+    expect(out.location).toBe('https://rabc1234.selmiye.com/article/10.1007/s40820-025-01804-2');
+    expect(out.upstreamCookie).toContain('__ra_upstream=link.springer.com');
+  });
+
+  it('restores ScienceDirect search API hostname query param before upstream', () => {
+    const out = rewriteQueryProxyUrls(
+      '?qs=nanotube&t=token&hostname=r5k5o3p3.selmiye.com&navigation=true',
+      'r5k5o3p3.selmiye.com',
+      'www.sciencedirect.com'
+    );
+
+    expect(out).toBe('?qs=nanotube&t=token&hostname=www.sciencedirect.com&navigation=true');
+  });
+
+  it('restores IDP redirect_uri to the publisher origin rather than the IDP host', () => {
+    const out = rewriteQueryProxyUrls(
+      '?response_type=cookie&redirect_uri=https%3A%2F%2Frabc1234.selmiye.com%2Fsearch',
+      'rabc1234.selmiye.com',
+      'idp.springer.com',
+      { sessionOriginHost: 'link.springer.com' }
+    );
+
+    expect(out).toContain('response_type=cookie');
+    expect(out).toContain('redirect_uri=https%3A%2F%2Flink.springer.com%2Fsearch');
+    expect(out).not.toContain('idp.springer.com%2Fsearch');
+  });
+
+  it('rewrites Elsevier stanza application URLs embedded in text payloads', () => {
+    const out = rewriteSessionTextProxyUrls(
+      [
+        '["APP_DOMAIN"] = "www.scopus.com";',
+        'gsUrl%22%3A%22https%3A%2F%2Fwww.scopus.com%2F',
+        'redirect_uri=https://www.scopus.com/auth',
+        'pdfurl%3D%22https%3A%2F%2Fwww.sciencedirect.com%2Fscience%2Farticle%2Fpii%2F123',
+      ].join('\n'),
+      'rabc1234.selmiye.com',
+      'www.scopus.com',
+      new Set(['www.scopus.com', 'www.sciencedirect.com'])
+    );
+
+    expect(out).toContain('["APP_DOMAIN"] = "rabc1234.selmiye.com";');
+    expect(out).toContain('gsUrl%22%3A%22https%3A%2F%2Frabc1234.selmiye.com%2F');
+    expect(out).toContain('redirect_uri=https://rabc1234.selmiye.com/auth');
+    expect(out).toContain('pdfurl%3D%22https%3A%2F%2Frabc1234.selmiye.com%2F__ra-host%2Fwww-sciencedirect-com%2Fscience%2Farticle%2Fpii%2F123');
+  });
+
+  it('keeps ProQuest intermediate redirect JS inside the proxy origin', () => {
+    const out = rewriteSessionTextProxyUrls(
+      'if(!document.location.hostname.toLowerCase().endsWith(pqDomain)){}function redirectUser(redirectURL){window.location.replace(redirectURL)}',
+      'rabc1234.selmiye.com',
+      'www.proquest.com',
+      new Set(['www.proquest.com'])
+    );
+
+    expect(out).toContain('if(false)');
+    expect(out).toContain("window.location.replace(String(redirectURL||'').replace");
+    expect(out).toContain('https://rabc1234.selmiye.com');
+  });
+
+  it('suppresses optional ProQuest deferred panel 500 popups', () => {
+    const fallback = proQuestFailureFallbackResponse(
+      {
+        host: 'www.proquest.com',
+        path: '/docview.relatedarticlepanel.longdeferreddisplay:longdeferreddisplayaction',
+      },
+      new Response('error', { status: 500 })
+    );
+
+    expect(fallback?.status).toBe(204);
+  });
+
+  it('applies publisher-specific upstream headers for Wiley and Scopus', () => {
+    const wileyHeaders = buildUpstreamHeaders(new Headers({
+      Accept: 'text/html',
+      Cookie: 'ra_proxy_session=sid',
+      'X-Application-Id': 'client',
+      'X-Forwarded-For': '203.0.113.1',
+    }), {
+      proxyHostname: 'rabc1234.selmiye.com',
+      originHost: 'onlinelibrary.wiley.com',
+      targetHost: 'onlinelibrary.wiley.com',
+    });
+
+    expect(wileyHeaders.get('X-Application-Id')).toBeNull();
+    expect(wileyHeaders.get('X-Forwarded-For')).toBe('127.0.0.1');
+
+    const scopusHeaders = buildUpstreamHeaders(new Headers({
+      Accept: 'application/json',
+      'Authentication-Source': 'browser-app',
+    }), {
+      proxyHostname: 'rabc1234.selmiye.com',
+      originHost: 'www.scopus.com',
+      targetHost: 'www.scopus.com',
+    });
+
+    expect(scopusHeaders.get('Authentication-Source')).toBeNull();
+  });
+
+  it('rewrites ScienceDirect DOI links when DOI resolver hosts are allowlisted', () => {
+    const out = rewriteSessionTextProxyUrls(
+      '<a href="https://doi.org/10.1016/j.camss.2017.11.001">doi</a>',
+      'rabc1234.selmiye.com',
+      'www.sciencedirect.com',
+      new Set(['www.sciencedirect.com', 'doi.org', 'dx.doi.org', 'linkinghub.elsevier.com'])
+    );
+
+    expect(out).toContain('href="https://rabc1234.selmiye.com/__ra-host/doi-org/10.1016/j.camss.2017.11.001"');
+    expect(out).not.toContain('href="https://doi.org/');
+  });
+
+  it('detects ScienceDirect DOI resolver redirects to Elsevier linkinghub', () => {
+    const host = scienceDirectDynamicRedirectHost(
+      'https://linkinghub.elsevier.com/retrieve/pii/S0894916617302367',
+      { host: 'doi.org', path: '/10.1016/j.camss.2017.11.001' },
+      { origin_host: 'www.sciencedirect.com', product_slug: 'sciencedirect' }
+    );
+
+    expect(host).toBe('linkinghub.elsevier.com');
+  });
+
+  it('detects ScienceDirect linkinghub redirects back to ScienceDirect', () => {
+    const host = scienceDirectDynamicRedirectHost(
+      'https://www.sciencedirect.com/science/article/pii/S0894916617302367',
+      { host: 'linkinghub.elsevier.com', path: '/retrieve/pii/S0894916617302367' },
+      { origin_host: 'www.sciencedirect.com', product_slug: 'sciencedirect' }
+    );
+
+    expect(host).toBe('www.sciencedirect.com');
+  });
+
+  it('does not trust arbitrary DOI resolver redirects for ScienceDirect sessions', () => {
+    const host = scienceDirectDynamicRedirectHost(
+      'https://example.com/article',
+      { host: 'doi.org', path: '/10.0000/example' },
+      { origin_host: 'www.sciencedirect.com', product_slug: 'sciencedirect' }
+    );
+
+    expect(host).toBe('');
   });
 
   it('rewrites absolute URLs for the current cookie-selected upstream host', () => {
@@ -879,6 +1212,8 @@ describe('session-host proxy cookie handling', () => {
     const out = rewriteSessionTextProxyUrls(
       [
         'location.href="https://www.webofscience.com/wos/?Func=Frame&path=%2Fwos%2Fwoscc%2Fsmart-search"',
+        'buttonTarget="www.webofscience.com/wos/alldb/full-record/123"',
+        "fullText='www.webofknowledge.com/fulltext'",
         'referrer=TARGET%3Dhttps%253A%252F%252Fwww.webofscience.com%252Fwos%252F%253FInit%253DYes',
         'goto=https%3A%2F%2Fwww.webofknowledge.com%2F',
       ].join(';'),
@@ -888,6 +1223,8 @@ describe('session-host proxy cookie handling', () => {
     );
 
     expect(out).toContain('location.href="https://rabc1234.selmiye.com/wos/?Func=Frame');
+    expect(out).toContain('buttonTarget="rabc1234.selmiye.com/wos/alldb/full-record/123"');
+    expect(out).toContain("fullText='rabc1234.selmiye.com/__ra-host/www-webofknowledge-com/fulltext'");
     expect(out).toContain('referrer=TARGET%3Dhttps%253A%252F%252Frabc1234.selmiye.com%252Fwos%252F%253FInit%253DYes');
     expect(out).toContain('goto=https%3A%2F%2Frabc1234.selmiye.com%2F__ra-host%2Fwww-webofknowledge-com%2F');
     expect(out).not.toContain('www.webofscience.com');

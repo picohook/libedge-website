@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020"],
+    "strict": true,
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": [
+    "backend/src/**/*",
+    "workers/proxy/src/**/*",
+    "ra-browser/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
