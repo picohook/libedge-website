@@ -931,7 +931,7 @@
                             <div class="profile-announcement-tools">
                                 <input id="profileAnnouncementSearch" type="search" placeholder="Search" autocomplete="off">
                                 <select id="profileAnnouncementFilter" title="Duyuru filtresi">
-                                    <option value="all">Filter</option>
+                                    <option value="all">Filtre</option>
                                     <option value="important">Important</option>
                                     <option value="recent">Recent</option>
                                 </select>
@@ -1337,6 +1337,7 @@ const profileTranslations = {
     'Kaynak Bulucu': 'Resource Finder',
     'DOI / Makale Ara': 'DOI / Article Search',
     'Duyurular': 'Announcements',
+    'Duyuru filtresi': 'Announcement filter',
     'Taleplerim': 'My Requests',
     'My Requests': 'My Requests',
     'Destek Taleplerim': 'My Support Requests',
@@ -1509,6 +1510,9 @@ function applyProfileLanguageFromStorage() {
 
         root.querySelectorAll('input[placeholder], textarea[placeholder]').forEach((element) => {
             element.setAttribute('placeholder', translateProfileString(element.getAttribute('placeholder'), toEnglish));
+        });
+        root.querySelectorAll('[title]').forEach((element) => {
+            element.setAttribute('title', translateProfileString(element.getAttribute('title'), toEnglish));
         });
         root.querySelectorAll('option').forEach((element) => {
             element.textContent = translateProfileString(element.textContent, toEnglish);
