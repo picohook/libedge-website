@@ -979,7 +979,7 @@ function getVersionedProfileAsset(url, updatedAt) {
 
 async function loadProfileProducts() {
     try {
-        const res = await fetch(`${API_BASE}/api/products`, { credentials: 'same-origin' });
+        const res = await fetch(`${window.API_BASE || ""}/api/products`, { credentials: 'same-origin' });
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
         profileProducts = Array.isArray(data.products) ? data.products : [];
@@ -1035,7 +1035,7 @@ async function loadNotifications() {
     }
 
     try {
-        const res = await fetch(`${API_BASE}/api/notifications?limit=5`, { credentials: 'include' });
+        const res = await fetch(`${window.API_BASE || ""}/api/notifications?limit=5`, { credentials: 'include' });
         if (!res.ok) throw new Error(`${res.status}`);
         const data = await res.json();
         const notifications = data.notifications || [];
@@ -1078,7 +1078,7 @@ async function loadNotifications() {
 }
 
 async function markNotificationRead(notificationId) {
-    await fetch(`${API_BASE}/api/notifications/${notificationId}/read`, {
+    await fetch(`${window.API_BASE || ""}/api/notifications/${notificationId}/read`, {
         method: 'PATCH',
         credentials: 'include'
     });
@@ -1086,7 +1086,7 @@ async function markNotificationRead(notificationId) {
 }
 
 async function markAllNotificationsRead() {
-    await fetch(`${API_BASE}/api/notifications/read-all`, {
+    await fetch(`${window.API_BASE || ""}/api/notifications/read-all`, {
         method: 'PATCH',
         credentials: 'include'
     });
@@ -1196,7 +1196,7 @@ async function loadProfileIndividualTools() {
     const el = document.getElementById('profileIndividualToolsList');
     if (!el) return;
     try {
-        const res = await fetch(`${API_BASE}/api/individual-tools`, { credentials: 'include' });
+        const res = await fetch(`${window.API_BASE || ""}/api/individual-tools`, { credentials: 'include' });
         if (!res.ok) throw new Error(res.status);
         const data = await res.json();
         profileIndividualTools = Array.isArray(data.tools) ? data.tools : [];
@@ -1206,7 +1206,7 @@ async function loadProfileIndividualTools() {
         applyProfileResourceFilter();
     } catch (err) {
         console.error('loadProfileIndividualTools error:', err);
-        el.innerHTML = '<p class="text-red-500 text-sm">Araçlar yüklenemedi.</p>';
+        el.innerHTML = '<p class="text-red-500 text-sm">Araçlar yüklenemedi: ' + escapeHtml(err.message || err) + '</p>';
     }
 }
 
@@ -1274,7 +1274,7 @@ async function openRemoteAccess(btn) {
     const newTab = window.open('', '_blank');
 
     try {
-        const res = await fetch(`${API_BASE}/api/ra/issue-token`, {
+        const res = await fetch(`${window.API_BASE || ""}/api/ra/issue-token`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -1358,7 +1358,8 @@ window.openSubscriptionAccess = openSubscriptionAccess;
 
 async function loadSubscriptions() {
     try {
-        const res = await fetch(`${API_BASE}/api/subscription/list`, { credentials: 'include' });
+        const res = await fetch(`${window.API_BASE || ''}/api/subscription/list`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Abonelik listesi alınamadı (HTTP ' + res.status + ')');
         const data = await res.json();
         profileSubscriptions = Array.isArray(data.subscriptions) ? data.subscriptions : [];
 
@@ -1518,7 +1519,7 @@ async function loadSubscriptions() {
     } catch (err) {
         console.error(err);
         const activeEl = document.getElementById('activeSubscriptionsList');
-        if (activeEl) activeEl.innerHTML = '<p class="text-red-500">Abonelikler yüklenemedi.</p>';
+        if (activeEl) activeEl.innerHTML = '<p class="text-red-500">Abonelikler yüklenemedi: ' + escapeHtml(err.message || err) + '</p>';
     }
 }
 
@@ -1829,7 +1830,7 @@ async function loadFolders(parentId = null) {
     }
     if (isProfileSystemMode()) {
         try {
-            const res = await fetch(`${API_BASE}/api/collections?scope_type=system&scope_id=self`, { credentials: 'include' });
+            const res = await fetch(`${window.API_BASE || ""}/api/collections?scope_type=system&scope_id=self`, { credentials: 'include' });
             if (!res.ok) throw new Error(`${res.status}`);
             const collections = await res.json();
             const root = (collections || []).find((item) => item.kind === 'root') || null;
@@ -1958,7 +1959,7 @@ async function loadFiles(folderId = null) {
     if (isProfileSystemMode()) {
         try {
             const query = folderId != null ? `?collection_id=${folderId}` : '';
-            const res = await fetch(`${API_BASE}/api/system/files${query}`, { credentials: 'include' });
+            const res = await fetch(`${window.API_BASE || ""}/api/system/files${query}`, { credentials: 'include' });
             if (!res.ok) throw new Error(`${res.status}`);
             const data = await res.json();
             if (systemRootCollectionId == null && data?.root_collection_id != null) {
@@ -2168,7 +2169,7 @@ function setProfileSort(key) {
 async function renameUserFolder(folderId, currentName) {
     const newName = prompt('Klasör adını girin:', currentName);
     if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
-    const res = await fetch(`${API_BASE}/api/user/collections/${folderId}`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/user/collections/${folderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -2185,7 +2186,7 @@ async function renameUserFolder(folderId, currentName) {
 
 async function deleteUserFolder(folderId, folderName) {
     if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\İçindeki dosyalar da silinecektir.`)) return;
-    const res = await fetch(`${API_BASE}/api/user/collections/${folderId}`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/user/collections/${folderId}`, {
         method: 'DELETE',
         credentials: 'include'
     });
@@ -2201,7 +2202,7 @@ async function deleteUserFolder(folderId, folderName) {
 async function renameSystemFolder(folderId, currentName) {
     const newName = prompt('Klasör adını girin:', currentName);
     if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
-    const res = await fetch(`${API_BASE}/api/collections/${folderId}`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/collections/${folderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -2218,7 +2219,7 @@ async function renameSystemFolder(folderId, currentName) {
 
 async function deleteSystemFolder(folderId, folderName) {
     if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\İçindeki dosyalar da silinecektir.`)) return;
-    const res = await fetch(`${API_BASE}/api/collections/${folderId}`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/collections/${folderId}`, {
         method: 'DELETE',
         credentials: 'include'
     });
@@ -2493,7 +2494,7 @@ async function createMoveModalFolder() {
 
     if (moveModalState.type === 'user') {
         const parentId = moveModalState.selectedTargetId || moveModalState.rootId || null;
-        res = await fetch(`${API_BASE}/api/user/collections`, {
+        res = await fetch(`${window.API_BASE || ""}/api/user/collections`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -2501,7 +2502,7 @@ async function createMoveModalFolder() {
         });
     } else if (moveModalState.type === 'system') {
         const parentId = moveModalState.selectedTargetId || systemRootCollectionId || null;
-        res = await fetch(`${API_BASE}/api/collections`, {
+        res = await fetch(`${window.API_BASE || ""}/api/collections`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -2517,7 +2518,7 @@ async function createMoveModalFolder() {
     } else {
         const institutionId = window.currentUser?.institution_id || window.currentUser?.institution || '';
         const parentId = moveModalState.selectedTargetId || currentFolderId || null;
-        res = await fetch(`${API_BASE}/api/collections`, {
+        res = await fetch(`${window.API_BASE || ""}/api/collections`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -2543,7 +2544,7 @@ async function createMoveModalFolder() {
     const createData = await res.json().catch(() => ({}));
 
     if (moveModalState.type === 'user') {
-        const refresh = await fetch(`${API_BASE}/api/user/files`, { credentials: 'include' });
+        const refresh = await fetch(`${window.API_BASE || ""}/api/user/files`, { credentials: 'include' });
         const data = refresh.ok ? await refresh.json() : null;
         moveModalState.folders = data?.collections || moveModalState.folders;
         if (moveModalState.rootId == null) {
@@ -2551,7 +2552,7 @@ async function createMoveModalFolder() {
             moveModalState.rootId = root ? Number(root.id) : null;
         }
     } else if (moveModalState.type === 'system') {
-        const refresh = await fetch(`${API_BASE}/api/collections?scope_type=system&scope_id=self`, {
+        const refresh = await fetch(`${window.API_BASE || ""}/api/collections?scope_type=system&scope_id=self`, {
             credentials: 'include'
         });
         const collections = refresh.ok ? await refresh.json() : [];
@@ -2562,7 +2563,7 @@ async function createMoveModalFolder() {
         }
     } else {
         const institutionId = window.currentUser?.institution_id || window.currentUser?.institution || '';
-        const refresh = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(institutionId)}`, {
+        const refresh = await fetch(`${window.API_BASE || ""}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(institutionId)}`, {
             credentials: 'include'
         });
         const collections = refresh.ok ? await refresh.json() : [];
@@ -2582,7 +2583,7 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
         const folderName = document.getElementById('folderName').value.trim();
         if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
 
-        const res = await fetch(`${API_BASE}/api/user/collections`, {
+        const res = await fetch(`${window.API_BASE || ""}/api/user/collections`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -2604,7 +2605,7 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
         if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
 
         const parentId = currentFolderId ?? systemRootCollectionId ?? null;
-        const res = await fetch(`${API_BASE}/api/collections`, {
+        const res = await fetch(`${window.API_BASE || ""}/api/collections`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -2633,7 +2634,7 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
     const isPublic = parseInt(document.getElementById('folderVisibility').value);
     if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
     const instKey = window.currentUser?.institution_id || window.currentUser?.institution;
-    const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(instKey)}/folder`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/institution/${encodeURIComponent(instKey)}/folder`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ folder_name: folderName, parent_folder_id: currentFolderId, is_public: isPublic })
     });
@@ -2668,7 +2669,7 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
         }
         if (!fileName) fileName = fileUrl.split('/').pop()?.split('?')[0] || 'Dosya';
         if (isProfileSystemMode()) {
-            const res = await fetch(`${API_BASE}/api/system/file`, {
+            const res = await fetch(`${window.API_BASE || ""}/api/system/file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -2685,7 +2686,7 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
         }
         const inst = window.currentUser?.institution_id || window.currentUser?.institution;
         if (!inst) { showToast('Kurum bilgisi bulunamadı.', 'error'); return; }
-        const res = await fetch(`${API_BASE}/api/institution/${encodeURIComponent(inst)}/file`, {
+        const res = await fetch(`${window.API_BASE || ""}/api/institution/${encodeURIComponent(inst)}/file`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
             body: JSON.stringify({
                 file_name: fileName, file_url: fileUrl, file_type: fileType,
@@ -2705,7 +2706,7 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
 });
 
 async function toggleFilePublic(fileId, currentStatus) {
-    const res = await fetch(`${API_BASE}/api/institution/file/${fileId}`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/institution/file/${fileId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ is_public: !currentStatus })
     });
@@ -2725,13 +2726,13 @@ async function deleteFile(fileId) {
 
 async function deleteFolder(folderId) {
     if (!confirm('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?')) return;
-    const res = await fetch(`${API_BASE}/api/institution/folder/${folderId}`, { method: 'DELETE', credentials: 'include' });
+    const res = await fetch(`${window.API_BASE || ""}/api/institution/folder/${folderId}`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadFolders(currentFolderId); }
     else showToast('İşlem başarısız oldu!', 'error');
 }
 
 async function markUserFileRead(fileId) {
-    const res = await fetch(`${API_BASE}/api/user/files/${fileId}/read`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/user/files/${fileId}/read`, {
         method: 'PATCH',
         credentials: 'include'
     });
@@ -2747,7 +2748,7 @@ async function renameUserFile(fileId, currentName) {
     const displayName = prompt('Yeni dosya adı:', currentName);
     if (!displayName || !displayName.trim()) return;
 
-    const res = await fetch(`${API_BASE}/api/user/files/${fileId}/rename`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/user/files/${fileId}/rename`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -2764,7 +2765,7 @@ async function renameUserFile(fileId, currentName) {
 
 async function moveUserFile(fileId, fileName) {
     const activeCollectionId = currentFolderId == null ? '' : `?collection_id=${currentFolderId}`;
-    const res = await fetch(`${API_BASE}/api/user/files${activeCollectionId}`, { credentials: 'include' });
+    const res = await fetch(`${window.API_BASE || ""}/api/user/files${activeCollectionId}`, { credentials: 'include' });
     const data = res.ok ? await res.json() : null;
     const folders = data?.collections || [];
     const root = folders.find((item) => item.parent_id == null) || null;
@@ -2794,9 +2795,9 @@ async function moveUserFile(fileId, fileName) {
 
 async function moveSystemFile(fileId, fileName) {
     const query = currentFolderId == null ? '' : `?collection_id=${currentFolderId}`;
-    const res = await fetch(`${API_BASE}/api/system/files${query}`, { credentials: 'include' });
+    const res = await fetch(`${window.API_BASE || ""}/api/system/files${query}`, { credentials: 'include' });
     const data = res.ok ? await res.json() : null;
-    const collectionsRes = await fetch(`${API_BASE}/api/collections?scope_type=system&scope_id=self`, { credentials: 'include' });
+    const collectionsRes = await fetch(`${window.API_BASE || ""}/api/collections?scope_type=system&scope_id=self`, { credentials: 'include' });
     const folders = collectionsRes.ok ? await collectionsRes.json() : [];
     const root = (folders || []).find((item) => item.kind === 'root') || null;
 
@@ -2828,7 +2829,7 @@ async function renameSystemFile(refId, currentName) {
     const displayName = prompt('Yeni dosya adı:', currentName);
     if (!displayName || !displayName.trim()) return;
 
-    const res = await fetch(`${API_BASE}/api/collection_files/${refId}/rename`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/collection_files/${refId}/rename`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -2846,7 +2847,7 @@ async function renameSystemFile(refId, currentName) {
 
 async function deleteUserFile(fileId) {
     if (!confirm('Bu dosya referansını kaldırmak istiyor musunuz?')) return;
-    const res = await fetch(`${API_BASE}/api/user/files/${fileId}`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/user/files/${fileId}`, {
         method: 'DELETE',
         credentials: 'include'
     });
@@ -2894,7 +2895,7 @@ async function renameInstitutionFileRef(refId, currentName) {
     const displayName = prompt('Yeni dosya adı:', currentName);
     if (!displayName || !displayName.trim()) return;
 
-    const res = await fetch(`${API_BASE}/api/collection_files/${refId}/rename`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/collection_files/${refId}/rename`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -2916,7 +2917,7 @@ async function moveInstitutionFileRef(refId, institutionId, fileName) {
         return;
     }
 
-    const res = await fetch(`${API_BASE}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(institutionId)}`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/collections?scope_type=institution&scope_id=${encodeURIComponent(institutionId)}`, {
         credentials: 'include'
     });
     const collections = res.ok ? await res.json() : [];
@@ -2968,7 +2969,7 @@ document.getElementById('profileUpdateForm')?.addEventListener('submit', async (
         full_name: document.getElementById('settingsFullName').value,
         new_password: document.getElementById('newPassword').value
     };
-    const res = await fetch(`${API_BASE}/api/user/update`, {
+    const res = await fetch(`${window.API_BASE || ""}/api/user/update`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include', body: JSON.stringify(data)
     });
@@ -2983,7 +2984,7 @@ document.getElementById('profileUpdateForm')?.addEventListener('submit', async (
 // Hesap silme
 document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
     if (!confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
-    const res = await fetch(`${API_BASE}/api/user/delete`, { method: 'DELETE', credentials: 'include' });
+    const res = await fetch(`${window.API_BASE || ""}/api/user/delete`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { showToast('Hesabınız silindi.', 'info'); setTimeout(() => { window.location.href = 'index.html'; }, 1200); }
     else showToast('Silme işlemi başarısız oldu!', 'error');
 });
@@ -3217,7 +3218,7 @@ async function loadSharedWithMe() {
     if (!listEl) return;
 
     try {
-        const res = await fetch(`${API_BASE}/api/user/shared-with-me`, { credentials: 'include' });
+        const res = await fetch(`${window.API_BASE || ""}/api/user/shared-with-me`, { credentials: 'include' });
         if (!res.ok) throw new Error(res.status);
         const files = await res.json();
 
