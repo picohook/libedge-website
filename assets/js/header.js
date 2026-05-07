@@ -52,6 +52,10 @@
                     </a>
                 </div>
                 <div id="authLoggedIn" class="relative hidden flex items-center gap-4">
+                    <button id="translateBtnNav" type="button" class="text-white hover:text-purple-300 flex items-center gap-1 transition-all duration-200" aria-label="Dil Değiştir">
+                        <i class="fas fa-globe text-lg"></i>
+                        <span id="translateTextNav" class="text-xs font-medium hidden sm:inline">English</span>
+                    </button>
                     <div id="notifRoot" class="relative">
                         <button id="notifBellBtn" type="button" class="notif-bell-btn text-white hover:text-purple-300 relative" aria-label="Bildirimler" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-bell text-xl"></i>
@@ -124,6 +128,10 @@
             <a href="index.html#brochures" class="hover:text-primary font-semibold">Broşürler</a>
             <a href="index.html#contact" class="hover:text-primary font-semibold">İletişim</a>
             <a href="announcements.html" class="hover:text-primary font-semibold">Duyurular</a>
+            <button id="translateBtn" class="bg-primary text-white px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center text-sm font-semibold">
+                <i class="fas fa-globe mr-1"></i>
+                <span id="translateText">English</span>
+            </button>
         </div>
     </div>
 </nav>`;
