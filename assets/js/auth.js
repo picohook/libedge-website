@@ -536,6 +536,19 @@ function closeUserDropdownMenu() {
 
 window.closeUserDropdownMenu = closeUserDropdownMenu;
 
+function closeNotificationPanel() {
+    if (window.LibEdgeNotifications?.close) {
+        window.LibEdgeNotifications.close();
+        return;
+    }
+    const notifPanel = document.getElementById('notifPanel');
+    const notifBellBtn = document.getElementById('notifBellBtn');
+    if (notifPanel) notifPanel.classList.add('hidden');
+    if (notifBellBtn) notifBellBtn.setAttribute('aria-expanded', 'false');
+}
+
+window.closeNotificationPanel = closeNotificationPanel;
+
 function updateAuthUI(isLoggedIn) {
     const authLoading = getAuthElement('authLoading');
     const authNotLoggedIn = getAuthElement('authNotLoggedIn');
@@ -663,12 +676,12 @@ function updateAuthUI(isLoggedIn) {
 userMenuBtn.addEventListener('click', function(e) {
     e.stopPropagation();
 
-    if (window.LibEdgeNotifications?.close) {
-        window.LibEdgeNotifications.close();
-    }
+    closeNotificationPanel();
 
     userDropdown.classList.toggle('hidden');
 });
+
+userMenuBtn.addEventListener('focus', closeNotificationPanel);
 
 document.addEventListener('click', function(e) {
     if (!userMenuBtn.contains(e.target) && !userDropdown.contains(e.target)) {
@@ -682,6 +695,7 @@ if (_hoverGroup) {
     let _hoverTimer;
     _hoverGroup.addEventListener('mouseenter', function() {
         clearTimeout(_hoverTimer);
+        closeNotificationPanel();
         userDropdown.classList.remove('hidden');
     });
     _hoverGroup.addEventListener('mouseleave', function() {
