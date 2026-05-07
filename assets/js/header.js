@@ -52,6 +52,10 @@
                     </a>
                 </div>
                 <div id="authLoggedIn" class="relative hidden flex items-center gap-4">
+                    <button id="translateBtnNav" type="button" class="text-white hover:text-purple-300 flex items-center gap-1 transition-all duration-200" aria-label="Dil Değiştir">
+                        <i class="fas fa-globe text-lg"></i>
+                        <span id="translateTextNav" class="text-xs font-medium hidden sm:inline">English</span>
+                    </button>
                     <div id="notifRoot" class="relative">
                         <button id="notifBellBtn" type="button" class="notif-bell-btn text-white hover:text-purple-300 relative" aria-label="Bildirimler" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-bell text-xl"></i>
