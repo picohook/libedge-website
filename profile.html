@@ -1311,16 +1311,25 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
 const profileTranslations = {
     'Akademik erişim paneli': 'Academic access panel',
     'Merhaba,': 'Hello,',
+    'Erişim': 'Access',
+    'Talep': 'Request',
+    'Kurum Kaynakları': 'Organization Resources',
+    'Destek': 'Support',
+    'Ayarlar': 'Settings',
+    'Dashboard': 'Dashboard',
     'Aktif erişim': 'Active access',
     'Yeni dosya': 'New file',
     'Yükleniyor': 'Loading',
     'Yükleniyor...': 'Loading...',
+    'Yüklenemedi': 'Could not load',
     'Kurum Kaynaklarım': 'Organization Resources',
     'Kurum Kaynaklarım & Bireysel Araçlar': 'Organization Resources & Personal Tools',
     'Bireysel Araçlar': 'Personal Tools',
+    'Bireysel Araçlarım': 'My Personal Tools',
     'Tümünü gör': 'View all',
     'Bana Yeni Gelenler': 'New for Me',
     'Bildirimler': 'Notifications',
+    'Bildirim bulunmuyor.': 'No notifications found.',
     'Tümünü okundu yap': 'Mark all as read',
     'Henüz bildiriminiz yok.': 'You do not have any notifications yet.',
     'Bildirimler yüklenemedi.': 'Notifications could not be loaded.',
@@ -1329,25 +1338,94 @@ const profileTranslations = {
     'DOI / Makale Ara': 'DOI / Article Search',
     'Duyurular': 'Announcements',
     'Taleplerim': 'My Requests',
+    'My Requests': 'My Requests',
+    'Destek Taleplerim': 'My Support Requests',
+    'Yeni Talep': 'New Request',
+    'Yeni Destek Talebi': 'New Support Request',
     'Profil Bağlantılarım': 'My Profile Links',
     'Akademik Kimlikler': 'Academic Identities',
     'E-bülten Aboneliği': 'Newsletter Subscription',
     'Kişisel Bilgiler': 'Personal Information',
     'Kurum Dosyaları': 'Organization Files',
     'Merkezi Dosyalar': 'Central Files',
+    'Abonelikler ve erişim durumları': 'Subscriptions and access statuses',
+    'Kişisel araçlar ve erişimler': 'Personal tools and access',
+    'Henüz bireysel ürün erişiminiz bulunmuyor.': 'You do not have access to any personal products yet.',
+    'Henüz paylaşılan dosya yok': 'No shared files yet',
+    'Henüz gönderilmiş talebiniz yok.': 'You have not submitted any requests yet.',
+    'Talepler yüklenemedi.': 'Requests could not be loaded.',
+    'Henüz destek talebiniz yok.': 'You do not have any support requests yet.',
+    'Kullanıcı': 'User',
+    'Üye': 'Member since',
     'Klasör veya dosya ara...': 'Search folders or files...',
+    'Kaynak, ürün, konu, DOI veya ihtiyacını yaz...': 'Search resources, products, topics, DOI, or your need...',
+    'Değiştirmek istemiyorsanız boş bırakın': 'Leave blank if you do not want to change it',
+    'Yanıt yaz...': 'Write a reply...',
+    'Klasör Adı': 'Folder name',
+    'Dosya Adı': 'File name',
+    'Klasör ara...': 'Search folders...',
+    'Yeni klasör adı': 'New folder name',
+    'Sorunuzu kısaca özetleyin': 'Briefly summarize your issue',
+    'Sorununuzu detaylıca açıklayın...': 'Describe your issue in detail...',
     'Ad': 'Name',
     'Tarih': 'Date',
     'Ara': 'Search',
     'Filtre': 'Filter',
+    'Tüm Kategoriler': 'All Categories',
     'Tümü': 'All',
     'Önemli': 'Important',
     'Son': 'Recent',
     'Yeni': 'New',
     'Duyuru': 'Announcement',
+    'Kaynak': 'Resource',
+    'Araç': 'Tool',
+    'Bireysel araç': 'Personal tool',
+    'Eşleşen akademik kaynak': 'Matching academic resource',
+    'AI arama hazırlığı: şimdilik kurumsal kaynaklar ve bireysel araçlar içinde akıllı eşleşme yapıyorum. Cloudflare AI Search bağlanınca aynı kutu doğal dil yanıtı verecek.': 'AI search preview: for now I match across organization resources and personal tools. When Cloudflare AI Search is connected, this same box will return natural-language answers.',
+    'Bu aramayla eşleşen kaynak veya araç bulunamadı.': 'No matching resource or tool was found for this search.',
+    'İletişim': 'Contact',
+    'Ürün Önerisi': 'Product Suggestion',
+    'Deneme Erişimi': 'Trial Access',
+    'Bekliyor': 'Pending',
+    'İnceleniyor': 'Reviewing',
+    'Yanıtlandı': 'Responded',
+    'Tamamlandı': 'Completed',
+    'Açık': 'Open',
+    'İşlemde': 'In progress',
+    'Çözüldü': 'Resolved',
+    'Kapatıldı': 'Closed',
+    'Aktif': 'Active',
+    'Pasif': 'Inactive',
+    'Deneme': 'Trial',
+    'Partner': 'Partner',
+    'Ücretsiz': 'Free',
+    'Ücretsiz Aç': 'Open Free',
+    'Partnerde İncele': 'View at Partner',
+    'Kurum': 'Organization',
+    'Bireysel': 'Personal',
+    'Akademik kaynak': 'Academic resource',
+    'Broşür': 'Brochure',
+    'Kayıt': 'Register',
+    'Aktif aboneliğiniz yok.': 'You do not have any active subscriptions.',
+    'Henüz aboneliğiniz bulunmuyor.': 'You do not have any subscriptions yet.',
+    'Henüz bireysel araç atanmamış.': 'No personal tools assigned yet.',
+    'Araçlar yüklenemedi': 'Tools could not be loaded',
+    'Uzaktan Erişim': 'Remote Access',
+    'Kurumsal Giriş': 'Organization Login',
+    'SSO ile Giriş': 'Sign in with SSO',
+    'Erişime Git': 'Go to Access',
+    'Doğrudan Link': 'Direct Link',
+    'IP Erişimi': 'IP Access',
+    'Kuruma Özel Link': 'Organization-specific Link',
+    'Kurum e-postası + harici şifre': 'Organization email + external password',
+    'Karma Erişim': 'Mixed Access',
+    'Kurum e-postası gerekli': 'Organization email required',
+    'VPN / kampüs ağı gerekli': 'VPN / campus network required',
+    'Süresi doldu': 'Expired',
     'Kapat': 'Close',
     'İndir': 'Download',
     'Yeni sekmede aç': 'Open in new tab',
+    '© 2026 LibEdge Eğitim ve Danışmanlık. Tüm hakları saklıdır.': '© 2026 LibEdge Education and Consulting. All rights reserved.',
     'Dosya okundu olarak işaretlenemedi.': 'The file could not be marked as read.',
     'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.': 'Your session has expired. Please sign in again.',
     'Klasörler yüklenemedi.': 'Folders could not be loaded.'
@@ -1355,45 +1433,86 @@ const profileTranslations = {
 const profileTranslationsReverse = Object.fromEntries(
     Object.entries(profileTranslations).map(([tr, en]) => [en, tr])
 );
+profileTranslationsReverse['New for me'] = 'Bana Yeni Gelenler';
+profileTranslationsReverse['No notifications found'] = 'Bildirim bulunmuyor';
+
+const profilePatternTranslations = {
+    toEnglish: [
+        { pattern: /(\d+)\s*kaynak\b/gi, replacement: '$1 resources' },
+        { pattern: /(\d+)\s*araç\b/gi, replacement: '$1 tools' },
+        { pattern: /(\d+)\s*yeni\b/gi, replacement: '$1 new' },
+        { pattern: /(\d+)\s*gün kaldı\b/gi, replacement: '$1 days left' },
+        { pattern: /Üye\s+/g, replacement: 'Member since ' },
+        { pattern: /Abonelikler yüklenemedi:/g, replacement: 'Subscriptions could not be loaded:' },
+        { pattern: /Araçlar yüklenemedi:/g, replacement: 'Tools could not be loaded:' }
+    ],
+    toTurkish: [
+        { pattern: /(\d+)\s*resources\b/gi, replacement: '$1 kaynak' },
+        { pattern: /(\d+)\s*tools\b/gi, replacement: '$1 araç' },
+        { pattern: /(\d+)\s*new\b/gi, replacement: '$1 yeni' },
+        { pattern: /(\d+)\s*days left\b/gi, replacement: '$1 gün kaldı' },
+        { pattern: /Member since\s+/g, replacement: 'Üye ' },
+        { pattern: /Subscriptions could not be loaded:/g, replacement: 'Abonelikler yüklenemedi:' },
+        { pattern: /Tools could not be loaded:/g, replacement: 'Araçlar yüklenemedi:' }
+    ]
+};
 let profileLanguageApplying = false;
 let profileLanguageObserverReady = false;
 
-function replaceProfileTextNode(node, dictionary) {
-    const value = node.nodeValue;
+function isProfileEnglish() {
+    return localStorage.getItem('language') === 'en';
+}
+
+function translateProfileString(value, toEnglish) {
+    if (!value) return value;
     const trimmed = value.trim();
-    if (!trimmed || !dictionary[trimmed]) return;
-    node.nodeValue = value.replace(trimmed, dictionary[trimmed]);
+    if (!trimmed) return value;
+
+    const dictionary = toEnglish ? profileTranslations : profileTranslationsReverse;
+    if (dictionary[trimmed]) {
+        return value.replace(trimmed, dictionary[trimmed]);
+    }
+
+    let translated = value;
+    const patterns = toEnglish ? profilePatternTranslations.toEnglish : profilePatternTranslations.toTurkish;
+    patterns.forEach(({ pattern, replacement }) => {
+        translated = translated.replace(pattern, replacement);
+    });
+    return translated;
+}
+
+function replaceProfileTextNode(node, toEnglish) {
+    node.nodeValue = translateProfileString(node.nodeValue, toEnglish);
 }
 
 function applyProfileLanguageFromStorage() {
-    const root = document.querySelector('.profile-dashboard-shell');
-    if (!root || profileLanguageApplying) return;
+    const roots = Array.from(document.querySelectorAll('.profile-dashboard-shell, footer'));
+    if (!roots.length || profileLanguageApplying) return;
 
     const toEnglish = localStorage.getItem('language') === 'en';
-    const dictionary = toEnglish ? profileTranslations : profileTranslationsReverse;
     profileLanguageApplying = true;
 
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-        acceptNode(node) {
-            const parent = node.parentElement;
-            if (!parent || ['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT'].includes(parent.tagName)) {
-                return NodeFilter.FILTER_REJECT;
+    roots.forEach((root) => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+                const parent = node.parentElement;
+                if (!parent || ['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT'].includes(parent.tagName)) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                return NodeFilter.FILTER_ACCEPT;
             }
-            return NodeFilter.FILTER_ACCEPT;
-        }
-    });
+        });
 
-    const nodes = [];
-    while (walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(node => replaceProfileTextNode(node, dictionary));
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach(node => replaceProfileTextNode(node, toEnglish));
 
-    root.querySelectorAll('input[placeholder], textarea[placeholder]').forEach((element) => {
-        const current = element.getAttribute('placeholder');
-        if (dictionary[current]) element.setAttribute('placeholder', dictionary[current]);
-    });
-    root.querySelectorAll('option').forEach((element) => {
-        const current = element.textContent.trim();
-        if (dictionary[current]) element.textContent = dictionary[current];
+        root.querySelectorAll('input[placeholder], textarea[placeholder]').forEach((element) => {
+            element.setAttribute('placeholder', translateProfileString(element.getAttribute('placeholder'), toEnglish));
+        });
+        root.querySelectorAll('option').forEach((element) => {
+            element.textContent = translateProfileString(element.textContent, toEnglish);
+        });
     });
 
     profileLanguageApplying = false;
@@ -2287,8 +2406,9 @@ async function loadSubscriptions() {
         const renderProductCard = (sub) => {
             const subId = sub.id;
             const prod = profileProductMap.get(sub.product_slug) || {};
-            const name = prod.name || sub.product_name || sub.product_slug || 'İsimsiz ürün';
-            const category = prod.category || '';
+            const useEnglish = isProfileEnglish();
+            const name = prod.name || sub.product_name || sub.product_slug || (useEnglish ? 'Unnamed product' : 'İsimsiz ürün');
+            const category = (useEnglish && prod.category_en) ? prod.category_en : (prod.category || '');
             const logoUrl = prod.logo_url || null;
             const registrationUrl = sub.registration_url || sub.default_registration_url || null;
             const normalizedUrl = normalizeExternalUrl(sub.access_url || sub.default_access_url);
@@ -2334,7 +2454,10 @@ async function loadSubscriptions() {
                 ? '<span class="profile-tag bg-violet-50 text-violet-700"><i class="fas fa-building text-[9px]"></i>Kurum</span>'
                 : '<span class="profile-tag"><i class="fas fa-user text-[9px]"></i>Bireysel</span>';
 
-            const description = prod.short_description_tr ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${escapeHtml(prod.short_description_tr)}</p>` : '';
+            const descriptionText = useEnglish
+                ? (prod.short_description_en || prod.short_description_tr || '')
+                : (prod.short_description_tr || prod.short_description_en || '');
+            const description = descriptionText ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${escapeHtml(descriptionText)}</p>` : '';
 
             return `
                 <article class="profile-product-card" data-profile-product-card
@@ -2659,18 +2782,19 @@ function syncProfileDeckStacking(primary = profileActiveResourceFilter) {
 
 function renderProfileIndividualToolCard(tool) {
     const slug = String(tool.slug || '').trim();
-    const name = tool.name || 'Araç';
-    const category = tool.category || 'Bireysel araç';
-    const summary = tool.summary_tr || '';
+    const useEnglish = isProfileEnglish();
+    const name = tool.name || (useEnglish ? 'Tool' : 'Araç');
+    const category = (useEnglish && tool.category_en) ? tool.category_en : (tool.category || (useEnglish ? 'Personal tool' : 'Bireysel araç'));
+    const summary = useEnglish ? (tool.summary_en || tool.summary_tr || '') : (tool.summary_tr || tool.summary_en || '');
     const isAffiliate = tool.access_type === 'affiliate';
     
     const clr = categoryColor(category);
     
     const badge = isAffiliate
         ? '<span class="profile-tag bg-amber-50 text-amber-700">Partner</span>'
-        : '<span class="profile-tag bg-emerald-50 text-emerald-700">Ücretsiz</span>';
+        : `<span class="profile-tag bg-emerald-50 text-emerald-700">${useEnglish ? 'Free' : 'Ücretsiz'}</span>`;
     
-    const cta = isAffiliate ? 'Partnerde İncele' : 'Ücretsiz Aç';
+    const cta = isAffiliate ? (useEnglish ? 'View at Partner' : 'Partnerde İncele') : (useEnglish ? 'Open Free' : 'Ücretsiz Aç');
     const icon = isAffiliate ? 'fa-arrow-up-right-from-square' : 'fa-play';
     
     const logoHtml = tool.logo_url
