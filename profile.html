@@ -873,6 +873,17 @@
 </div>
 
 <script>
+window.onerror = function(msg, url, lineNo, columnNo, error) {
+    console.error('GLOBAL ERROR:', msg, url, lineNo, columnNo, error);
+    const welcome = document.querySelector('.profile-welcome');
+    if (welcome) {
+        const errDiv = document.createElement('div');
+        errDiv.className = 'bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 text-sm mt-4';
+        errDiv.innerHTML = '<strong>Sistem Hatası:</strong> ' + msg + ' (Satır: ' + lineNo + ')';
+        welcome.appendChild(errDiv);
+    }
+    return false;
+};
 let currentFolderId = null;
 let currentFolderName = null;
 let folderStack = [];
@@ -979,7 +990,7 @@ function getVersionedProfileAsset(url, updatedAt) {
 
 async function loadProfileProducts() {
     try {
-        const res = await fetch(`${window.API_BASE || ""}/api/products`, { credentials: 'same-origin' });
+        const res = await fetch(`${window.API_BASE || ""}/api/products`, { credentials: 'include' });
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
         profileProducts = Array.isArray(data.products) ? data.products : [];
@@ -1228,6 +1239,17 @@ function showProfileAuthRetry(status) {
 
 document.addEventListener('DOMContentLoaded', () => {
     checkAuthAndLoad();
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.onclick = () => {
+            const target = btn.dataset.tab;
+            if (!target) return;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            btn.classList.add('active');
+            const targetEl = document.getElementById('tab-' + target);
+            if (targetEl) targetEl.classList.remove('hidden');
+        };
+    });
     const aiInput = document.getElementById('profileAiSearch');
     const aiBtn = document.getElementById('profileAiSearchBtn');
     aiInput?.addEventListener('input', () => runProfileSmartSearch(true));
@@ -1793,88 +1815,13 @@ async function loadNewsletterSubscription() {
             btn.disabled = false;
             btn.onclick = subscribeNewsletterFromProfile;
         }
-    }
-
-function updateFilterUI() {
-    document.querySelectorAll('[data-primary-filter]').forEach(btn => {
-        const active = btn.dataset.primaryFilter === profileActiveResourceFilter;
-        btn.classList.toggle('bg-indigo-600', active);
-        btn.classList.toggle('text-white', active);
-        btn.classList.toggle('border-indigo-600', active);
-        btn.classList.toggle('shadow-sm', active);
-        btn.classList.toggle('bg-white', !active);
-        btn.classList.toggle('text-gray-600', !active);
-        btn.classList.toggle('border-gray-100', !active);
-        
-        const icon = btn.querySelector('i');
-        if (icon) {
-            icon.classList.toggle('text-white', active);
-            icon.classList.toggle('text-gray-400', !active);
-        }
-    });
-    
-    document.querySelectorAll('[data-category-filter]').forEach(btn => {
-        const active = btn.dataset.categoryFilter === profileCategoryFilter;
-        btn.classList.toggle('bg-indigo-50', active);
-        btn.classList.toggle('text-indigo-700', active);
-        btn.classList.toggle('border-indigo-200', active);
-        btn.classList.toggle('bg-white', !active);
-        btn.classList.toggle('text-gray-500', !active);
-        btn.classList.toggle('border-gray-100', !active);
-    });
-}
-
-function applyProfileResourceFilter() {
-    const primary = profileActiveResourceFilter;
-    const category = profileCategoryFilter;
-
-    const containers = [
-        { id: 'activeSubscriptionsList', source: 'institution' },
-        { id: 'allSubscriptionsList', source: 'institution' },
-        { id: 'profileIndividualToolsList', source: 'individual' }
-    ];
-
-    containers.forEach(cfg => {
-        const grid = document.getElementById(cfg.id);
-        if (!grid) return;
-        
-        const module = grid.closest('.profile-module');
-        if (!module) return;
-
-        let visibleInGrid = 0;
-        const cards = grid.querySelectorAll('[data-profile-product-card]');
-        
-        cards.forEach(card => {
-            let show = true;
-            const cardSource = card.dataset.source;
-            const cardCategory = (card.dataset.category || '').toLowerCase().replace(/["']/g, '');
-
-            if (primary !== 'all' && cardSource !== primary) show = false;
-            if (show && category !== 'all' && cardCategory !== category) show = false;
-            
-            card.style.display = show ? '' : 'none';
-            if (show) visibleInGrid++;
-        });
-
-        if (primary !== 'all' && cfg.source !== primary) {
-            module.classList.add('hidden');
-        } else {
-            module.classList.remove('hidden');
-            if (primary !== 'all' && visibleInGrid === 0) {
-                module.classList.add('hidden');
-            }
-        }
-    });
-}
- catch (error) {
-        textEl.textContent = 'E-bülten durumu alınamadı.';
-        btn.textContent = 'Tekrar Dene';
-        btn.classList.remove('bg-red-600', 'hover:bg-red-700');
-        btn.classList.add('bg-primary');
-        btn.disabled = false;
-        btn.onclick = loadNewsletterSubscription;
+    } catch (err) {
+        console.error('loadNewsletterSubscription error:', err);
+        if (textEl) textEl.textContent = 'Durum öğrenilemedi.';
+        if (btn) btn.disabled = true;
     }
 }
+
 
 async function subscribeNewsletterFromProfile() {
     const btn = document.getElementById('newsletterToggleBtn');
