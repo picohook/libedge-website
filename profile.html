@@ -19,6 +19,59 @@
             font-family: 'Inter', sans-serif;
             background-color: #f9fafb;
         }
+        body.profile-compact-header #site-header header {
+            display: none;
+        }
+        body.profile-compact-header nav.nav-glass {
+            top: 0;
+        }
+        body.profile-compact-header nav.nav-glass > div {
+            min-height: 58px;
+            gap: 1rem;
+        }
+        body.profile-compact-header nav.nav-glass .nav-links,
+        body.profile-compact-header nav.nav-glass .hamburger {
+            display: none !important;
+        }
+        body.profile-compact-header nav.nav-glass .nav-logo {
+            font-size: 1.1rem;
+            line-height: 1.1;
+        }
+        #headerAuthRoot.profile-nav-auth {
+            margin-left: auto;
+            padding-left: 0;
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        #headerAuthRoot.profile-nav-auth #authLoading {
+            color: #475569;
+        }
+        #headerAuthRoot.profile-nav-auth #authNotLoggedIn a,
+        #headerAuthRoot.profile-nav-auth #notifBellBtn,
+        #headerAuthRoot.profile-nav-auth #userMenuBtn {
+            color: #220f60;
+        }
+        #headerAuthRoot.profile-nav-auth #authNotLoggedIn a:hover,
+        #headerAuthRoot.profile-nav-auth #notifBellBtn:hover {
+            color: #6d28d9;
+        }
+        #headerAuthRoot.profile-nav-auth #userDropdown {
+            top: calc(100% + 0.45rem);
+            right: 0;
+        }
+        #headerAuthRoot.profile-nav-auth #notifPanel {
+            top: calc(100% + 0.75rem);
+        }
+        #translateBtn.profile-nav-language {
+            border: 1px solid #e8e2ff;
+            background: #f6f3ff;
+            color: #220f60;
+            padding: 0.45rem 0.72rem;
+        }
+        #translateBtn.profile-nav-language:hover {
+            background: #ede7ff;
+        }
         /* legacy badge classes removed — use profile-tag instead */
         .sidebar-link {
             display: flex;
@@ -888,6 +941,36 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     }
     return false;
 };
+
+function compactProfileHeader() {
+    const nav = document.querySelector('nav.nav-glass');
+    const navInner = nav?.querySelector('.max-w-7xl');
+    const authRoot = document.getElementById('headerAuthRoot');
+    const translateBtn = document.getElementById('translateBtn');
+    if (!navInner || !authRoot) return;
+
+    if (authRoot.parentElement !== navInner) {
+        authRoot.classList.remove('ml-auto', 'pl-8');
+        authRoot.classList.add('profile-nav-auth');
+        navInner.appendChild(authRoot);
+    }
+
+    if (translateBtn && translateBtn.parentElement !== navInner) {
+        translateBtn.classList.remove('bg-primary', 'text-white', 'rounded-md');
+        translateBtn.classList.add('profile-nav-language');
+        navInner.insertBefore(translateBtn, authRoot);
+    }
+
+    document.body.classList.add('profile-compact-header');
+
+    if (window.authInitialized && typeof window.updateAuthUI === 'function') {
+        window.updateAuthUI(!!window.currentUser);
+    }
+}
+
+document.addEventListener('header:ready', compactProfileHeader);
+document.addEventListener('DOMContentLoaded', compactProfileHeader);
+
 let currentFolderId = null;
 let currentFolderName = null;
 let folderStack = [];
