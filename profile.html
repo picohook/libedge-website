@@ -1178,6 +1178,7 @@ async function checkAuthAndLoad() {
         // Bağımsız API çağrıları paralel gönderilir — birinin hata alması diğerlerini bozmaz
         const safeLoad = (fn) => fn().catch(err => console.error('Failed to load:', err));
         
+        console.log('Starting parallel loads...');
         await Promise.all([
             safeLoad(loadSubscriptions),
             safeLoad(loadProfileIndividualTools),
@@ -1571,6 +1572,7 @@ function renderSecondaryFilters(allItems) {
     const categories = Array.from(new Set(filteredItems
         .filter(Boolean)
         .map(item => {
+            if (!item) return '';
             const prod = profileProductMap.get(item.product_slug || item.slug) || item;
             return String(prod.category || '').trim();
         })
@@ -1625,7 +1627,7 @@ function renderProfileIndividualToolCard(tool) {
 
     return `
         <article class="profile-product-card" data-profile-product-card 
-            data-category="&quot;bireysel araç&quot;" 
+            data-category="bireysel araç" 
             data-source="individual"
             data-search-text="${escapeHtml(searchText)}" 
             style="border-top:3px solid ${clr.border}">
