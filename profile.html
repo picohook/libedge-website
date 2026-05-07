@@ -1373,14 +1373,16 @@ async function loadSubscriptions() {
             return null;
         };
         const productInitials = (name) => String(name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?';
-        const categoryTint = (category) => {
+        // Kategori → index.html ile uyumlu renk paleti (pastel yerine canlı)
+        const categoryColor = (category) => {
             const c = String(category || '').toLowerCase();
-            if (c.includes('sağ') || c.includes('sag')) return '#fee2e2';
-            if (c.includes('zeka')) return '#dbeafe';
-            if (c.includes('fen') || c.includes('müh') || c.includes('muh')) return '#ccfbf1';
-            if (c.includes('sanat')) return '#fce7f3';
-            if (c.includes('hukuk') || c.includes('iş')) return '#fef3c7';
-            return '#eee9ff';
+            if (c.includes('sağ') || c.includes('sag') || c.includes('tıp') || c.includes('tip')) return { border: '#f87171', bg: '#fef2f2', text: '#991b1b' };  // red
+            if (c.includes('zeka') || c.includes('yapay') || c.includes('ai')) return { border: '#60a5fa', bg: '#eff6ff', text: '#1e40af' };  // blue
+            if (c.includes('fen') || c.includes('müh') || c.includes('muh') || c.includes('doğa')) return { border: '#2dd4bf', bg: '#f0fdfa', text: '#134e4a' };  // teal
+            if (c.includes('sanat') || c.includes('müzik') || c.includes('muzik')) return { border: '#c084fc', bg: '#faf5ff', text: '#6b21a8' };  // purple
+            if (c.includes('hukuk') || c.includes('iş') || c.includes('is') || c.includes('ekonomi')) return { border: '#fb923c', bg: '#fff7ed', text: '#9a3412' };  // orange
+            if (c.includes('sosyal') || c.includes('insan')) return { border: '#34d399', bg: '#ecfdf5', text: '#065f46' };  // green
+            return { border: '#818cf8', bg: '#eef2ff', text: '#3730a3' };  // indigo (default)
         };
         const renderProductCard = (sub) => {
             const product = profileProductMap.get(sub.product_slug) || {};
@@ -1392,17 +1394,17 @@ async function loadSubscriptions() {
             const subId = Number(sub.id);
             const actionConfig = getActionConfig(sub, normalizedUrl);
             const logoUrl = getVersionedProfileAsset(product.logo_url || '', product.logo_updated_at || '');
-            const parts = buildAccessSummary(sub);
             const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
             const expiry = daysLeft !== null
-                ? (daysLeft <= 0 ? '<span class="profile-tag bg-red-50 text-red-700">Süresi doldu</span>'
-                    : daysLeft <= 7 ? `<span class="profile-tag bg-red-50 text-red-700">${daysLeft} gün kaldı</span>`
-                    : daysLeft <= 30 ? `<span class="profile-tag bg-amber-50 text-amber-700">${daysLeft} gün kaldı</span>`
+                ? (daysLeft <= 0 ? '<span class="profile-tag bg-red-50 text-red-700"><i class="fas fa-clock text-[9px]"></i>Süresi doldu</span>'
+                    : daysLeft <= 7 ? `<span class="profile-tag bg-red-50 text-red-700"><i class="fas fa-clock text-[9px]"></i>${daysLeft} gün kaldı</span>`
+                    : daysLeft <= 30 ? `<span class="profile-tag bg-amber-50 text-amber-700"><i class="fas fa-clock text-[9px]"></i>${daysLeft} gün kaldı</span>`
                     : `<span class="profile-tag">${new Date(sub.end_date).toLocaleDateString('tr-TR')}</span>`)
                 : '';
             const logoHtml = logoUrl
                 ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(name)} logo" loading="lazy">`
                 : `<span>${escapeHtml(productInitials(name))}</span>`;
+            const clr = categoryColor(category);
             const actionHtml = actionConfig
                 ? `<button type="button"
                         data-ra-sub-id="${Number.isFinite(subId) ? subId : ''}"
@@ -1419,27 +1421,31 @@ async function loadSubscriptions() {
             const registrationHtml = registrationUrl
                 ? `<button type="button" onclick="window.open('${jsStr(registrationUrl)}', '_blank', 'noopener,noreferrer')" class="profile-action secondary"><i class="fas fa-user-plus"></i><span>Kayıt</span></button>`
                 : '';
+            const sourceTag = sub.source === 'institution'
+                ? '<span class="profile-tag bg-violet-50 text-violet-700"><i class="fas fa-building text-[9px]"></i>Kurum</span>'
+                : '<span class="profile-tag"><i class="fas fa-user text-[9px]"></i>Bireysel</span>';
             return `
-                <article class="profile-product-card" data-profile-product-card data-search-text="${escapeHtml([name, category, region, sub.product_slug, parts.join(' ')].join(' ').toLowerCase())}" style="--product-tint:${categoryTint(category)}">
-                    <div class="profile-product-head">
+                <article class="profile-product-card" data-profile-product-card
+                    data-category="${escapeHtml(String(category).toLowerCase())}"
+                    data-source="${escapeHtml(sub.source || '')}"
+                    data-search-text="${escapeHtml([name, category, sub.product_slug].join(' ').toLowerCase())}"
+                    style="border-top:3px solid ${clr.border}">
+                    <div class="profile-product-head" style="background:linear-gradient(120deg,${clr.bg},#fff 70%)">
                         <div class="profile-product-brand">
-                            <div class="profile-product-logo">${logoHtml}</div>
+                            <div class="profile-product-logo" style="color:${clr.text}">${logoHtml}</div>
                             <div class="min-w-0">
                                 <h4>${escapeHtml(name)}</h4>
-                                <p>${escapeHtml(category || region || 'Akademik kaynak')}</p>
+                                <p>${escapeHtml(category || 'Akademik kaynak')}</p>
                             </div>
                         </div>
                         <span class="profile-tag ${sub.status === 'trial' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}">${sub.status === 'trial' ? 'Deneme' : sub.status === 'active' ? 'Aktif' : 'Pasif'}</span>
                     </div>
                     <div class="profile-product-body">
                         <div class="flex flex-wrap gap-1.5">
-                            ${sub.ra_enabled ? '<span class="profile-tag bg-indigo-50 text-indigo-700"><i class="fas fa-shield-halved"></i>RA</span>' : ''}
-                            ${sub.source === 'institution' ? '<span class="profile-tag bg-violet-50 text-violet-700">Kurum</span>' : '<span class="profile-tag">Bireysel</span>'}
-                            ${region ? `<span class="profile-tag">${escapeHtml(region.split(',')[0].trim())}</span>` : ''}
+                            ${sub.ra_enabled ? '<span class="profile-tag bg-indigo-50 text-indigo-700"><i class="fas fa-shield-halved text-[9px]"></i>RA</span>' : ''}
+                            ${sourceTag}
                             ${expiry}
                         </div>
-                        ${parts.length ? `<p>${escapeHtml(parts.join(' • '))}</p>` : ''}
-                        ${sub.access_notes_tr ? `<p>${escapeHtml(sub.access_notes_tr)}</p>` : ''}
                     </div>
                     <div class="profile-product-footer">
                         <span class="text-[11px] text-gray-400 font-mono truncate">${escapeHtml(sub.product_slug || '')}</span>
@@ -1485,7 +1491,13 @@ function renderProfileResourceFilters(activeSubs) {
     const categories = Array.from(new Set(activeSubs
         .map((sub) => String((profileProductMap.get(sub.product_slug) || {}).category || '').trim())
         .filter(Boolean)));
-    const buttons = [{ key: 'all', label: 'Tüm kaynaklar' }, ...categories.map((category) => ({ key: category.toLowerCase(), label: category }))];
+    // "Tüm Kaynaklar" + "Kurum" + "Bireysel" + kategoriler
+    const buttons = [
+        { key: 'all', label: 'Tümü' },
+        { key: '__institution', label: 'Kurum' },
+        { key: '__individual', label: 'Bireysel' },
+        ...categories.map((c) => ({ key: c.toLowerCase(), label: c }))
+    ];
     el.innerHTML = buttons.map((item) => `
         <button type="button" data-profile-resource-filter="${escapeHtml(item.key)}"
             class="profile-tag border ${profileActiveResourceFilter === item.key ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'border-gray-100'}">
@@ -1495,8 +1507,27 @@ function renderProfileResourceFilters(activeSubs) {
     el.querySelectorAll('[data-profile-resource-filter]').forEach((btn) => {
         btn.addEventListener('click', () => {
             profileActiveResourceFilter = btn.dataset.profileResourceFilter || 'all';
-            loadSubscriptions();
+            // API çağrısı YAPMA — sadece DOM'u filtrele (hız için)
+            applyProfileResourceFilter();
+            // Aktif filtre butonunu güncelle
+            el.querySelectorAll('[data-profile-resource-filter]').forEach((b) => {
+                const isActive = b.dataset.profileResourceFilter === profileActiveResourceFilter;
+                b.className = `profile-tag border ${isActive ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'border-gray-100'}`;
+            });
         });
+    });
+}
+
+function applyProfileResourceFilter() {
+    const grid = document.getElementById('activeSubscriptionsList');
+    if (!grid) return;
+    const filter = profileActiveResourceFilter;
+    grid.querySelectorAll('[data-profile-product-card]').forEach((card) => {
+        let show = true;
+        if (filter === '__institution') show = card.dataset.source === 'institution';
+        else if (filter === '__individual') show = card.dataset.source !== 'institution';
+        else if (filter !== 'all') show = card.dataset.category === filter;
+        card.style.display = show ? '' : 'none';
     });
 }
 
