@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+document.getElementById('productShortDescriptionEn').value = product.short_description_en || '';
+        document.getElementById('productBrochureUrl').value = product.brochure_url || '';﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
@@ -1411,6 +1412,10 @@
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Kısa Açıklama (EN)</label>
                                         <textarea id="productShortDescriptionEn" rows="2" class="w-full border p-2 rounded"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Broşür URL</label>
+                                        <input type="text" id="productBrochureUrl" class="w-full border p-2 rounded" placeholder="PDF linki...">
                                     </div>
                                 </div>
                             </section>
@@ -3688,6 +3693,7 @@ function bindRemainingAdminFormEvents() {
         'productCardBackgroundOverlay',
         'productCardVisible',
         'productIsFeatured',
+        'productBrochureUrl',
     ].forEach((id) => {
         bindAdminElementEvent(id, ['productCardVisible', 'productIsFeatured', 'productCardBackgroundOverlay'].includes(id) ? 'change' : 'input', updateProductCardPreview);
     });
@@ -4566,6 +4572,7 @@ async function startAdminProductRaTest(btn) {
         document.getElementById('productDisplayOrder').value = product.display_order == null ? '' : product.display_order;
         document.getElementById('productShortDescriptionTr').value = product.short_description_tr || '';
         document.getElementById('productShortDescriptionEn').value = product.short_description_en || '';
+        document.getElementById('productBrochureUrl').value = product.brochure_url || '';
         document.getElementById('productSubjectsJson').value = prettyJson(product.subjects_json);
         const accessTags = new Set(getProductAccessTags(product));
         document.querySelectorAll('.product-access-tag').forEach((input) => {
@@ -6066,6 +6073,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             card_back_text_color: backTextColor || null,
             short_description_tr: document.getElementById('productShortDescriptionTr').value.trim() || null,
             short_description_en: document.getElementById('productShortDescriptionEn').value.trim() || null,
+            brochure_url: document.getElementById('productBrochureUrl').value.trim() || null,
             subjects_json: subjectsJson || null,
             access_tags_json: accessTagsJson === '[]' ? null : accessTagsJson,
             card_visible: document.getElementById('productCardVisible').checked,

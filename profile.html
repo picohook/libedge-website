@@ -492,7 +492,10 @@
                             <span id="profileResourceCount" class="text-xs text-gray-400 font-semibold">Yükleniyor</span>
                         </div>
                         <div class="profile-module-body">
-                            <div id="profileResourceFilters" class="flex flex-wrap gap-2 mb-3"></div>
+                            <div class="mb-4">
+                                <div id="primaryResourceFilters" class="flex flex-wrap gap-2 mb-2"></div>
+                                <div id="secondaryResourceFilters" class="flex flex-wrap gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-100 hidden"></div>
+                            </div>
                             <div id="activeSubscriptionsList" class="profile-product-grid">
                                 <p class="text-gray-500 text-sm">Yükleniyor...</p>
                             </div>
@@ -890,6 +893,7 @@ let profileProducts = [];
 let profileProductMap = new Map();
 let profileSubscriptions = [];
 let profileActiveResourceFilter = 'all';
+    let profileCategoryFilter = 'all';
 let profileIndividualTools = [];
 
 // ====================== YARDIMCI FONKSİYONLAR ======================
@@ -1385,15 +1389,15 @@ async function loadSubscriptions() {
             return { border: '#818cf8', bg: '#eef2ff', text: '#3730a3' };  // indigo (default)
         };
         const renderProductCard = (sub) => {
-            const product = profileProductMap.get(sub.product_slug) || {};
-            const name = product.name || getProductName(sub.product_slug);
-            const category = product.category || '';
-            const region = product.region || '';
-            const normalizedUrl = normalizeExternalUrl(sub.access_url);
-            const registrationUrl = normalizeExternalUrl(sub.registration_url);
-            const subId = Number(sub.id);
-            const actionConfig = getActionConfig(sub, normalizedUrl);
-            const logoUrl = getVersionedProfileAsset(product.logo_url || '', product.logo_updated_at || '');
+            const subId = sub.id;
+            const prod = profileProductMap.get(sub.product_slug) || {};
+            const name = prod.name || sub.product_name || sub.product_slug || 'İsimsiz ürün';
+            const category = prod.category || '';
+            const logoUrl = prod.logo_url || null;
+            const registrationUrl = sub.registration_url || sub.default_registration_url || null;
+            const normalizedUrl = normalizeAccessUrl(sub.access_url || sub.default_access_url);
+            const actionConfig = getSubscriptionActionConfig(sub, normalizedUrl);
+            
             const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
             const expiry = daysLeft !== null
                 ? (daysLeft <= 0 ? '<span class="profile-tag bg-red-50 text-red-700"><i class="fas fa-clock text-[9px]"></i>Süresi doldu</span>'
@@ -1401,10 +1405,13 @@ async function loadSubscriptions() {
                     : daysLeft <= 30 ? `<span class="profile-tag bg-amber-50 text-amber-700"><i class="fas fa-clock text-[9px]"></i>${daysLeft} gün kaldı</span>`
                     : `<span class="profile-tag">${new Date(sub.end_date).toLocaleDateString('tr-TR')}</span>`)
                 : '';
+            
             const logoHtml = logoUrl
                 ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(name)} logo" loading="lazy">`
                 : `<span>${escapeHtml(productInitials(name))}</span>`;
+            
             const clr = categoryColor(category);
+            
             const actionHtml = actionConfig
                 ? `<button type="button"
                         data-ra-sub-id="${Number.isFinite(subId) ? subId : ''}"
@@ -1418,17 +1425,26 @@ async function loadSubscriptions() {
                         <i class="fas ${actionConfig.icon}"></i><span>${actionConfig.label}</span>
                     </button>`
                 : '';
+                
+            const brochureHtml = prod.brochure_url 
+                ? `<button type="button" onclick="window.open('${jsStr(prod.brochure_url)}', '_blank')" class="profile-action secondary"><i class="fas fa-file-pdf"></i><span>Broşür</span></button>`
+                : '';
+
             const registrationHtml = registrationUrl
                 ? `<button type="button" onclick="window.open('${jsStr(registrationUrl)}', '_blank', 'noopener,noreferrer')" class="profile-action secondary"><i class="fas fa-user-plus"></i><span>Kayıt</span></button>`
                 : '';
+            
             const sourceTag = sub.source === 'institution'
                 ? '<span class="profile-tag bg-violet-50 text-violet-700"><i class="fas fa-building text-[9px]"></i>Kurum</span>'
                 : '<span class="profile-tag"><i class="fas fa-user text-[9px]"></i>Bireysel</span>';
+
+            const description = prod.short_description_tr ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${escapeHtml(prod.short_description_tr)}</p>` : '';
+
             return `
                 <article class="profile-product-card" data-profile-product-card
                     data-category="${escapeHtml(String(category).toLowerCase())}"
                     data-source="${escapeHtml(sub.source || '')}"
-                    data-search-text="${escapeHtml([name, category, sub.product_slug].join(' ').toLowerCase())}"
+                    data-search-text="${escapeHtml([name, category].join(' ').toLowerCase())}"
                     style="border-top:3px solid ${clr.border}">
                     <div class="profile-product-head" style="background:linear-gradient(120deg,${clr.bg},#fff 70%)">
                         <div class="profile-product-brand">
@@ -1442,22 +1458,19 @@ async function loadSubscriptions() {
                     </div>
                     <div class="profile-product-body">
                         <div class="flex flex-wrap gap-1.5">
-                            ${sub.ra_enabled ? '<span class="profile-tag bg-indigo-50 text-indigo-700"><i class="fas fa-shield-halved text-[9px]"></i>RA</span>' : ''}
                             ${sourceTag}
                             ${expiry}
                         </div>
+                        ${description}
                     </div>
                     <div class="profile-product-footer">
-                        <span class="text-[11px] text-gray-400 font-mono truncate">${escapeHtml(sub.product_slug || '')}</span>
-                        <div class="flex gap-2 flex-wrap justify-end">${registrationHtml}${actionHtml}</div>
+                        <div class="flex gap-2 flex-wrap justify-end">${brochureHtml}${registrationHtml}${actionHtml}</div>
                     </div>
                 </article>`;
         };
 
         const activeSubs = profileSubscriptions.filter(s => s.status === 'active' || s.status === 'trial');
-        const visibleActiveSubs = profileActiveResourceFilter === 'all'
-            ? activeSubs
-            : activeSubs.filter((sub) => String((profileProductMap.get(sub.product_slug) || {}).category || '').toLowerCase() === profileActiveResourceFilter);
+        const visibleActiveSubs = activeSubs;
 
         const overviewSubCount = document.getElementById('overviewSubCount');
         const sidebarSubCount = document.getElementById('sidebarSubCount');
@@ -1466,6 +1479,7 @@ async function loadSubscriptions() {
         if (sidebarSubCount) sidebarSubCount.textContent = activeSubs.length;
         if (resourceCount) resourceCount.textContent = `${activeSubs.length} kaynak`;
         renderProfileResourceFilters(activeSubs);
+        applyProfileResourceFilter();
 
         if (activeEl) {
             activeEl.innerHTML = visibleActiveSubs.length
@@ -1486,94 +1500,164 @@ async function loadSubscriptions() {
 }
 
 function renderProfileResourceFilters(activeSubs) {
-    const el = document.getElementById('profileResourceFilters');
-    if (!el) return;
-    const categories = Array.from(new Set(activeSubs
-        .map((sub) => String((profileProductMap.get(sub.product_slug) || {}).category || '').trim())
-        .filter(Boolean)));
-    // "Tüm Kaynaklar" + "Kurum" + "Bireysel" + kategoriler
-    const buttons = [
-        { key: 'all', label: 'Tümü' },
-        { key: '__institution', label: 'Kurum' },
-        { key: '__individual', label: 'Bireysel' },
-        ...categories.map((c) => ({ key: c.toLowerCase(), label: c }))
+    const primaryEl = document.getElementById('primaryResourceFilters');
+    const secondaryEl = document.getElementById('secondaryResourceFilters');
+    if (!primaryEl || !secondaryEl) return;
+
+    // Primary Filters
+    const primaryButtons = [
+        { key: 'all', label: 'Tümü', icon: 'fa-list-ul' },
+        { key: 'institution', label: 'Kurum Kaynakları', icon: 'fa-building-columns' },
+        { key: 'individual', label: 'Bireysel Araçlar', icon: 'fa-wand-magic-sparkles' }
     ];
-    el.innerHTML = buttons.map((item) => `
-        <button type="button" data-profile-resource-filter="${escapeHtml(item.key)}"
-            class="profile-tag border ${profileActiveResourceFilter === item.key ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'border-gray-100'}">
-            ${escapeHtml(item.label)}
+
+    primaryEl.innerHTML = primaryButtons.map(item => `
+        <button type="button" data-primary-filter="${item.key}"
+            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${profileActiveResourceFilter === item.key ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-600 border-gray-100 hover:border-gray-200'}">
+            <i class="fas ${item.icon} text-xs ${profileActiveResourceFilter === item.key ? 'text-white' : 'text-gray-400'}"></i>
+            <span>${item.label}</span>
         </button>
     `).join('');
-    el.querySelectorAll('[data-profile-resource-filter]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            profileActiveResourceFilter = btn.dataset.profileResourceFilter || 'all';
-            // API çağrısı YAPMA — sadece DOM'u filtrele (hız için)
+
+    primaryEl.querySelectorAll('[data-primary-filter]').forEach(btn => {
+        btn.onclick = () => {
+            profileActiveResourceFilter = btn.dataset.primaryFilter;
+            profileCategoryFilter = 'all'; // Reset category when primary changes
+            updateFilterUI();
+            renderSecondaryFilters(activeSubs);
             applyProfileResourceFilter();
-            // Aktif filtre butonunu güncelle
-            el.querySelectorAll('[data-profile-resource-filter]').forEach((b) => {
-                const isActive = b.dataset.profileResourceFilter === profileActiveResourceFilter;
-                b.className = `profile-tag border ${isActive ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'border-gray-100'}`;
-            });
-        });
+        };
+    });
+
+    renderSecondaryFilters(activeSubs);
+}
+
+function renderSecondaryFilters(activeSubs) {
+    const el = document.getElementById('secondaryResourceFilters');
+    if (!el) return;
+
+    const filteredSubs = profileActiveResourceFilter === 'all' 
+        ? activeSubs 
+        : activeSubs.filter(s => s.source === profileActiveResourceFilter);
+
+    const categories = Array.from(new Set(filteredSubs
+        .map(sub => String((profileProductMap.get(sub.product_slug) || {}).category || '').trim())
+        .filter(Boolean))).sort();
+
+    if (categories.length === 0) {
+        el.classList.add('hidden');
+        return;
+    }
+
+    el.classList.remove('hidden');
+    const buttons = [{ key: 'all', label: 'Tüm Kategoriler' }, ...categories.map(c => ({ key: c.toLowerCase(), label: c }))];
+    
+    el.innerHTML = buttons.map(item => `
+        <button type="button" data-category-filter="${item.key}"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${profileCategoryFilter === item.key ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'}">
+            ${item.label}
+        </button>
+    `).join('');
+
+    el.querySelectorAll('[data-category-filter]').forEach(btn => {
+        btn.onclick = () => {
+            profileCategoryFilter = btn.dataset.categoryFilter;
+            updateFilterUI();
+            applyProfileResourceFilter();
+        };
+    });
+}
+
+function updateFilterUI() {
+    const primaryEl = document.getElementById('primaryResourceFilters');
+    const secondaryEl = document.getElementById('secondaryResourceFilters');
+    
+    primaryEl.querySelectorAll('[data-primary-filter]').forEach(btn => {
+        const isActive = btn.dataset.primaryFilter === profileActiveResourceFilter;
+        btn.className = `flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${isActive ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-600 border-gray-100 hover:border-gray-200'}`;
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = `fas ${btn.dataset.primaryFilter === 'all' ? 'fa-list-ul' : btn.dataset.primaryFilter === 'institution' ? 'fa-building-columns' : 'fa-wand-magic-sparkles'} text-xs ${isActive ? 'text-white' : 'text-gray-400'}`;
+    });
+
+    secondaryEl.querySelectorAll('[data-category-filter]').forEach(btn => {
+        const isActive = btn.dataset.categoryFilter === profileCategoryFilter;
+        btn.className = `px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${isActive ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'}`;
     });
 }
 
 function applyProfileResourceFilter() {
-    const grid = document.getElementById('activeSubscriptionsList');
-    if (!grid) return;
-    const filter = profileActiveResourceFilter;
-    grid.querySelectorAll('[data-profile-product-card]').forEach((card) => {
-        let show = true;
-        if (filter === '__institution') show = card.dataset.source === 'institution';
-        else if (filter === '__individual') show = card.dataset.source !== 'institution';
-        else if (filter !== 'all') show = card.dataset.category === filter;
-        card.style.display = show ? '' : 'none';
+    const primary = profileActiveResourceFilter;
+    const category = profileCategoryFilter;
+
+    const containers = [
+        { id: 'activeSubscriptionsList', source: 'institution' },
+        { id: 'allSubscriptionsList', source: 'institution' },
+        { id: 'profileIndividualToolsList', source: 'individual' }
+    ];
+
+    containers.forEach(cfg => {
+        const grid = document.getElementById(cfg.id);
+        if (!grid) return;
+        
+        const module = grid.closest('.profile-module');
+        let visibleInGrid = 0;
+
+        grid.querySelectorAll('[data-profile-product-card]').forEach(card => {
+            let show = true;
+            if (primary !== 'all' && card.dataset.source !== primary) show = false;
+            // For category filter, we only apply it if it's not 'all'
+            if (show && category !== 'all') {
+                if (card.dataset.category !== category) show = false;
+            }
+            
+            card.style.display = show ? '' : 'none';
+            if (show) visibleInGrid++;
+        });
+
+        if (module) {
+            // If primary filter is 'all', show both modules if they have content
+            // If primary filter is 'institution', hide individual module
+            // If primary filter is 'individual', hide institution module
+            if (primary !== 'all' && cfg.source !== primary) {
+                module.classList.add('hidden');
+            } else {
+                module.classList.toggle('hidden', visibleInGrid === 0);
+            }
+        }
     });
-}
-
-async function loadProfileIndividualTools() {
-    const listEl = document.getElementById('profileIndividualToolsList');
-    if (!listEl) return;
-
-    try {
-        const res = await fetch(`${API_BASE}/api/individual-tools`, { credentials: 'same-origin' });
-        if (!res.ok) throw new Error(`individual tools ${res.status}`);
-        const data = await res.json();
-        profileIndividualTools = Array.isArray(data.tools) ? data.tools : [];
-        const featured = profileIndividualTools.filter((tool) => Number(tool.featured || 0) > 0);
-        const tools = (featured.length ? featured : profileIndividualTools).slice(0, 4);
-
-        listEl.innerHTML = tools.length
-            ? tools.map(renderProfileIndividualToolCard).join('')
-            : '<p class="text-gray-500 text-sm">Bireysel araç kataloğu henüz hazır değil.</p>';
-        runProfileSmartSearch(false);
-    } catch (err) {
-        console.error('loadProfileIndividualTools error:', err);
-        listEl.innerHTML = '<p class="text-red-500 text-sm">Bireysel araçlar yüklenemedi.</p>';
-    }
 }
 
 function renderProfileIndividualToolCard(tool) {
     const slug = String(tool.slug || '').trim();
     const name = tool.name || 'Araç';
     const category = tool.category || 'Bireysel araç';
-    const summary = tool.summary_tr || 'Akademik iş akışınızı destekleyen seçilmiş araç.';
+    const summary = tool.summary_tr || '';
     const isAffiliate = tool.access_type === 'affiliate';
+    
+    const clr = categoryColor(category);
+    
     const badge = isAffiliate
         ? '<span class="profile-tag bg-amber-50 text-amber-700">Partner</span>'
         : '<span class="profile-tag bg-emerald-50 text-emerald-700">Ücretsiz</span>';
+    
     const cta = isAffiliate ? 'Partnerde İncele' : 'Ücretsiz Aç';
     const icon = isAffiliate ? 'fa-arrow-up-right-from-square' : 'fa-play';
+    
     const logoHtml = tool.logo_url
         ? `<img src="${escapeHtml(tool.logo_url)}" alt="${escapeHtml(name)} logo" loading="lazy">`
         : `<span>${escapeHtml(name.slice(0, 2).toUpperCase())}</span>`;
-    const searchText = [name, category, summary, tool.access_type, 'bireysel araç free affiliate partner'].join(' ').toLowerCase();
+    
+    const searchText = [name, category, summary, tool.access_type].join(' ').toLowerCase();
 
     return `
-        <article class="profile-product-card" data-profile-product-card data-search-text="${escapeHtml(searchText)}" style="--product-tint:#e0f2fe">
-            <div class="profile-product-head">
+        <article class="profile-product-card" data-profile-product-card 
+            data-category="&quot;bireysel araç&quot;" 
+            data-source="individual"
+            data-search-text="${escapeHtml(searchText)}" 
+            style="border-top:3px solid ${clr.border}">
+            <div class="profile-product-head" style="background:linear-gradient(120deg,${clr.bg},#fff 70%)">
                 <div class="profile-product-brand">
-                    <div class="profile-product-logo">${logoHtml}</div>
+                    <div class="profile-product-logo" style="color:${clr.text}">${logoHtml}</div>
                     <div class="min-w-0">
                         <h4>${escapeHtml(name)}</h4>
                         <p>${escapeHtml(category)}</p>
@@ -1582,16 +1666,14 @@ function renderProfileIndividualToolCard(tool) {
                 ${badge}
             </div>
             <div class="profile-product-body">
-                <p>${escapeHtml(summary)}</p>
+                ${summary ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${escapeHtml(summary)}</p>` : ''}
             </div>
             <div class="profile-product-footer">
-                <span class="text-[11px] text-gray-400 font-mono truncate">${escapeHtml(slug)}</span>
-                <a href="/api/go/${encodeURIComponent(slug)}?source=profile_dashboard"
-                   target="_blank"
-                   rel="noopener"
-                   class="profile-action">
-                    <i class="fas ${icon}"></i><span>${cta}</span>
-                </a>
+                <div class="flex gap-2 flex-wrap justify-end">
+                    <button type="button" onclick="window.open('/api/individual-tools/${slug}/click', '_blank')" class="profile-action">
+                        <i class="fas ${icon}"></i><span>${cta}</span>
+                    </button>
+                </div>
             </div>
         </article>`;
 }

@@ -959,6 +959,7 @@ async function ensureProductsTableAndSeed(db) {
       card_visible INTEGER DEFAULT 1,
       display_order INTEGER DEFAULT 999,
       is_featured INTEGER DEFAULT 0,
+      brochure_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
@@ -986,7 +987,8 @@ async function ensureProductsTableAndSeed(db) {
     'ALTER TABLE products ADD COLUMN access_tags_json TEXT',
     'ALTER TABLE products ADD COLUMN card_visible INTEGER DEFAULT 1',
     'ALTER TABLE products ADD COLUMN display_order INTEGER DEFAULT 999',
-    'ALTER TABLE products ADD COLUMN is_featured INTEGER DEFAULT 0'
+    'ALTER TABLE products ADD COLUMN is_featured INTEGER DEFAULT 0',
+    'ALTER TABLE products ADD COLUMN brochure_url TEXT'
   ]) {
     try {
       await db.prepare(sql).run();
@@ -3493,7 +3495,8 @@ app.get('/api/admin/products', async (c) => {
            access_tags_json,
            COALESCE(card_visible, 1) AS card_visible,
            COALESCE(display_order, 999) AS display_order,
-           COALESCE(is_featured, 0) AS is_featured
+           COALESCE(is_featured, 0) AS is_featured,
+           brochure_url
     FROM products
     ORDER BY COALESCE(display_order, 999) ASC, name COLLATE NOCASE ASC
   `).all();
@@ -3728,7 +3731,8 @@ app.put('/api/admin/product/:slug', async (c) => {
         subjects_json = ?, access_tags_json = ?, card_visible = ?, display_order = ?, is_featured = ?,
         ra_enabled = ?, ra_delivery_mode = ?,
         ra_origin_host = ?, ra_origin_landing_path = ?,
-        ra_requires_tunnel = ?, ra_login_recipe_json = ?, ra_host_allowlist_json = ?
+        ra_requires_tunnel = ?, ra_login_recipe_json = ?, ra_host_allowlist_json = ?,
+        brochure_url = ?
     WHERE slug = ?
   `).bind(
     String(name || '').trim() || slug,
@@ -3969,8 +3973,9 @@ app.post('/api/admin/products', async (c) => {
       short_description_tr, short_description_en, subjects_json, access_tags_json,
       card_visible, display_order, is_featured,
       ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path,
-      ra_requires_tunnel, ra_login_recipe_json, ra_host_allowlist_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ra_requires_tunnel, ra_login_recipe_json, ra_host_allowlist_json,
+      brochure_url
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     slugNorm,
     String(name).trim(),
