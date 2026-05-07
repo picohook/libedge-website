@@ -1163,20 +1163,42 @@ async function checkAuthAndLoad() {
         setProfileAvatar(user.avatar_url, user.full_name);
         updateFileTabMode();
         await loadProfileProducts();
-        // Bağımsız API çağrıları paralel gönderilir — sıralı await yerine Promise.all
+        
+        // Bağımsız API çağrıları paralel gönderilir — birinin hata alması diğerlerini bozmaz
+        const safeLoad = (fn) => fn().catch(err => console.error('Failed to load:', err));
+        
         await Promise.all([
-            loadSubscriptions(),
-            loadProfileIndividualTools(),
-            loadNewsletterSubscription(),
-            loadNotifications(),
-            loadUserSubmissions(),
-            loadSharedWithMe(),
+            safeLoad(loadSubscriptions),
+            safeLoad(loadProfileIndividualTools),
+            safeLoad(loadNewsletterSubscription),
+            safeLoad(loadNotifications),
+            safeLoad(loadUserSubmissions),
+            safeLoad(loadSharedWithMe),
         ]);
     } catch (err) {
         console.error('checkAuthAndLoad error:', err);
         showProfileAuthRetry(0);
     }
 }
+
+async function loadProfileIndividualTools() {
+    const el = document.getElementById('profileIndividualToolsList');
+    if (!el) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/individual-tools`, { credentials: 'include' });
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        profileIndividualTools = Array.isArray(data) ? data : [];
+        el.innerHTML = profileIndividualTools.length
+            ? profileIndividualTools.map(renderProfileIndividualToolCard).join('')
+            : '<p class="text-gray-500 text-sm">Henüz bireysel araç atanmamış.</p>';
+        applyProfileResourceFilter();
+    } catch (err) {
+        console.error('loadProfileIndividualTools error:', err);
+        el.innerHTML = '<p class="text-red-500 text-sm">Araçlar yüklenemedi.</p>';
+    }
+}
+
 
 function isTransientProfileAuthStatus(status) {
     return status === 0 || status === 408 || status === 425 || status === 429 || status >= 500;
