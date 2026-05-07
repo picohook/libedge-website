@@ -61,6 +61,79 @@ const DEFAULT_PRODUCT_CATALOG = [
   { slug: 'caz-koleksiyonu', name: 'Caz Koleksiyonu', category: 'Sanat', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/mcgraw-hill_logo.svg', card_background_url: 'assets/images/jazz.webp', subjects_json: '["sanat"]', display_order: 145 }
 ];
 
+const INDIVIDUAL_TOOL_CATALOG = [
+  {
+    slug: 'notebooklm',
+    name: 'NotebookLM',
+    category: 'Araştırma Asistanı',
+    access_type: 'free',
+    delivery_type: 'external_link',
+    target_url: 'https://notebooklm.google/',
+    summary_tr: 'Kaynaklarınızı yükleyip not, özet ve çalışma rehberi üretebileceğiniz ücretsiz araştırma aracı.',
+    logo_url: 'https://www.google.com/s2/favicons?domain=notebooklm.google&sz=128',
+    featured: 1,
+  },
+  {
+    slug: 'google-scholar',
+    name: 'Google Scholar',
+    category: 'Akademik Arama',
+    access_type: 'free',
+    delivery_type: 'external_link',
+    target_url: 'https://scholar.google.com/',
+    summary_tr: 'Makale, atıf ve yazar profili aramaları için temel akademik arama motoru.',
+    logo_url: 'https://www.google.com/s2/favicons?domain=scholar.google.com&sz=128',
+    featured: 1,
+  },
+  {
+    slug: 'orcid',
+    name: 'ORCID',
+    category: 'Akademik Kimlik',
+    access_type: 'free',
+    delivery_type: 'external_link',
+    target_url: 'https://orcid.org/',
+    summary_tr: 'Araştırmacı kimliğinizi ve yayın profilinizi standartlaştırmak için ücretsiz akademik kimlik.',
+    logo_url: 'https://www.google.com/s2/favicons?domain=orcid.org&sz=128',
+    featured: 1,
+  },
+  {
+    slug: 'zotero',
+    name: 'Zotero',
+    category: 'Referans Yönetimi',
+    access_type: 'free',
+    delivery_type: 'external_link',
+    target_url: 'https://www.zotero.org/',
+    summary_tr: 'Kaynak toplama, atıf verme ve bibliyografya oluşturma için ücretsiz referans yöneticisi.',
+    logo_url: 'https://www.google.com/s2/favicons?domain=zotero.org&sz=128',
+    featured: 1,
+  },
+  {
+    slug: 'researchrabbit',
+    name: 'ResearchRabbit',
+    category: 'Literatür Keşfi',
+    access_type: 'free',
+    delivery_type: 'external_link',
+    target_url: 'https://www.researchrabbit.ai/',
+    summary_tr: 'Makaleler arası ilişkileri görerek literatür keşfi yapmaya yardımcı olan ücretsiz araç.',
+    logo_url: 'https://www.google.com/s2/favicons?domain=researchrabbit.ai&sz=128',
+    featured: 0,
+  },
+  {
+    slug: 'scite',
+    name: 'Scite',
+    category: 'Atıf Analizi',
+    access_type: 'affiliate',
+    delivery_type: 'affiliate_redirect',
+    target_url: 'https://scite.ai/',
+    affiliate_url: 'https://scite.ai/',
+    summary_tr: 'Atıfların destekleyici, karşıt veya yalnızca bahsedici bağlamını analiz eden akademik araç.',
+    logo_url: 'https://www.google.com/s2/favicons?domain=scite.ai&sz=128',
+    featured: 0,
+  },
+];
+
+let individualToolsSchemaReady = false;
+let individualToolsSeedReady = false;
+
 // 1. CORS Middleware (En üstte, her şeyden önce)
 // Same-origin requests (no Origin header) are always allowed. Cross-origin
 // requests must match ALLOWED_ORIGINS exactly; anything else gets no ACAO
@@ -255,6 +328,134 @@ async function getOptionalAuth(c) {
   } catch {
     return null;
   }
+}
+
+async function ensureIndividualToolsSchema(db) {
+  if (!individualToolsSchemaReady) {
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS individual_tools (
+        slug TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        category TEXT,
+        access_type TEXT NOT NULL DEFAULT 'free',
+        delivery_type TEXT NOT NULL DEFAULT 'external_link',
+        target_url TEXT,
+        affiliate_url TEXT,
+        summary_tr TEXT,
+        summary_en TEXT,
+        logo_url TEXT,
+        featured INTEGER DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'active',
+        display_order INTEGER DEFAULT 999,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT
+      )
+    `).run();
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS affiliate_clicks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tool_slug TEXT NOT NULL,
+        user_id INTEGER,
+        source TEXT,
+        referer TEXT,
+        user_agent TEXT,
+        clicked_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+    await db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_affiliate_clicks_tool_time
+      ON affiliate_clicks(tool_slug, clicked_at DESC)
+    `).run();
+    individualToolsSchemaReady = true;
+  }
+
+  if (individualToolsSeedReady) return;
+
+  const existing = await db.prepare(`SELECT COUNT(*) AS count FROM individual_tools`).first();
+  if (Number(existing?.count || 0) > 0) {
+    individualToolsSeedReady = true;
+    return;
+  }
+
+  for (const [index, tool] of INDIVIDUAL_TOOL_CATALOG.entries()) {
+    await db.prepare(`
+      INSERT OR IGNORE INTO individual_tools (
+        slug, name, category, access_type, delivery_type, target_url, affiliate_url,
+        summary_tr, logo_url, featured, status, display_order
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+    `).bind(
+      tool.slug,
+      tool.name,
+      tool.category || null,
+      tool.access_type || 'free',
+      tool.delivery_type || 'external_link',
+      tool.target_url || null,
+      tool.affiliate_url || null,
+      tool.summary_tr || null,
+      tool.logo_url || null,
+      Number(tool.featured || 0),
+      (index + 1) * 10
+    ).run();
+  }
+  individualToolsSeedReady = true;
+}
+
+function publicIndividualTool(tool) {
+  return {
+    slug: tool.slug,
+    name: tool.name,
+    category: tool.category,
+    access_type: tool.access_type,
+    delivery_type: tool.delivery_type,
+    summary_tr: tool.summary_tr,
+    logo_url: tool.logo_url,
+    featured: Number(tool.featured || 0),
+  };
+}
+
+async function getIndividualTools(db, { includeInactive = false } = {}) {
+  await ensureIndividualToolsSchema(db);
+  const rows = await db.prepare(`
+    SELECT slug, name, category, access_type, delivery_type, target_url, affiliate_url,
+           summary_tr, summary_en, logo_url,
+           COALESCE(featured, 0) AS featured,
+           COALESCE(status, 'active') AS status,
+           COALESCE(display_order, 999) AS display_order,
+           created_at, updated_at
+    FROM individual_tools
+    ${includeInactive ? '' : "WHERE COALESCE(status, 'active') = 'active'"}
+    ORDER BY COALESCE(display_order, 999) ASC, name COLLATE NOCASE ASC
+  `).all();
+  return rows.results || [];
+}
+
+function normalizeIndividualToolPayload(body, existingSlug = '') {
+  const rawSlug = existingSlug || body.slug || '';
+  const slug = String(rawSlug).trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+  const name = String(body.name || '').trim();
+  if (!slug) return { error: 'Slug gerekli' };
+  if (!name) return { error: 'Araç adı gerekli' };
+
+  const accessType = ['free', 'affiliate'].includes(body.access_type) ? body.access_type : 'free';
+  const deliveryType = accessType === 'affiliate' ? 'affiliate_redirect' : 'external_link';
+  const status = ['active', 'draft', 'archived'].includes(body.status) ? body.status : 'active';
+
+  return {
+    slug,
+    name,
+    category: String(body.category || '').trim() || null,
+    access_type: accessType,
+    delivery_type: deliveryType,
+    target_url: String(body.target_url || '').trim() || null,
+    affiliate_url: String(body.affiliate_url || '').trim() || null,
+    summary_tr: String(body.summary_tr || '').trim() || null,
+    summary_en: String(body.summary_en || '').trim() || null,
+    logo_url: String(body.logo_url || '').trim() || null,
+    featured: body.featured ? 1 : 0,
+    status,
+    display_order: Number.isFinite(Number(body.display_order)) ? Number(body.display_order) : 999,
+  };
 }
 
 
@@ -2074,6 +2275,45 @@ app.get('/api/user/subscriptions', async (c) => {
   return c.json(Object.values(bySlug));
 });
 
+app.get('/api/individual-tools', async (c) => {
+  const tools = (await getIndividualTools(c.env.DB))
+    .filter((tool) => tool && tool.slug && tool.name)
+    .map(publicIndividualTool);
+
+  return c.json({ tools });
+});
+
+app.get('/api/go/:slug', async (c) => {
+  const slug = String(c.req.param('slug') || '').trim().toLowerCase();
+  const tool = (await getIndividualTools(c.env.DB)).find((item) => item.slug === slug);
+  if (!tool) return c.json({ error: 'Araç bulunamadı' }, 404);
+
+  const destination = tool.access_type === 'affiliate'
+    ? (tool.affiliate_url || tool.target_url)
+    : tool.target_url;
+  if (!destination) return c.json({ error: 'Yönlendirme adresi tanımlı değil' }, 404);
+
+  try {
+    await ensureIndividualToolsSchema(c.env.DB);
+    const auth = await getOptionalAuth(c);
+    await c.env.DB.prepare(`
+      INSERT INTO affiliate_clicks (tool_slug, user_id, source, referer, user_agent, clicked_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      tool.slug,
+      auth?.user?.user_id || auth?.user?.id || null,
+      String(c.req.query('source') || 'unknown').slice(0, 64),
+      String(c.req.header('Referer') || '').slice(0, 512),
+      String(c.req.header('User-Agent') || '').slice(0, 512),
+      new Date().toISOString()
+    ).run();
+  } catch (err) {
+    console.warn('individual tool click tracking failed:', err?.message || err);
+  }
+
+  return c.redirect(destination, 302);
+});
+
 // ====================== NEWSLETTER ROUTES ======================
 app.get('/api/newsletter/status', async (c) => {
   const auth = await requireAuth(c);
@@ -3258,6 +3498,128 @@ app.get('/api/admin/products', async (c) => {
     ORDER BY COALESCE(display_order, 999) ASC, name COLLATE NOCASE ASC
   `).all();
   return c.json(rows.results || []);
+});
+
+app.get('/api/admin/individual-tools', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const db = c.env.DB;
+  const tools = await getIndividualTools(db, { includeInactive: true });
+  const clicks = await db.prepare(`
+    SELECT tool_slug, COUNT(*) AS click_count, MAX(clicked_at) AS last_clicked_at
+    FROM affiliate_clicks
+    GROUP BY tool_slug
+  `).all();
+  const clickMap = new Map((clicks.results || []).map((row) => [row.tool_slug, row]));
+
+  return c.json(tools.map((tool) => {
+    const stats = clickMap.get(tool.slug) || {};
+    return {
+      ...tool,
+      click_count: Number(stats.click_count || 0),
+      last_clicked_at: stats.last_clicked_at || null,
+    };
+  }));
+});
+
+app.post('/api/admin/individual-tools', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const db = c.env.DB;
+  await ensureIndividualToolsSchema(db);
+  const payload = normalizeIndividualToolPayload(await c.req.json().catch(() => ({})));
+  if (payload.error) return c.json({ error: payload.error }, 400);
+
+  await db.prepare(`
+    INSERT INTO individual_tools (
+      slug, name, category, access_type, delivery_type, target_url, affiliate_url,
+      summary_tr, summary_en, logo_url, featured, status, display_order, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    payload.slug, payload.name, payload.category, payload.access_type, payload.delivery_type,
+    payload.target_url, payload.affiliate_url, payload.summary_tr, payload.summary_en,
+    payload.logo_url, payload.featured, payload.status, payload.display_order, new Date().toISOString()
+  ).run();
+
+  return c.json({ success: true, slug: payload.slug });
+});
+
+app.put('/api/admin/individual-tools/:slug', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const db = c.env.DB;
+  await ensureIndividualToolsSchema(db);
+  const slugParam = String(c.req.param('slug') || '').trim().toLowerCase();
+  const payload = normalizeIndividualToolPayload(await c.req.json().catch(() => ({})), slugParam);
+  if (payload.error) return c.json({ error: payload.error }, 400);
+
+  await db.prepare(`
+    UPDATE individual_tools
+    SET name = ?, category = ?, access_type = ?, delivery_type = ?, target_url = ?,
+        affiliate_url = ?, summary_tr = ?, summary_en = ?, logo_url = ?, featured = ?,
+        status = ?, display_order = ?, updated_at = ?
+    WHERE slug = ?
+  `).bind(
+    payload.name, payload.category, payload.access_type, payload.delivery_type,
+    payload.target_url, payload.affiliate_url, payload.summary_tr, payload.summary_en,
+    payload.logo_url, payload.featured, payload.status, payload.display_order,
+    new Date().toISOString(), payload.slug
+  ).run();
+
+  return c.json({ success: true, slug: payload.slug });
+});
+
+app.delete('/api/admin/individual-tools/:slug', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const db = c.env.DB;
+  await ensureIndividualToolsSchema(db);
+  const slug = String(c.req.param('slug') || '').trim().toLowerCase();
+  if (!slug) return c.json({ error: 'Geçersiz slug' }, 400);
+
+  await db.prepare(`
+    UPDATE individual_tools
+    SET status = 'archived', updated_at = ?
+    WHERE slug = ?
+  `).bind(new Date().toISOString(), slug).run();
+
+  return c.json({ success: true });
+});
+
+app.get('/api/admin/individual-tools/analytics', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const db = c.env.DB;
+  await ensureIndividualToolsSchema(db);
+
+  const totals = await db.prepare(`
+    SELECT COUNT(*) AS total_clicks,
+           COUNT(DISTINCT tool_slug) AS clicked_tools,
+           COUNT(DISTINCT user_id) AS known_users
+    FROM affiliate_clicks
+  `).first();
+  const byTool = await db.prepare(`
+    SELECT ac.tool_slug, COALESCE(it.name, ac.tool_slug) AS name,
+           COUNT(*) AS click_count, MAX(ac.clicked_at) AS last_clicked_at
+    FROM affiliate_clicks ac
+    LEFT JOIN individual_tools it ON it.slug = ac.tool_slug
+    GROUP BY ac.tool_slug
+    ORDER BY click_count DESC, last_clicked_at DESC
+    LIMIT 30
+  `).all();
+  const recent = await db.prepare(`
+    SELECT ac.tool_slug, COALESCE(it.name, ac.tool_slug) AS name,
+           ac.user_id, ac.source, ac.clicked_at
+    FROM affiliate_clicks ac
+    LEFT JOIN individual_tools it ON it.slug = ac.tool_slug
+    ORDER BY ac.clicked_at DESC
+    LIMIT 30
+  `).all();
+
+  return c.json({
+    totals: {
+      total_clicks: Number(totals?.total_clicks || 0),
+      clicked_tools: Number(totals?.clicked_tools || 0),
+      known_users: Number(totals?.known_users || 0),
+    },
+    by_tool: byTool.results || [],
+    recent: recent.results || [],
+  });
 });
 
 app.get('/api/products', async (c) => {

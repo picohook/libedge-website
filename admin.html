@@ -460,6 +460,7 @@
                 <a href="#" class="sidebar-link" data-tab="files" id="filesTab"><i class="fas fa-folder-open w-5"></i><span>Merkezi Dosyalar</span></a>
                 <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
                 <a href="#" class="sidebar-link" data-tab="products" id="productsTab"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
+                <a href="#" class="sidebar-link" data-tab="individual-tools" id="individualToolsTab"><i class="fas fa-wand-magic-sparkles w-5"></i><span>Bireysel Araçlar</span></a>
                 <a href="#" class="sidebar-link" data-tab="remote-access" id="remoteAccessTab" style="display:none"><i class="fas fa-network-wired w-5"></i><span>Uzaktan Erişim</span><span id="sidebarBadgeAlerts" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
                 <a href="#" class="sidebar-link" data-tab="settings" id="settingsTab"><i class="fas fa-cog w-5"></i><span>Ayarlar</span></a>
             </nav>
@@ -1202,6 +1203,136 @@
                     </thead>
                     <tbody id="productsList"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-individual-tools" class="tab-content hidden">
+        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold">Bireysel Araçlar <span id="individualToolsCount" class="text-sm font-normal text-gray-400"></span></h3>
+                        <p class="text-sm text-gray-500 mt-1">Ücretsiz ve affiliate araçlar kurumsal ürünlerden ayrı yönetilir.</p>
+                    </div>
+                    <button type="button" data-admin-action="open-individual-tool-modal" class="btn btn-primary text-sm inline-flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Yeni Araç
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr>
+                                <th>Araç</th>
+                                <th>Kategori</th>
+                                <th>Tip</th>
+                                <th>Durum</th>
+                                <th class="text-center">Tıklama</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="individualToolsList"></tbody>
+                    </table>
+                </div>
+            </div>
+            <aside class="bg-white rounded-xl shadow-sm p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Yönlendirme Özeti</h3>
+                    <button type="button" data-admin-action="refresh-individual-tool-analytics" class="text-gray-400 hover:text-primary" title="Yenile">
+                        <i class="fas fa-rotate"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                    <div class="rounded-lg bg-indigo-50 p-3 text-center">
+                        <p id="individualToolTotalClicks" class="text-xl font-bold text-indigo-700">0</p>
+                        <p class="text-[11px] text-indigo-700">Tıklama</p>
+                    </div>
+                    <div class="rounded-lg bg-emerald-50 p-3 text-center">
+                        <p id="individualToolClickedTools" class="text-xl font-bold text-emerald-700">0</p>
+                        <p class="text-[11px] text-emerald-700">Araç</p>
+                    </div>
+                    <div class="rounded-lg bg-amber-50 p-3 text-center">
+                        <p id="individualToolKnownUsers" class="text-xl font-bold text-amber-700">0</p>
+                        <p class="text-[11px] text-amber-700">Kullanıcı</p>
+                    </div>
+                </div>
+                <div id="individualToolTopClicks" class="space-y-2 text-sm"></div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="individualToolModal" class="modal-overlay modal-center hidden">
+        <div class="modal-panel modal-3xl">
+            <div class="modal-content">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                        <h3 id="individualToolModalTitle" class="text-xl font-bold">Bireysel Araç</h3>
+                        <p class="text-sm text-gray-500 mt-1">Free araçlar doğrudan açılır; affiliate araçlar takipli yönlendirme kullanır.</p>
+                    </div>
+                    <button type="button" data-admin-action="close-individual-tool-modal" class="text-gray-400 hover:text-gray-600 px-2 py-1 rounded">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="individualToolForm" class="space-y-4">
+                    <input type="hidden" id="individualToolEditingSlug">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Slug</label>
+                            <input type="text" id="individualToolSlug" class="w-full border p-2 rounded" placeholder="notebooklm" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Araç Adı</label>
+                            <input type="text" id="individualToolName" class="w-full border p-2 rounded" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                            <input type="text" id="individualToolCategory" class="w-full border p-2 rounded" placeholder="Araştırma Asistanı">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tip</label>
+                            <select id="individualToolAccessType" class="w-full border p-2 rounded">
+                                <option value="free">Ücretsiz</option>
+                                <option value="affiliate">Affiliate / Partner</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Durum</label>
+                            <select id="individualToolStatus" class="w-full border p-2 rounded">
+                                <option value="active">Aktif</option>
+                                <option value="draft">Taslak</option>
+                                <option value="archived">Arşiv</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sıra</label>
+                            <input type="number" id="individualToolDisplayOrder" class="w-full border p-2 rounded" value="999">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Hedef URL</label>
+                        <input type="url" id="individualToolTargetUrl" class="w-full border p-2 rounded" placeholder="https://...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Affiliate URL</label>
+                        <input type="url" id="individualToolAffiliateUrl" class="w-full border p-2 rounded" placeholder="https://partner...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+                        <input type="url" id="individualToolLogoUrl" class="w-full border p-2 rounded" placeholder="https://...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Özet</label>
+                        <textarea id="individualToolSummaryTr" rows="3" class="w-full border p-2 rounded"></textarea>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm text-gray-700">
+                        <input type="checkbox" id="individualToolFeatured" class="rounded">
+                        Profil dashboard'da öne çıkar
+                    </label>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-primary flex-1">Kaydet</button>
+                        <button type="button" data-admin-action="close-individual-tool-modal" class="btn bg-gray-300 flex-1">İptal</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -3297,6 +3428,7 @@ async function checkAdminAuth() {
             hide('institutionsTab');
             hide('announcementsTab');
             hide('filesTab');
+            hide('individualToolsTab');
             hide('settingsTab');
             hide('dashboardAddInstBtn');
             hide('dashboardAddAnnouncementBtn');
@@ -3702,6 +3834,8 @@ document.addEventListener('click', function(e) {
       ];
     let products = [...fallbackProducts];
     let editingProductSlug = null;
+    let individualTools = [];
+    let editingIndividualToolSlug = null;
 
     const accessTypeLabels = {
         direct: 'Ücretsiz / Doğrudan Link',
@@ -4142,6 +4276,172 @@ document.addEventListener('click', function(e) {
         }
         renderProductOptions();
         renderProductsList();
+    }
+
+    async function loadIndividualTools() {
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/individual-tools`, { credentials: 'include' });
+            const data = await res.json().catch(() => []);
+            if (!res.ok) throw new Error(data.error || 'Bireysel araçlar yüklenemedi');
+            individualTools = Array.isArray(data) ? data : [];
+        } catch (err) {
+            console.error('loadIndividualTools error:', err);
+            individualTools = [];
+            if (typeof showToast === 'function') showToast(err.message || 'Bireysel araçlar yüklenemedi', 'error');
+        }
+        renderIndividualTools();
+        loadIndividualToolAnalytics();
+    }
+
+    function renderIndividualTools() {
+        const tbody = document.getElementById('individualToolsList');
+        const count = document.getElementById('individualToolsCount');
+        if (!tbody) return;
+        if (count) count.textContent = `(${individualTools.length})`;
+        if (!individualTools.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">Henüz bireysel araç yok.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = individualTools.map((tool) => {
+            const isAffiliate = tool.access_type === 'affiliate';
+            const statusClass = tool.status === 'active' ? 'bg-emerald-100 text-emerald-700'
+                : tool.status === 'draft' ? 'bg-amber-100 text-amber-700'
+                : 'bg-gray-100 text-gray-500';
+            const typeClass = isAffiliate ? 'bg-orange-100 text-orange-700' : 'bg-cyan-100 text-cyan-700';
+            return `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-3 min-w-[220px]">
+                            <div class="w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
+                                ${tool.logo_url ? `<img src="${escapeHtml(tool.logo_url)}" alt="${escapeHtml(tool.name)} logo" class="w-full h-full object-contain p-1">` : `<span class="text-xs font-bold text-gray-500">${escapeHtml(String(tool.name || '?').slice(0, 2).toUpperCase())}</span>`}
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-semibold text-gray-800 truncate">${escapeHtml(tool.name || tool.slug)}</p>
+                                <p class="text-xs text-gray-400 font-mono truncate">${escapeHtml(tool.slug || '')}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${escapeHtml(tool.category || '-')}</td>
+                    <td class="px-4 py-3"><span class="text-[11px] px-2 py-1 rounded-full font-semibold ${typeClass}">${isAffiliate ? 'Partner' : 'Ücretsiz'}</span></td>
+                    <td class="px-4 py-3"><span class="text-[11px] px-2 py-1 rounded-full font-semibold ${statusClass}">${escapeHtml(tool.status || 'active')}</span></td>
+                    <td class="px-4 py-3 text-center font-semibold text-gray-700">${Number(tool.click_count || 0)}</td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                        <button type="button" data-admin-action="edit-individual-tool" data-tool-slug="${escapeHtml(tool.slug)}" class="text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" data-admin-action="archive-individual-tool" data-tool-slug="${escapeHtml(tool.slug)}" class="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition">
+                            <i class="fas fa-box-archive"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        }).join('');
+    }
+
+    async function loadIndividualToolAnalytics() {
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/individual-tools/analytics`, { credentials: 'include' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Analitik yüklenemedi');
+            const totals = data.totals || {};
+            document.getElementById('individualToolTotalClicks').textContent = Number(totals.total_clicks || 0);
+            document.getElementById('individualToolClickedTools').textContent = Number(totals.clicked_tools || 0);
+            document.getElementById('individualToolKnownUsers').textContent = Number(totals.known_users || 0);
+            const top = document.getElementById('individualToolTopClicks');
+            if (top) {
+                const rows = Array.isArray(data.by_tool) ? data.by_tool.slice(0, 8) : [];
+                top.innerHTML = rows.length ? rows.map((row) => `
+                    <div class="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2">
+                        <div class="min-w-0">
+                            <p class="font-medium text-gray-800 truncate">${escapeHtml(row.name || row.tool_slug)}</p>
+                            <p class="text-xs text-gray-400 truncate">${escapeHtml(row.tool_slug || '')}</p>
+                        </div>
+                        <span class="text-sm font-bold text-primary">${Number(row.click_count || 0)}</span>
+                    </div>
+                `).join('') : '<p class="text-sm text-gray-400">Henüz yönlendirme kaydı yok.</p>';
+            }
+        } catch (err) {
+            console.error('loadIndividualToolAnalytics error:', err);
+        }
+    }
+
+    function openIndividualToolModal(slug = '') {
+        editingIndividualToolSlug = slug || '';
+        const tool = individualTools.find((item) => item.slug === editingIndividualToolSlug) || {};
+        const isNew = !editingIndividualToolSlug;
+        document.getElementById('individualToolModalTitle').textContent = isNew ? 'Yeni Bireysel Araç' : 'Bireysel Araç Düzenle';
+        document.getElementById('individualToolEditingSlug').value = editingIndividualToolSlug;
+        document.getElementById('individualToolSlug').value = tool.slug || '';
+        document.getElementById('individualToolSlug').disabled = !isNew;
+        document.getElementById('individualToolName').value = tool.name || '';
+        document.getElementById('individualToolCategory').value = tool.category || '';
+        document.getElementById('individualToolAccessType').value = tool.access_type || 'free';
+        document.getElementById('individualToolStatus').value = tool.status || 'active';
+        document.getElementById('individualToolDisplayOrder').value = tool.display_order || 999;
+        document.getElementById('individualToolTargetUrl').value = tool.target_url || '';
+        document.getElementById('individualToolAffiliateUrl').value = tool.affiliate_url || '';
+        document.getElementById('individualToolLogoUrl').value = tool.logo_url || '';
+        document.getElementById('individualToolSummaryTr').value = tool.summary_tr || '';
+        document.getElementById('individualToolFeatured').checked = !!Number(tool.featured || 0);
+        document.getElementById('individualToolModal').classList.remove('hidden');
+    }
+
+    function closeIndividualToolModal() {
+        editingIndividualToolSlug = null;
+        document.getElementById('individualToolModal').classList.add('hidden');
+    }
+
+    async function saveIndividualTool(event) {
+        event.preventDefault();
+        const slug = String(document.getElementById('individualToolSlug').value || '').trim();
+        const editingSlug = String(document.getElementById('individualToolEditingSlug').value || '').trim();
+        const payload = {
+            slug,
+            name: document.getElementById('individualToolName').value.trim(),
+            category: document.getElementById('individualToolCategory').value.trim(),
+            access_type: document.getElementById('individualToolAccessType').value,
+            status: document.getElementById('individualToolStatus').value,
+            display_order: Number(document.getElementById('individualToolDisplayOrder').value || 999),
+            target_url: document.getElementById('individualToolTargetUrl').value.trim(),
+            affiliate_url: document.getElementById('individualToolAffiliateUrl').value.trim(),
+            logo_url: document.getElementById('individualToolLogoUrl').value.trim(),
+            summary_tr: document.getElementById('individualToolSummaryTr').value.trim(),
+            featured: document.getElementById('individualToolFeatured').checked,
+        };
+
+        try {
+            const isNew = !editingSlug;
+            const res = await fetch(isNew ? `${API_BASE}/api/admin/individual-tools` : `${API_BASE}/api/admin/individual-tools/${encodeURIComponent(editingSlug)}`, {
+                method: isNew ? 'POST' : 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Araç kaydedilemedi');
+            showToast('Bireysel araç kaydedildi.', 'success');
+            closeIndividualToolModal();
+            loadIndividualTools();
+        } catch (err) {
+            showActionError('Bireysel araç kaydetme', err.message);
+        }
+    }
+
+    async function archiveIndividualTool(slug) {
+        if (!slug) return;
+        if (!confirm(`${slug} arşivlensin mi?`)) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/individual-tools/${encodeURIComponent(slug)}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Araç arşivlenemedi');
+            showToast('Bireysel araç arşivlendi.', 'success');
+            loadIndividualTools();
+        } catch (err) {
+            showActionError('Bireysel araç arşivleme', err.message);
+        }
     }
 
     function getProductAccessTags(product) {
@@ -5689,6 +5989,8 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         loadDashboard();
     });
 
+    document.getElementById('individualToolForm')?.addEventListener('submit', saveIndividualTool);
+
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const isNew = !editingProductSlug;
@@ -5860,6 +6162,10 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 loadInstFilesTab();
             } else if (tab === 'announcements') {
                 loadAnnouncements();
+            } else if (tab === 'products') {
+                loadProducts();
+            } else if (tab === 'individual-tools') {
+                loadIndividualTools();
             } else if (tab === 'requests') {
                 loadRequests();
             } else if (tab === 'support') {
@@ -5923,6 +6229,11 @@ document.addEventListener('click', (e) => {
         case 'restore-product-action': restoreProductAction(actionEl.dataset.actionId || ''); break;
         case 'open-new-product-modal': openNewProductModal(); break;
         case 'close-product-modal': closeProductModal(); break;
+        case 'open-individual-tool-modal': openIndividualToolModal(); break;
+        case 'close-individual-tool-modal': closeIndividualToolModal(); break;
+        case 'edit-individual-tool': openIndividualToolModal(actionEl.dataset.toolSlug || ''); break;
+        case 'archive-individual-tool': archiveIndividualTool(actionEl.dataset.toolSlug || ''); break;
+        case 'refresh-individual-tool-analytics': loadIndividualToolAnalytics(); break;
         case 'trigger-product-logo-file': document.getElementById('productLogoFile')?.click(); break;
         case 'clear-product-logo': clearProductLogoFields(); break;
         case 'trigger-product-card-background-file': document.getElementById('productCardBackgroundFile')?.click(); break;

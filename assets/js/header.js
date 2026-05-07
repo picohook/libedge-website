@@ -120,6 +120,7 @@
         </a>
         <div class="nav-links flex items-center space-x-4 text-xs sm:text-sm font-medium text-gray-700">
             <a href="index.html#products" class="hover:text-primary font-semibold">Ürünler</a>
+            <a href="tools.html" class="hover:text-primary font-semibold">Bireysel Araçlar</a>
             <a href="index.html#brochures" class="hover:text-primary font-semibold">Broşürler</a>
             <a href="index.html#contact" class="hover:text-primary font-semibold">İletişim</a>
             <a href="announcements.html" class="hover:text-primary font-semibold">Duyurular</a>
@@ -129,7 +130,7 @@
 }
 
 async function fetchHeaderHtml() {
-    const headerVersion = '20260420c';
+    const headerVersion = '20260507a';
     const candidates = [`/partials/header.html?v=${headerVersion}`, `partials/header.html?v=${headerVersion}`];
 
     for (const url of candidates) {
