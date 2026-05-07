@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
@@ -6,7 +6,7 @@
     <title>Hesabım - LibEdge</title>
     <link rel="stylesheet" href="assets/css/tailwind.css">
     <script src="assets/js/auth.js?v=20260506a"></script>
-    <script src="assets/js/header.js?v=20260420c"></script>
+    <script src="assets/js/header.js?v=20260507a"></script>
     <script src="assets/js/header-controller.js?v=20260420b"></script>
     <script src="assets/js/notifications.js?v=20260420b"></script>
     <script src="assets/js/script.js?v=20260504c"></script>
@@ -19,34 +19,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #f9fafb;
         }
-        .profile-card {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
-        }
-        .profile-card:hover {
-            transform: translateY(-2px);
-        }
-        .subscription-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-        .badge-active {
-            background-color: #10b981;
-            color: white;
-        }
-        .badge-trial {
-            background-color: #f59e0b;
-            color: white;
-        }
-        .badge-expired {
-            background-color: #ef4444;
-            color: white;
-        }
+        /* legacy badge classes removed — use profile-tag instead */
         .sidebar-link {
             display: flex;
             align-items: center;
@@ -105,158 +78,514 @@
         .fv-title { font-weight:500; color:#1f2937; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.875rem; margin:0; }
         .fv-action { color:#9ca3af; padding:0.25rem; border-radius:0.375rem; text-decoration:none; }
         .fv-action:hover { color:#220f60; }
+        .profile-dashboard-shell {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 280px minmax(0, 1fr);
+            gap: 1.5rem;
+        }
+        .profile-sidebar-card,
+        .profile-module,
+        .profile-search-shell,
+        .profile-welcome {
+            background: #fff;
+            border: 1px solid #edf0f5;
+            border-radius: 18px;
+            box-shadow: 0 18px 44px rgba(15, 23, 42, 0.045);
+        }
+        .profile-sidebar-card {
+            padding: 1rem;
+            position: sticky;
+            top: 5.5rem;
+        }
+        .profile-sidebar-avatar {
+            width: 78px;
+            height: 78px;
+            border-radius: 999px;
+            margin: 0 auto 0.75rem;
+            background: #220f60;
+            box-shadow: 0 10px 24px rgba(34, 15, 96, 0.16);
+        }
+        .profile-identity-icons {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        .profile-identity-icons a {
+            width: 32px;
+            height: 32px;
+            display: inline-grid;
+            place-items: center;
+            border-radius: 10px;
+            background: #f5f7fb;
+            color: #2f3a4f;
+            border: 1px solid #edf0f5;
+            text-decoration: none;
+        }
+        .profile-identity-icons a:hover {
+            color: #220f60;
+            background: #f0ecff;
+            border-color: #ddd6fe;
+        }
+        .profile-mini-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.5rem;
+            padding: 0.85rem 0;
+            margin: 1rem 0;
+            border-top: 1px solid #f0f2f7;
+            border-bottom: 1px solid #f0f2f7;
+        }
+        .profile-mini-stat {
+            text-align: center;
+            border-radius: 12px;
+            background: #fafbfe;
+            padding: 0.65rem 0.35rem;
+            color: #667085;
+            font-size: 0.72rem;
+        }
+        .profile-mini-stat strong {
+            display: block;
+            color: #172033;
+            font-size: 1rem;
+            line-height: 1.1;
+        }
+        .profile-dashboard-main {
+            min-width: 0;
+        }
+        .profile-search-shell {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.7rem 0.8rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        .profile-ai-search {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-height: 42px;
+            border-radius: 999px;
+            background: #f8fafc;
+            border: 1px solid #e4eaf4;
+            padding: 0 1rem;
+        }
+        .profile-ai-search input {
+            width: 100%;
+            border: 0;
+            outline: none;
+            background: transparent;
+            color: #172033;
+            font-size: 0.92rem;
+        }
+        .profile-ai-result {
+            position: absolute;
+            left: 0.8rem;
+            right: 0.8rem;
+            top: calc(100% + 0.45rem);
+            z-index: 20;
+            background: #fff;
+            border: 1px solid #e6eaf2;
+            border-radius: 14px;
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.13);
+            padding: 0.75rem;
+        }
+        .profile-welcome {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 1rem;
+            align-items: center;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            background:
+                radial-gradient(circle at 18% 0%, rgba(221, 214, 254, 0.8), transparent 28%),
+                radial-gradient(circle at 90% 8%, rgba(186, 230, 253, 0.8), transparent 24%),
+                #fff;
+        }
+        .profile-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            margin-top: 0.65rem;
+        }
+        .profile-dashboard-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.8fr);
+            gap: 1rem;
+            align-items: start;
+        }
+        .profile-stack {
+            display: grid;
+            gap: 1rem;
+        }
+        .profile-module {
+            overflow: hidden;
+        }
+        .profile-module-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 1rem;
+            border-bottom: 1px solid #f0f2f7;
+            background: linear-gradient(120deg, var(--module-tint, #f5f7fb), #fff 62%);
+        }
+        .profile-module-title {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #172033;
+        }
+        .profile-module-title i {
+            width: 32px;
+            height: 32px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            background: var(--module-icon-bg, #eef4ff);
+            color: var(--module-icon, #2f6fed);
+        }
+        .profile-module-body {
+            padding: 1rem;
+        }
+        .profile-product-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.85rem;
+        }
+        .profile-product-card {
+            position: relative;
+            min-height: 178px;
+            border: 1px solid #edf0f5;
+            border-radius: 16px;
+            background: #fff;
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
+        }
+        .profile-product-card::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 58px;
+            background: linear-gradient(120deg, var(--product-tint, #eef4ff), rgba(255,255,255,0));
+            pointer-events: none;
+        }
+        .profile-product-head {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.85rem 0.85rem 0;
+        }
+        .profile-product-brand {
+            display: flex;
+            gap: 0.75rem;
+            min-width: 0;
+        }
+        .profile-product-logo {
+            width: 48px;
+            height: 48px;
+            flex: 0 0 48px;
+            display: grid;
+            place-items: center;
+            border: 1px solid #edf0f5;
+            border-radius: 14px;
+            background: #fff;
+            overflow: hidden;
+            padding: 0.4rem;
+            color: #220f60;
+            font-size: 0.72rem;
+            font-weight: 900;
+            text-align: center;
+            line-height: 1.05;
+        }
+        .profile-product-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .profile-product-card h4 {
+            margin: 0;
+            color: #172033;
+            font-size: 0.95rem;
+            font-weight: 800;
+        }
+        .profile-product-card p {
+            margin: 0.25rem 0 0;
+            color: #667085;
+            font-size: 0.75rem;
+            line-height: 1.35;
+        }
+        .profile-product-body {
+            position: relative;
+            padding: 0.65rem 0.85rem 0.35rem;
+        }
+        .profile-product-footer {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.35rem 0.85rem 0.85rem;
+        }
+        .profile-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border-radius: 999px;
+            padding: 0.28rem 0.5rem;
+            background: #f5f7fb;
+            color: #536078;
+            font-size: 0.68rem;
+            font-weight: 750;
+            white-space: nowrap;
+        }
+        .profile-action {
+            border: 0;
+            border-radius: 11px;
+            padding: 0.55rem 0.72rem;
+            background: #220f60;
+            color: #fff;
+            font-size: 0.76rem;
+            font-weight: 800;
+            display: inline-flex;
+            gap: 0.45rem;
+            align-items: center;
+            cursor: pointer;
+        }
+        .profile-action.secondary {
+            background: #eef4ff;
+            color: #2f6fed;
+        }
+        .profile-soft-list {
+            display: grid;
+            gap: 0.65rem;
+        }
+        .profile-soft-list > * {
+            border-radius: 13px;
+        }
+        @media (max-width: 1100px) {
+            .profile-dashboard-shell {
+                grid-template-columns: 1fr;
+            }
+            .profile-sidebar-card {
+                position: static;
+            }
+        }
+        @media (max-width: 860px) {
+            .profile-dashboard-shell {
+                padding: 1rem;
+            }
+            .profile-welcome,
+            .profile-dashboard-grid,
+            .profile-search-shell {
+                grid-template-columns: 1fr;
+            }
+            .profile-product-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
 
     <div id="site-header"></div>
 
-<!-- ====================== PROFİL İÇERİĞİ ====================== -->
-<div class="max-w-7xl mx-auto px-4 py-8">
-    <div class="flex flex-col lg:flex-row gap-8">
-        
-        <!-- Sidebar -->
-        <div class="lg:w-1/4">
-            <div class="bg-white rounded-xl shadow-sm p-4 sticky top-24">
-                <div class="text-center mb-6">
-                    <div class="relative w-24 h-24 mx-auto mb-3 group cursor-pointer" onclick="document.getElementById('avatarFileInput').click()">
-                        <div id="profileAvatarWrap" class="w-24 h-24 bg-primary rounded-full flex items-center justify-center overflow-hidden">
-                            <span id="profileAvatarInitials" class="text-white text-2xl font-bold"></span>
-                            <img id="profileAvatarImg" src="" alt="Avatar" class="w-full h-full object-cover hidden">
-                        </div>
-                        <div class="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i class="fas fa-camera text-white text-lg"></i>
-                        </div>
-                    </div>
-                    <input type="file" id="avatarFileInput" accept="image/*" capture="user" class="hidden" onchange="onAvatarFileSelected(this)">
-                    <h3 id="profileName" class="text-lg font-semibold text-gray-800">Yükleniyor...</h3>
-                    <p id="profileEmail" class="text-sm text-gray-500">-</p>
+<!-- ====================== PROFİL DASHBOARD ====================== -->
+<div class="profile-dashboard-shell">
+    <aside class="profile-sidebar-card">
+        <div class="text-center">
+            <div class="relative profile-sidebar-avatar group cursor-pointer" onclick="document.getElementById('avatarFileInput').click()">
+                <div id="profileAvatarWrap" class="w-full h-full rounded-full flex items-center justify-center overflow-hidden">
+                    <span id="profileAvatarInitials" class="text-white text-xl font-bold"></span>
+                    <img id="profileAvatarImg" src="" alt="Avatar" class="w-full h-full object-cover hidden">
                 </div>
-                <nav class="space-y-1">
-                    <a href="#" class="sidebar-link active" data-tab="overview">
-                        <i class="fas fa-chart-line w-5"></i>
-                        <span>Genel Bakış</span>
-                    </a>
-                    <a href="#" class="sidebar-link" data-tab="subscriptions">
-                        <i class="fas fa-ticket-alt w-5"></i>
-                        <span>Aboneliklerim</span>
-                    </a>
-                    <a href="#" class="sidebar-link" data-tab="files">
-                        <i class="fas fa-folder-open w-5"></i>
-                        <span>Kurum Dosyaları</span>
-                    </a>
-                    <a href="#" class="sidebar-link" data-tab="support">
-                        <i class="fas fa-headset w-5"></i>
-                        <span>Destek Taleplerim</span>
-                    </a>
-                    <a href="#" class="sidebar-link" data-tab="settings">
-                        <i class="fas fa-cog w-5"></i>
-                        <span>Hesap Ayarları</span>
-                    </a>
-                </nav>
+                <div class="absolute inset-0 bg-black bg-opacity-35 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i class="fas fa-camera text-white"></i>
+                </div>
+            </div>
+            <input type="file" id="avatarFileInput" accept="image/*" capture="user" class="hidden" onchange="onAvatarFileSelected(this)">
+            <h3 id="profileName" class="text-base font-extrabold text-gray-900 leading-tight">Yükleniyor...</h3>
+            <p id="profileEmail" class="text-xs text-gray-500 mt-1">-</p>
+            <div class="profile-identity-icons" aria-label="Akademik kimlikler">
+                <a href="#" title="ORCID"><i class="fa-brands fa-orcid"></i></a>
+                <a href="#" title="Google Scholar"><i class="fa-brands fa-google"></i></a>
+                <a href="#" title="Scopus ID"><i class="fas fa-database"></i></a>
+                <a href="#" title="ResearcherID"><i class="fas fa-flask"></i></a>
             </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="lg:w-3/4">
-            
-            <!-- Genel Bakış Tab -->
-            <div id="tab-overview" class="tab-content">
-                <!-- Profil Hero -->
-                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                        <!-- Sol: Kurum logosu -->
-                        <a id="overviewInstCard" href="#" target="_blank" rel="noopener"
-                           class="flex-shrink-0 w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center overflow-hidden border border-blue-100 hover:border-blue-300 transition-colors"
-                           title="Kurumun web sitesine git" onclick="return !!this.dataset.url"
-                           style="pointer-events:none">
-                            <img id="overviewInstLogo" src="" alt="" class="w-full h-full object-contain p-2 hidden">
-                            <span id="overviewInstInitials" class="text-blue-600 text-lg font-bold select-none leading-none text-center px-1"></span>
-                        </a>
-                        <!-- Orta: İsim, e-posta, rozetler -->
-                        <div class="flex-1 min-w-0">
-                            <h2 id="overviewName" class="text-xl font-bold text-gray-900">-</h2>
-                            <p id="overviewEmail" class="text-sm text-gray-500 mb-2">-</p>
-                            <div class="flex flex-wrap gap-2">
-                                <span id="overviewInstitutionBadge" class="hidden inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full"><i class="fas fa-building text-[10px]"></i><span id="overviewInstitutionText"></span></span>
-                                <span id="overviewRoleBadge" class="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full"><i class="fas fa-user-shield text-[10px]"></i><span id="overviewRoleText"></span></span>
-                                <span id="overviewSinceBadge" class="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full"><i class="fas fa-calendar-alt text-[10px]"></i><span id="overviewSinceText"></span></span>
-                            </div>
-                        </div>
-                        <div class="flex-shrink-0 w-full sm:w-auto">
-                            <div class="grid grid-cols-2 gap-3 text-center">
-                                <div class="bg-green-50 rounded-xl px-4 py-3">
-                                    <p id="overviewSubCount" class="text-2xl font-bold text-green-700">-</p>
-                                    <p class="text-xs text-green-600 mt-0.5">Aktif Abonelik</p>
-                                </div>
-                                <div class="bg-indigo-50 rounded-xl px-4 py-3">
-                                    <p id="overviewNewFiles" class="text-2xl font-bold text-indigo-700">-</p>
-                                    <p class="text-xs text-indigo-600 mt-0.5">Yeni Dosya</p>
-                                </div>
-                            </div>
+        <div class="profile-mini-stats">
+            <div class="profile-mini-stat"><strong id="sidebarSubCount">-</strong>Erişim</div>
+            <div class="profile-mini-stat"><strong id="sidebarNewFiles">-</strong>Yeni</div>
+            <div class="profile-mini-stat"><strong id="sidebarRequestCount">-</strong>Talep</div>
+        </div>
+
+        <nav class="space-y-1" aria-label="Profil menüsü">
+            <a href="#" class="sidebar-link active" data-tab="overview"><i class="fas fa-table-cells-large w-5"></i><span>Dashboard</span></a>
+            <a href="tools.html" class="sidebar-link"><i class="fas fa-wand-magic-sparkles w-5"></i><span>Bireysel Araçlar</span></a>
+            <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-building-columns w-5"></i><span>Kurum Kaynakları</span></a>
+            <a href="#" class="sidebar-link" data-tab="files"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
+            <a href="#" class="sidebar-link" data-tab="support"><i class="fas fa-headset w-5"></i><span>Destek</span></a>
+            <a href="#" class="sidebar-link" data-tab="settings"><i class="fas fa-gear w-5"></i><span>Ayarlar</span></a>
+        </nav>
+    </aside>
+
+    <main class="profile-dashboard-main">
+        <div class="profile-search-shell">
+            <div class="profile-ai-search">
+                <i class="fas fa-wand-magic-sparkles text-indigo-500"></i>
+                <input id="profileAiSearch" type="search" autocomplete="off" placeholder="Kaynak, ürün, konu, DOI veya ihtiyacını yaz...">
+                <span class="hidden sm:inline-flex text-[11px] text-gray-400 border border-gray-200 rounded-md px-2 py-1 bg-white">AI</span>
+            </div>
+            <button type="button" id="profileAiSearchBtn" class="profile-action secondary justify-center"><i class="fas fa-magnifying-glass"></i><span>Ara</span></button>
+            <div id="profileAiSearchResults" class="profile-ai-result hidden"></div>
+        </div>
+
+        <div id="tab-overview" class="tab-content">
+            <section class="profile-welcome">
+                <div class="flex items-center gap-4 min-w-0">
+                    <a id="overviewInstCard" href="#" target="_blank" rel="noopener"
+                       class="flex-shrink-0 w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center overflow-hidden border border-blue-100 hover:border-blue-300 transition-colors"
+                       title="Kurumun web sitesine git" onclick="return !!this.dataset.url" style="pointer-events:none">
+                        <img id="overviewInstLogo" src="" alt="" class="w-full h-full object-contain p-2 hidden">
+                        <span id="overviewInstInitials" class="text-blue-600 text-sm font-bold select-none leading-none text-center px-1"></span>
+                    </a>
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Akademik erişim paneli</p>
+                        <h1 class="text-2xl font-extrabold text-gray-900 leading-tight">Merhaba, <span id="overviewName">-</span></h1>
+                        <p id="overviewEmail" class="text-sm text-gray-500 mt-1">-</p>
+                        <div class="profile-chip-row">
+                            <span id="overviewInstitutionBadge" class="hidden profile-tag bg-blue-50 text-blue-700"><i class="fas fa-building text-[10px]"></i><span id="overviewInstitutionText"></span></span>
+                            <span id="overviewRoleBadge" class="profile-tag bg-purple-50 text-purple-700"><i class="fas fa-user-shield text-[10px]"></i><span id="overviewRoleText"></span></span>
+                            <span id="overviewSinceBadge" class="profile-tag"><i class="fas fa-calendar-alt text-[10px]"></i><span id="overviewSinceText"></span></span>
                         </div>
                     </div>
                 </div>
+                <div class="grid grid-cols-2 gap-3 min-w-[220px]">
+                    <div class="rounded-2xl bg-green-50 px-4 py-3 text-center border border-green-100">
+                        <p id="overviewSubCount" class="text-2xl font-extrabold text-green-700">-</p>
+                        <p class="text-xs text-green-700">Aktif erişim</p>
+                    </div>
+                    <div class="rounded-2xl bg-indigo-50 px-4 py-3 text-center border border-indigo-100">
+                        <p id="overviewNewFiles" class="text-2xl font-extrabold text-indigo-700">-</p>
+                        <p class="text-xs text-indigo-700">Yeni dosya</p>
+                    </div>
+                </div>
+            </section>
 
-                <div class="grid grid-cols-1 xl:grid-cols-5 gap-6 mb-6">
-                    <!-- Yeni Gelenler -->
-                    <div class="bg-white rounded-xl shadow-sm p-6 xl:col-span-3">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold">Bana Yeni Gelenler</h3>
+            <section class="profile-dashboard-grid">
+                <div class="profile-stack">
+                    <article class="profile-module" style="--module-tint:#eee9ff;--module-icon-bg:#e7ddff;--module-icon:#7c3aed">
+                        <div class="profile-module-header">
+                            <h2 class="profile-module-title"><i class="fas fa-building-columns"></i>Kurum Kaynaklarım</h2>
+                            <span id="profileResourceCount" class="text-xs text-gray-400 font-semibold">Yükleniyor</span>
+                        </div>
+                        <div class="profile-module-body">
+                            <div id="profileResourceFilters" class="flex flex-wrap gap-2 mb-3"></div>
+                            <div id="activeSubscriptionsList" class="profile-product-grid">
+                                <p class="text-gray-500 text-sm">Yükleniyor...</p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="profile-module" style="--module-tint:#cffafe;--module-icon-bg:#a5f3fc;--module-icon:#0891b2">
+                        <div class="profile-module-header">
+                            <h2 class="profile-module-title"><i class="fas fa-wand-magic-sparkles"></i>Bireysel Araçlar</h2>
+                            <a href="tools.html" class="text-xs text-gray-500 hover:text-primary font-semibold">Tümünü gör</a>
+                        </div>
+                        <div class="profile-module-body">
+                            <div id="profileIndividualToolsList" class="profile-product-grid">
+                                <p class="text-gray-500 text-sm">Yükleniyor...</p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="profile-module" style="--module-tint:#dcfce7;--module-icon-bg:#bbf7d0;--module-icon:#16a34a">
+                        <div class="profile-module-header">
+                            <h2 class="profile-module-title"><i class="fas fa-folder-open"></i>Bana Yeni Gelenler</h2>
                             <span id="newFilesCount" class="hidden text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold"></span>
                         </div>
-                        <div id="sharedWithMeList" class="space-y-2">
-                            <p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p>
+                        <div class="profile-module-body">
+                            <div id="sharedWithMeList" class="profile-soft-list">
+                                <p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p>
+                            </div>
                         </div>
-                    </div>
-
-                    <!-- Erişimlerim -->
-                    <div class="bg-white rounded-xl shadow-sm p-6 xl:col-span-2">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold">Erişimlerim</h3>
-                            <i class="fas fa-check-circle text-xl text-green-500"></i>
-                        </div>
-                        <div id="activeSubscriptionsList" class="space-y-2">
-                            <p class="text-gray-500 text-sm">Yükleniyor...</p>
-                        </div>
-                    </div>
+                    </article>
                 </div>
 
-                <!-- Taleplerim -->
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-gray-800">Taleplerim</h3>
-                        <i class="fas fa-envelope text-xl text-primary"></i>
-                    </div>
-                    <div id="userSubmissionsList" class="space-y-2">
-                        <p class="text-gray-400 text-sm">Yükleniyor...</p>
-                    </div>
-                </div>
-            </div>
+                <aside class="profile-stack">
+                    <article class="profile-module" style="--module-tint:#ffedd5;--module-icon-bg:#fed7aa;--module-icon:#f97316">
+                        <div class="profile-module-header">
+                            <h2 class="profile-module-title"><i class="fas fa-bell"></i>Bildirimler</h2>
+                            <button type="button" onclick="markAllNotificationsRead()" class="text-xs text-gray-500 hover:text-primary">Tümünü okundu yap</button>
+                        </div>
+                        <div class="profile-module-body">
+                            <div id="dashboardNotificationsPanel" class="profile-soft-list">
+                                <p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p>
+                            </div>
+                        </div>
+                    </article>
 
-            <!-- Aboneliklerim Tab -->
-            <div id="tab-subscriptions" class="tab-content hidden">
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Aboneliklerim</h2>
-                    <div class="border border-gray-100 rounded-xl p-4 bg-gray-50 mb-6">
+                    <article class="profile-module" style="--module-tint:#cffafe;--module-icon-bg:#a5f3fc;--module-icon:#0891b2">
+                        <div class="profile-module-header">
+                            <h2 class="profile-module-title"><i class="fas fa-wand-magic-sparkles"></i>AI Araçları</h2>
+                        </div>
+                        <div class="profile-module-body grid gap-2">
+                            <button type="button" class="profile-action secondary justify-between" onclick="focusProfileAiSearch('Literatür taraması için hangi veri tabanını kullanmalıyım?')"><span>Kaynak Bulucu</span><i class="fas fa-arrow-right"></i></button>
+                            <button type="button" class="profile-action secondary justify-between" onclick="focusProfileAiSearch('DOI veya makale başlığı ile erişim ara')"><span>DOI / Makale Ara</span><i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </article>
+
+                    <article class="profile-module" style="--module-tint:#fce7f3;--module-icon-bg:#fbcfe8;--module-icon:#db2777">
+                        <div class="profile-module-header">
+                            <h2 class="profile-module-title"><i class="fas fa-envelope"></i>Taleplerim</h2>
+                        </div>
+                        <div class="profile-module-body">
+                            <div id="userSubmissionsList" class="profile-soft-list">
+                                <p class="text-gray-400 text-sm">Yükleniyor...</p>
+                            </div>
+                        </div>
+                    </article>
+                </aside>
+            </section>
+        </div>
+
+        <div id="tab-subscriptions" class="tab-content hidden">
+            <article class="profile-module" style="--module-tint:#eee9ff;--module-icon-bg:#e7ddff;--module-icon:#7c3aed">
+                <div class="profile-module-header">
+                    <h2 class="profile-module-title"><i class="fas fa-building-columns"></i>Kurum Kaynakları</h2>
+                    <span class="text-xs text-gray-400">Abonelikler ve erişim durumları</span>
+                </div>
+                <div class="profile-module-body">
+                    <div class="border border-gray-100 rounded-2xl p-4 bg-gray-50 mb-5">
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
                                 <h3 class="font-semibold text-gray-800">E-bülten Aboneliği</h3>
                                 <p id="newsletterSubscriptionText" class="text-sm text-gray-500 mt-1">Durum yükleniyor...</p>
                             </div>
-                            <button id="newsletterToggleBtn" type="button" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition text-sm">
-                                Yükleniyor...
-                            </button>
+                            <button id="newsletterToggleBtn" type="button" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition text-sm">Yükleniyor...</button>
                         </div>
                     </div>
-                    <div id="allSubscriptionsList" class="space-y-4"><p class="text-gray-500 text-center py-8">Yükleniyor...</p></div>
+                    <div id="allSubscriptionsList" class="profile-product-grid"><p class="text-gray-500 text-center py-8">Yükleniyor...</p></div>
                 </div>
-            </div>
+            </article>
+        </div>
 
-            <!-- Hesap Ayarları Tab -->
-            <div id="tab-settings" class="tab-content hidden">
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Hesap Ayarları</h2>
+        <div id="tab-settings" class="tab-content hidden">
+            <article class="profile-module" style="--module-tint:#f1f5f9;--module-icon-bg:#e2e8f0;--module-icon:#475569">
+                <div class="profile-module-header"><h2 class="profile-module-title"><i class="fas fa-gear"></i>Hesap Ayarları</h2></div>
+                <div class="profile-module-body">
                     <form id="profileUpdateForm" class="space-y-4">
                         <div><label class="block text-sm font-medium text-gray-700 mb-1">Ad Soyad</label><input type="text" id="settingsFullName" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"></div>
                         <div><label class="block text-sm font-medium text-gray-700 mb-1">Kurum <span class="text-xs text-gray-400 font-normal">(yönetici tarafından atanır)</span></label><p id="settingsInstitution" class="w-full border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 text-gray-500 text-sm min-h-[42px]">-</p></div>
@@ -271,96 +600,54 @@
                         <button id="deleteAccountBtn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm">Hesabımı Sil</button>
                     </div>
                 </div>
-            </div>
-            <!-- Destek Taleplerim Tab -->
-            <div id="tab-support" class="tab-content hidden">
-                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-gray-800">Destek Taleplerim</h2>
-                        <button onclick="openNewTicketModal()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-opacity-90 transition">
-                            <i class="fas fa-plus mr-1"></i> Yeni Talep
-                        </button>
-                    </div>
-                    <div id="ticketList" class="space-y-3">
-                        <p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p>
-                    </div>
-                </div>
+            </article>
+        </div>
 
-                <!-- Ticket detail panel -->
-                <div id="ticketDetail" class="hidden bg-white rounded-xl shadow-sm p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 id="ticketDetailTitle" class="font-semibold text-gray-900"></h3>
-                        <div class="flex items-center gap-3">
-                            <span id="ticketDetailStatus" class="text-xs px-2 py-0.5 rounded-full"></span>
-                            <button type="button" onclick="closeTicketDetail()" title="Kapat" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-                        </div>
-                    </div>
-                    <div id="ticketDetailReplies" class="space-y-3 max-h-72 overflow-y-auto border rounded-xl p-3 bg-gray-50 mb-4"></div>
-                    <div>
-                        <textarea id="ticketReplyText" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="Yan&#305;t yaz..."></textarea>
-                        <div class="mt-2 flex items-center gap-3 flex-wrap">
-                            <label class="text-xs text-gray-500" for="ticketReplyFile">Dosya ekle</label>
-                            <input type="file" id="ticketReplyFile" class="text-xs text-gray-500" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.txt,.zip">
-                        </div>
-                        <button onclick="sendTicketReply()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm mt-2 hover:bg-opacity-90 transition">
-                            <i class="fas fa-paper-plane mr-1"></i> G&#246;nder
-                        </button>
-                    </div>
+        <div id="tab-support" class="tab-content hidden">
+            <article class="profile-module mb-6" style="--module-tint:#fce7f3;--module-icon-bg:#fbcfe8;--module-icon:#db2777">
+                <div class="profile-module-header">
+                    <h2 class="profile-module-title"><i class="fas fa-headset"></i>Destek Taleplerim</h2>
+                    <button onclick="openNewTicketModal()" class="profile-action"><i class="fas fa-plus"></i><span>Yeni Talep</span></button>
                 </div>
-            </div>
-
-            <!-- Kurum Dosyaları Tab -->
-            <div id="tab-files" class="tab-content hidden">
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-                        <div>
-                            <h2 id="filesTabTitle" class="text-xl font-bold text-gray-800">Kurum Dosyaları</h2>
-                            <div id="breadcrumb" class="text-sm text-gray-500 mt-1"></div>
-                        </div>
-                        <div class="flex gap-2">
-                            <button type="button" id="backBtn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hidden" onclick="goBack()">
-                                <i class="fas fa-arrow-left mr-1"></i> Geri
-                            </button>
-                            <button type="button" id="addFolderBtn" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hidden" onclick="openFolderModal()">
-                                <i class="fas fa-folder-plus mr-1"></i> Klasör Ekle
-                            </button>
-                            <button type="button" id="addFileBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hidden" onclick="openFileModal()">
-                                <i class="fas fa-upload mr-1"></i> Dosya Yükle
-                            </button>
-                        </div>
-                    </div>
-                    <div id="notificationsPanel" class="hidden mb-4 border border-blue-100 bg-blue-50 rounded-xl p-4"></div>
-                    <!-- Arama ve sıralama -->
-                    <div class="flex items-center gap-2 mb-3 flex-wrap">
-                        <div class="relative flex-1 min-w-[160px] max-w-xs">
-                            <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                            <input id="profileContentSearch" type="text" placeholder="Klasör veya dosya ara..."
-                                   class="w-full border rounded pl-7 pr-2 py-1.5 text-sm bg-white"
-                                   oninput="filterProfileContent(this.value)">
-                        </div>
-                        <div class="flex gap-1 text-xs">
-                            <button type="button" onclick="setProfileSort('name')"
-                                class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
-                                <i class="fas fa-font"></i> Ad
-                                <i id="profileSortNameIcon" class="fas fa-sort text-gray-400"></i>
-                            </button>
-                            <button type="button" onclick="setProfileSort('date')"
-                                class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1">
-                                <i class="fas fa-calendar-alt"></i> Tarih
-                                <i id="profileSortDateIcon" class="fas fa-sort text-gray-400"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <!-- Klasörler grid -->
-                    <div id="foldersList" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6"></div>
-                    <!-- Dosyalar listesi -->
-                    <div id="filesList" class="space-y-2"></div>
+                <div class="profile-module-body"><div id="ticketList" class="space-y-3"><p class="text-gray-400 text-sm text-center py-6">Yükleniyor...</p></div></div>
+            </article>
+            <div id="ticketDetail" class="hidden bg-white rounded-xl shadow-sm p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 id="ticketDetailTitle" class="font-semibold text-gray-900"></h3>
+                    <div class="flex items-center gap-3"><span id="ticketDetailStatus" class="text-xs px-2 py-0.5 rounded-full"></span><button type="button" onclick="closeTicketDetail()" title="Kapat" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button></div>
+                </div>
+                <div id="ticketDetailReplies" class="space-y-3 max-h-72 overflow-y-auto border rounded-xl p-3 bg-gray-50 mb-4"></div>
+                <div>
+                    <textarea id="ticketReplyText" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="Yanıt yaz..."></textarea>
+                    <div class="mt-2 flex items-center gap-3 flex-wrap"><label class="text-xs text-gray-500" for="ticketReplyFile">Dosya ekle</label><input type="file" id="ticketReplyFile" class="text-xs text-gray-500" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.txt,.zip"></div>
+                    <button onclick="sendTicketReply()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm mt-2 hover:bg-opacity-90 transition"><i class="fas fa-paper-plane mr-1"></i> Gönder</button>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
+        <div id="tab-files" class="tab-content hidden">
+            <article class="profile-module" style="--module-tint:#dcfce7;--module-icon-bg:#bbf7d0;--module-icon:#16a34a">
+                <div class="profile-module-header">
+                    <div><h2 id="filesTabTitle" class="profile-module-title"><i class="fas fa-folder-open"></i>Kurum Dosyaları</h2><div id="breadcrumb" class="text-sm text-gray-500 mt-1"></div></div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button type="button" id="backBtn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hidden" onclick="goBack()"><i class="fas fa-arrow-left mr-1"></i> Geri</button>
+                        <button type="button" id="addFolderBtn" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hidden" onclick="openFolderModal()"><i class="fas fa-folder-plus mr-1"></i> Klasör Ekle</button>
+                        <button type="button" id="addFileBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hidden" onclick="openFileModal()"><i class="fas fa-upload mr-1"></i> Dosya Yükle</button>
+                    </div>
+                </div>
+                <div class="profile-module-body">
+                    <div id="notificationsPanel" class="hidden mb-4 border border-blue-100 bg-blue-50 rounded-xl p-4"></div>
+                    <div class="flex items-center gap-2 mb-3 flex-wrap">
+                        <div class="relative flex-1 min-w-[160px] max-w-xs"><i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i><input id="profileContentSearch" type="text" placeholder="Klasör veya dosya ara..." class="w-full border rounded pl-7 pr-2 py-1.5 text-sm bg-white" oninput="filterProfileContent(this.value)"></div>
+                        <div class="flex gap-1 text-xs"><button type="button" onclick="setProfileSort('name')" class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1"><i class="fas fa-font"></i> Ad <i id="profileSortNameIcon" class="fas fa-sort text-gray-400"></i></button><button type="button" onclick="setProfileSort('date')" class="px-2 py-1.5 border rounded bg-white hover:bg-gray-50 transition flex items-center gap-1"><i class="fas fa-calendar-alt"></i> Tarih <i id="profileSortDateIcon" class="fas fa-sort text-gray-400"></i></button></div>
+                    </div>
+                    <div id="foldersList" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6"></div>
+                    <div id="filesList" class="space-y-2"></div>
+                </div>
+            </article>
+        </div>
+    </main>
+</div>
 <!-- Avatar Crop Modal -->
 <div id="avatarCropModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 w-full max-w-md">
@@ -546,7 +833,7 @@
 
 <footer class="bg-primary text-white py-8 mt-12">
     <div class="max-w-7xl mx-auto px-4 text-center">
-        <p class="text-sm">© 2025 LibEdge Eğitim ve Danışmanlık. Tüm hakları saklıdır.</p>
+        <p class="text-sm">© 2026 LibEdge Eğitim ve Danışmanlık. Tüm hakları saklıdır.</p>
     </div>
 </footer>
 
@@ -599,6 +886,11 @@ let moveModalState = {
     folders: [],
     search: ''
 };
+let profileProducts = [];
+let profileProductMap = new Map();
+let profileSubscriptions = [];
+let profileActiveResourceFilter = 'all';
+let profileIndividualTools = [];
 
 // ====================== YARDIMCI FONKSİYONLAR ======================
 function showToast(message, type = 'info') {
@@ -663,7 +955,30 @@ function getCategoryName(category) {
     return names[category] || category;
 }
 
+function getVersionedProfileAsset(url, updatedAt) {
+    if (!url) return '';
+    if (!updatedAt) return url;
+    const separator = String(url).includes('?') ? '&' : '?';
+    return `${url}${separator}v=${encodeURIComponent(updatedAt)}`;
+}
+
+async function loadProfileProducts() {
+    try {
+        const res = await fetch(`${API_BASE}/api/products`, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        profileProducts = Array.isArray(data.products) ? data.products : [];
+        profileProductMap = new Map(profileProducts.map((product) => [product.slug, product]));
+    } catch (err) {
+        console.warn('Profil ürün sunum bilgileri yüklenemedi', err);
+        profileProducts = [];
+        profileProductMap = new Map();
+    }
+}
+
 function getProductName(slug) {
+    const fromApi = profileProductMap.get(slug);
+    if (fromApi?.name) return fromApi.name;
     const products = {
         'pangram': 'Pangram', 'chatpdf': 'ChatPDF', 'primal-pictures': 'Primal Pictures',
         'lecturio': 'Lecturio', 'nejmhealer': 'NEJMHealer', 'biorender': 'BioRender',
@@ -692,11 +1007,15 @@ function updateFileTabMode() {
 
 async function loadNotifications() {
     const panel = document.getElementById('notificationsPanel');
-    if (!panel) return;
+    const dashboardPanel = document.getElementById('dashboardNotificationsPanel');
+    if (!panel && !dashboardPanel) return;
 
     if (!isProfileUserMode()) {
-        panel.classList.add('hidden');
-        panel.innerHTML = '';
+        if (panel) {
+            panel.classList.add('hidden');
+            panel.innerHTML = '';
+        }
+        if (dashboardPanel) dashboardPanel.innerHTML = '<p class="text-sm text-gray-400 text-center py-6">Bildirim bulunmuyor.</p>';
         return;
     }
 
@@ -705,7 +1024,21 @@ async function loadNotifications() {
         if (!res.ok) throw new Error(`${res.status}`);
         const data = await res.json();
         const notifications = data.notifications || [];
+        const notificationItems = notifications.length ? notifications.map((item) => `
+            <button type="button"
+                onclick="markNotificationRead(${item.id})"
+                class="w-full text-left rounded-xl border ${item.is_read ? 'border-gray-100 bg-white' : 'border-blue-200 bg-blue-50'} px-3 py-2 hover:border-blue-300 transition">
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-sm font-medium text-gray-800">${escapeHtml(item.title || 'Bildirim')}</p>
+                    ${item.is_read ? '' : '<span class="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full">Yeni</span>'}
+                </div>
+                ${item.content ? `<p class="text-xs text-gray-600 mt-1">${escapeHtml(item.content)}</p>` : ''}
+                <p class="text-[11px] text-gray-400 mt-1">${new Date(item.created_at).toLocaleString('tr-TR')}</p>
+            </button>
+        `).join('') : '<p class="text-sm text-gray-400 text-center py-6">Henüz bildiriminiz yok.</p>';
 
+        if (dashboardPanel) dashboardPanel.innerHTML = notificationItems;
+        if (!panel) return;
         panel.classList.remove('hidden');
         panel.innerHTML = `
             <div class="flex items-center justify-between mb-3">
@@ -717,23 +1050,15 @@ async function loadNotifications() {
                     Tümünü okundu yap
                 </button>
             </div>
-            ${notifications.length ? notifications.map((item) => `
-                <button type="button"
-                    onclick="markNotificationRead(${item.id})"
-                    class="w-full text-left rounded-lg border ${item.is_read ? 'border-blue-100 bg-white' : 'border-blue-200 bg-blue-100'} px-3 py-2 mb-2 hover:border-blue-300 transition">
-                    <div class="flex items-center justify-between gap-3">
-                        <p class="text-sm font-medium text-gray-800">${escapeHtml(item.title || 'Bildirim')}</p>
-                        ${item.is_read ? '' : '<span class="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full">Yeni</span>'}
-                    </div>
-                    ${item.content ? `<p class="text-xs text-gray-600 mt-1">${escapeHtml(item.content)}</p>` : ''}
-                    <p class="text-[11px] text-gray-400 mt-1">${new Date(item.created_at).toLocaleString('tr-TR')}</p>
-                </button>
-            `).join('') : '<p class="text-sm text-blue-800">Henüz bildiriminiz yok.</p>'}
+            ${notificationItems}
         `;
     } catch (error) {
         console.error('loadNotifications error:', error);
-        panel.classList.remove('hidden');
-        panel.innerHTML = '<p class="text-sm text-red-600">Bildirimler yuklenemedi.</p>';
+        if (dashboardPanel) dashboardPanel.innerHTML = '<p class="text-sm text-red-600">Bildirimler yüklenemedi.</p>';
+        if (panel) {
+            panel.classList.remove('hidden');
+            panel.innerHTML = '<p class="text-sm text-red-600">Bildirimler yüklenemedi.</p>';
+        }
     }
 }
 
@@ -833,11 +1158,16 @@ async function checkAuthAndLoad() {
 
         setProfileAvatar(user.avatar_url, user.full_name);
         updateFileTabMode();
-        await loadSubscriptions();
-        await loadNewsletterSubscription();
-        await loadNotifications();
-        loadUserSubmissions();
-        loadSharedWithMe();
+        await loadProfileProducts();
+        // Bağımsız API çağrıları paralel gönderilir — sıralı await yerine Promise.all
+        await Promise.all([
+            loadSubscriptions(),
+            loadProfileIndividualTools(),
+            loadNewsletterSubscription(),
+            loadNotifications(),
+            loadUserSubmissions(),
+            loadSharedWithMe(),
+        ]);
     } catch (err) {
         console.error('checkAuthAndLoad error:', err);
         showProfileAuthRetry(0);
@@ -858,7 +1188,22 @@ function showProfileAuthRetry(status) {
     }, status === 429 ? 15000 : 5000);
 }
 
-document.addEventListener('DOMContentLoaded', checkAuthAndLoad);
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuthAndLoad();
+    const aiInput = document.getElementById('profileAiSearch');
+    const aiBtn = document.getElementById('profileAiSearchBtn');
+    aiInput?.addEventListener('input', () => runProfileSmartSearch(true));
+    aiInput?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            runProfileSmartSearch(true);
+        }
+        if (event.key === 'Escape') {
+            document.getElementById('profileAiSearchResults')?.classList.add('hidden');
+        }
+    });
+    aiBtn?.addEventListener('click', () => runProfileSmartSearch(true));
+});
 
 async function openRemoteAccess(btn) {
     if (!btn || btn.dataset.raBusy === '1') return;
@@ -976,10 +1321,9 @@ window.openSubscriptionAccess = openSubscriptionAccess;
 
 async function loadSubscriptions() {
     try {
-            const res = await fetch(`${API_BASE}/api/subscription/list`, {
-            credentials: 'include'
-        });
+        const res = await fetch(`${API_BASE}/api/subscription/list`, { credentials: 'include' });
         const data = await res.json();
+        profileSubscriptions = Array.isArray(data.subscriptions) ? data.subscriptions : [];
 
         const activeEl = document.getElementById('activeSubscriptionsList');
         const allEl = document.getElementById('allSubscriptionsList');
@@ -999,7 +1343,6 @@ async function loadSubscriptions() {
             return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
         };
         const getDisplayAccessType = (sub) => String(sub.access_type || '').trim();
-
         const buildAccessSummary = (sub) => {
             const parts = [];
             const displayAccessType = getDisplayAccessType(sub);
@@ -1008,53 +1351,58 @@ async function loadSubscriptions() {
             if (sub.requires_vpn) parts.push('VPN / kampüs ağı gerekli');
             return parts;
         };
-
-        // Buton etiket + ikon belirle
-        // Birincil sinyal: ra_enabled. Ek: access_type ip/proxy (legacy uyumluluk)
         const getActionConfig = (sub, normalizedUrl) => {
             const accessType = getDisplayAccessType(sub);
             const subId = Number(sub.id);
             const hasSubId = Number.isFinite(subId) && subId > 0;
             const hasProductSlug = !!String(sub.product_slug || '').trim();
             const isRaProduct = !!sub.ra_enabled || accessType === 'ip' || accessType === 'proxy';
-
             if (isRaProduct) {
                 if (!hasSubId && !hasProductSlug) return null;
-                return { label: 'Uzaktan Erişim', icon: 'fa-shield-halved', style: 'bg-indigo-600 hover:bg-indigo-700' };
+                return { label: 'Uzaktan Erişim', icon: 'fa-shield-halved', secondary: false };
             }
             if (accessType === 'institution_link') {
                 if (!normalizedUrl) return null;
-                return { label: 'Kurumsal Giriş', icon: 'fa-building', style: 'bg-primary hover:bg-opacity-90' };
+                return { label: 'Kurumsal Giriş', icon: 'fa-building', secondary: false };
             }
             if (accessType === 'sso') {
                 if (!normalizedUrl) return null;
-                return { label: 'SSO ile Giriş', icon: 'fa-key', style: 'bg-primary hover:bg-opacity-90' };
+                return { label: 'SSO ile Giriş', icon: 'fa-key', secondary: false };
             }
-            if (normalizedUrl) {
-                return { label: 'Erişime Git', icon: 'fa-arrow-up-right-from-square', style: 'bg-primary hover:bg-opacity-90' };
-            }
-            if (hasSubId) {
-                return { label: 'Erişime Git', icon: 'fa-arrow-up-right-from-square', style: 'bg-primary hover:bg-opacity-90' };
-            }
+            if (normalizedUrl || hasSubId) return { label: 'Erişime Git', icon: 'fa-arrow-up-right-from-square', secondary: false };
             return null;
         };
-
-        const renderAccessDetails = (sub, compact = false) => {
-            const parts = buildAccessSummary(sub);
+        const productInitials = (name) => String(name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?';
+        const categoryTint = (category) => {
+            const c = String(category || '').toLowerCase();
+            if (c.includes('sağ') || c.includes('sag')) return '#fee2e2';
+            if (c.includes('zeka')) return '#dbeafe';
+            if (c.includes('fen') || c.includes('müh') || c.includes('muh')) return '#ccfbf1';
+            if (c.includes('sanat')) return '#fce7f3';
+            if (c.includes('hukuk') || c.includes('iş')) return '#fef3c7';
+            return '#eee9ff';
+        };
+        const renderProductCard = (sub) => {
+            const product = profileProductMap.get(sub.product_slug) || {};
+            const name = product.name || getProductName(sub.product_slug);
+            const category = product.category || '';
+            const region = product.region || '';
             const normalizedUrl = normalizeExternalUrl(sub.access_url);
             const registrationUrl = normalizeExternalUrl(sub.registration_url);
-            const note = sub.access_notes_tr || '';
             const subId = Number(sub.id);
             const actionConfig = getActionConfig(sub, normalizedUrl);
-
-            const summary = parts.length
-                ? `<p class="${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 mt-1">${escapeHtml(parts.join(' • '))}</p>`
+            const logoUrl = getVersionedProfileAsset(product.logo_url || '', product.logo_updated_at || '');
+            const parts = buildAccessSummary(sub);
+            const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
+            const expiry = daysLeft !== null
+                ? (daysLeft <= 0 ? '<span class="profile-tag bg-red-50 text-red-700">Süresi doldu</span>'
+                    : daysLeft <= 7 ? `<span class="profile-tag bg-red-50 text-red-700">${daysLeft} gün kaldı</span>`
+                    : daysLeft <= 30 ? `<span class="profile-tag bg-amber-50 text-amber-700">${daysLeft} gün kaldı</span>`
+                    : `<span class="profile-tag">${new Date(sub.end_date).toLocaleDateString('tr-TR')}</span>`)
                 : '';
-            const noteHtml = note
-                ? `<p class="${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 mt-1">${escapeHtml(note)}</p>`
-                : '';
-
-            const sizeClasses = compact ? 'text-[11px] px-2 py-1' : 'text-xs px-3 py-1.5';
+            const logoHtml = logoUrl
+                ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(name)} logo" loading="lazy">`
+                : `<span>${escapeHtml(productInitials(name))}</span>`;
             const actionHtml = actionConfig
                 ? `<button type="button"
                         data-ra-sub-id="${Number.isFinite(subId) ? subId : ''}"
@@ -1064,108 +1412,197 @@ async function loadSubscriptions() {
                         data-access-url="${escapeHtml(normalizedUrl)}"
                         data-ra-enabled="${sub.ra_enabled ? '1' : '0'}"
                         onclick="openSubscriptionAccess(this)"
-                        class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg text-white transition ${actionConfig.style}">
+                        class="profile-action ${actionConfig.secondary ? 'secondary' : ''}">
                         <i class="fas ${actionConfig.icon}"></i><span>${actionConfig.label}</span>
                     </button>`
                 : '';
             const registrationHtml = registrationUrl
-                ? `<button type="button"
-                        onclick="window.open('${jsStr(registrationUrl)}', '_blank', 'noopener,noreferrer')"
-                        class="inline-flex items-center gap-2 mt-2 ${sizeClasses} rounded-lg border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50 transition">
-                        <i class="fas fa-user-plus"></i><span>Kayıt Ol</span>
-                    </button>`
+                ? `<button type="button" onclick="window.open('${jsStr(registrationUrl)}', '_blank', 'noopener,noreferrer')" class="profile-action secondary"><i class="fas fa-user-plus"></i><span>Kayıt</span></button>`
                 : '';
-
-            return `${summary}${noteHtml}<div class="flex flex-wrap items-center gap-2">${registrationHtml}${actionHtml}</div>`;
+            return `
+                <article class="profile-product-card" data-profile-product-card data-search-text="${escapeHtml([name, category, region, sub.product_slug, parts.join(' ')].join(' ').toLowerCase())}" style="--product-tint:${categoryTint(category)}">
+                    <div class="profile-product-head">
+                        <div class="profile-product-brand">
+                            <div class="profile-product-logo">${logoHtml}</div>
+                            <div class="min-w-0">
+                                <h4>${escapeHtml(name)}</h4>
+                                <p>${escapeHtml(category || region || 'Akademik kaynak')}</p>
+                            </div>
+                        </div>
+                        <span class="profile-tag ${sub.status === 'trial' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}">${sub.status === 'trial' ? 'Deneme' : sub.status === 'active' ? 'Aktif' : 'Pasif'}</span>
+                    </div>
+                    <div class="profile-product-body">
+                        <div class="flex flex-wrap gap-1.5">
+                            ${sub.ra_enabled ? '<span class="profile-tag bg-indigo-50 text-indigo-700"><i class="fas fa-shield-halved"></i>RA</span>' : ''}
+                            ${sub.source === 'institution' ? '<span class="profile-tag bg-violet-50 text-violet-700">Kurum</span>' : '<span class="profile-tag">Bireysel</span>'}
+                            ${region ? `<span class="profile-tag">${escapeHtml(region.split(',')[0].trim())}</span>` : ''}
+                            ${expiry}
+                        </div>
+                        ${parts.length ? `<p>${escapeHtml(parts.join(' • '))}</p>` : ''}
+                        ${sub.access_notes_tr ? `<p>${escapeHtml(sub.access_notes_tr)}</p>` : ''}
+                    </div>
+                    <div class="profile-product-footer">
+                        <span class="text-[11px] text-gray-400 font-mono truncate">${escapeHtml(sub.product_slug || '')}</span>
+                        <div class="flex gap-2 flex-wrap justify-end">${registrationHtml}${actionHtml}</div>
+                    </div>
+                </article>`;
         };
 
-        if (data.subscriptions?.length > 0) {
-            const activeSubs = data.subscriptions.filter(s => s.status === 'active' || s.status === 'trial');
+        const activeSubs = profileSubscriptions.filter(s => s.status === 'active' || s.status === 'trial');
+        const visibleActiveSubs = profileActiveResourceFilter === 'all'
+            ? activeSubs
+            : activeSubs.filter((sub) => String((profileProductMap.get(sub.product_slug) || {}).category || '').toLowerCase() === profileActiveResourceFilter);
 
-            // Hero sayacı
-            const overviewSubCount = document.getElementById('overviewSubCount');
-            if (overviewSubCount) overviewSubCount.textContent = activeSubs.length;
+        const overviewSubCount = document.getElementById('overviewSubCount');
+        const sidebarSubCount = document.getElementById('sidebarSubCount');
+        const resourceCount = document.getElementById('profileResourceCount');
+        if (overviewSubCount) overviewSubCount.textContent = activeSubs.length;
+        if (sidebarSubCount) sidebarSubCount.textContent = activeSubs.length;
+        if (resourceCount) resourceCount.textContent = `${activeSubs.length} kaynak`;
+        renderProfileResourceFilters(activeSubs);
 
-            // Genel Bakış - Erişimlerim kartı
-            activeEl.innerHTML = activeSubs.length ? activeSubs.map(sub => {
-                const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
-                const isRA = !!sub.ra_enabled;
-                const expiry = daysLeft !== null
-                    ? (daysLeft <= 0 ? '<span class="text-red-500 text-xs">Süresi doldu</span>'
-                        : daysLeft <= 7 ? `<span class="text-red-500 text-xs font-medium">${daysLeft} gün kaldı</span>`
-                        : daysLeft <= 30 ? `<span class="text-amber-600 text-xs font-medium">${daysLeft} gün kaldı</span>`
-                        : `<span class="text-gray-400 text-xs">${new Date(sub.end_date).toLocaleDateString('tr-TR')}</span>`)
-                    : '';
-                const raBadge = isRA
-                    ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium ml-1"><i class="fas fa-shield-halved mr-0.5"></i>RA</span>'
-                    : '';
-                const borderClass = daysLeft !== null && daysLeft <= 7 ? 'border-red-200 bg-red-50'
-                    : daysLeft !== null && daysLeft <= 30 ? 'border-amber-200 bg-amber-50'
-                    : isRA ? 'border-indigo-100 bg-indigo-50' : 'border-gray-100 bg-gray-50';
-                return `
-                <div class="flex justify-between items-center gap-3 p-3 rounded-lg border ${borderClass}">
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center flex-wrap gap-1">
-                            <p class="font-medium text-sm">${getProductName(sub.product_slug)}</p>
-                            ${raBadge}
-                        </div>
-                        ${expiry}
-                        ${renderAccessDetails(sub, true)}
-                    </div>
-                    <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : 'badge-trial'} shrink-0">
-                        ${sub.status === 'active' ? 'Aktif' : 'Deneme'}
-                    </span>
-                </div>`; }).join('')
-            : '<p class="text-gray-500 text-sm">Aktif aboneliğiniz yok.</p>';
-
-            // Aboneliklerim sekmesi
-            allEl.innerHTML = data.subscriptions.map(sub => {
-                const daysLeft = sub.end_date ? Math.ceil((new Date(sub.end_date) - new Date()) / 86400000) : null;
-                const isRA = !!sub.ra_enabled;
-                const isExpiring = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7;
-                const isWarning = daysLeft !== null && daysLeft >= 0 && daysLeft > 7 && daysLeft <= 30;
-                const borderClass = isExpiring ? 'border-red-200 bg-red-50'
-                    : isWarning ? 'border-amber-200 bg-amber-50'
-                    : isRA ? 'border-indigo-200 bg-indigo-50'
-                    : 'border-gray-100';
-                const expiry = sub.end_date
-                    ? (daysLeft <= 0 ? '<p class="text-xs text-red-600 font-medium">Süresi doldu</p>'
-                        : daysLeft <= 7 ? `<p class="text-xs text-red-600 font-medium">${daysLeft} gün kaldı · ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>`
-                        : daysLeft <= 30 ? `<p class="text-xs text-amber-600 font-medium">${daysLeft} gün kaldı · ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>`
-                        : `<p class="text-sm text-gray-500">Bitiş: ${new Date(sub.end_date).toLocaleDateString('tr-TR')}</p>`)
-                    : '';
-                const sourceBadge = sub.source === 'institution'
-                    ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium ml-2">Kurum</span>'
-                    : '';
-                const raBadge = isRA
-                    ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium ml-1"><i class="fas fa-shield-halved mr-0.5"></i>RA</span>'
-                    : '';
-                return `
-                <div class="flex justify-between items-start gap-4 p-4 border ${borderClass} rounded-lg">
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center flex-wrap gap-1">
-                            <p class="font-semibold">${getProductName(sub.product_slug)}</p>
-                            ${sourceBadge}${raBadge}
-                        </div>
-                        <p class="text-sm text-gray-500 mt-0.5">Başlangıç: ${new Date(sub.start_date).toLocaleDateString('tr-TR')}</p>
-                        ${expiry}
-                        ${renderAccessDetails(sub)}
-                    </div>
-                    <span class="subscription-badge ${sub.status === 'active' ? 'badge-active' : sub.status === 'trial' ? 'badge-trial' : 'badge-expired'} shrink-0">
-                        ${sub.status === 'active' ? 'Aktif' : sub.status === 'trial' ? 'Deneme' : 'Süresi Doldu'}
-                    </span>
-                </div>`; }).join('');
-        } else {
-            const overviewSubCount = document.getElementById('overviewSubCount');
-            if (overviewSubCount) overviewSubCount.textContent = '0';
-            activeEl.innerHTML = '<p class="text-gray-500 text-sm">Aktif aboneliğiniz yok.</p>';
-            allEl.innerHTML = '<p class="text-gray-500 text-center py-8">Henüz aboneliğiniz bulunmuyor.</p>';
+        if (activeEl) {
+            activeEl.innerHTML = visibleActiveSubs.length
+                ? visibleActiveSubs.map(renderProductCard).join('')
+                : '<p class="text-gray-500 text-sm">Aktif aboneliğiniz yok.</p>';
         }
+        if (allEl) {
+            allEl.innerHTML = profileSubscriptions.length
+                ? profileSubscriptions.map(renderProductCard).join('')
+                : '<p class="text-gray-500 text-center py-8">Henüz aboneliğiniz bulunmuyor.</p>';
+        }
+        runProfileSmartSearch(false);
     } catch (err) {
         console.error(err);
-        document.getElementById('activeSubscriptionsList').innerHTML = '<p class="text-red-500">Abonelikler yüklenemedi.</p>';
+        const activeEl = document.getElementById('activeSubscriptionsList');
+        if (activeEl) activeEl.innerHTML = '<p class="text-red-500">Abonelikler yüklenemedi.</p>';
     }
 }
+
+function renderProfileResourceFilters(activeSubs) {
+    const el = document.getElementById('profileResourceFilters');
+    if (!el) return;
+    const categories = Array.from(new Set(activeSubs
+        .map((sub) => String((profileProductMap.get(sub.product_slug) || {}).category || '').trim())
+        .filter(Boolean)));
+    const buttons = [{ key: 'all', label: 'Tüm kaynaklar' }, ...categories.map((category) => ({ key: category.toLowerCase(), label: category }))];
+    el.innerHTML = buttons.map((item) => `
+        <button type="button" data-profile-resource-filter="${escapeHtml(item.key)}"
+            class="profile-tag border ${profileActiveResourceFilter === item.key ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'border-gray-100'}">
+            ${escapeHtml(item.label)}
+        </button>
+    `).join('');
+    el.querySelectorAll('[data-profile-resource-filter]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            profileActiveResourceFilter = btn.dataset.profileResourceFilter || 'all';
+            loadSubscriptions();
+        });
+    });
+}
+
+async function loadProfileIndividualTools() {
+    const listEl = document.getElementById('profileIndividualToolsList');
+    if (!listEl) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/individual-tools`, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error(`individual tools ${res.status}`);
+        const data = await res.json();
+        profileIndividualTools = Array.isArray(data.tools) ? data.tools : [];
+        const featured = profileIndividualTools.filter((tool) => Number(tool.featured || 0) > 0);
+        const tools = (featured.length ? featured : profileIndividualTools).slice(0, 4);
+
+        listEl.innerHTML = tools.length
+            ? tools.map(renderProfileIndividualToolCard).join('')
+            : '<p class="text-gray-500 text-sm">Bireysel araç kataloğu henüz hazır değil.</p>';
+        runProfileSmartSearch(false);
+    } catch (err) {
+        console.error('loadProfileIndividualTools error:', err);
+        listEl.innerHTML = '<p class="text-red-500 text-sm">Bireysel araçlar yüklenemedi.</p>';
+    }
+}
+
+function renderProfileIndividualToolCard(tool) {
+    const slug = String(tool.slug || '').trim();
+    const name = tool.name || 'Araç';
+    const category = tool.category || 'Bireysel araç';
+    const summary = tool.summary_tr || 'Akademik iş akışınızı destekleyen seçilmiş araç.';
+    const isAffiliate = tool.access_type === 'affiliate';
+    const badge = isAffiliate
+        ? '<span class="profile-tag bg-amber-50 text-amber-700">Partner</span>'
+        : '<span class="profile-tag bg-emerald-50 text-emerald-700">Ücretsiz</span>';
+    const cta = isAffiliate ? 'Partnerde İncele' : 'Ücretsiz Aç';
+    const icon = isAffiliate ? 'fa-arrow-up-right-from-square' : 'fa-play';
+    const logoHtml = tool.logo_url
+        ? `<img src="${escapeHtml(tool.logo_url)}" alt="${escapeHtml(name)} logo" loading="lazy">`
+        : `<span>${escapeHtml(name.slice(0, 2).toUpperCase())}</span>`;
+    const searchText = [name, category, summary, tool.access_type, 'bireysel araç free affiliate partner'].join(' ').toLowerCase();
+
+    return `
+        <article class="profile-product-card" data-profile-product-card data-search-text="${escapeHtml(searchText)}" style="--product-tint:#e0f2fe">
+            <div class="profile-product-head">
+                <div class="profile-product-brand">
+                    <div class="profile-product-logo">${logoHtml}</div>
+                    <div class="min-w-0">
+                        <h4>${escapeHtml(name)}</h4>
+                        <p>${escapeHtml(category)}</p>
+                    </div>
+                </div>
+                ${badge}
+            </div>
+            <div class="profile-product-body">
+                <p>${escapeHtml(summary)}</p>
+            </div>
+            <div class="profile-product-footer">
+                <span class="text-[11px] text-gray-400 font-mono truncate">${escapeHtml(slug)}</span>
+                <a href="/api/go/${encodeURIComponent(slug)}?source=profile_dashboard"
+                   target="_blank"
+                   rel="noopener"
+                   class="profile-action">
+                    <i class="fas ${icon}"></i><span>${cta}</span>
+                </a>
+            </div>
+        </article>`;
+}
+
+function focusProfileAiSearch(prompt) {
+    const input = document.getElementById('profileAiSearch');
+    if (!input) return;
+    input.value = prompt || '';
+    input.focus();
+    runProfileSmartSearch(true);
+}
+window.focusProfileAiSearch = focusProfileAiSearch;
+
+function runProfileSmartSearch(openPanel = true) {
+    const input = document.getElementById('profileAiSearch');
+    const panel = document.getElementById('profileAiSearchResults');
+    if (!input || !panel) return;
+    const query = String(input.value || '').trim().toLowerCase();
+    const cards = Array.from(document.querySelectorAll('[data-profile-product-card]'));
+    if (!query) {
+        cards.forEach((card) => { card.style.display = ''; });
+        panel.classList.add('hidden');
+        panel.innerHTML = '';
+        return;
+    }
+    const tokens = query.split(/\s+/).filter(Boolean);
+    const matches = cards.map((card) => {
+        const haystack = String(card.dataset.searchText || '').toLowerCase();
+        const score = tokens.reduce((sum, token) => sum + (haystack.includes(token) ? 1 : 0), 0);
+        return { card, score };
+    });
+    matches.forEach(({ card, score }) => { card.style.display = score > 0 ? '' : 'none'; });
+    const top = matches.filter((item) => item.score > 0).slice(0, 4);
+    if (!openPanel) return;
+    panel.innerHTML = top.length ? `
+        <div class="text-xs text-gray-500 mb-2">AI arama hazırlığı: şimdilik kurumsal kaynaklar ve bireysel araçlar içinde akıllı eşleşme yapıyorum. Cloudflare AI Search bağlanınca aynı kutu doğal dil yanıtı verecek.</div>
+        <div class="grid gap-2">
+            ${top.map(({ card }) => `<button type="button" class="text-left rounded-xl border border-gray-100 px-3 py-2 hover:bg-gray-50" onclick="this.closest('#profileAiSearchResults').classList.add('hidden')"><strong class="text-sm text-gray-800">${escapeHtml(card.querySelector('h4')?.textContent || 'Kaynak')}</strong><p class="text-xs text-gray-500 mt-1">${escapeHtml(card.querySelector('p')?.textContent || 'Eşleşen akademik kaynak')}</p></button>`).join('')}
+        </div>` : '<p class="text-sm text-gray-500">Bu aramayla eşleşen kaynak veya araç bulunamadı.</p>';
+    panel.classList.remove('hidden');
+}
+
 async function loadNewsletterSubscription() {
     const textEl = document.getElementById('newsletterSubscriptionText');
     const btn = document.getElementById('newsletterToggleBtn');
@@ -2531,8 +2968,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileVie
 // ====================== TAB GEÇİŞLERİ ======================
 document.querySelectorAll('.sidebar-link').forEach(link => {
     link.addEventListener('click', (e) => {
-        e.preventDefault();
         const tab = link.dataset.tab;
+        if (!tab) return;
+        e.preventDefault();
 
         document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
         link.classList.add('active');
@@ -2699,6 +3137,8 @@ async function loadSharedWithMe() {
 
         const unread = files.filter(f => !f.is_read);
         if (overviewNewFiles) overviewNewFiles.textContent = unread.length;
+        const sidebarNewFiles = document.getElementById('sidebarNewFiles');
+        if (sidebarNewFiles) sidebarNewFiles.textContent = unread.length;
         if (countEl) {
             if (unread.length) {
                 countEl.textContent = `${unread.length} yeni`;
@@ -2731,6 +3171,8 @@ async function loadSharedWithMe() {
     } catch (err) {
         console.error('sharedWithMe error:', err);
         if (overviewNewFiles) overviewNewFiles.textContent = '0';
+        const sidebarNewFiles = document.getElementById('sidebarNewFiles');
+        if (sidebarNewFiles) sidebarNewFiles.textContent = '0';
         listEl.innerHTML = `<p class="text-sm text-gray-400 text-center py-6">Yüklenemedi</p>`;
     }
 }
@@ -2747,6 +3189,8 @@ async function loadUserSubmissions() {
         }
 
         const data = await res.json();
+        const sidebarRequestCount = document.getElementById('sidebarRequestCount');
+        if (sidebarRequestCount) sidebarRequestCount.textContent = Array.isArray(data) ? data.length : 0;
         if (!data.length) {
             el.innerHTML = '<p class="text-gray-400 text-sm">Henüz gönderilmiş talebiniz yok.</p>';
             return;
@@ -2766,6 +3210,8 @@ async function loadUserSubmissions() {
                 <p class="text-xs text-gray-400 shrink-0">${new Date(s.submitted_at).toLocaleDateString('tr-TR')}</p>
             </div>`).join('');
     } catch (err) {
+        const sidebarRequestCount = document.getElementById('sidebarRequestCount');
+        if (sidebarRequestCount) sidebarRequestCount.textContent = '0';
         el.innerHTML = '<p class="text-gray-400 text-sm">Talepler yüklenemedi.</p>';
     }
 }
@@ -2879,6 +3325,10 @@ async function sendTicketReply() {
 
     if (!message && !file) {
         showToast('Yanıt veya dosya gerekli.', 'warning');
+        return;
+    }
+    if (file && file.size > 10 * 1024 * 1024) {
+        showToast('Dosya boyutu en fazla 10 MB olabilir.', 'error');
         return;
     }
 
