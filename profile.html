@@ -484,6 +484,13 @@
                 </div>
             </section>
 
+            
+            <!-- Global Resource Filters -->
+            <div class="mb-6">
+                <div id="primaryResourceFilters" class="flex flex-wrap gap-2 mb-3"></div>
+                <div id="secondaryResourceFilters" class="flex flex-wrap gap-2 p-3 bg-white/50 rounded-xl border border-gray-100 hidden"></div>
+            </div>
+
             <section class="profile-dashboard-grid">
                 <div class="profile-stack">
                     <article class="profile-module" style="--module-tint:#eee9ff;--module-icon-bg:#e7ddff;--module-icon:#7c3aed">
@@ -492,10 +499,7 @@
                             <span id="profileResourceCount" class="text-xs text-gray-400 font-semibold">Yükleniyor</span>
                         </div>
                         <div class="profile-module-body">
-                            <div class="mb-4">
-                                <div id="primaryResourceFilters" class="flex flex-wrap gap-2 mb-2"></div>
-                                <div id="secondaryResourceFilters" class="flex flex-wrap gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-100 hidden"></div>
-                            </div>
+                            
                             <div id="activeSubscriptionsList" class="profile-product-grid">
                                 <p class="text-gray-500 text-sm">Yükleniyor...</p>
                             </div>
@@ -1670,6 +1674,8 @@ function applyProfileResourceFilter() {
         
         const module = grid.closest('.profile-module');
         if (!module) return;
+        
+        const header = module.querySelector('.profile-module-header');
 
         let visibleInGrid = 0;
         const cards = grid.querySelectorAll('[data-profile-product-card]');
@@ -1686,14 +1692,29 @@ function applyProfileResourceFilter() {
             if (show) visibleInGrid++;
         });
 
+        // HIDE HEADER logic: Hide header if 'All' is selected (as per user request)
+        // or if specific filter is active (redundant title)
+        if (header) {
+            if (primary === 'all' || primary === cfg.source) {
+                header.classList.add('hidden');
+            } else {
+                header.classList.remove('hidden');
+            }
+        }
+
+        // Module visibility
         if (primary !== 'all' && cfg.source !== primary) {
             module.classList.add('hidden');
         } else {
             module.classList.remove('hidden');
-            if (primary !== 'all' && visibleInGrid === 0) {
+            if (visibleInGrid === 0) {
                 module.classList.add('hidden');
+            } else {
+                module.classList.remove('hidden');
             }
         }
+    });
+}
     });
 }
 
