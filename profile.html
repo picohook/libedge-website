@@ -1373,6 +1373,20 @@ const profileTranslations = {
     'Ara': 'Search',
     'Filtre': 'Filter',
     'Tüm Kategoriler': 'All Categories',
+    'Yapay Zeka': 'Artificial Intelligence',
+    'Sağlık': 'Health',
+    'Fen & Matematik': 'Science & Mathematics',
+    'İş & Hukuk': 'Business & Law',
+    'Mühendislik': 'Engineering',
+    'Sanat': 'Arts',
+    'Sosyal Bilimler': 'Social Sciences',
+    'Akademik Dürüstlük': 'Academic Integrity',
+    'Araştırma Asistanı': 'Research Assistant',
+    'Akademik Arama': 'Academic Search',
+    'Akademik Kimlik': 'Academic Identity',
+    'Referans Yönetimi': 'Reference Management',
+    'Literatür Keşfi': 'Literature Discovery',
+    'Atıf Analizi': 'Citation Analysis',
     'Tümü': 'All',
     'Önemli': 'Important',
     'Son': 'Recent',
@@ -1462,6 +1476,20 @@ let profileLanguageObserverReady = false;
 
 function isProfileEnglish() {
     return localStorage.getItem('language') === 'en';
+}
+
+function getProfileCategoryFilterMeta(item) {
+    const prod = profileProductMap.get(item?.product_slug || item?.slug) || item || {};
+    const rawCategory = String(prod.category || item?.category || '').trim();
+    const englishCategory = String(prod.category_en || item?.category_en || '').trim();
+    const keySource = rawCategory || englishCategory;
+    const label = isProfileEnglish()
+        ? (englishCategory || translateProfileString(rawCategory, true))
+        : (rawCategory || translateProfileString(englishCategory, false));
+    return {
+        key: keySource.toLowerCase(),
+        label: label || keySource
+    };
 }
 
 function translateProfileString(value, toEnglish) {
@@ -2558,14 +2586,17 @@ function renderSecondaryFilters(allItems) {
             return source === profileActiveResourceFilter;
         });
 
-    const categories = Array.from(new Set(filteredItems
+    const categoryMap = new Map();
+    filteredItems
         .filter(Boolean)
-        .map(item => {
-            if (!item) return '';
-            const prod = profileProductMap.get(item.product_slug || item.slug) || item;
-            return String(prod.category || '').trim();
-        })
-        .filter(Boolean))).sort();
+        .forEach((item) => {
+            const meta = getProfileCategoryFilterMeta(item);
+            if (meta.key && !categoryMap.has(meta.key)) {
+                categoryMap.set(meta.key, meta.label);
+            }
+        });
+    const categories = Array.from(categoryMap, ([key, label]) => ({ key, label }))
+        .sort((a, b) => a.label.localeCompare(b.label, isProfileEnglish() ? 'en' : 'tr'));
 
     if (categories.length === 0) {
         el.classList.add('hidden');
@@ -2574,7 +2605,7 @@ function renderSecondaryFilters(allItems) {
     }
 
     el.classList.remove('hidden');
-    const buttons = [{ key: 'all', label: 'Tüm Kategoriler' }, ...categories.map(c => ({ key: c.toLowerCase(), label: c }))];
+    const buttons = [{ key: 'all', label: isProfileEnglish() ? 'All Categories' : 'Tüm Kategoriler' }, ...categories];
     
     el.innerHTML = buttons.map(item => `
         <button type="button" data-category-filter="${item.key}"
