@@ -31,6 +31,9 @@ libedge-website/
 ├── backend/
 │   └── src/
 │       ├── index.js                  # Main Worker — tüm /api/* route'ları
+│       ├── auth/
+│       │   ├── security.js           # PBKDF2 password hash, token hash helpers
+│       │   └── rate-limit.js         # protected endpoint rate-limit helpers
 │       ├── ra/
 │       │   ├── schema.js             # D1 şema ensure (idempotent)
 │       │   ├── jwt.js                # HS256 proxy token sign/verify
@@ -104,6 +107,10 @@ RA_EGRESS_DEFAULT_SECRET=test-egress-secret
 
 ## Deploy
 
+> **Production notu:** Production D1, staging'den geride olabilir. Production'a deploy/migration
+> uygulamadan önce `npx wrangler d1 migrations list libedge-db-production --remote --env production`
+> çıktısı incelenmeli, migration planı yazılmalı ve smoke/rollback adımları netleşmelidir.
+
 ### Staging
 
 ```powershell
@@ -111,7 +118,7 @@ RA_EGRESS_DEFAULT_SECRET=test-egress-secret
 npx wrangler deploy --env staging
 
 # D1 migration (staging DB)
-npx wrangler d1 migrations apply libedge-db --env staging
+npx wrangler d1 migrations apply libedge-db --remote --env staging
 
 # Proxy Worker
 cd workers/proxy
@@ -121,12 +128,15 @@ cd ../..
 
 ### Production
 
+Production için bu komutlar doğrudan "rutin deploy" gibi çalıştırılmamalıdır. Önce bekleyen
+migration listesi, veri etkisi, smoke test ve rollback yolu kontrol edilir.
+
 ```powershell
 # Main Worker
 npx wrangler deploy --env production
 
 # D1 migration (production DB — AYRI veritabanı)
-npx wrangler d1 migrations apply libedge-db-production --env production
+npx wrangler d1 migrations apply libedge-db-production --remote --env production
 
 # Proxy Worker
 cd workers/proxy
@@ -154,6 +164,15 @@ cd ../..
 `--env staging` yerine `--env production` kullanarak production için tekrarla.
 
 ---
+
+## Güncel Operasyon Notu (8 Mayıs 2026)
+
+- Staging D1 migration durumu: bekleyen migration yok.
+- Production D1 migration durumu: `0020_product_presentation.sql` ile `0034_users_lower_email_index.sql` arası bekliyor.
+- Auth login akışı DB-backed refresh token replay protection kullanır.
+- Staging'de `0033_refresh_tokens.sql` ve `0034_users_lower_email_index.sql` uygulandı.
+- `backend/src/index.js` içinde strict env'lerde (`staging`, `production`) refresh token login yolunda runtime DDL guard atlanır; şema migration ile hazırlanmış olmalıdır.
+- DB-backed refresh token yazımı beklenmedik şekilde hata verirse login 500'e düşmez; geçici olarak stateless refresh token fallback kullanır ve hata loglanır.
 
 ## Cloudflare DNS / Route Yapılandırması
 

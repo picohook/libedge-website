@@ -3,6 +3,10 @@
 Bu belge LibEdge Remote Access'in staging POC'den production kullanıma geçişinde
 gerekli operasyonel kararları ve kurum onboarding gereksinimlerini özetler.
 
+> Güncel not (8 Mayıs 2026): Staging D1 güncel durumdadır; production D1'de
+> `0020`-`0034` arası migration beklemektedir. RA production hazırlığına başlamadan
+> önce genel production migration planı tamamlanmalıdır.
+
 ## 1. Domain Taşıma
 
 Hedef domain `libedge.com` olduğunda RA tarafında üç hostname sınıfı gerekir:
@@ -246,6 +250,12 @@ Bugünkü staging değişiklikleri:
 
 Kalan production işleri:
 
+- Production migration planı hazırlanacak; `0033_refresh_tokens.sql` ve RA ile ilgili
+  `0025`-`0029` migration'ları uygulanmadan production smoke yapılmayacak.
 - Limit değerleri production trafik ölçümüne göre env üzerinden kalibre edilecek.
 - Tünel heartbeat sonuçları admin panelde uyarı/badge davranışına bağlanacak.
 - Toplu ürün import UI/API eklenecek.
+- RA proxy tarafı için graceful error page mevcut; Main API ve kullanıcı portalındaki
+  RA hata mesajları daha kullanıcı-dostu hale getirilecek.
+- Shadow/smoke test fikri düşük frekanslı ve izinli landing kontrolleri olarak ele
+  alınacak; publisher bot korumasını atlatmaya yönelik agresif test yapılmayacak.

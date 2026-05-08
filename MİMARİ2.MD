@@ -1,7 +1,7 @@
 # LibEdge - Güncel Proje Mimarisi
 
-Son güncelleme: 23 Nisan 2026  
-Sürüm: 2.0, Worker yeniden adlandırma sonrası mimari
+Son güncelleme: 8 Mayıs 2026
+Sürüm: 2.1, auth hardening ve migration durum güncellemesi
 
 Bu doküman LibEdge web uygulamasının güncel Cloudflare mimarisini, staging/production ayrımını, veri akışlarını ve operasyon notlarını özetler. Secret değerleri bu dokümana yazılmaz; yalnızca secret adları ve bağlı oldukları bileşenler listelenir.
 
@@ -17,6 +17,16 @@ Ana uygulama iki ortama ayrılmıştır:
 | Production | `libedge-website.pages.dev` | `libedge-api-prod` | Canlı ortam |
 
 Eski `form-handler-*` Worker'ları şu anda kullanılmıyor, fakat rollback için geçici olarak Cloudflare üzerinde tutuluyor.
+
+### 1.1 Güncel Durum Özeti (8 Mayıs 2026)
+
+- Staging API Worker: `libedge-api-staging` deploy edildi ve login akışı doğrulandı.
+- Staging D1: bekleyen migration yok.
+- Production D1: `0020_product_presentation.sql` ile `0034_users_lower_email_index.sql` arası bekliyor; production migration planı hazırlanmadan `apply` çalıştırılmamalıdır.
+- Auth: login, refresh ve logout cookie tabanlıdır; access token 1 saat, refresh token 7 gün yaşar.
+- Refresh token replay protection: `refresh_tokens` tablosunda `jti` hash'i tutulur, refresh sırasında token rotate edilir, replay tespitinde token family revoke edilir.
+- Strict env'lerde (`staging`, `production`) refresh token login yolunda runtime DDL guard çalıştırılmaz; şema migration ile hazırlanmış kabul edilir.
+- DB-backed refresh token oluşturma beklenmedik şekilde hata verirse login 500'e düşmemek için stateless refresh-token fallback devreye girer ve hata loglanır.
 
 ## 2. Sistem Diyagramı
 
@@ -423,6 +433,40 @@ npx wrangler d1 migrations apply libedge-db --env staging --remote
 npx wrangler d1 migrations apply libedge-db-production --env production --remote
 ```
 
+Production için `apply` öncesi zorunlu kontrol:
+
+```powershell
+npx wrangler d1 migrations list libedge-db-production --env production --remote
+```
+
+8 Mayıs 2026 itibarıyla staging'de bekleyen migration yoktur. Production tarafında şu migration'lar beklemektedir:
+
+```text
+0020_product_presentation.sql
+0021_product_card_design.sql
+0022_admin_action_logs.sql
+0023_product_access_tags.sql
+0024_seed_ekual_products.sql
+0025_ra_stable_host_prep.sql
+0026_ra_waf_clearance.sql
+0027_ra_waf_browser.sql
+0028_enable_acs_waf_browser.sql
+0029_ra_link_audit.sql
+0030_individual_tools_affiliate_clicks.sql
+0031_products_brochure_url.sql
+0032_user_profile_links.sql
+0033_refresh_tokens.sql
+0034_users_lower_email_index.sql
+```
+
+Production migration planı en az şu maddeleri içermelidir:
+
+1. Bekleyen migration listesinin çıktısı.
+2. Her migration için veri etkisi ve beklenen tablo/kolon/index değişikliği.
+3. Production deploy sırası: schema önce mi, Worker önce mi.
+4. Smoke test: auth status, yanlış şifre 401, başarılı login, profile, refresh, admin runtime-info.
+5. Rollback notu: Worker rollback mümkün, D1 schema rollback çoğunlukla manuel/ileri migration ile yapılır.
+
 ### 9.5 Secret Yönetimi
 
 ```powershell
@@ -540,6 +584,7 @@ Mevcut `npm test` Vitest tabanlı birim testlerini çalıştırır. Ancak D1 / K
 | Alan | Önerilen Test |
 |---|---|
 | Auth | login, refresh, logout, expired token |
+| Auth replay | refresh token rotation, used token replay, family revoke |
 | Admin scope | kurum admin'inin yalnızca kendi kurumunu yönetmesi |
 | File access | public/private dosya yetkileri |
 | Announcements | public liste, admin CRUD, engagement |
@@ -570,6 +615,18 @@ backend/src/ra/schema.js
 ```
 
 dosyaları tek kaynaklı ve idempotent olacak şekilde hizalanmalıdır.
+
+### 12.3.1 Auth Migration/Schema Riski
+
+`refresh_tokens` tablosu `0033_refresh_tokens.sql` ile migration kaynaklı oluşturulur. Runtime guard local/dev için korunur, fakat `staging` ve `production` gibi strict env'lerde başarılı login yolunda DDL çalıştırılmaz. Bu kararın sebebi: canlı login path'inde DDL guard çalıştırmak staging'de login 500'e yol açmıştır.
+
+Bu yüzden production'a auth/refresh-token deploy'u yapılmadan önce:
+
+```powershell
+npx wrangler d1 migrations list libedge-db-production --env production --remote
+```
+
+çıktısı okunmalı ve `0033_refresh_tokens.sql` uygulanmadan DB-backed refresh token replay protection'ın production'da tam etkin olmayacağı bilinmelidir.
 
 ### 12.4 R2 Dosya Erişim Modeli
 

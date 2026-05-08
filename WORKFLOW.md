@@ -28,6 +28,7 @@ Dosya değişti
 | Staging benzeri Pages testi yapmak istiyorsun | `staging-preview` branch preview kullan |
 | Asıl staging hattını güncellemek istiyorsun | `staging` hattına deploy/push yap |
 | Riskli hattı kontrol etmek istiyorsun | `main` öncesi diff + branch + test mutlaka kontrol et |
+| Production migration/deploy istiyorsun | Önce migration listesi + plan + smoke/rollback notu hazırla |
 
 ## Kısa Notlar
 
@@ -37,3 +38,6 @@ Dosya değişti
 - Pages preview testlerinde `main` hash deploy'ları production environment binding'leriyle çalışabilir.
 - Preview environment doğrulaması için tercih edilen hat: `staging-preview.libedge-website.pages.dev`
 - Asıl staging doğrulaması için hat: `staging.libedge-website.pages.dev`
+- Production D1, staging D1 ile aynı migration seviyesinde olmayabilir. `apply` çalıştırmadan önce mutlaka `list` ile bekleyen migration'lar okunur.
+- 8 Mayıs 2026 itibarıyla staging D1 güncel; production D1'de `0020`-`0034` arası bekleyen migration vardır.
+- Auth/refresh-token değişikliklerinde login smoke testi sadece yanlış şifre 401'i değil, başarılı login + `/api/user/profile` kontrolünü de kapsamalıdır.
