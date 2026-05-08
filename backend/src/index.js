@@ -3861,7 +3861,7 @@ app.get('/api/admin/actions', async (c) => {
   await ensureAdminActionLogsTable(db);
   const url = new URL(c.req.url);
   const entityType = (url.searchParams.get('entity_type') || 'product').trim();
-  if (!['product', 'subscription', 'institution_subscription', 'institution', 'user', 'folder_share', 'announcement_ai', 'sync'].includes(entityType)) return c.json({ actions: [] });
+  if (!['product', 'subscription', 'institution_subscription', 'institution', 'user', 'folder_share', 'announcement_ai', 'sync', 'support_ticket'].includes(entityType)) return c.json({ actions: [] });
   const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') || 50)));
   const rows = await db.prepare(`
     SELECT id, actor_user_id, entity_type, entity_id, action,
@@ -8255,9 +8255,29 @@ app.put('/api/admin/support/tickets/:id', async (c) => {
     binds.push(priority);
   }
   if (!updates.length) return c.json({ error: 'Güncellenecek alan yok' }, 400);
+  const existing = await db.prepare(
+    `SELECT id, status, priority, institution_id FROM support_tickets WHERE id = ?`
+  ).bind(id).first();
   updates.push('updated_at = CURRENT_TIMESTAMP');
   binds.push(id);
   await db.prepare(`UPDATE support_tickets SET ${updates.join(', ')} WHERE id = ?`).bind(...binds).run();
+  if (existing) {
+    await recordAdminAction(c, db, {
+      entityType: 'support_ticket',
+      entityId: id,
+      action: 'update',
+      before: {
+        status: existing.status || null,
+        priority: existing.priority || null,
+        institution_id: existing.institution_id != null ? Number(existing.institution_id) : null,
+      },
+      after: {
+        status: status && allowed_status.includes(status) ? status : existing.status || null,
+        priority: priority && allowed_priority.includes(priority) ? priority : existing.priority || null,
+        institution_id: existing.institution_id != null ? Number(existing.institution_id) : null,
+      },
+    });
+  }
   return c.json({ success: true });
 });
 
@@ -8294,6 +8314,17 @@ app.post('/api/admin/support/tickets/:id/reply', async (c) => {
   await db.prepare(`INSERT INTO ticket_replies (ticket_id, user_id, message, is_admin, attachment_url) VALUES (?, ?, ?, 1, ?)`)
     .bind(id, auth.user.user_id, message, attachment_url).run();
   await db.prepare(`UPDATE support_tickets SET status = 'in_progress', updated_at = CURRENT_TIMESTAMP, admin_last_seen = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run();
+  await recordAdminAction(c, db, {
+    actor: auth.user,
+    entityType: 'support_ticket',
+    entityId: id,
+    action: 'reply',
+    after: {
+      message_length: message.length,
+      has_attachment: !!attachment_url,
+      status: 'in_progress',
+    },
+  });
   return c.json({ success: true });
 });
 
