@@ -1413,6 +1413,23 @@ async function createRefreshToken(c, db, userId, secret) {
   return { token, payload, tokenHash };
 }
 
+async function createLoginRefreshToken(c, db, userId, secret) {
+  try {
+    return await createRefreshToken(c, db, userId, secret);
+  } catch (err) {
+    console.error('DB-backed refresh token creation failed; falling back to stateless refresh token', err);
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      user_id: userId,
+      type: 'refresh',
+      iat: now,
+      exp: now + REFRESH_TOKEN_TTL_SECONDS
+    };
+    const token = await sign(payload, secret);
+    return { token, payload, tokenHash: null };
+  }
+}
+
 async function markRefreshTokenUsed(db, tokenHash, replacedByHash = null) {
   if (!tokenHash) return;
   const now = Math.floor(Date.now() / 1000);
@@ -1530,7 +1547,7 @@ app.post('/api/auth/login', zValidator('json', loginSchema, (result, c) => {
     
     const secret = c.env.JWT_SECRET;
     const accessToken = await sign(accessTokenPayload, secret);
-    const { token: refreshToken } = await createRefreshToken(c, db, user.id, secret);
+    const { token: refreshToken } = await createLoginRefreshToken(c, db, user.id, secret);
 
     // Access Token: Cookie ile (httpOnly)
     setCookie(c, 'authToken', accessToken, {
