@@ -1485,6 +1485,92 @@ export async function verifyPassword(password, storedHash) {
   return { matched: timingSafeEqual(hashHex, existingHashHex), legacy: false };
 }
 
+export function generateSecureTokenHex(byteLength = 32) {
+  const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
+  let hex = '';
+  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
+  return hex;
+}
+
+export async function hashTokenValue(token) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(token || '')));
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+async function ensureRefreshTokensSchema(db) {
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      issued_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      used_at INTEGER,
+      revoked_at INTEGER,
+      replaced_by_hash TEXT,
+      ip TEXT,
+      user_agent TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+  await db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_active
+    ON refresh_tokens(user_id, revoked_at, used_at, expires_at)
+  `);
+}
+
+async function createRefreshToken(c, db, userId, secret) {
+  await ensureRefreshTokensSchema(db);
+  const now = Math.floor(Date.now() / 1000);
+  const jti = generateSecureTokenHex(24);
+  const tokenHash = await hashTokenValue(jti);
+  const payload = {
+    user_id: userId,
+    type: 'refresh',
+    jti,
+    iat: now,
+    exp: now + REFRESH_TOKEN_TTL_SECONDS
+  };
+  const token = await sign(payload, secret);
+  await db.prepare(`
+    INSERT INTO refresh_tokens (user_id, token_hash, issued_at, expires_at, ip, user_agent)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).bind(
+    userId,
+    tokenHash,
+    now,
+    payload.exp,
+    extractClientIp(c),
+    String(c.req.header('user-agent') || '').slice(0, 500)
+  ).run();
+  return { token, payload, tokenHash };
+}
+
+async function markRefreshTokenUsed(db, tokenHash, replacedByHash = null) {
+  if (!tokenHash) return;
+  const now = Math.floor(Date.now() / 1000);
+  await db.prepare(`
+    UPDATE refresh_tokens
+    SET used_at = COALESCE(used_at, ?),
+        replaced_by_hash = COALESCE(replaced_by_hash, ?)
+    WHERE token_hash = ?
+  `).bind(now, replacedByHash, tokenHash).run();
+}
+
+async function revokeRefreshTokenFamily(db, userId) {
+  const now = Math.floor(Date.now() / 1000);
+  await db.prepare(`
+    UPDATE refresh_tokens
+    SET revoked_at = COALESCE(revoked_at, ?)
+    WHERE user_id = ? AND revoked_at IS NULL
+  `).bind(now, userId).run();
+}
+
 function extractClientIp(c) {
   const fwd = c.req.header('cf-connecting-ip') ||
               c.req.header('CF-Connecting-IP') ||
@@ -1589,17 +1675,9 @@ app.post('/api/auth/login', zValidator('json', loginSchema, (result, c) => {
       exp: Math.floor(Date.now() / 1000) + (60 * 60)
     };
     
-    // Refresh Token: 7 gün
-    const refreshTokenPayload = {
-      user_id: user.id,
-      type: 'refresh',
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
-    };
-    
     const secret = c.env.JWT_SECRET;
     const accessToken = await sign(accessTokenPayload, secret);
-    const refreshToken = await sign(refreshTokenPayload, secret);
+    const { token: refreshToken } = await createRefreshToken(c, db, user.id, secret);
 
     // Access Token: Cookie ile (httpOnly)
     setCookie(c, 'authToken', accessToken, {
@@ -1615,7 +1693,7 @@ app.post('/api/auth/login', zValidator('json', loginSchema, (result, c) => {
       httpOnly: true,
       secure: true,
       sameSite: 'None',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: REFRESH_TOKEN_TTL_SECONDS,
       path: '/',
     });
     
@@ -1639,6 +1717,26 @@ app.post('/api/auth/login', zValidator('json', loginSchema, (result, c) => {
 
 // ====================== LOGOUT ENDPOINT ======================
 app.post('/api/auth/logout', async (c) => {
+  const refreshToken = getCookie(c, 'refreshToken');
+  if (refreshToken) {
+    try {
+      const payload = await verify(refreshToken, c.env.JWT_SECRET, 'HS256');
+      if (payload?.type === 'refresh' && payload?.jti) {
+        const db = c.env.DB;
+        await ensureRefreshTokensSchema(db);
+        const tokenHash = await hashTokenValue(payload.jti);
+        const now = Math.floor(Date.now() / 1000);
+        await db.prepare(`
+          UPDATE refresh_tokens
+          SET revoked_at = COALESCE(revoked_at, ?)
+          WHERE token_hash = ?
+        `).bind(now, tokenHash).run();
+      }
+    } catch (err) {
+      console.warn('refresh token revoke on logout skipped', err);
+    }
+  }
+
   setCookie(c, 'authToken', '', {
     httpOnly: true,
     secure: true,
@@ -1681,16 +1779,36 @@ app.post('/api/auth/refresh', async (c) => {
   const secret = c.env.JWT_SECRET;
   let refreshPayload;
   try {
-    refreshPayload = await verify(refreshToken, secret);
+    refreshPayload = await verify(refreshToken, secret, 'HS256');
   } catch {
     return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
   }
   if (!refreshPayload || refreshPayload.type !== 'refresh') {
     return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
   }
-  
+
   const db = c.env.DB;
-  
+  await ensureRefreshTokensSchema(db);
+  let currentRefreshTokenHash = null;
+
+  if (refreshPayload.jti) {
+    currentRefreshTokenHash = await hashTokenValue(refreshPayload.jti);
+    const storedRefresh = await db.prepare(`
+      SELECT user_id, expires_at, used_at, revoked_at
+      FROM refresh_tokens
+      WHERE token_hash = ?
+    `).bind(currentRefreshTokenHash).first();
+
+    const now = Math.floor(Date.now() / 1000);
+    if (!storedRefresh || Number(storedRefresh.user_id) !== Number(refreshPayload.user_id)) {
+      return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
+    }
+    if (storedRefresh.used_at || storedRefresh.revoked_at || Number(storedRefresh.expires_at || 0) < now) {
+      await revokeRefreshTokenFamily(db, refreshPayload.user_id);
+      return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
+    }
+  }
+
   const user = await db.prepare(`
     SELECT id, email, full_name, institution, institution_id, role FROM users WHERE id = ?
   `).bind(refreshPayload.user_id).first();
@@ -1712,16 +1830,9 @@ app.post('/api/auth/refresh', async (c) => {
     exp: Math.floor(Date.now() / 1000) + (60 * 60)
   };
   
-  // Yeni Refresh Token (7 gün)
-  const newRefreshPayload = {
-    user_id: user.id,
-    type: 'refresh',
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
-  };
-  
   const newAccessToken = await sign(newAccessPayload, secret);
-  const newRefreshToken = await sign(newRefreshPayload, secret);
+  const { token: newRefreshToken, tokenHash: newRefreshTokenHash } = await createRefreshToken(c, db, user.id, secret);
+  await markRefreshTokenUsed(db, currentRefreshTokenHash, newRefreshTokenHash);
   
   setCookie(c, 'authToken', newAccessToken, {
     httpOnly: true,
@@ -1735,7 +1846,7 @@ app.post('/api/auth/refresh', async (c) => {
     httpOnly: true,
     secure: true,
     sameSite: 'None',
-    maxAge: 7 * 24 * 60 * 60,
+    maxAge: REFRESH_TOKEN_TTL_SECONDS,
     path: '/'
   });
   
@@ -1786,17 +1897,11 @@ async function ensurePasswordResetsSchema(db) {
 }
 
 export function generateResetToken() {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  let hex = '';
-  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
-  return hex;
+  return generateSecureTokenHex(32);
 }
 
 export async function hashResetToken(token) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
-  return Array.from(new Uint8Array(buf))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  return hashTokenValue(token);
 }
 
 function getFrontendOrigin(c) {
