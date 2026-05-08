@@ -305,7 +305,15 @@ async function login(email, password) {
             body: JSON.stringify({ email, password })
         });
 
-        const data = await res.json();
+        let data;
+        try {
+            data = await res.json();
+        } catch (parseErr) {
+            const text = await res.text().catch(() => '');
+            data = { error: text ? text.trim().slice(0, 240) : 'Sunucu yanıtı okunamadı.' };
+            console.warn('Login response parse error:', parseErr, text);
+        }
+
         if (res.ok && data.success) {
             let hydrated = false;
             if (data.user) {

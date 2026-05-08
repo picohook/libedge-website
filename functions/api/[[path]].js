@@ -1,11 +1,20 @@
 ﻿export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
-  const workerBase = env.WORKER_BASE_URL || (isLocal ? 'http://127.0.0.1:8787' : '');
+  const hostname = url.hostname;
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  const defaultWorkerBase = isLocal
+    ? 'http://127.0.0.1:8787'
+    : hostname === 'staging.libedge-website.pages.dev'
+      ? 'https://libedge-api-staging.agursel.workers.dev'
+      : hostname === 'libedge-website.pages.dev'
+        ? 'https://libedge-api-prod.agursel.workers.dev'
+        : '';
+  const workerBase = env.WORKER_BASE_URL || defaultWorkerBase;
   if (!workerBase) {
     return new Response(JSON.stringify({
-      error: 'WORKER_BASE_URL tanımlı değil',
+      error: 'WORKER_BASE_URL tanımlı değil. Lütfen Pages env değişkenini ayarlayın.',
+      host: hostname,
       code: 500
     }), {
       status: 500,
