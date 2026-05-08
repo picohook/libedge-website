@@ -8632,8 +8632,9 @@ async function loadAdminFiles() {
         }
 
         container.innerHTML = files.map(file => {
+            const fileUrl = safeDisplayUrl(file.file_url);
             const datasetAttrs = `data-ref-id="${file.id}" data-source-file-id="${file.source_file_id}"
-                 data-file-name="${escapeHtml(file.file_name)}" data-file-url="${escapeHtml(file.file_url)}"
+                 data-file-name="${escapeHtml(file.file_name)}" data-file-url="${escapeHtml(fileUrl)}"
                  data-file-type="${escapeHtml(file.file_type || '')}" data-is-public="${file.is_public ? 1 : 0}"`;
             const selectableCheckbox = `<input type="checkbox" class="file-select-cb touch-checkbox flex-shrink-0 hidden"
                 data-type="file" data-id="${file.source_file_id}" data-name="${escapeHtml(file.file_name)}" data-ref-id="${file.id}">`;
@@ -10288,7 +10289,7 @@ function instFilesRender(folderFilter, fileFilter) {
         const name    = f.display_name || f.file_name || f.original_name || 'Dosya';
         const ext     = (f.file_type || f.extension || '').toLowerCase();
         const url     = f.file_url || (f.file_key ? `/api/files/${f.file_key}` : '');
-        const safeUrl  = escapeHtml(url);
+        const safeUrl  = escapeHtml(safeDisplayUrl(url));
         const safeExt  = escapeHtml(ext);
         const isNew   = f.added_at && (Date.now() - new Date(f.added_at).getTime()) < 7 * 86400000;
         const datasetAttrs = `data-file-id="${f.id}" data-file-name="${escapeHtml(name)}" data-file-url="${safeUrl}" data-file-type="${safeExt}"`;
@@ -11432,11 +11433,12 @@ async function loadInstFilesPanel() {
                 const name = f.display_name || f.file_name || f.original_name || 'Dosya';
                 const type = f.file_type || f.extension || '';
                 const url  = f.file_url || (f.file_key ? `/api/files/${f.file_key}` : '');
+                const safeUrl = safeDisplayUrl(url);
                 return `
                 <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50">
                     <i class="fas ${getFileIcon(type)} text-gray-400 flex-shrink-0 w-4 text-center"></i>
                     <a href="javascript:void(0)" class="inst-panel-file-preview flex-1 text-sm text-primary hover:underline truncate"
-                       data-file-url="${escapeHtml(url)}" data-file-name="${escapeHtml(name)}" data-file-type="${escapeHtml(type)}"
+                       data-file-url="${escapeHtml(safeUrl)}" data-file-name="${escapeHtml(name)}" data-file-type="${escapeHtml(type)}"
                     >${escapeHtml(name)}</a>
                     <span class="text-xs text-gray-400 flex-shrink-0">${type.toUpperCase()}</span>
                 </div>`;

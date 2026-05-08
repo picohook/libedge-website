@@ -162,10 +162,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     const back = card.querySelector('.flip-back');
                     if (back) {
                         const bgUrl = versionedUrl(product.card_background_url, product.card_background_updated_at);
-                        back.style.background = `linear-gradient(to bottom, ${overlayColor(product.card_background_overlay)}, rgba(255, 255, 255, 0.05)), url('${bgUrl}')`;
-                        back.style.backgroundSize = 'cover';
-                        back.style.backgroundPosition = 'center';
-                        back.style.backgroundRepeat = 'no-repeat';
+                        if (bgUrl) {
+                            back.style.background = `linear-gradient(to bottom, ${overlayColor(product.card_background_overlay)}, rgba(255, 255, 255, 0.05)), url('${bgUrl}')`;
+                            back.style.backgroundSize = 'cover';
+                            back.style.backgroundPosition = 'center';
+                            back.style.backgroundRepeat = 'no-repeat';
+                        }
                     }
                 }
                 if (product.card_visible === 0 || product.card_visible === false) {
