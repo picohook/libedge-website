@@ -1559,6 +1559,7 @@ app.post('/api/auth/refresh', async (c) => {
 
 const PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 60;
 const PASSWORD_RESET_RETENTION_SECONDS = 30 * 24 * 60 * 60;
+const RA_ACCESS_LOG_RETENTION_SECONDS = 180 * 24 * 60 * 60;
 const PASSWORD_RESET_MIN_LENGTH = 8;
 const forgotPasswordSchema = z.object({
   email: zRequiredString('email', { max: 254, email: true })
@@ -9236,12 +9237,37 @@ async function cleanupExpiredPasswordResets(env) {
   }
 }
 
+async function cleanupOldRaAccessLogs(env) {
+  if (!env.DB) return;
+
+  try {
+    const tableInfo = await env.DB.prepare('PRAGMA table_info(ra_access_logs)').all();
+    const columns = new Set((tableInfo.results || []).map((column) => column.name));
+    if (!columns.size) return;
+
+    if (columns.has('ts')) {
+      const cutoff = Math.floor(Date.now() / 1000) - RA_ACCESS_LOG_RETENTION_SECONDS;
+      await env.DB.prepare('DELETE FROM ra_access_logs WHERE ts < ?').bind(cutoff).run();
+      return;
+    }
+
+    if (columns.has('created_at')) {
+      await env.DB.prepare(
+        "DELETE FROM ra_access_logs WHERE created_at < datetime('now', '-180 days')"
+      ).run();
+    }
+  } catch (err) {
+    console.error('RA access log cleanup failed', err);
+  }
+}
+
 export default {
   fetch: app.fetch,
   request: app.request.bind(app),
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(handleScheduledAlerts(env));
     ctx.waitUntil(cleanupExpiredPasswordResets(env));
+    ctx.waitUntil(cleanupOldRaAccessLogs(env));
     ctx.waitUntil(runTunnelHeartbeat(env).catch((err) => console.error('tunnel heartbeat failed', err)));
   },
 };

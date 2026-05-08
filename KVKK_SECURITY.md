@@ -214,7 +214,7 @@ admin_audit_logs
 
 - [ ] `privacy.html` kayıtlı kullanıcı, RA, AI, dosya paylaşımı ve kurum aboneliği modelini kapsayacak şekilde güncellenecek.
 - [ ] Legacy SHA-256 şifre hash'leri için rapor/migration hazırlanacak.
-- [ ] `ra_access_logs` için retention cleanup job eklenecek.
+- [x] `ra_access_logs` için 180 günlük retention cleanup job'u eklendi.
 - [x] `password_resets` için expired/used kayıt cleanup job'u eklendi.
 - [ ] `product_requests` ve `ai_usage_logs` migration'larında privacy-by-design uygulanacak.
 - [ ] Admin audit log eklenecek.
