@@ -239,7 +239,28 @@ admin_audit_logs
 - created_at
 ```
 
-## 9. Açık Teknik İşler
+## 9. Veri İşleyen ve Alt Sağlayıcı Envanteri
+
+Bu liste operasyonel envanterdir; sözleşme ve aydınlatma metni hazırlığında hukuki
+kontrolle kesinleştirilmelidir.
+
+| Sağlayıcı | Kullanım amacı | Veri kategorisi | Not / kontrol |
+|---|---|---|---|
+| Cloudflare | Pages, Workers, D1, KV, R2, DNS/SSL, rate limit/session altyapısı | Kullanıcı hesabı, kurum/abonelik verisi, dosya metadata ve R2 objeleri, RA/session metadata, IP/header metadata | Ana altyapı sağlayıcısı. Secrets Cloudflare secret olarak tutulur; D1/R2 backup erişimi sınırlı olmalı. |
+| GitHub | Kaynak kod, issue/PR, CI/CD ve deployment hazırlığı | Normalde production kişisel verisi yok; commit/PR içinde test verisi veya log parçası sızmamalı | Repo secret'ları GitHub Secrets/Actions seviyesinde tutulmalı; kişisel veri içeren export/log commitlenmez. |
+| Resend | Transactional e-posta, password reset ve RA alert e-postaları | Alıcı e-posta adresi, kullanıcı adı/selamlama, reset linki veya alert içeriği | E-postada minimum veri kullanılır; reset token TTL kısa, token hash DB'de saklanır. |
+| Airtable | Kurum/contact sync, form ve CRM operasyonları | Kurum adı/domain/şehir, contact e-posta/ad/unvan, form başvuruları | Sync yönü ve conflict stratejisi açık tutulmalı; gereksiz kişisel veri Airtable'a gönderilmemeli. |
+| AI sağlayıcısı (TBD) | Ücretsiz AI araçları, ürün keşfi/öneri yardımcıları | Minimum kullanıcı girdisi, katalog metadata'sı, hashlenmiş kullanım logları | Sağlayıcı seçilmeden DPA, veri saklama, model training opt-out ve bölge koşulları netleştirilmeli. Ham prompt/output varsayılan olarak saklanmaz. |
+
+Minimum kontrol listesi:
+
+- Her sağlayıcı için sözleşme/DPA veya hizmet şartı bağlantısı kayıt altında tutulur.
+- Production secret ve API key'ler repoda tutulmaz.
+- Dış sağlayıcıya gönderilen payload örnekleri release öncesi gözden geçirilir.
+- Sağlayıcı değişikliği privacy policy ve kurum sözleşmesi etkisi açısından değerlendirilir.
+- Veri sahibi talebinde hangi sağlayıcıda arama/silme yapılacağı operasyon dosyasına eklenir.
+
+## 10. Açık Teknik İşler
 
 - [ ] `privacy.html` kayıtlı kullanıcı, RA, AI, dosya paylaşımı ve kurum aboneliği modelini kapsayacak şekilde güncellenecek.
 - [ ] Legacy SHA-256 şifre hash'leri için rapor/migration hazırlanacak.
@@ -251,11 +272,11 @@ admin_audit_logs
 - [x] Admin audit log kapsamı destek ticket status/reply operasyonlarına genişletildi.
 - [x] Admin audit log kapsamı çekirdek dosya yükleme/silme operasyonları için genişletildi.
 - [x] R2 dosya silme/anonimleştirme prosedürü belgelendi.
-- [ ] Cloudflare, GitHub, e-posta sağlayıcıları ve AI sağlayıcıları için veri işleyen listesi çıkarılacak.
+- [x] Cloudflare, GitHub, e-posta sağlayıcıları ve AI sağlayıcıları için veri işleyen listesi çıkarıldı.
 - [ ] Kurum sözleşmelerine RA egress ve loglama açıklaması eklenecek.
 - [ ] Frontend `innerHTML` audit'i release öncesi tekrarlanacak; kullanıcı/server verisi içeren her render noktası `textContent`, `escapeHtml` veya güvenli URL helper ile doğrulanacak.
 
-## 10. Uygulama Prensipleri
+## 11. Uygulama Prensipleri
 
 - Plaintext şifre veya credential saklanmaz.
 - Geri döndürülebilir şifreleme yalnız gerçekten ihtiyaç olan secret'larda kullanılır.
