@@ -185,7 +185,36 @@ KVKK Madde 11 kapsamındaki talepler için operasyonel akış:
 5. Yasal saklama yükümlülüğü yoksa veri silinir veya anonimleştirilir.
 6. Talep sonucu kullanıcıya yazılı iletilir.
 
-## 7. Admin ve Yetki Modeli
+## 7. R2 Dosya Silme ve Anonimleştirme Prosedürü
+
+R2 içinde iki dosya sınıfı vardır:
+
+- `files/{sha256-prefix}/...`: merkezi dosya kütüphanesi. Aynı dosya birden fazla kurum/kullanıcı referansında kullanılabilir.
+- Yönetilen görsel/ek dosya prefixleri: `announcement-covers/`, `institution-logos/`, `product-logos/`, `product-card-backgrounds/`, `avatars/`, ticket attachment gibi uygulama tarafından üretilen ekler.
+
+Silme ilkeleri:
+
+1. Merkezi dosyalarda önce D1 referansları kontrol edilir:
+   - `collection_files`
+   - `user_collection_files`
+2. Aktif referans varsa yalnız ilgili referans pasifleştirilir veya silinir; R2 objesi korunur.
+3. Aktif referans kalmadığında `files` satırı ve ilgili R2 objesi silinir.
+4. Logo/avatar/cover gibi tekil varlıklarda eski obje yalnız uygulamanın yönettiği allowlist prefixindeyse silinir. Harici URL veya beklenmeyen prefix silinmez.
+5. Kullanıcı silme/anonimleştirme talebinde:
+   - Kullanıcı profili ve avatarı kaldırılır.
+   - Kullanıcının özel dosya referansları ve bildirim/paylaşım kayıtları incelenir.
+   - Kurumsal dosyalar başka kullanıcılara veya kuruma hizmet veriyorsa doğrudan silinmez; kişisel veri içeren `display_name`, not veya paylaşım kaydı anonimleştirilir.
+6. R2 objesinin fiziksel silinmesi audit log'a metadata olarak yazılır; dosya içeriği, public URL, token veya R2 key audit log'a yazılmaz.
+7. D1 export/backupları ve R2 yedekleri ayrı saklama takvimine tabidir. Veri sahibi talebinde canlı sistem silindikten sonra backup içindeki kopyalar ilk normal backup retention döngüsünde düşürülür; acil hukuki talep varsa manuel purge planı açılır.
+
+Operasyonel kontrol listesi:
+
+- Silinecek kayıt için `file_id`, `collection_file.id`, `user_collection_files.id` ve varsa kullanıcı/kurum bağlamı belirlenir.
+- Aktif referans sayısı doğrulanır.
+- R2 silme yalnız `FILES_BUCKET` bağlıysa ve obje uygulama tarafından yönetiliyorsa yapılır.
+- İşlem sonucu admin audit log veya talep dosyasına metadata olarak kaydedilir.
+
+## 8. Admin ve Yetki Modeli
 
 Minimum hedef:
 
@@ -193,7 +222,7 @@ Minimum hedef:
 - Kurum admini yalnız kendi kurumunu ve kullanıcılarını görebilir.
 - RA credential plaintext hiçbir admin ekranında gösterilmez.
 - Access logs admin ekranında amaca uygun filtreyle gösterilir.
-- Admin işlemleri ileride audit log'a yazılmalıdır.
+- Admin işlemleri audit log'a metadata olarak yazılır; secret, password, ham prompt veya dosya içeriği loglanmaz.
 
 Önerilen audit tablosu:
 
@@ -210,7 +239,7 @@ admin_audit_logs
 - created_at
 ```
 
-## 8. Açık Teknik İşler
+## 9. Açık Teknik İşler
 
 - [ ] `privacy.html` kayıtlı kullanıcı, RA, AI, dosya paylaşımı ve kurum aboneliği modelini kapsayacak şekilde güncellenecek.
 - [ ] Legacy SHA-256 şifre hash'leri için rapor/migration hazırlanacak.
@@ -221,12 +250,12 @@ admin_audit_logs
 - [x] Admin audit log kapsamı sync, duyuru AI ve toplu klasör paylaşımı operasyonlarına genişletildi.
 - [x] Admin audit log kapsamı destek ticket status/reply operasyonlarına genişletildi.
 - [x] Admin audit log kapsamı çekirdek dosya yükleme/silme operasyonları için genişletildi.
-- [ ] R2 dosya silme/anonimleştirme prosedürü belgelenecek.
+- [x] R2 dosya silme/anonimleştirme prosedürü belgelendi.
 - [ ] Cloudflare, GitHub, e-posta sağlayıcıları ve AI sağlayıcıları için veri işleyen listesi çıkarılacak.
 - [ ] Kurum sözleşmelerine RA egress ve loglama açıklaması eklenecek.
 - [ ] Frontend `innerHTML` audit'i release öncesi tekrarlanacak; kullanıcı/server verisi içeren her render noktası `textContent`, `escapeHtml` veya güvenli URL helper ile doğrulanacak.
 
-## 9. Uygulama Prensipleri
+## 10. Uygulama Prensipleri
 
 - Plaintext şifre veya credential saklanmaz.
 - Geri döndürülebilir şifreleme yalnız gerçekten ihtiyaç olan secret'larda kullanılır.
