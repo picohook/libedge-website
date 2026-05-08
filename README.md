@@ -109,7 +109,8 @@ RA_EGRESS_DEFAULT_SECRET=test-egress-secret
 
 > **Production notu:** Production D1, staging'den geride olabilir. Production'a deploy/migration
 > uygulamadan önce `npx wrangler d1 migrations list libedge-db-production --remote --env production`
-> çıktısı incelenmeli, migration planı yazılmalı ve smoke/rollback adımları netleşmelidir.
+> çıktısı incelenmeli, [PRODUCTION_MIGRATION_PLAN.md](PRODUCTION_MIGRATION_PLAN.md) güncellenmeli
+> ve smoke/rollback adımları netleşmelidir.
 
 ### Staging
 
