@@ -657,6 +657,24 @@ function selectUserAuditColumns(db, id) {
   `).bind(id);
 }
 
+async function recordAdminAction(c, db, { actor = null, entityType, entityId, action, before = null, after = null }) {
+  try {
+    await ensureAdminActionLogsTable(db);
+    const resolvedActor = actor || await getTokenPayloadFromCookie(c);
+    await createAdminActionLogStmt(db, {
+      id: crypto.randomUUID(),
+      actor: resolvedActor,
+      entityType,
+      entityId,
+      action,
+      before,
+      after,
+    }).run();
+  } catch (err) {
+    console.error('admin action log write failed', err);
+  }
+}
+
 async function isSuperAdmin(c) {
   const role = await getUserRole(c);
   return role === 'super_admin';
@@ -3843,7 +3861,7 @@ app.get('/api/admin/actions', async (c) => {
   await ensureAdminActionLogsTable(db);
   const url = new URL(c.req.url);
   const entityType = (url.searchParams.get('entity_type') || 'product').trim();
-  if (!['product', 'subscription', 'institution_subscription', 'institution', 'user'].includes(entityType)) return c.json({ actions: [] });
+  if (!['product', 'subscription', 'institution_subscription', 'institution', 'user', 'folder_share', 'announcement_ai', 'sync'].includes(entityType)) return c.json({ actions: [] });
   const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') || 50)));
   const rows = await db.prepare(`
     SELECT id, actor_user_id, entity_type, entity_id, action,
@@ -5904,6 +5922,20 @@ app.post('/api/admin/folder-share', async (c) => {
       }
     }
 
+    await recordAdminAction(c, db, {
+      actor: auth.user,
+      entityType: 'folder_share',
+      entityId: `${sourceFolder.id}:${institution.id}`,
+      action: 'create',
+      after: {
+        source_collection_id: Number(sourceFolder.id),
+        source_folder_name: sourceFolder.name || null,
+        institution_id: Number(institution.id),
+        target_collection_id: Number(parentCollection.id),
+        stats,
+      },
+    });
+
     return c.json({ success: true, stats });
 
   } catch (err) {
@@ -7553,6 +7585,17 @@ app.post('/api/admin/announcements/ai/image', async (c) => {
     if (!cleanTitle) return c.json({ error: 'Başlık zorunludur' }, 400);
 
     const image = buildAnnouncementImageUrl(cleanTitle, summary, c.env, { model, custom_prompt });
+    await recordAdminAction(c, c.env.DB, {
+      entityType: 'announcement_ai',
+      entityId: 'image',
+      action: 'image',
+      after: {
+        title_length: cleanTitle.length,
+        summary_length: cleanAnnouncementText(summary).length,
+        model: image.model,
+        custom_prompt_used: !!cleanAnnouncementText(custom_prompt),
+      },
+    });
     return c.json({ success: true, image_url: image.imageUrl, prompt: image.prompt, model: image.model });
   } catch (err) {
     console.error('Generate announcement image error:', err);
@@ -7570,6 +7613,16 @@ app.post('/api/admin/announcements/ai/polish', async (c) => {
     }
 
     const polished = await runAnnouncementAiTask('polish', payload, c.env);
+    await recordAdminAction(c, c.env.DB, {
+      entityType: 'announcement_ai',
+      entityId: 'polish',
+      action: 'polish',
+      after: {
+        title_length: cleanAnnouncementText(payload.title).length,
+        summary_length: cleanAnnouncementText(payload.summary).length,
+        full_content_length: cleanAnnouncementText(payload.full_content).length,
+      },
+    });
     return c.json({ success: true, announcement: polished });
   } catch (err) {
     console.error('Polish announcement error:', err);
@@ -7587,6 +7640,16 @@ app.post('/api/admin/announcements/ai/translate', async (c) => {
     }
 
     const translated = await runAnnouncementAiTask('translate', payload, c.env);
+    await recordAdminAction(c, c.env.DB, {
+      entityType: 'announcement_ai',
+      entityId: 'translate',
+      action: 'translate',
+      after: {
+        title_length: cleanAnnouncementText(payload.title).length,
+        summary_length: cleanAnnouncementText(payload.summary).length,
+        full_content_length: cleanAnnouncementText(payload.full_content).length,
+      },
+    });
     return c.json({ success: true, announcement: translated });
   } catch (err) {
     console.error('Translate announcement error:', err);
@@ -8841,6 +8904,17 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
         }
 
         console.log(`✅ Sync uygulandı: ${created} eklendi, ${updated} güncellendi`);
+        await recordAdminAction(c, db, {
+            actor: auth.user,
+            entityType: 'sync',
+            entityId: 'airtable-to-d1',
+            action: 'apply',
+            after: {
+                requested_changes: changes.length,
+                created,
+                updated,
+            },
+        });
         return c.json({ success: true, created, updated });
     } catch (err) {
         console.error('Sync apply error:', err);
@@ -9014,6 +9088,18 @@ app.post('/api/admin/sync/d1-to-airtable', async (c) => {
             }
         }
 
+        await recordAdminAction(c, db, {
+            actor: auth.user,
+            entityType: 'sync',
+            entityId: 'd1-to-airtable',
+            action: 'apply',
+            after: {
+                requested_changes: changes.length,
+                created,
+                updated,
+                linked,
+            },
+        });
         return c.json({ success: true, created, updated, linked });
     } catch (err) {
         console.error('D1 to Airtable sync apply error:', err);
@@ -9096,6 +9182,17 @@ app.post('/api/admin/sync/airtable-contacts-to-users', async (c) => {
             }
         }
 
+        await recordAdminAction(c, db, {
+            actor: auth.user,
+            entityType: 'sync',
+            entityId: 'airtable-contacts-to-users',
+            action: 'apply',
+            after: {
+                requested_changes: changes.length,
+                created,
+                updated,
+            },
+        });
         return c.json({ success: true, created, updated });
     } catch (err) {
         console.error('User sync apply error:', err);

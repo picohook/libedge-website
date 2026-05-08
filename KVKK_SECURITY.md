@@ -218,7 +218,8 @@ admin_audit_logs
 - [x] `password_resets` için expired/used kayıt cleanup job'u eklendi.
 - [ ] `product_requests` ve `ai_usage_logs` migration'larında privacy-by-design uygulanacak.
 - [x] Admin audit log ürün, abonelik, kurum ve kullanıcı yönetimi için eklendi.
-- [ ] Admin audit log kapsamı sync/AI/file operasyonları için genişletilecek.
+- [x] Admin audit log kapsamı sync, duyuru AI ve toplu klasör paylaşımı operasyonlarına genişletildi.
+- [ ] Admin audit log kapsamı kalan dosya yükleme/silme ve destek operasyonları için genişletilecek.
 - [ ] R2 dosya silme/anonimleştirme prosedürü belgelenecek.
 - [ ] Cloudflare, GitHub, e-posta sağlayıcıları ve AI sağlayıcıları için veri işleyen listesi çıkarılacak.
 - [ ] Kurum sözleşmelerine RA egress ve loglama açıklaması eklenecek.
