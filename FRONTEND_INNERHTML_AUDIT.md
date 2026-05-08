@@ -39,6 +39,8 @@ görmektir.
   `profile.html` ve `admin.html` mevcut helper adlarını koruyarak bu ortak API'ye bağlandı.
 - 8 Mayıs 2026: `admin.html` dosya preview `data-file-url` attribute'ları safe URL helper'a
   bağlandı; katalog kart background görseli safe URL boşsa stil yazmıyor.
+- 8 Mayıs 2026: `admin.html` ürün logo/kart preview versioned URL helper'ı ortak
+  `LibEdgeUrls.versionedUrl` API'sine bağlandı.
 
 ## Öncelikli Bulgular
 

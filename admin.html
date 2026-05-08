@@ -3929,10 +3929,15 @@ document.addEventListener('click', function(e) {
     }
 
     function getVersionedLogoUrl(url, updatedAt) {
+        if (window.LibEdgeUrls?.versionedUrl) {
+            return window.LibEdgeUrls.versionedUrl(url, updatedAt);
+        }
         if (!url) return '';
-        if (!updatedAt) return url;
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}v=${encodeURIComponent(updatedAt)}`;
+        const safeUrl = safeDisplayUrl(url);
+        if (!safeUrl) return '';
+        if (!updatedAt) return safeUrl;
+        const separator = safeUrl.includes('?') ? '&' : '?';
+        return `${safeUrl}${separator}v=${encodeURIComponent(updatedAt)}`;
     }
 
     function updateProductLogoPreview(product = {}) {
