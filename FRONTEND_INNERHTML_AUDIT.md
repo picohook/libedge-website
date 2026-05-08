@@ -29,6 +29,8 @@ görmektir.
   linkleri, abonelik erişim linkleri ve kurum logo URL'leri `safeDisplayUrl` kontrolüne alındı.
 - 8 Mayıs 2026: `profile.html` kurum logosu ve duyuru kapak görseli `safeFileUrl` kontrolüne alındı.
 - 8 Mayıs 2026: `assets/js/script.js` katalog ürün logo URL'leri `safeCatalogUrl` kontrolüne alındı.
+- 8 Mayıs 2026: `assets/js/script.js` çeviri helper'ı icon + metin güncellemesini `innerHTML`
+  yerine DOM node + text node ile yapacak şekilde temizlendi.
 
 ## Öncelikli Bulgular
 
@@ -51,19 +53,14 @@ kullanılması daha doğru olur.
 - Profil/avatar/duyuru görsel URL'leri için `http:`, `https:` ve uygulama içi relative path allowlist'i kullanılmalı.
 - Geçersiz URL'de fallback avatar/placeholder gösterilmeli.
 
-### 2. Düşük-Orta Risk: Çeviri Helper'ında `innerHTML`
+### 2. Tamamlandı: Çeviri Helper'ında `innerHTML`
 
-`assets/js/script.js` içinde çeviri sırasında icon korunurken `icon.outerHTML + resolved`
-şeklinde `innerHTML` set ediliyor.
+`assets/js/script.js` içinde çeviri sırasında icon korunurken artık `innerHTML` kullanılmıyor.
+Icon clone edilip çeviri metni text node olarak ekleniyor.
 
 Durum:
 
-- `resolved` çoğunlukla local dictionary veya `data-en` üzerinden geliyor.
-- Kullanıcı/server verisiyle birleştiği bir akış görünmedi.
-
-Öneri:
-
-- Düşük riskli ama temizlenebilir. DOM API ile icon clone + text node kullanılabilir.
+- Düşük riskli alan temizlendi.
 
 ### 3. Düşük Risk: Bildirim Render'ları
 

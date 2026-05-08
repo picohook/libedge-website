@@ -728,6 +728,15 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // Translation apply/reset flow
+    function setTranslatedElementText(element, text) {
+        const icon = element.querySelector('i');
+        if (icon) {
+            element.replaceChildren(icon.cloneNode(true), document.createTextNode(text));
+        } else {
+            element.textContent = text;
+        }
+    }
+
     function translatePage(toEnglish) {
         const translateButton = document.getElementById('translateBtn');
         document.body.classList.add('translating');
@@ -744,20 +753,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const resolved = enText || (originalText && translations[originalText]);
                 if (resolved) {
                     element.dataset.originalText = originalText;
-                    const icon = element.querySelector('i');
-                    if (icon) {
-                        element.innerHTML = icon.outerHTML + resolved;
-                    } else {
-                        element.textContent = resolved;
-                    }
+                    setTranslatedElementText(element, resolved);
                 }
             } else if (element.dataset.originalText) {
-                const icon = element.querySelector('i');
-                if (icon) {
-                    element.innerHTML = icon.outerHTML + element.dataset.originalText;
-                } else {
-                    element.textContent = element.dataset.originalText;
-                }
+                setTranslatedElementText(element, element.dataset.originalText);
                 delete element.dataset.originalText;
             }
 
