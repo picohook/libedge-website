@@ -216,7 +216,7 @@ admin_audit_logs
 - [ ] Legacy SHA-256 şifre hash'leri için rapor/migration hazırlanacak.
 - [x] `ra_access_logs` için 180 günlük retention cleanup job'u eklendi.
 - [x] `password_resets` için expired/used kayıt cleanup job'u eklendi.
-- [ ] `product_requests` ve `ai_usage_logs` migration'larında privacy-by-design uygulanacak.
+- [x] `product_requests` ve `ai_usage_logs` migration'larında privacy-by-design uygulandı.
 - [x] Admin audit log ürün, abonelik, kurum ve kullanıcı yönetimi için eklendi.
 - [x] Admin audit log kapsamı sync, duyuru AI ve toplu klasör paylaşımı operasyonlarına genişletildi.
 - [x] Admin audit log kapsamı destek ticket status/reply operasyonlarına genişletildi.
