@@ -28,6 +28,7 @@ import {
 import {
   checkProtectedRateLimit,
   checkRateLimit,
+  isStrictRateLimitEnv,
 } from './auth/rate-limit.js';
 
 export {
@@ -1387,7 +1388,9 @@ async function ensureRefreshTokensSchema(db) {
 }
 
 async function createRefreshToken(c, db, userId, secret) {
-  await ensureRefreshTokensSchema(db);
+  if (!isStrictRateLimitEnv(c.env)) {
+    await ensureRefreshTokensSchema(db);
+  }
   const now = Math.floor(Date.now() / 1000);
   const jti = generateSecureTokenHex(24);
   const tokenHash = await hashTokenValue(jti);
