@@ -1558,6 +1558,7 @@ app.post('/api/auth/refresh', async (c) => {
 // against live users. Tokens expire in 1 hour and are single-use.
 
 const PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 60;
+const PASSWORD_RESET_RETENTION_SECONDS = 30 * 24 * 60 * 60;
 const PASSWORD_RESET_MIN_LENGTH = 8;
 const forgotPasswordSchema = z.object({
   email: zRequiredString('email', { max: 254, email: true })
@@ -9220,11 +9221,27 @@ async function handleScheduledAlerts(env) {
   }
 }
 
+async function cleanupExpiredPasswordResets(env) {
+  if (!env.DB) return;
+
+  const cutoff = Math.floor(Date.now() / 1000) - PASSWORD_RESET_RETENTION_SECONDS;
+  try {
+    await env.DB.prepare(`
+      DELETE FROM password_resets
+      WHERE expires_at < ?
+         OR (used_at IS NOT NULL AND used_at < ?)
+    `).bind(cutoff, cutoff).run();
+  } catch (err) {
+    console.error('password reset cleanup failed', err);
+  }
+}
+
 export default {
   fetch: app.fetch,
   request: app.request.bind(app),
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(handleScheduledAlerts(env));
+    ctx.waitUntil(cleanupExpiredPasswordResets(env));
     ctx.waitUntil(runTunnelHeartbeat(env).catch((err) => console.error('tunnel heartbeat failed', err)));
   },
 };
