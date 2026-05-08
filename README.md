@@ -34,6 +34,7 @@ libedge-website/
 │       ├── validation.js             # Zod JSON parse ve ortak validation helper'ları
 │       ├── auth/
 │       │   ├── security.js           # PBKDF2 password hash, token hash helpers
+│       │   ├── refresh-tokens.js     # DB-backed refresh token rotation/replay helpers
 │       │   └── rate-limit.js         # protected endpoint rate-limit helpers
 │       ├── ra/
 │       │   ├── schema.js             # D1 şema ensure (idempotent)
