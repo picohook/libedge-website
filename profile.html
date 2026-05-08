@@ -299,6 +299,20 @@
             font-size: 0.72rem;
             color: #667085;
         }
+        .profile-social-icons {
+            margin-top: 0.45rem;
+        }
+        .profile-social-icons a,
+        .profile-social-icons span {
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+        }
+        .profile-social-icons .profile-link-empty {
+            width: auto;
+            padding: 0 0.65rem;
+            border-radius: 999px;
+        }
         .profile-link-row {
             display: grid;
             grid-template-columns: minmax(130px, 180px) minmax(0, 1fr) auto;
@@ -794,6 +808,9 @@
             <div id="profileIdentityLinks" class="profile-identity-icons" aria-label="Akademik kimlikler">
                 <span class="profile-link-empty">Profil linki ekleyin</span>
             </div>
+            <div id="profileSocialLinks" class="profile-identity-icons profile-social-icons" aria-label="Sosyal medya hesapları">
+                <span class="profile-link-empty">Sosyal hesap ekleyin</span>
+            </div>
         </div>
 
         <div class="profile-mini-stats">
@@ -1007,6 +1024,20 @@
                         <div id="profileLinksEditor" class="space-y-2"></div>
                         <div class="mt-4">
                             <button id="saveProfileLinksBtn" type="button" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">Profil Linklerini Kaydet</button>
+                        </div>
+                    </section>
+                    <hr class="my-6">
+                    <section>
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                            <div>
+                                <h3 class="font-semibold text-gray-800">Sosyal Medya Hesaplarım</h3>
+                                <p class="text-sm text-gray-500 mt-1">LinkedIn, X, Instagram, Facebook, YouTube veya kişisel web sitesi linklerinizi ekleyin.</p>
+                            </div>
+                            <button id="addSocialLinkBtn" type="button" class="profile-action secondary"><i class="fas fa-plus"></i><span>Sosyal Hesap Ekle</span></button>
+                        </div>
+                        <div id="socialLinksEditor" class="space-y-2"></div>
+                        <div class="mt-4">
+                            <button id="saveSocialLinksBtn" type="button" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">Sosyal Hesapları Kaydet</button>
                         </div>
                     </section>
                     <hr class="my-6">
@@ -1351,6 +1382,10 @@ const profileTranslations = {
     'Akademik Profillerim': 'My Academic Profiles',
     'ORCID, Google Scholar, Scopus, ResearchGate, YÖKSİS ve diğer profil linklerinizi ekleyin.': 'Add your ORCID, Google Scholar, Scopus, ResearchGate, YOKSIS, and other profile links.',
     'Link Ekle': 'Add Link',
+    'Sosyal Medya Hesaplarım': 'My Social Media Accounts',
+    'LinkedIn, X, Instagram, Facebook, YouTube veya kişisel web sitesi linklerinizi ekleyin.': 'Add your LinkedIn, X, Instagram, Facebook, YouTube, or personal website links.',
+    'Sosyal Hesap Ekle': 'Add Social Account',
+    'Sosyal Hesapları Kaydet': 'Save Social Accounts',
     'Profil Bağlantılarım': 'My Profile Links',
     'Akademik Kimlikler': 'Academic Identities',
     'E-bülten Aboneliği': 'Newsletter Subscription',
@@ -1701,6 +1736,17 @@ const PROFILE_LINK_TYPES = [
     { key: 'yoksis', label: 'YÖKSİS', textIcon: 'YÖK' },
     { key: 'other', label: 'Diğer', iconClass: 'fas fa-link' },
 ];
+const SOCIAL_LINK_TYPES = [
+    { key: 'linkedin', label: 'LinkedIn', iconClass: 'fa-brands fa-linkedin-in' },
+    { key: 'x', label: 'X', iconClass: 'fa-brands fa-x-twitter' },
+    { key: 'instagram', label: 'Instagram', iconClass: 'fa-brands fa-instagram' },
+    { key: 'facebook', label: 'Facebook', iconClass: 'fa-brands fa-facebook-f' },
+    { key: 'youtube', label: 'YouTube', iconClass: 'fa-brands fa-youtube' },
+    { key: 'website', label: 'Web Sitesi', iconClass: 'fas fa-globe' },
+];
+const ALL_PROFILE_LINK_TYPES = [...PROFILE_LINK_TYPES, ...SOCIAL_LINK_TYPES];
+const PROFILE_LINK_TYPE_KEYS = new Set(PROFILE_LINK_TYPES.map((item) => item.key));
+const SOCIAL_LINK_TYPE_KEYS = new Set(SOCIAL_LINK_TYPES.map((item) => item.key));
 
 // ====================== YARDIMCI FONKSİYONLAR ======================
 function showToast(message, type = 'info') {
@@ -2153,7 +2199,7 @@ function closeProfileAnnouncementModal() {
 window.closeProfileAnnouncementModal = closeProfileAnnouncementModal;
 
 function getProfileLinkType(type) {
-    return PROFILE_LINK_TYPES.find((item) => item.key === type) || PROFILE_LINK_TYPES[PROFILE_LINK_TYPES.length - 1];
+    return ALL_PROFILE_LINK_TYPES.find((item) => item.key === type) || PROFILE_LINK_TYPES[PROFILE_LINK_TYPES.length - 1];
 }
 
 function renderProfileLinkIcon(type) {
@@ -2174,15 +2220,32 @@ async function loadProfileLinks() {
         profileLinks = [];
     }
     renderProfileLinks();
+    renderSocialLinks();
     renderProfileLinksEditor();
+    renderSocialLinksEditor();
 }
 
 function renderProfileLinks() {
     const el = document.getElementById('profileIdentityLinks');
     if (!el) return;
-    const links = profileLinks.filter((link) => link?.url);
+    const links = profileLinks.filter((link) => link?.url && PROFILE_LINK_TYPE_KEYS.has(link.link_type));
     if (!links.length) {
         el.innerHTML = '<span class="profile-link-empty">Profil linki ekleyin</span>';
+        return;
+    }
+    el.innerHTML = links.map((link) => {
+        const cfg = getProfileLinkType(link.link_type);
+        const label = link.label || cfg.label;
+        return `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${renderProfileLinkIcon(link.link_type)}</a>`;
+    }).join('');
+}
+
+function renderSocialLinks() {
+    const el = document.getElementById('profileSocialLinks');
+    if (!el) return;
+    const links = profileLinks.filter((link) => link?.url && SOCIAL_LINK_TYPE_KEYS.has(link.link_type));
+    if (!links.length) {
+        el.innerHTML = '<span class="profile-link-empty">Sosyal hesap ekleyin</span>';
         return;
     }
     el.innerHTML = links.map((link) => {
@@ -2195,19 +2258,31 @@ function renderProfileLinks() {
 function renderProfileLinksEditor() {
     const el = document.getElementById('profileLinksEditor');
     if (!el) return;
-    if (!profileLinks.length) {
+    const links = profileLinks.filter((link) => PROFILE_LINK_TYPE_KEYS.has(link.link_type));
+    if (!links.length) {
         el.innerHTML = '<p class="text-sm text-gray-400 rounded-xl border border-dashed border-gray-200 p-4">Henüz profil linki eklenmedi.</p>';
         return;
     }
-    el.innerHTML = profileLinks.map((link, index) => renderProfileLinkEditorRow(link, index)).join('');
+    el.innerHTML = links.map((link, index) => renderProfileLinkEditorRow(link, index, PROFILE_LINK_TYPES, 'data-profile-link-row')).join('');
 }
 
-function renderProfileLinkEditorRow(link = {}, index = 0) {
-    const typeOptions = PROFILE_LINK_TYPES.map((item) => `
+function renderSocialLinksEditor() {
+    const el = document.getElementById('socialLinksEditor');
+    if (!el) return;
+    const links = profileLinks.filter((link) => SOCIAL_LINK_TYPE_KEYS.has(link.link_type));
+    if (!links.length) {
+        el.innerHTML = '<p class="text-sm text-gray-400 rounded-xl border border-dashed border-gray-200 p-4">Henüz sosyal medya hesabı eklenmedi.</p>';
+        return;
+    }
+    el.innerHTML = links.map((link, index) => renderProfileLinkEditorRow(link, index, SOCIAL_LINK_TYPES, 'data-social-link-row')).join('');
+}
+
+function renderProfileLinkEditorRow(link = {}, index = 0, types = PROFILE_LINK_TYPES, rowAttr = 'data-profile-link-row') {
+    const typeOptions = types.map((item) => `
         <option value="${escapeHtml(item.key)}" ${item.key === link.link_type ? 'selected' : ''}>${escapeHtml(item.label)}</option>
     `).join('');
     return `
-        <div class="profile-link-row" data-profile-link-row>
+        <div class="profile-link-row" ${rowAttr}>
             <select data-profile-link-type class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
                 ${typeOptions}
             </select>
@@ -2216,24 +2291,49 @@ function renderProfileLinkEditorRow(link = {}, index = 0) {
         </div>`;
 }
 
-function collectProfileLinksFromEditor() {
-    return Array.from(document.querySelectorAll('[data-profile-link-row]')).map((row, index) => ({
+function collectLinksFromEditor(rowSelector, startOrder = 0) {
+    return Array.from(document.querySelectorAll(rowSelector)).map((row, index) => ({
         link_type: row.querySelector('[data-profile-link-type]')?.value || 'other',
         url: row.querySelector('[data-profile-link-url]')?.value.trim() || '',
-        display_order: (index + 1) * 10,
+        display_order: startOrder + ((index + 1) * 10),
     })).filter((link) => link.url);
 }
 
+function collectProfileLinksFromEditor() {
+    return collectLinksFromEditor('[data-profile-link-row]', 0);
+}
+
+function collectSocialLinksFromEditor() {
+    return collectLinksFromEditor('[data-social-link-row]', 500);
+}
+
+function collectAllLinksFromEditors() {
+    return [
+        ...collectProfileLinksFromEditor(),
+        ...collectSocialLinksFromEditor(),
+    ];
+}
+
 function addProfileLinkRow() {
-    profileLinks = collectProfileLinksFromEditor();
-    const used = new Set(profileLinks.map((link) => link.link_type));
+    const socialLinks = collectSocialLinksFromEditor();
+    const academicLinks = collectProfileLinksFromEditor();
+    const used = new Set(academicLinks.map((link) => link.link_type));
     const next = PROFILE_LINK_TYPES.find((item) => !used.has(item.key)) || PROFILE_LINK_TYPES[PROFILE_LINK_TYPES.length - 1];
-    profileLinks.push({ link_type: next.key, url: '' });
+    profileLinks = [...academicLinks, ...socialLinks, { link_type: next.key, url: '' }];
     renderProfileLinksEditor();
 }
 
+function addSocialLinkRow() {
+    const academicLinks = collectProfileLinksFromEditor();
+    const socialLinks = collectSocialLinksFromEditor();
+    const used = new Set(socialLinks.map((link) => link.link_type));
+    const next = SOCIAL_LINK_TYPES.find((item) => !used.has(item.key)) || SOCIAL_LINK_TYPES[0];
+    profileLinks = [...academicLinks, ...socialLinks, { link_type: next.key, url: '' }];
+    renderSocialLinksEditor();
+}
+
 async function saveProfileLinks() {
-    const links = collectProfileLinksFromEditor();
+    const links = collectAllLinksFromEditors();
     const invalid = links.find((link) => !/^https?:\/\//i.test(link.url));
     if (invalid) {
         showToast('Linkler http:// veya https:// ile başlamalı.', 'warning');
@@ -2250,7 +2350,9 @@ async function saveProfileLinks() {
         if (!res.ok) throw new Error(data.error || 'Profil linkleri kaydedilemedi.');
         profileLinks = Array.isArray(data.links) ? data.links : links;
         renderProfileLinks();
+        renderSocialLinks();
         renderProfileLinksEditor();
+        renderSocialLinksEditor();
         showToast('Profil linkleri kaydedildi.', 'success');
     } catch (err) {
         showToast(err.message || 'Profil linkleri kaydedilemedi.', 'error');
@@ -2276,13 +2378,23 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuthAndLoad();
     document.getElementById('addProfileLinkBtn')?.addEventListener('click', addProfileLinkRow);
     document.getElementById('saveProfileLinksBtn')?.addEventListener('click', saveProfileLinks);
+    document.getElementById('addSocialLinkBtn')?.addEventListener('click', addSocialLinkRow);
+    document.getElementById('saveSocialLinksBtn')?.addEventListener('click', saveProfileLinks);
     document.getElementById('profileLinksEditor')?.addEventListener('click', (event) => {
         const btn = event.target.closest('[data-profile-link-remove]');
         if (!btn) return;
         const row = btn.closest('[data-profile-link-row]');
         if (row) row.remove();
-        profileLinks = collectProfileLinksFromEditor();
+        profileLinks = collectAllLinksFromEditors();
         renderProfileLinksEditor();
+    });
+    document.getElementById('socialLinksEditor')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-profile-link-remove]');
+        if (!btn) return;
+        const row = btn.closest('[data-social-link-row]');
+        if (row) row.remove();
+        profileLinks = collectAllLinksFromEditors();
+        renderSocialLinksEditor();
     });
     document.getElementById('profileAnnouncementSearch')?.addEventListener('input', renderDashboardAnnouncements);
     document.getElementById('profileAnnouncementFilter')?.addEventListener('change', (event) => {

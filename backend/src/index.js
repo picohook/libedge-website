@@ -483,6 +483,7 @@ function normalizeUserProfileLink(raw, index = 0) {
   const allowedTypes = new Set([
     'orcid', 'google_scholar', 'scopus', 'researcherid',
     'researchgate', 'yoksis', 'other',
+    'linkedin', 'x', 'instagram', 'facebook', 'youtube', 'website',
   ]);
   const linkType = String(raw?.link_type || '').trim().toLowerCase();
   if (!allowedTypes.has(linkType)) return null;
@@ -2126,7 +2127,7 @@ app.put('/api/user/profile-links', async (c) => {
   const normalized = links
     .map((item, index) => normalizeUserProfileLink(item, index))
     .filter(Boolean)
-    .slice(0, 12);
+    .slice(0, 16);
 
   const seen = new Set();
   const deduped = normalized.filter((item) => {
