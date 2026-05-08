@@ -13,21 +13,13 @@
  *     → { user, token }  // auth.user = JWT payload (user_id, institution_id, role, ...)
  *     → { response }     // zaten 401 cevabı; doğrudan return et
  *
- *   async function parseAndValidate(c, rules)
+ *   async function parseZodJson(c, schema)
  *     → body (object)    // başarılıysa parse edilmiş gövde
  *     → Response         // başarısızsa 400 JSON (caller `instanceof Response` ile yakalar)
- *
- * Bu helper'ların kullanılabilmesi için iki seçenek var:
- *   A) Tercih edilen — backend/src/index.js'in üstlerinde fonksiyon tanımlarına
- *      `export` anahtar kelimesi ekleyin:
- *          export async function requireAuth(c) { ... }
- *          export async function parseAndValidate(c, rules) { ... }
- *      Sonra aşağıdaki `from '../../index.js'` import'u çalışır.
- *   B) Helper'ları ayrı bir dosyaya (backend/src/_helpers.js) taşıyın ve
- *      hem index.js hem buradan import edin.
  */
 
-import { requireAuth, parseAndValidate } from '../../index.js';
+import { z } from 'zod';
+import { requireAuth, parseZodJson } from '../../index.js';
 import { signProxyToken, newJti } from '../../ra/jwt.js';
 import { encodeHost } from '../../ra/host.js';
 import { ensureRemoteAccessSchema } from '../../ra/schema.js';
@@ -35,6 +27,17 @@ import { buildProxyLandingPath, stableProxyHostLabel } from '../../ra/proxy-url.
 
 const SESSION_TTL_SEC = 3600; // session_host_proxy oturumu süresi
 const ALLOWED_DELIVERY_MODES = new Set(['session_host_proxy', 'stable_host_proxy', 'path_proxy']);
+const issueTokenBodySchema = z.object({
+  subscription_id: z.number({
+    error: '"subscription_id" number tipinde olmalıdır'
+  }).int('"subscription_id" tam sayı olmalıdır').min(1, '"subscription_id" en az 1 olmalıdır').optional(),
+  product_slug: z.string({
+    error: '"product_slug" string tipinde olmalıdır'
+  }).trim().max(128, '"product_slug" en fazla 128 karakter olabilir').optional(),
+  admin_test: z.boolean({
+    error: '"admin_test" boolean tipinde olmalıdır'
+  }).optional()
+});
 
 /** 7 karakterlik base36 rastgele ID (cryptographically random) */
 function generateSessionId() {
@@ -68,11 +71,7 @@ export function registerRaIssueToken(app) {
     // admin_test=true: admin/super_admin'in abonelik gerektirmeden bir ürünü test
     // etmesi için (ör. ekleme sırasında kendi kurumuna abonelik açmaya gerek
     // kalmadan smoke test). Sadece product_slug ile beraber kullanılır.
-    const body = await parseAndValidate(c, {
-      subscription_id: { type: 'number', integer: true, min: 1 },
-      product_slug: { type: 'string', maxLength: 128 },
-      admin_test: { type: 'boolean' },
-    });
+    const body = await parseZodJson(c, issueTokenBodySchema);
     if (body instanceof Response) return body;
 
     const adminTest = body.admin_test === true;

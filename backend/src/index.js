@@ -158,104 +158,7 @@ app.use('*', async (c, next) => {
 
 // ====================== INPUT VALIDATION ======================
 
-/**
- * Hafif yerel validator. Zod olmadan tip güvenli giriş doğrulaması.
- *
- * Kural tipleri:
- *   required        — null / undefined / boş string kabul etmez
- *   type            — 'string' | 'number' | 'boolean' | 'array' | 'object'
- *   integer         — Number.isInteger kontrolü (type:'number' ile birlikte)
- *   min / max       — sayı aralığı
- *   minLength / maxLength — string uzunluğu (trim sonrası)
- *   email           — basit RFC-uyumlu format
- *   enum            — allowedValues dizisinde olmalı
- *   nullable        — required ile birlikte null'a izin verir
- *
- * Döner: { ok: true } | { ok: false, errors: string[], response: Response }
- * @deprecated Yeni endpointlerde Zod ve @hono/zod-validator kullanın.
- */
-function validate(data, rules) {
-  console.warn('⚠️ validate() deprecated, Zod kullanın');
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  const errors = [];
-
-  for (const [field, checks] of Object.entries(rules)) {
-    let val = data[field];
-
-    // String ise trim et (orijinal değeri değiştirme — sadece kontrol için)
-    const strVal = typeof val === 'string' ? val.trim() : val;
-    const isEmpty = val === null || val === undefined || strVal === '';
-
-    // nullable: null'a açıkça izin ver
-    if (checks.nullable && val === null) continue;
-
-    // required
-    if (checks.required && isEmpty) {
-      errors.push(`"${field}" zorunludur`);
-      continue; // bu alan için diğer kontrolleri atla
-    }
-
-    // değer yoksa ve required değilse kontrol etme
-    if (isEmpty) continue;
-
-    // type
-    if (checks.type) {
-      if (checks.type === 'array') {
-        if (!Array.isArray(val)) errors.push(`"${field}" dizi olmalıdır`);
-      } else if (typeof val !== checks.type) {
-        errors.push(`"${field}" ${checks.type} tipinde olmalıdır`);
-      }
-    }
-
-    // integer
-    if (checks.integer && !Number.isInteger(Number(val))) {
-      errors.push(`"${field}" tam sayı olmalıdır`);
-    }
-
-    // min / max (sayılar için)
-    if (checks.min !== undefined && Number(val) < checks.min) {
-      errors.push(`"${field}" en az ${checks.min} olmalıdır`);
-    }
-    if (checks.max !== undefined && Number(val) > checks.max) {
-      errors.push(`"${field}" en fazla ${checks.max} olabilir`);
-    }
-
-    // minLength / maxLength (string için, trim sonrası)
-    if (typeof strVal === 'string') {
-      if (checks.minLength !== undefined && strVal.length < checks.minLength) {
-        errors.push(`"${field}" en az ${checks.minLength} karakter olmalıdır`);
-      }
-      if (checks.maxLength !== undefined && strVal.length > checks.maxLength) {
-        errors.push(`"${field}" en fazla ${checks.maxLength} karakter olabilir`);
-      }
-    }
-
-    // email
-    if (checks.email && !EMAIL_RE.test(strVal)) {
-      errors.push(`"${field}" geçerli bir e-posta adresi olmalıdır`);
-    }
-
-    // enum
-    if (checks.enum && !checks.enum.includes(val)) {
-      errors.push(`"${field}" şu değerlerden biri olmalıdır: ${checks.enum.join(', ')}`);
-    }
-  }
-
-  if (errors.length > 0) {
-    return { ok: false, errors };
-  }
-  return { ok: true };
-}
-
-/**
- * Endpoint'lerde kısa kullanım için yardımcı.
- * Geçersizse doğrudan 400 JSON response döner, aksi hâlde body'yi verir.
- *
- * Kullanım:
- *   const body = await parseAndValidate(c, { email: { required:true, email:true }, ... });
- *   if (body instanceof Response) return body;
- */
-export async function parseAndValidate(c, rules) {
+export async function parseZodJson(c, schema) {
   let body;
   try {
     body = await c.req.json();
@@ -265,15 +168,49 @@ export async function parseAndValidate(c, rules) {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return c.json({ error: 'İstek gövdesi bir nesne olmalıdır' }, 400);
   }
-  // String alanları trim et (mutasyonlu — orijinal referans korunur)
-  for (const key of Object.keys(body)) {
-    if (typeof body[key] === 'string') body[key] = body[key].trim();
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    const errors = result.error.issues.map((issue) => issue.message);
+    return c.json({ error: errors[0], errors }, 400);
   }
-  const result = validate(body, rules);
-  if (!result.ok) {
-    return c.json({ error: result.errors[0], errors: result.errors }, 400);
-  }
-  return body;
+  return result.data;
+}
+
+function zRequiredString(field, { min = 1, max, email = false } = {}) {
+  let schema = z.string({
+    error: (issue) => issue.input === undefined
+      ? `"${field}" zorunludur`
+      : `"${field}" string tipinde olmalıdır`
+  }).trim();
+  schema = schema.min(min, min === 1 ? `"${field}" zorunludur` : `"${field}" en az ${min} karakter olmalıdır`);
+  if (max !== undefined) schema = schema.max(max, `"${field}" en fazla ${max} karakter olabilir`);
+  if (email) schema = schema.email(`"${field}" geçerli bir e-posta adresi olmalıdır`);
+  return schema;
+}
+
+function zOptionalString(field, { max } = {}) {
+  let schema = z.string({
+    error: `"${field}" string tipinde olmalıdır`
+  }).trim();
+  if (max !== undefined) schema = schema.max(max, `"${field}" en fazla ${max} karakter olabilir`);
+  return schema.optional();
+}
+
+function zOptionalEnum(field, values) {
+  return z.preprocess(
+    (value) => value === '' ? undefined : value,
+    z.enum(values, {
+      error: `"${field}" şu değerlerden biri olmalıdır: ${values.join(', ')}`
+    }).optional()
+  );
+}
+
+function zRequiredArray(field) {
+  return z.array(z.unknown(), {
+    error: (issue) => issue.input === undefined
+      ? `"${field}" zorunludur`
+      : `"${field}" dizi olmalıdır`
+  });
 }
 
 // ====================== 🆕 AUTH MIDDLEWARE (Cookie tabanlı) ======================
@@ -1819,6 +1756,13 @@ app.post('/api/auth/refresh', async (c) => {
 
 const PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 60;
 const PASSWORD_RESET_MIN_LENGTH = 8;
+const forgotPasswordSchema = z.object({
+  email: zRequiredString('email', { max: 254, email: true })
+});
+const resetPasswordSchema = z.object({
+  token: zRequiredString('token', { min: 10, max: 256 }),
+  new_password: zRequiredString('new_password', { min: PASSWORD_RESET_MIN_LENGTH, max: 128 })
+});
 
 async function ensurePasswordResetsSchema(db) {
   await db.exec(
@@ -1933,9 +1877,7 @@ app.post('/api/auth/forgot-password', async (c) => {
       return rateLimitResponse(c, ipLimit, 'Çok fazla şifre sıfırlama denemesi. Lütfen birkaç dakika sonra tekrar deneyin.');
     }
 
-    const body = await parseAndValidate(c, {
-      email: { required: true, type: 'string', email: true, maxLength: 254 },
-    });
+    const body = await parseZodJson(c, forgotPasswordSchema);
     if (body instanceof Response) return body;
 
     const normalizedEmail = body.email.toLowerCase().trim();
@@ -1987,10 +1929,7 @@ app.post('/api/auth/reset-password', async (c) => {
       return rateLimitResponse(c, ipLimit, 'Çok fazla sıfırlama denemesi. Lütfen birkaç dakika sonra tekrar deneyin.');
     }
 
-    const body = await parseAndValidate(c, {
-      token:        { required: true, type: 'string', minLength: 10, maxLength: 256 },
-      new_password: { required: true, type: 'string', minLength: PASSWORD_RESET_MIN_LENGTH, maxLength: 128 },
-    });
+    const body = await parseZodJson(c, resetPasswordSchema);
     if (body instanceof Response) return body;
 
     const db = c.env.DB;
@@ -2538,6 +2477,13 @@ app.delete('/api/newsletter/subscribe', async (c) => {
 
 // ====================== REGISTER (değişmedi) ======================
 // ====================== REGISTRATION ROUTES ======================
+const registerSchema = z.object({
+  email: zRequiredString('email', { max: 254, email: true }),
+  password: zRequiredString('password', { min: 6, max: 128 }),
+  full_name: zOptionalString('full_name', { max: 120 }),
+  institution: zOptionalString('institution', { max: 200 })
+});
+
 app.post('/api/auth/register', async (c) => {
   try {
     const ip = extractClientIp(c);
@@ -2546,12 +2492,7 @@ app.post('/api/auth/register', async (c) => {
       return rateLimitResponse(c, ipLimit, 'Çok fazla kayıt denemesi. Lütfen daha sonra tekrar deneyin.');
     }
 
-    const body = await parseAndValidate(c, {
-      email:       { required: true, type: 'string', email: true, maxLength: 254 },
-      password:    { required: true, type: 'string', minLength: 6, maxLength: 128 },
-      full_name:   { type: 'string', maxLength: 120 },
-      institution: { type: 'string', maxLength: 200 },
-    });
+    const body = await parseZodJson(c, registerSchema);
     if (body instanceof Response) return body;
     const { email, password, full_name, institution } = body;
     const db = c.env.DB;
@@ -6913,17 +6854,19 @@ app.delete('/api/system/file/:id', async (c) => {
   return c.json({ success: true });
 });
 
+const fileShareSchema = z.object({
+  file_ids: zRequiredArray('file_ids'),
+  recipients: zRequiredArray('recipients'),
+  message: zOptionalString('message', { max: 1000 }),
+  expires_at: zOptionalString('expires_at', { max: 30 })
+});
+
 app.post('/api/files/share', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   if (!['super_admin', 'admin'].includes(auth.user.role)) return c.json({ error: 'Yetkisiz' }, 403);
 
-  const body = await parseAndValidate(c, {
-    file_ids:   { required: true, type: 'array' },
-    recipients: { required: true, type: 'array' },
-    message:    { type: 'string', maxLength: 1000 },
-    expires_at: { type: 'string', maxLength: 30 },
-  });
+  const body = await parseZodJson(c, fileShareSchema);
   if (body instanceof Response) return body;
   const { file_ids, recipients, message, expires_at } = body;
   if (!file_ids.length) return c.json({ error: 'file_ids boş olamaz' }, 400);
@@ -7302,15 +7245,19 @@ app.patch('/api/notifications/read-all', async (c) => {
   return c.json({ success: true });
 });
 
+const INSTITUTION_CATEGORIES = ['University','Corporate','K-12','Government','Publisher','Service Provider','Sub-distributor'];
+const INSTITUTION_STATUSES = ['Customer','Prospect','Partner','Inactive'];
+const adminInstitutionCreateSchema = z.object({
+  name: zRequiredString('name', { min: 2, max: 200 }),
+  domain: zOptionalString('domain', { max: 500 }),
+  website_url: zOptionalString('website_url', { max: 500 }),
+  category: zOptionalEnum('category', INSTITUTION_CATEGORIES),
+  status: zOptionalEnum('status', INSTITUTION_STATUSES)
+});
+
 app.post('/api/admin/institution', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
-  const body = await parseAndValidate(c, {
-    name:        { required: true, type: 'string', minLength: 2, maxLength: 200 },
-    domain:      { type: 'string', maxLength: 500 },
-    website_url: { type: 'string', maxLength: 500 },
-    category:    { type: 'string', enum: ['University','Corporate','K-12','Government','Publisher','Service Provider','Sub-distributor'] },
-    status:      { type: 'string', enum: ['Customer','Prospect','Partner','Inactive'] },
-  });
+  const body = await parseZodJson(c, adminInstitutionCreateSchema);
   if (body instanceof Response) return body;
   const { name, domain, website_url, category, status } = body;
   const cat = category || 'University';
@@ -7331,8 +7278,8 @@ app.put('/api/admin/institution/:id', async (c) => {
   const role = await getUserRole(c);
   const id = c.req.param('id');
   const { name, domain, website_url, category, status } = await c.req.json();
-  const validCategories = ['University','Corporate','K-12','Government','Publisher','Service Provider','Sub-distributor'];
-  const validStatuses = ['Customer','Prospect','Partner','Inactive'];
+  const validCategories = INSTITUTION_CATEGORIES;
+  const validStatuses = INSTITUTION_STATUSES;
   const db = c.env.DB;
   await ensureInstitutionMetadataColumns(db);
   await ensureAdminActionLogsTable(db);
@@ -8148,15 +8095,17 @@ app.get('/api/admin/announcements/:id/comments', async (c) => {
 // ====================== DESTEK TALEPLERİ ======================
 
 // Kullanıcı: yeni talep oluştur
+const supportTicketCreateSchema = z.object({
+  subject: zRequiredString('subject', { min: 3, max: 200 }),
+  message: zRequiredString('message', { min: 10, max: 5000 }),
+  priority: zOptionalEnum('priority', ['low', 'medium', 'high', 'urgent'])
+});
+
 app.post('/api/support/tickets', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
   const db = c.env.DB;
-  const body = await parseAndValidate(c, {
-    subject:  { required: true, type: 'string', minLength: 3, maxLength: 200 },
-    message:  { required: true, type: 'string', minLength: 10, maxLength: 5000 },
-    priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
-  });
+  const body = await parseZodJson(c, supportTicketCreateSchema);
   if (body instanceof Response) return body;
   const { subject, message, priority } = body;
   const p = priority || 'medium';

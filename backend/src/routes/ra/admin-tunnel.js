@@ -19,10 +19,23 @@
  * Erişim: yalnız super_admin (LibEdge'in kendi requireAuth + rol kontrolü).
  */
 
-import { requireAuth, parseAndValidate } from '../../index.js';
+import { z } from 'zod';
+import { requireAuth, parseZodJson } from '../../index.js';
 import { encryptCredential } from '../../ra/crypto.js';
 import { ensureRemoteAccessSchema } from '../../ra/schema.js';
 import { checkEgressHealth } from '../../ra/tunnel-health.js';
+
+const institutionEgressUpdateSchema = z.object({
+  egress_endpoint: z.string({
+    error: '"egress_endpoint" string tipinde olmalıdır'
+  }).trim().max(512, '"egress_endpoint" en fazla 512 karakter olabilir').optional(),
+  egress_secret: z.string({
+    error: '"egress_secret" string tipinde olmalıdır'
+  }).trim().max(512, '"egress_secret" en fazla 512 karakter olabilir').optional(),
+  enabled: z.number({
+    error: '"enabled" number tipinde olmalıdır'
+  }).int('"enabled" tam sayı olmalıdır').min(0, '"enabled" en az 0 olmalıdır').max(1, '"enabled" en fazla 1 olabilir').optional()
+});
 
 /**
  * @param {import('hono').Hono} app
@@ -88,11 +101,7 @@ export function registerRaAdminTunnel(app) {
       return c.json({ error: 'institution_id geçersiz' }, 400);
     }
 
-    const body = await parseAndValidate(c, {
-      egress_endpoint: { type: 'string', maxLength: 512 },
-      egress_secret: { type: 'string', maxLength: 512 },
-      enabled: { type: 'number', integer: true, min: 0, max: 1 },
-    });
+    const body = await parseZodJson(c, institutionEgressUpdateSchema);
     if (body instanceof Response) return body;
 
     // Hafif URL doğrulaması — https şart
