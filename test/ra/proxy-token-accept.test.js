@@ -23,7 +23,14 @@ function memoryKV(initial = {}) {
 
 const SECRET = 'test-secret-12345';
 const SESSION_ID = 'r0i393q3';
-const HOST = `${SESSION_ID}.selmiye.com`;
+
+function hostFor(sessionId = SESSION_ID) {
+  return `${sessionId}.selmiye.com`;
+}
+
+function uniqueSessionId() {
+  return 'r' + Math.random().toString(36).slice(2, 8);
+}
 
 function freshPayload(overrides = {}) {
   const now = Math.floor(Date.now() / 1000);
@@ -56,14 +63,14 @@ function freshSession(overrides = {}) {
   };
 }
 
-function buildEnv({ jtiUsed = false, session = freshSession(), cookieJtiKey = null } = {}) {
+function buildEnv({ jtiUsed = false, session = freshSession(), cookieJtiKey = null, sessionId = SESSION_ID } = {}) {
   const rateKv = memoryKV();
   if (jtiUsed && cookieJtiKey) {
     rateKv._map.set(`ra:jti:${cookieJtiKey}`, 'used');
   }
   const sessionsKv = memoryKV();
   if (session) {
-    sessionsKv._map.set(`rhost:${SESSION_ID}`, JSON.stringify(session));
+    sessionsKv._map.set(`rhost:${sessionId}`, JSON.stringify(session));
   }
   return {
     RA_PROXY_TOKEN_SECRET: SECRET,
@@ -72,8 +79,8 @@ function buildEnv({ jtiUsed = false, session = freshSession(), cookieJtiKey = nu
   };
 }
 
-function buildRequest({ token, cookie } = {}) {
-  const url = `https://${HOST}/?t=${token}`;
+function buildRequest({ token, cookie, sessionId = SESSION_ID } = {}) {
+  const url = `https://${hostFor(sessionId)}/?t=${token}`;
   const headers = new Headers();
   if (cookie) headers.set('Cookie', cookie);
   return { request: new Request(url, { headers }), url: new URL(url) };
@@ -89,10 +96,10 @@ describe('acceptSessionHostToken — duplicate fetch idempotency', () => {
     const resp = await acceptSessionHostToken(request, env, token, url, SESSION_ID);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe(`https://${HOST}/`);
+    expect(resp.headers.get('Location')).toBe(`https://${hostFor()}/__ra-redirect?to=%2F`);
     const setCookie = resp.headers.get('Set-Cookie');
     expect(setCookie).toContain(`ra_proxy_session=${SESSION_ID}`);
-    expect(setCookie).toContain(`Domain=${HOST}`);
+    expect(setCookie).toContain(`Domain=${hostFor()}`);
     expect(env.RATE_LIMIT_KV._map.get(`ra:jti:${payload.jti}`)).toBe('used');
   });
 
@@ -110,7 +117,7 @@ describe('acceptSessionHostToken — duplicate fetch idempotency', () => {
     const resp = await acceptSessionHostToken(request, env, token, url, SESSION_ID);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe(`https://${HOST}/__ra-redirect?to=%2F`);
+    expect(resp.headers.get('Location')).toBe(`https://${hostFor()}/__ra-redirect?to=%2F`);
     expect(resp.headers.get('Set-Cookie')).toContain(`ra_proxy_session=${SESSION_ID}`);
   });
 
@@ -126,7 +133,7 @@ describe('acceptSessionHostToken — duplicate fetch idempotency', () => {
     const resp = await acceptSessionHostToken(request, env, token, url, SESSION_ID);
 
     expect(resp.status).toBe(302);
-    expect(resp.headers.get('Location')).toBe(`https://${HOST}/`);
+    expect(resp.headers.get('Location')).toBe(`https://${hostFor()}/__ra-redirect?to=%2F`);
     expect(resp.headers.get('Set-Cookie')).toBeNull();
   });
 
@@ -156,6 +163,7 @@ describe('acceptSessionHostToken — duplicate fetch idempotency', () => {
   });
 
   it('jti consumed with valid cookie but expired session returns 401', async () => {
+    const sessionId = uniqueSessionId();
     const payload = freshPayload();
     const token = await signProxyToken(payload, SECRET);
     const expired = freshSession({ expires_at: Math.floor(Date.now() / 1000) - 60 });
@@ -163,13 +171,15 @@ describe('acceptSessionHostToken — duplicate fetch idempotency', () => {
       jtiUsed: true,
       cookieJtiKey: payload.jti,
       session: expired,
+      sessionId,
     });
     const { request, url } = buildRequest({
       token,
-      cookie: `ra_proxy_session=${SESSION_ID}`,
+      cookie: `ra_proxy_session=${sessionId}`,
+      sessionId,
     });
 
-    const resp = await acceptSessionHostToken(request, env, token, url, SESSION_ID);
+    const resp = await acceptSessionHostToken(request, env, token, url, sessionId);
 
     expect(resp.status).toBe(401);
   });
@@ -186,12 +196,13 @@ describe('acceptSessionHostToken — duplicate fetch idempotency', () => {
   });
 
   it('returns 401 when KV session is missing on first hit', async () => {
+    const sessionId = uniqueSessionId();
     const payload = freshPayload();
     const token = await signProxyToken(payload, SECRET);
-    const env = buildEnv({ session: null });
-    const { request, url } = buildRequest({ token });
+    const env = buildEnv({ session: null, sessionId });
+    const { request, url } = buildRequest({ token, sessionId });
 
-    const resp = await acceptSessionHostToken(request, env, token, url, SESSION_ID);
+    const resp = await acceptSessionHostToken(request, env, token, url, sessionId);
 
     expect(resp.status).toBe(401);
   });
