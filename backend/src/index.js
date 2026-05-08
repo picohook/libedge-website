@@ -632,6 +632,31 @@ function createAdminActionUndoneStmt(db, id) {
   `).bind(new Date().toISOString(), id);
 }
 
+function sanitizeUserForAudit(row) {
+  if (!row) return null;
+  return {
+    id: row.id != null ? Number(row.id) : null,
+    email: row.email || null,
+    full_name: row.full_name || null,
+    first_name: row.first_name || null,
+    last_name: row.last_name || null,
+    title: row.title || null,
+    institution: row.institution || null,
+    institution_id: row.institution_id != null ? Number(row.institution_id) : null,
+    role: row.role || null,
+    avatar_url: row.avatar_url || null,
+  };
+}
+
+function selectUserAuditColumns(db, id) {
+  return db.prepare(`
+    SELECT id, email, full_name, first_name, last_name, title,
+           institution, institution_id, role, avatar_url
+    FROM users
+    WHERE id = ?
+  `).bind(id);
+}
+
 async function isSuperAdmin(c) {
   const role = await getUserRole(c);
   return role === 'super_admin';
@@ -2926,6 +2951,7 @@ app.post('/api/admin/user', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const { email, password, full_name, first_name, last_name, title, institution, institution_id, role } = await c.req.json();
   const db = c.env.DB;
+  await ensureAdminActionLogsTable(db);
 
   const adminRole = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
@@ -2970,7 +2996,7 @@ app.post('/api/admin/user', async (c) => {
 
   const finalRole = (role === 'admin' && adminRole !== 'super_admin') ? 'user' : (role || 'user');
   const password_hash = await hashPassword(password || randomPassword());
-  await db.prepare(`
+  const result = await db.prepare(`
     INSERT INTO users (email, password_hash, full_name, first_name, last_name, title, institution, institution_id, role)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
@@ -2985,6 +3011,29 @@ app.post('/api/admin/user', async (c) => {
       finalInstitutionId,
       finalRole
     ).run();
+  const createdId = result.meta?.last_row_id || result.meta?.last_row_id === 0
+    ? result.meta.last_row_id
+    : null;
+  const actor = await getTokenPayloadFromCookie(c);
+  await createAdminActionLogStmt(db, {
+    id: crypto.randomUUID(),
+    actor,
+    entityType: 'user',
+    entityId: createdId || normalizedEmail,
+    action: 'create',
+    before: null,
+    after: sanitizeUserForAudit({
+      id: createdId,
+      email: normalizedEmail,
+      full_name: profileFields.full_name,
+      first_name: profileFields.first_name,
+      last_name: profileFields.last_name,
+      title: profileFields.title,
+      institution: finalInstitution,
+      institution_id: finalInstitutionId,
+      role: finalRole,
+    }),
+  }).run();
   return c.json({ success: true });
 });
 
@@ -2993,6 +3042,7 @@ app.put('/api/admin/user/:id', async (c) => {
   const id = c.req.param('id');
   const { email, password, full_name, first_name, last_name, title, institution, institution_id, role } = await c.req.json();
   const db = c.env.DB;
+  await ensureAdminActionLogsTable(db);
 
   const adminRole = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
@@ -3023,27 +3073,54 @@ app.put('/api/admin/user/:id', async (c) => {
     finalInstitution = adminInstitution;
   }
 
+  const existing = await selectUserAuditColumns(db, id).first();
+  if (!existing) return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
+
   const isSuper = adminRole === 'super_admin';
   const finalRole = (role && role !== 'user' && !isSuper) ? null : role;
+  const after = sanitizeUserForAudit({
+    id,
+    email: normalizedEmail,
+    full_name: profileFields.full_name,
+    first_name: profileFields.first_name,
+    last_name: profileFields.last_name,
+    title: profileFields.title,
+    institution: finalInstitution,
+    institution_id: finalInstitutionId,
+    role: finalRole || existing.role,
+    avatar_url: existing.avatar_url,
+  });
+  const actor = await getTokenPayloadFromCookie(c);
+  let updateStmt;
 
   if (password) {
     const password_hash = await hashPassword(password);
     if (finalRole) {
-      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=?, role=? WHERE id=?`)
-        .bind(normalizedEmail, password_hash, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, finalRole, id).run();
+      updateStmt = db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=?, role=? WHERE id=?`)
+        .bind(normalizedEmail, password_hash, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, finalRole, id);
     } else {
-      await db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=? WHERE id=?`)
-        .bind(normalizedEmail, password_hash, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, id).run();
+      updateStmt = db.prepare(`UPDATE users SET email=?, password_hash=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=? WHERE id=?`)
+        .bind(normalizedEmail, password_hash, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, id);
     }
   } else {
     if (finalRole) {
-      await db.prepare(`UPDATE users SET email=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=?, role=? WHERE id=?`)
-        .bind(normalizedEmail, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, finalRole, id).run();
+      updateStmt = db.prepare(`UPDATE users SET email=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=?, role=? WHERE id=?`)
+        .bind(normalizedEmail, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, finalRole, id);
     } else {
-      await db.prepare(`UPDATE users SET email=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=? WHERE id=?`)
-        .bind(normalizedEmail, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, id).run();
+      updateStmt = db.prepare(`UPDATE users SET email=?, full_name=?, first_name=?, last_name=?, title=?, institution=?, institution_id=? WHERE id=?`)
+        .bind(normalizedEmail, profileFields.full_name, profileFields.first_name, profileFields.last_name, profileFields.title, finalInstitution, finalInstitutionId, id);
     }
   }
+  const logStmt = createAdminActionLogStmt(db, {
+    id: crypto.randomUUID(),
+    actor,
+    entityType: 'user',
+    entityId: id,
+    action: 'update',
+    before: sanitizeUserForAudit(existing),
+    after,
+  });
+  await db.batch([updateStmt, logStmt]);
   return c.json({ success: true });
 });
 
@@ -3066,13 +3143,25 @@ app.delete('/api/admin/user/:id', async (c) => {
   }
 
   const db = c.env.DB;
+  await ensureAdminActionLogsTable(db);
 
+  const userRow = await selectUserAuditColumns(db, id).first();
+  if (!userRow) return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
 
-  const userRow = await db.prepare(`SELECT avatar_url FROM users WHERE id = ?`).bind(id).first();
-
-  await db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(id).run();
-  await db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id).run();
-  await db.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
+  const actor = await getTokenPayloadFromCookie(c);
+  await db.batch([
+    db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(id),
+    db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id),
+    db.prepare(`DELETE FROM users WHERE id=?`).bind(id),
+    createAdminActionLogStmt(db, {
+      id: crypto.randomUUID(),
+      actor,
+      entityType: 'user',
+      entityId: id,
+      action: 'delete',
+      before: sanitizeUserForAudit(userRow),
+    }),
+  ]);
 
   if (userRow?.avatar_url) await deleteManagedR2Object(c.env, userRow.avatar_url);
 
@@ -3084,7 +3173,22 @@ app.post('/api/admin/set-role/:id', async (c) => {
   const id = c.req.param('id');
   const { role } = await c.req.json();
   const db = c.env.DB;
-  await db.prepare(`UPDATE users SET role = ? WHERE id = ?`).bind(role, id).run();
+  await ensureAdminActionLogsTable(db);
+  const existing = await selectUserAuditColumns(db, id).first();
+  if (!existing) return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
+  const actor = await getTokenPayloadFromCookie(c);
+  await db.batch([
+    db.prepare(`UPDATE users SET role = ? WHERE id = ?`).bind(role, id),
+    createAdminActionLogStmt(db, {
+      id: crypto.randomUUID(),
+      actor,
+      entityType: 'user',
+      entityId: id,
+      action: 'role_update',
+      before: sanitizeUserForAudit(existing),
+      after: sanitizeUserForAudit({ ...existing, role }),
+    }),
+  ]);
   return c.json({ success: true });
 });
 
@@ -3739,11 +3843,11 @@ app.get('/api/admin/actions', async (c) => {
   await ensureAdminActionLogsTable(db);
   const url = new URL(c.req.url);
   const entityType = (url.searchParams.get('entity_type') || 'product').trim();
-  if (!['product', 'subscription', 'institution_subscription', 'institution'].includes(entityType)) return c.json({ actions: [] });
+  if (!['product', 'subscription', 'institution_subscription', 'institution', 'user'].includes(entityType)) return c.json({ actions: [] });
   const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') || 50)));
   const rows = await db.prepare(`
     SELECT id, actor_user_id, entity_type, entity_id, action,
-           before_json, undo_expires_at, undone_at, created_at
+           before_json, after_json, undo_expires_at, undone_at, created_at
     FROM admin_action_logs
     WHERE entity_type = ?
     ORDER BY created_at DESC
@@ -3765,7 +3869,9 @@ app.post('/api/admin/actions/:id/undo', async (c) => {
     ? await restoreProductAction(db, id, { enforceExpiry: true })
     : log?.entity_type === 'institution'
       ? await restoreInstitutionAction(db, id, { enforceExpiry: true })
-      : await restoreSubscriptionAction(db, id, { enforceExpiry: true });
+      : log?.entity_type === 'subscription' || log?.entity_type === 'institution_subscription'
+        ? await restoreSubscriptionAction(db, id, { enforceExpiry: true })
+        : { error: 'Bu işlem geri alınamaz', status: 400 };
   if (result.error) return c.json({ error: result.error }, result.status || 400);
   return c.json({ success: true });
 });
@@ -3785,7 +3891,9 @@ app.post('/api/admin/actions/:id/restore', async (c) => {
     ? await restoreProductAction(db, id)
     : log?.entity_type === 'institution'
       ? await restoreInstitutionAction(db, id)
-      : await restoreSubscriptionAction(db, id);
+      : log?.entity_type === 'subscription' || log?.entity_type === 'institution_subscription'
+        ? await restoreSubscriptionAction(db, id)
+        : { error: 'Bu işlem geri alınamaz', status: 400 };
   if (result.error) return c.json({ error: result.error }, result.status || 400);
   return c.json({ success: true });
 });
