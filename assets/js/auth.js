@@ -672,17 +672,24 @@ function updateAuthUI(isLoggedIn) {
             const instDomain = String(currentUser.institution_domain || '').split(',')[0].trim();
             const rawInstUrl = instWebsite || instDomain;
             if (rawInstUrl) {
-                const instUrl = rawInstUrl.startsWith('http') ? rawInstUrl : `https://${rawInstUrl}`;
-                dropdownInstSection.href = instUrl;
-                dropdownInstSection.dataset.url = instUrl;
-                dropdownInstSection.style.pointerEvents = '';
+                const instUrl = safeAuthImageUrl(rawInstUrl.startsWith('http') ? rawInstUrl : `https://${rawInstUrl}`);
+                if (instUrl) {
+                    dropdownInstSection.href = instUrl;
+                    dropdownInstSection.dataset.url = instUrl;
+                    dropdownInstSection.style.pointerEvents = '';
+                } else {
+                    dropdownInstSection.href = '#';
+                    dropdownInstSection.dataset.url = '';
+                    dropdownInstSection.style.pointerEvents = 'none';
+                }
             } else {
                 dropdownInstSection.href = '#';
                 dropdownInstSection.dataset.url = '';
                 dropdownInstSection.style.pointerEvents = 'none';
             }
-            if (currentUser.institution_logo_url && dropdownInstLogoImg) {
-                dropdownInstLogoImg.src = currentUser.institution_logo_url;
+            const instLogoUrl = safeAuthImageUrl(currentUser.institution_logo_url);
+            if (instLogoUrl && dropdownInstLogoImg) {
+                dropdownInstLogoImg.src = instLogoUrl;
                 dropdownInstLogoImg.classList.remove('hidden');
                 dropdownInstLogoImg.onerror = () => {
                     dropdownInstLogoImg.classList.add('hidden');

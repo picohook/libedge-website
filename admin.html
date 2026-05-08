@@ -3861,6 +3861,7 @@ document.addEventListener('click', function(e) {
     function renderProductAccessUrlCell(product) {
         const url = String(product?.default_access_url || '').trim();
         if (!url) return '';
+        const safeUrl = safeDisplayUrl(url);
         if (product.ra_enabled) {
             return `
                 <div class="text-xs text-gray-500 break-all">${escapeHtml(url)}</div>
@@ -3871,7 +3872,8 @@ document.addEventListener('click', function(e) {
                     <i class="fas fa-shield-halved"></i><span>RA ile test et</span>
                 </button>`;
         }
-        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all" onclick="event.stopPropagation()">${escapeHtml(url)}</a>`;
+        if (!safeUrl) return `<span class="text-xs text-gray-500 break-all">${escapeHtml(url)}</span>`;
+        return `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline break-all" onclick="event.stopPropagation()">${escapeHtml(url)}</a>`;
     }
 
     function getAccessTypeGuideText(accessType) {
@@ -4306,12 +4308,13 @@ document.addEventListener('click', function(e) {
                 : tool.status === 'draft' ? 'bg-amber-100 text-amber-700'
                 : 'bg-gray-100 text-gray-500';
             const typeClass = isAffiliate ? 'bg-orange-100 text-orange-700' : 'bg-cyan-100 text-cyan-700';
+            const logoUrl = safeDisplayUrl(tool.logo_url);
             return `
                 <tr class="border-b hover:bg-gray-50">
                     <td class="px-4 py-3">
                         <div class="flex items-center gap-3 min-w-[220px]">
                             <div class="w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
-                                ${tool.logo_url ? `<img src="${escapeHtml(tool.logo_url)}" alt="${escapeHtml(tool.name)} logo" class="w-full h-full object-contain p-1">` : `<span class="text-xs font-bold text-gray-500">${escapeHtml(String(tool.name || '?').slice(0, 2).toUpperCase())}</span>`}
+                                ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(tool.name)} logo" class="w-full h-full object-contain p-1">` : `<span class="text-xs font-bold text-gray-500">${escapeHtml(String(tool.name || '?').slice(0, 2).toUpperCase())}</span>`}
                             </div>
                             <div class="min-w-0">
                                 <p class="font-semibold text-gray-800 truncate">${escapeHtml(tool.name || tool.slug)}</p>
@@ -5318,12 +5321,14 @@ async function startAdminProductRaTest(btn) {
                 const size = typeof file.file_size === 'number' ? formatFileSize(file.file_size) : '';
                 const date = file.added_at ? new Date(file.added_at).toLocaleDateString('tr-TR') : '';
                 const sharedBy = file.shared_by_name ? `<span>${escapeHtml(file.shared_by_name)} tarafından</span>` : '';
+                const fileUrl = safeDisplayUrl(file.file_url);
                 return `
                 <div class="flex items-center p-2.5 border border-gray-100 rounded-lg hover:bg-gray-50 gap-2">
                     <i class="fas ${icon} flex-shrink-0 w-4 text-center"></i>
                     <div class="flex-1 min-w-0">
-                        <a href="${escapeHtml(file.file_url)}" target="_blank" rel="noopener"
-                           class="text-sm font-medium text-indigo-600 hover:underline truncate block">${escapeHtml(file.file_name)}</a>
+                        ${fileUrl
+                            ? `<a href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" class="text-sm font-medium text-indigo-600 hover:underline truncate block">${escapeHtml(file.file_name)}</a>`
+                            : `<span class="text-sm font-medium text-gray-700 truncate block">${escapeHtml(file.file_name)}</span>`}
                         <div class="flex flex-wrap gap-2 mt-0.5 text-xs text-gray-400">
                             ${size ? `<span>${size}</span>` : ''}${ext ? `<span>${ext.toUpperCase()}</span>` : ''}
                             ${sharedBy}${date ? `<span>${date}</span>` : ''}
@@ -5391,7 +5396,9 @@ async function startAdminProductRaTest(btn) {
                         <i class="fas fa-shield-halved"></i><span>RA ile test et</span>
                     </button>`;
             }
-            return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 hover:underline break-all">${escapeHtml(url)}</a>`;
+            const safeUrl = safeDisplayUrl(url);
+            if (!safeUrl) return `<span class="text-xs text-gray-500 break-all">${escapeHtml(url)}</span>`;
+            return `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 hover:underline break-all">${escapeHtml(url)}</a>`;
         };
         const statusLabel = s => s.status === 'active' ? 'Aktif' : s.status === 'trial' ? 'Deneme' : 'Süresi Doldu';
         const statusClass = s => s.status === 'active' ? 'bg-green-100 text-green-800' : s.status === 'trial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
@@ -11114,8 +11121,9 @@ function renderInstitutions(institutions) {
         const websiteUrl = (inst.website_url || '').trim();
         const normalizedWebsiteUrl = websiteUrl ? (websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`) : '';
         const normalizedCategory = normalizeCategory(inst.category || '');
-        const logoCore = inst.logo_url
-            ? `<img src="${escapeHtml(inst.logo_url)}" alt="" class="w-7 h-7 object-contain rounded flex-shrink-0" data-inst-logo="1">`
+        const safeLogoUrl = safeDisplayUrl(inst.logo_url);
+        const logoCore = safeLogoUrl
+            ? `<img src="${escapeHtml(safeLogoUrl)}" alt="" class="w-7 h-7 object-contain rounded flex-shrink-0" data-inst-logo="1">`
               + `<span class="w-7 h-7 rounded bg-blue-100 hidden items-center justify-center flex-shrink-0" data-inst-logo-fallback="1"></span>`
             : `<span class="inline-flex w-7 h-7 rounded bg-blue-100 items-center justify-center flex-shrink-0"></span>`;
         const logoHtml = normalizedWebsiteUrl

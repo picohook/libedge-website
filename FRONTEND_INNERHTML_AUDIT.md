@@ -25,6 +25,10 @@ görmektir.
   ve versioned URL helper'ı üzerinden geçirildi.
 - 8 Mayıs 2026: `admin.html` destek eki linkleri ve duyuru görsel preview/list URL'leri
   `safeDisplayUrl` üzerinden geçirildi.
+- 8 Mayıs 2026: `admin.html` ürün erişim linkleri, bireysel araç logoları, kullanıcı dosya
+  linkleri, abonelik erişim linkleri ve kurum logo URL'leri `safeDisplayUrl` kontrolüne alındı.
+- 8 Mayıs 2026: `profile.html` kurum logosu ve duyuru kapak görseli `safeFileUrl` kontrolüne alındı.
+- 8 Mayıs 2026: `assets/js/script.js` katalog ürün logo URL'leri `safeCatalogUrl` kontrolüne alındı.
 
 ## Öncelikli Bulgular
 

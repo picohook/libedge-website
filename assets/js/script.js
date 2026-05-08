@@ -107,10 +107,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 'wiley-books': 'wiley-kitaplar',
             };
             const versionedUrl = (url, updatedAt) => {
-                if (!url) return '';
-                if (!updatedAt) return url;
-                const separator = url.includes('?') ? '&' : '?';
-                return `${url}${separator}v=${encodeURIComponent(updatedAt)}`;
+                const safeUrl = safeCatalogUrl(url);
+                if (!safeUrl) return '';
+                if (!updatedAt) return safeUrl;
+                const separator = safeUrl.includes('?') ? '&' : '?';
+                return `${safeUrl}${separator}v=${encodeURIComponent(updatedAt)}`;
+            };
+            const safeCatalogUrl = (url) => {
+                const raw = String(url || '').trim();
+                if (!raw) return '';
+                try {
+                    const parsed = new URL(raw, window.location.origin);
+                    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+                } catch {
+                    return '';
+                }
             };
             const overlayColor = (mode) => {
                 if (mode === 'dark') return 'rgba(15, 23, 42, 0.48)';
@@ -122,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const id = aliases[product.slug] || product.slug;
                 const card = document.getElementById(id);
                 if (!card) return;
-                if (product.logo_url) {
+                if (safeCatalogUrl(product.logo_url)) {
                     const img = card.querySelector('.product-image');
                     if (img) {
                         img.src = versionedUrl(product.logo_url, product.logo_updated_at);
