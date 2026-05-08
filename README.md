@@ -33,6 +33,7 @@ libedge-website/
 │       ├── index.js                  # Main Worker — tüm /api/* route'ları
 │       ├── validation.js             # Zod JSON parse ve ortak validation helper'ları
 │       ├── auth/
+│       │   ├── middleware.js         # requireAuth / optional auth cookie+bearer helpers
 │       │   ├── security.js           # PBKDF2 password hash, token hash helpers
 │       │   ├── refresh-tokens.js     # DB-backed refresh token rotation/replay helpers
 │       │   └── rate-limit.js         # protected endpoint rate-limit helpers

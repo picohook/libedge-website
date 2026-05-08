@@ -27,6 +27,7 @@ import {
   timingSafeEqual,
   verifyPassword,
 } from './auth/security.js';
+import { getOptionalAuth, requireAuth } from './auth/middleware.js';
 import {
   checkProtectedRateLimit,
   checkRateLimit,
@@ -55,6 +56,7 @@ export {
   hashResetToken,
   hashTokenValue,
   parseZodJson,
+  requireAuth,
   timingSafeEqual,
   verifyPassword,
 };
@@ -195,60 +197,6 @@ app.use('*', async (c, next) => {
 // ====================== TOKEN HELPERS ======================
 // hono/jwt: sign() and verify() replace manual HS256 implementation.
 // verify() throws on invalid signature or expired token (exp checked automatically).
-
-// ====================== 🆕 AUTH MIDDLEWARE (Cookie tabanlı) ======================
-
-export async function requireAuth(c) {
-  // ✅ YENİ: Proxy'den gelen Authorization header'ı da kabul et
-  const authHeader = c.req.header('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    const secret = c.env.JWT_SECRET;
-    try {
-      const payload = await verify(token, secret, 'HS256');
-      return { user: payload, token };
-    } catch {
-      return { response: c.json({ error: 'Geçersiz token' }, 401) };
-    }
-  }
-
-  const token = getCookie(c, 'authToken');
-  if (!token) {
-    return { response: c.json({ error: 'Oturum bulunamadı' }, 401) };
-  }
-  const secret = c.env.JWT_SECRET;
-  try {
-    const payload = await verify(token, secret, 'HS256');
-    return { user: payload, token };
-  } catch {
-    return { response: c.json({ error: 'Geçersiz veya süresi dolmuş oturum' }, 401) };
-  }
-}
-
-async function getOptionalAuth(c) {
-  const authHeader = c.req.header('Authorization');
-  const secret = c.env.JWT_SECRET;
-
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    try {
-      const payload = await verify(token, secret, 'HS256');
-      return { user: payload, token };
-    } catch {
-      return null;
-    }
-  }
-
-  const token = getCookie(c, 'authToken');
-  if (!token) return null;
-
-  try {
-    const payload = await verify(token, secret, 'HS256');
-    return { user: payload, token };
-  } catch {
-    return null;
-  }
-}
 
 async function ensureIndividualToolsSchema(db) {
   if (!individualToolsSchemaReady) {
