@@ -3338,6 +3338,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script src="assets/js/url-safety.js?v=20260508a"></script>
 <script src="assets/js/auth.js?v=20260506a"></script>
 <script src="assets/js/script.js?v=20260504c"></script>
 <script>
@@ -5509,6 +5510,9 @@ function escapeHtml(text) {
 }
 
 function safeDisplayUrl(url) {
+    if (window.LibEdgeUrls?.safeUrl) {
+        return window.LibEdgeUrls.safeUrl(url);
+    }
     const raw = String(url || '').trim();
     if (!raw) return '';
     try {

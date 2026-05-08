@@ -35,6 +35,8 @@ görmektir.
   yerine DOM node + text node ile yapacak şekilde temizlendi.
 - 8 Mayıs 2026: `profile.html` notification inline action ID ve unread count değerleri
   numeric normalize edilerek template'e giriyor.
+- 8 Mayıs 2026: Ortak `assets/js/url-safety.js` eklendi. `auth.js`, `script.js`,
+  `profile.html` ve `admin.html` mevcut helper adlarını koruyarak bu ortak API'ye bağlandı.
 
 ## Öncelikli Bulgular
 
@@ -58,7 +60,7 @@ Kalan öneri:
 - Yeni `href`/`src` render eden her kod `escapeHtml(url)` ile yetinmemeli; uygun safe URL
   helper'ı kullanılmalı.
 - Orta vadede `safeFileUrl`, `safeDisplayUrl`, `safeAuthImageUrl` ve `safeCatalogUrl`
-  tek ortak frontend helper'a taşınmalı.
+  tek ortak frontend helper etrafında sadeleştirilmeli.
 
 ### 2. Tamamlandı: Çeviri Helper'ında `innerHTML`
 
@@ -132,10 +134,9 @@ Yeni frontend kodunda:
 
 En düşük riskli iyileştirme:
 
-- `safeFileUrl`, `safeDisplayUrl`, `safeAuthImageUrl` ve `safeCatalogUrl` helper'larını
-  tek ortak frontend helper'a çıkarmak.
-- Bu helper taşınırken önce sadece import/global erişim düzeni değiştirilmeli; URL policy
-  davranışı aynı kalmalı.
+- Kalan eski local fallback helper'ları kademeli sadeleştirmek.
+- Bu temizlikte URL policy davranışı aynı kalmalı; fallback sadece ortak helper'ın yüklenmediği
+  sayfalarda devreye girmeli.
 
 Bu değişiklik davranışı bozmadan bakım maliyetini düşürür; geçersiz URL'de mevcut fallback
 veya placeholder gösterilmeye devam etmelidir.

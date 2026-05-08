@@ -31,6 +31,9 @@ function applyAvatarFallback(container, initials, avatarColor, sizeClass, textCl
 }
 
 function safeAuthImageUrl(url) {
+    if (window.LibEdgeUrls?.safeUrl) {
+        return window.LibEdgeUrls.safeUrl(url);
+    }
     const raw = String(url || '').trim();
     if (!raw) return '';
     try {
@@ -42,6 +45,9 @@ function safeAuthImageUrl(url) {
 }
 
 function versionedAuthImageUrl(url) {
+    if (window.LibEdgeUrls?.versionedUrl) {
+        return window.LibEdgeUrls.versionedUrl(url, Date.now());
+    }
     const safeUrl = safeAuthImageUrl(url);
     if (!safeUrl) return '';
     const separator = safeUrl.includes('?') ? '&' : '?';

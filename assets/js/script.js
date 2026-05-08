@@ -107,6 +107,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 'wiley-books': 'wiley-kitaplar',
             };
             const versionedUrl = (url, updatedAt) => {
+                if (window.LibEdgeUrls?.versionedUrl) {
+                    return window.LibEdgeUrls.versionedUrl(url, updatedAt);
+                }
                 const safeUrl = safeCatalogUrl(url);
                 if (!safeUrl) return '';
                 if (!updatedAt) return safeUrl;
@@ -114,6 +117,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 return `${safeUrl}${separator}v=${encodeURIComponent(updatedAt)}`;
             };
             const safeCatalogUrl = (url) => {
+                if (window.LibEdgeUrls?.safeUrl) {
+                    return window.LibEdgeUrls.safeUrl(url);
+                }
                 const raw = String(url || '').trim();
                 if (!raw) return '';
                 try {
