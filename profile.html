@@ -1756,7 +1756,12 @@ function showToast(message, type = 'info') {
     const colors = { success:'border-green-500 bg-white text-green-700', error:'border-red-500 bg-white text-red-700', warning:'border-yellow-500 bg-white text-yellow-700', info:'border-blue-500 bg-white text-blue-700' };
     const icons  = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
     toast.className = `toast-notification fixed top-5 right-5 z-[300] px-4 py-3 rounded-lg shadow-lg text-sm font-medium border-l-4 flex items-center gap-2 transition-all duration-300 translate-x-full ${colors[type]||colors.info}`;
-    toast.innerHTML = `${icons[type]||'📢'} ${message}`;
+    const icon = document.createElement('span');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = icons[type] || '📢';
+    const text = document.createElement('span');
+    text.textContent = String(message || '');
+    toast.append(icon, text);
     document.body.appendChild(toast);
     setTimeout(() => toast.classList.remove('translate-x-full'), 10);
     setTimeout(() => { toast.classList.add('translate-x-full'); setTimeout(() => toast.remove(), 300); }, 3000);

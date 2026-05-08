@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { checkRateLimit } from '../../backend/src/index.js';
 
 /**
@@ -80,6 +80,34 @@ describe('checkRateLimit', () => {
     const result = await checkRateLimit(undefined, 'login:ip', '1.2.3.4', 5, 60);
     expect(result.isLimited).toBe(false);
     expect(result.remaining).toBe(5);
+  });
+
+  it('can fail closed when KV binding is missing for protected routes', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const result = await checkRateLimit(undefined, 'login:ip', '1.2.3.4', 5, 60, { failClosed: true });
+      expect(result.isLimited).toBe(true);
+      expect(result.remaining).toBe(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('can fail closed when KV operations fail for protected routes', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const brokenKv = {
+      async get() {
+        throw new Error('KV unavailable');
+      },
+      async put() {}
+    };
+    try {
+      const result = await checkRateLimit(brokenKv, 'login:ip', '1.2.3.4', 5, 60, { failClosed: true });
+      expect(result.isLimited).toBe(true);
+      expect(result.remaining).toBe(0);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('normalises identifier case and whitespace to avoid trivial bypass', async () => {

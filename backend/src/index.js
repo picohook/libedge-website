@@ -1387,19 +1387,29 @@ async function resolveShareRecipients(db, actor, recipients = []) {
 // ====================== RATE LIMITING ======================
 // Fixed-window rate limiting via Cloudflare KV (RATE_LIMIT_KV binding).
 // KV is shared across all Worker instances so this actually works.
-export async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10, windowSeconds = 300) {
+export async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10, windowSeconds = 300, options = {}) {
+  const failClosed = options.failClosed === true;
+  const now = Date.now();
+
   if (!kv) {
+    if (failClosed) {
+      console.error('RATE_LIMIT_KV binding missing on protected endpoint', endpoint);
+      return {
+        isLimited: true,
+        remaining: 0,
+        resetTime: now + windowSeconds * 1000
+      };
+    }
     return {
       isLimited: false,
       remaining: maxRequests,
-      resetTime: Date.now() + windowSeconds * 1000
+      resetTime: now + windowSeconds * 1000
     };
   }
 
   const safeEndpoint = String(endpoint || 'unknown').trim().toLowerCase();
   const safeIdentifier = String(identifier || 'anonymous').trim().toLowerCase();
   const key = `rate:${safeEndpoint}:${safeIdentifier}`;
-  const now = Date.now();
 
   try {
     const raw = await kv.get(key);
@@ -1424,6 +1434,14 @@ export async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10,
       resetTime: record.resetTime
     };
   } catch (err) {
+    if (failClosed) {
+      console.error('rate limit failed closed', err);
+      return {
+        isLimited: true,
+        remaining: 0,
+        resetTime: now + windowSeconds * 1000
+      };
+    }
     console.warn('rate limit failed open', err);
     return {
       isLimited: false,
@@ -1431,6 +1449,17 @@ export async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10,
       resetTime: now + windowSeconds * 1000
     };
   }
+}
+
+function isStrictRateLimitEnv(env = {}) {
+  const value = String(env.ENVIRONMENT || '').trim().toLowerCase();
+  return value === 'production' || value === 'staging';
+}
+
+function checkProtectedRateLimit(c, endpoint, identifier, maxRequests = 10, windowSeconds = 300) {
+  return checkRateLimit(c.env.RATE_LIMIT_KV, endpoint, identifier, maxRequests, windowSeconds, {
+    failClosed: isStrictRateLimitEnv(c.env)
+  });
 }
 
 async function canAccessUser(c, targetUserId) {
@@ -1571,7 +1600,7 @@ app.post('/api/auth/login', zValidator('json', loginSchema, (result, c) => {
 }), async (c) => {
   try {
     const ip = extractClientIp(c);
-    const ipLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'login:ip', ip, 20, 15 * 60);
+    const ipLimit = await checkProtectedRateLimit(c, 'login:ip', ip, 20, 15 * 60);
     if (ipLimit.isLimited) {
       return rateLimitResponse(c, ipLimit, 'Çok fazla giriş denemesi. Lütfen birkaç dakika sonra tekrar deneyin.');
     }
@@ -1580,7 +1609,7 @@ app.post('/api/auth/login', zValidator('json', loginSchema, (result, c) => {
     const db = c.env.DB;
 
     const normalizedEmail = email.toLowerCase().trim();
-    const accountLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'login:email', normalizedEmail, 10, 15 * 60);
+    const accountLimit = await checkProtectedRateLimit(c, 'login:email', normalizedEmail, 10, 15 * 60);
     if (accountLimit.isLimited) {
       return rateLimitResponse(c, accountLimit, 'Çok fazla başarısız deneme. Lütfen birkaç dakika sonra tekrar deneyin.');
     }
@@ -1698,7 +1727,7 @@ app.post('/api/auth/refresh', async (c) => {
   // retry layer when access cookies expire together. Keep this generous so a
   // transient burst does not look like an early logout to the user.
   const identifier = c.req.header('x-forwarded-for') || c.req.header('cf-connecting-ip') || 'unknown';
-  const rateLimitCheck = await checkRateLimit(c.env.RATE_LIMIT_KV, 'refresh', identifier, 120, 300);
+  const rateLimitCheck = await checkProtectedRateLimit(c, 'refresh', identifier, 120, 300);
   
   if (rateLimitCheck.isLimited) {
     c.header('Retry-After', Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000).toString());
@@ -1899,7 +1928,7 @@ async function sendPasswordResetEmail(c, user, resetUrl) {
 app.post('/api/auth/forgot-password', async (c) => {
   try {
     const ip = extractClientIp(c);
-    const ipLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'forgot:ip', ip, 5, 15 * 60);
+    const ipLimit = await checkProtectedRateLimit(c, 'forgot:ip', ip, 5, 15 * 60);
     if (ipLimit.isLimited) {
       return rateLimitResponse(c, ipLimit, 'Çok fazla şifre sıfırlama denemesi. Lütfen birkaç dakika sonra tekrar deneyin.');
     }
@@ -1910,7 +1939,7 @@ app.post('/api/auth/forgot-password', async (c) => {
     if (body instanceof Response) return body;
 
     const normalizedEmail = body.email.toLowerCase().trim();
-    const emailLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'forgot:email', normalizedEmail, 3, 60 * 60);
+    const emailLimit = await checkProtectedRateLimit(c, 'forgot:email', normalizedEmail, 3, 60 * 60);
     if (emailLimit.isLimited) {
       // Still return the generic success response so we don't confirm the
       // email exists. The rate limit on the email axis only protects us
@@ -1953,7 +1982,7 @@ app.post('/api/auth/forgot-password', async (c) => {
 app.post('/api/auth/reset-password', async (c) => {
   try {
     const ip = extractClientIp(c);
-    const ipLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'reset:ip', ip, 10, 15 * 60);
+    const ipLimit = await checkProtectedRateLimit(c, 'reset:ip', ip, 10, 15 * 60);
     if (ipLimit.isLimited) {
       return rateLimitResponse(c, ipLimit, 'Çok fazla sıfırlama denemesi. Lütfen birkaç dakika sonra tekrar deneyin.');
     }
@@ -2512,7 +2541,7 @@ app.delete('/api/newsletter/subscribe', async (c) => {
 app.post('/api/auth/register', async (c) => {
   try {
     const ip = extractClientIp(c);
-    const ipLimit = await checkRateLimit(c.env.RATE_LIMIT_KV, 'register:ip', ip, 5, 60 * 60);
+    const ipLimit = await checkProtectedRateLimit(c, 'register:ip', ip, 5, 60 * 60);
     if (ipLimit.isLimited) {
       return rateLimitResponse(c, ipLimit, 'Çok fazla kayıt denemesi. Lütfen daha sonra tekrar deneyin.');
     }
