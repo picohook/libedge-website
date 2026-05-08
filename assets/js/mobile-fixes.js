@@ -91,19 +91,16 @@
             }
         }
         
-        // Mevcut hamburger click event'ini override ETME, ek davranış ekle
-        const originalClickHandler = hamburger.onclick;
-// Mevcut hamburger click event'ini override ETME, ek davranış ekle
-hamburger.addEventListener('click', function(e) {
-    // Eğer zaten mobile-fixes tarafından yönetiliyorsa, çift işlem yapma
-    if (hamburger.dataset.mobileEnhanced) return;
-    hamburger.dataset.mobileEnhanced = 'true';
-    
-    setTimeout(() => {
-        const isActive = navLinks.classList.contains('active');
-        updateMenuState(isActive);
-    }, 10);
-});
+        // Mevcut hamburger click event'ini override ETME, ek davranış ekle.
+        if (!hamburger.dataset.mobileEnhanced) {
+            hamburger.dataset.mobileEnhanced = 'true';
+            hamburger.addEventListener('click', function() {
+                setTimeout(() => {
+                    const isActive = navLinks.classList.contains('active');
+                    updateMenuState(isActive);
+                }, 10);
+            });
+        }
         
         // Overlay tıklaması
         overlay.addEventListener('click', () => {
