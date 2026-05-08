@@ -1928,9 +1928,11 @@ async function loadNotifications() {
         if (!res.ok) throw new Error(`${res.status}`);
         const data = await res.json();
         const notifications = data.notifications || [];
-        const notificationItems = notifications.length ? notifications.map((item) => `
+        const notificationItems = notifications.length ? notifications.map((item) => {
+            const notificationId = Number(item.id) || 0;
+            return `
             <button type="button"
-                onclick="markNotificationRead(${item.id})"
+                onclick="markNotificationRead(${notificationId})"
                 class="w-full text-left rounded-xl border ${item.is_read ? 'border-gray-100 bg-white' : 'border-blue-200 bg-blue-50'} px-3 py-2 hover:border-blue-300 transition">
                 <div class="flex items-center justify-between gap-3">
                     <p class="text-sm font-medium text-gray-800">${escapeHtml(item.title || 'Bildirim')}</p>
@@ -1939,7 +1941,8 @@ async function loadNotifications() {
                 ${item.content ? `<p class="text-xs text-gray-600 mt-1">${escapeHtml(item.content)}</p>` : ''}
                 <p class="text-[11px] text-gray-400 mt-1">${new Date(item.created_at).toLocaleString('tr-TR')}</p>
             </button>
-        `).join('') : '<p class="text-sm text-gray-400 text-center py-6">Henüz bildiriminiz yok.</p>';
+        `;
+        }).join('') : '<p class="text-sm text-gray-400 text-center py-6">Henüz bildiriminiz yok.</p>';
 
         if (dashboardPanel) dashboardPanel.innerHTML = notificationItems;
         if (!panel) return;
@@ -1948,7 +1951,7 @@ async function loadNotifications() {
             <div class="flex items-center justify-between mb-3">
                 <div>
                     <p class="font-semibold text-blue-900">Bildirimler</p>
-                    <p class="text-xs text-blue-700">${data.unread_count || 0} okunmamış bildirim</p>
+                    <p class="text-xs text-blue-700">${Number(data.unread_count || 0)} okunmamış bildirim</p>
                 </div>
                 <button type="button" onclick="markAllNotificationsRead()" class="text-xs text-blue-700 hover:text-blue-900">
                     Tümünü okundu yap

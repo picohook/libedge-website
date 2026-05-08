@@ -31,6 +31,8 @@ görmektir.
 - 8 Mayıs 2026: `assets/js/script.js` katalog ürün logo URL'leri `safeCatalogUrl` kontrolüne alındı.
 - 8 Mayıs 2026: `assets/js/script.js` çeviri helper'ı icon + metin güncellemesini `innerHTML`
   yerine DOM node + text node ile yapacak şekilde temizlendi.
+- 8 Mayıs 2026: `profile.html` notification inline action ID ve unread count değerleri
+  numeric normalize edilerek template'e giriyor.
 
 ## Öncelikli Bulgular
 
@@ -71,6 +73,7 @@ Durum:
 
 - Metin kaçırılıyor.
 - `type` değeri class/icon map üzerinden geçiyor veya escape ediliyor.
+- Profile notification action ID/count değerleri numeric normalize edildi.
 
 Öneri:
 
