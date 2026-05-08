@@ -5501,6 +5501,17 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
+function safeDisplayUrl(url) {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    try {
+        const parsed = new URL(raw, window.location.origin);
+        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+    } catch {
+        return '';
+    }
+}
+
 function splitNameParts(fullName) {
     const cleaned = String(fullName || '').trim().replace(/\s+/g, ' ');
     if (!cleaned) return { firstName: '', lastName: '' };
@@ -12366,8 +12377,9 @@ const SUPPORT_PRIORITY_LABELS = { low: 'Düşük', normal: 'Normal', high: 'Yük
 const SUPPORT_PRIORITY_COLORS = { low: 'bg-slate-100 text-slate-700', normal: 'bg-blue-100 text-blue-700', high: 'bg-orange-100 text-orange-700', urgent: 'bg-red-100 text-red-700' };
 
 function renderSupportAttachment(url) {
-    if (!url) return '';
-    return `<p class="mt-2"><a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline"><i class="fas fa-paperclip mr-1"></i>Ek dosya</a></p>`;
+    const safeUrl = safeDisplayUrl(url);
+    if (!safeUrl) return '';
+    return `<p class="mt-2"><a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline"><i class="fas fa-paperclip mr-1"></i>Ek dosya</a></p>`;
 }
 
 function renderSupportUnreadDot() {
@@ -12691,8 +12703,9 @@ async function loadAnnouncements() {
                 : isScheduled
                     ? '<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Planlı</span>'
                     : '<span class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">Taslak</span>';
-            const previewImage = a.cover_image_url
-                ? `<img src="${escapeHtml(a.cover_image_url)}" alt="${escapeHtml(a.title || 'Duyuru görseli')}" class="w-full h-40 object-cover">`
+            const coverImageUrl = safeDisplayUrl(a.cover_image_url);
+            const previewImage = coverImageUrl
+                ? `<img src="${escapeHtml(coverImageUrl)}" alt="${escapeHtml(a.title || 'Duyuru görseli')}" class="w-full h-40 object-cover">`
                 : '<div class="w-full h-40 bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center text-3xl text-slate-400"><i class="fas fa-image"></i></div>';
 
             return `
@@ -13017,8 +13030,9 @@ function updateAnnouncementLivePreview() {
     }
 
     const previewImage = document.getElementById('announcementPreviewImage');
-    if (imageUrl) {
-        const src = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
+    const safeImageUrl = safeDisplayUrl(imageUrl);
+    if (safeImageUrl) {
+        const src = safeImageUrl;
         previewImage.innerHTML = `<img src="${escapeHtml(src)}" alt="Kapak önizleme" class="w-full h-full object-cover">`;
     } else {
         previewImage.innerHTML = '<i class="fas fa-image"></i>';
@@ -13113,8 +13127,9 @@ function openAnnouncementPreviewModal() {
             : 'Taslak olarak saklanır';
 
     const imageEl = document.getElementById('announcementPreviewModalImage');
-    if (imageUrl) {
-        const src = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
+    const safeImageUrl = safeDisplayUrl(imageUrl);
+    if (safeImageUrl) {
+        const src = safeImageUrl;
         imageEl.innerHTML = `<img src="${escapeHtml(src)}" alt="Duyuru önizleme" class="w-full h-full object-cover">`;
     } else {
         imageEl.innerHTML = '<i class="fas fa-image"></i>';
@@ -13133,10 +13148,10 @@ function updateAnnouncementCoverPreview() {
     const promptBox = document.getElementById('announcementImagePromptBox');
     const prompt = document.getElementById('announcementAiImagePrompt').value.trim();
 
-    if (url) {
+    const safeUrl = safeDisplayUrl(url);
+    if (safeUrl) {
         previewWrapper.classList.remove('hidden');
-        // Resolve relative paths to absolute for <img src>
-        const src = url.startsWith('http') ? url : window.location.origin + url;
+        const src = safeUrl;
         previewWrapper.innerHTML = `
             <button type="button" data-admin-action="clear-announcement-image" title="Görseli kaldır"
                 class="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow">

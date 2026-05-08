@@ -2272,7 +2272,8 @@ function renderProfileLinks() {
     el.innerHTML = links.map((link) => {
         const cfg = getProfileLinkType(link.link_type);
         const label = link.label || cfg.label;
-        return `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${renderProfileLinkIcon(link.link_type)}</a>`;
+        const safeUrl = safeFileUrl(link.url);
+        return `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${renderProfileLinkIcon(link.link_type)}</a>`;
     }).join('');
 }
 
@@ -2287,7 +2288,8 @@ function renderSocialLinks() {
     el.innerHTML = links.map((link) => {
         const cfg = getProfileLinkType(link.link_type);
         const label = link.label || cfg.label;
-        return `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${renderProfileLinkIcon(link.link_type)}</a>`;
+        const safeUrl = safeFileUrl(link.url);
+        return `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${renderProfileLinkIcon(link.link_type)}</a>`;
     }).join('');
 }
 
@@ -3049,8 +3051,9 @@ function renderProfileIndividualToolCard(tool) {
     const cta = isAffiliate ? (useEnglish ? 'View at Partner' : 'Partnerde İncele') : (useEnglish ? 'Open Free' : 'Ücretsiz Aç');
     const icon = isAffiliate ? 'fa-arrow-up-right-from-square' : 'fa-play';
     
-    const logoHtml = tool.logo_url
-        ? `<img src="${escapeHtml(tool.logo_url)}" alt="${escapeHtml(name)} logo" loading="lazy">`
+    const logoUrl = safeFileUrl(tool.logo_url);
+    const logoHtml = logoUrl !== '#'
+        ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(name)} logo" loading="lazy">`
         : `<span>${escapeHtml(name.slice(0, 2).toUpperCase())}</span>`;
     
     const searchText = [name, rawCategory, tool.category_en, category, summary, tool.access_type].join(' ').toLowerCase();
@@ -4702,7 +4705,7 @@ async function loadSharedWithMe() {
             <div class="flex items-center gap-3 p-3 rounded-lg border ${isNew ? 'border-indigo-100 bg-indigo-50' : 'border-gray-100'} hover:bg-gray-50 transition">
                 <i class="fas ${getFileIcon(ext)} ${isNew ? 'text-indigo-400' : 'text-gray-400'} w-4 text-center flex-shrink-0"></i>
                 <div class="flex-1 min-w-0">
-                    <a href="${escapeHtml(f.file_url)}" target="_blank" rel="noopener"
+                    <a href="${escapeHtml(safeFileUrl(f.file_url))}" target="_blank" rel="noopener"
                        class="font-medium text-sm text-gray-800 hover:text-primary truncate block">${escapeHtml(f.file_name)}</a>
                     <p class="text-xs text-gray-400">${f.shared_by_name ? escapeHtml(f.shared_by_name) + ' · ' : ''}${date}</p>
                 </div>
@@ -4763,8 +4766,9 @@ const TICKET_PRIORITY_LABELS = { low: 'Düşük', normal: 'Normal', high: 'Yüks
 let currentTicketId = null;
 
 function renderTicketAttachment(url) {
-    if (!url) return '';
-    return `<p class="mt-2"><a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline"><i class="fas fa-paperclip mr-1"></i>Ek dosya</a></p>`;
+    const safeUrl = safeFileUrl(url);
+    if (safeUrl === '#') return '';
+    return `<p class="mt-2"><a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener" class="text-xs text-primary hover:underline"><i class="fas fa-paperclip mr-1"></i>Ek dosya</a></p>`;
 }
 
 function renderUnreadTicketDot() {

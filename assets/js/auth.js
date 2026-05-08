@@ -30,6 +30,24 @@ function applyAvatarFallback(container, initials, avatarColor, sizeClass, textCl
     container.className = `${sizeClass} rounded-full flex items-center justify-center text-white font-bold ${textClass} ${avatarColor}`;
 }
 
+function safeAuthImageUrl(url) {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    try {
+        const parsed = new URL(raw, window.location.origin);
+        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+    } catch {
+        return '';
+    }
+}
+
+function versionedAuthImageUrl(url) {
+    const safeUrl = safeAuthImageUrl(url);
+    if (!safeUrl) return '';
+    const separator = safeUrl.includes('?') ? '&' : '?';
+    return `${safeUrl}${separator}v=${Date.now()}`;
+}
+
 const API_BASE = '';
 // Admin.html kendi window.fetch interceptor'ını kurmadan önce orijinal fetch'i sakla.
 // tryRefreshOnInit bu referansı kullanır — admin interceptor'ının refreshToken
@@ -583,8 +601,8 @@ function updateAuthUI(isLoggedIn) {
         const adminMenuLink = getAuthElement('adminMenuLink');
 
         if (userAvatar) {
-            if (currentUser.avatar_url) {
-                const avatarSrc = `${currentUser.avatar_url}?v=${Date.now()}`;
+            const avatarSrc = versionedAuthImageUrl(currentUser.avatar_url);
+            if (avatarSrc) {
                 userAvatar.innerHTML = `<img src="${avatarSrc}" class="w-full h-full object-cover rounded-full">`;
                 userAvatar.className = 'w-7 h-7 rounded-full overflow-hidden flex items-center justify-center';
                 const img = userAvatar.querySelector('img');
@@ -598,8 +616,8 @@ function updateAuthUI(isLoggedIn) {
         if (userName) userName.textContent = fullName.length > 12 ? `${fullName.substring(0, 10)}..` : fullName;
 
         if (dropdownAvatar) {
-            if (currentUser.avatar_url) {
-                const avatarSrc = `${currentUser.avatar_url}?v=${Date.now()}`;
+            const avatarSrc = versionedAuthImageUrl(currentUser.avatar_url);
+            if (avatarSrc) {
                 dropdownAvatar.innerHTML = `<img src="${avatarSrc}" class="w-full h-full object-cover rounded-full">`;
                 dropdownAvatar.className = 'w-[50px] h-[50px] rounded-full overflow-hidden flex items-center justify-center';
                 const img = dropdownAvatar.querySelector('img');

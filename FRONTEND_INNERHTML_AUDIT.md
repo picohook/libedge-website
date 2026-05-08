@@ -17,6 +17,15 @@ görmektir.
   çoğunlukla `jsStr` ile korunuyor.
 - Bu dosya yaşayan kontrol listesi olarak tutulmalı; her frontend güvenlik değişikliğinde güncellenmelidir.
 
+## Tamamlanan Küçük İyileştirmeler
+
+- 8 Mayıs 2026: `profile.html` profil/sosyal linkleri, bireysel araç logo URL'leri,
+  paylaşılan dosya linkleri ve destek eki linkleri `safeFileUrl` üzerinden geçirildi.
+- 8 Mayıs 2026: `assets/js/auth.js` avatar URL'leri `safeAuthImageUrl` allowlist helper'ı
+  ve versioned URL helper'ı üzerinden geçirildi.
+- 8 Mayıs 2026: `admin.html` destek eki linkleri ve duyuru görsel preview/list URL'leri
+  `safeDisplayUrl` üzerinden geçirildi.
+
 ## Öncelikli Bulgular
 
 ### 1. Orta Risk: URL Attribute Allowlist Eksikleri
