@@ -1,7 +1,7 @@
 # LibEdge - Güncel Proje Mimarisi
 
 Son güncelleme: 8 Mayıs 2026
-Sürüm: 2.1, auth hardening ve migration durum güncellemesi
+Sürüm: 2.2, auth hardening, frontend output hardening ve migration durum güncellemesi
 
 Bu doküman LibEdge web uygulamasının güncel Cloudflare mimarisini, staging/production ayrımını, veri akışlarını ve operasyon notlarını özetler. Secret değerleri bu dokümana yazılmaz; yalnızca secret adları ve bağlı oldukları bileşenler listelenir.
 
@@ -27,6 +27,8 @@ Eski `form-handler-*` Worker'ları şu anda kullanılmıyor, fakat rollback içi
 - Refresh token replay protection: `refresh_tokens` tablosunda `jti` hash'i tutulur, refresh sırasında token rotate edilir, replay tespitinde token family revoke edilir.
 - Strict env'lerde (`staging`, `production`) refresh token login yolunda runtime DDL guard çalıştırılmaz; şema migration ile hazırlanmış kabul edilir.
 - DB-backed refresh token oluşturma beklenmedik şekilde hata verirse login 500'e düşmemek için stateless refresh-token fallback devreye girer ve hata loglanır.
+- Frontend güvenlik: `admin.html` ve `profile.html` toast/error/file-preview akışlarında ham kullanıcı veya server metni doğrudan HTML'e basılmamalıdır; son sertleştirme `escapeHtml`, DOM node ve güvenli dosya URL kontrolünü kullanır.
+- Frontend HTML audit'i devam eden bir iştir: `innerHTML` kalan yerler, özellikle dosya adı, hata mesajı, destek talebi, duyuru ve Airtable sync verisi içeriyorsa tek tek incelenmelidir.
 
 ## 2. Sistem Diyagramı
 

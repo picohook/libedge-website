@@ -91,6 +91,20 @@ ts
 
 Bu loglar işlem güvenliği ve denetim amacıyla tutulur.
 
+### Frontend Output Encoding
+
+Kullanıcı, kurum, dosya, destek talebi, hata mesajı veya upstream/server kaynaklı metin
+tarayıcıda varsayılan olarak HTML değil metin kabul edilir.
+
+Kontroller:
+
+- Toast ve error mesajları mümkünse DOM node + `textContent` ile oluşturulur.
+- HTML template zorunluysa kullanıcı/server kaynaklı her metin `escapeHtml` ile kaçılır.
+- Dosya preview gibi `src`/`href` üreten akışlarda URL değeri allowlist mantığıyla kontrol edilir; geçersiz veya tehlikeli scheme'ler render edilmez.
+- `innerHTML` kullanımı sadece sabit template veya açıkça sanitize edilmiş veriyle sınırlı tutulur.
+
+8 Mayıs 2026'da `admin.html` ve `profile.html` içinde toast, support error ve file preview tarafında bu prensiplere uygun sertleştirme yapıldı. Kalan `innerHTML` kullanımları periyodik güvenlik taramasının parçasıdır.
+
 ## 3. Production Öncesi Zorunlu Kontroller
 
 - [ ] Privacy policy kayıtlı kullanıcı, RA, AI, dosya ve abonelik verilerini kapsayacak şekilde güncellendi.
@@ -207,6 +221,7 @@ admin_audit_logs
 - [ ] R2 dosya silme/anonimleştirme prosedürü belgelenecek.
 - [ ] Cloudflare, GitHub, e-posta sağlayıcıları ve AI sağlayıcıları için veri işleyen listesi çıkarılacak.
 - [ ] Kurum sözleşmelerine RA egress ve loglama açıklaması eklenecek.
+- [ ] Frontend `innerHTML` audit'i release öncesi tekrarlanacak; kullanıcı/server verisi içeren her render noktası `textContent`, `escapeHtml` veya güvenli URL helper ile doğrulanacak.
 
 ## 9. Uygulama Prensipleri
 

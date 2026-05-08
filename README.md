@@ -174,6 +174,8 @@ cd ../..
 - Staging'de `0033_refresh_tokens.sql` ve `0034_users_lower_email_index.sql` uygulandı.
 - `backend/src/index.js` içinde strict env'lerde (`staging`, `production`) refresh token login yolunda runtime DDL guard atlanır; şema migration ile hazırlanmış olmalıdır.
 - DB-backed refresh token yazımı beklenmedik şekilde hata verirse login 500'e düşmez; geçici olarak stateless refresh token fallback kullanır ve hata loglanır.
+- `admin.html` ve `profile.html` içinde toast, error render ve file preview tarafında kullanıcı/server kaynaklı metinler sertleştirildi; dinamik metinler `textContent`/`escapeHtml`, dosya URL'leri `safeFileUrl` benzeri allowlist mantığıyla ele alınmalıdır.
+- Frontend `innerHTML` kullanımı tamamen yasaklanmış değildir; ancak her yeni kullanımda kullanıcı, server veya dosya metadata'sı interpolasyonu güvenlik incelemesinden geçmelidir.
 
 ## Cloudflare DNS / Route Yapılandırması
 
