@@ -9896,19 +9896,30 @@ window.showToast = function(message, type = 'info') {
     iconWrap.setAttribute('aria-hidden', 'true');
     iconWrap.innerHTML = icons[type] || '<i class="fas fa-bell"></i>';
     const textWrap = document.createElement('span');
+    textWrap.className = 'flex-1';
     textWrap.textContent = String(message || '');
-    toast.append(iconWrap, textWrap);
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'ml-2 inline-flex h-5 w-5 items-center justify-center rounded text-current opacity-60 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-current';
+    closeBtn.setAttribute('aria-label', 'Bildirimi kapat');
+    closeBtn.innerHTML = '<i class="fas fa-times text-xs" aria-hidden="true"></i>';
+    toast.append(iconWrap, textWrap, closeBtn);
     document.body.appendChild(toast);
-    
+
     setTimeout(() => {
         if (isMobile) toast.style.transform = 'translate(-50%, 0)';
         else toast.classList.remove('translate-x-full');
     }, 10);
-    setTimeout(() => {
+    const dismiss = () => {
         if (isMobile) toast.style.transform = 'translate(-50%, 120%)';
         else toast.classList.add('translate-x-full');
         setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    };
+    const timer = setTimeout(dismiss, 5000);
+    closeBtn.addEventListener('click', () => {
+        clearTimeout(timer);
+        dismiss();
+    });
 };
 
 function getToastErrorMessage(context, rawMessage) {

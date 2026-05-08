@@ -1755,16 +1755,33 @@ function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     const colors = { success:'border-green-500 bg-white text-green-700', error:'border-red-500 bg-white text-red-700', warning:'border-yellow-500 bg-white text-yellow-700', info:'border-blue-500 bg-white text-blue-700' };
     const icons  = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
-    toast.className = `toast-notification fixed top-5 right-5 z-[300] px-4 py-3 rounded-lg shadow-lg text-sm font-medium border-l-4 flex items-center gap-2 transition-all duration-300 translate-x-full ${colors[type]||colors.info}`;
+    toast.className = `toast-notification fixed top-5 right-5 z-[300] px-4 py-3 rounded-lg shadow-lg text-sm font-medium border-l-4 flex items-start gap-2 transition-all duration-300 translate-x-full max-w-[min(420px,calc(100vw-40px))] ${colors[type]||colors.info}`;
     const icon = document.createElement('span');
     icon.setAttribute('aria-hidden', 'true');
     icon.textContent = icons[type] || '📢';
     const text = document.createElement('span');
+    text.className = 'flex-1 break-words';
     text.textContent = String(message || '');
-    toast.append(icon, text);
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'ml-2 inline-flex h-5 w-5 items-center justify-center rounded text-current opacity-60 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-current';
+    closeBtn.setAttribute('aria-label', 'Bildirimi kapat');
+    const closeIcon = document.createElement('i');
+    closeIcon.className = 'fas fa-times text-xs';
+    closeIcon.setAttribute('aria-hidden', 'true');
+    closeBtn.appendChild(closeIcon);
+    toast.append(icon, text, closeBtn);
     document.body.appendChild(toast);
     setTimeout(() => toast.classList.remove('translate-x-full'), 10);
-    setTimeout(() => { toast.classList.add('translate-x-full'); setTimeout(() => toast.remove(), 300); }, 3000);
+    const dismiss = () => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => toast.remove(), 300);
+    };
+    const timer = setTimeout(dismiss, 5000);
+    closeBtn.addEventListener('click', () => {
+        clearTimeout(timer);
+        dismiss();
+    });
 }
 function escapeHtml(text) {
     if (!text) return '';
