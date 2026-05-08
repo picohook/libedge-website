@@ -260,7 +260,58 @@ Minimum kontrol listesi:
 - Sağlayıcı değişikliği privacy policy ve kurum sözleşmesi etkisi açısından değerlendirilir.
 - Veri sahibi talebinde hangi sağlayıcıda arama/silme yapılacağı operasyon dosyasına eklenir.
 
-## 10. Açık Teknik İşler
+## 10. Kurum Sözleşmesi İçin RA Egress ve Loglama Açıklaması
+
+Aşağıdaki metin kurumsal sözleşme, ek protokol veya teknik hizmet eki için
+başlangıç taslağıdır; hukuk kontrolünden geçirilmeden nihai metin sayılmaz.
+
+### Uzaktan Erişim Hizmeti
+
+LibEdge Uzaktan Erişim (RA) hizmeti, yetkili kurum kullanıcılarının kurum ağı
+dışından abonelikli yayıncı kaynaklarına erişebilmesi için proxy ve kurum egress
+tüneli altyapısı kullanır. Yayıncıya giden trafik, ilgili kurum için yapılandırılan
+egress agent üzerinden kurum internet çıkışına yönlendirilebilir. Bu yapı,
+yayıncıların IP tabanlı erişim kontrolleriyle uyum sağlamak için kullanılır.
+
+### Kurum Egress Agent
+
+- Egress agent kurumun belirlediği sunucu veya VM üzerinde çalışır.
+- Agent yalnız LibEdge proxy tarafından HMAC imzalı isteklerle çağrılır.
+- Agent inbound publisher credential veya kullanıcı parolasını plaintext olarak
+  LibEdge paneline geri göndermez.
+- Kurum egress endpoint ve secret bilgileri LibEdge tarafında secret/şifreli alan
+  olarak tutulur; admin ekranlarında plaintext gösterilmez.
+- Kurum, egress agent'ın çalıştığı ortamın ağ, erişim ve işletim sistemi güvenliğinden
+  sorumludur.
+
+### Loglama ve Veri Minimizasyonu
+
+RA erişim logları güvenlik, hata ayıklama, yetki denetimi ve hizmet kalitesi amacıyla
+tutulur. Varsayılan log alanları:
+
+- kullanıcı id
+- kurum id
+- ürün/publisher slug
+- hedef host/path
+- zaman damgası
+- upstream status/latency gibi teknik metrikler
+- ham IP yerine kısa hash/pseudonym (`ip_hash`)
+
+RA loglarında publisher sayfa içeriği, kullanıcı şifresi, JWT, cookie veya credential
+plaintext saklanmaz. RA access log retention başlangıç politikası 180 gündür; hukuki
+ve sözleşmesel gerekliliklere göre güncellenebilir.
+
+### Kurum ve LibEdge Sorumlulukları
+
+- Kurum, RA kapsamındaki kullanıcıların yetkilendirilmesinden ve kurum içi kullanım
+  kurallarını kullanıcılarına duyurmaktan sorumludur.
+- LibEdge, RA secret'larını ve erişim loglarını yetki kontrollü şekilde işler.
+- Yayıncı lisans koşulları kurum ve yayıncı arasındaki sözleşmeye tabidir; RA
+  altyapısı bu koşulların teknik uygulanmasına yardımcı olur.
+- Olay incelemesi veya veri sahibi talebi halinde ilgili RA logları, retention süresi
+  içinde kurumla kontrollü şekilde paylaşılabilir.
+
+## 11. Açık Teknik İşler
 
 - [ ] `privacy.html` kayıtlı kullanıcı, RA, AI, dosya paylaşımı ve kurum aboneliği modelini kapsayacak şekilde güncellenecek.
 - [ ] Legacy SHA-256 şifre hash'leri için rapor/migration hazırlanacak.
@@ -273,10 +324,10 @@ Minimum kontrol listesi:
 - [x] Admin audit log kapsamı çekirdek dosya yükleme/silme operasyonları için genişletildi.
 - [x] R2 dosya silme/anonimleştirme prosedürü belgelendi.
 - [x] Cloudflare, GitHub, e-posta sağlayıcıları ve AI sağlayıcıları için veri işleyen listesi çıkarıldı.
-- [ ] Kurum sözleşmelerine RA egress ve loglama açıklaması eklenecek.
+- [x] Kurum sözleşmeleri için RA egress ve loglama açıklaması taslağı eklendi.
 - [ ] Frontend `innerHTML` audit'i release öncesi tekrarlanacak; kullanıcı/server verisi içeren her render noktası `textContent`, `escapeHtml` veya güvenli URL helper ile doğrulanacak.
 
-## 11. Uygulama Prensipleri
+## 12. Uygulama Prensipleri
 
 - Plaintext şifre veya credential saklanmaz.
 - Geri döndürülebilir şifreleme yalnız gerçekten ihtiyaç olan secret'larda kullanılır.
