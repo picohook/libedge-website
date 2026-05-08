@@ -11,8 +11,10 @@ görmektir.
 
 - `innerHTML` kullanımı yaygın; büyük kısmı loading/empty/icon gibi sabit template.
 - Toast, support error ve profile file preview akışları son sertleştirmeyle daha güvenli hale getirildi.
-- Kalan önemli risk sınıfı ham metinden çok URL attribute'larıdır: `href` ve `src` değerleri
-  sadece `escapeHtml` ile kaçılırsa `javascript:` gibi scheme'ler mantıksal olarak hâlâ sorun olabilir.
+- İlk URL hardening turu tamamlandı: önemli `href` ve `src` akışları `safeFileUrl`,
+  `safeDisplayUrl`, `safeAuthImageUrl` veya `safeCatalogUrl` üzerinden geçiyor.
+- Kalan önemli risk sınıfı artık yeni eklenen URL render noktalarının aynı helper
+  disiplinine uymamasıdır.
 - Tablo/list render'larında kullanıcı metni çoğunlukla `escapeHtml`, inline JS argument'ları ise
   çoğunlukla `jsStr` ile korunuyor.
 - Bu dosya yaşayan kontrol listesi olarak tutulmalı; her frontend güvenlik değişikliğinde güncellenmelidir.
@@ -36,24 +38,27 @@ görmektir.
 
 ## Öncelikli Bulgular
 
-### 1. Orta Risk: URL Attribute Allowlist Eksikleri
+### 1. İzlenecek: URL Attribute Allowlist Disiplini
 
 `escapeHtml` HTML kırılmasını engeller, ancak URL'nin güvenli scheme olup olmadığını doğrulamaz.
 Bu yüzden `href`/`src` render eden noktalarda `safeFileUrl` veya benzeri allowlist helper
 kullanılması daha doğru olur.
 
-İlk bakılacak noktalar:
+Tamamlanan ilk bakış noktaları:
 
-- `profile.html`: paylaşılan dosyalar listesinde `f.file_url` doğrudan `href` içine giriyor.
-- `assets/js/auth.js`: `currentUser.avatar_url` doğrudan avatar `<img src="...">` içine giriyor.
-- `admin.html`: duyuru kapak görseli ve preview görsel akışlarında `cover_image_url` / `src`
-  değerleri yalnız `escapeHtml` ile attribute'a yazılıyor.
+- `profile.html`: paylaşılan dosya linkleri, profil/sosyal linkler, destek eki linkleri,
+  kurum logosu ve duyuru kapak görseli.
+- `assets/js/auth.js`: kullanıcı avatarı, kurum website linki ve kurum logosu.
+- `assets/js/script.js`: katalog ürün logoları.
+- `admin.html`: ürün/abonelik erişim linkleri, bireysel araç logoları, kullanıcı dosya linkleri,
+  destek eki linkleri, kurum logo URL'leri ve duyuru görsel preview/list URL'leri.
 
-Öneri:
+Kalan öneri:
 
-- `safeFileUrl` helper'ı ortak hale getirilmeli.
-- Profil/avatar/duyuru görsel URL'leri için `http:`, `https:` ve uygulama içi relative path allowlist'i kullanılmalı.
-- Geçersiz URL'de fallback avatar/placeholder gösterilmeli.
+- Yeni `href`/`src` render eden her kod `escapeHtml(url)` ile yetinmemeli; uygun safe URL
+  helper'ı kullanılmalı.
+- Orta vadede `safeFileUrl`, `safeDisplayUrl`, `safeAuthImageUrl` ve `safeCatalogUrl`
+  tek ortak frontend helper'a taşınmalı.
 
 ### 2. Tamamlandı: Çeviri Helper'ında `innerHTML`
 
@@ -88,12 +93,12 @@ ile render ediyor. Son hata render düzeltmeleri de bu sınıfa eklendi.
 Durum:
 
 - `subject`, `message`, `admin_note`, `author_name`, `institution_name` gibi alanlar kaçırılıyor.
-- Attachment URL'leri ayrıca URL allowlist yaklaşımına taşınabilir.
+- Attachment URL'leri profile ve admin destek akışında URL allowlist yaklaşımına taşındı.
 
 Öneri:
 
 - Metin tarafı iyi durumda.
-- Ek dosya URL'leri ortak safe URL helper ile ele alınmalı.
+- Yeni destek/talep attachment render'ı eklenirse aynı safe URL helper yaklaşımı korunmalı.
 
 ### 5. Düşük Risk: Loading, Empty State, Icon Button HTML
 
@@ -127,9 +132,10 @@ Yeni frontend kodunda:
 
 En düşük riskli iyileştirme:
 
-- `safeFileUrl` / `safeDisplayUrl` helper'ını ortak bir frontend helper'a çıkarmak.
-- Önce `assets/js/auth.js` avatar URL'leri ve `profile.html` paylaşılan dosya `href` render'ı
-  bu helper'a bağlanmalı.
+- `safeFileUrl`, `safeDisplayUrl`, `safeAuthImageUrl` ve `safeCatalogUrl` helper'larını
+  tek ortak frontend helper'a çıkarmak.
+- Bu helper taşınırken önce sadece import/global erişim düzeni değiştirilmeli; URL policy
+  davranışı aynı kalmalı.
 
-Bu değişiklik davranışı bozmadan güvenliği artırır; geçersiz URL'de mevcut fallback veya placeholder
-gösterilmelidir.
+Bu değişiklik davranışı bozmadan bakım maliyetini düşürür; geçersiz URL'de mevcut fallback
+veya placeholder gösterilmeye devam etmelidir.
