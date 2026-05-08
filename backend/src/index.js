@@ -675,6 +675,18 @@ async function recordAdminAction(c, db, { actor = null, entityType, entityId, ac
   }
 }
 
+function auditFileMetadata(file, extra = {}) {
+  if (!file) return { ...extra };
+  return {
+    file_id: file.id != null ? Number(file.id) : null,
+    original_name: file.original_name || file.name || null,
+    file_size: file.file_size != null ? Number(file.file_size) : file.size != null ? Number(file.size) : null,
+    mime_type: file.mime_type || file.type || null,
+    extension: file.extension || null,
+    ...extra,
+  };
+}
+
 async function isSuperAdmin(c) {
   const role = await getUserRole(c);
   return role === 'super_admin';
@@ -3861,7 +3873,7 @@ app.get('/api/admin/actions', async (c) => {
   await ensureAdminActionLogsTable(db);
   const url = new URL(c.req.url);
   const entityType = (url.searchParams.get('entity_type') || 'product').trim();
-  if (!['product', 'subscription', 'institution_subscription', 'institution', 'user', 'folder_share', 'announcement_ai', 'sync', 'support_ticket'].includes(entityType)) return c.json({ actions: [] });
+  if (!['product', 'subscription', 'institution_subscription', 'institution', 'user', 'folder_share', 'announcement_ai', 'sync', 'support_ticket', 'file_operation'].includes(entityType)) return c.json({ actions: [] });
   const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') || 50)));
   const rows = await db.prepare(`
     SELECT id, actor_user_id, entity_type, entity_id, action,
@@ -4046,6 +4058,16 @@ app.post('/api/admin/product/:slug/logo', async (c) => {
       WHERE slug = ?
     `).bind(key, logoUrl, logoUpdatedAt, slug).run();
 
+    await recordAdminAction(c, db, {
+      entityType: 'file_operation',
+      entityId: slug,
+      action: 'product_logo_upload',
+      after: auditFileMetadata(file, {
+        product_slug: slug,
+        asset_type: 'logo',
+      }),
+    });
+
     return c.json({
       success: true,
       logo_asset_key: key,
@@ -4099,6 +4121,16 @@ app.post('/api/admin/product/:slug/card-background', async (c) => {
       SET card_background_asset_key = ?, card_background_url = ?, card_background_updated_at = ?
       WHERE slug = ?
     `).bind(key, cardBackgroundUrl, cardBackgroundUpdatedAt, slug).run();
+
+    await recordAdminAction(c, db, {
+      entityType: 'file_operation',
+      entityId: slug,
+      action: 'product_card_background_upload',
+      after: auditFileMetadata(file, {
+        product_slug: slug,
+        asset_type: 'card_background',
+      }),
+    });
 
     return c.json({
       success: true,
@@ -5229,6 +5261,18 @@ async function handleManagedUpload(c) {
       )
     `).bind(systemRoot.id, stored.id, stored.original_name, auth.user.user_id, systemRoot.id, stored.id).run();
 
+    await recordAdminAction(c, c.env.DB, {
+      actor: auth.user,
+      entityType: 'file_operation',
+      entityId: stored.id,
+      action: 'upload',
+      after: auditFileMetadata(stored, {
+        scope_type: 'system',
+        collection_id: Number(systemRoot.id),
+        deduplicated,
+      }),
+    });
+
     return c.json({
       success: true,
       deduplicated,
@@ -5806,13 +5850,28 @@ app.delete('/api/institution/file/:id', async (c) => {
   await db.prepare(`UPDATE collection_files SET is_active = 0 WHERE id = ?`).bind(refId).run();
 
   const remainingRefs = await countActiveReferences(db, ref.file_id);
+  let deletedStoredFile = null;
   if (remainingRefs === 0) {
     const stored = await getStoredFileById(db, ref.file_id);
+    deletedStoredFile = stored || null;
     if (stored && c.env.FILES_BUCKET) {
       await c.env.FILES_BUCKET.delete(stored.file_key);
     }
     await db.prepare(`DELETE FROM files WHERE id = ?`).bind(ref.file_id).run();
   }
+
+  await recordAdminAction(c, db, {
+    actor: auth.user,
+    entityType: 'file_operation',
+    entityId: refId,
+    action: 'institution_file_remove',
+    before: auditFileMetadata(deletedStoredFile || { id: ref.file_id }, {
+      ref_id: refId,
+      scope_type: 'institution',
+      institution_id: ref.institution_id != null ? Number(ref.institution_id) : null,
+      stored_file_deleted: !!deletedStoredFile,
+    }),
+  });
 
   return c.json({ success: true });
 });
@@ -6399,13 +6458,26 @@ app.delete('/api/collections/:id/files/:fileId', async (c) => {
   `).bind(collectionId, fileId).run();
 
   const remainingRefs = await countActiveReferences(db, fileId);
+  let deletedStoredFile = null;
   if (remainingRefs === 0) {
     const stored = await getStoredFileById(db, fileId);
+    deletedStoredFile = stored || null;
     if (stored && c.env.FILES_BUCKET) {
       await c.env.FILES_BUCKET.delete(stored.file_key);
     }
     await db.prepare(`DELETE FROM files WHERE id = ?`).bind(fileId).run();
   }
+
+  await recordAdminAction(c, db, {
+    actor: auth.user,
+    entityType: 'file_operation',
+    entityId: fileId,
+    action: 'collection_file_remove',
+    before: auditFileMetadata(deletedStoredFile || { id: fileId }, {
+      collection_id: collectionId,
+      stored_file_deleted: !!deletedStoredFile,
+    }),
+  });
 
   return c.json({ success: true });
 });
@@ -6774,13 +6846,28 @@ app.delete('/api/system/file/:id', async (c) => {
   await db.prepare(`UPDATE collection_files SET is_active = 0 WHERE id = ?`).bind(refId).run();
 
   const remainingRefs = await countActiveReferences(db, ref.file_id);
+  let deletedStoredFile = null;
   if (remainingRefs === 0) {
     const stored = await getStoredFileById(db, ref.file_id);
+    deletedStoredFile = stored || null;
     if (stored && c.env.FILES_BUCKET) {
       await c.env.FILES_BUCKET.delete(stored.file_key);
     }
     await db.prepare(`DELETE FROM files WHERE id = ?`).bind(ref.file_id).run();
   }
+
+  await recordAdminAction(c, db, {
+    actor: auth.user,
+    entityType: 'file_operation',
+    entityId: refId,
+    action: 'system_file_remove',
+    before: auditFileMetadata(deletedStoredFile || { id: ref.file_id }, {
+      ref_id: refId,
+      scope_type: ref.scope_type,
+      scope_id: ref.scope_id != null ? Number(ref.scope_id) : null,
+      stored_file_deleted: !!deletedStoredFile,
+    }),
+  });
 
   return c.json({ success: true });
 });
@@ -7279,6 +7366,16 @@ app.post('/api/admin/institution/:id/logo', async (c) => {
       if (prevKey && prevKey !== key) await deleteManagedR2Object(c.env, prevLogoUrl);
     }
 
+    await recordAdminAction(c, db, {
+      entityType: 'file_operation',
+      entityId: id,
+      action: 'institution_logo_upload',
+      after: auditFileMetadata(file, {
+        institution_id: Number(id),
+        asset_type: 'logo',
+      }),
+    });
+
     return c.json({ success: true, logo_url });
   } catch (err) {
     console.error('Institution logo upload error:', err);
@@ -7569,6 +7666,14 @@ app.post('/api/admin/announcements/upload-cover', async (c) => {
       httpMetadata: { contentType: file.type || 'image/jpeg' }
     });
     const url = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : `/api/files/${key}`;
+    await recordAdminAction(c, c.env.DB, {
+      entityType: 'file_operation',
+      entityId: 'announcement-cover',
+      action: 'announcement_cover_upload',
+      after: auditFileMetadata(file, {
+        asset_type: 'announcement_cover',
+      }),
+    });
     return c.json({ success: true, url });
   } catch (err) {
     console.error('Announcement cover upload error:', err);

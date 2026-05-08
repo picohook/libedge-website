@@ -220,7 +220,7 @@ admin_audit_logs
 - [x] Admin audit log ürün, abonelik, kurum ve kullanıcı yönetimi için eklendi.
 - [x] Admin audit log kapsamı sync, duyuru AI ve toplu klasör paylaşımı operasyonlarına genişletildi.
 - [x] Admin audit log kapsamı destek ticket status/reply operasyonlarına genişletildi.
-- [ ] Admin audit log kapsamı kalan dosya yükleme/silme operasyonları için genişletilecek.
+- [x] Admin audit log kapsamı çekirdek dosya yükleme/silme operasyonları için genişletildi.
 - [ ] R2 dosya silme/anonimleştirme prosedürü belgelenecek.
 - [ ] Cloudflare, GitHub, e-posta sağlayıcıları ve AI sağlayıcıları için veri işleyen listesi çıkarılacak.
 - [ ] Kurum sözleşmelerine RA egress ve loglama açıklaması eklenecek.
