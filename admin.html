@@ -12414,7 +12414,7 @@ async function loadSupport() {
                 </td>
             </tr>`).join('');
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-red-400">Hata: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-red-400">Hata: ${escapeHtml(err.message || err)}</td></tr>`;
     }
 }
 
@@ -12472,7 +12472,7 @@ async function openSupportModal(id) {
 
         await loadSupport();
     } catch (err) {
-        repliesEl.innerHTML = `<p class="text-red-400 text-sm">${err.message}</p>`;
+        repliesEl.innerHTML = `<p class="text-red-400 text-sm">${escapeHtml(err.message || err)}</p>`;
     }
 }
 
@@ -12590,7 +12590,7 @@ async function loadRequests() {
             </tr>`;
         }).join('');
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-red-500">${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-red-500">${escapeHtml(err.message || err)}</td></tr>`;
     }
 }
 

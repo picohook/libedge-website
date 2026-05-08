@@ -1333,7 +1333,9 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     if (welcome) {
         const errDiv = document.createElement('div');
         errDiv.className = 'bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 text-sm mt-4';
-        errDiv.innerHTML = '<strong>Sistem Hatası:</strong> ' + msg + ' (Satır: ' + lineNo + ')';
+        const label = document.createElement('strong');
+        label.textContent = 'Sistem Hatası:';
+        errDiv.append(label, document.createTextNode(` ${String(msg || '')} (Satır: ${lineNo})`));
         welcome.appendChild(errDiv);
     }
     return false;
@@ -1788,6 +1790,18 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function safeFileUrl(url) {
+    const raw = String(url || '').trim();
+    if (!raw) return '#';
+    if (raw.startsWith('/')) return raw;
+    try {
+        const parsed = new URL(raw, window.location.origin);
+        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '#';
+    } catch {
+        return '#';
+    }
 }
 
 // Safe interpolation for JS string literals inside HTML attributes.
@@ -4409,10 +4423,13 @@ document.getElementById('deleteAccountBtn')?.addEventListener('click', async () 
 // ====================== FILE VIEWER ======================
 function previewFile(url, name, type) {
     const ext = (type || url.split('.').pop()?.split('?')[0] || '').toLowerCase();
+    const safeUrl = safeFileUrl(url);
+    const safeName = escapeHtml(name);
+    const safeUrlAttr = escapeHtml(safeUrl);
     document.getElementById('fileViewerTitle').textContent = name;
-    document.getElementById('fileViewerDownload').href = url;
+    document.getElementById('fileViewerDownload').href = safeUrl;
     document.getElementById('fileViewerDownload').download = name;
-    document.getElementById('fileViewerOpenNew').href = url;
+    document.getElementById('fileViewerOpenNew').href = safeUrl;
     const body = document.getElementById('fileViewerBody');
     body.innerHTML = '<div class="flex items-center justify-center" style="height:200px"><i class="fas fa-spinner fa-spin text-4xl text-gray-400"></i></div>';
 
@@ -4420,16 +4437,16 @@ function previewFile(url, name, type) {
     const videos = ['mp4','webm','ogg','mov'];
     const audio  = ['mp3','wav','aac','flac'];
     const office = ['doc','docx','xls','xlsx','ppt','pptx'];
-    const fullUrl = url.startsWith('http') ? url : window.location.origin + url;
+    const fullUrl = safeUrl.startsWith('http') ? safeUrl : window.location.origin + safeUrl;
 
     if (ext === 'pdf') {
-        body.innerHTML = `<iframe src="${url}" style="width:100%;height:calc(100dvh - 52px);border:0" onload="this.previousElementSibling&&this.previousElementSibling.remove()"></iframe>`;
+        body.innerHTML = `<iframe src="${safeUrlAttr}" style="width:100%;height:calc(100dvh - 52px);border:0" onload="this.previousElementSibling&&this.previousElementSibling.remove()"></iframe>`;
     } else if (images.includes(ext)) {
-        body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;padding:1rem;background:#f9fafb;min-height:calc(100dvh - 52px)"><img src="${url}" alt="${name}" style="max-width:100%;max-height:calc(100dvh - 100px);object-fit:contain;border-radius:0.5rem;box-shadow:0 4px 6px rgba(0,0,0,0.1)"></div>`;
+        body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;padding:1rem;background:#f9fafb;min-height:calc(100dvh - 52px)"><img src="${safeUrlAttr}" alt="${safeName}" style="max-width:100%;max-height:calc(100dvh - 100px);object-fit:contain;border-radius:0.5rem;box-shadow:0 4px 6px rgba(0,0,0,0.1)"></div>`;
     } else if (videos.includes(ext)) {
-        body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;background:#000;min-height:calc(100dvh - 52px)"><video controls autoplay style="max-width:100%;max-height:calc(100dvh - 52px)"><source src="${url}">Video oynatılamıyor.</video></div>`;
+        body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;background:#000;min-height:calc(100dvh - 52px)"><video controls autoplay style="max-width:100%;max-height:calc(100dvh - 52px)"><source src="${safeUrlAttr}">Video oynatılamıyor.</video></div>`;
     } else if (audio.includes(ext)) {
-        body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;min-height:calc(100dvh - 52px)"><div style="width:6rem;height:6rem;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem"><i class="fas fa-music" style="font-size:2.5rem;color:#7c3aed"></i></div><p style="font-weight:500;margin-bottom:1rem">${escapeHtml(name)}</p><audio controls style="width:100%;max-width:20rem"><source src="${url}"></audio></div>`;
+        body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;min-height:calc(100dvh - 52px)"><div style="width:6rem;height:6rem;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem"><i class="fas fa-music" style="font-size:2.5rem;color:#7c3aed"></i></div><p style="font-weight:500;margin-bottom:1rem">${safeName}</p><audio controls style="width:100%;max-width:20rem"><source src="${safeUrlAttr}"></audio></div>`;
     } else if (office.includes(ext)) {
         const renderOfficeFrame = (srcUrl) => {
             const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(srcUrl)}`;
@@ -4449,13 +4466,13 @@ function previewFile(url, name, type) {
                         <p style="font-weight:700;color:#111827;margin-bottom:0.35rem">${escapeHtml(name)}</p>
                         <p style="font-size:0.875rem;color:#6b7280;margin-bottom:1.25rem;line-height:1.45">Önizleme başlatılamadı. Dosyayı indirerek veya yeni sekmede açarak görüntüleyebilirsiniz.</p>
                         <div style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center">
-                            <a href="${escapeHtml(url)}" download="${escapeHtml(name)}" style="background:#220f60;color:white;padding:0.6rem 0.9rem;border-radius:0.5rem;text-decoration:none;font-size:0.875rem;font-weight:600"><i class="fas fa-download" style="margin-right:0.45rem"></i>İndir</a>
-                            <a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="background:#f3f4f6;color:#374151;padding:0.6rem 0.9rem;border-radius:0.5rem;text-decoration:none;font-size:0.875rem;font-weight:600"><i class="fas fa-external-link-alt" style="margin-right:0.45rem"></i>Yeni sekmede aç</a>
+                            <a href="${safeUrlAttr}" download="${safeName}" style="background:#220f60;color:white;padding:0.6rem 0.9rem;border-radius:0.5rem;text-decoration:none;font-size:0.875rem;font-weight:600"><i class="fas fa-download" style="margin-right:0.45rem"></i>İndir</a>
+                            <a href="${safeUrlAttr}" target="_blank" rel="noopener" style="background:#f3f4f6;color:#374151;padding:0.6rem 0.9rem;border-radius:0.5rem;text-decoration:none;font-size:0.875rem;font-weight:600"><i class="fas fa-external-link-alt" style="margin-right:0.45rem"></i>Yeni sekmede aç</a>
                         </div>
                     </div>
                 </div>`;
         };
-        const apiPathMatch = url.match(/^\/api\/files\/(.+)$/);
+        const apiPathMatch = safeUrl.match(/^\/api\/files\/(.+)$/);
         if (apiPathMatch) {
             body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - 52px);padding:2rem;text-align:center"><i class="fas fa-circle-notch fa-spin" style="font-size:2rem;color:#6366f1;margin-bottom:1rem"></i><p style="color:#6b7280;font-weight:500">Belge yükleniyor, lütfen bekleyin...</p></div>';
             fetch(`${window.API_BASE || ""}/api/files-token?path=${encodeURIComponent(apiPathMatch[1])}`, { credentials: 'include' })
@@ -4472,7 +4489,7 @@ function previewFile(url, name, type) {
             renderOfficeFrame(fullUrl);
         }
     } else {
-        body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - 52px);padding:2rem;text-align:center"><div style="width:5rem;height:5rem;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1rem"><i class="fas fa-file" style="font-size:2.5rem;color:#9ca3af"></i></div><p style="font-weight:500;margin-bottom:0.5rem">${escapeHtml(name)}</p><p style="font-size:0.875rem;color:#9ca3af;margin-bottom:1.5rem">Bu dosya türü önizlenemiyor</p><a href="${url}" target="_blank" style="background:#220f60;color:white;padding:0.5rem 1rem;border-radius:0.5rem;text-decoration:none"><i class="fas fa-external-link-alt" style="margin-right:0.5rem"></i>Aç / İndir</a></div>`;
+        body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - 52px);padding:2rem;text-align:center"><div style="width:5rem;height:5rem;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1rem"><i class="fas fa-file" style="font-size:2.5rem;color:#9ca3af"></i></div><p style="font-weight:500;margin-bottom:0.5rem">${safeName}</p><p style="font-size:0.875rem;color:#9ca3af;margin-bottom:1.5rem">Bu dosya türü önizlenemiyor</p><a href="${safeUrlAttr}" target="_blank" rel="noopener" style="background:#220f60;color:white;padding:0.5rem 1rem;border-radius:0.5rem;text-decoration:none"><i class="fas fa-external-link-alt" style="margin-right:0.5rem"></i>Aç / İndir</a></div>`;
     }
 
     document.getElementById('fileViewerPanel').classList.add('open');
@@ -4783,7 +4800,7 @@ async function loadMyTickets() {
                 </div>
             </div>`).join('');
     } catch (err) {
-        el.innerHTML = `<p class="text-red-400 text-sm text-center py-4">${err.message}</p>`;
+        el.innerHTML = `<p class="text-red-400 text-sm text-center py-4">${escapeHtml(err.message || err)}</p>`;
     }
 }
 
@@ -4827,7 +4844,7 @@ async function openTicketDetail(id) {
 
         detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
-        repliesEl.innerHTML = `<p class="text-red-400 text-sm">${err.message}</p>`;
+        repliesEl.innerHTML = `<p class="text-red-400 text-sm">${escapeHtml(err.message || err)}</p>`;
     }
 }
 
