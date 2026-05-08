@@ -75,6 +75,14 @@ export async function hashTokenValue(token) {
     .join('');
 }
 
+export function generateResetToken() {
+  return generateSecureTokenHex(32);
+}
+
+export async function hashResetToken(token) {
+  return hashTokenValue(token);
+}
+
 export function timingSafeEqual(a, b) {
   if (a.length !== b.length) return false;
   let diff = 0;

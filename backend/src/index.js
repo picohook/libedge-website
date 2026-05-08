@@ -20,7 +20,9 @@ import { runTunnelHeartbeat } from './ra/tunnel-health.js';
 import { ensureRemoteAccessSchema } from './ra/schema.js';
 import {
   generateSecureTokenHex,
+  generateResetToken,
   hashPassword,
+  hashResetToken,
   hashTokenValue,
   timingSafeEqual,
   verifyPassword,
@@ -48,7 +50,9 @@ import {
 export {
   checkRateLimit,
   generateSecureTokenHex,
+  generateResetToken,
   hashPassword,
+  hashResetToken,
   hashTokenValue,
   parseZodJson,
   timingSafeEqual,
@@ -1634,14 +1638,6 @@ async function ensurePasswordResetsSchema(db) {
   await db.exec(
     'CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id)'
   );
-}
-
-export function generateResetToken() {
-  return generateSecureTokenHex(32);
-}
-
-export async function hashResetToken(token) {
-  return hashTokenValue(token);
 }
 
 function getFrontendOrigin(c) {
