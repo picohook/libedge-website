@@ -169,10 +169,10 @@ cd ../..
 
 ---
 
-## Güncel Operasyon Notu (8 Mayıs 2026)
+## Güncel Operasyon Notu (9 Mayıs 2026)
 
-- Staging D1 migration durumu: bekleyen migration yok.
-- Production D1 migration durumu: `0020_product_presentation.sql` ile `0034_users_lower_email_index.sql` arası bekliyor.
+- Staging D1 migration durumu: `0035_product_requests_ai_usage_logs.sql` eklenmeden önce bekleyen migration yoktu; production penceresi öncesi staging/production listesi yeniden alınmalı.
+- Production D1 migration durumu: `0020_product_presentation.sql` ile `0035_product_requests_ai_usage_logs.sql` arası bekliyor kabul edilmeli; kesin durum için `PRODUCTION_MIGRATION_PLAN.md` preflight adımları çalıştırılmalı.
 - Auth login akışı DB-backed refresh token replay protection kullanır.
 - Staging'de `0033_refresh_tokens.sql` ve `0034_users_lower_email_index.sql` uygulandı.
 - `backend/src/index.js` içinde strict env'lerde (`staging`, `production`) refresh token login yolunda runtime DDL guard atlanır; şema migration ile hazırlanmış olmalıdır.
