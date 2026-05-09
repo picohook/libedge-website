@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { sign } from 'hono/jwt';
 
 import app, { hashPassword } from '../../backend/src/index.js';
 
@@ -95,6 +96,19 @@ class AuthD1 {
   }
 }
 
+class RefreshSchemaUnavailableD1 extends AuthD1 {
+  async exec() {
+    throw new Error('refresh_tokens schema unavailable');
+  }
+
+  async dispatch(sql, binds, method) {
+    if (method === 'run' && sql.includes('INSERT INTO refresh_tokens')) {
+      throw new Error('refresh token insert unavailable');
+    }
+    return super.dispatch(sql, binds, method);
+  }
+}
+
 function getRefreshTokenFromResponse(res) {
   const values = typeof res.headers.getSetCookie === 'function'
     ? res.headers.getSetCookie()
@@ -172,5 +186,52 @@ describe('auth refresh token rotation', () => {
 
     const rotatedAfterReplayRes = await postRefresh(db, rotatedRefreshToken);
     expect(rotatedAfterReplayRes.status).toBe(401);
+  });
+
+  it('refreshes stateless fallback tokens without touching unavailable refresh schema', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const user = {
+      id: 42,
+      email: 'fallback@example.com',
+      full_name: 'Fallback User',
+      institution: 'LibEdge Test',
+      institution_id: 9,
+      password_hash: await hashPassword('correct-password'),
+      role: 'user',
+    };
+    const db = new RefreshSchemaUnavailableD1(user);
+    const secret = 'test-jwt-secret';
+    const now = Math.floor(Date.now() / 1000);
+    const statelessRefreshToken = await sign({
+      user_id: user.id,
+      type: 'refresh',
+      iat: now,
+      exp: now + 3600,
+    }, secret);
+
+    try {
+      const res = await app.request(
+        '/api/auth/refresh',
+        {
+          method: 'POST',
+          headers: {
+            cookie: `refreshToken=${statelessRefreshToken}`,
+            'cf-connecting-ip': '203.0.113.8',
+          },
+        },
+        {
+          DB: db,
+          JWT_SECRET: secret,
+          RATE_LIMIT_KV: memoryKV(),
+          ENVIRONMENT: 'staging',
+        }
+      );
+
+      expect(res.status).toBe(200);
+      const rotatedRefreshToken = getRefreshTokenFromResponse(res);
+      expect(rotatedRefreshToken).not.toBe(statelessRefreshToken);
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

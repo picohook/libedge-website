@@ -1535,24 +1535,29 @@ app.post('/api/auth/refresh', async (c) => {
   }
 
   const db = c.env.DB;
-  await ensureRefreshTokensSchema(db);
   let currentRefreshTokenHash = null;
 
   if (refreshPayload.jti) {
-    currentRefreshTokenHash = await hashTokenValue(refreshPayload.jti);
-    const storedRefresh = await db.prepare(`
-      SELECT user_id, expires_at, used_at, revoked_at
-      FROM refresh_tokens
-      WHERE token_hash = ?
-    `).bind(currentRefreshTokenHash).first();
+    try {
+      await ensureRefreshTokensSchema(db);
+      currentRefreshTokenHash = await hashTokenValue(refreshPayload.jti);
+      const storedRefresh = await db.prepare(`
+        SELECT user_id, expires_at, used_at, revoked_at
+        FROM refresh_tokens
+        WHERE token_hash = ?
+      `).bind(currentRefreshTokenHash).first();
 
-    const now = Math.floor(Date.now() / 1000);
-    if (!storedRefresh || Number(storedRefresh.user_id) !== Number(refreshPayload.user_id)) {
-      return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
-    }
-    if (storedRefresh.used_at || storedRefresh.revoked_at || Number(storedRefresh.expires_at || 0) < now) {
-      await revokeRefreshTokenFamily(db, refreshPayload.user_id);
-      return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
+      const now = Math.floor(Date.now() / 1000);
+      if (!storedRefresh || Number(storedRefresh.user_id) !== Number(refreshPayload.user_id)) {
+        return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
+      }
+      if (storedRefresh.used_at || storedRefresh.revoked_at || Number(storedRefresh.expires_at || 0) < now) {
+        await revokeRefreshTokenFamily(db, refreshPayload.user_id);
+        return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
+      }
+    } catch (err) {
+      console.error('Refresh token DB validation failed:', err);
+      return c.json({ error: 'Refresh oturumu doğrulanamadı. Lütfen tekrar giriş yapın.' }, 401);
     }
   }
 
@@ -1578,8 +1583,13 @@ app.post('/api/auth/refresh', async (c) => {
   };
   
   const newAccessToken = await sign(newAccessPayload, secret);
-  const { token: newRefreshToken, tokenHash: newRefreshTokenHash } = await createRefreshToken(c, db, user.id, secret);
-  await markRefreshTokenUsed(db, currentRefreshTokenHash, newRefreshTokenHash);
+  const refreshResult = refreshPayload.jti
+    ? await createRefreshToken(c, db, user.id, secret)
+    : await createLoginRefreshToken(c, db, user.id, secret);
+  const { token: newRefreshToken, tokenHash: newRefreshTokenHash } = refreshResult;
+  if (currentRefreshTokenHash && newRefreshTokenHash) {
+    await markRefreshTokenUsed(db, currentRefreshTokenHash, newRefreshTokenHash);
+  }
   
   setCookie(c, 'authToken', newAccessToken, {
     httpOnly: true,
