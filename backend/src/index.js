@@ -3766,6 +3766,7 @@ app.put('/api/admin/product/:slug', async (c) => {
     ra.ra_requires_tunnel,
     ra.ra_login_recipe_json,
     ra.ra_host_allowlist_json,
+    String(body.brochure_url || '').trim() || null,
     slug
   );
   const logStmt = createAdminActionLogStmt(db, {
@@ -3800,7 +3801,8 @@ async function restoreProductAction(db, id, { enforceExpiry = false } = {}) {
     'short_description_tr', 'short_description_en', 'subjects_json', 'access_tags_json',
     'card_visible', 'display_order', 'is_featured',
     'ra_enabled', 'ra_delivery_mode', 'ra_origin_host', 'ra_origin_landing_path',
-    'ra_requires_tunnel', 'ra_login_recipe_json', 'ra_host_allowlist_json'
+    'ra_requires_tunnel', 'ra_login_recipe_json', 'ra_host_allowlist_json',
+    'brochure_url'
   ];
   const updateStmt = db.prepare(`
     UPDATE products SET ${columns.map((col) => `${col} = ?`).join(', ')}
@@ -4010,7 +4012,8 @@ app.post('/api/admin/products', async (c) => {
     ra.ra_origin_landing_path,
     ra.ra_requires_tunnel,
     ra.ra_login_recipe_json,
-    ra.ra_host_allowlist_json
+    ra.ra_host_allowlist_json,
+    String(body.brochure_url || '').trim() || null
   ).run();
 
   return c.json({ success: true, slug: slugNorm }, 201);
