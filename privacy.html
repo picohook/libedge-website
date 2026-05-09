@@ -87,7 +87,7 @@
 
     <main class="flex-grow max-w-7xl mx-auto p-4 md:p-8 bg-white shadow-lg my-8 rounded-lg">
          <h1 class="text-3xl md:text-4xl font-extrabold mb-6 border-b pb-3 text-gray-900 translatable" data-en="Privacy Policy and Data Processing Notice">Gizlilik Politikası ve Aydınlatma Metni</h1>
-        <p class="text-sm text-gray-500 mb-8"><strong class="translatable" data-en="Last Updated:">Son Güncelleme Tarihi:</strong> 9.10.2026</p>
+        <p class="text-sm text-gray-500 mb-8"><strong class="translatable" data-en="Last Updated:">Son Güncelleme Tarihi:</strong> 9 Mayıs 2026</p>
 
         <h2 class="text-2xl font-bold mt-8 mb-4 border-l-4 border-blue-600 pl-2 text-gray-800 translatable" data-en="1. Data Controller">1. Veri Sorumlusu Kimliği (Data Controller)</h2>
         <p class="mb-4 translatable">Kişisel Verilerin Korunması Kanunu (KVKK) ve Genel Veri Koruma Yönetmeliği (GDPR) uyarınca Veri Sorumlusu: Semih Bakar</p>
@@ -98,7 +98,7 @@
         </ul>
 
         <h2 class="text-2xl font-bold mt-8 mb-4 border-l-4 border-blue-600 pl-2 text-gray-800 translatable" data-en="2. Data Collected and Purposes of Processing">2. Toplanan Veriler ve İşleme Amaçları</h2>
-        <p class="mb-4 translatable" data-en="Your data is processed primarily for communication and site security purposes:">Verileriniz, temel olarak talep toplama ve site güvenliğini sağlama amaçlarıyla işlenir:</p>
+        <p class="mb-4 translatable" data-en="Your data is processed to provide institutional access, user account, file sharing, remote access, support and security services.">Verileriniz; kurum erişimi, kullanıcı hesabı, dosya paylaşımı, uzaktan erişim, destek ve güvenlik hizmetlerini sunmak amacıyla işlenir.</p>
         <div class="overflow-x-auto">
             <table class="w-full text-sm border border-gray-300 rounded-lg overflow-hidden">
                 <thead>
@@ -110,32 +110,67 @@
                 </thead>
                 <tbody>
                     <tr class="border-b border-gray-200 hover:bg-gray-50">
-                        <td class="p-3"><strong class="translatable" data-en="Identity & Contact">Kimlik ve İletişim</strong> <span class="translatable" data-en="(Name, Email, Phone No - From Forms)">(Ad, E-posta, Tel No - Formlardan)</span></td>
-                        <td class="p-3 translatable" data-en="Responding to your information requests and communicating with you.">Bilgilendirme taleplerinizi yanıtlamak ve sizinle iletişim kurmak.</td>
-                        <td class="p-3 translatable" data-en="Consent / Pre-contractual measures">Açık Rıza / Sözleşme Öncesi Görüşmeler</td>
+                        <td class="p-3"><strong class="translatable" data-en="Identity and Contact">Kimlik ve İletişim</strong> <span class="translatable" data-en="(name, email, phone, institution, role)">(ad, e-posta, telefon, kurum, rol)</span></td>
+                        <td class="p-3 translatable" data-en="Creating user accounts, responding to requests, sending service notifications and managing institutional communication.">Kullanıcı hesabı oluşturmak, talepleri yanıtlamak, hizmet bildirimleri göndermek ve kurum iletişimini yönetmek.</td>
+                        <td class="p-3 translatable" data-en="Contract performance, pre-contractual measures, legitimate interest and explicit consent where required">Sözleşmenin kurulması/ifası, sözleşme öncesi görüşmeler, meşru menfaat ve gerektiğinde açık rıza</td>
                     </tr>
                     <tr class="border-b border-gray-200 hover:bg-gray-50">
-                        <td class="p-3"><strong class="translatable" data-en="Transaction Security">İşlem Güvenliği</strong> <span class="translatable" data-en="(IP Address, Log Records)">(IP Adresi, Log Kayıtları)</span></td>
-                        <td class="p-3 translatable" data-en="Ensuring cybersecurity and complying with legal obligations.">Siber güvenliği sağlamak, yasal yükümlülükleri yerine getirmek.</td>
-                        <td class="p-3 translatable" data-en="Legitimate Interest / Legal Obligation">Meşru Menfaat / Yasal Yükümlülük</td>
+                        <td class="p-3"><strong class="translatable" data-en="Authentication and Security">Kimlik Doğrulama ve Güvenlik</strong> <span class="translatable" data-en="(password hash, reset token hash, session cookie, rate-limit logs)">(şifre hash'i, reset token hash'i, oturum cookie'si, rate-limit logları)</span></td>
+                        <td class="p-3 translatable" data-en="Securing accounts, preventing abuse, managing sessions and fulfilling legal security obligations.">Hesap güvenliğini sağlamak, kötüye kullanımı önlemek, oturumları yönetmek ve yasal güvenlik yükümlülüklerini yerine getirmek.</td>
+                        <td class="p-3 translatable" data-en="Legitimate interest, contract performance and legal obligation">Meşru menfaat, sözleşmenin ifası ve yasal yükümlülük</td>
+                    </tr>
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="p-3"><strong class="translatable" data-en="Institutional Subscription and Access">Kurum Aboneliği ve Erişim</strong> <span class="translatable" data-en="(institution, product subscription, access rights, role)"> (kurum, ürün aboneliği, erişim yetkisi, rol)</span></td>
+                        <td class="p-3 translatable" data-en="Showing subscribed resources, verifying institutional access rights and routing users to the correct access flow.">Abone olunan kaynakları göstermek, kurum erişim yetkilerini doğrulamak ve kullanıcıyı doğru erişim akışına yönlendirmek.</td>
+                        <td class="p-3 translatable" data-en="Contract performance and legitimate interest">Sözleşmenin ifası ve meşru menfaat</td>
+                    </tr>
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="p-3"><strong class="translatable" data-en="Remote Access Logs">Uzaktan Erişim Logları</strong> <span class="translatable" data-en="(user, institution, product, target host/path, timestamp, IP hash, status/latency)">(kullanıcı, kurum, ürün, hedef host/path, zaman, IP hash, durum/gecikme)</span></td>
+                        <td class="p-3 translatable" data-en="Providing licensed remote access, troubleshooting publisher access and detecting misuse.">Lisanslı uzaktan erişim hizmetini sunmak, yayıncı erişim sorunlarını çözmek ve kötüye kullanımı tespit etmek.</td>
+                        <td class="p-3 translatable" data-en="Contract performance, legitimate interest and legal obligation">Sözleşmenin ifası, meşru menfaat ve yasal yükümlülük</td>
+                    </tr>
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="p-3"><strong class="translatable" data-en="File and Sharing Metadata">Dosya ve Paylaşım Metadata'sı</strong> <span class="translatable" data-en="(file name, mime type, uploader, institution, sharing records)">(dosya adı, mime type, yükleyen kullanıcı, kurum, paylaşım kayıtları)</span></td>
+                        <td class="p-3 translatable" data-en="Providing institutional file libraries, user collections, attachments and controlled file sharing.">Kurumsal dosya kütüphanesi, kullanıcı koleksiyonları, ek dosyalar ve kontrollü dosya paylaşımı sunmak.</td>
+                        <td class="p-3 translatable" data-en="Contract performance and legitimate interest">Sözleşmenin ifası ve meşru menfaat</td>
+                    </tr>
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="p-3"><strong class="translatable" data-en="Product Requests and Support">Ürün Talepleri ve Destek</strong> <span class="translatable" data-en="(request reason, use case, urgency, ticket content)">(talep gerekçesi, kullanım amacı, aciliyet, destek içeriği)</span></td>
+                        <td class="p-3 translatable" data-en="Forwarding product requests to institutional workflows, handling support tickets and improving service quality.">Ürün taleplerini kurum süreçlerine iletmek, destek taleplerini yönetmek ve hizmet kalitesini iyileştirmek.</td>
+                        <td class="p-3 translatable" data-en="Contract performance, legitimate interest and explicit consent where required">Sözleşmenin ifası, meşru menfaat ve gerektiğinde açık rıza</td>
+                    </tr>
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="p-3"><strong class="translatable" data-en="AI Tool Usage">AI Araç Kullanımı</strong> <span class="translatable" data-en="(tool, model, estimated tokens, hashed input/output identifiers)">(araç, model, tahmini token, hashlenmiş input/output tanımlayıcıları)</span></td>
+                        <td class="p-3 translatable" data-en="Providing product discovery and academic assistance tools with data minimization. Raw prompt/output text is not stored by default.">Veri minimizasyonu ile ürün keşfi ve akademik yardımcı araçlar sunmak. Ham prompt/output metni varsayılan olarak saklanmaz.</td>
+                        <td class="p-3 translatable" data-en="Explicit consent where required, legitimate interest and contract performance">Gerektiğinde açık rıza, meşru menfaat ve sözleşmenin ifası</td>
                     </tr>
                     <tr class="hover:bg-gray-50">
-                        <td class="p-3"><strong class="translatable" data-en="Marketing/Analytics">Pazarlama/Analiz</strong> <span class="translatable" data-en="(Cookie Data)">(Çerez Verileri)</span></td>
-                        <td class="p-3 translatable" data-en="Measuring and improving site performance.">Site performansını ölçmek ve iyileştirmek.</td>
-                        <td class="p-3 translatable" data-en="Consent (Refer to the Cookie Policy)">Açık Rıza (Çerez Politikasına Bakınız)</td>
+                        <td class="p-3"><strong class="translatable" data-en="Cookies and Analytics">Çerezler ve Analitik</strong> <span class="translatable" data-en="(cookie preferences, technical analytics)">(çerez tercihleri, teknik analitik)</span></td>
+                        <td class="p-3 translatable" data-en="Keeping the site functional, measuring performance and improving the user experience.">Sitenin çalışmasını sağlamak, performansı ölçmek ve kullanıcı deneyimini iyileştirmek.</td>
+                        <td class="p-3 translatable" data-en="Legitimate interest for necessary cookies; consent for analytics/marketing cookies">Zorunlu çerezlerde meşru menfaat; analitik/pazarlama çerezlerinde açık rıza</td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-        <h2 class="text-2xl font-bold mt-8 mb-4 border-l-4 border-blue-600 pl-2 text-gray-800 translatable" data-en="3. Data Transfers">3. Veri Aktarımı</h2>
-        <p class="mb-4 translatable" data-en="Your data is transferred internationally due to the location of the hosting and distribution services (GitHub, Cloudflare) and any analytical services (if used) used by the website. This transfer is carried out by taking the necessary measures to ensure data security.">Verileriniz, web sitesinin barındırma ve dağıtım hizmetleri (GitHub, Cloudflare) yurt dışında bulunduğu için ve analitik hizmetler (kullanılıyorsa) nedeniyle yurt dışına aktarılmaktadır. Bu aktarım, veri güvenliğini sağlamak amacıyla gerekli tedbirler alınarak gerçekleştirilmektedir.</p>
+        <h2 class="text-2xl font-bold mt-8 mb-4 border-l-4 border-blue-600 pl-2 text-gray-800 translatable" data-en="3. Data Minimization and Security">3. Veri Minimizasyonu ve Güvenlik</h2>
+        <p class="mb-4 translatable" data-en="LibEdge stores passwords only as salted hashes and stores reset tokens only as hashes. Remote access credentials and egress secrets are managed as protected secrets and are not shown in plaintext in admin screens.">LibEdge şifreleri yalnız salt'lı hash olarak, reset tokenlarını ise yalnız hash olarak saklar. Uzaktan erişim credential ve egress secret bilgileri korumalı secret olarak yönetilir; admin ekranlarında plaintext gösterilmez.</p>
+        <p class="mb-4 translatable" data-en="Remote access logs avoid raw IP storage where possible and use pseudonymous/hash identifiers. File deletion and anonymization requests are handled by checking database references before deleting shared R2 objects.">Uzaktan erişim loglarında mümkün olduğunca ham IP yerine pseudonymous/hash tanımlayıcılar kullanılır. Dosya silme ve anonimleştirme taleplerinde paylaşılan R2 objeleri silinmeden önce veritabanı referansları kontrol edilir.</p>
+        <p class="mb-4 translatable" data-en="AI tools are designed with data minimization. Personal identifiers, credentials, cookies, JWTs and raw publisher content must not be sent to AI providers unless a separate lawful basis and notice are established.">AI araçları veri minimizasyonu prensibiyle tasarlanır. Kişisel tanımlayıcılar, credential, cookie, JWT ve ham yayıncı içeriği ayrı bir hukuki sebep ve bilgilendirme oluşturulmadan AI sağlayıcılarına gönderilmez.</p>
 
-        <h2 class="text-2xl font-bold mt-8 mb-4 border-l-4 border-blue-600 pl-2 text-gray-800 translatable" data-en="4. Data Subject Rights">4. Veri Sahibi Hakları</h2>
-        <p class="mb-4 translatable" data-en="Under GDPR and KVKK Article 11, you have the right to know if your data is processed, and to request its deletion or correction. You may send your requests in writing to the email address provided above.">KVKK Madde 11 ve GDPR kapsamında, kişisel verilerinizin işlenip işlenmediğini öğrenme, silinmesini veya düzeltilmesini talep etme hakkına sahipsiniz. Başvurularınızı yukarıdaki e-posta adresine yazılı olarak iletebilirsiniz.</p>
+        <h2 class="text-2xl font-bold mt-8 mb-4 border-l-4 border-blue-600 pl-2 text-gray-800 translatable" data-en="4. Data Transfers and Processors">4. Veri Aktarımı ve Veri İşleyenler</h2>
+        <p class="mb-4 translatable" data-en="Your data may be processed through infrastructure and service providers such as Cloudflare, GitHub, email providers, Airtable/CRM tools and AI providers used for limited service purposes. Transfers are limited to the relevant service purpose and are subject to technical and organizational safeguards.">Verileriniz; Cloudflare, GitHub, e-posta sağlayıcıları, Airtable/CRM araçları ve sınırlı hizmet amaçlarıyla kullanılan AI sağlayıcıları gibi altyapı ve hizmet sağlayıcıları üzerinden işlenebilir. Aktarımlar ilgili hizmet amacıyla sınırlıdır ve teknik/idari güvenlik tedbirlerine tabidir.</p>
+        <p class="mb-4 translatable" data-en="Publisher access through remote access may route traffic through LibEdge proxy components and, where configured, an institution egress agent. Publisher credentials, user passwords and session secrets are not logged in plaintext.">Uzaktan erişim kapsamındaki yayıncı erişimleri LibEdge proxy bileşenleri ve yapılandırılmışsa kurum egress agent üzerinden yönlendirilebilir. Yayıncı credential bilgileri, kullanıcı şifreleri ve oturum secret'ları plaintext olarak loglanmaz.</p>
 
-        <h2 class="text-2xl font-bold mt-8 mb-4 border-l-4 border-blue-600 pl-2 text-gray-800 translatable" data-en="5. Future Plans">5. Gelecek Planları</h2>
-        <p class="translatable" data-en="This policy will be updated when a registered user system or payment processes are introduced in the future, to cover new data categories and processing purposes.">İleride kayıtlı kullanıcı sistemi veya ödeme işlemleri eklendiğinde, bu politika yeni veri kategorileri ve işleme amaçlarını kapsayacak şekilde güncellenecektir.</p>
+        <h2 class="text-2xl font-bold mt-8 mb-4 border-l-4 border-blue-600 pl-2 text-gray-800 translatable" data-en="5. Retention Periods">5. Saklama Süreleri</h2>
+        <p class="mb-4 translatable" data-en="Data is retained only for the period required by the service purpose, legal obligations and security needs. Account data is retained while the account or institutional relationship is active. Remote access logs are initially retained for up to 180 days, password reset records are cleaned after expiry/use, and AI usage logs are intended to be short-lived or aggregated/anonymized.">Veriler, hizmet amacı, yasal yükümlülükler ve güvenlik ihtiyaçları için gerekli süre kadar saklanır. Hesap verileri hesap veya kurum ilişkisi aktif olduğu sürece tutulur. Uzaktan erişim logları başlangıç politikası olarak en fazla 180 gün saklanır; şifre sıfırlama kayıtları süre bitimi/kullanım sonrası temizlenir; AI kullanım logları kısa süreli tutulacak veya aggregate/anonim hale getirilecek şekilde tasarlanır.</p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4 border-l-4 border-blue-600 pl-2 text-gray-800 translatable" data-en="6. Data Subject Rights">6. Veri Sahibi Hakları</h2>
+        <p class="mb-4 translatable" data-en="Under GDPR and KVKK Article 11, you may request information about whether your personal data is processed, the purposes of processing, recipients, correction, deletion, anonymization, objection to processing and information about automated processing outcomes where applicable.">KVKK Madde 11 ve GDPR kapsamında, kişisel verilerinizin işlenip işlenmediğini öğrenme, işleme amaçlarını ve aktarılan tarafları öğrenme, düzeltme, silme, anonimleştirme, işlemeye itiraz ve uygulanabilir olduğu ölçüde otomatik işleme sonuçları hakkında bilgi talep etme haklarına sahipsiniz.</p>
+        <p class="mb-4 translatable" data-en="You may send your requests to info@libedge.com or privacy@libedge.com. To protect account security, LibEdge may ask for identity verification before fulfilling a request.">Başvurularınızı info@libedge.com veya privacy@libedge.com adresine iletebilirsiniz. Hesap güvenliğini korumak için LibEdge talebi yerine getirmeden önce kimlik doğrulama isteyebilir.</p>
+
+        <h2 class="text-2xl font-bold mt-8 mb-4 border-l-4 border-blue-600 pl-2 text-gray-800 translatable" data-en="7. Policy Updates">7. Politika Güncellemeleri</h2>
+        <p class="translatable" data-en="This notice may be updated when new products, AI tools, remote access integrations, payment flows or data processors are introduced. Material changes will be announced through appropriate channels.">Bu metin yeni ürünler, AI araçları, uzaktan erişim entegrasyonları, ödeme akışları veya veri işleyenler devreye alındığında güncellenebilir. Önemli değişiklikler uygun kanallar üzerinden duyurulur.</p>
         
     </main>
 

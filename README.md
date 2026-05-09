@@ -316,4 +316,4 @@ Geçiş için sadece Cloudflare Worker env değişkenlerini güncellemek yeterli
 - [ ] Production'da `*.libedge.com` wildcard route aktif edilecek (session_host_proxy için zorunlu)
 - [ ] Admin UI/API'dan toplu ürün onboarding (manuel D1 SQL ihtiyacını azaltmak)
 - [ ] MIMARI.md ile migration'lar arasındaki terminoloji tutarsızlıklarını gider
-- [ ] KVKK/Gizlilik metni kayıtlı kullanıcı, RA ve AI araçlarını kapsayacak şekilde güncellenecek
+- [x] KVKK/Gizlilik metni kayıtlı kullanıcı, RA ve AI araçlarını kapsayacak şekilde güncellendi

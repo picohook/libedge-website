@@ -107,7 +107,7 @@ Kontroller:
 
 ## 3. Production Öncesi Zorunlu Kontroller
 
-- [ ] Privacy policy kayıtlı kullanıcı, RA, AI, dosya ve abonelik verilerini kapsayacak şekilde güncellendi.
+- [x] Privacy policy kayıtlı kullanıcı, RA, AI, dosya ve abonelik verilerini kapsayacak şekilde güncellendi.
 - [ ] Açık rıza / aydınlatma metni kullanıcı kayıt akışına bağlandı.
 - [ ] Çerez yönetimi ve analitik rızası ayrıştırıldı.
 - [ ] Veri saklama süreleri belirlendi.
@@ -313,7 +313,7 @@ ve sözleşmesel gerekliliklere göre güncellenebilir.
 
 ## 11. Açık Teknik İşler
 
-- [ ] `privacy.html` kayıtlı kullanıcı, RA, AI, dosya paylaşımı ve kurum aboneliği modelini kapsayacak şekilde güncellenecek.
+- [x] `privacy.html` kayıtlı kullanıcı, RA, AI, dosya paylaşımı ve kurum aboneliği modelini kapsayacak şekilde güncellendi.
 - [ ] Legacy SHA-256 şifre hash'leri için rapor/migration hazırlanacak.
 - [x] `ra_access_logs` için 180 günlük retention cleanup job'u eklendi.
 - [x] `password_resets` için expired/used kayıt cleanup job'u eklendi.
