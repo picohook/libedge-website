@@ -1,11 +1,11 @@
-# Production Migration Plan - 2026-05-08
+# Production Migration Plan - 2026-05-09
 
 Purpose: bring `libedge-db-production` safely from the current production schema level to the staging-tested schema level without applying anything blindly.
 
 Status at time of writing:
 
-- Staging D1 (`libedge-db`): no pending migrations.
-- Production D1 (`libedge-db-production`): migrations `0020` through `0034` are pending.
+- Staging D1 (`libedge-db`): last verified with no pending migrations before `0035_product_requests_ai_usage_logs.sql` was added. Re-run `migrations list` before any production window.
+- Production D1 (`libedge-db-production`): migrations `0020` through `0035` are expected to be pending unless an operator has applied them after this document was updated.
 - Production preflight schema queries could not be completed in this session because Wrangler remote D1 calls started returning Cloudflare auth token errors (`Failed to fetch auth token`). Do not run `apply` until the preflight queries below succeed.
 
 ## Guardrails
@@ -34,6 +34,7 @@ Status at time of writing:
 | `0032_user_profile_links.sql` | Creates social profile links table and index. | Low: additive table/index. | Check `sqlite_master`. |
 | `0033_refresh_tokens.sql` | Creates DB-backed refresh-token replay table and index. | High security dependency; low schema risk. Needed for production replay protection. | Check `sqlite_master`; smoke login/refresh/replay after apply. |
 | `0034_users_lower_email_index.sql` | Adds case-insensitive email index. | Low. | `PRAGMA index_list(users);` |
+| `0035_product_requests_ai_usage_logs.sql` | Creates privacy-first product request and AI usage log tables plus indexes. | Low: additive tables/indexes; no existing rows updated. | Check `sqlite_master`; inspect table info/indexes after apply. |
 
 ## Required Preflight Commands
 
@@ -45,7 +46,7 @@ npx wrangler d1 migrations list libedge-db-production --remote --env production
 npx wrangler d1 execute libedge-db-production --remote --env production --command "PRAGMA table_info(products);"
 npx wrangler d1 execute libedge-db-production --remote --env production --command "PRAGMA index_list(products);"
 npx wrangler d1 execute libedge-db-production --remote --env production --command "PRAGMA index_list(users);"
-npx wrangler d1 execute libedge-db-production --remote --env production --command "SELECT name, type FROM sqlite_master WHERE name IN ('admin_action_logs','ra_debug_events','ra_waf_clearance','ra_link_audit_findings','individual_tools','affiliate_clicks','user_profile_links','refresh_tokens');"
+npx wrangler d1 execute libedge-db-production --remote --env production --command "SELECT name, type FROM sqlite_master WHERE name IN ('admin_action_logs','ra_debug_events','ra_waf_clearance','ra_link_audit_findings','individual_tools','affiliate_clicks','user_profile_links','refresh_tokens','product_requests','ai_usage_logs');"
 ```
 
 Snapshot data touched by seed/update migrations:
@@ -90,6 +91,8 @@ Products/admin:
 2. Admin product edit reads/writes logo/card/access fields.
 3. EKUAL-tagged products render as expected.
 4. Individual tools endpoint works.
+5. Product request table exists and accepts only minimal request metadata.
+6. AI usage log table exists and does not store raw prompt/output text.
 
 RA:
 
