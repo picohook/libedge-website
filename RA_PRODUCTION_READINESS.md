@@ -3,9 +3,11 @@
 Bu belge LibEdge Remote Access'in staging POC'den production kullanıma geçişinde
 gerekli operasyonel kararları ve kurum onboarding gereksinimlerini özetler.
 
-> Güncel not (8 Mayıs 2026): Staging D1 güncel durumdadır; production D1'de
-> `0020`-`0034` arası migration beklemektedir. RA production hazırlığına başlamadan
-> önce genel production migration planı tamamlanmalıdır.
+> Güncel not (19 Mayıs 2026): Production D1 migration'ları tamamlandı. `0020`–`0035`
+> arası tüm migration'lar `libedge-db-production`'a uygulandı. Main API Worker
+> (`libedge-api-prod`) production'a deploy edildi. Production Proxy Worker deploy'u
+> `libedge.com` domain geçişine ertelendi. RA testi yapıldı: pek çok ürün çalışıyor.
+> CABI ve Wiley'de sorun var — ayrıntı için §10'a bakın.
 
 ## 1. Domain Taşıma
 
@@ -248,10 +250,9 @@ Bugünkü staging değişiklikleri:
   işlendi.
 - Test kapsamı genişledi: error page, proxy rate limit, tunnel health.
 
-Kalan production işleri:
+Kalan production işleri (2026-04-29 itibarıyla):
 
-- Production migration planı hazırlanacak; `0033_refresh_tokens.sql` ve RA ile ilgili
-  `0025`-`0029` migration'ları uygulanmadan production smoke yapılmayacak.
+- ~~Production migration planı hazırlanacak~~ → **TAMAMLANDI** (2026-05-19)
 - Limit değerleri production trafik ölçümüne göre env üzerinden kalibre edilecek.
 - Tünel heartbeat sonuçları admin panelde uyarı/badge davranışına bağlanacak.
 - Toplu ürün import UI/API eklenecek.
@@ -259,3 +260,59 @@ Kalan production işleri:
   RA hata mesajları daha kullanıcı-dostu hale getirilecek.
 - Shadow/smoke test fikri düşük frekanslı ve izinli landing kontrolleri olarak ele
   alınacak; publisher bot korumasını atlatmaya yönelik agresif test yapılmayacak.
+
+## 10. 2026-05-19 Operasyonel Güncelleme
+
+### Production Migration & Deploy
+
+- `libedge-db-production`: `0020`–`0035` arası 16 migration uygulandı.
+  - `0018_ra_schema_complete.sql` kısmi başarısızlığı önceden düzeltildi: `ra_delivery_mode`,
+    `ra_requires_tunnel`, `ra_origin_landing_path` sütunları eksikti; `ALTER TABLE` ile
+    elle eklendi, ardından `migrations apply` temiz çalıştı.
+  - 26 EKUAL ürünü `0024_seed_ekual_products.sql` ile eklendi/güncellendi.
+  - 9 yeni tablo oluşturuldu (admin_action_logs, ra_debug_events, ra_waf_clearance, vb.)
+- Main API Worker (`libedge-api-prod`) production'a deploy edildi.
+- Production Proxy Worker deploy'u **ertelendi**: `*.selmiye.com/*` route'u staging
+  proxy'de tanımlı; `libedge.com` domain geçişinde doğru şekilde kurulacak.
+
+### RA Smoke Test Sonuçları
+
+Docker başka bir kurumun bilgisayarında çalışıyor. Erişim testi yapıldı:
+
+| Ürün | Durum | Not |
+|---|---|---|
+| Emerald | ✅ Çalışıyor | Referans ürün |
+| Pek çok ürün | ✅ Çalışıyor | Genel RA akışı doğrulandı |
+| CABI (CAB Abstracts) | ❌ 403 | Bkz. aşağıda |
+| Wiley Online Library | ❌ Boş sayfa | Bkz. aşağıda |
+
+### CABI Sorunu
+
+Tarayıcı konsolu analizi:
+
+- `GET {hash}.selmiye.com/product/ca` → **403 Forbidden** (upstream CABI sunucusundan)
+  Bu akışın primary blocker'ı. Proxy değil, CABI upstream isteği reddediyor.
+- CSS dosyaları proxy üzerinden gidiyor (`sec-fetch-site: same-origin`, `credentials: include`)
+  ama 403 HTML sayfası CSS olarak döndüğü için MIME type hataları çıkıyor.
+- COEP hataları: CABI `cross-origin-embedder-policy: require-corp` gönderiyor; proxy
+  bunu normal modda **soymuyor** (yalnız WAF challenge akışında soyuluyor). Google Analytics
+  ve benzeri cross-origin kaynaklar bu yüzden engelleniyor.
+- Webmanifest 401: `credentials: omit` ile alınıyor, proxy beklenen 401 döndürüyor —
+  kaçınılmaz, CABI'ye özgü değil.
+
+**Kök neden:** CABI upstream 403 veriyor. Olası sebepler: kurum IP'si tanınmıyor, CABI
+oturum/referrer doğrulaması yapıyor, ya da proxy request header'larından birini reddediyor
+(örn. `via`, `x-forwarded-for`). Araştırılacak.
+
+**İkinci sorun (bağımsız):** `cross-origin-embedder-policy` ve COOP/CORP headerları tüm
+proxy yanıtlarından soyulmalı, yalnız WAF challenge akışında değil. `workers/proxy/src/index.js`
+içinde `STRIP_RESPONSE` dizisine `cross-origin-embedder-policy`, `cross-origin-opener-policy`,
+`cross-origin-resource-policy` eklenmeli.
+
+### Wiley Sorunu
+
+Ana sayfa yükleniyor ama içerik boş. Muhtemel sebep: Wiley Online Library SPA mimarisi
+kullanıyor ve JavaScript `api.wiley.com`, `onlinelibrary.wiley.com` gibi absolute URL'lere
+doğrudan XHR/fetch atıyor. Bu istekler kurumun IP'sinden değil kullanıcının gerçek IP'sinden
+gidiyor → publisher içerik vermiyor. Çözüm: ya link-proxy JS'inin bu domain'leri yakalaması
+ya da Wiley için ra-browser tipi tam tarayıcı proxy uygulanması. Araştırılacak.

@@ -2,11 +2,24 @@
 
 Purpose: bring `libedge-db-production` safely from the current production schema level to the staging-tested schema level without applying anything blindly.
 
-Status at time of writing:
+## Completion Status (2026-05-19)
 
-- Staging D1 (`libedge-db`): last verified with no pending migrations before `0035_product_requests_ai_usage_logs.sql` was added. Re-run `migrations list` before any production window.
-- Production D1 (`libedge-db-production`): migrations `0020` through `0035` are expected to be pending unless an operator has applied them after this document was updated.
-- Production preflight schema queries could not be completed in this session because Wrangler remote D1 calls started returning Cloudflare auth token errors (`Failed to fetch auth token`). Do not run `apply` until the preflight queries below succeed.
+**COMPLETED.** All 16 pending migrations (`0020`–`0035`) applied to `libedge-db-production` on 2026-05-19. Main API Worker (`libedge-api-prod`) deployed to production.
+
+Pre-apply fix: Migration `0018_ra_schema_complete.sql` had partially failed on production in a prior session. The three columns it should have added (`ra_delivery_mode`, `ra_requires_tunnel`, `ra_origin_landing_path`) were missing from the `products` table because earlier runtime guards had already added other columns in `0018`, causing SQLite to error mid-migration. These three columns were added manually via `ALTER TABLE products ADD COLUMN` before running `migrations apply`. The subsequent `migrations apply` completed cleanly with no conflicts.
+
+Notable outcomes:
+- `0024_seed_ekual_products.sql`: 26 EKUAL products inserted/updated.
+- 9 new tables created: `admin_action_logs`, `ra_debug_events`, `ra_waf_clearance`, `ra_link_audit_findings`, `individual_tools`, `affiliate_clicks`, `user_profile_links`, `refresh_tokens`, `product_requests`, `ai_usage_logs`.
+- Production Proxy Worker (`libedge-ra-proxy-prod`) deploy **deferred** — wildcard route conflict with staging, and `libedge.com` domain migration not yet done.
+
+---
+
+Status at time of writing (archived):
+
+- Staging D1 (`libedge-db`): last verified with no pending migrations before `0035_product_requests_ai_usage_logs.sql` was added.
+- Production D1 (`libedge-db-production`): had migrations `0020` through `0035` pending (now applied).
+- Production preflight schema queries could not be completed in this session because Wrangler remote D1 calls started returning Cloudflare auth token errors (`Failed to fetch auth token`).
 
 ## Guardrails
 

@@ -218,6 +218,100 @@ export async function browserFetch(env, institutionId, targetUrl, init = {}) {
   });
 }
 
+/**
+ * assetBrowserFetch — fetches a sub-resource (CSS/JS/image) via ra-browser's
+ * /asset-proxy endpoint, which uses Playwright's context.request (Chrome TLS).
+ *
+ * Used for ra_waf_browser publishers whose CF Bot Management blocks the Go
+ * HTTP client (ra-egress) even on static assets, despite a valid cf_clearance.
+ *
+ * @param {any} env Worker env
+ * @param {string} institutionId
+ * @param {URL | string} targetUrl  publisher sub-resource URL
+ * @param {RequestInit & { headers?: Headers }} init
+ * @returns {Promise<Response>}
+ */
+export async function assetBrowserFetch(env, institutionId, targetUrl, init = {}) {
+  const settings = await loadInstitutionRaSettings(env.DB, institutionId);
+  if (!settings || !settings.enabled) {
+    throw new Error(`egress not configured for institution ${institutionId}`);
+  }
+  if (!settings.egress_endpoint) {
+    throw new Error('egress_endpoint missing');
+  }
+
+  let secret;
+  if (settings.egress_secret_enc && env.RA_CREDS_MASTER_KEY) {
+    secret = await decryptCredential(settings.egress_secret_enc, env.RA_CREDS_MASTER_KEY);
+  } else if (env.RA_EGRESS_DEFAULT_SECRET) {
+    secret = env.RA_EGRESS_DEFAULT_SECRET;
+  } else {
+    throw new Error('no egress secret configured');
+  }
+
+  const method = 'GET';
+  const urlStr = typeof targetUrl === 'string' ? targetUrl : targetUrl.toString();
+  const ts = Math.floor(Date.now() / 1000);
+  const sig = await hmacSha256(secret, `${method}|${urlStr}|${ts}|`);
+
+  // Asset requests go through /browser-proxy (same ra-egress route that forwards
+  // to ra-browser). X-RA-Asset: 1 tells ra-browser to use the sub-resource cache
+  // instead of doing a full page navigation.
+  const agentUrl = `${settings.egress_endpoint.replace(/\/$/, '')}/browser-proxy`;
+
+  const headers = new Headers(init.headers || undefined);
+  headers.set('X-RA-Asset', '1');
+  headers.set('X-RA-Target-URL', urlStr);
+  headers.set('X-RA-Method', method);
+  headers.set('X-RA-Timestamp', String(ts));
+  headers.set('X-RA-Signature', sig);
+
+  const envelopeResp = await fetch(agentUrl, {
+    method: 'POST',
+    headers,
+    body: null,
+    redirect: 'manual',
+  });
+
+  if (!envelopeResp.ok) {
+    throw new Error(`asset-proxy agent returned ${envelopeResp.status}`);
+  }
+
+  const envelope = await envelopeResp.json();
+  const bodyBytes = base64Decode(envelope.body || '');
+
+  const respHeaders = new Headers();
+  for (const [k, v] of Object.entries(envelope.headers || {})) {
+    if (Array.isArray(v)) {
+      for (const item of v) respHeaders.append(k, item);
+    } else {
+      respHeaders.set(k, v);
+    }
+  }
+
+  // Infer content-type from URL extension if the server didn't set it.
+  if (!respHeaders.has('content-type')) {
+    const ext = urlStr.split('?')[0].split('.').pop()?.toLowerCase();
+    const MIME = {
+      css: 'text/css; charset=UTF-8',
+      js: 'application/javascript; charset=UTF-8',
+      mjs: 'application/javascript; charset=UTF-8',
+      webp: 'image/webp',
+      jpg: 'image/jpeg', jpeg: 'image/jpeg',
+      png: 'image/png', gif: 'image/gif',
+      svg: 'image/svg+xml',
+      woff2: 'font/woff2', woff: 'font/woff',
+      ttf: 'font/ttf',
+    };
+    if (MIME[ext]) respHeaders.set('content-type', MIME[ext]);
+  }
+
+  return new Response(bodyBytes, {
+    status: Number(envelope.status || 200),
+    headers: respHeaders,
+  });
+}
+
 function sanitizeBrowserFetchHeaders(headers) {
   for (const name of [...headers.keys()]) {
     const lower = name.toLowerCase();

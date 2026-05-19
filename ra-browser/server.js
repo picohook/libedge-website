@@ -3,28 +3,25 @@
 /**
  * ra-browser/server.js
  *
- * Node.js + Playwright Chromium service for CF Managed Challenge publishers.
- * Receives the same HMAC-signed RA headers as ra-egress /proxy.
+ * Node.js + Playwright/Chromium service for CF Managed Challenge publishers.
  *
- * POST /proxy
- *   X-RA-Target-URL   — publisher URL
- *   X-RA-Method       — GET (browser fetch only supports GET)
- *   X-RA-Timestamp    — unix seconds
- *   X-RA-Signature    — hex HMAC-SHA256(secret, "${method}|${url}|${ts}|")
- *   Cookie            — forwarded to browser context
- *   User-Agent, Accept, Accept-Language, Referer — forwarded
+ * POST /proxy       — full page navigation (resolves CF Turnstile)
+ * POST /asset-proxy — serve cached sub-resources captured during /proxy
+ * GET  /health
  *
- * Response JSON:
- *   { status, headers: {}, body: "<base64>", finalUrl }
- *
- * Env vars:
- *   EGRESS_SHARED_SECRET  — required, same secret as ra-egress
- *   LISTEN_ADDR           — optional, default ":8081" → host:port or ":port"
- *   MAX_CONCURRENT        — optional, default 3
+ * Sub-resource caching strategy:
+ *   During the main /proxy page load, all CSS/JS/image responses are captured
+ *   via page.on('response', ...). These requests happen inside Chrome with
+ *   Chrome's TLS fingerprint and the challenge cookies, so CF Bot Management
+ *   passes them. They are stored in a module-level cache (keyed by URL, 5 min TTL).
+ *   When the Worker routes a CSS/JS/image request to /asset-proxy, we serve
+ *   directly from cache — no new outbound network connection required.
  */
 
 const express = require('express');
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+chromium.use(StealthPlugin());
 const crypto = require('crypto');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,17 +36,59 @@ if (!SHARED_SECRET) {
 
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT || '3', 10);
 const LISTEN_ADDR = process.env.LISTEN_ADDR || ':8081';
-
-// Parse ":port" or "host:port"
 const listenParts = LISTEN_ADDR.replace(/^:/, '0.0.0.0:').split(':');
 const LISTEN_HOST = listenParts.length === 2 ? listenParts[0] : '0.0.0.0';
 const LISTEN_PORT = parseInt(listenParts[listenParts.length - 1], 10) || 8081;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-resource cache
+// Populated during /proxy page load; served by /asset-proxy.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CACHE_TTL_MS   = 5 * 60 * 1000; // 5 minutes
+const CACHE_MAX_SIZE = 300;
+const resourceCache  = new Map(); // url → { status, headers, bodyB64, expiresAt }
+
+function cachePut(url, status, headers, bodyBuffer) {
+  if (resourceCache.size >= CACHE_MAX_SIZE) {
+    resourceCache.delete(resourceCache.keys().next().value);
+  }
+  resourceCache.set(url, {
+    status,
+    headers,
+    bodyB64: bodyBuffer.toString('base64'),
+    expiresAt: Date.now() + CACHE_TTL_MS,
+  });
+}
+
+function cacheGet(url) {
+  const entry = resourceCache.get(url);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) { resourceCache.delete(url); return null; }
+  return entry;
+}
+
+// Resource types to capture during page load.
+const CAPTURABLE_TYPES = new Set(['stylesheet', 'script', 'image', 'font', 'other']);
+
+// URL fragments to skip (CF internal, analytics, etc.)
+function shouldSkipUrl(url) {
+  return (
+    url.includes('/cdn-cgi/') ||
+    url.includes('cookielaw.org') ||
+    url.includes('challenges.cloudflare.com') ||
+    url.includes('sentry.io') ||
+    url.includes('cloudflareinsights.com')
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Browser singleton
 // ─────────────────────────────────────────────────────────────────────────────
 
 let browser = null;
+
+const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
 
 async function ensureBrowser() {
   if (!browser || !browser.isConnected()) {
@@ -61,6 +100,11 @@ async function ensureBrowser() {
         '--disable-dev-shm-usage',
         '--disable-blink-features=AutomationControlled',
         '--disable-infobars',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--window-size=1920,1080',
+        '--use-gl=swiftshader',
+        '--enable-webgl',
+        '--ignore-gpu-blocklist',
       ],
     });
     console.log('Chromium launched');
@@ -77,240 +121,85 @@ const waitQueue = [];
 
 function acquireSemaphore() {
   return new Promise((resolve) => {
-    if (activeCount < MAX_CONCURRENT) {
-      activeCount++;
-      resolve();
-    } else {
-      waitQueue.push(resolve);
-    }
+    if (activeCount < MAX_CONCURRENT) { activeCount++; resolve(); }
+    else waitQueue.push(resolve);
   });
 }
 
 function releaseSemaphore() {
-  if (waitQueue.length > 0) {
-    const next = waitQueue.shift();
-    next();
-  } else {
-    activeCount--;
-  }
+  if (waitQueue.length > 0) waitQueue.shift()();
+  else activeCount--;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HMAC validation
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Verifies the HMAC-SHA256 signature on an incoming RA request.
- * Signature format: HMAC-SHA256(secret, "${method}|${url}|${ts}|")
- * (no body hash — browser fetch is GET only, body is always empty)
- *
- * Returns null on success, or an error string.
- */
 function validateHmac(method, targetUrl, tsStr, sigHex) {
-  if (!method || !targetUrl || !tsStr || !sigHex) {
-    return 'missing RA headers';
-  }
-
+  if (!method || !targetUrl || !tsStr || !sigHex) return 'missing RA headers';
   const ts = parseInt(tsStr, 10);
   if (isNaN(ts)) return 'bad timestamp';
-
   const now = Math.floor(Date.now() / 1000);
   if (ts < now - 30 || ts > now + 30) return 'timestamp skew';
-
-  // Body hash is empty string for GET (no body)
-  const msg = `${method}|${targetUrl}|${ts}|`;
-  const expected = crypto
-    .createHmac('sha256', SHARED_SECRET)
-    .update(msg)
-    .digest('hex');
-
-  // Constant-time comparison
+  const expected = crypto.createHmac('sha256', SHARED_SECRET)
+    .update(`${method}|${targetUrl}|${ts}|`).digest('hex');
   if (!crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(sigHex, 'hex'))) {
     return 'bad signature';
   }
-
   return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// /proxy handler
+// Header helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Headers that ra-egress (the caller) adds for RA bookkeeping.
- * We do NOT forward these to the upstream browser context.
- */
 const RA_HEADERS = new Set([
-  'x-ra-target-url',
-  'x-ra-method',
-  'x-ra-timestamp',
-  'x-ra-signature',
+  'x-ra-target-url', 'x-ra-method', 'x-ra-timestamp', 'x-ra-signature',
 ]);
 
-/**
- * Hop-by-hop headers — not forwarded to browser context.
- */
 const HOP_BY_HOP = new Set([
   'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
-  'te', 'trailers', 'transfer-encoding', 'upgrade', 'host',
-  'content-length', // browser sets its own
+  'te', 'trailers', 'transfer-encoding', 'upgrade', 'host', 'content-length',
 ]);
 
-async function handleProxy(req, res) {
-  const targetUrl  = req.headers['x-ra-target-url'];
-  const method     = req.headers['x-ra-method'];
-  const tsStr      = req.headers['x-ra-timestamp'];
-  const sigHex     = req.headers['x-ra-signature'];
+const BROWSER_MANAGED = new Set([
+  'user-agent', 'cookie', 'Cookie',
+  'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform', 'sec-ch-ua-full-version-list',
+  'sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest', 'sec-fetch-user',
+  'accept', 'accept-encoding', 'accept-language', 'upgrade-insecure-requests',
+]);
 
-  // Validate HMAC
-  const hmacErr = validateHmac(method, targetUrl, tsStr, sigHex);
-  if (hmacErr) {
-    res.status(hmacErr === 'bad signature' || hmacErr === 'timestamp skew' ? 401 : 400)
-       .json({ error: hmacErr });
-    return;
-  }
-
-  // Collect passthrough headers (cookie, user-agent, accept, etc.)
-  const passthroughHeaders = {};
-  for (const [k, v] of Object.entries(req.headers)) {
+function extractPassthroughHeaders(reqHeaders) {
+  const out = {};
+  for (const [k, v] of Object.entries(reqHeaders)) {
     const lk = k.toLowerCase();
-    if (RA_HEADERS.has(lk)) continue;
-    if (HOP_BY_HOP.has(lk)) continue;
-    passthroughHeaders[k] = v;
+    if (!RA_HEADERS.has(lk) && !HOP_BY_HOP.has(lk)) out[k] = v;
   }
-
-  await acquireSemaphore();
-  let context = null;
-  try {
-    const b = await ensureBrowser();
-
-    context = await b.newContext({
-      ignoreHTTPSErrors: false,
-      userAgent: passthroughHeaders['user-agent'] ||
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    });
-
-    // Hide automation signals before any page script runs
-    await context.addInitScript(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-      if (!window.chrome) window.chrome = {};
-      if (!window.chrome.runtime) window.chrome.runtime = {};
-    });
-
-    // Inject cookies into the browser's cookie store for the target domain
-    const cookieHeader = passthroughHeaders['cookie'] || passthroughHeaders['Cookie'] || '';
-    if (cookieHeader) {
-      const targetHostname = new URL(targetUrl).hostname;
-      const domain = targetHostname.startsWith('www.')
-        ? targetHostname.slice(4)
-        : targetHostname;
-      const cookies = cookieHeader.split(';')
-        .map(c => c.trim())
-        .filter(Boolean)
-        .map(c => {
-          const eqIdx = c.indexOf('=');
-          const name = eqIdx > 0 ? c.slice(0, eqIdx).trim() : c.trim();
-          const value = eqIdx > 0 ? c.slice(eqIdx + 1).trim() : '';
-          return { name, value, domain: `.${domain}`, path: '/' };
-        })
-        .filter(c => c.name);
-      if (cookies.length) await context.addCookies(cookies);
-    }
-
-    // Inject non-cookie passthrough headers
-    const fwdHeaders = { ...passthroughHeaders };
-    delete fwdHeaders['user-agent'];
-    delete fwdHeaders['cookie'];
-    delete fwdHeaders['Cookie'];
-    if (Object.keys(fwdHeaders).length) {
-      await context.setExtraHTTPHeaders(fwdHeaders);
-    }
-
-    const page = await context.newPage();
-
-    // page.goto resolves with the final main-frame navigation response after
-    // redirects. Capturing the first response breaks sites like Oxford Academic:
-    // their first hop is a 307 to the same canonical URL, but the rendered page
-    // is available after Playwright follows it.
-    const navResponse = await page.goto(targetUrl, {
-      waitUntil: 'domcontentloaded',
-      timeout: 30000,
-    });
-
-    // CF Managed Challenge detection
-    const finalUrl = page.url();
-    const title = await page.title().catch(() => '');
-    const isCfChallenge =
-      finalUrl.includes('__cf_chl') ||
-      title.includes('Just a moment');
-
-    if (isCfChallenge) {
-      console.log(`CF challenge detected for ${targetUrl}, waiting for resolution`);
-      try {
-        await page.waitForFunction(
-          () => !document.title.includes('Just a moment') && !location.href.includes('__cf_chl'),
-          { timeout: 20000, polling: 500 }
-        );
-        console.log(`CF challenge resolved for ${targetUrl}`);
-      } catch {
-        console.log(`CF challenge timeout for ${targetUrl}`);
-      }
-    }
-
-    // Collect response info
-    const status = navResponse ? navResponse.status() : 200;
-
-    // Collect response headers — filter hop-by-hop
-    const responseHeaders = {};
-    if (navResponse) {
-      for (const [k, v] of Object.entries(navResponse.headers())) {
-        const lk = k.toLowerCase();
-        if (HOP_BY_HOP.has(lk)) continue;
-        responseHeaders[k] = v;
-      }
-    }
-    const browserCookies = await context.cookies(uniqueCookieUrls(targetUrl, page.url()));
-    const setCookies = browserCookies.map(serializeBrowserCookie).filter(Boolean);
-    if (setCookies.length) {
-      responseHeaders['set-cookie'] = setCookies;
-    }
-
-    // page.content() returns the DOM-serialized HTML (JS-rendered, full DOM).
-    // This is intentional — we need the rendered page, not raw bytes.
-    const html = await page.content();
-    const body = Buffer.from(html, 'utf8').toString('base64');
-
-    res.json({
-      status,
-      headers: responseHeaders,
-      body,
-      finalUrl: page.url(),
-    });
-  } catch (err) {
-    console.error('browser-proxy error:', err.message);
-    const errBody = Buffer.from(`ra-browser error: ${err.message}`, 'utf8').toString('base64');
-    res.json({
-      status: 502,
-      headers: {},
-      body: errBody,
-      finalUrl: targetUrl,
-    });
-  } finally {
-    if (context) {
-      await context.close().catch(() => {});
-    }
-    releaseSemaphore();
-  }
+  return out;
 }
 
-function uniqueCookieUrls(...urls) {
-  return [...new Set(urls.filter(Boolean))];
+async function injectCookiesFromHeader(context, cookieHeader, targetUrl) {
+  if (!cookieHeader) return;
+  const hostname = new URL(targetUrl).hostname;
+  const domain = hostname.startsWith('www.') ? hostname.slice(4) : hostname;
+  const cookies = cookieHeader.split(';').map(c => c.trim()).filter(Boolean).map(c => {
+    const eqIdx = c.indexOf('=');
+    const name  = eqIdx > 0 ? c.slice(0, eqIdx).trim() : c.trim();
+    const value = eqIdx > 0 ? c.slice(eqIdx + 1).trim() : '';
+    return { name, value, domain: `.${domain}`, path: '/' };
+  }).filter(c => c.name);
+  if (cookies.length) await context.addCookies(cookies);
+}
+
+function isChallengeTitle(t) {
+  const lc = t.toLowerCase();
+  return lc.includes('just a moment') || lc.includes('bir dakika') ||
+    lc.includes('verification') || lc.includes('dogrulama') || lc.includes('security check');
 }
 
 function serializeBrowserCookie(cookie) {
   if (!cookie || !cookie.name) return '';
   const parts = [`${cookie.name}=${cookie.value || ''}`];
-  if (cookie.domain) parts.push(`Domain=${cookie.domain}`);
   parts.push(`Path=${cookie.path || '/'}`);
   if (cookie.expires && cookie.expires > 0) {
     parts.push(`Expires=${new Date(cookie.expires * 1000).toUTCString()}`);
@@ -321,33 +210,203 @@ function serializeBrowserCookie(cookie) {
   return parts.join('; ');
 }
 
+function uniqueCookieUrls(...urls) {
+  return [...new Set(urls.filter(Boolean))];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// /proxy — full page navigation, caches sub-resources
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function handleProxy(req, res) {
+  const targetUrl = req.headers['x-ra-target-url'];
+  const method    = req.headers['x-ra-method'];
+  const tsStr     = req.headers['x-ra-timestamp'];
+  const sigHex    = req.headers['x-ra-signature'];
+
+  const hmacErr = validateHmac(method, targetUrl, tsStr, sigHex);
+  if (hmacErr) {
+    res.status(hmacErr === 'bad signature' || hmacErr === 'timestamp skew' ? 401 : 400)
+       .json({ error: hmacErr });
+    return;
+  }
+
+  const pass = extractPassthroughHeaders(req.headers);
+  await acquireSemaphore();
+  let context = null;
+  try {
+    const b = await ensureBrowser();
+    context = await b.newContext({
+      ignoreHTTPSErrors: false,
+      userAgent: pass['user-agent'] || CHROME_UA,
+      viewport: { width: 1920, height: 1080 },
+      locale: 'tr-TR',
+      timezoneId: 'Europe/Istanbul',
+      extraHTTPHeaders: {
+        'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+      },
+    });
+
+    await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
+
+    const fwdHeaders = { ...pass };
+    for (const h of BROWSER_MANAGED) delete fwdHeaders[h];
+    if (Object.keys(fwdHeaders).length) await context.setExtraHTTPHeaders(fwdHeaders);
+
+    const page = await context.newPage();
+
+    // Capture sub-resource responses during page load with Chrome TLS/cookies.
+    // Stored in module-level cache; served by /asset-proxy without new requests.
+    page.on('response', async (response) => {
+      const url = response.url();
+      const type = response.request().resourceType();
+      if (!CAPTURABLE_TYPES.has(type) || shouldSkipUrl(url)) return;
+      try {
+        const body = await response.body();
+        cachePut(url, response.status(), response.headers(), body);
+      } catch { /* body may not be available for some responses */ }
+    });
+
+    const navResponse = await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+    const firstStatus = navResponse ? navResponse.status() : 200;
+    const firstTitle  = await page.title().catch(() => '');
+    const isCfChallenge = page.url().includes('__cf_chl') || isChallengeTitle(firstTitle);
+
+    if (isCfChallenge) {
+      console.log(`CF challenge (status=${firstStatus} title="${firstTitle}") for ${targetUrl}, waiting...`);
+      try {
+        await page.waitForFunction(
+          () => {
+            const t = document.title.toLowerCase();
+            return !t.includes('just a moment') && !t.includes('bir dakika') &&
+              !t.includes('verification') && !t.includes('dogulama') &&
+              !t.includes('security check') && !location.href.includes('__cf_chl');
+          },
+          { timeout: 45000, polling: 1000 }
+        );
+        const resolvedTitle = await page.title().catch(() => '');
+        console.log(`CF challenge resolved: title="${resolvedTitle}" url=${page.url()}`);
+      } catch {
+        console.log(`CF challenge timeout for ${targetUrl}`);
+      }
+      // Wait for sub-resources to load and be captured.
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    }
+
+    const afterTitle     = await page.title().catch(() => '');
+    const stillChallenge = isChallengeTitle(afterTitle);
+    const status = isCfChallenge && !stillChallenge ? 200 : firstStatus;
+
+    const responseHeaders = {};
+    if (!isCfChallenge && navResponse) {
+      for (const [k, v] of Object.entries(navResponse.headers())) {
+        if (!HOP_BY_HOP.has(k.toLowerCase())) responseHeaders[k] = v;
+      }
+    }
+
+    const browserCookies = await context.cookies(uniqueCookieUrls(targetUrl, page.url()));
+    const setCookies = browserCookies.map(serializeBrowserCookie).filter(Boolean);
+    if (setCookies.length) responseHeaders['set-cookie'] = setCookies;
+
+    const html = await page.content();
+    res.json({
+      status,
+      headers: responseHeaders,
+      body: Buffer.from(html, 'utf8').toString('base64'),
+      finalUrl: page.url(),
+    });
+  } catch (err) {
+    console.error('browser-proxy error:', err.message);
+    res.json({
+      status: 502, headers: {},
+      body: Buffer.from(`ra-browser error: ${err.message}`, 'utf8').toString('base64'),
+      finalUrl: targetUrl,
+    });
+  } finally {
+    if (context) await context.close().catch(() => {});
+    releaseSemaphore();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// /asset-proxy — serve cached sub-resources
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function handleAssetProxy(req, res) {
+  const targetUrl = req.headers['x-ra-target-url'];
+  const method    = req.headers['x-ra-method'];
+  const tsStr     = req.headers['x-ra-timestamp'];
+  const sigHex    = req.headers['x-ra-signature'];
+
+  const hmacErr = validateHmac(method, targetUrl, tsStr, sigHex);
+  if (hmacErr) {
+    res.status(hmacErr === 'bad signature' || hmacErr === 'timestamp skew' ? 401 : 400)
+       .json({ error: hmacErr });
+    return;
+  }
+
+  // Serve from cache if available (captured during /proxy with Chrome TLS).
+  const cached = cacheGet(targetUrl);
+  if (cached) {
+    return res.json({ status: cached.status, headers: cached.headers, body: cached.bodyB64, finalUrl: targetUrl });
+  }
+
+  // Cache miss: fall back to a fresh browser context request.
+  // This may be blocked by CF Bot Management if cf_clearance is missing/stale.
+  console.log(`asset-proxy cache miss: ${targetUrl}`);
+  const pass = extractPassthroughHeaders(req.headers);
+  await acquireSemaphore();
+  let context = null;
+  try {
+    const b = await ensureBrowser();
+    context = await b.newContext({ ignoreHTTPSErrors: false, userAgent: pass['user-agent'] || CHROME_UA });
+    await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
+
+    const apiResp = await context.request.get(targetUrl, { maxRedirects: 5, timeout: 30000 });
+    const body    = await apiResp.body();
+    const cached2 = { status: apiResp.status(), headers: apiResp.headers(), bodyB64: body.toString('base64') };
+
+    // Cache the result to avoid repeated fallback calls.
+    if (cached2.status === 200) {
+      cachePut(targetUrl, cached2.status, cached2.headers, body);
+    }
+
+    res.json({ status: cached2.status, headers: cached2.headers, body: cached2.bodyB64, finalUrl: apiResp.url() });
+  } catch (err) {
+    console.error('asset-proxy error:', err.message);
+    res.json({
+      status: 502, headers: {},
+      body: Buffer.from(`asset-proxy error: ${err.message}`, 'utf8').toString('base64'),
+      finalUrl: targetUrl,
+    });
+  } finally {
+    if (context) await context.close().catch(() => {});
+    releaseSemaphore();
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Express setup
 // ─────────────────────────────────────────────────────────────────────────────
 
 const app = express();
-
-// Raw body not needed — we read from headers only, no body parsing required.
 app.use(express.raw({ type: '*/*', limit: '1mb' }));
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', ts: Math.floor(Date.now() / 1000) });
+app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Math.floor(Date.now() / 1000) }));
+// /proxy handles both full page navigation and asset requests (dispatched by X-RA-Asset header).
+// ra-egress only has /browser-proxy → /proxy forwarding; no /asset-proxy route exists.
+app.post('/proxy', (req, res) => {
+  if (req.headers['x-ra-asset'] === '1') return handleAssetProxy(req, res);
+  return handleProxy(req, res);
 });
-
-app.post('/proxy', handleProxy);
-
-app.use((_req, res) => {
-  res.status(404).json({ error: 'not found' });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Start
-// ─────────────────────────────────────────────────────────────────────────────
+app.post('/asset-proxy', handleAssetProxy); // Direct access fallback
+app.use((_req, res) => res.status(404).json({ error: 'not found' }));
 
 async function main() {
-  // Pre-launch browser so first request doesn't pay cold start
   await ensureBrowser();
-
   app.listen(LISTEN_PORT, LISTEN_HOST, () => {
     console.log(`ra-browser listening on ${LISTEN_HOST}:${LISTEN_PORT}`);
     console.log(`MAX_CONCURRENT=${MAX_CONCURRENT}`);

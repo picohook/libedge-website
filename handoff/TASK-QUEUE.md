@@ -5,17 +5,29 @@
 
 ## Active Step
 
-Step: 04 - ra-browser: Playwright/Chromium service for CF Managed Challenge publishers
+Step: 06 - Wiley Online Library blank page
 Owner: Builder
-Status: ready-for-review
-Depends on: Step 02
-Gate: CF Managed Challenge cannot be bypassed by Go HTTP client (fingerprint mismatch, confirmed after exhaustive testing). Solution: add Node.js Playwright service to institution Docker Compose. Real Chrome fingerprint + institutional IP = CF passes. Success signal: Emerald opens through proxy without any manual step.
+Status: planned
+Gate: SPA makes absolute API calls (api.wiley.com etc.) directly from user browser, bypassing institution IP. Investigate whether link-proxy JS can intercept these domains or whether Wiley needs ra-browser-style full-browser proxy.
 
 ---
 
 ## Queue
 
-- [ ] Step 03 - Review Emerald outcome and decide whether to generalize for other WAF publishers.
+- [x] Step 03 - Review Emerald outcome and decide whether to generalize for other WAF publishers. → Generalized: ra_waf_browser flag, Turnstile/CF Bot Management bypass via Playwright.
+- [x] Step 04 - ra-browser Playwright/Chromium service. → Cleared (Emerald ✅).
+- [x] Step 05 - CABI (CAB Abstracts) CF Bot Management bypass. → **Cleared 2026-05-19.**
+  - Root cause: CF Bot Management + Turnstile on ALL paths (main page AND static assets).
+  - Solution: playwright-extra + stealth + SwiftShader WebGL solves Turnstile. Sub-resource
+    cache via `page.on('response')` captures CSS/JS/images during Chrome page load. Worker
+    routes asset requests via `X-RA-Asset: 1` header to ra-browser cache handler.
+  - Remaining: debug logs ([ra-debug]*) still in proxy Worker — remove before production deploy.
+  - Performance: first visit ~30s (Turnstile), subsequent visits faster (cf_clearance in cookie).
+  - Future: store cf_clearance in D1 (ra_waf_clearance table already exists) for Vetis-like
+    3-second loads on all visits.
+  - COEP/COOP/CORP added to STRIP_RESPONSE ✅. Migration 0036 (ra_waf_browser=1 for CABI) applied.
+- [ ] Step 06 - Wiley Online Library blank page: SPA makes absolute API calls (api.wiley.com etc.) directly from user browser, bypassing institution IP.
+- [ ] Step 07 - Production Proxy Worker deploy: blocked on libedge.com domain migration. Once domain is ready, add routes and deploy `libedge-ra-proxy-prod`.
 
 ---
 

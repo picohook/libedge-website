@@ -12,7 +12,7 @@
 import { verifyProxyToken } from '../../../backend/src/ra/jwt.js';
 import { encodeHost, decodeHost, isValidEncodedHost } from '../../../backend/src/ra/host.js';
 import { stableProxyHostLabel } from '../../../backend/src/ra/proxy-url.js';
-import { egressFetch, browserFetch } from './egress-client.js';
+import { egressFetch, browserFetch, assetBrowserFetch } from './egress-client.js';
 import { writeUpstreamAlert } from './alert-writer.js';
 import { htmlError } from './error-page.js';
 import { enforceProxyRateLimit } from './rate-limit.js';
@@ -553,13 +553,24 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   }
 
   // ra_waf_browser routing: for CF Managed Challenge publishers (Emerald, OUP,
-  // Wiley, CAB), use the Playwright/Chromium browser service instead of the
-  // Go HTTP client. Only applies to GET requests on non-challenge-platform paths.
-  const useBrowserFetch =
-    request.method.toUpperCase() === 'GET' &&
-    isDocumentNavigation(request.headers) &&
-    !isCloudflareChallengeAssetPath(target.path) &&
-    (await loadProductWafBrowserFlag(env.DB, session.product_slug));
+  // Wiley, CAB), use the Playwright/Chromium browser service.
+  //
+  // useBrowserFetch    — full page navigation (HTML, resolves CF Turnstile)
+  // useAssetBrowserFetch — sub-resource fetch via context.request (Chrome TLS)
+  //   CABI applies CF Bot Management to ALL paths; the Go HTTP client's TLS
+  //   fingerprint is detected as a bot even with a valid cf_clearance cookie.
+  //   context.request uses Chrome's TLS stack and bypasses this check.
+  const isGet = request.method.toUpperCase() === 'GET';
+  const isDocNav = isDocumentNavigation(request.headers);
+  const isCfPath = isCloudflareChallengeAssetPath(target.path);
+  const productWafBrowser = isGet && !isCfPath
+    ? await loadProductWafBrowserFlag(env.DB, session.product_slug)
+    : false;
+
+  const useBrowserFetch      = isGet && isDocNav  && !isCfPath && productWafBrowser;
+  const useAssetBrowserFetch = isGet && !isDocNav && !isCfPath && productWafBrowser;
+
+  console.log('[ra-debug] useBrowserFetch=' + useBrowserFetch + ' assetBrowser=' + useAssetBrowserFetch + ' slug=' + session.product_slug + ' path=' + target.path + ' isDocNav=' + isDocNav);
 
   let upstreamResp;
   try {
@@ -568,6 +579,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
         upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
           headers: upstreamHeaders,
         });
+        console.log('[ra-debug-browser] status=' + upstreamResp.status + ' finalUrl=' + (upstreamResp.headers.get('X-RA-Browser-Final-URL') || '(none)'));
       } catch (browserErr) {
         console.warn('browser fetch failed; falling back to direct egress', {
           product_slug: session.product_slug,
@@ -580,6 +592,10 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
           body: null,
         });
       }
+    } else if (useAssetBrowserFetch) {
+      upstreamResp = await assetBrowserFetch(env, session.institution_id, targetUrl, {
+        headers: upstreamHeaders,
+      });
     } else {
       upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
         method: request.method,
@@ -1453,6 +1469,9 @@ const STRIP_RESPONSE = new Set([
   'connection', 'keep-alive', 'transfer-encoding', 'trailer',
   'content-security-policy', 'content-security-policy-report-only',
   'strict-transport-security',
+  'cross-origin-embedder-policy',
+  'cross-origin-opener-policy',
+  'cross-origin-resource-policy',
 ]);
 const STRIP_WAF_CHALLENGE_RESPONSE = new Set([
   'cross-origin-embedder-policy',
