@@ -570,8 +570,6 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   const useBrowserFetch      = isGet && isDocNav  && !isCfPath && productWafBrowser;
   const useAssetBrowserFetch = isGet && !isDocNav && !isCfPath && productWafBrowser;
 
-  console.log('[ra-debug] useBrowserFetch=' + useBrowserFetch + ' assetBrowser=' + useAssetBrowserFetch + ' slug=' + session.product_slug + ' path=' + target.path + ' isDocNav=' + isDocNav);
-
   let upstreamResp;
   try {
     if (useBrowserFetch) {
@@ -579,7 +577,17 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
         upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
           headers: upstreamHeaders,
         });
-        console.log('[ra-debug-browser] status=' + upstreamResp.status + ' finalUrl=' + (upstreamResp.headers.get('X-RA-Browser-Final-URL') || '(none)'));
+        // Persist cf_clearance in D1 so subsequent visits can use ra-egress directly.
+        const cfClearance = upstreamResp.headers.get('X-RA-CF-Clearance');
+        if (cfClearance && publisherCookieScopeHost) {
+          ctx.waitUntil(
+            env.DB.prepare(
+              'INSERT INTO ra_waf_clearance (product_slug, scope_host, clearance, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)' +
+              ' ON CONFLICT(product_slug, scope_host) DO UPDATE SET clearance=excluded.clearance, updated_at=excluded.updated_at'
+            ).bind(session.product_slug, publisherCookieScopeHost, cfClearance, Math.floor(Date.now() / 1000), 'ra-browser').run()
+            .catch(err => console.warn('waf clearance store failed', err))
+          );
+        }
       } catch (browserErr) {
         console.warn('browser fetch failed; falling back to direct egress', {
           product_slug: session.product_slug,
@@ -3122,6 +3130,7 @@ const PUBLISHER_COOKIE_SCOPE_HOSTS = new Map([
   ['cambridge.org', 'cambridge.org'],
   ['emerald.com', 'emerald.com'],
   ['nejm.org', 'nejm.org'],
+  ['cabidigitallibrary.org', 'cabidigitallibrary.org'],
   ['cabdirect.org', 'cabdirect.org'],
   ['acs.org', 'acs.org'],
   ['nature.com', 'nature.com'],

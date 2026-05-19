@@ -4,7 +4,7 @@ Purpose: bring `libedge-db-production` safely from the current production schema
 
 ## Completion Status (2026-05-19)
 
-**COMPLETED.** All 16 pending migrations (`0020`–`0035`) applied to `libedge-db-production` on 2026-05-19. Main API Worker (`libedge-api-prod`) deployed to production.
+**COMPLETED.** All 16 pending migrations (`0020`–`0035`) applied to `libedge-db-production` on 2026-05-19. Migration `0036_enable_cabi_waf_browser.sql` applied to both staging and production on 2026-05-19 (sets `ra_waf_browser=1` for `cab-abstracts`). Main API Worker (`libedge-api-prod`) deployed to production.
 
 Pre-apply fix: Migration `0018_ra_schema_complete.sql` had partially failed on production in a prior session. The three columns it should have added (`ra_delivery_mode`, `ra_requires_tunnel`, `ra_origin_landing_path`) were missing from the `products` table because earlier runtime guards had already added other columns in `0018`, causing SQLite to error mid-migration. These three columns were added manually via `ALTER TABLE products ADD COLUMN` before running `migrations apply`. The subsequent `migrations apply` completed cleanly with no conflicts.
 

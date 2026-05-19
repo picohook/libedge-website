@@ -300,6 +300,12 @@ async function handleProxy(req, res) {
     const stillChallenge = isChallengeTitle(afterTitle);
     const status = isCfChallenge && !stillChallenge ? 200 : firstStatus;
 
+    // For non-challenge visits (cf_clearance already valid), wait for page load
+    // so page.on('response') cache is populated with sub-resources.
+    if (!isCfChallenge) {
+      await page.waitForLoadState('load', { timeout: 10000 }).catch(() => {});
+    }
+
     const responseHeaders = {};
     if (!isCfChallenge && navResponse) {
       for (const [k, v] of Object.entries(navResponse.headers())) {
@@ -311,13 +317,14 @@ async function handleProxy(req, res) {
     const setCookies = browserCookies.map(serializeBrowserCookie).filter(Boolean);
     if (setCookies.length) responseHeaders['set-cookie'] = setCookies;
 
+    // Return cf_clearance value so the Worker can persist it in D1 (ra_waf_clearance).
+    // Stored clearance lets subsequent visits bypass Turnstile without Playwright.
+    const cfClearanceCookie = browserCookies.find(c => c.name === 'cf_clearance');
+
     const html = await page.content();
-    res.json({
-      status,
-      headers: responseHeaders,
-      body: Buffer.from(html, 'utf8').toString('base64'),
-      finalUrl: page.url(),
-    });
+    const envelope = { status, headers: responseHeaders, body: Buffer.from(html, 'utf8').toString('base64'), finalUrl: page.url() };
+    if (cfClearanceCookie?.value) envelope.cfClearance = cfClearanceCookie.value;
+    res.json(envelope);
   } catch (err) {
     console.error('browser-proxy error:', err.message);
     res.json({

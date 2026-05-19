@@ -3,11 +3,11 @@
 Bu belge LibEdge Remote Access'in staging POC'den production kullanıma geçişinde
 gerekli operasyonel kararları ve kurum onboarding gereksinimlerini özetler.
 
-> Güncel not (19 Mayıs 2026): Production D1 migration'ları tamamlandı. `0020`–`0035`
-> arası tüm migration'lar `libedge-db-production`'a uygulandı. Main API Worker
-> (`libedge-api-prod`) production'a deploy edildi. Production Proxy Worker deploy'u
-> `libedge.com` domain geçişine ertelendi. RA testi yapıldı: pek çok ürün çalışıyor.
-> CABI ve Wiley'de sorun var — ayrıntı için §10'a bakın.
+> Güncel not (19 Mayıs 2026): Production D1 migration'ları tamamlandı. `0020`–`0036`
+> arası tüm migration'lar uygulandı (0036: CABI ra_waf_browser=1). Main API Worker
+> (`libedge-api-prod`) ve Staging Proxy Worker (`libedge-ra-proxy-staging`) deploy edildi.
+> Production Proxy Worker deploy'u `libedge.com` domain geçişine ertelendi. RA testi:
+> Emerald ✅, CABI ✅ (CF Bot Management bypass uygulandı), Wiley ❌ (SPA sorunu devam ediyor).
 
 ## 1. Domain Taşıma
 
@@ -283,31 +283,53 @@ Docker başka bir kurumun bilgisayarında çalışıyor. Erişim testi yapıldı
 |---|---|---|
 | Emerald | ✅ Çalışıyor | Referans ürün |
 | Pek çok ürün | ✅ Çalışıyor | Genel RA akışı doğrulandı |
-| CABI (CAB Abstracts) | ❌ 403 | Bkz. aşağıda |
-| Wiley Online Library | ❌ Boş sayfa | Bkz. aşağıda |
+| CABI (CAB Abstracts) | ✅ Çalışıyor | CF Bot Management bypass — bkz. §11 |
+| Wiley Online Library | ❌ Boş sayfa | SPA sorunu devam ediyor — bkz. aşağıda |
 
-### CABI Sorunu
+### CABI Sorunu → **ÇÖZÜLDÜ (2026-05-19)**
 
-Tarayıcı konsolu analizi:
+Kök neden: CABI **CF Bot Management + Cloudflare Turnstile**'ı hem ana sayfa hem de
+statik kaynak (CSS/JS/görsel) path'lerinde uyguluyor. Go HTTP client (ra-egress) TLS
+parmak iziyle bot olarak algılanıyor.
 
-- `GET {hash}.selmiye.com/product/ca` → **403 Forbidden** (upstream CABI sunucusundan)
-  Bu akışın primary blocker'ı. Proxy değil, CABI upstream isteği reddediyor.
-- CSS dosyaları proxy üzerinden gidiyor (`sec-fetch-site: same-origin`, `credentials: include`)
-  ama 403 HTML sayfası CSS olarak döndüğü için MIME type hataları çıkıyor.
-- COEP hataları: CABI `cross-origin-embedder-policy: require-corp` gönderiyor; proxy
-  bunu normal modda **soymuyor** (yalnız WAF challenge akışında soyuluyor). Google Analytics
-  ve benzeri cross-origin kaynaklar bu yüzden engelleniyor.
-- Webmanifest 401: `credentials: omit` ile alınıyor, proxy beklenen 401 döndürüyor —
-  kaçınılmaz, CABI'ye özgü değil.
+Çözüm için §11'e bakın.
 
-**Kök neden:** CABI upstream 403 veriyor. Olası sebepler: kurum IP'si tanınmıyor, CABI
-oturum/referrer doğrulaması yapıyor, ya da proxy request header'larından birini reddediyor
-(örn. `via`, `x-forwarded-for`). Araştırılacak.
+## 11. 2026-05-19 CABI CF Bot Management Bypass
 
-**İkinci sorun (bağımsız):** `cross-origin-embedder-policy` ve COOP/CORP headerları tüm
-proxy yanıtlarından soyulmalı, yalnız WAF challenge akışında değil. `workers/proxy/src/index.js`
-içinde `STRIP_RESPONSE` dizisine `cross-origin-embedder-policy`, `cross-origin-opener-policy`,
-`cross-origin-resource-policy` eklenmeli.
+### Kök Neden
+
+CABI (`cabidigitallibrary.org`) Cloudflare Bot Management + Turnstile kullanıyor.
+Bu koruma **tüm path'lere** uygulanıyor — sadece ana HTML sayfaya değil, CSS/JS/görsel
+gibi statik kaynaklara da. Go HTTP client (ra-egress) TLS parmak iziyle bot olarak
+sınıflandırılıyor; `cf_clearance` cookie'si bile yeterli olmuyor çünkü Go'nun H2
+fingerprint'i Chrome'dan farklı.
+
+### Çözüm Mimarisi
+
+1. **Ana sayfa (`/product/ca`):** Playwright/Chromium (ra-browser) ile navigasyon.
+   - `playwright-extra` + `puppeteer-extra-plugin-stealth` eklenti zinciri
+   - `--use-gl=swiftshader` (Docker'da GPU yok; SwiftShader software WebGL Turnstile
+     fingerprinting'ine izin verir)
+   - `waitForFunction` ile Turnstile challenge tespiti ve çözümü (İngilizce + Türkçe
+     başlık varyantları)
+   - Sonraki ziyaretler için `cf_clearance` cookie `set-cookie` olarak döner.
+
+2. **Statik kaynaklar (CSS/JS/görsel/font):** Playwright sayfa yüklenirken
+   `page.on('response')` ile Chrome'un kendi network kanalından yakalanan yanıtlar
+   modül düzeyinde cache'e yazılır (5 dk TTL, 300 entry).
+
+3. **Sub-resource routing (Worker):** `useAssetBrowserFetch` flag'i ra_waf_browser=1
+   olan publisher'lar için GET non-docNav istekleri `assetBrowserFetch` üzerinden
+   ra-browser cache'ine yönlendirir. Ra-egress'in `/browser-proxy` route'u
+   `X-RA-Asset: 1` header ile çağrılır; ra-browser bu header'a göre `handleAssetProxy`'e
+   dispatch eder.
+
+### Kalan İşler
+
+- `[ra-debug]` ve `[ra-debug-browser]` log satırları proxy Worker'dan kaldırılacak
+- D1 `ra_waf_clearance` tablosuna `cf_clearance` yazma: Playwright challenge'ı
+  çözdükten sonra değer D1'e kaydedilirse sonraki ziyaretlerde ra-egress direkt
+  bu clearance ile gider → Vetis benzeri ~3 saniye yükleme süresi.
 
 ### Wiley Sorunu
 

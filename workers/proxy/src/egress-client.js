@@ -197,6 +197,9 @@ export async function browserFetch(env, institutionId, targetUrl, init = {}) {
   if (envelope.finalUrl) {
     respHeaders.set('X-RA-Browser-Final-URL', String(envelope.finalUrl).slice(0, 220));
   }
+  if (envelope.cfClearance) {
+    respHeaders.set('X-RA-CF-Clearance', String(envelope.cfClearance).slice(0, 4096));
+  }
   // Ensure content-type is text/html if not set (page.content() always returns HTML).
   if (!respHeaders.has('content-type')) {
     respHeaders.set('content-type', 'text/html; charset=UTF-8');
