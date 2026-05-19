@@ -198,7 +198,10 @@ export async function browserFetch(env, institutionId, targetUrl, init = {}) {
     respHeaders.set('X-RA-Browser-Final-URL', String(envelope.finalUrl).slice(0, 220));
   }
   if (envelope.cfClearance) {
-    respHeaders.set('X-RA-CF-Clearance', String(envelope.cfClearance).slice(0, 4096));
+    try {
+      const safe = String(envelope.cfClearance).replace(/[\r\n\0]/g, '').slice(0, 4096);
+      if (safe) respHeaders.set('X-RA-CF-Clearance', safe);
+    } catch { /* ignore invalid cfClearance value */ }
   }
   // Ensure content-type is text/html if not set (page.content() always returns HTML).
   if (!respHeaders.has('content-type')) {

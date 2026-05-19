@@ -1480,6 +1480,7 @@ const STRIP_RESPONSE = new Set([
   'cross-origin-embedder-policy',
   'cross-origin-opener-policy',
   'cross-origin-resource-policy',
+  'x-frame-options',
 ]);
 const STRIP_WAF_CHALLENGE_RESPONSE = new Set([
   'cross-origin-embedder-policy',
@@ -3130,7 +3131,6 @@ const PUBLISHER_COOKIE_SCOPE_HOSTS = new Map([
   ['cambridge.org', 'cambridge.org'],
   ['emerald.com', 'emerald.com'],
   ['nejm.org', 'nejm.org'],
-  ['cabidigitallibrary.org', 'cabidigitallibrary.org'],
   ['cabdirect.org', 'cabdirect.org'],
   ['acs.org', 'acs.org'],
   ['nature.com', 'nature.com'],
