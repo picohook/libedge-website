@@ -2941,7 +2941,9 @@ function updateProfileResourceCount(institutionCount = 0, individualCount = 0) {
     const resourceCount = document.getElementById('profileResourceCount');
     if (!resourceCount) return;
 
-    const total = Number(institutionCount || 0) + Number(individualCount || 0);
+    const subscribedSlugs = new Set(profileSubscriptions.map(s => s.product_slug));
+    const catalogCount = _catalogProducts.filter(p => !subscribedSlugs.has(p.slug)).length;
+    const total = Number(institutionCount || 0) + Number(individualCount || 0) + catalogCount;
     if (profileActiveResourceFilter === 'all') {
         resourceCount.textContent = `${total} kaynak`;
     } else if (profileActiveResourceFilter === 'individual') {
@@ -3297,6 +3299,10 @@ async function loadProfileCatalog() {
             (recData.recommendations || []).forEach(r => _myRecommendations.add(r.product_slug));
         }
         _renderCatalog();
+        updateProfileResourceCount(
+            profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')).length,
+            profileIndividualTools.length
+        );
     } catch { /* silent */ }
 }
 
