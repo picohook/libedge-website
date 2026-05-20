@@ -841,6 +841,23 @@
             <div id="profileAiSearchResults" class="profile-ai-result hidden"></div>
         </div>
 
+        <!-- Recommend modal -->
+        <div id="profileRecommendModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" style="background:rgba(0,0,0,0.4)" onclick="if(event.target===this)_closeRecommendModal()">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-gray-900">Kurumunuza Önerin</h3>
+                    <button onclick="_closeRecommendModal()" class="text-gray-400 hover:text-gray-600 p-1"><i class="fas fa-times"></i></button>
+                </div>
+                <p id="profileRecommendProductName" class="text-sm text-primary font-semibold mb-3"></p>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Not <span class="text-gray-400 font-normal">(isteğe bağlı)</span></label>
+                <textarea id="profileRecommendNote" rows="3" placeholder="Neden bu ürünü öneriyorsunuz? Kurumunuza nasıl katkı sağlar?" class="w-full border border-gray-200 rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 mb-4"></textarea>
+                <div class="flex gap-2">
+                    <button id="profileRecommendSubmitBtn" onclick="_submitRecommendation()" class="profile-action flex-1 justify-center"><i class="fas fa-thumbs-up"></i><span>Öneri Gönder</span></button>
+                    <button onclick="_closeRecommendModal()" class="profile-action secondary flex-1 justify-center"><span>İptal</span></button>
+                </div>
+            </div>
+        </div>
+
         <!-- Card detail modal -->
         <div id="profileCardDetailModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" style="background:rgba(0,0,0,0.4)" onclick="if(event.target===this)document.getElementById('profileCardDetailModal').classList.add('hidden')">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
@@ -3347,7 +3364,7 @@ function _renderCatalog() {
                 ${desc ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${desc}</p>` : ''}
             </div>
             <div class="profile-product-footer">
-                <button type="button" class="${btnCls}" onclick="event.stopPropagation();_recommendProduct('${escapeHtml(p.slug)}',this)" ${recommended ? 'disabled' : ''}>
+                <button type="button" class="${btnCls}" onclick="event.stopPropagation();${recommended ? '' : `_openRecommendModal('${escapeHtml(p.slug)}','${escapeHtml(p.name)}')`}" ${recommended ? 'disabled' : ''}>
                     <i class="fas ${btnIcon}"></i><span>${btnLabel}</span>
                 </button>
             </div>
@@ -3355,24 +3372,44 @@ function _renderCatalog() {
     }).join('');
 }
 
-async function _recommendProduct(slug, btn) {
-    if (_myRecommendations.has(slug)) return;
-    btn.disabled = true;
+let _pendingRecommendSlug = '';
+
+function _openRecommendModal(slug, name) {
+    _pendingRecommendSlug = slug;
+    document.getElementById('profileRecommendProductName').textContent = name;
+    document.getElementById('profileRecommendNote').value = '';
+    document.getElementById('profileRecommendModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('profileRecommendNote').focus(), 50);
+}
+
+function _closeRecommendModal() {
+    document.getElementById('profileRecommendModal').classList.add('hidden');
+    _pendingRecommendSlug = '';
+}
+
+async function _submitRecommendation() {
+    const slug = _pendingRecommendSlug;
+    if (!slug || _myRecommendations.has(slug)) return;
+    const note = (document.getElementById('profileRecommendNote')?.value || '').trim();
+    const submitBtn = document.getElementById('profileRecommendSubmitBtn');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Gönderiliyor…</span>'; }
     try {
         const res = await fetch(`${window.API_BASE || ''}/api/recommendations`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ product_slug: slug })
+            body: JSON.stringify({ product_slug: slug, note: note || null })
         });
         if (res.ok) {
             _myRecommendations.add(slug);
-            btn.innerHTML = '<i class="fas fa-check"></i><span>' + (isProfileEnglish() ? 'Recommended' : 'Önerildi') + '</span>';
-            btn.className = 'profile-action secondary';
+            _closeRecommendModal();
+            _renderCatalog();
         } else {
-            btn.disabled = false;
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-thumbs-up"></i><span>Öneri Gönder</span>'; }
         }
-    } catch { btn.disabled = false; }
+    } catch {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-thumbs-up"></i><span>Öneri Gönder</span>'; }
+    }
 }
 
 function _showCardDetail(card) {

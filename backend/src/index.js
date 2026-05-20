@@ -2231,15 +2231,16 @@ app.get('/api/catalog', async (c) => {
 // ── Product Recommendations ────────────────────────────────────────────────
 app.post('/api/recommendations', async (c) => {
   const auth = await requireAuth(c);
-  if (auth.error) return c.json({ error: auth.error }, 401);
-  const { product_slug } = await c.req.json().catch(() => ({}));
+  if (auth.response) return auth.response;
+  const { product_slug, note } = await c.req.json().catch(() => ({}));
   if (!product_slug) return c.json({ error: 'product_slug gerekli' }, 400);
   const institutionId = auth.institution_id || null;
   try {
     await c.env.DB.prepare(`
-      INSERT OR IGNORE INTO product_recommendations (user_id, institution_id, product_slug)
-      VALUES (?, ?, ?)
-    `).bind(auth.id, institutionId, String(product_slug).trim()).run();
+      INSERT INTO product_recommendations (user_id, institution_id, product_slug, note)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(user_id, product_slug) DO UPDATE SET note = excluded.note
+    `).bind(auth.id, institutionId, String(product_slug).trim(), String(note || '').trim() || null).run();
     return c.json({ success: true });
   } catch {
     return c.json({ error: 'Kayıt hatası' }, 500);
@@ -2248,7 +2249,7 @@ app.post('/api/recommendations', async (c) => {
 
 app.get('/api/recommendations/mine', async (c) => {
   const auth = await requireAuth(c);
-  if (auth.error) return c.json({ error: auth.error }, 401);
+  if (auth.response) return auth.response;
   const rows = await c.env.DB.prepare(`
     SELECT product_slug, status, created_at FROM product_recommendations WHERE user_id = ?
   `).bind(auth.id).all();
@@ -2258,7 +2259,7 @@ app.get('/api/recommendations/mine', async (c) => {
 app.get('/api/admin/recommendations', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const rows = await c.env.DB.prepare(`
-    SELECT r.id, r.product_slug, r.status, r.created_at,
+    SELECT r.id, r.product_slug, r.status, r.note, r.created_at,
            u.full_name, u.email,
            i.name AS institution_name,
            p.name AS product_name, p.logo_url

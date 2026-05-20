@@ -1220,6 +1220,7 @@
                         <th class="text-left pb-2 font-semibold text-gray-600">Ürün</th>
                         <th class="text-left pb-2 font-semibold text-gray-600">Kullanıcı</th>
                         <th class="text-left pb-2 font-semibold text-gray-600">Kurum</th>
+                        <th class="text-left pb-2 font-semibold text-gray-600">Not</th>
                         <th class="text-left pb-2 font-semibold text-gray-600">Tarih</th>
                         <th class="text-left pb-2 font-semibold text-gray-600">Durum</th>
                         <th></th>
@@ -4395,6 +4396,7 @@ document.addEventListener('click', function(e) {
                     </td>
                     <td class="py-2 pr-3 text-gray-600">${escapeHtml(r.full_name || r.email || '-')}<br><span class="text-xs text-gray-400">${escapeHtml(r.email || '')}</span></td>
                     <td class="py-2 pr-3 text-gray-600">${escapeHtml(r.institution_name || '-')}</td>
+                    <td class="py-2 pr-3 text-gray-500 text-xs max-w-[180px]">${r.note ? `<span class="italic">${escapeHtml(r.note)}</span>` : '<span class="text-gray-300">—</span>'}</td>
                     <td class="py-2 pr-3 text-gray-500 text-xs">${new Date(r.created_at).toLocaleDateString('tr-TR')}</td>
                     <td class="py-2 pr-3"><span class="text-xs px-2 py-0.5 rounded-full font-semibold ${statusCls[r.status] || 'bg-gray-100 text-gray-500'}">${statusLabel[r.status] || r.status}</span></td>
                     <td class="py-2 text-right">
