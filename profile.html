@@ -901,6 +901,7 @@
                             <a href="tools.html" class="text-xs text-gray-500 hover:text-primary font-semibold">Tümünü gör</a>
                         </div>
                         <div class="profile-module-body">
+                            <div id="profileIndividualCategoryFilter" class="flex flex-wrap gap-1.5 mb-3 hidden"></div>
                             <div id="profileIndividualToolsList" class="profile-product-grid">
                                 <p class="text-gray-500 text-sm">Yükleniyor...</p>
                             </div>
@@ -2094,6 +2095,38 @@ async function checkAuthAndLoad() {
     }
 }
 
+let _activeIndividualCat = '';
+
+function _renderIndividualToolsWithFilter() {
+    const el = document.getElementById('profileIndividualToolsList');
+    if (!el) return;
+    const tools = _activeIndividualCat
+        ? profileIndividualTools.filter(t => (t.category || '') === _activeIndividualCat)
+        : profileIndividualTools;
+    el.innerHTML = tools.length
+        ? tools.filter(Boolean).map(renderProfileIndividualToolCard).join('')
+        : '<p class="text-gray-500 text-sm">Bu kategoride araç yok.</p>';
+}
+
+function _buildIndividualCategoryFilter() {
+    const bar = document.getElementById('profileIndividualCategoryFilter');
+    if (!bar) return;
+    const cats = [...new Set(profileIndividualTools.map(t => t.category).filter(Boolean))].sort();
+    if (cats.length < 2) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+    const useEn = isProfileEnglish();
+    bar.innerHTML = [
+        `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${!_activeIndividualCat ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="_setIndividualCat('')">${useEn ? 'All' : 'Tümü'}</button>`,
+        ...cats.map(c => `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${_activeIndividualCat === c ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="_setIndividualCat('${escapeHtml(c)}')">${escapeHtml(c)}</button>`)
+    ].join('');
+}
+
+function _setIndividualCat(cat) {
+    _activeIndividualCat = cat;
+    _renderIndividualToolsWithFilter();
+    _buildIndividualCategoryFilter();
+}
+
 async function loadProfileIndividualTools() {
     const el = document.getElementById('profileIndividualToolsList');
     if (!el) return;
@@ -2102,9 +2135,8 @@ async function loadProfileIndividualTools() {
         if (!res.ok) throw new Error(res.status);
         const data = await res.json();
         profileIndividualTools = Array.isArray(data.tools) ? data.tools : [];
-        el.innerHTML = profileIndividualTools.length
-            ? profileIndividualTools.filter(Boolean).map(renderProfileIndividualToolCard).join('')
-            : '<p class="text-gray-500 text-sm">Henüz bireysel araç atanmamış.</p>';
+        _renderIndividualToolsWithFilter();
+        _buildIndividualCategoryFilter();
         renderProfilePersonalTools();
         renderProfileResourceFilters([
             ...profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')),

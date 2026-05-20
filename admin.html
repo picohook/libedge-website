@@ -1219,6 +1219,31 @@
                         <i class="fas fa-plus"></i> Yeni Araç
                     </button>
                 </div>
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <input id="itSearch" type="search" placeholder="Ara…" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-primary/20" oninput="renderIndividualTools()">
+                    <select id="itFilterType" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
+                        <option value="">Tip: Tümü</option>
+                        <option value="free">Ücretsiz</option>
+                        <option value="affiliate">Partner</option>
+                        <option value="no-affiliate">Affiliate linksiz</option>
+                    </select>
+                    <select id="itFilterCategory" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
+                        <option value="">Kategori: Tümü</option>
+                    </select>
+                    <select id="itFilterStatus" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
+                        <option value="">Durum: Tümü</option>
+                        <option value="active">Aktif</option>
+                        <option value="draft">Taslak</option>
+                        <option value="archived">Arşiv</option>
+                    </select>
+                    <select id="itSort" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
+                        <option value="display_order">Sırala: Sıra</option>
+                        <option value="name">Sırala: İsim</option>
+                        <option value="category">Sırala: Kategori</option>
+                        <option value="click_count">Sırala: Tıklanma</option>
+                        <option value="affiliate">Sırala: Affiliate Önce</option>
+                    </select>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead>
@@ -1226,6 +1251,7 @@
                                 <th>Araç</th>
                                 <th>Kategori</th>
                                 <th>Tip</th>
+                                <th>Affiliate Link</th>
                                 <th>Durum</th>
                                 <th class="text-center">Tıklama</th>
                                 <th></th>
@@ -1313,16 +1339,20 @@
                         <input type="url" id="individualToolTargetUrl" class="w-full border p-2 rounded" placeholder="https://...">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Affiliate URL</label>
-                        <input type="url" id="individualToolAffiliateUrl" class="w-full border p-2 rounded" placeholder="https://partner...">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Affiliate / Referral URL <span class="text-xs text-gray-400 font-normal">(girilince otomatik Partner tipine geçer)</span></label>
+                        <input type="url" id="individualToolAffiliateUrl" class="w-full border p-2 rounded" placeholder="https://partner..." oninput="_itSyncAffiliateType()">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
                         <input type="url" id="individualToolLogoUrl" class="w-full border p-2 rounded" placeholder="https://...">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Özet</label>
-                        <textarea id="individualToolSummaryTr" rows="3" class="w-full border p-2 rounded"></textarea>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Özet (TR)</label>
+                        <textarea id="individualToolSummaryTr" rows="2" class="w-full border p-2 rounded"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Özet (EN)</label>
+                        <textarea id="individualToolSummaryEn" rows="2" class="w-full border p-2 rounded"></textarea>
                     </div>
                     <label class="flex items-center gap-2 text-sm text-gray-700">
                         <input type="checkbox" id="individualToolFeatured" class="rounded">
@@ -4302,41 +4332,79 @@ document.addEventListener('click', function(e) {
         const tbody = document.getElementById('individualToolsList');
         const count = document.getElementById('individualToolsCount');
         if (!tbody) return;
-        if (count) count.textContent = `(${individualTools.length})`;
-        if (!individualTools.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">Henüz bireysel araç yok.</td></tr>';
+
+        // Populate category filter
+        const catSel = document.getElementById('itFilterCategory');
+        if (catSel && catSel.options.length <= 1) {
+            const cats = [...new Set(individualTools.map(t => t.category).filter(Boolean))].sort();
+            cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
+        }
+
+        // Filters
+        const search = (document.getElementById('itSearch')?.value || '').toLowerCase();
+        const fType = document.getElementById('itFilterType')?.value || '';
+        const fCat = document.getElementById('itFilterCategory')?.value || '';
+        const fStatus = document.getElementById('itFilterStatus')?.value || '';
+        const sortBy = document.getElementById('itSort')?.value || 'display_order';
+
+        let tools = individualTools.filter(tool => {
+            if (search && !`${tool.name} ${tool.slug} ${tool.category} ${tool.summary_tr}`.toLowerCase().includes(search)) return false;
+            if (fType === 'free' && tool.access_type !== 'free') return false;
+            if (fType === 'affiliate' && tool.access_type !== 'affiliate') return false;
+            if (fType === 'no-affiliate' && tool.affiliate_url) return false;
+            if (fCat && tool.category !== fCat) return false;
+            if (fStatus && tool.status !== fStatus) return false;
+            return true;
+        });
+
+        tools = [...tools].sort((a, b) => {
+            if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'tr');
+            if (sortBy === 'category') return (a.category || '').localeCompare(b.category || '', 'tr');
+            if (sortBy === 'click_count') return (b.click_count || 0) - (a.click_count || 0);
+            if (sortBy === 'affiliate') return (b.affiliate_url ? 1 : 0) - (a.affiliate_url ? 1 : 0);
+            return (a.display_order || 999) - (b.display_order || 999);
+        });
+
+        if (count) count.textContent = `(${tools.length}/${individualTools.length})`;
+        if (!tools.length) {
+            tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">Araç bulunamadı.</td></tr>`;
             return;
         }
 
-        tbody.innerHTML = individualTools.map((tool) => {
+        tbody.innerHTML = tools.map((tool) => {
             const isAffiliate = tool.access_type === 'affiliate';
+            const hasAffiliateUrl = !!tool.affiliate_url;
             const statusClass = tool.status === 'active' ? 'bg-emerald-100 text-emerald-700'
                 : tool.status === 'draft' ? 'bg-amber-100 text-amber-700'
                 : 'bg-gray-100 text-gray-500';
             const typeClass = isAffiliate ? 'bg-orange-100 text-orange-700' : 'bg-cyan-100 text-cyan-700';
             const logoUrl = safeDisplayUrl(tool.logo_url);
+            const affiliateHtml = hasAffiliateUrl
+                ? `<a href="${escapeHtml(tool.affiliate_url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full font-medium hover:bg-emerald-100 transition max-w-[180px] truncate" title="${escapeHtml(tool.affiliate_url)}"><i class="fas fa-link text-[10px]"></i><span class="truncate">${escapeHtml(tool.affiliate_url.replace(/^https?:\/\//, '').split('/')[0])}</span></a>`
+                : `<span class="text-xs text-gray-400 flex items-center gap-1"><i class="fas fa-circle-exclamation text-amber-400"></i> Yok</span>`;
             return `
                 <tr class="border-b hover:bg-gray-50">
                     <td class="px-4 py-3">
-                        <div class="flex items-center gap-3 min-w-[220px]">
-                            <div class="w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
+                        <div class="flex items-center gap-3 min-w-[200px]">
+                            <div class="w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                                 ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(tool.name)} logo" class="w-full h-full object-contain p-1">` : `<span class="text-xs font-bold text-gray-500">${escapeHtml(String(tool.name || '?').slice(0, 2).toUpperCase())}</span>`}
                             </div>
                             <div class="min-w-0">
                                 <p class="font-semibold text-gray-800 truncate">${escapeHtml(tool.name || tool.slug)}</p>
-                                <p class="text-xs text-gray-400 font-mono truncate">${escapeHtml(tool.slug || '')}</p>
+                                <a href="${escapeHtml(tool.target_url || '#')}" target="_blank" rel="noopener" class="text-xs text-gray-400 font-mono truncate hover:text-primary block">${escapeHtml((tool.target_url || '').replace(/^https?:\/\//, '').split('/')[0] || tool.slug)}</a>
                             </div>
                         </div>
                     </td>
-                    <td class="px-4 py-3 text-sm text-gray-600">${escapeHtml(tool.category || '-')}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600 max-w-[140px] truncate">${escapeHtml(tool.category || '-')}</td>
                     <td class="px-4 py-3"><span class="text-[11px] px-2 py-1 rounded-full font-semibold ${typeClass}">${isAffiliate ? 'Partner' : 'Ücretsiz'}</span></td>
+                    <td class="px-4 py-3">${affiliateHtml}</td>
                     <td class="px-4 py-3"><span class="text-[11px] px-2 py-1 rounded-full font-semibold ${statusClass}">${escapeHtml(tool.status || 'active')}</span></td>
                     <td class="px-4 py-3 text-center font-semibold text-gray-700">${Number(tool.click_count || 0)}</td>
                     <td class="px-4 py-3 text-right whitespace-nowrap">
-                        <button type="button" data-admin-action="edit-individual-tool" data-tool-slug="${escapeHtml(tool.slug)}" class="text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition">
+                        <button type="button" data-admin-action="edit-individual-tool" data-tool-slug="${escapeHtml(tool.slug)}" class="text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition" title="Düzenle">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button type="button" data-admin-action="archive-individual-tool" data-tool-slug="${escapeHtml(tool.slug)}" class="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition">
+                        <button type="button" data-admin-action="archive-individual-tool" data-tool-slug="${escapeHtml(tool.slug)}" class="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition" title="Arşivle">
                             <i class="fas fa-box-archive"></i>
                         </button>
                     </td>
@@ -4371,6 +4439,17 @@ document.addEventListener('click', function(e) {
         }
     }
 
+    function _itSyncAffiliateType() {
+        const affiliateUrl = (document.getElementById('individualToolAffiliateUrl')?.value || '').trim();
+        const accessTypeSel = document.getElementById('individualToolAccessType');
+        if (!accessTypeSel) return;
+        if (affiliateUrl && accessTypeSel.value !== 'affiliate') {
+            accessTypeSel.value = 'affiliate';
+        } else if (!affiliateUrl && accessTypeSel.value === 'affiliate') {
+            accessTypeSel.value = 'free';
+        }
+    }
+
     function openIndividualToolModal(slug = '') {
         editingIndividualToolSlug = slug || '';
         const tool = individualTools.find((item) => item.slug === editingIndividualToolSlug) || {};
@@ -4388,6 +4467,8 @@ document.addEventListener('click', function(e) {
         document.getElementById('individualToolAffiliateUrl').value = tool.affiliate_url || '';
         document.getElementById('individualToolLogoUrl').value = tool.logo_url || '';
         document.getElementById('individualToolSummaryTr').value = tool.summary_tr || '';
+        const summaryEn = document.getElementById('individualToolSummaryEn');
+        if (summaryEn) summaryEn.value = tool.summary_en || '';
         document.getElementById('individualToolFeatured').checked = !!Number(tool.featured || 0);
         document.getElementById('individualToolModal').classList.remove('hidden');
     }
@@ -4412,8 +4493,13 @@ document.addEventListener('click', function(e) {
             affiliate_url: document.getElementById('individualToolAffiliateUrl').value.trim(),
             logo_url: document.getElementById('individualToolLogoUrl').value.trim(),
             summary_tr: document.getElementById('individualToolSummaryTr').value.trim(),
+            summary_en: (document.getElementById('individualToolSummaryEn')?.value || '').trim(),
             featured: document.getElementById('individualToolFeatured').checked,
         };
+        // Auto-manage delivery_type based on affiliate_url
+        payload.delivery_type = payload.affiliate_url ? 'affiliate_redirect' : 'external_link';
+        if (payload.affiliate_url) payload.access_type = 'affiliate';
+        else if (payload.access_type === 'affiliate') payload.access_type = 'free';
 
         try {
             const isNew = !editingSlug;
