@@ -1227,7 +1227,6 @@
                         <option value="freemium">Freemium</option>
                         <option value="paid">Ücretli</option>
                         <option value="affiliate">Partner</option>
-                        <option value="no-affiliate">Affiliate linksiz</option>
                     </select>
                     <select id="itFilterCategory" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
                         <option value="">Kategori: Tümü</option>
@@ -4391,7 +4390,6 @@ document.addEventListener('click', function(e) {
             if (fType === 'freemium' && tool.access_type !== 'freemium') return false;
             if (fType === 'paid' && tool.access_type !== 'paid') return false;
             if (fType === 'affiliate' && tool.access_type !== 'affiliate') return false;
-            if (fType === 'no-affiliate' && tool.affiliate_url) return false;
             if (fCat && tool.category !== fCat) return false;
             if (fStatus && tool.status !== fStatus) return false;
             return true;
