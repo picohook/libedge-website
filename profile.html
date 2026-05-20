@@ -841,6 +841,26 @@
             <div id="profileAiSearchResults" class="profile-ai-result hidden"></div>
         </div>
 
+        <!-- Card detail modal -->
+        <div id="profileCardDetailModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" style="background:rgba(0,0,0,0.4)" onclick="if(event.target===this)document.getElementById('profileCardDetailModal').classList.add('hidden')">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                <div class="p-5">
+                    <div class="flex items-start justify-between gap-3 mb-4">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div id="pcdLogo" class="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0"></div>
+                            <div class="min-w-0">
+                                <h3 id="pcdName" class="font-bold text-gray-900 text-base leading-tight"></h3>
+                                <div id="pcdBadges" class="flex flex-wrap gap-1.5 mt-1.5"></div>
+                            </div>
+                        </div>
+                        <button onclick="document.getElementById('profileCardDetailModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1 flex-shrink-0"><i class="fas fa-times"></i></button>
+                    </div>
+                    <p id="pcdDescription" class="text-sm text-gray-600 leading-relaxed mb-4 min-h-[3rem]"></p>
+                    <div id="pcdActions" class="flex gap-2 flex-wrap"></div>
+                </div>
+            </div>
+        </div>
+
         <div id="tab-overview" class="tab-content">
             <section class="profile-welcome">
                 <div class="flex items-center gap-4 min-w-0">
@@ -2808,7 +2828,7 @@ async function loadSubscriptions() {
                         data-delivery-mode="${escapeHtml(String(sub.ra_delivery_mode || ''))}"
                         data-access-url="${escapeHtml(normalizedUrl)}"
                         data-ra-enabled="${sub.ra_enabled ? '1' : '0'}"
-                        onclick="openSubscriptionAccess(this)"
+                        onclick="event.stopPropagation();openSubscriptionAccess(this)"
                         class="profile-action ${actionConfig.secondary ? 'secondary' : ''}">
                         <i class="fas ${actionConfig.icon}"></i><span>${escapeHtml(translateProfileString(actionConfig.label, useEnglish))}</span>
                     </button>`
@@ -2835,10 +2855,16 @@ async function loadSubscriptions() {
             const description = descriptionText ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${escapeHtml(descriptionText)}</p>` : '';
 
             return `
-                <article class="profile-product-card" data-profile-product-card
+                <article class="profile-product-card cursor-pointer" data-profile-product-card
                     data-source="${escapeHtml(sub.source || 'institution')}"
                     data-category="${escapeHtml(categoryKey)}"
                     data-search-text="${escapeHtml([name, rawCategory, prod.category_en, category].join(' ').toLowerCase())}"
+                    data-detail-name="${escapeHtml(name)}"
+                    data-detail-summary="${escapeHtml(descriptionText)}"
+                    data-detail-logo="${escapeHtml(logoUrl || '')}"
+                    data-detail-type="${escapeHtml(sub.status || '')}"
+                    data-detail-url="${escapeHtml(normalizedUrl || '')}"
+                    onclick="if(!event.target.closest('button'))_showCardDetail(this)"
                     style="border-top:3px solid ${clr.border}">
                     <div class="profile-product-head" style="background:linear-gradient(120deg,${clr.bg},#fff 70%)">
                         <div class="profile-product-brand">
@@ -3188,10 +3214,17 @@ function renderProfileIndividualToolCard(tool) {
     const searchText = [name, rawCategory, tool.category_en, category, summary, tool.access_type].join(' ').toLowerCase();
 
     return `
-        <article class="profile-product-card" data-profile-product-card 
+        <article class="profile-product-card cursor-pointer" data-profile-product-card
             data-category="${escapeHtml(categoryKey)}"
             data-source="individual"
-            data-search-text="${escapeHtml(searchText)}" 
+            data-search-text="${escapeHtml(searchText)}"
+            data-detail-name="${escapeHtml(name)}"
+            data-detail-summary="${escapeHtml(summary)}"
+            data-detail-logo="${escapeHtml(logoUrl || '')}"
+            data-detail-type="${escapeHtml(tool.access_type || '')}"
+            data-detail-url="/api/go/${encodeURIComponent(slug)}?source=profile_detail"
+            data-detail-cta="${escapeHtml(cta)}"
+            onclick="if(!event.target.closest('button'))_showCardDetail(this)"
             style="border-top:3px solid ${clr.border}">
             <div class="profile-product-head" style="background:linear-gradient(120deg,${clr.bg},#fff 70%)">
                 <div class="profile-product-brand">
@@ -3203,16 +3236,46 @@ function renderProfileIndividualToolCard(tool) {
                 ${badge}
             </div>
             <div class="profile-product-body">
-                ${summary ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${escapeHtml(summary)}</p>` : ''}
+                ${summary ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${escapeHtml(summary)}</p>` : '<p class="text-xs text-gray-400 mt-2 italic">Detay için tıklayın…</p>'}
             </div>
             <div class="profile-product-footer">
                 <div class="flex gap-2 flex-wrap justify-end">
-                    <button type="button" onclick="window.open('/api/go/${encodeURIComponent(slug)}?source=profile_dashboard', '_blank', 'noopener,noreferrer')" class="profile-action">
+                    <button type="button" onclick="event.stopPropagation();window.open('/api/go/${encodeURIComponent(slug)}?source=profile_dashboard', '_blank', 'noopener,noreferrer')" class="profile-action">
                         <i class="fas ${icon}"></i><span>${cta}</span>
                     </button>
                 </div>
             </div>
         </article>`;
+}
+
+function _showCardDetail(card) {
+    const name = card.dataset.detailName || card.querySelector('h4')?.textContent || '';
+    const summary = card.dataset.detailSummary || '';
+    const logo = card.dataset.detailLogo || '';
+    const type = card.dataset.detailType || '';
+    const url = card.dataset.detailUrl || '';
+    const cta = card.dataset.detailCta || (isProfileEnglish() ? 'Open' : 'Aç');
+    const category = card.dataset.category || '';
+
+    document.getElementById('pcdName').textContent = name;
+    document.getElementById('pcdDescription').textContent = summary || (isProfileEnglish() ? 'No description available.' : 'Açıklama bulunmuyor.');
+
+    const logoEl = document.getElementById('pcdLogo');
+    logoEl.innerHTML = logo
+        ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(name)}" class="w-full h-full object-contain p-1">`
+        : `<span class="text-sm font-bold text-gray-500">${escapeHtml((name || '?').slice(0, 2).toUpperCase())}</span>`;
+
+    const typeLabel = { free: 'Ücretsiz', freemium: 'Freemium', paid: 'Ücretli', affiliate: 'Partner', active: 'Aktif', trial: 'Deneme' }[type] || type;
+    const typeCls = { free: 'bg-cyan-100 text-cyan-700', freemium: 'bg-violet-100 text-violet-700', paid: 'bg-rose-100 text-rose-700', affiliate: 'bg-orange-100 text-orange-700', active: 'bg-emerald-100 text-emerald-700', trial: 'bg-amber-100 text-amber-700' }[type] || 'bg-gray-100 text-gray-600';
+    const typeBadge = typeLabel ? `<span class="text-xs px-2 py-0.5 rounded-full font-semibold ${typeCls}">${escapeHtml(typeLabel)}</span>` : '';
+    const catBadge = category ? `<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">${escapeHtml(category)}</span>` : '';
+    document.getElementById('pcdBadges').innerHTML = typeBadge + catBadge;
+
+    document.getElementById('pcdActions').innerHTML = url
+        ? `<button onclick="window.open('${escapeHtml(url)}', '_blank', 'noopener');document.getElementById('profileCardDetailModal').classList.add('hidden')" class="profile-action"><i class="fas fa-arrow-up-right-from-square"></i><span>${escapeHtml(cta)}</span></button>`
+        : '';
+
+    document.getElementById('profileCardDetailModal').classList.remove('hidden');
 }
 
 function focusProfileAiSearch(prompt) {
