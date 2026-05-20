@@ -717,6 +717,74 @@
             align-items: center;
             cursor: pointer;
         }
+        /* ── Mosaic view ─────────────────────────────────────────────── */
+        .profile-mosaic-view .profile-product-grid {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 10px !important;
+        }
+        .profile-mosaic-view .profile-product-grid.profile-product-deck {
+            flex-direction: row !important;
+            overflow: visible !important;
+            height: auto !important;
+        }
+        .profile-mosaic-view [data-profile-product-card] {
+            width: 76px !important;
+            min-height: 86px !important;
+            max-height: 86px !important;
+            border-radius: 14px !important;
+            flex: 0 0 76px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            grid-template-rows: 1fr !important;
+            overflow: hidden !important;
+            transition: transform 0.15s, box-shadow 0.15s !important;
+            cursor: pointer !important;
+        }
+        .profile-mosaic-view [data-profile-product-card]:hover {
+            transform: scale(1.08) !important;
+            box-shadow: 0 8px 24px rgba(15,23,42,0.13) !important;
+            z-index: 2 !important;
+        }
+        .profile-mosaic-view .profile-product-head {
+            padding: 10px 6px 4px !important;
+            background: none !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 4px !important;
+            height: 100% !important;
+        }
+        .profile-mosaic-view .profile-product-brand {
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 3px !important;
+            width: 100% !important;
+        }
+        .profile-mosaic-view .profile-product-logo {
+            width: 40px !important;
+            height: 40px !important;
+            flex: 0 0 40px !important;
+            border-radius: 10px !important;
+        }
+        .profile-mosaic-view .profile-product-brand h4 {
+            font-size: 8.5px !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            width: 68px !important;
+            color: #374151 !important;
+        }
+        .profile-mosaic-view .profile-product-head > .profile-tag,
+        .profile-mosaic-view .profile-product-body,
+        .profile-mosaic-view .profile-product-footer,
+        .profile-mosaic-view .profile-product-card::before {
+            display: none !important;
+        }
+        .profile-mosaic-view [data-profile-product-card].is-selected {
+            box-shadow: 0 0 0 2px #220f60, 0 8px 20px rgba(34,15,96,0.18) !important;
+        }
+
         .profile-action.secondary {
             background: #eef4ff;
             color: #2f6fed;
@@ -922,7 +990,13 @@
                     <article class="profile-module" style="--module-tint:#eee9ff;--module-icon-bg:#e7ddff;--module-icon:#7c3aed">
                         <div class="profile-module-header">
                             <h2 class="profile-module-title"><i class="fas fa-building-columns"></i><span id="profileInstitutionModuleTitleText">Kurum Kaynaklarım</span></h2>
-                            <span id="profileResourceCount" class="text-xs text-gray-400 font-semibold">Yükleniyor</span>
+                            <div class="flex items-center gap-2">
+                                <span id="profileResourceCount" class="text-xs text-gray-400 font-semibold">Yükleniyor</span>
+                                <div class="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+                                    <button id="viewBtnDeck" onclick="_setViewMode('deck')" title="Kart görünümü" class="px-2 py-1 bg-primary text-white transition"><i class="fas fa-id-card"></i></button>
+                                    <button id="viewBtnMosaic" onclick="_setViewMode('mosaic')" title="Mozaik görünümü" class="px-2 py-1 bg-white text-gray-400 hover:text-gray-600 transition"><i class="fas fa-th-large"></i></button>
+                                </div>
+                            </div>
                         </div>
                         <div class="profile-module-body">
                             <div id="activeSubscriptionsList" class="profile-product-grid">
@@ -1777,6 +1851,7 @@ let profileCategoryFilter = 'all';
 let _activeInstCatGlobal = 'all';
 let _activeIndivCatGlobal = 'all';
 let _activeCatsGlobal = new Set(); // multi-select; empty = Tümü
+let _profileViewMode = 'deck'; // 'deck' | 'mosaic'
 let profileIndividualTools = [];
 let profileLinks = [];
 let profileAnnouncements = [];
@@ -2970,6 +3045,21 @@ function updateProfileResourceCount(institutionCount = 0, individualCount = 0) {
     } else {
         resourceCount.textContent = `${Number(institutionCount || 0)} kaynak`;
     }
+}
+
+function _setViewMode(mode) {
+    _profileViewMode = mode;
+    const dashboard = document.querySelector('.profile-dashboard-main');
+    if (dashboard) dashboard.classList.toggle('profile-mosaic-view', mode === 'mosaic');
+    const btnDeck = document.getElementById('viewBtnDeck');
+    const btnMosaic = document.getElementById('viewBtnMosaic');
+    if (btnDeck) {
+        btnDeck.className = `px-2 py-1 transition ${mode === 'deck' ? 'bg-primary text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`;
+    }
+    if (btnMosaic) {
+        btnMosaic.className = `px-2 py-1 transition ${mode === 'mosaic' ? 'bg-primary text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`;
+    }
+    if (mode !== 'mosaic') syncProfileDeckStacking(profileActiveResourceFilter);
 }
 
 function _cardAllCategories(card) {
