@@ -461,6 +461,7 @@
                 <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
                 <a href="#" class="sidebar-link" data-tab="products" id="productsTab"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
                 <a href="#" class="sidebar-link" data-tab="individual-tools" id="individualToolsTab"><i class="fas fa-wand-magic-sparkles w-5"></i><span>Bireysel Araçlar</span></a>
+                <a href="#" class="sidebar-link" data-tab="recommendations" id="recommendationsTab"><i class="fas fa-thumbs-up w-5"></i><span>Öneriler</span><span id="sidebarBadgeRecommendations" class="hidden ml-auto bg-amber-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
                 <a href="#" class="sidebar-link" data-tab="remote-access" id="remoteAccessTab" style="display:none"><i class="fas fa-network-wired w-5"></i><span>Uzaktan Erişim</span><span id="sidebarBadgeAlerts" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
                 <a href="#" class="sidebar-link" data-tab="settings" id="settingsTab"><i class="fas fa-cog w-5"></i><span>Ayarlar</span></a>
             </nav>
@@ -1207,6 +1208,28 @@
         </div>
     </div>
 
+    <div id="tab-recommendations" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Ürün Önerileri <span id="recommendationsCount" class="text-sm font-normal text-gray-400"></span></h3>
+                <button type="button" onclick="loadAdminRecommendations()" class="text-sm text-primary hover:underline"><i class="fas fa-rotate-right mr-1"></i>Yenile</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead><tr>
+                        <th class="text-left pb-2 font-semibold text-gray-600">Ürün</th>
+                        <th class="text-left pb-2 font-semibold text-gray-600">Kullanıcı</th>
+                        <th class="text-left pb-2 font-semibold text-gray-600">Kurum</th>
+                        <th class="text-left pb-2 font-semibold text-gray-600">Tarih</th>
+                        <th class="text-left pb-2 font-semibold text-gray-600">Durum</th>
+                        <th></th>
+                    </tr></thead>
+                    <tbody id="recommendationsList"><tr><td colspan="6" class="py-8 text-center text-gray-400">Yükleniyor…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div id="tab-individual-tools" class="tab-content hidden">
         <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
             <div class="bg-white rounded-xl shadow-sm p-6">
@@ -1611,10 +1634,14 @@
                             </section>
 
                             <section class="product-form-section">
-                                <div class="flex items-center gap-3">
+                                <div class="flex flex-wrap items-center gap-4">
                                     <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
                                         <input type="checkbox" id="productRaEnabled" class="rounded">
                                         <span><i class="fas fa-shield-halved text-indigo-500 mr-1"></i>Uzaktan Erişim (RA) Etkin</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                                        <input type="checkbox" id="productIsLibedgeCatalog" class="rounded">
+                                        <span><i class="fas fa-star text-amber-500 mr-1"></i>LibEdge Kataloğu</span>
                                     </label>
                                 </div>
                                 <div id="productRaFields" class="grid grid-cols-1 md:grid-cols-2 gap-3 hidden mt-3 pt-3 border-t border-gray-200">
@@ -4343,6 +4370,53 @@ document.addEventListener('click', function(e) {
         renderProductsList();
     }
 
+    async function loadAdminRecommendations() {
+        const tbody = document.getElementById('recommendationsList');
+        const countEl = document.getElementById('recommendationsCount');
+        if (!tbody) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/recommendations`, { credentials: 'include' });
+            const data = await res.json().catch(() => ({}));
+            const recs = Array.isArray(data.recommendations) ? data.recommendations : [];
+            if (countEl) countEl.textContent = `(${recs.length})`;
+            const badge = document.getElementById('sidebarBadgeRecommendations');
+            const pending = recs.filter(r => r.status === 'pending').length;
+            if (badge) { badge.textContent = pending; badge.classList.toggle('hidden', !pending); }
+            if (!recs.length) { tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-gray-400">Henüz öneri yok.</td></tr>'; return; }
+            const statusLabel = { pending: 'Bekliyor', seen: 'Görüldü', acted: 'İşlem yapıldı', dismissed: 'Reddedildi' };
+            const statusCls = { pending: 'bg-amber-100 text-amber-700', seen: 'bg-blue-100 text-blue-700', acted: 'bg-emerald-100 text-emerald-700', dismissed: 'bg-gray-100 text-gray-500' };
+            tbody.innerHTML = recs.map(r => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-2 pr-3">
+                        <div class="flex items-center gap-2">
+                            ${r.logo_url ? `<img src="${escapeHtml(r.logo_url)}" class="w-7 h-7 rounded object-contain bg-gray-50 border p-0.5">` : ''}
+                            <span class="font-medium text-gray-800">${escapeHtml(r.product_name || r.product_slug)}</span>
+                        </div>
+                    </td>
+                    <td class="py-2 pr-3 text-gray-600">${escapeHtml(r.full_name || r.email || '-')}<br><span class="text-xs text-gray-400">${escapeHtml(r.email || '')}</span></td>
+                    <td class="py-2 pr-3 text-gray-600">${escapeHtml(r.institution_name || '-')}</td>
+                    <td class="py-2 pr-3 text-gray-500 text-xs">${new Date(r.created_at).toLocaleDateString('tr-TR')}</td>
+                    <td class="py-2 pr-3"><span class="text-xs px-2 py-0.5 rounded-full font-semibold ${statusCls[r.status] || 'bg-gray-100 text-gray-500'}">${statusLabel[r.status] || r.status}</span></td>
+                    <td class="py-2 text-right">
+                        <select class="border rounded px-2 py-1 text-xs" onchange="updateRecommendationStatus(${r.id}, this.value)">
+                            ${['pending','seen','acted','dismissed'].map(s => `<option value="${s}" ${r.status===s?'selected':''}>${statusLabel[s]}</option>`).join('')}
+                        </select>
+                    </td>
+                </tr>`).join('');
+        } catch (e) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-red-500">Yüklenemedi.</td></tr>';
+        }
+    }
+
+    async function updateRecommendationStatus(id, status) {
+        await fetch(`${API_BASE}/api/admin/recommendations/${id}`, {
+            method: 'PATCH', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        loadAdminRecommendations();
+    }
+
     async function loadIndividualTools() {
         try {
             const res = await fetch(`${API_BASE}/api/admin/individual-tools`, { credentials: 'include' });
@@ -4743,6 +4817,7 @@ async function startAdminProductRaTest(btn) {
         // RA alanları
         const raEnabled = !!product.ra_enabled;
         document.getElementById('productRaEnabled').checked = raEnabled;
+        document.getElementById('productIsLibedgeCatalog').checked = !!product.is_libedge_catalog;
         document.getElementById('productRaFields').classList.toggle('hidden', !raEnabled);
         document.getElementById('productRaDeliveryMode').value = product.ra_delivery_mode || 'path_proxy';
         document.getElementById('productRaRequiresTunnel').checked =
@@ -6300,6 +6375,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
             default_access_notes_tr: document.getElementById('productAccessNotesTr').value.trim() || null,
             default_access_notes_en: document.getElementById('productAccessNotesEn').value.trim() || null,
             ra_enabled: document.getElementById('productRaEnabled').checked,
+            is_libedge_catalog: document.getElementById('productIsLibedgeCatalog').checked,
             ra_delivery_mode: document.getElementById('productRaDeliveryMode').value || 'path_proxy',
             ra_requires_tunnel: document.getElementById('productRaRequiresTunnel').checked,
             ra_origin_host: document.getElementById('productRaOriginHost').value.trim() || null,
@@ -6390,6 +6466,8 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 loadProducts();
             } else if (tab === 'individual-tools') {
                 loadIndividualTools();
+            } else if (tab === 'recommendations') {
+                loadAdminRecommendations();
             } else if (tab === 'requests') {
                 loadRequests();
             } else if (tab === 'support') {

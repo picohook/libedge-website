@@ -2216,6 +2216,71 @@ app.get('/api/individual-tools', async (c) => {
   return c.json({ tools });
 });
 
+// ── LibEdge Catalog (public) ───────────────────────────────────────────────
+app.get('/api/catalog', async (c) => {
+  const rows = await c.env.DB.prepare(`
+    SELECT slug, name, category, default_access_type, logo_url,
+           short_description_tr, short_description_en
+    FROM products
+    WHERE is_libedge_catalog = 1
+    ORDER BY name COLLATE NOCASE ASC
+  `).all();
+  return c.json({ products: rows.results || [] });
+});
+
+// ── Product Recommendations ────────────────────────────────────────────────
+app.post('/api/recommendations', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.error) return c.json({ error: auth.error }, 401);
+  const { product_slug } = await c.req.json().catch(() => ({}));
+  if (!product_slug) return c.json({ error: 'product_slug gerekli' }, 400);
+  const institutionId = auth.institution_id || null;
+  try {
+    await c.env.DB.prepare(`
+      INSERT OR IGNORE INTO product_recommendations (user_id, institution_id, product_slug)
+      VALUES (?, ?, ?)
+    `).bind(auth.id, institutionId, String(product_slug).trim()).run();
+    return c.json({ success: true });
+  } catch {
+    return c.json({ error: 'Kayıt hatası' }, 500);
+  }
+});
+
+app.get('/api/recommendations/mine', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.error) return c.json({ error: auth.error }, 401);
+  const rows = await c.env.DB.prepare(`
+    SELECT product_slug, status, created_at FROM product_recommendations WHERE user_id = ?
+  `).bind(auth.id).all();
+  return c.json({ recommendations: rows.results || [] });
+});
+
+app.get('/api/admin/recommendations', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const rows = await c.env.DB.prepare(`
+    SELECT r.id, r.product_slug, r.status, r.created_at,
+           u.full_name, u.email,
+           i.name AS institution_name,
+           p.name AS product_name, p.logo_url
+    FROM product_recommendations r
+    LEFT JOIN users u ON u.id = r.user_id
+    LEFT JOIN institutions i ON i.id = r.institution_id
+    LEFT JOIN products p ON p.slug = r.product_slug
+    ORDER BY r.created_at DESC
+    LIMIT 500
+  `).all();
+  return c.json({ recommendations: rows.results || [] });
+});
+
+app.patch('/api/admin/recommendations/:id', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const id = Number(c.req.param('id'));
+  const { status } = await c.req.json().catch(() => ({}));
+  if (!['pending','seen','acted','dismissed'].includes(status)) return c.json({ error: 'Geçersiz status' }, 400);
+  await c.env.DB.prepare(`UPDATE product_recommendations SET status=? WHERE id=?`).bind(status, id).run();
+  return c.json({ success: true });
+});
+
 app.get('/api/go/:slug', async (c) => {
   const slug = String(c.req.param('slug') || '').trim().toLowerCase();
   const tool = (await getIndividualTools(c.env.DB)).find((item) => item.slug === slug);
@@ -3723,7 +3788,7 @@ app.put('/api/admin/product/:slug', async (c) => {
     default_access_type, default_access_url,
     default_requires_institution_email, default_requires_vpn,
     default_access_notes_tr, default_access_notes_en,
-    ra_enabled
+    ra_enabled, is_libedge_catalog
   } = body;
 
   const db = c.env.DB;
@@ -3767,7 +3832,7 @@ app.put('/api/admin/product/:slug', async (c) => {
         ra_enabled = ?, ra_delivery_mode = ?,
         ra_origin_host = ?, ra_origin_landing_path = ?,
         ra_requires_tunnel = ?, ra_login_recipe_json = ?, ra_host_allowlist_json = ?,
-        brochure_url = ?
+        brochure_url = ?, is_libedge_catalog = ?
     WHERE slug = ?
   `).bind(
     String(name || '').trim() || slug,
@@ -3806,6 +3871,7 @@ app.put('/api/admin/product/:slug', async (c) => {
     ra.ra_login_recipe_json,
     ra.ra_host_allowlist_json,
     String(body.brochure_url || '').trim() || null,
+    is_libedge_catalog ? 1 : 0,
     slug
   );
   const logStmt = createAdminActionLogStmt(db, {
@@ -4015,8 +4081,8 @@ app.post('/api/admin/products', async (c) => {
       card_visible, display_order, is_featured,
       ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path,
       ra_requires_tunnel, ra_login_recipe_json, ra_host_allowlist_json,
-      brochure_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      brochure_url, is_libedge_catalog
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     slugNorm,
     String(name).trim(),
@@ -4052,7 +4118,8 @@ app.post('/api/admin/products', async (c) => {
     ra.ra_requires_tunnel,
     ra.ra_login_recipe_json,
     ra.ra_host_allowlist_json,
-    String(body.brochure_url || '').trim() || null
+    String(body.brochure_url || '').trim() || null,
+    body.is_libedge_catalog ? 1 : 0
   ).run();
 
   return c.json({ success: true, slug: slugNorm }, 201);

@@ -928,6 +928,16 @@
                         </div>
                     </article>
 
+                    <article class="profile-module hidden" id="profileCatalogModule" style="--module-tint:#fefce8;--module-icon-bg:#fef08a;--module-icon:#ca8a04">
+                        <div class="profile-module-header">
+                            <h2 class="profile-module-title"><i class="fas fa-star"></i>Keşfet & Kurumunuza Önerin</h2>
+                            <span class="text-xs text-gray-400 font-medium">Kurumunuzun henüz sahip olmadığı LibEdge ürünleri</span>
+                        </div>
+                        <div class="profile-module-body">
+                            <div id="profileCatalogList" class="profile-product-grid"></div>
+                        </div>
+                    </article>
+
                     <article class="profile-module" style="--module-tint:#dcfce7;--module-icon-bg:#bbf7d0;--module-icon:#16a34a">
                         <div class="profile-module-header">
                             <h2 class="profile-module-title"><i class="fas fa-folder-open"></i>Bana Yeni Gelenler</h2>
@@ -2911,6 +2921,7 @@ async function loadSubscriptions() {
         _buildInstitutionCategoryFilter();
         _buildAllSubsCategoryFilter();
         applyProfileResourceFilter();
+        loadProfileCatalog();
         runProfileSmartSearch(false);
     } catch (err) {
         console.error(err);
@@ -3246,6 +3257,90 @@ function renderProfileIndividualToolCard(tool) {
                 </div>
             </div>
         </article>`;
+}
+
+// ── LibEdge Catalog & Recommendations ─────────────────────────────────────
+let _catalogProducts = [];
+let _myRecommendations = new Set();
+
+async function loadProfileCatalog() {
+    try {
+        const [catRes, recRes] = await Promise.all([
+            fetch(`${window.API_BASE || ''}/api/catalog`, { credentials: 'include' }),
+            fetch(`${window.API_BASE || ''}/api/recommendations/mine`, { credentials: 'include' })
+        ]);
+        if (!catRes.ok) return;
+        const catData = await catRes.json();
+        _catalogProducts = Array.isArray(catData.products) ? catData.products : [];
+        if (recRes.ok) {
+            const recData = await recRes.json();
+            (recData.recommendations || []).forEach(r => _myRecommendations.add(r.product_slug));
+        }
+        _renderCatalog();
+    } catch { /* silent */ }
+}
+
+function _renderCatalog() {
+    const el = document.getElementById('profileCatalogList');
+    const mod = document.getElementById('profileCatalogModule');
+    if (!el || !mod) return;
+    // Filter out products the institution already has
+    const subscribedSlugs = new Set(profileSubscriptions.map(s => s.product_slug));
+    const unsubscribed = _catalogProducts.filter(p => !subscribedSlugs.has(p.slug));
+    if (!unsubscribed.length) { mod.classList.add('hidden'); return; }
+    mod.classList.remove('hidden');
+    const useEn = isProfileEnglish();
+    el.innerHTML = unsubscribed.map(p => {
+        const name = escapeHtml(p.name || p.slug);
+        const desc = escapeHtml(useEn ? (p.short_description_en || p.short_description_tr || '') : (p.short_description_tr || p.short_description_en || ''));
+        const logo = p.logo_url ? `<img src="${escapeHtml(p.logo_url)}" alt="${name}" loading="lazy">` : `<span>${escapeHtml((p.name||'?').slice(0,2).toUpperCase())}</span>`;
+        const recommended = _myRecommendations.has(p.slug);
+        const btnCls = recommended ? 'profile-action secondary' : 'profile-action';
+        const btnIcon = recommended ? 'fa-check' : 'fa-thumbs-up';
+        const btnLabel = recommended ? (useEn ? 'Recommended' : 'Önerildi') : (useEn ? 'Recommend' : 'Kuruma Önerin');
+        return `<article class="profile-product-card cursor-pointer"
+            data-detail-name="${name}"
+            data-detail-summary="${desc}"
+            data-detail-logo="${escapeHtml(p.logo_url || '')}"
+            onclick="if(!event.target.closest('button'))_showCardDetail(this)"
+            style="border-top:3px solid #ca8a04">
+            <div class="profile-product-head" style="background:linear-gradient(120deg,#fefce8,#fff 70%)">
+                <div class="profile-product-brand">
+                    <div class="profile-product-logo" style="color:#ca8a04">${logo}</div>
+                    <div class="min-w-0"><h4>${name}</h4></div>
+                </div>
+                <span class="profile-tag bg-amber-50 text-amber-700">${escapeHtml(p.category || '')}</span>
+            </div>
+            <div class="profile-product-body">
+                ${desc ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${desc}</p>` : ''}
+            </div>
+            <div class="profile-product-footer">
+                <button type="button" class="${btnCls}" onclick="event.stopPropagation();_recommendProduct('${escapeHtml(p.slug)}',this)" ${recommended ? 'disabled' : ''}>
+                    <i class="fas ${btnIcon}"></i><span>${btnLabel}</span>
+                </button>
+            </div>
+        </article>`;
+    }).join('');
+}
+
+async function _recommendProduct(slug, btn) {
+    if (_myRecommendations.has(slug)) return;
+    btn.disabled = true;
+    try {
+        const res = await fetch(`${window.API_BASE || ''}/api/recommendations`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product_slug: slug })
+        });
+        if (res.ok) {
+            _myRecommendations.add(slug);
+            btn.innerHTML = '<i class="fas fa-check"></i><span>' + (isProfileEnglish() ? 'Recommended' : 'Önerildi') + '</span>';
+            btn.className = 'profile-action secondary';
+        } else {
+            btn.disabled = false;
+        }
+    } catch { btn.disabled = false; }
 }
 
 function _showCardDetail(card) {
