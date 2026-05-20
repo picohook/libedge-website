@@ -897,7 +897,7 @@
             <!-- Global Resource Filters -->
             <div class="mb-6 profile-filter-rail">
                 <div id="primaryResourceFilters" class="flex flex-wrap gap-2 mb-3"></div>
-                <div id="secondaryResourceFilters" class="flex flex-wrap gap-2 p-3 bg-white/50 rounded-xl border border-gray-100 hidden"></div>
+                <div id="secondaryResourceFilters" class="flex flex-col gap-2 p-3 bg-white/50 rounded-xl border border-gray-100 hidden"></div>
             </div>
 
             <section class="profile-dashboard-grid">
@@ -908,7 +908,6 @@
                             <span id="profileResourceCount" class="text-xs text-gray-400 font-semibold">Yükleniyor</span>
                         </div>
                         <div class="profile-module-body">
-                            <div id="profileInstitutionCategoryFilter" class="flex flex-wrap gap-1.5 mb-3 hidden"></div>
                             <div id="activeSubscriptionsList" class="profile-product-grid">
                                 <p class="text-gray-500 text-sm">Yükleniyor...</p>
                             </div>
@@ -1758,6 +1757,8 @@ let profileProductMap = new Map();
 let profileSubscriptions = [];
 let profileActiveResourceFilter = 'all';
 let profileCategoryFilter = 'all';
+let _activeInstCatGlobal = 'all';
+let _activeIndivCatGlobal = 'all';
 let profileIndividualTools = [];
 let profileLinks = [];
 let profileAnnouncements = [];
@@ -2256,7 +2257,7 @@ async function loadProfileIndividualTools() {
         renderProfilePersonalTools();
         _buildPersonalCategoryFilter();
         renderProfileResourceFilters([
-            ...profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')),
+            ...profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')), // legacy compat
             ...profileIndividualTools
         ]);
         updateProfileResourceCount(
@@ -2905,7 +2906,7 @@ async function loadSubscriptions() {
         const sidebarSubCount = document.getElementById('sidebarSubCount');
         if (overviewSubCount) overviewSubCount.textContent = activeSubs.length;
         if (sidebarSubCount) sidebarSubCount.textContent = activeSubs.length;
-        renderProfileResourceFilters([...activeSubs, ...profileIndividualTools]);
+        renderProfileResourceFilters();
         updateProfileResourceCount(activeSubs.length, profileIndividualTools.length);
 
         if (activeEl) {
@@ -2930,15 +2931,10 @@ async function loadSubscriptions() {
     }
 }
 
-function renderProfileResourceFilters(allItems) {
+function renderProfileResourceFilters() {
     const primaryEl = document.getElementById('primaryResourceFilters');
-    const secondaryEl = document.getElementById('secondaryResourceFilters');
-    if (!primaryEl || !secondaryEl) return;
-
-    primaryEl.innerHTML = '';
-    primaryEl.classList.add('hidden');
-
-    renderSecondaryFilters(allItems);
+    if (primaryEl) { primaryEl.innerHTML = ''; primaryEl.classList.add('hidden'); }
+    renderSecondaryFilters();
 }
 
 function updateProfileResourceCount(institutionCount = 0, individualCount = 0) {
@@ -2955,53 +2951,81 @@ function updateProfileResourceCount(institutionCount = 0, individualCount = 0) {
     }
 }
 
-function renderSecondaryFilters(allItems) {
+function renderSecondaryFilters() {
     const el = document.getElementById('secondaryResourceFilters');
-    if (!el || !Array.isArray(allItems)) return;
+    if (!el) return;
 
-    const filteredItems = profileActiveResourceFilter === 'all' 
-        ? allItems 
-        : allItems.filter(s => {
-            if (!s) return false;
-            const source = s.source || (s.product_slug ? 'institution' : 'individual');
-            return source === profileActiveResourceFilter;
-        });
+    const useEn = isProfileEnglish();
+    const pill = (label, active, onclick) =>
+        `<button type="button" onclick="${onclick}" class="px-2.5 py-1 rounded-full text-xs font-semibold border transition whitespace-nowrap ${active ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}">${label}</button>`;
 
-    const categoryMap = new Map();
-    filteredItems
-        .filter(Boolean)
-        .forEach((item) => {
-            const meta = getProfileCategoryFilterMeta(item);
-            if (meta.key && !categoryMap.has(meta.key)) {
-                categoryMap.set(meta.key, meta.label);
+    // Row 1 — institution subscription categories
+    const activeSubs = profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial'));
+    const instCats = [...new Set(activeSubs.map(s => {
+        const prod = profileProductMap.get(s.product_slug) || {};
+        return String(prod.category || '').trim();
+    }).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+
+    // Row 2 — individual tool categories
+    const indivCats = [...new Set(profileIndividualTools.map(t => t.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+
+    if (!instCats.length && !indivCats.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+    el.classList.remove('hidden');
+
+    let html = '';
+    if (instCats.length) {
+        html += `<div class="flex flex-wrap gap-1.5 items-center">
+            <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mr-1">${useEn ? 'Resources' : 'Kaynaklar'}</span>
+            ${pill(useEn ? 'All' : 'Tümü', _activeInstCatGlobal === 'all', "_setInstCatGlobal('all')")}
+            ${instCats.map(c => pill(c, _activeInstCatGlobal === c, `_setInstCatGlobal('${c.replace(/'/g, "\\'")}')`)).join('')}
+        </div>`;
+    }
+    if (indivCats.length) {
+        html += `<div class="flex flex-wrap gap-1.5 items-center">
+            <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mr-1">${useEn ? 'Tools' : 'Araçlar'}</span>
+            ${pill(useEn ? 'All' : 'Tümü', _activeIndivCatGlobal === 'all', "_setIndivCatGlobal('all')")}
+            ${indivCats.map(c => pill(c, _activeIndivCatGlobal === c, `_setIndivCatGlobal('${c.replace(/'/g, "\\'")}')`)).join('')}
+        </div>`;
+    }
+    el.innerHTML = html;
+}
+
+function _setInstCatGlobal(cat) {
+    _activeInstCatGlobal = cat;
+    _applyGlobalCategoryFilters();
+    renderSecondaryFilters();
+}
+
+function _setIndivCatGlobal(cat) {
+    _activeIndivCatGlobal = cat;
+    _applyGlobalCategoryFilters();
+    renderSecondaryFilters();
+}
+
+function _applyGlobalCategoryFilters() {
+    const instGrid = document.getElementById('activeSubscriptionsList');
+    if (instGrid) {
+        instGrid.querySelectorAll('[data-profile-product-card]').forEach(card => {
+            if (card.style.display === 'none') return;
+            const source = card.dataset.source || 'institution';
+            const cat = (card.dataset.category || '').toLowerCase();
+            if (source === 'institution' && _activeInstCatGlobal !== 'all') {
+                card.style.display = cat === _activeInstCatGlobal.toLowerCase() ? '' : 'none';
+            }
+            if (source === 'individual' && _activeIndivCatGlobal !== 'all') {
+                card.style.display = cat === _activeIndivCatGlobal.toLowerCase() ? '' : 'none';
             }
         });
-    const categories = Array.from(categoryMap, ([key, label]) => ({ key, label }))
-        .sort((a, b) => a.label.localeCompare(b.label, isProfileEnglish() ? 'en' : 'tr'));
-
-    if (categories.length === 0) {
-        el.classList.add('hidden');
-        el.innerHTML = '';
-        return;
     }
-
-    el.classList.remove('hidden');
-    const buttons = [{ key: 'all', label: isProfileEnglish() ? 'All Categories' : 'Tüm Kategoriler' }, ...categories];
-    
-    el.innerHTML = buttons.map(item => `
-        <button type="button" data-category-filter="${item.key}"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${profileCategoryFilter === item.key ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'}">
-            ${item.label}
-        </button>
-    `).join('');
-
-    el.querySelectorAll('[data-category-filter]').forEach(btn => {
-        btn.onclick = () => {
-            profileCategoryFilter = btn.dataset.categoryFilter;
-            updateFilterUI();
-            applyProfileResourceFilter();
-        };
-    });
+    const indivGrid = document.getElementById('profileIndividualToolsList');
+    if (indivGrid) {
+        indivGrid.querySelectorAll('[data-profile-product-card]').forEach(card => {
+            if (card.style.display === 'none') return;
+            const cat = (card.dataset.category || '').toLowerCase();
+            card.style.display = _activeIndivCatGlobal === 'all' || cat === _activeIndivCatGlobal.toLowerCase() ? '' : 'none';
+        });
+    }
+    syncProfileDeckStacking(profileActiveResourceFilter);
 }
 
 function updateFilterUI() {
@@ -3070,11 +3094,7 @@ function applyProfileResourceFilter() {
         cards.forEach(card => {
             let show = true;
             const cardSource = card.dataset.source;
-            const cardCategory = (card.dataset.category || '').toLowerCase().replace(/["']/g, '');
-
             if (primary !== 'all' && cardSource !== primary) show = false;
-            if (show && category !== 'all' && cardCategory !== category) show = false;
-            
             card.style.display = show ? '' : 'none';
             if (show) visibleInGrid++;
         });
@@ -3099,7 +3119,7 @@ function applyProfileResourceFilter() {
     });
 
     syncProfileDeckStacking(primary);
-    _applyInstitutionCatFilter();
+    _applyGlobalCategoryFilters();
 }
 
 function syncProfileCombinedResourceLayout(primary) {
