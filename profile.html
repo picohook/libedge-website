@@ -984,6 +984,7 @@
                     <span class="text-xs text-gray-400">Abonelikler ve erişim durumları</span>
                 </div>
                 <div class="profile-module-body">
+                    <div id="profileAllSubsCategoryFilter" class="flex flex-wrap gap-1.5 mb-3 hidden"></div>
                     <div id="allSubscriptionsList" class="profile-product-grid profile-product-grid-four"><p class="text-gray-500 text-center py-8">Yükleniyor...</p></div>
                 </div>
             </article>
@@ -996,6 +997,7 @@
                     <span class="text-xs text-gray-400">Kişisel araçlar ve erişimler</span>
                 </div>
                 <div class="profile-module-body">
+                    <div id="profilePersonalCategoryFilter" class="flex flex-wrap gap-1.5 mb-3 hidden"></div>
                     <div id="profilePersonalToolsList" class="profile-product-grid profile-product-grid-four">
                         <p class="text-gray-500 text-center py-8">Henüz bireysel ürün erişiminiz bulunmuyor.</p>
                     </div>
@@ -2097,6 +2099,55 @@ async function checkAuthAndLoad() {
 
 let _activeIndividualCat = '';
 let _activeInstitutionCat = '';
+let _activePersonalCat = '';
+let _activeAllSubsCat = '';
+
+function _buildTabCategoryFilter(barId, cats, activeCat, setFn) {
+    const bar = document.getElementById(barId);
+    if (!bar) return;
+    if (cats.length < 2) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+    const useEn = isProfileEnglish();
+    bar.innerHTML = [
+        `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${!activeCat ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="${setFn}('')">${useEn ? 'All' : 'Tümü'}</button>`,
+        ...cats.map(c => `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${activeCat === c ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="${setFn}('${escapeHtml(c)}')">${escapeHtml(c)}</button>`)
+    ].join('');
+}
+
+function _applyTabCatFilter(gridId, activeCat) {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+    grid.querySelectorAll('[data-profile-product-card]').forEach(card => {
+        if (!activeCat) { card.style.display = ''; return; }
+        const cardCat = String(card.dataset.category || '').toLowerCase();
+        card.style.display = cardCat === activeCat.toLowerCase() ? '' : 'none';
+    });
+}
+
+function _buildPersonalCategoryFilter() {
+    const cats = [...new Set(profileIndividualTools.map(t => t.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+    _buildTabCategoryFilter('profilePersonalCategoryFilter', cats, _activePersonalCat, '_setPersonalCat');
+}
+
+function _setPersonalCat(cat) {
+    _activePersonalCat = cat;
+    _applyTabCatFilter('profilePersonalToolsList', cat);
+    _buildPersonalCategoryFilter();
+}
+
+function _buildAllSubsCategoryFilter() {
+    const cats = [...new Set(profileSubscriptions.map(s => {
+        const prod = profileProductMap.get(s.product_slug) || {};
+        return String(prod.category || '').trim();
+    }).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+    _buildTabCategoryFilter('profileAllSubsCategoryFilter', cats, _activeAllSubsCat, '_setAllSubsCat');
+}
+
+function _setAllSubsCat(cat) {
+    _activeAllSubsCat = cat;
+    _applyTabCatFilter('allSubscriptionsList', cat);
+    _buildAllSubsCategoryFilter();
+}
 
 function _buildInstitutionCategoryFilter() {
     const bar = document.getElementById('profileInstitutionCategoryFilter');
@@ -2173,6 +2224,7 @@ async function loadProfileIndividualTools() {
         _renderIndividualToolsWithFilter();
         _buildIndividualCategoryFilter();
         renderProfilePersonalTools();
+        _buildPersonalCategoryFilter();
         renderProfileResourceFilters([
             ...profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')),
             ...profileIndividualTools
@@ -2793,7 +2845,6 @@ async function loadSubscriptions() {
                             <div class="profile-product-logo" style="color:${clr.text}">${logoHtml}</div>
                             <div class="min-w-0">
                                 <h4>${escapeHtml(name)}</h4>
-                                <p>${escapeHtml(category || (useEnglish ? 'Academic resource' : 'Akademik kaynak'))}</p>
                             </div>
                         </div>
                         <span class="profile-tag ${sub.status === 'trial' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}">${sub.status === 'trial' ? (useEnglish ? 'Trial' : 'Deneme') : sub.status === 'active' ? (useEnglish ? 'Active' : 'Aktif') : (useEnglish ? 'Inactive' : 'Pasif')}</span>
@@ -2832,6 +2883,7 @@ async function loadSubscriptions() {
                 : '<p class="text-gray-500 text-center py-8">Henüz aboneliğiniz bulunmuyor.</p>';
         }
         _buildInstitutionCategoryFilter();
+        _buildAllSubsCategoryFilter();
         applyProfileResourceFilter();
         runProfileSmartSearch(false);
     } catch (err) {
@@ -3146,7 +3198,6 @@ function renderProfileIndividualToolCard(tool) {
                     <div class="profile-product-logo" style="color:${clr.text}">${logoHtml}</div>
                     <div class="min-w-0">
                         <h4>${escapeHtml(name)}</h4>
-                        <p>${escapeHtml(category)}</p>
                     </div>
                 </div>
                 ${badge}
@@ -3178,7 +3229,9 @@ function runProfileSmartSearch(openPanel = true) {
     const panel = document.getElementById('profileAiSearchResults');
     if (!input || !panel) return;
     const query = String(input.value || '').trim().toLowerCase();
-    const cards = Array.from(document.querySelectorAll('[data-profile-product-card]'));
+    const cards = Array.from(document.querySelectorAll(
+        '#activeSubscriptionsList [data-profile-product-card], #profileIndividualToolsList [data-profile-product-card]'
+    ));
     if (!query) {
         applyProfileResourceFilter();
         panel.classList.add('hidden');
