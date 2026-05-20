@@ -290,6 +290,9 @@ async function getIndividualTools(db, { includeInactive = false } = {}) {
            COALESCE(featured, 0) AS featured,
            COALESCE(status, 'active') AS status,
            COALESCE(display_order, 999) AS display_order,
+           COALESCE(affiliate_status, 'not_applied') AS affiliate_status,
+           affiliate_commission, affiliate_cookie_days,
+           affiliate_dashboard_url, affiliate_notes,
            created_at, updated_at
     FROM individual_tools
     ${includeInactive ? '' : "WHERE COALESCE(status, 'active') = 'active'"}
@@ -323,6 +326,13 @@ function normalizeIndividualToolPayload(body, existingSlug = '') {
     featured: body.featured ? 1 : 0,
     status,
     display_order: Number.isFinite(Number(body.display_order)) ? Number(body.display_order) : 999,
+    affiliate_status: ['not_applied','applied','approved','active','paused'].includes(body.affiliate_status)
+      ? body.affiliate_status : 'not_applied',
+    affiliate_commission: String(body.affiliate_commission || '').trim() || null,
+    affiliate_cookie_days: Number.isFinite(Number(body.affiliate_cookie_days)) && Number(body.affiliate_cookie_days) > 0
+      ? Number(body.affiliate_cookie_days) : null,
+    affiliate_dashboard_url: String(body.affiliate_dashboard_url || '').trim() || null,
+    affiliate_notes: String(body.affiliate_notes || '').trim() || null,
   };
 }
 
@@ -2211,10 +2221,21 @@ app.get('/api/go/:slug', async (c) => {
   const tool = (await getIndividualTools(c.env.DB)).find((item) => item.slug === slug);
   if (!tool) return c.json({ error: 'Araç bulunamadı' }, 404);
 
-  const destination = tool.access_type === 'affiliate'
+  let destination = tool.access_type === 'affiliate'
     ? (tool.affiliate_url || tool.target_url)
     : tool.target_url;
   if (!destination) return c.json({ error: 'Yönlendirme adresi tanımlı değil' }, 404);
+
+  // Inject UTM parameters on affiliate links so traffic is attributable in the partner's analytics.
+  if (tool.access_type === 'affiliate' && tool.affiliate_url) {
+    try {
+      const u = new URL(destination);
+      if (!u.searchParams.has('utm_source')) u.searchParams.set('utm_source', 'libedge');
+      if (!u.searchParams.has('utm_medium')) u.searchParams.set('utm_medium', 'referral');
+      if (!u.searchParams.has('utm_campaign')) u.searchParams.set('utm_campaign', 'affiliate');
+      destination = u.toString();
+    } catch { /* malformed URL, use as-is */ }
+  }
 
   try {
     await ensureIndividualToolsSchema(c.env.DB);
@@ -3539,12 +3560,16 @@ app.post('/api/admin/individual-tools', async (c) => {
   await db.prepare(`
     INSERT INTO individual_tools (
       slug, name, category, access_type, delivery_type, target_url, affiliate_url,
-      summary_tr, summary_en, logo_url, featured, status, display_order, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      summary_tr, summary_en, logo_url, featured, status, display_order,
+      affiliate_status, affiliate_commission, affiliate_cookie_days,
+      affiliate_dashboard_url, affiliate_notes, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     payload.slug, payload.name, payload.category, payload.access_type, payload.delivery_type,
     payload.target_url, payload.affiliate_url, payload.summary_tr, payload.summary_en,
-    payload.logo_url, payload.featured, payload.status, payload.display_order, new Date().toISOString()
+    payload.logo_url, payload.featured, payload.status, payload.display_order,
+    payload.affiliate_status, payload.affiliate_commission, payload.affiliate_cookie_days,
+    payload.affiliate_dashboard_url, payload.affiliate_notes, new Date().toISOString()
   ).run();
 
   return c.json({ success: true, slug: payload.slug });
@@ -3562,12 +3587,16 @@ app.put('/api/admin/individual-tools/:slug', async (c) => {
     UPDATE individual_tools
     SET name = ?, category = ?, access_type = ?, delivery_type = ?, target_url = ?,
         affiliate_url = ?, summary_tr = ?, summary_en = ?, logo_url = ?, featured = ?,
-        status = ?, display_order = ?, updated_at = ?
+        status = ?, display_order = ?,
+        affiliate_status = ?, affiliate_commission = ?, affiliate_cookie_days = ?,
+        affiliate_dashboard_url = ?, affiliate_notes = ?, updated_at = ?
     WHERE slug = ?
   `).bind(
     payload.name, payload.category, payload.access_type, payload.delivery_type,
     payload.target_url, payload.affiliate_url, payload.summary_tr, payload.summary_en,
     payload.logo_url, payload.featured, payload.status, payload.display_order,
+    payload.affiliate_status, payload.affiliate_commission, payload.affiliate_cookie_days,
+    payload.affiliate_dashboard_url, payload.affiliate_notes,
     new Date().toISOString(), payload.slug
   ).run();
 
@@ -7533,6 +7562,7 @@ app.get('/api/files/*', async (c) => {
     'avatars/',
     'institution-logos/',
     'announcement-covers/',
+    'logos/',
   ];
   const isPublicPrefix = PUBLIC_KEY_PREFIXES.some(p => key.startsWith(p));
   const isTicketAttachment = key.startsWith('ticket-attachments/');

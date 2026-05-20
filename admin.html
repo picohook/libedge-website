@@ -1339,8 +1339,38 @@
                         <input type="url" id="individualToolTargetUrl" class="w-full border p-2 rounded" placeholder="https://...">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Affiliate / Referral URL <span class="text-xs text-gray-400 font-normal">(girilince otomatik Partner tipine geçer)</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Affiliate / Referral URL <span class="text-xs text-gray-400 font-normal">(girilince otomatik Partner tipine geçer · UTM otomatik eklenir)</span></label>
                         <input type="url" id="individualToolAffiliateUrl" class="w-full border p-2 rounded" placeholder="https://partner..." oninput="_itSyncAffiliateType()">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Affiliate Program Durumu</label>
+                            <select id="individualToolAffiliateStatus" class="w-full border p-2 rounded text-sm">
+                                <option value="not_applied">Başvurulmadı</option>
+                                <option value="applied">Başvuru yapıldı</option>
+                                <option value="approved">Onaylandı</option>
+                                <option value="active">Aktif</option>
+                                <option value="paused">Duraklatıldı</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Komisyon <span class="text-xs text-gray-400 font-normal">(ör. %30, $10/üye)</span></label>
+                            <input type="text" id="individualToolAffiliateCommission" class="w-full border p-2 rounded" placeholder="ör. %30 recurring">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Cookie Süresi (gün)</label>
+                            <input type="number" id="individualToolAffiliateCookieDays" class="w-full border p-2 rounded" placeholder="ör. 30" min="1" max="365">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Partner Panel URL</label>
+                            <input type="url" id="individualToolAffiliateDashboard" class="w-full border p-2 rounded" placeholder="https://partner.io/dashboard">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dahili Notlar</label>
+                        <textarea id="individualToolAffiliateNotes" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Ödeme bilgisi, başvuru tarihi, şartlar…"></textarea>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
@@ -4379,9 +4409,12 @@ document.addEventListener('click', function(e) {
                 : 'bg-gray-100 text-gray-500';
             const typeClass = isAffiliate ? 'bg-orange-100 text-orange-700' : 'bg-cyan-100 text-cyan-700';
             const logoUrl = safeDisplayUrl(tool.logo_url);
+            const afStatus = tool.affiliate_status || 'not_applied';
+            const afStatusLabel = { not_applied:'Başvurulmadı', applied:'Başvuruldu', approved:'Onaylandı', active:'Aktif', paused:'Durdu' }[afStatus] || afStatus;
+            const afStatusCls = { not_applied:'text-gray-400', applied:'text-blue-600 bg-blue-50', approved:'text-indigo-600 bg-indigo-50', active:'text-emerald-700 bg-emerald-50', paused:'text-amber-600 bg-amber-50' }[afStatus] || 'text-gray-400';
             const affiliateHtml = hasAffiliateUrl
-                ? `<a href="${escapeHtml(tool.affiliate_url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full font-medium hover:bg-emerald-100 transition max-w-[180px] truncate" title="${escapeHtml(tool.affiliate_url)}"><i class="fas fa-link text-[10px]"></i><span class="truncate">${escapeHtml(tool.affiliate_url.replace(/^https?:\/\//, '').split('/')[0])}</span></a>`
-                : `<span class="text-xs text-gray-400 flex items-center gap-1"><i class="fas fa-circle-exclamation text-amber-400"></i> Yok</span>`;
+                ? `<div class="flex flex-col gap-0.5"><a href="${escapeHtml(tool.affiliate_url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full font-medium hover:bg-emerald-100 transition max-w-[180px] truncate" title="${escapeHtml(tool.affiliate_url)}"><i class="fas fa-link text-[10px]"></i><span class="truncate">${escapeHtml(tool.affiliate_url.replace(/^https?:\/\//, '').split('/')[0])}</span></a><span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${afStatusCls}">${afStatusLabel}${tool.affiliate_commission ? ' · ' + escapeHtml(tool.affiliate_commission) : ''}</span></div>`
+                : `<div class="flex flex-col gap-0.5"><span class="text-xs text-gray-400 flex items-center gap-1"><i class="fas fa-circle-exclamation text-amber-400"></i> Link yok</span><span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${afStatusCls}">${afStatusLabel}</span></div>`;
             return `
                 <tr class="border-b hover:bg-gray-50">
                     <td class="px-4 py-3">
@@ -4470,6 +4503,16 @@ document.addEventListener('click', function(e) {
         const summaryEn = document.getElementById('individualToolSummaryEn');
         if (summaryEn) summaryEn.value = tool.summary_en || '';
         document.getElementById('individualToolFeatured').checked = !!Number(tool.featured || 0);
+        const afStatus = document.getElementById('individualToolAffiliateStatus');
+        if (afStatus) afStatus.value = tool.affiliate_status || 'not_applied';
+        const afComm = document.getElementById('individualToolAffiliateCommission');
+        if (afComm) afComm.value = tool.affiliate_commission || '';
+        const afCookie = document.getElementById('individualToolAffiliateCookieDays');
+        if (afCookie) afCookie.value = tool.affiliate_cookie_days || '';
+        const afDash = document.getElementById('individualToolAffiliateDashboard');
+        if (afDash) afDash.value = tool.affiliate_dashboard_url || '';
+        const afNotes = document.getElementById('individualToolAffiliateNotes');
+        if (afNotes) afNotes.value = tool.affiliate_notes || '';
         document.getElementById('individualToolModal').classList.remove('hidden');
     }
 
@@ -4495,6 +4538,11 @@ document.addEventListener('click', function(e) {
             summary_tr: document.getElementById('individualToolSummaryTr').value.trim(),
             summary_en: (document.getElementById('individualToolSummaryEn')?.value || '').trim(),
             featured: document.getElementById('individualToolFeatured').checked,
+            affiliate_status: document.getElementById('individualToolAffiliateStatus')?.value || 'not_applied',
+            affiliate_commission: (document.getElementById('individualToolAffiliateCommission')?.value || '').trim(),
+            affiliate_cookie_days: document.getElementById('individualToolAffiliateCookieDays')?.value || '',
+            affiliate_dashboard_url: (document.getElementById('individualToolAffiliateDashboard')?.value || '').trim(),
+            affiliate_notes: (document.getElementById('individualToolAffiliateNotes')?.value || '').trim(),
         };
         // Auto-manage delivery_type based on affiliate_url
         payload.delivery_type = payload.affiliate_url ? 'affiliate_redirect' : 'external_link';
