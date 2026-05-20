@@ -1776,6 +1776,7 @@ let profileActiveResourceFilter = 'all';
 let profileCategoryFilter = 'all';
 let _activeInstCatGlobal = 'all';
 let _activeIndivCatGlobal = 'all';
+let _activeCatsGlobal = new Set(); // multi-select; empty = Tümü
 let profileIndividualTools = [];
 let profileLinks = [];
 let profileAnnouncements = [];
@@ -2886,6 +2887,7 @@ async function loadSubscriptions() {
                 <article class="profile-product-card cursor-pointer" data-profile-product-card
                     data-source="${escapeHtml(sub.source || 'institution')}"
                     data-category="${escapeHtml(categoryKey)}"
+                    data-extra-categories="${escapeHtml(String(prod.extra_categories || '').toLowerCase())}"
                     data-search-text="${escapeHtml([name, rawCategory, prod.category_en, category].join(' ').toLowerCase())}"
                     data-detail-name="${escapeHtml(name)}"
                     data-detail-summary="${escapeHtml(descriptionText)}"
@@ -2970,86 +2972,97 @@ function updateProfileResourceCount(institutionCount = 0, individualCount = 0) {
     }
 }
 
+function _cardAllCategories(card) {
+    const primary = (card.dataset.category || '').toLowerCase();
+    const extra = (card.dataset.extraCategories || '').toLowerCase();
+    const all = [primary, ...extra.split(',').map(s => s.trim())].filter(Boolean);
+    return new Set(all);
+}
+
 function renderSecondaryFilters() {
     const el = document.getElementById('secondaryResourceFilters');
     if (!el) return;
 
     const useEn = isProfileEnglish();
-    const pill = (label, active, dataKey, dataVal) =>
-        `<button type="button" data-cf-key="${escapeHtml(dataKey)}" data-cf-val="${escapeHtml(dataVal)}" class="px-2.5 py-1 rounded-full text-xs font-semibold border transition whitespace-nowrap ${active ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}">${escapeHtml(label)}</button>`;
+    const pill = (label, active, val) =>
+        `<button type="button" data-cf-val="${escapeHtml(val)}" class="px-2.5 py-1 rounded-full text-xs font-semibold border transition whitespace-nowrap ${active ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}">${escapeHtml(label)}</button>`;
 
     // Row 1 — institution subscription categories
     const activeSubs = profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial'));
-    const instCats = [...new Set(activeSubs.map(s => {
+    const instCatSet = new Set();
+    activeSubs.forEach(s => {
         const prod = profileProductMap.get(s.product_slug) || {};
-        return String(prod.category || '').trim();
-    }).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+        if (prod.category) instCatSet.add(String(prod.category).trim());
+        String(prod.extra_categories || '').split(',').map(c => c.trim()).filter(Boolean).forEach(c => instCatSet.add(c));
+    });
+    const instCats = [...instCatSet].sort((a, b) => a.localeCompare(b, 'tr'));
 
     // Row 2 — individual tool categories
-    const indivCats = [...new Set(profileIndividualTools.map(t => t.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+    const indivCatSet = new Set();
+    profileIndividualTools.forEach(t => {
+        if (t.category) indivCatSet.add(String(t.category).trim());
+        String(t.extra_categories || '').split(',').map(c => c.trim()).filter(Boolean).forEach(c => indivCatSet.add(c));
+    });
+    const indivCats = [...indivCatSet].sort((a, b) => a.localeCompare(b, 'tr'));
 
     if (!instCats.length && !indivCats.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
     el.classList.remove('hidden');
 
-    let html = '';
-    if (instCats.length) {
-        html += `<div class="flex flex-wrap gap-1.5 items-center">
-            <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mr-1">${useEn ? 'Resources' : 'Kaynaklar'}</span>
-            ${pill(useEn ? 'All' : 'Tümü', _activeInstCatGlobal === 'all', 'inst', 'all')}
-            ${instCats.map(c => pill(c, _activeInstCatGlobal === c, 'inst', c)).join('')}
-        </div>`;
-    }
+    const isAll = _activeCatsGlobal.size === 0;
+    let html = `<div class="flex flex-wrap gap-1.5">
+        ${pill(useEn ? 'All' : 'Tümü', isAll, '__all__')}
+        ${instCats.map(c => pill(c, _activeCatsGlobal.has(c), c)).join('')}
+    </div>`;
     if (indivCats.length) {
-        html += `<div class="flex flex-wrap gap-1.5 items-center">
-            <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mr-1">${useEn ? 'Tools' : 'Araçlar'}</span>
-            ${pill(useEn ? 'All' : 'Tümü', _activeIndivCatGlobal === 'all', 'indiv', 'all')}
-            ${indivCats.map(c => pill(c, _activeIndivCatGlobal === c, 'indiv', c)).join('')}
+        html += `<div class="flex flex-wrap gap-1.5">
+            ${indivCats.map(c => pill(c, _activeCatsGlobal.has(c), c)).join('')}
         </div>`;
     }
     el.innerHTML = html;
-    el.querySelectorAll('[data-cf-key]').forEach(btn => {
+    el.querySelectorAll('[data-cf-val]').forEach(btn => {
         btn.addEventListener('click', () => {
-            if (btn.dataset.cfKey === 'inst') _setInstCatGlobal(btn.dataset.cfVal);
-            else _setIndivCatGlobal(btn.dataset.cfVal);
+            const val = btn.dataset.cfVal;
+            if (val === '__all__') {
+                _activeCatsGlobal.clear();
+            } else {
+                if (_activeCatsGlobal.has(val)) _activeCatsGlobal.delete(val);
+                else _activeCatsGlobal.add(val);
+            }
+            applyProfileResourceFilter();
+            renderSecondaryFilters();
         });
     });
 }
 
-function _setInstCatGlobal(cat) {
-    _activeInstCatGlobal = cat;
+function _setInstCatGlobal(cat) { // kept for compat
+    _activeCatsGlobal.clear();
+    if (cat !== 'all') _activeCatsGlobal.add(cat);
     applyProfileResourceFilter();
     renderSecondaryFilters();
 }
 
-function _setIndivCatGlobal(cat) {
-    _activeIndivCatGlobal = cat;
+function _setIndivCatGlobal(cat) { // kept for compat
+    _activeCatsGlobal.clear();
+    if (cat !== 'all') _activeCatsGlobal.add(cat);
     applyProfileResourceFilter();
     renderSecondaryFilters();
 }
 
 function _applyGlobalCategoryFilters() {
-    const instGrid = document.getElementById('activeSubscriptionsList');
-    if (instGrid) {
-        instGrid.querySelectorAll('[data-profile-product-card]').forEach(card => {
+    if (_activeCatsGlobal.size === 0) { syncProfileDeckStacking(profileActiveResourceFilter); return; }
+    const lowerSelected = new Set([..._activeCatsGlobal].map(c => c.toLowerCase()));
+    [
+        document.getElementById('activeSubscriptionsList'),
+        document.getElementById('profileIndividualToolsList'),
+    ].forEach(grid => {
+        if (!grid) return;
+        grid.querySelectorAll('[data-profile-product-card]').forEach(card => {
             if (card.style.display === 'none') return;
-            const source = card.dataset.source || 'institution';
-            const cat = (card.dataset.category || '').toLowerCase();
-            if (source === 'institution' && _activeInstCatGlobal !== 'all') {
-                card.style.display = cat === _activeInstCatGlobal.toLowerCase() ? '' : 'none';
-            }
-            if (source === 'individual' && _activeIndivCatGlobal !== 'all') {
-                card.style.display = cat === _activeIndivCatGlobal.toLowerCase() ? '' : 'none';
-            }
+            const cardCats = _cardAllCategories(card);
+            const match = [...cardCats].some(c => lowerSelected.has(c));
+            card.style.display = match ? '' : 'none';
         });
-    }
-    const indivGrid = document.getElementById('profileIndividualToolsList');
-    if (indivGrid) {
-        indivGrid.querySelectorAll('[data-profile-product-card]').forEach(card => {
-            if (card.style.display === 'none') return;
-            const cat = (card.dataset.category || '').toLowerCase();
-            card.style.display = _activeIndivCatGlobal === 'all' || cat === _activeIndivCatGlobal.toLowerCase() ? '' : 'none';
-        });
-    }
+    });
     syncProfileDeckStacking(profileActiveResourceFilter);
 }
 
@@ -3272,6 +3285,7 @@ function renderProfileIndividualToolCard(tool) {
     return `
         <article class="profile-product-card cursor-pointer" data-profile-product-card
             data-category="${escapeHtml(categoryKey)}"
+            data-extra-categories="${escapeHtml(String(tool.extra_categories || '').toLowerCase())}"
             data-source="individual"
             data-search-text="${escapeHtml(searchText)}"
             data-detail-name="${escapeHtml(name)}"

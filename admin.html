@@ -1326,8 +1326,12 @@
                             <input type="text" id="individualToolName" class="w-full border p-1.5 rounded text-sm" required>
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Kategori</label>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Ana Kategori</label>
                             <input type="text" id="individualToolCategory" class="w-full border p-1.5 rounded text-sm" placeholder="Literatür Keşfi & Analiz">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Ek Kategoriler <span class="text-gray-400 font-normal">(virgülle ayır)</span></label>
+                            <input type="text" id="individualToolExtraCategories" class="w-full border p-1.5 rounded text-sm" placeholder="Akademik Yazım & Dil, Yapay Zeka Asistanları & Modeller">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-600 mb-1">Tip</label>
@@ -4583,6 +4587,7 @@ document.addEventListener('click', function(e) {
         document.getElementById('individualToolSlug').disabled = !isNew;
         document.getElementById('individualToolName').value = tool.name || '';
         document.getElementById('individualToolCategory').value = tool.category || '';
+        document.getElementById('individualToolExtraCategories').value = tool.extra_categories || '';
         document.getElementById('individualToolAccessType').value = tool.access_type || 'free';
         document.getElementById('individualToolStatus').value = tool.status || 'active';
         document.getElementById('individualToolDisplayOrder').value = tool.display_order || 999;
@@ -4622,6 +4627,7 @@ document.addEventListener('click', function(e) {
             slug,
             name: document.getElementById('individualToolName').value.trim(),
             category: document.getElementById('individualToolCategory').value.trim(),
+            extra_categories: document.getElementById('individualToolExtraCategories').value.trim() || null,
             access_type: document.getElementById('individualToolAccessType').value,
             status: document.getElementById('individualToolStatus').value,
             display_order: Number(document.getElementById('individualToolDisplayOrder').value || 999),

@@ -291,6 +291,24 @@ describe('session-host proxy cookie handling', () => {
     expect(headers.get('Cookie')).toBe('cf_clearance=clear; __cf_bm=bm; EMER_SessionId=sid');
   });
 
+  it('forwards ScienceDirect namespaced session cookies upstream', () => {
+    const headers = buildUpstreamHeaders(new Headers({
+      Cookie: [
+        '_ga=tracking',
+        'cf_clearance=proxy-clearance',
+        '__cp_sciencedirect.com|MIAMISESSION=miami',
+        '__cp_sciencedirect.com|SD_REMOTEACCESS=remote',
+        '__cp_sciencedirect.com|sd_session_id=sid',
+        '__cp_sciencedirect.com|ANONRA_COOKIE=anon',
+        'ra_proxy_session=r5k5o3p3',
+      ].join('; '),
+    }), {
+      publisherCookieScopeHost: 'sciencedirect.com',
+    });
+
+    expect(headers.get('Cookie')).toBe('MIAMISESSION=miami; SD_REMOTEACCESS=remote; sd_session_id=sid; ANONRA_COOKIE=anon');
+  });
+
   it('forwards namespaced Cloudflare bot cookies only with a matching clearance cookie', () => {
     const headers = buildUpstreamHeaders(new Headers({
       Cookie: '__cp_emerald.com|cf_clearance=ok; __cp_emerald.com|__cf_bm=scoped',
@@ -524,6 +542,53 @@ describe('session-host proxy cookie handling', () => {
     expect(out).toContain('OptanonAlertBoxClosed');
     expect(out).toContain('onetrust-banner-sdk');
     expect(injectPublisherCookieNamespaceScript(out, 'emerald.com')).toBe(out);
+  });
+
+  it('aliases ScienceDirect search API requests away from the edge-blocked path', () => {
+    const html = '<html><head><script src="/eu-west-1/prod/root.js"></script></head><body></body></html>';
+    const out = injectPublisherCookieNamespaceScript(html, 'sciencedirect.com', 'www.sciencedirect.com', true);
+
+    expect(out).toContain("scope==='sciencedirect.com'");
+    expect(out).toContain("x.pathname==='/search/api'");
+    expect(out).toContain("x.pathname='/search'");
+    expect(out).toContain("x.searchParams.set('__ra_sd_search_api','1')");
+  });
+
+  it('does not inject Nature-specific script or click blockers into publisher pages', () => {
+    const out = injectPublisherCookieNamespaceScript(
+      '<html><head></head><body></body></html>',
+      'nature.com',
+      'www.nature.com',
+      true
+    );
+
+    expect(out).not.toContain('__raNatureChromeFix');
+    expect(out).not.toContain('__raNatureVerify');
+    expect(out).not.toContain("return new Promise(function(){})");
+    expect(out).not.toContain('isBadScriptUrl');
+    expect(out).not.toContain('isBadDynamicScript');
+    expect(out).not.toContain('index\\.iife\\.js');
+    expect(out).not.toContain('data-ra-blocked-src');
+    expect(out).not.toContain('pubads_impl');
+    expect(out).not.toContain('freeClicks');
+    expect(out).not.toContain('proxifyHref');
+    expect(out).toContain("document.addEventListener('click'");
+    expect(out).not.toContain('getRegistrations');
+    expect(out).not.toContain('r.unregister');
+    expect(out).not.toContain('caches.delete');
+    expect(out).toContain("dbgurl('xhr',u)");
+  });
+
+  it('keeps the Nature-only stability shim out of other publisher pages', () => {
+    const out = injectPublisherCookieNamespaceScript(
+      '<html><head></head><body></body></html>',
+      'emerald.com',
+      'www.emerald.com',
+      true
+    );
+
+    expect(out).not.toContain('__raNatureChromeFix');
+    expect(out).not.toContain('__raNatureVerify');
   });
 
   it('preserves Cloudflare challenge cookies on challenge responses', () => {
@@ -964,14 +1029,25 @@ describe('session-host proxy cookie handling', () => {
     expect(out.upstreamCookie).toContain('__ra_upstream=link.springer.com');
   });
 
-  it('restores ScienceDirect search API hostname query param before upstream', () => {
+  it('restores generic hostname query param before upstream', () => {
     const out = rewriteQueryProxyUrls(
       '?qs=nanotube&t=token&hostname=r5k5o3p3.selmiye.com&navigation=true',
       'r5k5o3p3.selmiye.com',
-      'www.sciencedirect.com'
+      'www.example.com'
     );
 
-    expect(out).toBe('?qs=nanotube&t=token&hostname=www.sciencedirect.com&navigation=true');
+    expect(out).toBe('?qs=nanotube&t=token&hostname=www.example.com&navigation=true');
+  });
+
+  it('preserves ScienceDirect search API proxy hostname token input', () => {
+    const out = rewriteQueryProxyUrls(
+      '?qs=nanotube&t=token&hostname=r5k5o3p3.selmiye.com&navigation=true',
+      'r5k5o3p3.selmiye.com',
+      'www.sciencedirect.com',
+      { preserveHostnameParam: true }
+    );
+
+    expect(out).toBe('?qs=nanotube&t=token&hostname=r5k5o3p3.selmiye.com&navigation=true');
   });
 
   it('restores IDP redirect_uri to the publisher origin rather than the IDP host', () => {
@@ -1179,6 +1255,24 @@ describe('session-host proxy cookie handling', () => {
 
     expect(out).toContain('href="https://rabc1234.selmiye.com/articles/test"');
     expect(out).toContain('href="//rabc1234.selmiye.com/__ra-host/nature-com/search"');
+  });
+
+  it('applies Nature EZproxy stanza text rewrites', () => {
+    const out = rewriteSessionTextProxyUrls(
+      [
+        'var host="nexus.ensighten.com";',
+        "window.idpVerifyPrefix = 'https://verify.nature.com';",
+        '<iframe data-src="https://www.youtube.com/embed/abc"></iframe>',
+      ].join(''),
+      'rabc1234.selmiye.com',
+      'www.nature.com',
+      new Set(['www.nature.com', 'nature.com', 'verify.nature.com', 'nexus.ensighten.com'])
+    );
+
+    expect(out).toContain('"rabc1234.selmiye.com/__ra-host/nexus-ensighten-com"');
+    expect(out).toContain("window.idpVerifyPrefix = 'https://verify.nature.com';");
+    expect(out).toContain('<iframe src="https://www.youtube.com/embed/abc"></iframe>');
+    expect(out).not.toContain('data-src="https://www.youtube.com/');
   });
 
   it('rewrites Cambridge globalNav theme path like the EZproxy stanza', () => {

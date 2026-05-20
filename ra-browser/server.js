@@ -155,6 +155,7 @@ function validateHmac(method, targetUrl, tsStr, sigHex) {
 
 const RA_HEADERS = new Set([
   'x-ra-target-url', 'x-ra-method', 'x-ra-timestamp', 'x-ra-signature',
+  'x-ra-raw',
 ]);
 
 const HOP_BY_HOP = new Set([
@@ -223,6 +224,7 @@ async function handleProxy(req, res) {
   const method    = req.headers['x-ra-method'];
   const tsStr     = req.headers['x-ra-timestamp'];
   const sigHex    = req.headers['x-ra-signature'];
+  const rawMode   = req.headers['x-ra-raw'] === '1';
 
   const hmacErr = validateHmac(method, targetUrl, tsStr, sigHex);
   if (hmacErr) {
@@ -309,8 +311,30 @@ async function handleProxy(req, res) {
     const responseHeaders = {};
     if (!isCfChallenge && navResponse) {
       for (const [k, v] of Object.entries(navResponse.headers())) {
-        if (!HOP_BY_HOP.has(k.toLowerCase())) responseHeaders[k] = v;
+        const lk = k.toLowerCase();
+        // Strip content-encoding: Playwright always returns decoded HTML via
+        // page.content(), so forwarding the original encoding header causes
+        // the browser to attempt decompression on already-decoded content.
+        if (!HOP_BY_HOP.has(lk) && lk !== 'content-encoding') responseHeaders[k] = v;
       }
+    }
+
+    if (rawMode) {
+      const rawResp = await context.request.get(targetUrl, { maxRedirects: 5, timeout: 30000 });
+      const rawHeaders = {};
+      for (const [k, v] of Object.entries(rawResp.headers())) {
+        const lk = k.toLowerCase();
+        if (!HOP_BY_HOP.has(lk)) rawHeaders[k] = v;
+      }
+      const browserCookies = await context.cookies(uniqueCookieUrls(targetUrl, page.url(), rawResp.url()));
+      const setCookies = browserCookies.map(serializeBrowserCookie).filter(Boolean);
+      if (setCookies.length) rawHeaders['set-cookie'] = setCookies;
+      const cfClearanceCookie = browserCookies.find(c => c.name === 'cf_clearance');
+      const body = await rawResp.body();
+      const envelope = { status: rawResp.status(), headers: rawHeaders, body: body.toString('base64'), finalUrl: rawResp.url() };
+      if (cfClearanceCookie?.value) envelope.cfClearance = cfClearanceCookie.value;
+      res.json(envelope);
+      return;
     }
 
     const browserCookies = await context.cookies(uniqueCookieUrls(targetUrl, page.url()));

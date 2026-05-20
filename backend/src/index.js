@@ -274,6 +274,7 @@ function publicIndividualTool(tool) {
     slug: tool.slug,
     name: tool.name,
     category: tool.category,
+    extra_categories: tool.extra_categories || null,
     access_type: tool.access_type,
     delivery_type: tool.delivery_type,
     summary_tr: tool.summary_tr,
@@ -285,7 +286,7 @@ function publicIndividualTool(tool) {
 async function getIndividualTools(db, { includeInactive = false } = {}) {
   await ensureIndividualToolsSchema(db);
   const rows = await db.prepare(`
-    SELECT slug, name, category, access_type, delivery_type, target_url, affiliate_url,
+    SELECT slug, name, category, extra_categories, access_type, delivery_type, target_url, affiliate_url,
            summary_tr, summary_en, logo_url,
            COALESCE(featured, 0) AS featured,
            COALESCE(status, 'active') AS status,
@@ -326,6 +327,7 @@ function normalizeIndividualToolPayload(body, existingSlug = '') {
     featured: body.featured ? 1 : 0,
     status,
     display_order: Number.isFinite(Number(body.display_order)) ? Number(body.display_order) : 999,
+    extra_categories: String(body.extra_categories || '').trim() || null,
     affiliate_status: ['not_applied','applied','approved','active','paused'].includes(body.affiliate_status)
       ? body.affiliate_status : 'not_applied',
     affiliate_commission: String(body.affiliate_commission || '').trim() || null,
@@ -2219,7 +2221,7 @@ app.get('/api/individual-tools', async (c) => {
 // ── LibEdge Catalog (public) ───────────────────────────────────────────────
 app.get('/api/catalog', async (c) => {
   const rows = await c.env.DB.prepare(`
-    SELECT slug, name, category, default_access_type, logo_url,
+    SELECT slug, name, category, extra_categories, default_access_type, logo_url,
            short_description_tr, short_description_en
     FROM products
     WHERE is_libedge_catalog = 1
@@ -3625,13 +3627,13 @@ app.post('/api/admin/individual-tools', async (c) => {
 
   await db.prepare(`
     INSERT INTO individual_tools (
-      slug, name, category, access_type, delivery_type, target_url, affiliate_url,
+      slug, name, category, extra_categories, access_type, delivery_type, target_url, affiliate_url,
       summary_tr, summary_en, logo_url, featured, status, display_order,
       affiliate_status, affiliate_commission, affiliate_cookie_days,
       affiliate_dashboard_url, affiliate_notes, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    payload.slug, payload.name, payload.category, payload.access_type, payload.delivery_type,
+    payload.slug, payload.name, payload.category, payload.extra_categories, payload.access_type, payload.delivery_type,
     payload.target_url, payload.affiliate_url, payload.summary_tr, payload.summary_en,
     payload.logo_url, payload.featured, payload.status, payload.display_order,
     payload.affiliate_status, payload.affiliate_commission, payload.affiliate_cookie_days,
@@ -3651,14 +3653,14 @@ app.put('/api/admin/individual-tools/:slug', async (c) => {
 
   await db.prepare(`
     UPDATE individual_tools
-    SET name = ?, category = ?, access_type = ?, delivery_type = ?, target_url = ?,
+    SET name = ?, category = ?, extra_categories = ?, access_type = ?, delivery_type = ?, target_url = ?,
         affiliate_url = ?, summary_tr = ?, summary_en = ?, logo_url = ?, featured = ?,
         status = ?, display_order = ?,
         affiliate_status = ?, affiliate_commission = ?, affiliate_cookie_days = ?,
         affiliate_dashboard_url = ?, affiliate_notes = ?, updated_at = ?
     WHERE slug = ?
   `).bind(
-    payload.name, payload.category, payload.access_type, payload.delivery_type,
+    payload.name, payload.category, payload.extra_categories, payload.access_type, payload.delivery_type,
     payload.target_url, payload.affiliate_url, payload.summary_tr, payload.summary_en,
     payload.logo_url, payload.featured, payload.status, payload.display_order,
     payload.affiliate_status, payload.affiliate_commission, payload.affiliate_cookie_days,

@@ -163,7 +163,15 @@ export async function browserFetch(env, institutionId, targetUrl, init = {}) {
 
   const agentUrl = `${settings.egress_endpoint.replace(/\/$/, '')}/browser-proxy`;
 
-  const headers = new Headers(init.headers || undefined);
+  // Sanitize headers: copy with \r\n\0 stripped to prevent "Invalid header value"
+  // errors that can occur if a cookie or other header has control characters.
+  const headers = new Headers();
+  if (init.headers) {
+    const src = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
+    for (const [k, v] of src.entries()) {
+      try { headers.set(k, String(v).replace(/[\r\n\0]/g, '')); } catch {}
+    }
+  }
   headers.set('X-RA-Target-URL', urlStr);
   headers.set('X-RA-Method', method);
   headers.set('X-RA-Timestamp', String(ts));
@@ -188,11 +196,16 @@ export async function browserFetch(env, institutionId, targetUrl, init = {}) {
 
   const respHeaders = new Headers();
   for (const [k, v] of Object.entries(envelope.headers || {})) {
-    if (Array.isArray(v)) {
-      for (const item of v) respHeaders.append(k, item);
-    } else {
-      respHeaders.set(k, v);
-    }
+    try {
+      if (k.toLowerCase() === 'content-length') continue;
+      if (Array.isArray(v)) {
+        for (const item of v) {
+          try { respHeaders.append(k, String(item).replace(/[\r\n\0]/g, '')); } catch {}
+        }
+      } else {
+        respHeaders.set(k, String(v).replace(/[\r\n\0]/g, ''));
+      }
+    } catch {}
   }
   if (envelope.finalUrl) {
     respHeaders.set('X-RA-Browser-Final-URL', String(envelope.finalUrl).slice(0, 220));
@@ -294,6 +307,10 @@ export async function assetBrowserFetch(env, institutionId, targetUrl, init = {}
       respHeaders.set(k, v);
     }
   }
+  // context.request.get() auto-decodes compressed bodies; strip encoding header
+  // so the browser doesn't attempt a second decompression pass.
+  respHeaders.delete('content-encoding');
+  respHeaders.delete('content-length');
 
   // Infer content-type from URL extension if the server didn't set it.
   if (!respHeaders.has('content-type')) {

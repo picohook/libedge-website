@@ -210,6 +210,7 @@ export function registerRaIssueToken(app) {
     // Boş/null ise '/' kullanılır. Başında slash olduğundan emin ol.
     const landingPath = buildProxyLandingPath(sub.ra_origin_landing_path);
 
+    const tokenSep = (p) => p.includes('?') ? '&' : '?';
     let redirectUrl;
     if (deliveryMode === 'session_host_proxy') {
       // Session-host: r{sid}.{baseHost} formatında unique subdomain
@@ -230,16 +231,16 @@ export function registerRaIssueToken(app) {
         { expirationTtl: SESSION_TTL_SEC }
       );
       // /research?t=JWT → proxy token doğrular → 302 /research → JoVE /research
-      redirectUrl = `https://r${sid}.${baseHost}${landingPath}?t=${token}`;
+      redirectUrl = `https://r${sid}.${baseHost}${landingPath}${tokenSep(landingPath)}t=${token}`;
     } else if (deliveryMode === 'stable_host_proxy') {
       const baseHost = c.env.RA_PROXY_BASE_HOST || 'selmiye.com';
       const label = await stableProxyHostLabel(sub.product_slug, sub.ra_origin_host);
-      redirectUrl = `https://${label}.${baseHost}${landingPath}?t=${token}`;
+      redirectUrl = `https://${label}.${baseHost}${landingPath}${tokenSep(landingPath)}t=${token}`;
     } else {
       // path_proxy: selmiye.com/{encoded-host}{landingPath}?t={token}
       const baseHost = c.env.RA_PROXY_HOST || c.env.RA_PROXY_BASE_HOST || 'selmiye.com';
       const encodedLabel = encodeHost(sub.ra_origin_host);
-      redirectUrl = `https://${baseHost}/${encodedLabel}${landingPath}?t=${token}`;
+      redirectUrl = `https://${baseHost}/${encodedLabel}${landingPath}${tokenSep(landingPath)}t=${token}`;
     }
 
     // ─── Compliance log (non-blocking) ───────────────────────────────────────
