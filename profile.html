@@ -3049,7 +3049,11 @@ function _setIndivCatGlobal(cat) { // kept for compat
 }
 
 function _applyGlobalCategoryFilters() {
-    if (_activeCatsGlobal.size === 0) { syncProfileDeckStacking(profileActiveResourceFilter); return; }
+    if (_activeCatsGlobal.size === 0) {
+        syncProfileDeckStacking(profileActiveResourceFilter);
+        _updateFilteredCount();
+        return;
+    }
     const lowerSelected = new Set([..._activeCatsGlobal].map(c => c.toLowerCase()));
     [
         document.getElementById('activeSubscriptionsList'),
@@ -3064,6 +3068,28 @@ function _applyGlobalCategoryFilters() {
         });
     });
     syncProfileDeckStacking(profileActiveResourceFilter);
+    _updateFilteredCount();
+}
+
+function _updateFilteredCount() {
+    const resourceCount = document.getElementById('profileResourceCount');
+    if (!resourceCount) return;
+    if (_activeCatsGlobal.size === 0) {
+        // No filter — show full count (let updateProfileResourceCount handle it)
+        const activeSubs = profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')).length;
+        updateProfileResourceCount(activeSubs, profileIndividualTools.length);
+        return;
+    }
+    // Count visible cards across all grids
+    let visible = 0;
+    ['activeSubscriptionsList', 'profileIndividualToolsList'].forEach(id => {
+        const grid = document.getElementById(id);
+        if (!grid) return;
+        grid.querySelectorAll('[data-profile-product-card]').forEach(card => {
+            if (card.style.display !== 'none') visible++;
+        });
+    });
+    resourceCount.textContent = `${visible} kaynak`;
 }
 
 function updateFilterUI() {
