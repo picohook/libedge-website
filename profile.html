@@ -2958,8 +2958,8 @@ function renderSecondaryFilters() {
     if (!el) return;
 
     const useEn = isProfileEnglish();
-    const pill = (label, active, onclick) =>
-        `<button type="button" onclick="${onclick}" class="px-2.5 py-1 rounded-full text-xs font-semibold border transition whitespace-nowrap ${active ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}">${label}</button>`;
+    const pill = (label, active, dataKey, dataVal) =>
+        `<button type="button" data-cf-key="${escapeHtml(dataKey)}" data-cf-val="${escapeHtml(dataVal)}" class="px-2.5 py-1 rounded-full text-xs font-semibold border transition whitespace-nowrap ${active ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}">${escapeHtml(label)}</button>`;
 
     // Row 1 — institution subscription categories
     const activeSubs = profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial'));
@@ -2978,29 +2978,35 @@ function renderSecondaryFilters() {
     if (instCats.length) {
         html += `<div class="flex flex-wrap gap-1.5 items-center">
             <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mr-1">${useEn ? 'Resources' : 'Kaynaklar'}</span>
-            ${pill(useEn ? 'All' : 'Tümü', _activeInstCatGlobal === 'all', "_setInstCatGlobal('all')")}
-            ${instCats.map(c => pill(c, _activeInstCatGlobal === c, `_setInstCatGlobal('${c.replace(/'/g, "\\'")}')`)).join('')}
+            ${pill(useEn ? 'All' : 'Tümü', _activeInstCatGlobal === 'all', 'inst', 'all')}
+            ${instCats.map(c => pill(c, _activeInstCatGlobal === c, 'inst', c)).join('')}
         </div>`;
     }
     if (indivCats.length) {
         html += `<div class="flex flex-wrap gap-1.5 items-center">
             <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mr-1">${useEn ? 'Tools' : 'Araçlar'}</span>
-            ${pill(useEn ? 'All' : 'Tümü', _activeIndivCatGlobal === 'all', "_setIndivCatGlobal('all')")}
-            ${indivCats.map(c => pill(c, _activeIndivCatGlobal === c, `_setIndivCatGlobal('${c.replace(/'/g, "\\'")}')`)).join('')}
+            ${pill(useEn ? 'All' : 'Tümü', _activeIndivCatGlobal === 'all', 'indiv', 'all')}
+            ${indivCats.map(c => pill(c, _activeIndivCatGlobal === c, 'indiv', c)).join('')}
         </div>`;
     }
     el.innerHTML = html;
+    el.querySelectorAll('[data-cf-key]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.cfKey === 'inst') _setInstCatGlobal(btn.dataset.cfVal);
+            else _setIndivCatGlobal(btn.dataset.cfVal);
+        });
+    });
 }
 
 function _setInstCatGlobal(cat) {
     _activeInstCatGlobal = cat;
-    _applyGlobalCategoryFilters();
+    applyProfileResourceFilter();
     renderSecondaryFilters();
 }
 
 function _setIndivCatGlobal(cat) {
     _activeIndivCatGlobal = cat;
-    _applyGlobalCategoryFilters();
+    applyProfileResourceFilter();
     renderSecondaryFilters();
 }
 
