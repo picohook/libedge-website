@@ -1224,6 +1224,8 @@
                     <select id="itFilterType" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
                         <option value="">Tip: Tümü</option>
                         <option value="free">Ücretsiz</option>
+                        <option value="freemium">Freemium</option>
+                        <option value="paid">Ücretli</option>
                         <option value="affiliate">Partner</option>
                         <option value="no-affiliate">Affiliate linksiz</option>
                     </select>
@@ -1318,6 +1320,8 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">Tip</label>
                             <select id="individualToolAccessType" class="w-full border p-2 rounded">
                                 <option value="free">Ücretsiz</option>
+                                <option value="freemium">Freemium</option>
+                                <option value="paid">Ücretli</option>
                                 <option value="affiliate">Affiliate / Partner</option>
                             </select>
                         </div>
@@ -4380,6 +4384,8 @@ document.addEventListener('click', function(e) {
         let tools = individualTools.filter(tool => {
             if (search && !`${tool.name} ${tool.slug} ${tool.category} ${tool.summary_tr}`.toLowerCase().includes(search)) return false;
             if (fType === 'free' && tool.access_type !== 'free') return false;
+            if (fType === 'freemium' && tool.access_type !== 'freemium') return false;
+            if (fType === 'paid' && tool.access_type !== 'paid') return false;
             if (fType === 'affiliate' && tool.access_type !== 'affiliate') return false;
             if (fType === 'no-affiliate' && tool.affiliate_url) return false;
             if (fCat && tool.category !== fCat) return false;
@@ -4407,7 +4413,8 @@ document.addEventListener('click', function(e) {
             const statusClass = tool.status === 'active' ? 'bg-emerald-100 text-emerald-700'
                 : tool.status === 'draft' ? 'bg-amber-100 text-amber-700'
                 : 'bg-gray-100 text-gray-500';
-            const typeClass = isAffiliate ? 'bg-orange-100 text-orange-700' : 'bg-cyan-100 text-cyan-700';
+            const typeLabel = { free: 'Ücretsiz', freemium: 'Freemium', paid: 'Ücretli', affiliate: 'Partner' }[tool.access_type] || tool.access_type;
+            const typeClass = { free: 'bg-cyan-100 text-cyan-700', freemium: 'bg-violet-100 text-violet-700', paid: 'bg-rose-100 text-rose-700', affiliate: 'bg-orange-100 text-orange-700' }[tool.access_type] || 'bg-gray-100 text-gray-500';
             const logoUrl = safeDisplayUrl(tool.logo_url);
             const afStatus = tool.affiliate_status || 'not_applied';
             const afStatusLabel = { not_applied:'Başvurulmadı', applied:'Başvuruldu', approved:'Onaylandı', active:'Aktif', paused:'Durdu' }[afStatus] || afStatus;
@@ -4429,7 +4436,7 @@ document.addEventListener('click', function(e) {
                         </div>
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-600 max-w-[140px] truncate">${escapeHtml(tool.category || '-')}</td>
-                    <td class="px-4 py-3"><span class="text-[11px] px-2 py-1 rounded-full font-semibold ${typeClass}">${isAffiliate ? 'Partner' : 'Ücretsiz'}</span></td>
+                    <td class="px-4 py-3"><span class="text-[11px] px-2 py-1 rounded-full font-semibold ${typeClass}">${typeLabel}</span></td>
                     <td class="px-4 py-3">${affiliateHtml}</td>
                     <td class="px-4 py-3"><span class="text-[11px] px-2 py-1 rounded-full font-semibold ${statusClass}">${escapeHtml(tool.status || 'active')}</span></td>
                     <td class="px-4 py-3 text-center font-semibold text-gray-700">${Number(tool.click_count || 0)}</td>
@@ -4478,8 +4485,6 @@ document.addEventListener('click', function(e) {
         if (!accessTypeSel) return;
         if (affiliateUrl && accessTypeSel.value !== 'affiliate') {
             accessTypeSel.value = 'affiliate';
-        } else if (!affiliateUrl && accessTypeSel.value === 'affiliate') {
-            accessTypeSel.value = 'free';
         }
     }
 
@@ -4547,7 +4552,6 @@ document.addEventListener('click', function(e) {
         // Auto-manage delivery_type based on affiliate_url
         payload.delivery_type = payload.affiliate_url ? 'affiliate_redirect' : 'external_link';
         if (payload.affiliate_url) payload.access_type = 'affiliate';
-        else if (payload.access_type === 'affiliate') payload.access_type = 'free';
 
         try {
             const isNew = !editingSlug;

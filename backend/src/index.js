@@ -308,8 +308,8 @@ function normalizeIndividualToolPayload(body, existingSlug = '') {
   if (!slug) return { error: 'Slug gerekli' };
   if (!name) return { error: 'Araç adı gerekli' };
 
-  const accessType = ['free', 'affiliate'].includes(body.access_type) ? body.access_type : 'free';
-  const deliveryType = accessType === 'affiliate' ? 'affiliate_redirect' : 'external_link';
+  const accessType = ['free', 'affiliate', 'freemium', 'paid'].includes(body.access_type) ? body.access_type : 'free';
+  const deliveryType = (accessType === 'affiliate' && String(body.affiliate_url || '').trim()) ? 'affiliate_redirect' : 'external_link';
   const status = ['active', 'draft', 'archived'].includes(body.status) ? body.status : 'active';
 
   return {
