@@ -1219,44 +1219,35 @@
                         <i class="fas fa-plus"></i> Yeni Araç
                     </button>
                 </div>
-                <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                    <div class="flex flex-wrap gap-2">
-                        <input id="itSearch" type="search" placeholder="Ara…" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-primary/20" oninput="renderIndividualTools()">
-                        <select id="itFilterType" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
-                            <option value="">Tip: Tümü</option>
-                            <option value="free">Ücretsiz</option>
-                            <option value="freemium">Freemium</option>
-                            <option value="paid">Ücretli</option>
-                            <option value="affiliate">Partner</option>
-                        </select>
-                        <select id="itFilterCategory" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
-                            <option value="">Kategori: Tümü</option>
-                        </select>
-                        <select id="itFilterStatus" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
-                            <option value="">Durum: Tümü</option>
-                            <option value="active">Aktif</option>
-                            <option value="draft">Taslak</option>
-                            <option value="archived">Arşiv</option>
-                        </select>
-                    </div>
-                    <select id="itSort" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none flex-shrink-0" onchange="renderIndividualTools()">
-                        <option value="display_order">↕ Sıra</option>
-                        <option value="name">↕ İsim</option>
-                        <option value="category">↕ Kategori</option>
-                        <option value="click_count">↕ Tıklanma</option>
-                        <option value="affiliate">↕ Affiliate Önce</option>
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <input id="itSearch" type="search" placeholder="Ara…" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-primary/20" oninput="renderIndividualTools()">
+                    <select id="itFilterType" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
+                        <option value="">Tip: Tümü</option>
+                        <option value="free">Ücretsiz</option>
+                        <option value="freemium">Freemium</option>
+                        <option value="paid">Ücretli</option>
+                        <option value="affiliate">Partner</option>
+                    </select>
+                    <select id="itFilterCategory" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
+                        <option value="">Kategori: Tümü</option>
+                    </select>
+                    <select id="itFilterStatus" class="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="renderIndividualTools()">
+                        <option value="">Durum: Tümü</option>
+                        <option value="active">Aktif</option>
+                        <option value="draft">Taslak</option>
+                        <option value="archived">Arşiv</option>
                     </select>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead>
                             <tr>
-                                <th>Araç</th>
-                                <th>Kategori</th>
-                                <th>Tip</th>
+                                <th class="cursor-pointer select-none hover:bg-gray-100" onclick="_itSort('name')">Araç <span id="itSortArrow_name" class="text-gray-400 text-xs">↕</span></th>
+                                <th class="cursor-pointer select-none hover:bg-gray-100" onclick="_itSort('category')">Kategori <span id="itSortArrow_category" class="text-gray-400 text-xs">↕</span></th>
+                                <th class="cursor-pointer select-none hover:bg-gray-100" onclick="_itSort('access_type')">Tip <span id="itSortArrow_access_type" class="text-gray-400 text-xs">↕</span></th>
                                 <th>Affiliate Link</th>
-                                <th>Durum</th>
-                                <th class="text-center">Tıklama</th>
+                                <th class="cursor-pointer select-none hover:bg-gray-100" onclick="_itSort('status')">Durum <span id="itSortArrow_status" class="text-gray-400 text-xs">↕</span></th>
+                                <th class="text-center cursor-pointer select-none hover:bg-gray-100" onclick="_itSort('click_count')">Tıklama <span id="itSortArrow_click_count" class="text-gray-400 text-xs">↕</span></th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -4367,6 +4358,13 @@ document.addEventListener('click', function(e) {
         loadIndividualToolAnalytics();
     }
 
+    const _itSortState = { key: 'name', dir: 1 };
+    function _itSort(key) {
+        if (_itSortState.key === key) _itSortState.dir *= -1;
+        else { _itSortState.key = key; _itSortState.dir = 1; }
+        renderIndividualTools();
+    }
+
     function renderIndividualTools() {
         const tbody = document.getElementById('individualToolsList');
         const count = document.getElementById('individualToolsCount');
@@ -4379,12 +4377,19 @@ document.addEventListener('click', function(e) {
             cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
         }
 
+        // Update sort arrows
+        ['name','category','access_type','status','click_count'].forEach(k => {
+            const el = document.getElementById(`itSortArrow_${k}`);
+            if (!el) return;
+            el.textContent = k === _itSortState.key ? (_itSortState.dir === 1 ? '↑' : '↓') : '↕';
+            el.className = k === _itSortState.key ? 'text-primary text-xs font-bold' : 'text-gray-400 text-xs';
+        });
+
         // Filters
         const search = (document.getElementById('itSearch')?.value || '').toLowerCase();
         const fType = document.getElementById('itFilterType')?.value || '';
         const fCat = document.getElementById('itFilterCategory')?.value || '';
         const fStatus = document.getElementById('itFilterStatus')?.value || '';
-        const sortBy = document.getElementById('itSort')?.value || 'display_order';
 
         let tools = individualTools.filter(tool => {
             if (search && !`${tool.name} ${tool.slug} ${tool.category} ${tool.summary_tr}`.toLowerCase().includes(search)) return false;
@@ -4397,12 +4402,12 @@ document.addEventListener('click', function(e) {
             return true;
         });
 
+        const { key, dir } = _itSortState;
         tools = [...tools].sort((a, b) => {
-            if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'tr');
-            if (sortBy === 'category') return (a.category || '').localeCompare(b.category || '', 'tr');
-            if (sortBy === 'click_count') return (b.click_count || 0) - (a.click_count || 0);
-            if (sortBy === 'affiliate') return (b.affiliate_url ? 1 : 0) - (a.affiliate_url ? 1 : 0);
-            return (a.display_order || 999) - (b.display_order || 999);
+            let cmp = 0;
+            if (key === 'click_count') cmp = (a.click_count || 0) - (b.click_count || 0);
+            else cmp = String(a[key] || '').localeCompare(String(b[key] || ''), 'tr');
+            return cmp * dir;
         });
 
         if (count) count.textContent = `(${tools.length}/${individualTools.length})`;
