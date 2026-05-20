@@ -888,7 +888,7 @@
                             <span id="profileResourceCount" class="text-xs text-gray-400 font-semibold">Yükleniyor</span>
                         </div>
                         <div class="profile-module-body">
-                            
+                            <div id="profileInstitutionCategoryFilter" class="flex flex-wrap gap-1.5 mb-3 hidden"></div>
                             <div id="activeSubscriptionsList" class="profile-product-grid">
                                 <p class="text-gray-500 text-sm">Yükleniyor...</p>
                             </div>
@@ -2096,6 +2096,41 @@ async function checkAuthAndLoad() {
 }
 
 let _activeIndividualCat = '';
+let _activeInstitutionCat = '';
+
+function _buildInstitutionCategoryFilter() {
+    const bar = document.getElementById('profileInstitutionCategoryFilter');
+    if (!bar) return;
+    const subs = profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial'));
+    const cats = [...new Set(subs.map(s => {
+        const prod = profileProductMap.get(s.product_slug) || {};
+        return String(prod.category || '').trim();
+    }).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+    if (cats.length < 2) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+    const useEn = isProfileEnglish();
+    bar.innerHTML = [
+        `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${!_activeInstitutionCat ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="_setInstitutionCat('')">${useEn ? 'All' : 'Tümü'}</button>`,
+        ...cats.map(c => `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${_activeInstitutionCat === c ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="_setInstitutionCat('${escapeHtml(c)}')">${escapeHtml(c)}</button>`)
+    ].join('');
+}
+
+function _setInstitutionCat(cat) {
+    _activeInstitutionCat = cat;
+    _applyInstitutionCatFilter();
+    _buildInstitutionCategoryFilter();
+}
+
+function _applyInstitutionCatFilter() {
+    const grid = document.getElementById('activeSubscriptionsList');
+    if (!grid) return;
+    grid.querySelectorAll('[data-profile-product-card][data-source="institution"]').forEach(card => {
+        if (card.style.display === 'none') return;
+        if (!_activeInstitutionCat) { card.style.display = ''; return; }
+        const cardCat = String(card.dataset.category || '').toLowerCase();
+        card.style.display = cardCat === _activeInstitutionCat.toLowerCase() ? '' : 'none';
+    });
+}
 
 function _renderIndividualToolsWithFilter() {
     const el = document.getElementById('profileIndividualToolsList');
@@ -2796,6 +2831,7 @@ async function loadSubscriptions() {
                 ? profileSubscriptions.map(renderProductCard).join('')
                 : '<p class="text-gray-500 text-center py-8">Henüz aboneliğiniz bulunmuyor.</p>';
         }
+        _buildInstitutionCategoryFilter();
         applyProfileResourceFilter();
         runProfileSmartSearch(false);
     } catch (err) {
@@ -2974,6 +3010,7 @@ function applyProfileResourceFilter() {
     });
 
     syncProfileDeckStacking(primary);
+    _applyInstitutionCatFilter();
 }
 
 function syncProfileCombinedResourceLayout(primary) {
