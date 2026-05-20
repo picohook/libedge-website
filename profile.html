@@ -4449,6 +4449,8 @@ function previewFile(url, name, type) {
     const audio  = ['mp3','wav','aac','flac'];
     const office = ['doc','docx','xls','xlsx','ppt','pptx'];
     const fullUrl = safeUrl.startsWith('http') ? safeUrl : window.location.origin + safeUrl;
+    // extract relative /api/files/<key> path from either relative or absolute safeUrl
+    const apiRelPath = safeUrl.startsWith('http') ? ((() => { try { return new URL(safeUrl).pathname; } catch { return safeUrl; } })()) : safeUrl;
 
     if (ext === 'pdf') {
         body.innerHTML = `<iframe src="${safeUrlAttr}" style="width:100%;height:calc(100dvh - 52px);border:0" onload="this.previousElementSibling&&this.previousElementSibling.remove()"></iframe>`;
@@ -4483,14 +4485,14 @@ function previewFile(url, name, type) {
                     </div>
                 </div>`;
         };
-        const apiPathMatch = safeUrl.match(/^\/api\/files\/(.+)$/);
+        const apiPathMatch = apiRelPath.match(/^\/api\/files\/(.+)$/);
         if (apiPathMatch) {
             body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - 52px);padding:2rem;text-align:center"><i class="fas fa-circle-notch fa-spin" style="font-size:2rem;color:#6366f1;margin-bottom:1rem"></i><p style="color:#6b7280;font-weight:500">Belge yükleniyor, lütfen bekleyin...</p></div>';
             fetch(`${window.API_BASE || ""}/api/files-token?path=${encodeURIComponent(apiPathMatch[1])}`, { credentials: 'include' })
                 .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
                 .then(data => {
                     if (!data?.token) throw new Error('Token alınamadı');
-                    renderOfficeFrame(`${fullUrl}?token=${encodeURIComponent(data.token)}`);
+                    renderOfficeFrame(data.directUrl || `${fullUrl}?token=${encodeURIComponent(data.token)}`);
                 })
                 .catch((err) => {
                     console.warn('Office preview token error:', err);

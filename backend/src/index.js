@@ -7450,7 +7450,7 @@ app.delete('/api/admin/institution/:id', async (c) => {
 app.get('/api/files-token', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
-  
+
   const path = c.req.query('path');
   if (!path) return c.json({ error: 'Path gerekli' }, 400);
 
@@ -7459,7 +7459,29 @@ app.get('/api/files-token', async (c) => {
     exp: Math.floor(Date.now() / 1000) + (15 * 60)
   }, c.env.JWT_SECRET, 'HS256');
 
-  return c.json({ token });
+  // If R2_PUBLIC_URL is configured and the file has a public collection reference,
+  // return a direct CDN URL so Office Online can fetch without CF Worker auth.
+  let directUrl = null;
+  const r2Base = c.env.R2_PUBLIC_URL;
+  if (r2Base) {
+    const db = c.env.DB;
+    const stored = await db.prepare(
+      'SELECT id FROM files WHERE file_key = ? LIMIT 1'
+    ).bind(path).first();
+    if (stored) {
+      const publicRef = await db.prepare(
+        `SELECT 1 FROM collection_files cf
+         JOIN collections col ON col.id = cf.collection_id
+         WHERE cf.file_id = ? AND cf.is_public = 1 AND cf.is_active = 1
+           AND col.is_active = 1 LIMIT 1`
+      ).bind(stored.id).first();
+      if (publicRef) {
+        directUrl = `${r2Base.replace(/\/$/, '')}/${path}`;
+      }
+    }
+  }
+
+  return c.json({ token, ...(directUrl ? { directUrl } : {}) });
 });
 
 app.get('/api/files/*', async (c) => {
