@@ -4367,10 +4367,10 @@ document.addEventListener('click', function(e) {
         const count = document.getElementById('individualToolsCount');
         if (!tbody) return;
 
-        // Populate category filter
+        // Populate category filter from active tools only
         const catSel = document.getElementById('itFilterCategory');
         if (catSel && catSel.options.length <= 1) {
-            const cats = [...new Set(individualTools.map(t => t.category).filter(Boolean))].sort();
+            const cats = [...new Set(individualTools.filter(t => t.status !== 'archived').map(t => t.category).filter(Boolean))].sort();
             cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
         }
 
