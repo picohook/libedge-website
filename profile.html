@@ -3048,37 +3048,47 @@ function _setViewMode(mode) {
 
 function _renderMosaicTiles() {
     const mosaicEl = document.getElementById('profileMosaicView');
-    const deckEl = document.getElementById('activeSubscriptionsList');
-    if (!mosaicEl || !deckEl) return;
+    if (!mosaicEl) return;
     const lowerSelected = _activeCatsGlobal.size > 0
         ? new Set([..._activeCatsGlobal].map(c => c.toLowerCase()))
         : null;
-    const cards = Array.from(deckEl.querySelectorAll('[data-profile-product-card]'))
-        .filter(c => {
-            if (lowerSelected === null) return true;
-            return [..._cardAllCategories(c)].some(cat => lowerSelected.has(cat));
-        });
-    mosaicEl.innerHTML = cards.map(card => {
-        const logo = card.dataset.detailLogo || '';
-        const name = card.dataset.detailName || '?';
-        const summary = card.dataset.detailSummary || '';
-        const type = card.dataset.detailType || '';
-        const url = card.dataset.detailUrl || '';
-        const cat = card.dataset.category || '';
-        const extra = card.dataset.extraCategories || '';
-        const initials = escapeHtml(name.slice(0, 2).toUpperCase());
+    const matchesCat = (cat, extra) => {
+        if (!lowerSelected) return true;
+        const cats = [String(cat || '').toLowerCase(),
+            ...String(extra || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)];
+        return cats.some(c => lowerSelected.has(c));
+    };
+    const tiles = [];
+    // Abonelikler
+    profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')).forEach(sub => {
+        const prod = profileProductMap.get(sub.product_slug) || {};
+        if (!matchesCat(prod.category, prod.extra_categories)) return;
+        tiles.push({ name: prod.name || sub.product_slug, logo: prod.logo_url || '',
+            summary: prod.short_description_tr || '', type: sub.status || '', url: '',
+            cat: prod.category || '', extra: prod.extra_categories || '' });
+    });
+    // Bireysel araçlar
+    profileIndividualTools.forEach(t => {
+        if (!matchesCat(t.category, t.extra_categories)) return;
+        tiles.push({ name: t.name, logo: t.logo_url || '', summary: t.summary_tr || '',
+            type: t.access_type || '', url: `/api/go/${encodeURIComponent(t.slug)}`,
+            cat: t.category || '', extra: t.extra_categories || '' });
+    });
+    mosaicEl.innerHTML = tiles.map(t => {
+        const name = escapeHtml(t.name || '?');
+        const initials = escapeHtml((t.name || '?').slice(0, 2).toUpperCase());
         return `<div class="mosaic-tile"
-            data-detail-name="${escapeHtml(name)}"
-            data-detail-logo="${escapeHtml(logo)}"
-            data-detail-summary="${escapeHtml(summary)}"
-            data-detail-type="${escapeHtml(type)}"
-            data-detail-url="${escapeHtml(url)}"
-            data-category="${escapeHtml(cat)}"
-            data-extra-categories="${escapeHtml(extra)}"
+            data-detail-name="${name}"
+            data-detail-logo="${escapeHtml(t.logo)}"
+            data-detail-summary="${escapeHtml(t.summary)}"
+            data-detail-type="${escapeHtml(t.type)}"
+            data-detail-url="${escapeHtml(t.url)}"
+            data-category="${escapeHtml(t.cat)}"
+            data-extra-categories="${escapeHtml(t.extra)}"
             onclick="_showCardDetail(this)"
-            title="${escapeHtml(name)}">
-            ${logo ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(name)}" loading="lazy">` : `<span class="mosaic-initials">${initials}</span>`}
-            <span class="mosaic-name">${escapeHtml(name)}</span>
+            title="${name}">
+            ${t.logo ? `<img src="${escapeHtml(t.logo)}" alt="${name}" loading="lazy">` : `<span class="mosaic-initials">${initials}</span>`}
+            <span class="mosaic-name">${name}</span>
         </div>`;
     }).join('');
 }
