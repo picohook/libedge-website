@@ -3026,19 +3026,8 @@ function renderProfileResourceFilters() {
 }
 
 function updateProfileResourceCount(institutionCount = 0, individualCount = 0) {
-    const resourceCount = document.getElementById('profileResourceCount');
-    if (!resourceCount) return;
-
-    const subscribedSlugs = new Set(profileSubscriptions.map(s => s.product_slug));
-    const catalogCount = _catalogProducts.filter(p => !subscribedSlugs.has(p.slug)).length;
-    const total = Number(institutionCount || 0) + Number(individualCount || 0) + catalogCount;
-    if (profileActiveResourceFilter === 'all') {
-        resourceCount.textContent = `${total} kaynak`;
-    } else if (profileActiveResourceFilter === 'individual') {
-        resourceCount.textContent = `${Number(individualCount || 0)} araç`;
-    } else {
-        resourceCount.textContent = `${Number(institutionCount || 0)} kaynak`;
-    }
+    // Defer to DOM-based count for accuracy
+    setTimeout(_updateFilteredCount, 0);
 }
 
 function _setViewMode(mode) {
@@ -3158,13 +3147,6 @@ function _applyGlobalCategoryFilters() {
 function _updateFilteredCount() {
     const resourceCount = document.getElementById('profileResourceCount');
     if (!resourceCount) return;
-    if (_activeCatsGlobal.size === 0) {
-        // No filter — show full count (let updateProfileResourceCount handle it)
-        const activeSubs = profileSubscriptions.filter(s => s && (s.status === 'active' || s.status === 'trial')).length;
-        updateProfileResourceCount(activeSubs, profileIndividualTools.length);
-        return;
-    }
-    // Count visible cards across all grids
     let visible = 0;
     ['activeSubscriptionsList', 'profileIndividualToolsList'].forEach(id => {
         const grid = document.getElementById(id);
@@ -3173,7 +3155,17 @@ function _updateFilteredCount() {
             if (card.style.display !== 'none') visible++;
         });
     });
-    resourceCount.textContent = `${visible} kaynak`;
+    // Catalog (Keşfet) bölümü — ayrı sayaç mantığına dahil etme, sadece filtre aktifken
+    if (_activeCatsGlobal.size > 0) {
+        const catalogList = document.getElementById('profileCatalogList');
+        if (catalogList) catalogList.querySelectorAll('article').forEach(card => {
+            if (card.style.display !== 'none') visible++;
+        });
+        resourceCount.textContent = `${visible} kaynak`;
+    } else {
+        // Filtre yok: abonelikler + araçlar DOM'dan say (katalog sayaçtan hariç)
+        resourceCount.textContent = `${visible} kaynak`;
+    }
 }
 
 function updateFilterUI() {
