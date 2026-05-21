@@ -3037,8 +3037,8 @@ function _setViewMode(mode) {
     if (btnDeck) btnDeck.className = `px-2 py-1 transition ${mode === 'deck' ? 'bg-primary text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`;
     if (btnMosaic) btnMosaic.className = `px-2 py-1 transition ${mode === 'mosaic' ? 'bg-primary text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`;
     if (mode === 'mosaic') {
-        if (mosaicEl) { mosaicEl.style.display = 'grid'; _renderMosaicTiles(); }
         if (deckEl) deckEl.style.display = 'none';
+        if (mosaicEl) { mosaicEl.style.display = 'grid'; requestAnimationFrame(_renderMosaicTiles); }
     } else {
         if (mosaicEl) mosaicEl.style.display = 'none';
         if (deckEl) deckEl.style.display = '';
@@ -3143,29 +3143,29 @@ function renderSecondaryFilters() {
     el.querySelectorAll('[data-cf-val]').forEach(btn => {
         btn.addEventListener('click', () => {
             const val = btn.dataset.cfVal;
-            if (val === '__all__') {
-                _activeCatsGlobal.clear();
-            } else {
-                if (_activeCatsGlobal.has(val)) _activeCatsGlobal.delete(val);
-                else _activeCatsGlobal.add(val);
-            }
+            if (val === '__all__') _activeCatsGlobal.clear();
+            else if (_activeCatsGlobal.has(val)) _activeCatsGlobal.delete(val);
+            else _activeCatsGlobal.add(val);
             applyProfileResourceFilter();
+            if (_profileViewMode === 'mosaic') _renderMosaicTiles();
             renderSecondaryFilters();
         });
     });
 }
 
-function _setInstCatGlobal(cat) { // kept for compat
+function _setInstCatGlobal(cat) {
     _activeCatsGlobal.clear();
     if (cat !== 'all') _activeCatsGlobal.add(cat);
     applyProfileResourceFilter();
+    if (_profileViewMode === 'mosaic') _renderMosaicTiles();
     renderSecondaryFilters();
 }
 
-function _setIndivCatGlobal(cat) { // kept for compat
+function _setIndivCatGlobal(cat) {
     _activeCatsGlobal.clear();
     if (cat !== 'all') _activeCatsGlobal.add(cat);
     applyProfileResourceFilter();
+    if (_profileViewMode === 'mosaic') _renderMosaicTiles();
     renderSecondaryFilters();
 }
 
