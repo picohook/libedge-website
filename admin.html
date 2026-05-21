@@ -86,17 +86,68 @@
             width: 16rem;
             flex: 0 0 16rem;
             position: relative;
-            z-index: 1;
+            z-index: 40;
+            transition: width 0.2s, flex-basis 0.2s;
+        }
+        .admin-sidebar-shell.collapsed {
+            width: 4rem;
+            flex: 0 0 4rem;
+        }
+        .admin-sidebar-shell.collapsed .sidebar-label,
+        .admin-sidebar-shell.collapsed #adminSidebarTitle,
+        .admin-sidebar-shell.collapsed .sidebar-link-exit span {
+            display: none;
+        }
+        .admin-sidebar-shell.collapsed .sidebar-link,
+        .admin-sidebar-shell.collapsed .sidebar-link-exit {
+            justify-content: center;
+            padding: 0.75rem;
+        }
+        .admin-sidebar-shell.collapsed .admin-sidebar-inner {
+            padding: 1rem 0.5rem;
         }
         .admin-sidebar-inner {
-            position: relative;
-            min-height: 100vh;
-            height: 100%;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .admin-sidebar-inner nav {
+            flex: 1;
         }
         .admin-main {
             flex: 1 1 auto;
             min-width: 0;
             overflow: auto;
+        }
+        /* Mobile */
+        @media (max-width: 767px) {
+            .admin-sidebar-shell {
+                position: fixed;
+                top: 0; left: 0; bottom: 0;
+                transform: translateX(-100%);
+                transition: transform 0.25s;
+                width: 16rem !important;
+                flex: none !important;
+            }
+            .admin-sidebar-shell.mobile-open {
+                transform: translateX(0);
+            }
+            .admin-mobile-bar {
+                display: flex !important;
+            }
+        }
+        .admin-mobile-bar {
+            display: none;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background: #220f60;
+            padding: 0.75rem 1rem;
+            align-items: center;
+            gap: 1rem;
         }
         #adminBreadcrumb,
         #instFilesBc {
@@ -443,30 +494,35 @@
     <div id="adminSidebarOverlay" class="hidden fixed inset-0 bg-black/40 z-30 md:hidden" data-admin-action="close-sidebar" aria-hidden="true"></div>
     <!-- Sidebar -->
     <div id="adminSidebar" class="sidebar admin-sidebar-shell" aria-hidden="true">
-        <div class="admin-sidebar-inner p-6">
-            <div class="flex items-center gap-3 mb-8">
-                <img src="assets/images/libedge_logo.webp" alt="Logo" class="h-10 w-auto">
-                <span class="text-white font-bold text-lg">LibEdge</span>
+        <div class="admin-sidebar-inner p-4">
+            <div class="flex items-center justify-between gap-2 mb-6">
+                <div class="flex items-center gap-2 min-w-0">
+                    <img src="assets/images/libedge_logo.webp" alt="Logo" class="h-8 w-auto flex-shrink-0">
+                    <span id="adminSidebarTitle" class="text-white font-bold text-base sidebar-label">LibEdge</span>
+                </div>
+                <button onclick="_toggleSidebar()" class="text-indigo-300 hover:text-white p-1 rounded flex-shrink-0" title="Küçült/Büyüt">
+                    <i id="sidebarToggleIcon" class="fas fa-angles-left text-sm"></i>
+                </button>
             </div>
-            <nav class="space-y-1">
-                <a href="#" class="sidebar-link active" data-tab="dashboard"><i class="fas fa-chart-line w-5"></i><span>Dashboard</span></a>
-                <a href="#" class="sidebar-link" data-tab="institutions" id="institutionsTab"><i class="fas fa-building w-5"></i><span>Kurumlar</span></a>
-                <a href="#" class="sidebar-link" data-tab="my-institution" id="myInstitutionTab" style="display:none"><i class="fas fa-university w-5"></i><span>Kurumum</span></a>
-                <a href="#" class="sidebar-link" data-tab="users"><i class="fas fa-users w-5"></i><span>Kullanıcılar</span></a>
-                <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-ticket-alt w-5"></i><span>Abonelikler</span></a>
-                <a href="#" class="sidebar-link" data-tab="requests" id="requestsTab"><i class="fas fa-envelope w-5"></i><span>Talepler</span><span id="sidebarBadgeRequests" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
-                <a href="#" class="sidebar-link" data-tab="support" id="supportTab"><i class="fas fa-headset w-5"></i><span>Destek Talepleri</span><span id="sidebarBadgeSupport" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
-                <a href="#" class="sidebar-link" data-tab="announcements" id="announcementsTab"><i class="fas fa-bullhorn w-5"></i><span>Duyurular</span></a>
-                <a href="#" class="sidebar-link" data-tab="files" id="filesTab"><i class="fas fa-folder-open w-5"></i><span>Merkezi Dosyalar</span></a>
-                <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span>Kurum Dosyaları</span></a>
-                <a href="#" class="sidebar-link" data-tab="products" id="productsTab"><i class="fas fa-cube w-5"></i><span>Ürünler</span></a>
-                <a href="#" class="sidebar-link" data-tab="individual-tools" id="individualToolsTab"><i class="fas fa-wand-magic-sparkles w-5"></i><span>Bireysel Araçlar</span></a>
-                <a href="#" class="sidebar-link" data-tab="recommendations" id="recommendationsTab"><i class="fas fa-thumbs-up w-5"></i><span>Öneriler</span><span id="sidebarBadgeRecommendations" class="hidden ml-auto bg-amber-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
-                <a href="#" class="sidebar-link" data-tab="remote-access" id="remoteAccessTab" style="display:none"><i class="fas fa-network-wired w-5"></i><span>Uzaktan Erişim</span><span id="sidebarBadgeAlerts" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
-                <a href="#" class="sidebar-link" data-tab="settings" id="settingsTab"><i class="fas fa-cog w-5"></i><span>Ayarlar</span></a>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-link active" data-tab="dashboard"><i class="fas fa-chart-line w-5"></i><span class="sidebar-label">Dashboard</span></a>
+                <a href="#" class="sidebar-link" data-tab="institutions" id="institutionsTab"><i class="fas fa-building w-5"></i><span class="sidebar-label">Kurumlar</span></a>
+                <a href="#" class="sidebar-link" data-tab="my-institution" id="myInstitutionTab" style="display:none"><i class="fas fa-university w-5"></i><span class="sidebar-label">Kurumum</span></a>
+                <a href="#" class="sidebar-link" data-tab="users"><i class="fas fa-users w-5"></i><span class="sidebar-label">Kullanıcılar</span></a>
+                <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-ticket-alt w-5"></i><span class="sidebar-label">Abonelikler</span></a>
+                <a href="#" class="sidebar-link" data-tab="requests" id="requestsTab"><i class="fas fa-envelope w-5"></i><span class="sidebar-label">Talepler</span><span id="sidebarBadgeRequests" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
+                <a href="#" class="sidebar-link" data-tab="support" id="supportTab"><i class="fas fa-headset w-5"></i><span class="sidebar-label">Destek</span><span id="sidebarBadgeSupport" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
+                <a href="#" class="sidebar-link" data-tab="announcements" id="announcementsTab"><i class="fas fa-bullhorn w-5"></i><span class="sidebar-label">Duyurular</span></a>
+                <a href="#" class="sidebar-link" data-tab="files" id="filesTab"><i class="fas fa-folder-open w-5"></i><span class="sidebar-label">Merkezi Dosyalar</span></a>
+                <a href="#" class="sidebar-link" data-tab="inst-files" id="instFilesTab" style="display:none"><i class="fas fa-folder-open w-5"></i><span class="sidebar-label">Kurum Dosyaları</span></a>
+                <a href="#" class="sidebar-link" data-tab="products" id="productsTab"><i class="fas fa-cube w-5"></i><span class="sidebar-label">Ürünler</span></a>
+                <a href="#" class="sidebar-link" data-tab="individual-tools" id="individualToolsTab"><i class="fas fa-wand-magic-sparkles w-5"></i><span class="sidebar-label">Bireysel Araçlar</span></a>
+                <a href="#" class="sidebar-link" data-tab="recommendations" id="recommendationsTab"><i class="fas fa-thumbs-up w-5"></i><span class="sidebar-label">Öneriler</span><span id="sidebarBadgeRecommendations" class="hidden ml-auto bg-amber-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
+                <a href="#" class="sidebar-link" data-tab="remote-access" id="remoteAccessTab" style="display:none"><i class="fas fa-network-wired w-5"></i><span class="sidebar-label">Uzaktan Erişim</span><span id="sidebarBadgeAlerts" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
+                <a href="#" class="sidebar-link" data-tab="settings" id="settingsTab"><i class="fas fa-cog w-5"></i><span class="sidebar-label">Ayarlar</span></a>
             </nav>
-            <div class="absolute bottom-6 left-6">
-                <a href="index.html" class="sidebar-link-exit"><i class="fas fa-arrow-left w-5"></i><span>Siteye Dön</span></a>
+            <div class="pt-3 mt-3 border-t border-white/10">
+                <a href="index.html" class="sidebar-link-exit"><i class="fas fa-arrow-left w-5"></i><span class="sidebar-label">Siteye Dön</span></a>
             </div>
         </div>
     </div>
@@ -5735,6 +5791,28 @@ document.getElementById('subscriptionsList')?.addEventListener('click', function
 });
 
     // Escape HTML helper (XSS koruması ve Türkçe karakter sorunu için)
+function _toggleSidebar() {
+    const sidebar = document.getElementById('adminSidebar');
+    const icon = document.getElementById('sidebarToggleIcon');
+    if (!sidebar) return;
+    const collapsed = sidebar.classList.toggle('collapsed');
+    if (icon) {
+        icon.className = collapsed ? 'fas fa-angles-right text-sm' : 'fas fa-angles-left text-sm';
+    }
+    try { localStorage.setItem('adminSidebarCollapsed', collapsed ? '1' : '0'); } catch {}
+}
+// Restore sidebar state on load
+(function() {
+    try {
+        if (localStorage.getItem('adminSidebarCollapsed') === '1') {
+            const s = document.getElementById('adminSidebar');
+            const icon = document.getElementById('sidebarToggleIcon');
+            if (s) s.classList.add('collapsed');
+            if (icon) icon.className = 'fas fa-angles-right text-sm';
+        }
+    } catch {}
+})();
+
 function escapeHtml(text) {
     if (typeof text !== 'string') text = String(text || '');
     const map = {
