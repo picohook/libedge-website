@@ -761,36 +761,22 @@
             color: #220f60;
             text-align: center;
         }
-        .mosaic-tile::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: rgba(20,14,60,0.78);
-            border-radius: 12px;
-            opacity: 0;
-            transition: opacity 0.18s;
-            pointer-events: none;
-            z-index: 2;
-        }
-        .mosaic-tile:hover::after { opacity: 1; }
         .mosaic-tile .mosaic-name {
             position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            bottom: calc(100% + 4px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1b4b;
             color: #fff;
-            font-size: 9px;
-            font-weight: 700;
-            text-align: center;
-            padding: 4px;
-            overflow: hidden;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+            padding: 3px 7px;
+            border-radius: 6px;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.18s;
-            z-index: 3;
-            line-height: 1.2;
-            word-break: break-word;
+            transition: opacity 0.15s;
+            z-index: 20;
         }
         .mosaic-tile:hover .mosaic-name { opacity: 1; }
 
