@@ -200,6 +200,30 @@
             color: #64748b;
             background: #fff;
         }
+        .tools-gate {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 56px 24px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            text-align: center;
+        }
+        .tools-gate i { font-size: 2.2rem; color: #7c3aed; opacity: 0.7; }
+        .tools-gate h3 { font-size: 1.25rem; font-weight: 700; color: #220f60; margin: 0; }
+        .tools-gate p { color: #64748b; font-size: 0.95rem; max-width: 420px; margin: 0; line-height: 1.6; }
+        .tools-gate-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+        .tools-gate-btn {
+            padding: 10px 22px; border-radius: 8px; font-size: 0.9rem; font-weight: 700;
+            cursor: pointer; border: none; transition: opacity 0.15s;
+        }
+        .tools-gate-btn:hover { opacity: 0.85; }
+        .tools-gate-btn.primary { background: #220f60; color: #fff; }
+        .tools-gate-btn.secondary { background: #eef2ff; color: #4338ca; }
         @media (max-width: 760px) {
             .tools-top {
                 grid-template-columns: 1fr;
@@ -336,7 +360,27 @@ function renderToolCard(tool) {
         </article>`;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function showToolsGate() {
+    document.getElementById('toolFilters').style.display = 'none';
+    document.getElementById('toolSearch').closest('label').style.display = 'none';
+    document.getElementById('toolsGrid').innerHTML = `
+        <div class="tools-gate">
+            <i class="fas fa-lock"></i>
+            <h3>Araçlara erişmek için giriş yapın</h3>
+            <p>LibEdge hesabınızla giriş yaparak 90'dan fazla ücretsiz akademik araca ulaşabilirsiniz.</p>
+            <div class="tools-gate-actions">
+                <button class="tools-gate-btn primary" onclick="window.openLoginModal && window.openLoginModal()">Giriş Yap</button>
+                <button class="tools-gate-btn secondary" onclick="window.openRegisterModal && window.openRegisterModal()">Kayıt Ol</button>
+            </div>
+        </div>`;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await (window.waitForAuth ? window.waitForAuth() : Promise.resolve(null));
+    if (!user) {
+        showToolsGate();
+        return;
+    }
     document.getElementById('toolSearch')?.addEventListener('input', renderTools);
     loadToolsCatalog();
 });
