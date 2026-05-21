@@ -718,65 +718,41 @@
             cursor: pointer;
         }
         /* ── Mosaic view ─────────────────────────────────────────────── */
-        .profile-mosaic-view .profile-product-grid,
-        .profile-mosaic-view .profile-product-grid.profile-product-deck {
-            display: grid !important;
-            grid-template-columns: repeat(11, 1fr) !important;
-            grid-auto-rows: auto !important;
-            gap: 6px !important;
-            flex-direction: unset !important;
-            overflow: visible !important;
-            height: auto !important;
-            align-items: start !important;
+        #profileMosaicView {
+            display: grid;
+            grid-template-columns: repeat(11, 1fr);
+            gap: 6px;
         }
-        .profile-mosaic-view [data-profile-product-card] {
-            display: block !important;
-            position: relative !important;
-            width: 100% !important;
-            min-height: 0 !important;
-            align-self: start !important;
-            border-radius: 14px !important;
-            border: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: hidden !important;
-            background: #fff !important;
-            box-shadow: 0 1px 6px rgba(15,23,42,0.07) !important;
-            transition: transform 0.15s, box-shadow 0.15s !important;
-            cursor: pointer !important;
+        .mosaic-tile {
+            aspect-ratio: 1;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #edf0f5;
+            box-shadow: 0 1px 4px rgba(15,23,42,0.06);
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12%;
+            transition: transform 0.15s, box-shadow 0.15s;
         }
-        .profile-mosaic-view [data-profile-product-card]:hover {
-            transform: scale(1.12) !important;
-            box-shadow: 0 6px 18px rgba(15,23,42,0.16) !important;
-            z-index: 2 !important;
+        .mosaic-tile:hover {
+            transform: scale(1.12);
+            box-shadow: 0 5px 16px rgba(15,23,42,0.15);
+            z-index: 2;
+            position: relative;
         }
-        .profile-mosaic-view [data-profile-product-card]::before { display: none !important; }
-        .profile-mosaic-view .profile-product-head { display: contents !important; }
-        .profile-mosaic-view .profile-product-brand { display: contents !important; }
-        .profile-mosaic-view .profile-product-logo {
-            position: absolute !important;
-            inset: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            border-radius: 14px !important;
-            border: none !important;
-            background: #fff !important;
-            box-shadow: none !important;
-            padding: 12% !important;
+        .mosaic-tile img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
-        .profile-mosaic-view .profile-product-logo img {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain !important;
-        }
-        .profile-mosaic-view .profile-product-brand .min-w-0,
-        .profile-mosaic-view .profile-product-head > .profile-tag,
-        .profile-mosaic-view .profile-product-body,
-        .profile-mosaic-view .profile-product-footer {
-            display: none !important;
-        }
-        .profile-mosaic-view [data-profile-product-card].is-selected {
-            box-shadow: 0 0 0 2.5px #220f60, 0 4px 12px rgba(34,15,96,0.15) !important;
+        .mosaic-tile .mosaic-initials {
+            font-size: 0.65rem;
+            font-weight: 900;
+            color: #220f60;
+            text-align: center;
         }
 
         .profile-action.secondary {
@@ -993,6 +969,7 @@
                             </div>
                         </div>
                         <div class="profile-module-body">
+                            <div id="profileMosaicView" class="hidden" style="display:none"></div>
                             <div id="activeSubscriptionsList" class="profile-product-grid">
                                 <p class="text-gray-500 text-sm">Yükleniyor...</p>
                             </div>
@@ -1820,7 +1797,6 @@ function compactProfileHeader() {
 
 document.addEventListener('header:ready', compactProfileHeader);
 document.addEventListener('DOMContentLoaded', compactProfileHeader);
-window.addEventListener('resize', () => { if (_profileViewMode === 'mosaic') _updateMosaicRowHeight(); });
 
 let currentFolderId = null;
 let currentFolderName = null;
@@ -3033,33 +3009,50 @@ function updateProfileResourceCount(institutionCount = 0, individualCount = 0) {
 
 function _setViewMode(mode) {
     _profileViewMode = mode;
-    const dashboard = document.querySelector('.profile-dashboard-main');
-    if (dashboard) dashboard.classList.toggle('profile-mosaic-view', mode === 'mosaic');
+    const mosaicEl = document.getElementById('profileMosaicView');
+    const deckEl = document.getElementById('activeSubscriptionsList');
     const btnDeck = document.getElementById('viewBtnDeck');
     const btnMosaic = document.getElementById('viewBtnMosaic');
     if (btnDeck) btnDeck.className = `px-2 py-1 transition ${mode === 'deck' ? 'bg-primary text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`;
     if (btnMosaic) btnMosaic.className = `px-2 py-1 transition ${mode === 'mosaic' ? 'bg-primary text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`;
     if (mode === 'mosaic') {
-        requestAnimationFrame(_updateMosaicRowHeight);
+        if (mosaicEl) { mosaicEl.style.display = 'grid'; _renderMosaicTiles(); }
+        if (deckEl) deckEl.style.display = 'none';
     } else {
-        // Remove JS-set row heights
-        ['activeSubscriptionsList', 'profileIndividualToolsList'].forEach(id => {
-            const g = document.getElementById(id);
-            if (g) g.style.gridAutoRows = '';
-        });
+        if (mosaicEl) mosaicEl.style.display = 'none';
+        if (deckEl) deckEl.style.display = '';
         syncProfileDeckStacking(profileActiveResourceFilter);
     }
 }
 
-function _updateMosaicRowHeight() {
-    if (_profileViewMode !== 'mosaic') return;
-    const grids = ['activeSubscriptionsList', 'profileIndividualToolsList']
-        .map(id => document.getElementById(id)).filter(Boolean);
-    grids.forEach(grid => {
-        const totalGap = 6 * 10; // 10 gaps for 11 columns
-        const colW = Math.floor((grid.offsetWidth - totalGap) / 11);
-        grid.style.gridAutoRows = colW + 'px';
-    });
+function _renderMosaicTiles() {
+    const mosaicEl = document.getElementById('profileMosaicView');
+    const deckEl = document.getElementById('activeSubscriptionsList');
+    if (!mosaicEl || !deckEl) return;
+    const cards = Array.from(deckEl.querySelectorAll('[data-profile-product-card]'))
+        .filter(c => c.style.display !== 'none');
+    mosaicEl.innerHTML = cards.map(card => {
+        const logo = card.dataset.detailLogo || '';
+        const name = card.dataset.detailName || '?';
+        const summary = card.dataset.detailSummary || '';
+        const type = card.dataset.detailType || '';
+        const url = card.dataset.detailUrl || '';
+        const cat = card.dataset.category || '';
+        const extra = card.dataset.extraCategories || '';
+        const initials = escapeHtml(name.slice(0, 2).toUpperCase());
+        return `<div class="mosaic-tile"
+            data-detail-name="${escapeHtml(name)}"
+            data-detail-logo="${escapeHtml(logo)}"
+            data-detail-summary="${escapeHtml(summary)}"
+            data-detail-type="${escapeHtml(type)}"
+            data-detail-url="${escapeHtml(url)}"
+            data-category="${escapeHtml(cat)}"
+            data-extra-categories="${escapeHtml(extra)}"
+            onclick="_showCardDetail(this)"
+            title="${escapeHtml(name)}">
+            ${logo ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(name)}" loading="lazy">` : `<span class="mosaic-initials">${initials}</span>`}
+        </div>`;
+    }).join('');
 }
 
 function _cardAllCategories(card) {
@@ -3158,6 +3151,7 @@ function _applyGlobalCategoryFilters() {
         });
     });
     syncProfileDeckStacking(profileActiveResourceFilter);
+    if (_profileViewMode === 'mosaic') _renderMosaicTiles();
     _updateFilteredCount();
 }
 
