@@ -761,28 +761,38 @@
             color: #220f60;
             text-align: center;
         }
+        .mosaic-tile::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(20,14,60,0.78);
+            border-radius: 12px;
+            opacity: 0;
+            transition: opacity 0.18s;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .mosaic-tile:hover::after { opacity: 1; }
         .mosaic-tile .mosaic-name {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(20,14,60,0.82);
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: #fff;
             font-size: 9px;
             font-weight: 700;
             text-align: center;
-            white-space: nowrap;
+            padding: 4px;
             overflow: hidden;
-            text-overflow: ellipsis;
-            padding: 3px 4px;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.15s;
-            border-radius: 0 0 11px 11px;
+            transition: opacity 0.18s;
+            z-index: 3;
+            line-height: 1.2;
+            word-break: break-word;
         }
-        .mosaic-tile:hover .mosaic-name {
-            opacity: 1;
-        }
+        .mosaic-tile:hover .mosaic-name { opacity: 1; }
 
         .profile-action.secondary {
             background: #eef4ff;
