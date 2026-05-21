@@ -3507,7 +3507,13 @@ function _renderCatalog() {
     const mod = document.getElementById('profileCatalogModule');
     if (!el || !mod) return;
     // Filter out products the institution already has
-    const subscribedSlugs = new Set(profileSubscriptions.map(s => s.product_slug));
+    const now = Date.now();
+    const subscribedSlugs = new Set(
+        profileSubscriptions
+            .filter(s => (s.status === 'active' || s.status === 'trial') &&
+                (!s.end_date || new Date(s.end_date).getTime() > now))
+            .map(s => s.product_slug)
+    );
     const unsubscribed = _catalogProducts.filter(p => !subscribedSlugs.has(p.slug));
     if (!unsubscribed.length) { mod.classList.add('hidden'); return; }
     mod.classList.remove('hidden');
