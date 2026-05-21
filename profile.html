@@ -730,18 +730,20 @@
             border: 1px solid #edf0f5;
             box-shadow: 0 1px 4px rgba(15,23,42,0.06);
             cursor: pointer;
-            overflow: hidden;
+            overflow: visible;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 12%;
-            transition: transform 0.15s, box-shadow 0.15s;
+            transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+            position: relative;
         }
         .mosaic-tile:hover {
-            transform: scale(1.12);
-            box-shadow: 0 5px 16px rgba(15,23,42,0.15);
-            z-index: 2;
-            position: relative;
+            transform: scale(1.18);
+            box-shadow: 0 8px 22px rgba(15,23,42,0.18);
+            border-color: #c4b5fd;
+            z-index: 10;
         }
         .mosaic-tile img {
             width: 100%;
@@ -753,6 +755,25 @@
             font-weight: 900;
             color: #220f60;
             text-align: center;
+        }
+        .mosaic-tile .mosaic-name {
+            position: absolute;
+            bottom: calc(100% + 4px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1b4b;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+            padding: 3px 7px;
+            border-radius: 6px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .mosaic-tile:hover .mosaic-name {
+            opacity: 1;
         }
 
         .profile-action.secondary {
@@ -3051,6 +3072,7 @@ function _renderMosaicTiles() {
             onclick="_showCardDetail(this)"
             title="${escapeHtml(name)}">
             ${logo ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(name)}" loading="lazy">` : `<span class="mosaic-initials">${initials}</span>`}
+            <span class="mosaic-name">${escapeHtml(name)}</span>
         </div>`;
     }).join('');
 }
