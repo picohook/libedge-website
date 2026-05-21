@@ -3050,8 +3050,14 @@ function _renderMosaicTiles() {
     const mosaicEl = document.getElementById('profileMosaicView');
     const deckEl = document.getElementById('activeSubscriptionsList');
     if (!mosaicEl || !deckEl) return;
+    const lowerSelected = _activeCatsGlobal.size > 0
+        ? new Set([..._activeCatsGlobal].map(c => c.toLowerCase()))
+        : null;
     const cards = Array.from(deckEl.querySelectorAll('[data-profile-product-card]'))
-        .filter(c => c.style.display !== 'none');
+        .filter(c => {
+            if (lowerSelected === null) return true;
+            return [..._cardAllCategories(c)].some(cat => lowerSelected.has(cat));
+        });
     mosaicEl.innerHTML = cards.map(card => {
         const logo = card.dataset.detailLogo || '';
         const name = card.dataset.detailName || '?';
