@@ -110,7 +110,7 @@ Kontroller:
 - [x] Privacy policy kayıtlı kullanıcı, RA, AI, dosya ve abonelik verilerini kapsayacak şekilde güncellendi.
 - [ ] Açık rıza / aydınlatma metni kullanıcı kayıt akışına bağlandı.
 - [ ] Çerez yönetimi ve analitik rızası ayrıştırıldı.
-- [ ] Veri saklama süreleri belirlendi.
+- [x] Veri saklama süreleri belirlendi ve cleanup cron job'ları yazıldı (2026-05-24).
 - [ ] Kullanıcının hesap/veri silme talebi için operasyon prosedürü yazıldı.
 - [ ] Admin erişimleri rol bazlı ve loglanabilir hale getirildi.
 - [ ] Production secrets Cloudflare secret olarak tutuluyor; repoda secret yok.
@@ -119,22 +119,24 @@ Kontroller:
 - [ ] D1 export/backupları şifreli ve erişim kontrollü saklanıyor.
 - [ ] AI araçlarına gönderilecek inputlar için veri minimizasyonu uygulanıyor.
 
-## 4. Veri Saklama Önerisi
+## 4. Veri Saklama Süreleri (Kararlaştırıldı 2026-05-24)
 
-Başlangıç retention önerisi:
+Retention süreleri ve uygulanan cleanup yöntemi:
 
-| Veri | Önerilen saklama |
-|---|---:|
-| Aktif kullanıcı hesabı | Hesap aktif olduğu sürece |
-| Silinen/pasif kullanıcı hesabı | Yasal gereklilik yoksa 30-90 gün içinde anonimleştirme |
-| RA access logs | 180 gün |
-| Auth/rate-limit logları | 30-90 gün |
-| Password reset token kayıtları | Süre bitiminden sonra 7-30 gün içinde temizlik |
-| Product request kayıtları | Talep sonuçlandıktan sonra 2 yıl veya anonimleştirme |
-| AI usage logs | 90 gün, sonra aggregate/anonymous |
-| Publisher credential | Abonelik/entegrasyon aktif olduğu sürece |
+| Veri | Saklama | Uygulanma |
+|---|---:|---|
+| Aktif kullanıcı hesabı | Hesap aktif olduğu sürece | — |
+| Silinen/pasif kullanıcı hesabı | 30-90 gün içinde anonimleştirme | Manuel prosedür (§6) |
+| RA access logs | 180 gün | `cleanupOldRaAccessLogs` cron |
+| RA debug events | 30 gün | `cleanupOldRaDebugEvents` cron |
+| Password reset token kayıtları | 30 gün (süre bitimi sonrası) | `cleanupExpiredPasswordResets` cron |
+| Refresh token (expired/revoked) | 30 gün | `cleanupOldRefreshTokens` cron |
+| Product request kayıtları | 2 yıl sonra user_id NULL (anonimleştirme) | `anonymizeOldProductRequests` cron |
+| AI usage logs | 90 gün | `cleanupOldAiUsageLogs` cron |
+| Publisher credential | Abonelik/entegrasyon aktif olduğu sürece | — |
+| `ra_debug_events` (manuel debug) | 30 gün | Mevcut cron |
 
-Bu süreler hukuki danışmanlıkla netleştirilmelidir.
+Tüm cron job'ları `backend/src/index.js` `scheduled()` handler'ında, `*/5 * * * *` tetiklemesinde çalışır. Yasal gereklilik değişirse retention sabitleri (`*_RETENTION_SECONDS`) güncellenmelidir.
 
 ## 5. AI Araçları İçin KVKK İlkeleri
 

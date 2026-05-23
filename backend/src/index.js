@@ -1659,6 +1659,10 @@ app.post('/api/auth/refresh', async (c) => {
 const PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 60;
 const PASSWORD_RESET_RETENTION_SECONDS = 30 * 24 * 60 * 60;
 const RA_ACCESS_LOG_RETENTION_SECONDS = 180 * 24 * 60 * 60;
+// KVKK retention (KVKK_SECURITY.md §4 — finalized 2026-05-24)
+const AI_USAGE_LOG_RETENTION_SECONDS = 90 * 24 * 60 * 60;       // 90 gün — ham prompt zaten saklanmıyor
+const REFRESH_TOKEN_RETENTION_SECONDS = 30 * 24 * 60 * 60;      // 30 gün (expired veya revoked)
+const PRODUCT_REQUEST_ANONYMIZE_SECONDS = 2 * 365 * 24 * 60 * 60; // 2 yıl sonra user_id NULL
 const PASSWORD_RESET_MIN_LENGTH = 8;
 const forgotPasswordSchema = z.object({
   email: zRequiredString('email', { max: 254, email: true })
@@ -9797,6 +9801,52 @@ async function cleanupOldRaDebugEvents(env) {
   }
 }
 
+// KVKK §4 retention — ham prompt/output hash'lenip tutulur, 90 gün sonra silinir.
+async function cleanupOldAiUsageLogs(env) {
+  if (!env?.DB) return;
+  try {
+    await env.DB.prepare(
+      "DELETE FROM ai_usage_logs WHERE created_at < datetime('now', '-90 days')"
+    ).run();
+  } catch (err) {
+    console.error('ai usage log cleanup failed', err?.message);
+  }
+}
+
+// Expired veya revoked refresh token'lar 30 gün sonra silinir.
+// Aktif token'lara dokunulmaz (used_at IS NULL AND revoked_at IS NULL AND expires_at > now).
+async function cleanupOldRefreshTokens(env) {
+  if (!env?.DB) return;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const cutoffSec = nowSec - REFRESH_TOKEN_RETENTION_SECONDS;
+  try {
+    await env.DB.prepare(`
+      DELETE FROM refresh_tokens
+      WHERE (expires_at < ? AND expires_at < ?)
+         OR (revoked_at IS NOT NULL AND revoked_at < ?)
+         OR (used_at IS NOT NULL AND used_at < ?)
+    `).bind(nowSec, cutoffSec, cutoffSec, cutoffSec).run();
+  } catch (err) {
+    console.error('refresh token cleanup failed', err?.message);
+  }
+}
+
+// Product request kayıtları 2 yıl sonra anonimleştirilir (user_id NULL).
+// Kayıt silinmez — kurum talebi bağlamı istatistik için korunur.
+async function anonymizeOldProductRequests(env) {
+  if (!env?.DB) return;
+  try {
+    await env.DB.prepare(`
+      UPDATE product_requests
+      SET user_id = NULL
+      WHERE user_id IS NOT NULL
+        AND created_at < datetime('now', '-2 years')
+    `).run();
+  } catch (err) {
+    console.error('product request anonymize failed', err?.message);
+  }
+}
+
 export default {
   fetch: app.fetch,
   request: app.request.bind(app),
@@ -9805,6 +9855,9 @@ export default {
     ctx.waitUntil(cleanupExpiredPasswordResets(env));
     ctx.waitUntil(cleanupOldRaAccessLogs(env));
     ctx.waitUntil(cleanupOldRaDebugEvents(env));
+    ctx.waitUntil(cleanupOldAiUsageLogs(env));
+    ctx.waitUntil(cleanupOldRefreshTokens(env));
+    ctx.waitUntil(anonymizeOldProductRequests(env));
     ctx.waitUntil(runTunnelHeartbeat(env).catch((err) => console.error('tunnel heartbeat failed', err)));
   },
 };
