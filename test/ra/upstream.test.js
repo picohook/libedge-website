@@ -34,7 +34,9 @@ import {
   proQuestFailureFallbackResponse,
   webOfScienceDynamicRedirectHost,
   scienceDirectDynamicRedirectHost,
+  scienceDirectPdfDirectProxyLocation,
   shouldRouteSessionPathToOrigin,
+  getFtrEmbeddedTargetUrl,
 } from '../../workers/proxy/src/index.js';
 
 describe('buildCookieJarKey', () => {
@@ -544,14 +546,41 @@ describe('session-host proxy cookie handling', () => {
     expect(injectPublisherCookieNamespaceScript(out, 'emerald.com')).toBe(out);
   });
 
-  it('aliases ScienceDirect search API requests away from the edge-blocked path', () => {
+  it('keeps ScienceDirect search API requests on the same-origin API path', () => {
     const html = '<html><head><script src="/eu-west-1/prod/root.js"></script></head><body></body></html>';
     const out = injectPublisherCookieNamespaceScript(html, 'sciencedirect.com', 'www.sciencedirect.com', true);
 
     expect(out).toContain("scope==='sciencedirect.com'");
     expect(out).toContain("x.pathname==='/search/api'");
-    expect(out).toContain("x.pathname='/search'");
-    expect(out).toContain("x.searchParams.set('__ra_sd_search_api','1')");
+    expect(out).not.toContain("x.pathname='/search'");
+    expect(out).not.toContain("x.searchParams.set('__ra_sd_search_api','1')");
+    expect(out).not.toContain('sd-search-api-alias');
+  });
+
+  it('routes ScienceDirect root-relative journal paths to the origin host', () => {
+    expect(shouldRouteSessionPathToOrigin(
+      '/journal/microporous-and-mesoporous-materials/vol/409/suppl/C',
+      'www.sciencedirect.com',
+      { productSlug: 'sciencedirect' }
+    )).toBe(true);
+  });
+
+  it('routes ScienceDirect root-relative asset paths to the origin host', () => {
+    for (const path of [
+      '/shared-assets/103/images/favSD.ico',
+      '/eu-west-1/prod/39f57e7229f42c5f6dcd460353821c7ca760ebb4/root-F470w2la.js',
+      '/prod/9d336912e6eda23a3fcdccac139b4d6f08de3756/index-DUuGRGKW.js',
+      '/feature/assets/ai-navigation?componentVersion=V1',
+      '/arp.css',
+      '/arp.js',
+      '/ai-components',
+    ]) {
+      expect(shouldRouteSessionPathToOrigin(
+        path,
+        'www.sciencedirect.com',
+        { productSlug: 'sciencedirect' }
+      )).toBe(true);
+    }
   });
 
   it('does not inject Nature-specific script or click blockers into publisher pages', () => {
@@ -1050,6 +1079,40 @@ describe('session-host proxy cookie handling', () => {
     expect(out).toBe('?qs=nanotube&t=token&hostname=r5k5o3p3.selmiye.com&navigation=true');
   });
 
+  it('restores ScienceDirect PDF base64 host query parameters before upstream', () => {
+    const proxyHostB64 = btoa('r035q6v5.selmiye.com');
+    const originHostB64 = btoa('www.sciencedirect.com');
+    const out = rewriteQueryProxyUrls(
+      `?host=${encodeURIComponent(proxyHostB64)}&tsoh=${encodeURIComponent(proxyHostB64)}&rh=${encodeURIComponent(proxyHostB64)}&ns_h=${encodeURIComponent(proxyHostB64)}&re=X2JsYW5rXw%3D%3D`,
+      'r035q6v5.selmiye.com',
+      'www.sciencedirect.com',
+      { preserveHostnameParam: true, targetPath: '/science/article/pii/S1387181126001587/pdfft' }
+    );
+
+    const params = new URLSearchParams(out.slice(1));
+    expect(params.get('host')).toBe(originHostB64);
+    expect(params.get('tsoh')).toBe(originHostB64);
+    expect(params.get('rh')).toBe(originHostB64);
+    expect(params.get('ns_h')).toBe(originHostB64);
+  });
+
+  it('redirects ScienceDirect pdfft handoff URLs to the direct PDF proxy URL', () => {
+    const original = Buffer.from(
+      '?md5=de4ac0a9ab85d367aa54380bb96b2f57&pid=1-s2.0-S1387181126001587-main.pdf',
+      'utf8'
+    ).toString('hex');
+    const url = new URL(
+      `https://r6j3y680.selmiye.com/science/article/pii/S1387181126001587/pdfft?crasolve=1&original=${original}`
+    );
+
+    expect(scienceDirectPdfDirectProxyLocation(url, {
+      host: 'www.sciencedirect.com',
+      path: '/science/article/pii/S1387181126001587/pdfft',
+    })).toBe(
+      'https://r6j3y680.selmiye.com/science/article/pii/S1387181126001587/pdf?md5=de4ac0a9ab85d367aa54380bb96b2f57&pid=1-s2.0-S1387181126001587-main.pdf'
+    );
+  });
+
   it('restores IDP redirect_uri to the publisher origin rather than the IDP host', () => {
     const out = rewriteQueryProxyUrls(
       '?response_type=cookie&redirect_uri=https%3A%2F%2Frabc1234.selmiye.com%2Fsearch',
@@ -1164,6 +1227,15 @@ describe('session-host proxy cookie handling', () => {
     );
 
     expect(host).toBe('www.sciencedirect.com');
+  });
+
+  it('extracts embedded publisher targets from GetFTR relay paths', () => {
+    const target = getFtrEmbeddedTargetUrl({
+      host: 'ct.prod.getft.io',
+      path: '/c2NvcHVzLGVsc2V2aWVyLE1UQXVNVEF4Tmk5cUxtcHRjM1F1TWpBeU5pNHdOQzR3TXpVLE1qSTRPREUxTTJRdE1UUXdOUzAwTWpoaExXSXlOR1l0TWpBNFltSmtNekUxWWpobSxodHRwczovL3d3dy5zY2llbmNlZGlyZWN0LmNvbS9zY2llbmNlL2FydGljbGUvcGlpL1MxMDA1MDMwMjI2MDAyOTYzP3Blcz12b3I.H4OYdsclRQxhWiFilPVOh1OnkzOYUG0jSTW_Bv_uxOQ',
+    });
+
+    expect(target?.href).toBe('https://www.sciencedirect.com/science/article/pii/S1005030226002963?pes=vor');
   });
 
   it('does not trust arbitrary DOI resolver redirects for ScienceDirect sessions', () => {
