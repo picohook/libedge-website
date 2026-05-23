@@ -122,7 +122,8 @@ function bindAuthForms() {
             const email = document.getElementById('regEmail')?.value || '';
             const password = document.getElementById('regPassword')?.value || '';
             const institution = document.getElementById('regInstitution')?.value || '';
-            await register(fullName, email, password, institution);
+            const kvkkConsent = document.getElementById('regKvkkConsent')?.checked === true;
+            await register(fullName, email, password, institution, kvkkConsent);
         });
     }
 
@@ -294,12 +295,18 @@ function consumeAuthRedirectMessage() {
     }
 }
 
-window.register = async function(fullName, email, password, institution) {
+window.register = async function(fullName, email, password, institution, kvkkConsent = false) {
     try {
         const response = await fetch(`${API_BASE}/api/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ full_name: fullName, email, password, institution })
+            body: JSON.stringify({
+                full_name: fullName,
+                email,
+                password,
+                institution,
+                kvkk_consent: kvkkConsent === true
+            })
         });
         const data = await response.json();
         if (data.success) {

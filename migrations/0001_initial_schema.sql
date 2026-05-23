@@ -30,6 +30,11 @@ CREATE TABLE IF NOT EXISTS users (
   institution_id INTEGER REFERENCES institutions(id),
   role           TEXT DEFAULT 'user',
   avatar_url     TEXT,
+  kvkk_consent   INTEGER NOT NULL DEFAULT 0,
+  kvkk_consent_at DATETIME,
+  kvkk_consent_version TEXT,
+  kvkk_consent_ip TEXT,
+  kvkk_consent_user_agent TEXT,
   last_login     DATETIME,
   created_at     DATETIME DEFAULT CURRENT_TIMESTAMP
 );

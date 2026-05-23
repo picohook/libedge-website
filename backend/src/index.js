@@ -2426,8 +2426,17 @@ const registerSchema = z.object({
   email: zRequiredString('email', { max: 254, email: true }),
   password: zRequiredString('password', { min: 6, max: 128 }),
   full_name: zOptionalString('full_name', { max: 120 }),
-  institution: zOptionalString('institution', { max: 200 })
+  institution: zOptionalString('institution', { max: 200 }),
+  kvkk_consent: z.boolean({
+    error: (issue) => issue.input === undefined
+      ? 'KVKK Aydınlatma Metni ve Kullanım Şartları onayı zorunludur.'
+      : '"kvkk_consent" boolean tipinde olmalıdır'
+  }).refine((value) => value === true, {
+    message: 'KVKK Aydınlatma Metni ve Kullanım Şartları onayı zorunludur.'
+  })
 });
+
+const REGISTER_KVKK_CONSENT_VERSION = 'privacy-terms-2026-05-23';
 
 app.post('/api/auth/register', async (c) => {
   try {
@@ -2444,11 +2453,25 @@ app.post('/api/auth/register', async (c) => {
 
     const password_hash = await hashPassword(password);
     const profileFields = normalizeUserProfileFields({ full_name });
+    const userAgent = String(c.req.header('User-Agent') || '').slice(0, 240);
 
     await db.prepare(`
-      INSERT INTO users (email, password_hash, full_name, first_name, last_name, institution, role)
-      VALUES (?, ?, ?, ?, ?, ?, 'user')
-    `).bind(email.toLowerCase().trim(), password_hash, profileFields.full_name, profileFields.first_name, profileFields.last_name, institution || null).run();
+      INSERT INTO users (
+        email, password_hash, full_name, first_name, last_name, institution, role,
+        kvkk_consent, kvkk_consent_at, kvkk_consent_version, kvkk_consent_ip, kvkk_consent_user_agent
+      )
+      VALUES (?, ?, ?, ?, ?, ?, 'user', 1, CURRENT_TIMESTAMP, ?, ?, ?)
+    `).bind(
+      email.toLowerCase().trim(),
+      password_hash,
+      profileFields.full_name,
+      profileFields.first_name,
+      profileFields.last_name,
+      institution || null,
+      REGISTER_KVKK_CONSENT_VERSION,
+      ip,
+      userAgent || null
+    ).run();
 
     return c.json({ success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.' });
   } catch (err) {
@@ -9759,4 +9782,3 @@ export default {
     ctx.waitUntil(runTunnelHeartbeat(env).catch((err) => console.error('tunnel heartbeat failed', err)));
   },
 };
-

@@ -87,7 +87,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const email = document.getElementById('regEmail').value;
             const password = document.getElementById('regPassword').value;
             const institution = document.getElementById('regInstitution').value;
-            await register(fullName, email, password, institution);
+            const kvkkConsent = document.getElementById('regKvkkConsent')?.checked === true;
+            await register(fullName, email, password, institution, kvkkConsent);
         });
     }
 
