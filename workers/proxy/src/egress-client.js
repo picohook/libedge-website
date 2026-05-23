@@ -33,16 +33,13 @@ export async function egressFetch(env, institutionId, targetUrl, init = {}) {
     throw new Error('egress_endpoint missing');
   }
 
-  // Secret resolution priority:
-  //   1. D1 egress_secret_enc (AES-GCM encrypted, per-institution) — production
-  //   2. RA_EGRESS_DEFAULT_SECRET env var (plaintext, single-tenant/staging fallback)
   let secret;
   if (settings.egress_secret_enc && env.RA_CREDS_MASTER_KEY) {
     secret = await decryptCredential(settings.egress_secret_enc, env.RA_CREDS_MASTER_KEY);
   } else if (env.RA_EGRESS_DEFAULT_SECRET) {
     secret = env.RA_EGRESS_DEFAULT_SECRET;
   } else {
-    throw new Error('no egress secret configured (set egress_secret_enc in D1 or RA_EGRESS_DEFAULT_SECRET)');
+    throw new Error(`egress secret not configured for institution ${institutionId} — set egress_secret_enc via admin panel or RA_EGRESS_DEFAULT_SECRET`);
   }
 
   const method = (init.method || 'GET').toUpperCase();
@@ -75,7 +72,7 @@ export async function egressFetch(env, institutionId, targetUrl, init = {}) {
 
   const agentUrl = `${settings.egress_endpoint.replace(/\/$/, '')}/proxy`;
 
-  const headers = new Headers(init.headers || undefined);
+  const headers = safeHeaders(init.headers);
   sanitizeBrowserFetchHeaders(headers);
   headers.set('X-RA-Target-URL', urlStr);
   headers.set('X-RA-Method', method);
@@ -143,14 +140,13 @@ export async function browserFetch(env, institutionId, targetUrl, init = {}) {
     throw new Error('egress_endpoint missing');
   }
 
-  // Secret resolution — same priority as egressFetch.
   let secret;
   if (settings.egress_secret_enc && env.RA_CREDS_MASTER_KEY) {
     secret = await decryptCredential(settings.egress_secret_enc, env.RA_CREDS_MASTER_KEY);
   } else if (env.RA_EGRESS_DEFAULT_SECRET) {
     secret = env.RA_EGRESS_DEFAULT_SECRET;
   } else {
-    throw new Error('no egress secret configured (set egress_secret_enc in D1 or RA_EGRESS_DEFAULT_SECRET)');
+    throw new Error(`egress secret not configured for institution ${institutionId} — set egress_secret_enc via admin panel or RA_EGRESS_DEFAULT_SECRET`);
   }
 
   // Browser fetch is GET only — no body hash.
@@ -265,30 +261,47 @@ export async function assetBrowserFetch(env, institutionId, targetUrl, init = {}
   } else if (env.RA_EGRESS_DEFAULT_SECRET) {
     secret = env.RA_EGRESS_DEFAULT_SECRET;
   } else {
-    throw new Error('no egress secret configured');
+    throw new Error(`egress secret not configured for institution ${institutionId} — set egress_secret_enc via admin panel or RA_EGRESS_DEFAULT_SECRET`);
   }
 
-  const method = 'GET';
+  const method = (init.method || 'GET').toUpperCase();
   const urlStr = typeof targetUrl === 'string' ? targetUrl : targetUrl.toString();
   const ts = Math.floor(Date.now() / 1000);
-  const sig = await hmacSha256(secret, `${method}|${urlStr}|${ts}|`);
+
+  let reqBodyBytes = null;
+  if (method !== 'GET' && method !== 'HEAD' && init.body != null) {
+    if (typeof init.body === 'string') {
+      reqBodyBytes = new TextEncoder().encode(init.body);
+    } else if (init.body instanceof ArrayBuffer) {
+      reqBodyBytes = new Uint8Array(init.body);
+    } else if (init.body instanceof Uint8Array) {
+      reqBodyBytes = init.body;
+    } else {
+      const resp = new Response(init.body);
+      reqBodyBytes = new Uint8Array(await resp.arrayBuffer());
+    }
+  }
+  const bodyHash = reqBodyBytes && reqBodyBytes.byteLength ? await sha256(reqBodyBytes) : '';
+  const sig = await hmacSha256(secret, `${method}|${urlStr}|${ts}|${bodyHash}`);
 
   // Asset requests go through /browser-proxy (same ra-egress route that forwards
   // to ra-browser). X-RA-Asset: 1 tells ra-browser to use the sub-resource cache
   // instead of doing a full page navigation.
   const agentUrl = `${settings.egress_endpoint.replace(/\/$/, '')}/browser-proxy`;
 
-  const headers = new Headers(init.headers || undefined);
+  const headers = safeHeaders(init.headers);
+  sanitizeBrowserFetchHeaders(headers);
   headers.set('X-RA-Asset', '1');
   headers.set('X-RA-Target-URL', urlStr);
   headers.set('X-RA-Method', method);
+  headers.set('X-RA-Asset-Method', method);
   headers.set('X-RA-Timestamp', String(ts));
   headers.set('X-RA-Signature', sig);
 
   const envelopeResp = await fetch(agentUrl, {
     method: 'POST',
     headers,
-    body: null,
+    body: reqBodyBytes && reqBodyBytes.byteLength ? reqBodyBytes : null,
     redirect: 'manual',
   });
 
@@ -301,11 +314,15 @@ export async function assetBrowserFetch(env, institutionId, targetUrl, init = {}
 
   const respHeaders = new Headers();
   for (const [k, v] of Object.entries(envelope.headers || {})) {
-    if (Array.isArray(v)) {
-      for (const item of v) respHeaders.append(k, item);
-    } else {
-      respHeaders.set(k, v);
-    }
+    try {
+      if (Array.isArray(v)) {
+        for (const item of v) {
+          try { respHeaders.append(k, String(item || '').replace(/[^\x09\x20-\x7E]/g, '')); } catch {}
+        }
+      } else {
+        respHeaders.set(k, String(v || '').replace(/[^\x09\x20-\x7E]/g, ''));
+      }
+    } catch {}
   }
   // context.request.get() auto-decodes compressed bodies; strip encoding header
   // so the browser doesn't attempt a second decompression pass.
@@ -335,6 +352,19 @@ export async function assetBrowserFetch(env, institutionId, targetUrl, init = {}
   });
 }
 
+function safeHeaders(init) {
+  const out = new Headers();
+  if (!init) return out;
+  const src = init instanceof Headers ? init : new Headers(Object.fromEntries(
+    Object.entries(init).map(([k, v]) => [k, String(v || '')])
+  ));
+  for (const [k, v] of src.entries()) {
+    const clean = String(v || '').replace(/[^\x09\x20-\x7E]/g, '');
+    if (clean) try { out.set(k, clean); } catch {}
+  }
+  return out;
+}
+
 function sanitizeBrowserFetchHeaders(headers) {
   for (const name of [...headers.keys()]) {
     const lower = name.toLowerCase();
@@ -346,6 +376,15 @@ function sanitizeBrowserFetchHeaders(headers) {
       lower === 'upgrade-insecure-requests'
     ) {
       headers.delete(name);
+      continue;
+    }
+    // Strip control characters from header values to prevent "Invalid header value" errors.
+    // Can occur in Cookie headers with Cloudflare challenge tokens (\r, \n, \0).
+    const val = headers.get(name);
+    if (val && /[\r\n\0]/.test(val)) {
+      const clean = val.replace(/[\r\n\0]/g, '');
+      if (clean) headers.set(name, clean);
+      else headers.delete(name);
     }
   }
 }

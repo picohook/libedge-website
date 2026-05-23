@@ -25,7 +25,6 @@ const SESSION_ALT_HOST_PREFIX = '/__ra-host/';
 const SESSION_ENTRY_REDIRECT_PATH = '/__ra-redirect';
 const STABLE_ENTRY_REDIRECT_PATH = '/coproxy/redirect';
 const CF_CHALLENGE_PROXY_PREFIX = '/__ra-cdn-cgi/';
-const SCIENCEDIRECT_SEARCH_API_ALIAS_PARAM = '__ra_sd_search_api';
 const CLIENT_DEBUG_PATH = '/__ra-client-debug';
 const LINK_AUDIT_PATH = '/__ra-link-audit';
 const COPROXY_REDIRECT_PATH = '/coproxy/redirect';
@@ -100,7 +99,7 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
 
   // Token var mı? (issue-token'dan gelen ilk yönlendirme)
   const token = url.searchParams.get('t');
-  if (token) {
+  if (token && isLikelyProxyToken(token)) {
     return await acceptSessionHostToken(request, env, token, url, sessionId);
   }
 
@@ -175,11 +174,9 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   const search = rewriteQueryProxyUrls(url.search, url.hostname, target.host, {
     sessionOriginHost: session.origin_host,
     preserveHostnameParam: isScienceDirectProxyHost(target.host),
+    targetPath: target.path,
   });
-  const targetSearch = scienceDirectSearchApiAlias
-    ? stripQueryParam(search, SCIENCEDIRECT_SEARCH_API_ALIAS_PARAM)
-    : search;
-  const targetUrl = `https://${target.host}${target.path}${targetSearch}`;
+  const targetUrl = `https://${target.host}${target.path}${search}`;
   const publisherCookieScopeHost = getPublisherCookieScopeHost(target.host);
   const upstreamHeaders = buildUpstreamHeaders(request.headers, {
     proxyHostname: url.hostname,
@@ -224,7 +221,7 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   if (isWileyProxyHost(target.host)) {
     effectiveUpstreamCookies = ensureCookiePair(effectiveUpstreamCookies, 'theproxy', 'ezproxy');
   }
-  if (isScienceDirectProxyHost(target.host)) {
+  if (isScienceDirectProxyHost(target.host) || isScopusProxyHost(target.host)) {
     effectiveUpstreamCookies = ensureCookiePair(effectiveUpstreamCookies, 'BROWSER_SUPPORTS_COOKIES', '1');
   }
   if (effectiveUpstreamCookies) {
@@ -402,6 +399,10 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
       text = rewritePublisherHostJavaScriptText(text, url.hostname, publisherCookieScopeHost, proxyableHosts);
       text = rewriteCloudflareChallengePaths(text);
     }
+    if (isScopusProxyHost(target.host) && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
+      text = patchScopusNextData(text, session.origin_host, url.hostname);
+      text = injectScopusAnalyticsStub(text);
+    }
     if (challengeSurface) {
       text = relaxProxyMetaContentSecurityPolicy(text);
       text = rewriteCloudflareChallengePaths(text);
@@ -412,7 +413,7 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
         proxyCookieDomainFromEnv(env, url.hostname)
       );
     }
-    if (publisherCookieScopeHost && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
+    if (publisherCookieScopeHost && publisherCookieScopeHost !== 'scopus.com' && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
       text = relaxProxyMetaContentSecurityPolicy(text);
       text = injectPublisherCookieNamespaceScript(
         text,
@@ -506,9 +507,12 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   // rewriteSessionTextProxyUrls on WoS JavaScript bundles — publisher URLs are never
   // hardcoded in those Angular bundles, so scanning them for 100+ extra hosts is pure
   // CPU waste that triggers a 503 on large bundles (the previous fix that caused 503).
-  let wosJsRewriteHosts = null;
-  if (isWebOfScienceSurface({ host: session.origin_host }, { productSlug: session.product_slug })) {
-    wosJsRewriteHosts = new HostAllowlist(proxyableHosts.patterns());
+  let coreJsRewriteHosts = null;
+  if (
+    isWebOfScienceSurface({ host: session.origin_host }, { productSlug: session.product_slug }) ||
+    session.product_slug === 'scopus'
+  ) {
+    coreJsRewriteHosts = new HostAllowlist(proxyableHosts.patterns());
     try {
       const pubHosts = await loadWosPublisherHosts(env.DB, session.institution_id);
       for (const h of pubHosts) if (h) proxyableHosts.add(h);
@@ -543,18 +547,100 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     return htmlError(403, 'Bu oturum bu yayıncı hostuna erişemez.');
   }
 
-  const scienceDirectSearchApiAlias = session.product_slug === 'sciencedirect' &&
-    target.path === '/search' &&
-    url.searchParams.has(SCIENCEDIRECT_SEARCH_API_ALIAS_PARAM);
-  if (scienceDirectSearchApiAlias) {
-    target.path = '/search/api';
-  }
-
   // Nature's client sometimes calls the verification service as a relative
   // /verify/* path. That path belongs to verify.nature.com, not www.nature.com.
   // Route it to the real service instead of returning a proxy-origin 404.
   if (session.product_slug === 'nature' && target.path.startsWith('/verify/')) {
     target.host = 'verify.nature.com';
+  }
+
+  // Scopus: rum.scopus.com is NeverProxy — analytics only, 204 to avoid errors.
+  if (session.product_slug === 'scopus' && target.host === 'rum.scopus.com') {
+    return new Response(null, { status: 204 });
+  }
+
+  if (session.product_slug === 'sciencedirect' && target.path.startsWith('/cdn-cgi/challenge-platform/')) {
+    const headers = new Headers({
+      'Content-Type': 'application/javascript; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    clearRawPublisherClearanceCookies(
+      headers,
+      'sciencedirect.com',
+      proxyCookieDomainFromEnv(env, url.hostname)
+    );
+    return new Response('/* LibEdge: ScienceDirect challenge asset suppressed on proxy surface. */', {
+      status: 200,
+      headers,
+    });
+  }
+
+  const scienceDirectPdfLocation = scienceDirectPdfDirectProxyLocation(url, target);
+  if (scienceDirectPdfLocation) {
+    return new Response(null, {
+      status: 302,
+      headers: new Headers({
+        Location: scienceDirectPdfLocation,
+        'Cache-Control': 'no-store',
+      }),
+    });
+  }
+
+  const getFtrDirectTarget = getFtrEmbeddedTargetUrl(target);
+  if (getFtrDirectTarget) {
+    const embeddedHost = normalizeHost(getFtrDirectTarget.hostname);
+    const canRouteEmbeddedHost = embeddedHost && (
+      proxyableHosts.has(embeddedHost) ||
+      ((session.product_slug === 'scopus' ||
+        isWebOfScienceSurface({ host: session.origin_host }, { productSlug: session.product_slug })) &&
+        isElsevierProxyHost(embeddedHost))
+    );
+    if (canRouteEmbeddedHost) {
+      if (!proxyableHosts.has(embeddedHost)) {
+        proxyableHosts.add(embeddedHost);
+        ctx.waitUntil(persistDynamicSessionProxyHost(env, sessionId, embeddedHost));
+      }
+      const location = `https://${url.hostname}${sessionHostPathFor(
+        embeddedHost,
+        session.origin_host,
+        getFtrDirectTarget.pathname || '/'
+      )}${getFtrDirectTarget.search}${getFtrDirectTarget.hash}`;
+      return new Response(null, {
+        status: 302,
+        headers: new Headers({
+          Location: location,
+          'Cache-Control': 'no-store',
+        }),
+      });
+    }
+  }
+
+  // Elsevier/Scopus cookie bridge endpoint.
+  // Browser calls POST /cookies/set.uri but Scopus only handles GET.
+  // Forward as GET via egress so Scopus can set session cookies server-side,
+  // then capture those cookies into the KV jar so subsequent requests carry them.
+  if (target.path === '/cookies/set.uri') {
+    try {
+      const bridgeUrl = `https://${target.host}/cookies/set.uri${url.search}`;
+      const bridgeHeaders = buildUpstreamHeaders(request.headers, {
+        proxyHostname: url.hostname, originHost: target.host, targetHost: target.host,
+      });
+      const storedNow = await loadSessionHostCookieJar(env, sessionId, target.host);
+      if (storedNow) bridgeHeaders.set('Cookie', storedNow);
+      const bridgeResp = await egressFetch(env, session.institution_id, bridgeUrl, {
+        method: 'GET', headers: bridgeHeaders,
+      });
+      const body = await bridgeResp.text();
+      ctx.waitUntil(persistSessionHostCookieJar(env, sessionId, target.host, storedNow, bridgeResp.headers));
+      const respHeaders = new Headers({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
+      for (const sc of collectSetCookies(bridgeResp.headers)) {
+        respHeaders.append('Set-Cookie', rewriteSessionHostSetCookie(sc, url.hostname, {}));
+      }
+      return new Response(body || 'callback({})', { status: 200, headers: respHeaders });
+    } catch {
+      const cb = url.searchParams.get('callback') || 'callback';
+      return new Response(`${cb}({})`, { status: 200, headers: { 'Content-Type': 'application/javascript; charset=utf-8' } });
+    }
   }
 
   // Scopus home.url — EZproxy fetches this URI-list to initialise the session
@@ -571,16 +657,22 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
       );
       const ct = homeResp.headers.get('content-type') || '';
       const text = await homeResp.text();
-      // URI-list: find first https:// line; fall back to text content
+
+      // URI-list: find first https:// line that isn't home.url itself (avoid loop)
+      // and isn't an error page URL.
       const redirectTarget = text.split('\n').map(l => l.trim())
-        .find(l => l.startsWith('https://') || l.startsWith('http://'));
+        .find(l =>
+          (l.startsWith('https://') || l.startsWith('http://')) &&
+          !l.includes('/home.url') &&
+          !l.includes('statusCode=') &&
+          !l.includes('/error')
+        );
       if (redirectTarget) {
         const dest = redirectTarget.replace(/^https?:\/\/[^/]+/, `https://${url.hostname}`);
-        const setCookies = [...homeResp.headers.entries()]
-          .filter(([k]) => k.toLowerCase() === 'set-cookie')
-          .map(([, v]) => v);
         const h = new Headers({ Location: dest });
-        for (const sc of setCookies) h.append('Set-Cookie', sc);
+        // await — KV write must complete before redirect so next request sees the cookies.
+        const existing = await loadSessionHostCookieJar(env, sessionId, target.host);
+        await persistSessionHostCookieJar(env, sessionId, target.host, existing, homeResp.headers);
         return new Response(null, { status: 302, headers: h });
       }
       // If response is already JS/HTML, pass it through
@@ -609,6 +701,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   const search = rewriteQueryProxyUrls(url.search, url.hostname, target.host, {
     sessionOriginHost: session.origin_host,
     preserveHostnameParam: isScienceDirectProxyHost(target.host),
+    targetPath: target.path,
   });
   const targetUrl = `https://${target.host}${target.path}${search}`;
   const publisherCookieScopeHost = getPublisherCookieScopeHost(target.host);
@@ -655,7 +748,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   if (isWileyProxyHost(target.host)) {
     effectiveUpstreamCookies = ensureCookiePair(effectiveUpstreamCookies, 'theproxy', 'ezproxy');
   }
-  if (isScienceDirectProxyHost(target.host)) {
+  if (isScienceDirectProxyHost(target.host) || isScopusProxyHost(target.host)) {
     effectiveUpstreamCookies = ensureCookiePair(effectiveUpstreamCookies, 'BROWSER_SUPPORTS_COOKIES', '1');
   }
   if (effectiveUpstreamCookies) {
@@ -689,19 +782,20 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   // Playwright/Chrome TLS to bypass. ACS/Emerald use IP-based Managed Challenge
   // only and work fine via the Go egress client (egressFetch).
   //
-  const PLAYWRIGHT_SLUGS = new Set(['cab-abstracts', 'wiley']);
+  const PLAYWRIGHT_SLUGS = new Set(['cab-abstracts', 'wiley', 'scopus']);
   // Also use Playwright when the TARGET host is a CF Bot Management publisher,
   // even if we're in a different session (e.g. WoS session accessing a Wiley article
   // via GetFTR full-text link).
-  const scienceDirectSearchApiNeedsBrowser =
-    isGet &&
-    !isCfPath &&
-    isScienceDirectProxyHost(target.host) &&
-    target.path === '/search/api';
-  if (scienceDirectSearchApiNeedsBrowser) {
-    upstreamHeaders.set('X-RA-Raw', '1');
-  }
-  const needsPlaywright = (productWafBrowser && PLAYWRIGHT_SLUGS.has(session.product_slug)) ||
+  // ScienceDirect's search API works as a same-origin XHR through the normal
+  // egress path. Forcing it through ra-browser/raw fetch returns Cloudflare
+  // HTML 403 even when the browser has a valid cf_clearance.
+  const scienceDirectSearchApiNeedsBrowser = false;
+  const scopusRootNavigation = session.product_slug === 'scopus' &&
+    isDocNav &&
+    isScopusProxyHost(target.host) &&
+    target.host === session.origin_host &&
+    target.path === '/';
+  const needsPlaywright = (!scopusRootNavigation && productWafBrowser && PLAYWRIGHT_SLUGS.has(session.product_slug)) ||
     (isGet && !isCfPath && isWileyProxyHost(target.host)) ||
     scienceDirectSearchApiNeedsBrowser;
   // If cf_clearance is already in cookies (injected from D1), skip the slow full
@@ -709,7 +803,12 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   // Full Playwright is only needed when no clearance is available (first visit /
   // after expiry) to resolve the CF Bot Management challenge via Turnstile.
   const useBrowserFetch      = isGet && !isCfPath && ((isDocNav && needsPlaywright) || scienceDirectSearchApiNeedsBrowser);
-  const useAssetBrowserFetch = isGet && !isDocNav && !isCfPath && needsPlaywright && !scienceDirectSearchApiNeedsBrowser;
+  // Scopus: route all API requests (including POST) through Chrome TLS to avoid
+  // TLS fingerprint inconsistency between Playwright page load and Go egress.
+  const scopusApiNeedsBrowser = PLAYWRIGHT_SLUGS.has(session.product_slug) && !isGet && !isCfPath;
+  const useAssetBrowserFetch = (!isCfPath && needsPlaywright && !scienceDirectSearchApiNeedsBrowser && (
+    (isGet && !isDocNav) || scopusApiNeedsBrowser
+  ));
 
   let upstreamResp;
   try {
@@ -743,7 +842,9 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
       }
     } else if (useAssetBrowserFetch) {
       upstreamResp = await assetBrowserFetch(env, session.institution_id, targetUrl, {
+        method: request.method,
         headers: upstreamHeaders,
+        body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
       });
     } else {
       upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
@@ -925,8 +1026,12 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
       // For WoS JavaScript bundles: use WoS-core hosts only (no publisher hosts).
       // Publisher URLs are not hardcoded in Angular bundles; scanning a 1MB+ bundle
       // for 100+ extra publisher host patterns causes CPU timeout (503).
-      const textRewriteHosts = (wosJsRewriteHosts && isWebOfScienceProxyHost(target.host) && isJavaScriptContentType(contentType))
-        ? wosJsRewriteHosts
+      const textRewriteHosts = (
+        coreJsRewriteHosts &&
+        (isWebOfScienceProxyHost(target.host) || isScopusProxyHost(target.host)) &&
+        isJavaScriptContentType(contentType)
+      )
+        ? coreJsRewriteHosts
         : proxyableHosts;
       text = rewriteSessionTextProxyUrls(text, url.hostname, session.origin_host, textRewriteHosts);
       if (isWebOfScienceProxyHost(target.host)) {
@@ -944,6 +1049,10 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
       text = rewritePublisherHostJavaScriptText(text, url.hostname, publisherCookieScopeHost, proxyableHosts);
       text = rewriteCloudflareChallengePaths(text);
     }
+    if (isScopusProxyHost(target.host) && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
+      text = patchScopusNextData(text, session.origin_host, url.hostname);
+      text = injectScopusAnalyticsStub(text);
+    }
     if (challengeSurface) {
       text = relaxProxyMetaContentSecurityPolicy(text);
       text = rewriteCloudflareChallengePaths(text);
@@ -954,7 +1063,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
         proxyCookieDomainFromEnv(env, url.hostname)
       );
     }
-    if (publisherCookieScopeHost && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
+    if (publisherCookieScopeHost && publisherCookieScopeHost !== 'scopus.com' && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
       text = relaxProxyMetaContentSecurityPolicy(text);
       text = injectPublisherCookieNamespaceScript(
         text,
@@ -1440,10 +1549,19 @@ async function loadProxySession(env, sid) {
   try {
     const s = JSON.parse(raw);
     if (s.expires_at && s.expires_at < Math.floor(Date.now() / 1000)) return null;
-    return s;
+    return normalizeLoadedProxySession(s);
   } catch {
     return null;
   }
+}
+
+function normalizeLoadedProxySession(session) {
+  if (!session || typeof session !== 'object') return session;
+  if (isScienceDirectSurface({ host: session.origin_host }, { productSlug: session.product_slug }) &&
+      !isScienceDirectProxyHost(session.origin_host)) {
+    return { ...session, origin_host: 'www.sciencedirect.com' };
+  }
+  return session;
 }
 
 async function safeKvGet(kv, key) {
@@ -1528,6 +1646,8 @@ export function buildUpstreamHeaders(incoming, context = {}) {
       isCasPrivateHeader(lower) ||
       lower === 'x-requested-with'
     ) continue;
+    // Scopus: EZproxy stanza "HTTPHeader -request -process authentication-source"
+    if (lower === 'authentication-source' && context.publisherCookieScopeHost === 'scopus.com') continue;
     if (context.forceDesktopUserAgent && lower === 'user-agent') {
       out.set('User-Agent', DESKTOP_USER_AGENT);
       sawUserAgent = true;
@@ -1691,7 +1811,8 @@ function buildResponseHeaders(incoming, baseHost, encodedLabel) {
 // EMIS gibi siteler "ref=<current_url>" ile redirect loop oluşturur;
 // upstream'e göndermeden önce proxy URL'lerini temizleriz.
 export function rewriteQueryProxyUrls(search, proxyHostname, originHost, options = {}) {
-  if (!search || !search.includes(proxyHostname)) return search;
+  const maybeEncodedScienceDirectPdfHost = isScienceDirectPdfPath(options.targetPath);
+  if (!search || (!search.includes(proxyHostname) && !maybeEncodedScienceDirectPdfHost)) return search;
   const normalizedProxyHost = normalizeHost(proxyHostname);
   const normalizedOriginHost = normalizeHost(originHost);
   const normalizedSessionOriginHost = normalizeHost(options.sessionOriginHost);
@@ -1712,6 +1833,15 @@ export function rewriteQueryProxyUrls(search, proxyHostname, originHost, options
     ) {
       params.set('hostname', normalizedOriginHost);
       changed = true;
+    }
+
+    if (isScienceDirectPdfPath(options.targetPath) && normalizedProxyHost && normalizedOriginHost) {
+      for (const key of ['host', 'tsoh', 'rh', 'ns_h']) {
+        if (decodeBase64UrlParam(params.get(key)) === normalizedProxyHost) {
+          params.set(key, btoa(normalizedOriginHost));
+          changed = true;
+        }
+      }
     }
 
     if (normalizedProxyHost && normalizedSessionOriginHost) {
@@ -1754,15 +1884,42 @@ function rewritePlainProxyUrlsInSearch(search, proxyHostname, originHost) {
     .replaceAll(`https://${proxyHostname}`, `https://${originHost}`);
 }
 
-function stripQueryParam(search, name) {
-  if (!search || !name) return search || '';
+function isScienceDirectPdfPath(pathname = '') {
+  const path = String(pathname || '').toLowerCase();
+  return path.endsWith('/pdfft') || path.includes('/pdfft/');
+}
+
+function decodeBase64UrlParam(value) {
+  if (!value) return '';
   try {
-    const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
-    params.delete(name);
-    const next = params.toString();
-    return next ? `?${next}` : '';
+    return atob(String(value).replace(/-/g, '+').replace(/_/g, '/')).trim().toLowerCase();
   } catch {
-    return search;
+    return '';
+  }
+}
+
+export function scienceDirectPdfDirectProxyLocation(url, target = {}) {
+  if (!url || !isScienceDirectProxyHost(target.host) || !isScienceDirectPdfPath(target.path)) return '';
+  const decodedOriginal = decodeHexUrlParam(url.searchParams?.get('original'));
+  if (!decodedOriginal || !decodedOriginal.startsWith('?')) return '';
+  const params = new URLSearchParams(decodedOriginal.slice(1));
+  const pid = params.get('pid') || '';
+  if (!/\.pdf$/i.test(pid)) return '';
+  const pdfPath = String(target.path || '').replace(/\/pdfft(?:\/.*)?$/i, '/pdf');
+  if (!pdfPath || pdfPath === target.path) return '';
+  const query = params.toString();
+  return `${url.origin}${pdfPath}${query ? `?${query}` : ''}`;
+}
+
+function decodeHexUrlParam(value) {
+  const input = String(value || '').trim();
+  if (!input || input.length % 2 || !/^[0-9a-f]+$/i.test(input)) return '';
+  try {
+    const bytes = [];
+    for (let i = 0; i < input.length; i += 2) bytes.push(parseInt(input.slice(i, i + 2), 16));
+    return new TextDecoder().decode(new Uint8Array(bytes));
+  } catch {
+    return '';
   }
 }
 
@@ -1809,6 +1966,23 @@ function parseSessionHostTarget(pathname, originHost, proxyableHosts, upstreamCo
 
 export function shouldRouteSessionPathToOrigin(pathname, originHost, context = {}) {
   const path = rewriteProxyChallengePath(pathname || '/');
+  if (isScienceDirectSurface({ host: originHost }, context)) {
+    return path === '/' ||
+      path.startsWith('/search') ||
+      path.startsWith('/journal/') ||
+      path.startsWith('/science/') ||
+      path.startsWith('/book/') ||
+      path.startsWith('/user/') ||
+      path.startsWith('/sdfe/') ||
+      path.startsWith('/shared-assets/') ||
+      path.startsWith('/eu-west-1/') ||
+      path.startsWith('/prod/') ||
+      path.startsWith('/feature/') ||
+      path.startsWith('/assets/') ||
+      path === '/arp.css' ||
+      path === '/arp.js' ||
+      path === '/ai-components';
+  }
   if (!isWebOfScienceSurface({ host: originHost }, context)) return false;
 
   return path.startsWith('/api/wosnx/') ||
@@ -2024,6 +2198,30 @@ function isWebOfScienceGatewayRedirectSurface(target) {
   const path = String(target?.path || '');
   return (isWebOfScienceProxyHost(host) && path.startsWith('/api/gateway')) ||
     host === 'ct.prod.getft.io';
+}
+
+export function getFtrEmbeddedTargetUrl(target) {
+  if (normalizeHost(target?.host) !== 'ct.prod.getft.io') return null;
+  const candidates = String(target?.path || '')
+    .replace(/^\/+/, '')
+    .split(/[/.]/)
+    .filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const normalized = candidate.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const decoded = atob(padded);
+      const match = decoded.match(/https?:\/\/[^,\s]+/i);
+      if (!match) continue;
+      const url = new URL(match[0]);
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') continue;
+      return url;
+    } catch {
+      // Try the next token-like segment.
+    }
+  }
+  return null;
 }
 
 export function scienceDirectDynamicRedirectHost(location, target, session = {}) {
@@ -2276,14 +2474,17 @@ export function rewriteSessionTextProxyUrls(text, proxyHostname, originHost, pro
     const encodedProxyOrigin = encodeURIComponent(proxyOrigin);
     const doubleEncodedProxyOrigin = encodeURIComponent(encodedProxyOrigin);
 
+    const plainHost = proxyOrigin.replace(/^https:\/\//, '');
     out = out
       .replaceAll(`https://${targetHost}`, proxyOrigin)
       .replaceAll(`http://${targetHost}`, proxyOrigin)
       .replaceAll(`//${targetHost}`, proxyOrigin.replace(/^https:/, ''))
-      .replaceAll(`"${targetHost}/`, `"${proxyOrigin.replace(/^https:\/\//, '')}/`)
-      .replaceAll(`'${targetHost}/`, `'${proxyOrigin.replace(/^https:\/\//, '')}/`)
-      .replaceAll(`=${targetHost}/`, `=${proxyOrigin.replace(/^https:\/\//, '')}/`)
-      .replaceAll(`&${targetHost}/`, `&${proxyOrigin.replace(/^https:\/\//, '')}/`)
+      .replaceAll(`"${targetHost}"`, `"${plainHost}"`)
+      .replaceAll(`'${targetHost}'`, `'${plainHost}'`)
+      .replaceAll(`"${targetHost}/`, `"${plainHost}/`)
+      .replaceAll(`'${targetHost}/`, `'${plainHost}/`)
+      .replaceAll(`=${targetHost}/`, `=${plainHost}/`)
+      .replaceAll(`&${targetHost}/`, `&${plainHost}/`)
       .replaceAll(`https:\\/\\/${targetHost}`, escapedProxyOrigin)
       .replaceAll(`http:\\/\\/${targetHost}`, escapedProxyOrigin)
       .replaceAll(`\\/\\/${targetHost}`, escapedProxyOrigin.replace(/^https:\\/, ''))
@@ -2515,6 +2716,28 @@ function escapeRegExp(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function injectScopusAnalyticsStub(text) {
+  const html = String(text || '');
+  if (html.includes('__raScopusAnalyticsStub')) return html;
+  // _satellite (Adobe Launch) may be blocked by tracking prevention; stub known methods.
+  // Simple stub — no Proxy, no DDM (Scopus needs DDM undefined to detect and load it).
+  const script = `<script>(function(){try{Object.defineProperty(window,'__raScopusAnalyticsStub',{value:1});var n=function(){};if(typeof window._satellite==='undefined'){window._satellite={track:n,notify:n,pageBottom:n,setVar:n,getVar:n,_runScript:n,_runScript1:n,_runScript2:n,_runScript3:n,buildInfo:{}};}}catch(e){}})()</script>`;
+  if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b([^>]*)>/i, `<head$1>${script}`);
+  if (/<script\b/i.test(html)) return html.replace(/<script\b/i, `${script}<script`);
+  return `${script}${html}`;
+}
+
+function patchScopusNextData(text, originHost, proxyHostname) {
+  // Patch bare hostname occurrences inside __NEXT_DATA__ JSON so React hydration
+  // sees proxy URLs (not www.scopus.com), preventing duplicate header/footer renders.
+  // rewriteSessionTextProxyUrls handles "https://..." patterns but misses bare
+  // hostnames embedded in JSON values like "host":"www.scopus.com".
+  return String(text || '').replace(
+    /(<script\b[^>]*\bid\s*=\s*["']__NEXT_DATA__["'][^>]*>)([\s\S]*?)(<\/script>)/i,
+    (_, open, json, close) => `${open}${json.replaceAll(originHost, proxyHostname)}${close}`
+  );
+}
+
 export function relaxProxyMetaContentSecurityPolicy(text) {
   return String(text || '').replace(
     /<meta\b(?=[^>]*\bhttp-equiv\s*=\s*["']?content-security-policy["']?)[^>]*>/gi,
@@ -2593,7 +2816,7 @@ function buildPublisherCookieNamespaceScript(scopeHost, originHost = '', debugEn
   const debugScript = debugEnabled
     ? `var dbg=function(k,m){try{var b=JSON.stringify({kind:k,message:String(m||'').slice(0,300),path:location.pathname});if(navigator.sendBeacon)navigator.sendBeacon('${CLIENT_DEBUG_PATH}',new Blob([b],{type:'application/json'}));else fetch('${CLIENT_DEBUG_PATH}',{method:'POST',headers:{'Content-Type':'application/json'},body:b,keepalive:true});}catch(e){}};var dbgurl=function(k,u){u=String(u||'');if(/cdn-cgi|challenge|chl_/i.test(u))dbg(k,u);};window.addEventListener('error',function(e){dbg('error',(e.message||'')+' '+(e.filename||'')+':'+(e.lineno||''));});window.addEventListener('unhandledrejection',function(e){dbg('unhandledrejection',e.reason&&e.reason.message?e.reason.message:e.reason);});setTimeout(function(){try{dbg('ready','publisher-cookie-shim path='+location.pathname+location.search+' cookies='+(document.cookie||'').split(/;\\s*/).map(function(p){return p.split('=')[0];}).filter(Boolean).join(','));}catch(e){dbg('ready','publisher-cookie-shim');}},0);`
     : `var dbg=function(){};var dbgurl=function(){};`;
-  return `<script>(function(){try{var scope=${safeScope};var originHost=${safeOriginHost}||('www.'+scope);var origin='https://'+originHost;${debugScript}var fixu=function(u){try{if(typeof u==='string'){var raw=u;var s=raw.replace(/^\\/cdn-cgi\\//,'${CF_CHALLENGE_PROXY_PREFIX}').replace(location.origin+'/cdn-cgi/',location.origin+'${CF_CHALLENGE_PROXY_PREFIX}');if(scope==='sciencedirect.com'){try{var abs=/^https?:/i.test(s)||s.indexOf(location.origin)===0;var x=new URL(s,location.href);if(x.origin===location.origin&&x.pathname==='/search/api'){x.pathname='/search';x.searchParams.set('${SCIENCEDIRECT_SEARCH_API_ALIAS_PARAM}','1');s=abs?x.href:(x.pathname+x.search+x.hash);dbgurl('sd-search-api-alias',s);}}catch(y){}}return s;}return u;}catch(e){return u;}};try{var of=window.fetch;if(of)window.fetch=function(i,o){dbgurl('fetch',typeof i==='string'?i:(i&&i.url));if(typeof i==='string')i=fixu(i);else if(i&&i.url&&typeof Request==='function'){var fu=fixu(i.url);if(fu!==i.url)i=new Request(fu,i);}return of.call(this,i,o);};var xo=XMLHttpRequest&&XMLHttpRequest.prototype&&XMLHttpRequest.prototype.open;if(xo)XMLHttpRequest.prototype.open=function(m,u){dbgurl('xhr',u);arguments[1]=fixu(u);return xo.apply(this,arguments);};var ap=Node&&Node.prototype&&Node.prototype.appendChild;if(ap)Node.prototype.appendChild=function(n){try{dbgurl('append',(n&&(n.src||n.href||n.action))||'');}catch(e){}return ap.apply(this,arguments);};var ib=Node&&Node.prototype&&Node.prototype.insertBefore;if(ib)Node.prototype.insertBefore=function(n,r){try{dbgurl('insert',(n&&(n.src||n.href||n.action))||'');}catch(e){}return ib.apply(this,arguments);};}catch(e){}window.__raPublisherLocation={protocol:'https:',hostname:originHost,host:originHost,origin:origin,get pathname(){return location.pathname;},get search(){return location.search;},get hash(){return location.hash;},get href(){return origin+location.pathname+location.search+location.hash;}};var prefix='__cp_'+scope+'|';var names={cf_clearance:1,__cf_bm:1,EMER_SessionId:1,OptanonConsent:1,OptanonAlertBoxClosed:1};var consent={OptanonConsent:1,OptanonAlertBoxClosed:1};var lskey=function(n){return'__ra_'+scope+'_'+n;};var remember=function(n,v){try{if(consent[n])localStorage.setItem(lskey(n),v);}catch(e){}};var recall=function(parts,seen){try{for(var n in consent){if(!seen[n]){var v=localStorage.getItem(lskey(n));if(v){seen[n]=1;parts.push(n+'='+v);}}}}catch(e){}return parts;};var domains={};domains[scope]=1;domains['.'+scope]=1;domains[originHost]=1;domains['.'+originHost]=1;var d=Object.getOwnPropertyDescriptor(Document.prototype,'cookie')||Object.getOwnPropertyDescriptor(HTMLDocument.prototype,'cookie');if(!d||!d.get||!d.set||window.__raPublisherCookieNamespace)return;Object.defineProperty(window,'__raPublisherCookieNamespace',{value:1});Object.defineProperty(document,'cookie',{configurable:true,get:function(){var raw=d.get.call(document)||'';var scoped={};var seen={};var parts=raw.split(/;\\s*/).filter(Boolean).map(function(p){var i=p.indexOf('=');if(i<1)return p;var n=p.slice(0,i);if(n.indexOf(prefix)===0){var clean=n.slice(prefix.length);scoped[clean]=1;seen[clean]=1;return clean+p.slice(i);}seen[n]=1;return p;}).filter(function(p){var i=p.indexOf('=');if(i<1)return true;var n=p.slice(0,i);if(scoped[n])return false;return true;});return recall(parts,seen).join('; ');},set:function(v){var s=String(v||'');var semi=s.indexOf(';');var end=semi<0?s.length:semi;var eq=s.indexOf('=');if(eq>0&&eq<end){var n=s.slice(0,eq).trim();var val=s.slice(eq+1,end);if(consent[n])remember(n,val);var dm=/;\\s*domain=([^;]*)/i.exec(s);var cd=dm?String(dm[1]||'').trim().toLowerCase():'';var publisherDomain=!!(cd&&domains[cd]);var shouldScope=!!(publisherDomain||names[n]);if(shouldScope||n.indexOf('cf_chl_')===0)dbg('cookie-set',n);if(shouldScope&&n.indexOf(prefix)!==0){s=prefix+n+s.slice(eq);}if(shouldScope||publisherDomain){s=s.replace(/;\\s*domain=[^;]*/ig,'');}}return d.set.call(document,s);}});var hideOt=function(){try{['onetrust-banner-sdk','onetrust-consent-sdk','onetrust-pc-sdk'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});document.querySelectorAll('.onetrust-pc-dark-filter,.ot-sdk-container,.ot-sdk-row').forEach(function(el){if(el&&/onetrust|ot-/i.test(el.className||''))el.style.display='none';});}catch(e){}};var setOt=function(reject){try{var stamp=(new Date()).toISOString();var groups=reject?'C0001:1,C0002:0,C0003:0,C0004:0':'C0001:1,C0002:1,C0003:1,C0004:1';document.cookie='OptanonAlertBoxClosed='+encodeURIComponent(stamp)+'; path=/; max-age=31536000';document.cookie='OptanonConsent='+encodeURIComponent('groups='+groups+'&isGpcEnabled=0&datestamp='+stamp)+'; path=/; max-age=31536000';hideOt();}catch(e){}};document.addEventListener('click',function(e){try{var t=e.target&&e.target.closest&&e.target.closest('#onetrust-accept-btn-handler,#accept-recommended-btn-handler,#onetrust-reject-all-handler,.ot-pc-refuse-all-handler,.save-preference-btn-handler');if(!t)return;var id=((t.id||'')+' '+(t.className||'')).toLowerCase();setOt(/reject|refuse/.test(id));e.preventDefault();e.stopImmediatePropagation();e.stopPropagation();}catch(x){}},true);setTimeout(function(){if((document.cookie||'').indexOf('OptanonAlertBoxClosed=')>=0)hideOt();},0);}catch(e){}})();</script>`;
+  return `<script>(function(){try{var scope=${safeScope};var originHost=${safeOriginHost}||('www.'+scope);var origin='https://'+originHost;${debugScript}var fixu=function(u){try{if(typeof u==='string'){var raw=u;var s=raw.replace(/^\\/cdn-cgi\\//,'${CF_CHALLENGE_PROXY_PREFIX}').replace(location.origin+'/cdn-cgi/',location.origin+'${CF_CHALLENGE_PROXY_PREFIX}');return s;}return u;}catch(e){return u;}};var isSdApi=function(u){try{var x=new URL(String(u&&u.url?u.url:u),location.href);return x.origin===location.origin&&x.pathname==='/search/api';}catch(e){return false;}};try{var of=window.fetch;if(of)window.fetch=function(i,o){dbgurl('fetch',typeof i==='string'?i:(i&&i.url));if(typeof i==='string'){i=fixu(i);if(isSdApi(i))o=Object.assign({},o||{},{credentials:'include'});}else if(i&&i.url&&typeof Request==='function'){var fu=fixu(i.url);if(fu!==i.url)i=new Request(fu,i);if(isSdApi(i))i=new Request(i,{credentials:'include'});}return of.call(this,i,o);};var xo=XMLHttpRequest&&XMLHttpRequest.prototype&&XMLHttpRequest.prototype.open;if(xo)XMLHttpRequest.prototype.open=function(m,u){dbgurl('xhr',u);arguments[1]=fixu(u);if(isSdApi(arguments[1]))this.withCredentials=true;return xo.apply(this,arguments);};var ap=Node&&Node.prototype&&Node.prototype.appendChild;if(ap)Node.prototype.appendChild=function(n){try{dbgurl('append',(n&&(n.src||n.href||n.action))||'');}catch(e){}return ap.apply(this,arguments);};var ib=Node&&Node.prototype&&Node.prototype.insertBefore;if(ib)Node.prototype.insertBefore=function(n,r){try{dbgurl('insert',(n&&(n.src||n.href||n.action))||'');}catch(e){}return ib.apply(this,arguments);};}catch(e){}window.__raPublisherLocation={protocol:'https:',hostname:originHost,host:originHost,origin:origin,get pathname(){return location.pathname;},get search(){return location.search;},get hash(){return location.hash;},get href(){return origin+location.pathname+location.search+location.hash;}};var prefix='__cp_'+scope+'|';var names={cf_clearance:1,__cf_bm:1,EMER_SessionId:1,OptanonConsent:1,OptanonAlertBoxClosed:1};var consent={OptanonConsent:1,OptanonAlertBoxClosed:1};var lskey=function(n){return'__ra_'+scope+'_'+n;};var remember=function(n,v){try{if(consent[n])localStorage.setItem(lskey(n),v);}catch(e){}};var recall=function(parts,seen){try{for(var n in consent){if(!seen[n]){var v=localStorage.getItem(lskey(n));if(v){seen[n]=1;parts.push(n+'='+v);}}}}catch(e){}return parts;};var domains={};domains[scope]=1;domains['.'+scope]=1;domains[originHost]=1;domains['.'+originHost]=1;var d=Object.getOwnPropertyDescriptor(Document.prototype,'cookie')||Object.getOwnPropertyDescriptor(HTMLDocument.prototype,'cookie');if(!d||!d.get||!d.set||window.__raPublisherCookieNamespace)return;Object.defineProperty(window,'__raPublisherCookieNamespace',{value:1});Object.defineProperty(document,'cookie',{configurable:true,get:function(){var raw=d.get.call(document)||'';var scoped={};var seen={};var parts=raw.split(/;\\s*/).filter(Boolean).map(function(p){var i=p.indexOf('=');if(i<1)return p;var n=p.slice(0,i);if(n.indexOf(prefix)===0){var clean=n.slice(prefix.length);scoped[clean]=1;seen[clean]=1;return clean+p.slice(i);}seen[n]=1;return p;}).filter(function(p){var i=p.indexOf('=');if(i<1)return true;var n=p.slice(0,i);if(scoped[n])return false;return true;});return recall(parts,seen).join('; ');},set:function(v){var s=String(v||'');var semi=s.indexOf(';');var end=semi<0?s.length:semi;var eq=s.indexOf('=');if(eq>0&&eq<end){var n=s.slice(0,eq).trim();var val=s.slice(eq+1,end);if(consent[n])remember(n,val);var dm=/;\\s*domain=([^;]*)/i.exec(s);var cd=dm?String(dm[1]||'').trim().toLowerCase():'';var publisherDomain=!!(cd&&domains[cd]);var shouldScope=!!(publisherDomain||names[n]);if(shouldScope||n.indexOf('cf_chl_')===0)dbg('cookie-set',n);if(shouldScope&&n.indexOf(prefix)!==0){s=prefix+n+s.slice(eq);}if(shouldScope||publisherDomain){s=s.replace(/;\\s*domain=[^;]*/ig,'');}}return d.set.call(document,s);}});if(scope==='scopus.com'){try{var nd=document.getElementById('__NEXT_DATA__');if(nd&&nd.textContent){var ph=location.hostname;var oh=originHost||('www.'+scope);var raw=nd.textContent;var patched=raw.split(oh).join(ph);if(patched!==raw){nd.textContent=patched;dbg('patched-next-data',oh+'->'+ph);}}}catch(e){dbg('patch-err',e&&e.message);}var fixFetch=window.fetch;if(fixFetch)window.fetch=function(u,o){if(typeof u==='string'&&u.indexOf(originHost)>=0){u=u.replace(new RegExp('https?:\\/\\/'+originHost.replace(/\./g,'\\.'),'g'),'https://'+location.hostname);}return fixFetch.call(this,u,o);};var fixXHR=XMLHttpRequest&&XMLHttpRequest.prototype&&XMLHttpRequest.prototype.open;if(fixXHR)XMLHttpRequest.prototype.open=function(m,u){if(typeof u==='string'&&u.indexOf(originHost)>=0){u=u.replace(new RegExp('https?:\\/\\/'+originHost.replace(/\./g,'\\.'),'g'),'https://'+location.hostname);}return fixXHR.apply(this,arguments);};}if(scope==='sciencedirect.com'){var dropRaw=function(){try{var raw=d.get.call(document)||'';if(raw.indexOf('cf_clearance=')<0)return;var exp='=; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; path=/; secure; samesite=lax';var host=location.hostname;var base=host.split('.').slice(-2).join('.');d.set.call(document,'cf_clearance'+exp);d.set.call(document,'cf_clearance'+exp+'; domain='+host);if(base)d.set.call(document,'cf_clearance'+exp+'; domain='+base);if(base)d.set.call(document,'cf_clearance'+exp+'; domain=.'+base);dbg('drop-raw-cf-clearance',host);}catch(e){}};dropRaw();setInterval(dropRaw,250);}var hideOt=function(){try{['onetrust-banner-sdk','onetrust-consent-sdk','onetrust-pc-sdk'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});document.querySelectorAll('.onetrust-pc-dark-filter,.ot-sdk-container,.ot-sdk-row').forEach(function(el){if(el&&/onetrust|ot-/i.test(el.className||''))el.style.display='none';});}catch(e){}};var setOt=function(reject){try{var stamp=(new Date()).toISOString();var groups=reject?'C0001:1,C0002:0,C0003:0,C0004:0':'C0001:1,C0002:1,C0003:1,C0004:1';document.cookie='OptanonAlertBoxClosed='+encodeURIComponent(stamp)+'; path=/; max-age=31536000';document.cookie='OptanonConsent='+encodeURIComponent('groups='+groups+'&isGpcEnabled=0&datestamp='+stamp)+'; path=/; max-age=31536000';hideOt();}catch(e){}};document.addEventListener('click',function(e){try{var t=e.target&&e.target.closest&&e.target.closest('#onetrust-accept-btn-handler,#accept-recommended-btn-handler,#onetrust-reject-all-handler,.ot-pc-refuse-all-handler,.save-preference-btn-handler');if(!t)return;var id=((t.id||'')+' '+(t.className||'')).toLowerCase();setOt(/reject|refuse/.test(id));e.preventDefault();e.stopImmediatePropagation();e.stopPropagation();}catch(x){}},true);setTimeout(function(){if((document.cookie||'').indexOf('OptanonAlertBoxClosed=')>=0)hideOt();},0);}catch(e){}})();</script>`;
 }
 
 // path_proxy cross-domain kontrolü için — ürünün ra_host_allowlist_json'unu yükler.
@@ -3390,6 +3613,7 @@ const PUBLISHER_COOKIE_SCOPE_HOSTS = new Map([
   ['nature.com', 'nature.com'],
   ['proquest.com', 'proquest.com'],
   ['sciencedirect.com', 'sciencedirect.com'],
+  ['scopus.com', 'scopus.com'],
   ['onlinelibrary.wiley.com', 'onlinelibrary.wiley.com'],
   ['wiley.com', 'wiley.com'],
   ['oup.com', 'oup.com'],
@@ -3413,6 +3637,11 @@ function proxyCookieDomainFromEnv(env, fallback) {
   }
   raw = normalizeHost(raw).replace(/^\.+/, '');
   return raw || fallback;
+}
+
+function isLikelyProxyToken(token) {
+  const raw = String(token || '').trim();
+  return /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(raw);
 }
 
 export function rewritePublisherCookieHeaderForUpstream(cookieHeader, scopeHost, options = {}) {
@@ -3496,7 +3725,8 @@ function scienceDirectCookieCleanupRedirect(request, url, target, cookieDomain) 
   if (!isDocumentNavigation(request.headers)) return null;
   if (String(target?.path || '').startsWith('/search/api')) return null;
   const cookieHeader = request.headers.get('Cookie') || '';
-  if (hasCookieName(cookieHeader, '__ra_sd_clean')) return null;
+  const hasRawClearance = hasCookieName(cookieHeader, 'cf_clearance');
+  if (hasCookieName(cookieHeader, '__ra_sd_clean') && !hasRawClearance) return null;
 
   const headers = new Headers({ Location: `${url.pathname}${url.search}` });
   appendOtherPublisherCookieClearHeaders(
