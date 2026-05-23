@@ -215,6 +215,18 @@ function uniqueCookieUrls(...urls) {
   return [...new Set(urls.filter(Boolean))];
 }
 
+async function waitForCookie(context, url, name, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const cookies = await context.cookies(url);
+      if (cookies.some((cookie) => cookie.name === name && cookie.value)) return true;
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return false;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // /proxy — full page navigation, caches sub-resources
 // ─────────────────────────────────────────────────────────────────────────────
@@ -271,6 +283,80 @@ async function handleProxy(req, res) {
       } catch { /* body may not be available for some responses */ }
     });
 
+    if (rawMode) {
+      const target = new URL(targetUrl);
+      let warmupUrl = `${target.origin}/`;
+      try {
+        const referer = pass.referer || pass.referrer || '';
+        if (referer && new URL(referer).origin === target.origin) warmupUrl = referer;
+      } catch { /* keep origin warmup */ }
+
+      await page.goto(warmupUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null);
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+      await waitForCookie(context, target.origin, 'cf_clearance', 12000);
+
+      const rawFetchHeaders = { ...fwdHeaders };
+      for (const h of [
+        'accept-encoding',
+        'connection',
+        'content-length',
+        'cookie',
+        'host',
+        'origin',
+        'referer',
+        'user-agent',
+      ]) delete rawFetchHeaders[h];
+      for (const h of Object.keys(rawFetchHeaders)) {
+        if (h.toLowerCase().startsWith('sec-')) delete rawFetchHeaders[h];
+      }
+
+      const fetchRawInPage = async () => page.evaluate(async ({ url, headers }) => {
+        const resp = await fetch(url, {
+          credentials: 'include',
+          headers,
+          method: 'GET',
+        });
+        const rawHeaders = {};
+        resp.headers.forEach((value, key) => { rawHeaders[key] = value; });
+        const bytes = new Uint8Array(await resp.arrayBuffer());
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        }
+        return {
+          body: btoa(binary),
+          finalUrl: resp.url,
+          headers: rawHeaders,
+          status: resp.status,
+        };
+      }, { url: targetUrl, headers: rawFetchHeaders });
+
+      let rawResult = await fetchRawInPage();
+      if (rawResult.status === 401 || rawResult.status === 403) {
+        const gotClearance = await waitForCookie(context, target.origin, 'cf_clearance', 8000);
+        if (gotClearance) rawResult = await fetchRawInPage();
+      }
+
+      const rawHeaders = {};
+      for (const [k, v] of Object.entries(rawResult.headers || {})) {
+        const lk = k.toLowerCase();
+        if (!HOP_BY_HOP.has(lk)) rawHeaders[k] = v;
+      }
+      const browserCookies = await context.cookies(uniqueCookieUrls(targetUrl, page.url(), rawResult.finalUrl));
+      const setCookies = browserCookies.map(serializeBrowserCookie).filter(Boolean);
+      if (setCookies.length) rawHeaders['set-cookie'] = setCookies;
+      const cfClearanceCookie = browserCookies.find(c => c.name === 'cf_clearance');
+      const envelope = {
+        status: rawResult.status,
+        headers: rawHeaders,
+        body: rawResult.body,
+        finalUrl: rawResult.finalUrl,
+      };
+      if (cfClearanceCookie?.value) envelope.cfClearance = cfClearanceCookie.value;
+      res.json(envelope);
+      return;
+    }
+
     const navResponse = await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     const firstStatus = navResponse ? navResponse.status() : 200;
@@ -317,24 +403,6 @@ async function handleProxy(req, res) {
         // the browser to attempt decompression on already-decoded content.
         if (!HOP_BY_HOP.has(lk) && lk !== 'content-encoding') responseHeaders[k] = v;
       }
-    }
-
-    if (rawMode) {
-      const rawResp = await context.request.get(targetUrl, { maxRedirects: 5, timeout: 30000 });
-      const rawHeaders = {};
-      for (const [k, v] of Object.entries(rawResp.headers())) {
-        const lk = k.toLowerCase();
-        if (!HOP_BY_HOP.has(lk)) rawHeaders[k] = v;
-      }
-      const browserCookies = await context.cookies(uniqueCookieUrls(targetUrl, page.url(), rawResp.url()));
-      const setCookies = browserCookies.map(serializeBrowserCookie).filter(Boolean);
-      if (setCookies.length) rawHeaders['set-cookie'] = setCookies;
-      const cfClearanceCookie = browserCookies.find(c => c.name === 'cf_clearance');
-      const body = await rawResp.body();
-      const envelope = { status: rawResp.status(), headers: rawHeaders, body: body.toString('base64'), finalUrl: rawResp.url() };
-      if (cfClearanceCookie?.value) envelope.cfClearance = cfClearanceCookie.value;
-      res.json(envelope);
-      return;
     }
 
     const browserCookies = await context.cookies(uniqueCookieUrls(targetUrl, page.url()));
@@ -396,7 +464,31 @@ async function handleAssetProxy(req, res) {
     context = await b.newContext({ ignoreHTTPSErrors: false, userAgent: pass['user-agent'] || CHROME_UA });
     await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
 
-    const apiResp = await context.request.get(targetUrl, { maxRedirects: 5, timeout: 30000 });
+    const assetMethod = (req.headers['x-ra-asset-method'] || 'GET').toUpperCase();
+    const fetchOptions = { maxRedirects: 5, timeout: 30000 };
+    // Forward non-browser-managed request headers (Referer, Accept, etc.) so that
+    // publisher API endpoints that use CSRF/Referer checks don't return 403.
+    const passHeaders = {};
+    const SKIP_HDR = new Set([
+      'user-agent', 'cookie', 'accept-encoding', 'upgrade-insecure-requests',
+      'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform', 'sec-ch-ua-full-version-list',
+      'sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest', 'sec-fetch-user',
+      'x-ra-target-url', 'x-ra-method', 'x-ra-timestamp', 'x-ra-signature',
+      'x-ra-asset', 'x-ra-asset-method', 'x-ra-raw',
+      'connection', 'keep-alive', 'te', 'trailers', 'transfer-encoding', 'upgrade',
+      'host', 'content-length', 'proxy-authenticate', 'proxy-authorization',
+    ]);
+    for (const [k, v] of Object.entries(pass)) {
+      if (!SKIP_HDR.has(k.toLowerCase())) passHeaders[k] = v;
+    }
+    if (assetMethod !== 'GET' && req.body && req.body.length) {
+      fetchOptions.method = assetMethod;
+      fetchOptions.data = req.body;
+      fetchOptions.headers = { ...passHeaders, ...(pass['content-type'] ? { 'Content-Type': pass['content-type'] } : {}) };
+    }
+    const apiResp = assetMethod === 'GET'
+      ? await context.request.get(targetUrl, { maxRedirects: 5, timeout: 30000, headers: passHeaders })
+      : await context.request.fetch(targetUrl, fetchOptions);
     const body    = await apiResp.body();
     const cached2 = { status: apiResp.status(), headers: apiResp.headers(), bodyB64: body.toString('base64') };
 
