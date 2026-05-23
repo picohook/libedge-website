@@ -3831,6 +3831,40 @@ app.get('/api/admin/runtime-info', async (c) => {
   });
 });
 
+// KVKK-02 — Legacy unsalted SHA-256 password hash istatistiği.
+// PBKDF2 hash'leri "saltHex:hashHex" formatındadır; legacy hash'lerde ':' yok.
+// Lazy-rehash login akışında otomatik PBKDF2'ye yükseltiyor, ama login olmayan
+// eski kullanıcılarda hash legacy kalır. Bu endpoint kalan legacy hash sayısını
+// ve en eski/yeni etkilenen hesap tarihlerini gösterir; e-posta açığa çıkmaz.
+app.get('/api/admin/legacy-passwords/stats', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const db = c.env.DB;
+  if (!db) return c.json({ error: 'DB yok' }, 500);
+  try {
+    const total = await db.prepare(
+      `SELECT COUNT(*) AS n FROM users WHERE password_hash NOT LIKE '%:%'`
+    ).first();
+    const stale = await db.prepare(
+      `SELECT COUNT(*) AS n FROM users
+       WHERE password_hash NOT LIKE '%:%'
+         AND (last_login IS NULL OR last_login < datetime('now', '-180 days'))`
+    ).first();
+    const range = await db.prepare(
+      `SELECT MIN(created_at) AS oldest, MAX(created_at) AS newest
+       FROM users WHERE password_hash NOT LIKE '%:%'`
+    ).first();
+    return c.json({
+      legacy_total: Number(total?.n || 0),
+      legacy_stale_180d: Number(stale?.n || 0),
+      oldest_created_at: range?.oldest || null,
+      newest_created_at: range?.newest || null,
+      note: 'Lazy-rehash login akışında PBKDF2 yükseltir. Stale hesaplar için forced reset prosedürü düşünülebilir.'
+    });
+  } catch (err) {
+    return c.json({ error: 'Sorgu başarısız', detail: err?.message }, 500);
+  }
+});
+
 app.put('/api/admin/product/:slug', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const slug = String(c.req.param('slug') || '').trim();

@@ -42,8 +42,14 @@ Kontroller:
 
 Hedef:
 
-- Başarılı legacy login sonrası hash mutlaka PBKDF2 formatına yükseltilmeli.
-- Yeni şifrelerde legacy SHA-256 asla üretilmemeli.
+- Başarılı legacy login sonrası hash mutlaka PBKDF2 formatına yükseltilmeli ✅ (`backend/src/index.js` login route'unda lazy-rehash aktif).
+- Yeni şifrelerde legacy SHA-256 asla üretilmemeli ✅ (`hashPassword` yalnız PBKDF2 üretir).
+
+Legacy hash takibi (KVKK-02, 2026-05-24):
+
+- Admin endpoint `GET /api/admin/legacy-passwords/stats` (super admin) kalan legacy hash sayısını ve 180+ gün login olmayan stale hesap sayısını döner. E-posta açığa çıkmaz.
+- Legacy hash tespiti: `password_hash NOT LIKE '%:%'` (PBKDF2 hash'leri `saltHex:hashHex` formatındadır).
+- Strateji: organik yükseltme (login = otomatik PBKDF2). Stale hesaplar production'a geçişten önce ayrıca değerlendirilir (force reset email veya manuel iptal).
 
 ### Reset Token
 
@@ -114,7 +120,7 @@ Kontroller:
 - [ ] Kullanıcının hesap/veri silme talebi için operasyon prosedürü yazıldı.
 - [ ] Admin erişimleri rol bazlı ve loglanabilir hale getirildi.
 - [ ] Production secrets Cloudflare secret olarak tutuluyor; repoda secret yok.
-- [ ] Legacy SHA-256 şifre hash sayısı ölçüldü ve migration planlandı.
+- [x] Legacy SHA-256 şifre hash migration stratejisi: lazy-rehash + admin stats endpoint (KVKK-02, 2026-05-24).
 - [ ] RA credential ve egress secret plaintext export mümkün değil.
 - [ ] D1 export/backupları şifreli ve erişim kontrollü saklanıyor.
 - [ ] AI araçlarına gönderilecek inputlar için veri minimizasyonu uygulanıyor.
