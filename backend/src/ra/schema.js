@@ -1,10 +1,11 @@
 /**
  * backend/src/ra/schema.js
  *
- * Remote Access modülü için defansif şema guard'ı. LibEdge'in
- * ensureInstitutionSubscriptionAccessColumns / ensureProductsTableAndSeed
- * pattern'ini takip eder — migration dosyası state tablosuna işlenmediğinde
- * (yerel dev, fresh staging) kolonları/tabloları runtime'da garanti eder.
+ * Remote Access modülü için defansif şema guard'ı.
+ *
+ * Bu guard yalnızca local/test geliştirme ergonomisi içindir. Staging ve
+ * production ortamlarında şema değişiklikleri D1 migration dosyalarından
+ * gelmelidir; runtime DDL bilinçli olarak no-op yapılır.
  *
  * LibEdge gerçek şemasına göre id tipleri:
  *   institutions.id                      INTEGER
@@ -12,18 +13,22 @@
  *   institution_subscriptions.product_slug  TEXT  (products.slug'a FK mantığı)
  *   products.slug                        TEXT PK (products.id YOK)
  *
- * Production'da maliyeti yok çünkü her kolon/tablo için tek bir
- * PRAGMA table_info / sqlite_master lookup sonra büyük ihtimal noop döner.
- * İlk request'te bir kere çağır, sonra in-memory flag ile skip et.
+ * Local/test'te ilk request'te bir kere çağır, sonra in-memory flag ile skip et.
  */
 
 let schemaEnsured = false;
 
+function isStrictRuntimeEnv(env = {}) {
+  const value = String(env?.ENVIRONMENT || '').trim().toLowerCase();
+  return value === 'production' || value === 'staging';
+}
+
 /**
  * @param {D1Database} db
  */
-export async function ensureRemoteAccessSchema(db) {
+export async function ensureRemoteAccessSchema(db, env = {}) {
   if (schemaEnsured) return;
+  if (isStrictRuntimeEnv(env)) return;
 
   // products ek kolonları
   // ra_requires_tunnel: IP-gated publisher'lar (ScienceDirect, Wiley kurumsal)

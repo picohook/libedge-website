@@ -8,7 +8,8 @@ import { zValidator } from '@hono/zod-validator';
 // ─── Remote Access (RA) modülü ─────────────────────────────────────────────
 // Kurumsal publisher aboneliklerine uzaktan erişim proxy'si.
 // Route handler: POST /api/ra/issue-token
-// Şema guard (ALTER TABLE + CREATE TABLE IF NOT EXISTS) handler içinde çağrılır.
+// Local/test schema guards are allowed for developer ergonomics; staging and
+// production schema changes must come from D1 migrations.
 import { registerRaIssueToken } from './routes/ra/issue-token.js';
 import { registerRaAdminTunnel } from './routes/ra/admin-tunnel.js';
 import { registerRaAdminOverview } from './routes/ra/admin-overview.js';
@@ -62,6 +63,15 @@ export {
 };
 
 const app = new Hono();
+
+function isStrictRuntimeEnv(env = {}) {
+  const value = String(env?.ENVIRONMENT || '').trim().toLowerCase();
+  return value === 'production' || value === 'staging';
+}
+
+function shouldRunRuntimeDdl(env = {}) {
+  return !isStrictRuntimeEnv(env);
+}
 
 // ====================== CONFIGURATION ======================
 // Ortak sabitler ve uygulama yapılandırmaları
@@ -198,7 +208,9 @@ app.use('*', async (c, next) => {
 // hono/jwt: sign() and verify() replace manual HS256 implementation.
 // verify() throws on invalid signature or expired token (exp checked automatically).
 
-async function ensureIndividualToolsSchema(db) {
+async function ensureIndividualToolsSchema(db, env = {}) {
+  if (!shouldRunRuntimeDdl(env)) return;
+
   if (!individualToolsSchemaReady) {
     await db.prepare(`
       CREATE TABLE IF NOT EXISTS individual_tools (
@@ -283,8 +295,8 @@ function publicIndividualTool(tool) {
   };
 }
 
-async function getIndividualTools(db, { includeInactive = false } = {}) {
-  await ensureIndividualToolsSchema(db);
+async function getIndividualTools(db, { includeInactive = false, env = {} } = {}) {
+  await ensureIndividualToolsSchema(db, env);
   const rows = await db.prepare(`
     SELECT slug, name, category, extra_categories, access_type, delivery_type, target_url, affiliate_url,
            summary_tr, summary_en, logo_url,
@@ -338,7 +350,9 @@ function normalizeIndividualToolPayload(body, existingSlug = '') {
   };
 }
 
-async function ensureUserProfileLinksSchema(db) {
+async function ensureUserProfileLinksSchema(db, env = {}) {
+  if (!shouldRunRuntimeDdl(env)) return;
+
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS user_profile_links (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -599,7 +613,9 @@ async function getUserInstitutionId(c) {
   return payload?.institution_id || null;
 }
 
-async function ensureAdminActionLogsTable(db) {
+async function ensureAdminActionLogsTable(db, env = {}) {
+  if (!shouldRunRuntimeDdl(env)) return;
+
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS admin_action_logs (
       id TEXT PRIMARY KEY,
@@ -671,7 +687,7 @@ function selectUserAuditColumns(db, id) {
 
 async function recordAdminAction(c, db, { actor = null, entityType, entityId, action, before = null, after = null }) {
   try {
-    await ensureAdminActionLogsTable(db);
+    await ensureAdminActionLogsTable(db, c.env);
     const resolvedActor = actor || await getTokenPayloadFromCookie(c);
     await createAdminActionLogStmt(db, {
       id: crypto.randomUUID(),
@@ -864,7 +880,9 @@ async function getInstitutionByIdentifier(db, identifier) {
     .first();
 }
 
-async function ensureInstitutionMetadataColumns(db) {
+async function ensureInstitutionMetadataColumns(db, env = {}) {
+  if (!shouldRunRuntimeDdl(env)) return;
+
   for (const sql of [
     `ALTER TABLE institutions ADD COLUMN logo_url TEXT`,
     `ALTER TABLE institutions ADD COLUMN website_url TEXT`,
@@ -884,7 +902,9 @@ async function ensureInstitutionMetadataColumns(db) {
   }
 }
 
-async function ensureInstitutionSubscriptionAccessColumns(db) {
+async function ensureInstitutionSubscriptionAccessColumns(db, env = {}) {
+  if (!shouldRunRuntimeDdl(env)) return;
+
   for (const sql of [
     'ALTER TABLE institution_subscriptions ADD COLUMN access_type TEXT',
     'ALTER TABLE institution_subscriptions ADD COLUMN access_url TEXT',
@@ -905,7 +925,9 @@ async function ensureInstitutionSubscriptionAccessColumns(db) {
   }
 }
 
-async function ensureProductsTableAndSeed(db) {
+async function ensureProductsTableAndSeed(db, env = {}) {
+  if (!shouldRunRuntimeDdl(env)) return;
+
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS products (
       slug TEXT PRIMARY KEY,
@@ -1482,7 +1504,7 @@ app.post('/api/auth/logout', async (c) => {
       const payload = await verify(refreshToken, c.env.JWT_SECRET, 'HS256');
       if (payload?.type === 'refresh' && payload?.jti) {
         const db = c.env.DB;
-        await ensureRefreshTokensSchema(db);
+        if (shouldRunRuntimeDdl(c.env)) await ensureRefreshTokensSchema(db);
         const tokenHash = await hashTokenValue(payload.jti);
         const now = Math.floor(Date.now() / 1000);
         await db.prepare(`
@@ -1551,7 +1573,7 @@ app.post('/api/auth/refresh', async (c) => {
 
   if (refreshPayload.jti) {
     try {
-      await ensureRefreshTokensSchema(db);
+      if (shouldRunRuntimeDdl(c.env)) await ensureRefreshTokensSchema(db);
       currentRefreshTokenHash = await hashTokenValue(refreshPayload.jti);
       const storedRefresh = await db.prepare(`
         SELECT user_id, expires_at, used_at, revoked_at
@@ -1646,7 +1668,9 @@ const resetPasswordSchema = z.object({
   new_password: zRequiredString('new_password', { min: PASSWORD_RESET_MIN_LENGTH, max: 128 })
 });
 
-async function ensurePasswordResetsSchema(db) {
+async function ensurePasswordResetsSchema(db, env = {}) {
+  if (!shouldRunRuntimeDdl(env)) return;
+
   await db.exec(
     "CREATE TABLE IF NOT EXISTS password_resets (" +
       "id INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -1758,7 +1782,7 @@ app.post('/api/auth/forgot-password', async (c) => {
     }
 
     const db = c.env.DB;
-    await ensurePasswordResetsSchema(db);
+    await ensurePasswordResetsSchema(db, c.env);
 
     const user = await db.prepare(
       'SELECT id, email, full_name FROM users WHERE email = ?'
@@ -1801,7 +1825,7 @@ app.post('/api/auth/reset-password', async (c) => {
     if (body instanceof Response) return body;
 
     const db = c.env.DB;
-    await ensurePasswordResetsSchema(db);
+    await ensurePasswordResetsSchema(db, c.env);
 
     const tokenHash = await hashResetToken(body.token);
     const now = Math.floor(Date.now() / 1000);
@@ -1943,7 +1967,7 @@ app.get('/api/user/profile-links', async (c) => {
   if (auth.response) return auth.response;
 
   const db = c.env.DB;
-  await ensureUserProfileLinksSchema(db);
+  await ensureUserProfileLinksSchema(db, c.env);
   const rows = await db.prepare(`
     SELECT id, link_type, label, url, COALESCE(display_order, 999) AS display_order
     FROM user_profile_links
@@ -1973,7 +1997,7 @@ app.put('/api/user/profile-links', async (c) => {
   });
 
   const db = c.env.DB;
-  await ensureUserProfileLinksSchema(db);
+  await ensureUserProfileLinksSchema(db, c.env);
   await db.batch([
     db.prepare(`DELETE FROM user_profile_links WHERE user_id = ?`).bind(auth.user.user_id),
     ...deduped.map((item, index) => db.prepare(`
@@ -2004,7 +2028,7 @@ app.delete('/api/user/delete', async (c) => {
 
   await db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM subscriptions WHERE user_id = ?`).bind(userId).run();
-  await ensureUserProfileLinksSchema(db);
+  await ensureUserProfileLinksSchema(db, c.env);
   await db.prepare(`DELETE FROM user_profile_links WHERE user_id = ?`).bind(userId).run();
   await db.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
 
@@ -2041,8 +2065,8 @@ app.get('/api/subscription/check', async (c) => {
   const userId = auth.user.user_id;
   const institutionId = auth.user.institution_id;
   const db = c.env.DB;
-  await ensureInstitutionSubscriptionAccessColumns(db);
-  await ensureProductsTableAndSeed(db);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureProductsTableAndSeed(db, c.env);
   
   const sub = await db.prepare(`
     SELECT s.*, p.default_access_type, p.default_access_url,
@@ -2095,8 +2119,8 @@ app.get('/api/subscription/list', async (c) => {
   const userId = auth.user.user_id;
   const institutionId = auth.user.institution_id;
   const db = c.env.DB;
-  await ensureInstitutionSubscriptionAccessColumns(db);
-  await ensureProductsTableAndSeed(db);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureProductsTableAndSeed(db, c.env);
 
   const individual = await db.prepare(`
     SELECT s.id, s.product_slug, s.status, s.start_date, s.end_date, s.created_at, 'individual' as source,
@@ -2158,8 +2182,8 @@ app.get('/api/user/subscriptions', async (c) => {
   const userId = auth.user.user_id;
   const institutionId = auth.user.institution_id;
   const db = c.env.DB;
-  await ensureInstitutionSubscriptionAccessColumns(db);
-  await ensureProductsTableAndSeed(db);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureProductsTableAndSeed(db, c.env);
 
   const individual = await db.prepare(`
     SELECT s.id, s.product_slug, s.status, s.start_date, s.end_date, 'individual' as source,
@@ -2211,7 +2235,7 @@ app.get('/api/user/subscriptions', async (c) => {
 });
 
 app.get('/api/individual-tools', async (c) => {
-  const tools = (await getIndividualTools(c.env.DB))
+  const tools = (await getIndividualTools(c.env.DB, { env: c.env }))
     .filter((tool) => tool && tool.slug && tool.name)
     .map(publicIndividualTool);
 
@@ -2286,7 +2310,7 @@ app.patch('/api/admin/recommendations/:id', async (c) => {
 
 app.get('/api/go/:slug', async (c) => {
   const slug = String(c.req.param('slug') || '').trim().toLowerCase();
-  const tool = (await getIndividualTools(c.env.DB)).find((item) => item.slug === slug);
+  const tool = (await getIndividualTools(c.env.DB, { env: c.env })).find((item) => item.slug === slug);
   if (!tool) return c.json({ error: 'Araç bulunamadı' }, 404);
 
   let destination = tool.access_type === 'affiliate'
@@ -2306,7 +2330,7 @@ app.get('/api/go/:slug', async (c) => {
   }
 
   try {
-    await ensureIndividualToolsSchema(c.env.DB);
+    await ensureIndividualToolsSchema(c.env.DB, c.env);
     const auth = await getOptionalAuth(c);
     await c.env.DB.prepare(`
       INSERT INTO affiliate_clicks (tool_slug, user_id, source, referer, user_agent, clicked_at)
@@ -3103,7 +3127,7 @@ app.post('/api/admin/user', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const { email, password, full_name, first_name, last_name, title, institution, institution_id, role } = await c.req.json();
   const db = c.env.DB;
-  await ensureAdminActionLogsTable(db);
+  await ensureAdminActionLogsTable(db, c.env);
 
   const adminRole = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
@@ -3194,7 +3218,7 @@ app.put('/api/admin/user/:id', async (c) => {
   const id = c.req.param('id');
   const { email, password, full_name, first_name, last_name, title, institution, institution_id, role } = await c.req.json();
   const db = c.env.DB;
-  await ensureAdminActionLogsTable(db);
+  await ensureAdminActionLogsTable(db, c.env);
 
   const adminRole = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
@@ -3295,7 +3319,7 @@ app.delete('/api/admin/user/:id', async (c) => {
   }
 
   const db = c.env.DB;
-  await ensureAdminActionLogsTable(db);
+  await ensureAdminActionLogsTable(db, c.env);
 
   const userRow = await selectUserAuditColumns(db, id).first();
   if (!userRow) return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
@@ -3325,7 +3349,7 @@ app.post('/api/admin/set-role/:id', async (c) => {
   const id = c.req.param('id');
   const { role } = await c.req.json();
   const db = c.env.DB;
-  await ensureAdminActionLogsTable(db);
+  await ensureAdminActionLogsTable(db, c.env);
   const existing = await selectUserAuditColumns(db, id).first();
   if (!existing) return c.json({ error: 'Kullanıcı bulunamadı' }, 404);
   const actor = await getTokenPayloadFromCookie(c);
@@ -3581,8 +3605,8 @@ function validateProductRaConfig(body, existing = {}) {
 app.get('/api/admin/products', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
-  await ensureRemoteAccessSchema(db);
+  await ensureProductsTableAndSeed(db, c.env);
+  await ensureRemoteAccessSchema(db, c.env);
   const rows = await db.prepare(`
     SELECT slug, name, category, region,
            default_access_type, default_access_url,
@@ -3623,7 +3647,7 @@ app.get('/api/admin/products', async (c) => {
 app.get('/api/admin/individual-tools', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
-  const tools = await getIndividualTools(db, { includeInactive: true });
+  const tools = await getIndividualTools(db, { includeInactive: true, env: c.env });
   const clicks = await db.prepare(`
     SELECT tool_slug, COUNT(*) AS click_count, MAX(clicked_at) AS last_clicked_at
     FROM affiliate_clicks
@@ -3644,7 +3668,7 @@ app.get('/api/admin/individual-tools', async (c) => {
 app.post('/api/admin/individual-tools', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
-  await ensureIndividualToolsSchema(db);
+  await ensureIndividualToolsSchema(db, c.env);
   const payload = normalizeIndividualToolPayload(await c.req.json().catch(() => ({})));
   if (payload.error) return c.json({ error: payload.error }, 400);
 
@@ -3669,7 +3693,7 @@ app.post('/api/admin/individual-tools', async (c) => {
 app.put('/api/admin/individual-tools/:slug', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
-  await ensureIndividualToolsSchema(db);
+  await ensureIndividualToolsSchema(db, c.env);
   const slugParam = String(c.req.param('slug') || '').trim().toLowerCase();
   const payload = normalizeIndividualToolPayload(await c.req.json().catch(() => ({})), slugParam);
   if (payload.error) return c.json({ error: payload.error }, 400);
@@ -3697,7 +3721,7 @@ app.put('/api/admin/individual-tools/:slug', async (c) => {
 app.delete('/api/admin/individual-tools/:slug', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
-  await ensureIndividualToolsSchema(db);
+  await ensureIndividualToolsSchema(db, c.env);
   const slug = String(c.req.param('slug') || '').trim().toLowerCase();
   if (!slug) return c.json({ error: 'Geçersiz slug' }, 400);
 
@@ -3713,7 +3737,7 @@ app.delete('/api/admin/individual-tools/:slug', async (c) => {
 app.get('/api/admin/individual-tools/analytics', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
-  await ensureIndividualToolsSchema(db);
+  await ensureIndividualToolsSchema(db, c.env);
 
   const totals = await db.prepare(`
     SELECT COUNT(*) AS total_clicks,
@@ -3752,7 +3776,7 @@ app.get('/api/admin/individual-tools/analytics', async (c) => {
 
 app.get('/api/products', async (c) => {
   const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
+  await ensureProductsTableAndSeed(db, c.env);
 
   const rows = await db.prepare(`
     SELECT slug, name, category, region,
@@ -3818,11 +3842,11 @@ app.put('/api/admin/product/:slug', async (c) => {
   } = body;
 
   const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
-  await ensureRemoteAccessSchema(db);
-  await ensureInstitutionSubscriptionAccessColumns(db);
-  await ensureInstitutionMetadataColumns(db);
-  await ensureAdminActionLogsTable(db);
+  await ensureProductsTableAndSeed(db, c.env);
+  await ensureRemoteAccessSchema(db, c.env);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureInstitutionMetadataColumns(db, c.env);
+  await ensureAdminActionLogsTable(db, c.env);
 
   const existing = await db.prepare(`SELECT * FROM products WHERE slug = ?`).bind(slug).first();
   if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
@@ -4003,7 +4027,7 @@ async function restoreInstitutionAction(db, id, { enforceExpiry = false } = {}) 
 app.get('/api/admin/actions', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
-  await ensureAdminActionLogsTable(db);
+  await ensureAdminActionLogsTable(db, c.env);
   const url = new URL(c.req.url);
   const entityType = (url.searchParams.get('entity_type') || 'product').trim();
   if (!['product', 'subscription', 'institution_subscription', 'institution', 'user', 'folder_share', 'announcement_ai', 'sync', 'support_ticket', 'file_operation'].includes(entityType)) return c.json({ actions: [] });
@@ -4024,9 +4048,9 @@ app.post('/api/admin/actions/:id/undo', async (c) => {
   const id = String(c.req.param('id') || '').trim();
   if (!id) return c.json({ error: 'Geçersiz işlem' }, 400);
   const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
-  await ensureRemoteAccessSchema(db);
-  await ensureAdminActionLogsTable(db);
+  await ensureProductsTableAndSeed(db, c.env);
+  await ensureRemoteAccessSchema(db, c.env);
+  await ensureAdminActionLogsTable(db, c.env);
   const log = await db.prepare(`SELECT entity_type FROM admin_action_logs WHERE id = ?`).bind(id).first();
   const result = log?.entity_type === 'product'
     ? await restoreProductAction(db, id, { enforceExpiry: true })
@@ -4044,11 +4068,11 @@ app.post('/api/admin/actions/:id/restore', async (c) => {
   const id = String(c.req.param('id') || '').trim();
   if (!id) return c.json({ error: 'Geçersiz işlem' }, 400);
   const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
-  await ensureRemoteAccessSchema(db);
-  await ensureInstitutionSubscriptionAccessColumns(db);
-  await ensureInstitutionMetadataColumns(db);
-  await ensureAdminActionLogsTable(db);
+  await ensureProductsTableAndSeed(db, c.env);
+  await ensureRemoteAccessSchema(db, c.env);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureInstitutionMetadataColumns(db, c.env);
+  await ensureAdminActionLogsTable(db, c.env);
   const log = await db.prepare(`SELECT entity_type FROM admin_action_logs WHERE id = ?`).bind(id).first();
   const result = log?.entity_type === 'product'
     ? await restoreProductAction(db, id)
@@ -4064,8 +4088,8 @@ app.post('/api/admin/actions/:id/restore', async (c) => {
 app.post('/api/admin/products', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
-  await ensureRemoteAccessSchema(db);
+  await ensureProductsTableAndSeed(db, c.env);
+  await ensureRemoteAccessSchema(db, c.env);
 
   const body = await c.req.json().catch(() => ({}));
   const {
@@ -4162,7 +4186,7 @@ app.post('/api/admin/product/:slug/logo', async (c) => {
   const db = c.env.DB;
   const bucket = c.env.FILES_BUCKET;
   const r2PublicUrl = c.env.R2_PUBLIC_URL;
-  await ensureProductsTableAndSeed(db);
+  await ensureProductsTableAndSeed(db, c.env);
 
   if (!bucket) return c.json({ error: 'FILES_BUCKET tanımlı değil' }, 500);
   if (!r2PublicUrl) return c.json({ error: 'R2_PUBLIC_URL tanımlı değil' }, 500);
@@ -4226,7 +4250,7 @@ app.post('/api/admin/product/:slug/card-background', async (c) => {
   const db = c.env.DB;
   const bucket = c.env.FILES_BUCKET;
   const r2PublicUrl = c.env.R2_PUBLIC_URL;
-  await ensureProductsTableAndSeed(db);
+  await ensureProductsTableAndSeed(db, c.env);
 
   if (!bucket) return c.json({ error: 'FILES_BUCKET tanımlı değil' }, 500);
   if (!r2PublicUrl) return c.json({ error: 'R2_PUBLIC_URL tanımlı değil' }, 500);
@@ -4282,8 +4306,8 @@ app.post('/api/admin/product/:slug/card-background', async (c) => {
 app.get('/api/admin/subscriptions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  await ensureInstitutionSubscriptionAccessColumns(db);
-  await ensureProductsTableAndSeed(db);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureProductsTableAndSeed(db, c.env);
   const role = await getUserRole(c);
   const adminInstitutionId = await getUserInstitutionId(c);
   const adminInstitution = await getUserInstitution(c);
@@ -4568,8 +4592,8 @@ app.post('/api/admin/subscription', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const { user_id, product_slug, status, end_date } = await c.req.json();
   const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
-  await ensureAdminActionLogsTable(db);
+  await ensureProductsTableAndSeed(db, c.env);
+  await ensureAdminActionLogsTable(db, c.env);
   const role = await getUserRole(c);
   const adminInstitution = await getUserInstitution(c);
   const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
@@ -4593,7 +4617,7 @@ app.put('/api/admin/subscription/:id', async (c) => {
 
   const { user_id, product_slug, status, end_date } = await c.req.json();
   const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
+  await ensureProductsTableAndSeed(db, c.env);
   const role = await getUserRole(c);
   const adminInstitution = await getUserInstitution(c);
   const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
@@ -4635,7 +4659,7 @@ app.delete('/api/admin/subscription/:id', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const id = c.req.param('id');
   const db = c.env.DB;
-  await ensureAdminActionLogsTable(db);
+  await ensureAdminActionLogsTable(db, c.env);
   const role = await getUserRole(c);
   const adminInstitution = await getUserInstitution(c);
   const existing = await db.prepare(`
@@ -4671,9 +4695,9 @@ app.post('/api/admin/institution-subscription', async (c) => {
   const { institution_id, product_slug, status, end_date, access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
   if (!institution_id || !product_slug) return c.json({ error: 'institution_id ve product_slug zorunlu' }, 400);
   const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
-  await ensureInstitutionSubscriptionAccessColumns(db);
-  await ensureAdminActionLogsTable(db);
+  await ensureProductsTableAndSeed(db, c.env);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureAdminActionLogsTable(db, c.env);
   const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
   if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
   const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
@@ -4707,8 +4731,8 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
   const { institution_id, product_slug, status, end_date, access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
   if (!institution_id || !product_slug) return c.json({ error: 'institution_id ve product_slug zorunlu' }, 400);
   const db = c.env.DB;
-  await ensureProductsTableAndSeed(db);
-  await ensureInstitutionSubscriptionAccessColumns(db);
+  await ensureProductsTableAndSeed(db, c.env);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
   const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
   if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
   const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
@@ -4756,8 +4780,8 @@ app.get('/api/admin/institution/:id/subscriptions', async (c) => {
     if (adminInstId !== institutionId) return c.json({ error: 'Sadece kendi kurumunuzu görebilirsiniz' }, 403);
   }
   const db = c.env.DB;
-  await ensureInstitutionSubscriptionAccessColumns(db);
-  await ensureProductsTableAndSeed(db);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureProductsTableAndSeed(db, c.env);
   const subs = await db.prepare(`
     SELECT is2.id, is2.institution_id, is2.product_slug, is2.status, is2.start_date, is2.end_date, is2.created_by, is2.created_at,
            COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
@@ -4780,8 +4804,8 @@ app.delete('/api/admin/institution-subscription/:id', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const id = c.req.param('id');
   const db = c.env.DB;
-  await ensureInstitutionSubscriptionAccessColumns(db);
-  await ensureAdminActionLogsTable(db);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureAdminActionLogsTable(db, c.env);
   const sub = await db.prepare(`SELECT * FROM institution_subscriptions WHERE id = ?`).bind(id).first();
   if (!sub) return c.json({ error: 'Abonelik bulunamadı' }, 404);
   const undoId = crypto.randomUUID();
@@ -4843,9 +4867,9 @@ app.get('/api/admin/my-institution', async (c) => {
   if (!payload) return c.json({ error: 'Yetkisiz' }, 403);
   if (payload.role !== 'admin' && payload.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  await ensureInstitutionMetadataColumns(db);
-  await ensureInstitutionSubscriptionAccessColumns(db);
-  await ensureProductsTableAndSeed(db);
+  await ensureInstitutionMetadataColumns(db, c.env);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureProductsTableAndSeed(db, c.env);
   // JWT payload'undan doğrudan al
   if (!payload.institution) return c.json({ error: 'Kullanıcıya atanmış kurum yok' }, 404);
   const inst = await db.prepare(`
@@ -4923,8 +4947,8 @@ function normSearch(s) {
 app.get('/api/admin/institutions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
-  await ensureInstitutionMetadataColumns(db);
-  await ensureRemoteAccessSchema(db); // p.ra_enabled ve institution_ra_settings için gerekli
+  await ensureInstitutionMetadataColumns(db, c.env);
+  await ensureRemoteAccessSchema(db, c.env); // p.ra_enabled ve institution_ra_settings için gerekli
   const role = await getUserRole(c);
   const url = new URL(c.req.url);
   const searchRaw = (url.searchParams.get('search') || '').trim();
@@ -5470,20 +5494,21 @@ app.post('/api/institution/:id/send-to-users', async (c) => {
     if (!Array.isArray(file_ids) || !file_ids.length) return c.json({ error: 'Dosya seçilmedi' }, 400);
     if (!Array.isArray(user_ids) || !user_ids.length)  return c.json({ error: 'Kullanıcı seçilmedi' }, 400);
 
-    // Tablo yoksa oluştur (migration uygulanmamış ortamlar için)
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS user_notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        type TEXT NOT NULL DEFAULT 'info',
-        title TEXT NOT NULL,
-        body TEXT,
-        ref_id INTEGER,
-        ref_type TEXT,
-        is_read INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )
-    `).run();
+    if (shouldRunRuntimeDdl(c.env)) {
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS user_notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          type TEXT NOT NULL DEFAULT 'info',
+          title TEXT NOT NULL,
+          body TEXT,
+          ref_id INTEGER,
+          ref_type TEXT,
+          is_read INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `).run();
+    }
 
     const now = new Date().toISOString();
     let sent = 0;
@@ -5536,46 +5561,47 @@ app.post('/api/system/send-to-users', async (c) => {
       return c.json({ error: 'Kullanıcı seçilmedi' }, 400);
     }
 
-    // Tabloların varlığını garanti et
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS user_collections (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        parent_id INTEGER,
-        name TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        sort_order INTEGER DEFAULT 0,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )
-    `).run();
+    if (shouldRunRuntimeDdl(c.env)) {
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS user_collections (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          parent_id INTEGER,
+          name TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          sort_order INTEGER DEFAULT 0,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `).run();
 
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS user_collection_files (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        collection_id INTEGER NOT NULL,
-        file_id INTEGER NOT NULL,
-        share_id INTEGER,
-        display_name TEXT,
-        is_read INTEGER DEFAULT 0,
-        added_at TEXT NOT NULL DEFAULT (datetime('now')),
-        sort_order INTEGER DEFAULT 0,
-        FOREIGN KEY (collection_id) REFERENCES user_collections(id) ON DELETE CASCADE,
-        FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
-      )
-    `).run();
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS user_collection_files (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          collection_id INTEGER NOT NULL,
+          file_id INTEGER NOT NULL,
+          share_id INTEGER,
+          display_name TEXT,
+          is_read INTEGER DEFAULT 0,
+          added_at TEXT NOT NULL DEFAULT (datetime('now')),
+          sort_order INTEGER DEFAULT 0,
+          FOREIGN KEY (collection_id) REFERENCES user_collections(id) ON DELETE CASCADE,
+          FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+        )
+      `).run();
 
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        type TEXT NOT NULL DEFAULT 'info',
-        title TEXT NOT NULL,
-        content TEXT,
-        data TEXT,
-        is_read INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )
-    `).run();
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          type TEXT NOT NULL DEFAULT 'info',
+          title TEXT NOT NULL,
+          content TEXT,
+          data TEXT,
+          is_read INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `).run();
+    }
 
     let sent = 0;
     const now = new Date().toISOString();
@@ -7416,7 +7442,7 @@ app.post('/api/admin/institution', async (c) => {
   const cat = category || 'University';
   const st  = status   || 'Customer';
   const db = c.env.DB;
-  await ensureInstitutionMetadataColumns(db);
+  await ensureInstitutionMetadataColumns(db, c.env);
   try {
     const result = await db.prepare(`INSERT INTO institutions (name, domain, website_url, category, status) VALUES (?, ?, ?, ?, ?)`).bind(name.trim(), domain?.trim() || null, website_url?.trim() || null, cat, st).run();
     return c.json({ success: true, id: result.meta?.last_row_id });
@@ -7434,8 +7460,8 @@ app.put('/api/admin/institution/:id', async (c) => {
   const validCategories = INSTITUTION_CATEGORIES;
   const validStatuses = INSTITUTION_STATUSES;
   const db = c.env.DB;
-  await ensureInstitutionMetadataColumns(db);
-  await ensureAdminActionLogsTable(db);
+  await ensureInstitutionMetadataColumns(db, c.env);
+  await ensureAdminActionLogsTable(db, c.env);
   const existing = await db.prepare(`SELECT * FROM institutions WHERE id = ?`).bind(id).first();
   if (!existing) return c.json({ error: 'Kurum bulunamadı' }, 404);
   const undoId = crypto.randomUUID();
@@ -7470,7 +7496,7 @@ app.post('/api/admin/institution/:id/logo', async (c) => {
   const bucket = c.env.FILES_BUCKET;
   const r2PublicUrl = c.env.R2_PUBLIC_URL;
 
-  await ensureInstitutionMetadataColumns(db);
+  await ensureInstitutionMetadataColumns(db, c.env);
   if (!bucket) return c.json({ error: 'FILES_BUCKET tanımlı değil' }, 500);
   if (!r2PublicUrl) return c.json({ error: 'R2_PUBLIC_URL tanımlı değil' }, 500);
 
@@ -9091,7 +9117,7 @@ app.get('/api/admin/sync/airtable-to-d1', async (c) => {
 
     try {
         const db = c.env.DB;
-        await ensureInstitutionMetadataColumns(db);
+        await ensureInstitutionMetadataColumns(db, c.env);
         const records = await fetchAirtableAccounts(c.env);
         const changes = [];
 
@@ -9169,7 +9195,7 @@ app.post('/api/admin/sync/airtable-to-d1', async (c) => {
 
     try {
         const db = c.env.DB;
-        await ensureInstitutionMetadataColumns(db);
+        await ensureInstitutionMetadataColumns(db, c.env);
         const { changes } = await c.req.json(); // Seçili change listesi
         if (!Array.isArray(changes) || changes.length === 0) return c.json({ error: 'Uygulanacak değişiklik yok' }, 400);
 
@@ -9225,7 +9251,7 @@ app.get('/api/admin/sync/d1-to-airtable', async (c) => {
 
     try {
         const db = c.env.DB;
-        await ensureInstitutionMetadataColumns(db);
+        await ensureInstitutionMetadataColumns(db, c.env);
 
         const institutionsResult = await db.prepare(
             `SELECT id, name, domain, website_url, city, category, status, airtable_id
@@ -9338,7 +9364,7 @@ app.post('/api/admin/sync/d1-to-airtable', async (c) => {
 
     try {
         const db = c.env.DB;
-        await ensureInstitutionMetadataColumns(db);
+        await ensureInstitutionMetadataColumns(db, c.env);
         const { changes } = await c.req.json();
         if (!Array.isArray(changes) || changes.length === 0) return c.json({ error: 'Uygulanacak değişiklik yok' }, 400);
 

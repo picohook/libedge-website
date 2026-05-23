@@ -175,7 +175,7 @@ cd ../..
 - Production'a `0039_sciencedirect_els_cdn_allowlist.sql`, `0040_scopus_elsevier_allowlist.sql` ve `0041_user_kvkk_consent.sql` 23 Mayıs 2026'da uygulandı.
 - Register akışı KVKK/Gizlilik/Kullanım Şartları açık onayı olmadan kullanıcı oluşturmaz; consent metadata'sı `users` tablosunda tutulur.
 - Auth login akışı DB-backed refresh token replay protection kullanır.
-- `backend/src/index.js` içinde strict env'lerde (`staging`, `production`) refresh token login yolunda runtime DDL guard atlanır; şema migration ile hazırlanmış olmalıdır.
+- `backend/src/index.js` ve RA schema guard'ları strict env'lerde (`staging`, `production`) runtime DDL çalıştırmaz; şema migration ile hazırlanmış olmalıdır.
 - DB-backed refresh token yazımı beklenmedik şekilde hata verirse login 500'e düşmez; geçici olarak stateless refresh token fallback kullanır ve hata loglanır.
 - `admin.html` ve `profile.html` içinde toast, error render ve file preview tarafında kullanıcı/server kaynaklı metinler sertleştirildi; dinamik metinler `textContent`/`escapeHtml`, dosya URL'leri `safeFileUrl` benzeri allowlist mantığıyla ele alınmalıdır.
 - Frontend `innerHTML` kullanımı tamamen yasaklanmış değildir; ancak her yeni kullanımda kullanıcı, server veya dosya metadata'sı interpolasyonu güvenlik incelemesinden geçmelidir.
@@ -302,7 +302,7 @@ Geçiş için sadece Cloudflare Worker env değişkenlerini güncellemek yeterli
 | `RA_PROXY_BASE_HOST` | `libedge.com` | `libedge.com` |
 | `RA_EGRESS_HOST` | `ra-egress-staging.libedge.com` | `ra-egress.libedge.com` |
 
-`workers/proxy/wrangler.toml` route'larını, Cloudflare DNS kayıtlarını ve proxy hata sayfasındaki portal URL'ini güncelle.
+`workers/proxy/wrangler.toml` route'larını, Cloudflare DNS kayıtlarını ve proxy hata sayfasındaki portal URL'ini güncelle. Bu geçiş canlıya alınırken yapılacak; staging/prod CI akışı hazırdır.
 
 ---
 
@@ -328,9 +328,10 @@ Production D1 migration'ları otomatikleştirilirken dikkatli olunmalıdır: D1 
 - [x] Proxy rate limit eklendi
 - [x] Egress tunnel heartbeat cron'a bağlandı
 - [x] Ürün/abonelik/kurum işlemleri için undo + işlem geçmişinden restore eklendi
-- [ ] Production'da `*.libedge.com` wildcard route aktif edilecek (session_host_proxy için zorunlu)
+- [ ] Canlı geçişte production `*.libedge.com` wildcard route aktif edilecek (session_host_proxy için zorunlu)
 - [ ] Admin UI/API'dan toplu ürün onboarding (manuel D1 SQL ihtiyacını azaltmak)
 - [x] MIMARI.md ile migration'lar arasındaki temel durum notları güncellendi
 - [x] KVKK/Gizlilik metni kayıtlı kullanıcı, RA ve AI araçlarını kapsayacak şekilde güncellendi
 - [x] Register akışı KVKK/Gizlilik/Kullanım Şartları açık onayına bağlandı
-- [ ] GitHub Actions CI/CD pipeline kurulacak
+- [x] Staging/production runtime DDL guard'ları kapatıldı; schema değişiklikleri migration disiplinine bağlandı
+- [x] GitHub Actions CI/CD pipeline kuruldu; production deploy/migration işleri manuel approval gerektirir
