@@ -1,807 +1,490 @@
-# LibEdge — Remote Access Platform Mimarisi
+# LibEdge — Proje Mimarisi
 
-> Son güncelleme: 2026-04-29
-> Durum: Staging'de aktif · JoVE/EMIS/ACS/CAS SciFinder mobil erişim uçtan uca çalışıyor · proxy rate limit ve tünel heartbeat devrede ✅
+Son güncelleme: 22 Mayıs 2026  
+Sürüm: 3.0 — Sistem genel bakış + RA teknik detaylar birleştirildi
 
----
-
-## §1 Genel Bakış
-
-LibEdge, üniversitelere akademik içerik erişimi sağlayan bir aggregator platformudur.  
-**Remote Access (RA) modülü**, kullanıcıların kurum dışından (evden, mobilde) akademik
-yayıncılara kurumun IP adresi üzerinden erişmesini sağlar — EZproxy benzeri ama
-Cloudflare-native, zero-infrastructure hedefli.
-
-### Stack
-
-| Katman | Teknoloji |
-|---|---|
-| Frontend | Cloudflare Pages · vanilla HTML/JS · Tailwind CDN |
-| Backend API | Cloudflare Workers (Hono) · D1 (SQLite) · KV · R2 |
-| RA Proxy Worker | Cloudflare Workers (JS) · KV |
-| RA Egress Agent | Go binary · Docker · Cloudflare Named Tunnel |
-| Auth | Cookie-based (HttpOnly `authToken`) + RA JWT (HS256) |
+Bu doküman LibEdge web uygulamasının Cloudflare mimarisini, staging/production ayrımını,
+veri akışlarını, Remote Access teknik detaylarını ve operasyon notlarını özetler.
+Secret değerleri bu dokümana yazılmaz; yalnızca secret adları ve bağlı oldukları bileşenler listelenir.
 
 ---
 
-## §2 Repo Yapısı
+## 1. Genel Bakış
 
+LibEdge şu anda Cloudflare Pages, Workers, D1, R2 ve KV üzerinde çalışan statik frontend + API Worker mimarisine sahiptir.
+
+| Ortam | Pages Domain | API Worker | Amaç |
+|---|---|---|---|
+| Staging | `staging.libedge-website.pages.dev` | `libedge-api-staging` | Test ve doğrulama |
+| Production | `libedge-website.pages.dev` | `libedge-api-prod` | Canlı ortam |
+
+Remote Access için ek bileşenler: RA Proxy Worker + ra-egress Go agent (Named Tunnel).
+
+---
+
+## 2. Sistem Diyagramı
+
+```mermaid
+graph TB
+    User[Web Tarayıcı]
+
+    subgraph Pages["Cloudflare Pages"]
+        PagesStaging["Staging Pages\nstaging.libedge-website.pages.dev\nbranch: staging"]
+        PagesProd["Production Pages\nlibedge-website.pages.dev\nbranch: main"]
+    end
+
+    subgraph API["Main API Workers"]
+        ApiStaging["libedge-api-staging"]
+        ApiProd["libedge-api-prod"]
+    end
+
+    subgraph Proxy["Remote Access Proxy Workers"]
+        ProxyStaging["libedge-ra-proxy-staging"]
+        ProxyProd["libedge-ra-proxy-prod"]
+    end
+
+    subgraph Data["Cloudflare Data Layer"]
+        D1Staging[("D1: libedge-db")]
+        D1Prod[("D1: libedge-db-production")]
+        R2Staging[("R2: libedge-files-staging")]
+        R2Prod[("R2: libedge-files")]
+        KVStaging[("KV: staging-RATE_LIMIT_KV\nKV: staging-RA_UPSTREAM_SESSIONS")]
+        KVProd[("KV: production-RATE_LIMIT_KV\nKV: production-RA_UPSTREAM_SESSIONS")]
+    end
+
+    subgraph Egress["Kurum İçi Remote Access Egress"]
+        TunnelStaging["Cloudflared tunnel\nstaging"]
+        TunnelProd["Cloudflared tunnel\nproduction"]
+        AgentStaging["ra-egress agent\nstaging"]
+        AgentProd["ra-egress agent\nproduction"]
+        BrowserStaging["ra-browser\n(Playwright/Chromium)"]
+    end
+
+    subgraph External["Dış Sistemler"]
+        Airtable["Airtable CRM"]
+        Publisher["Publisher platformları\nJoVE, EMIS, Scopus, SD vb."]
+    end
+
+    User --> PagesStaging
+    User --> PagesProd
+    PagesStaging -->|/api/* via WORKER_BASE_URL| ApiStaging
+    PagesProd -->|/api/* via WORKER_BASE_URL| ApiProd
+    ApiStaging --> D1Staging
+    ApiStaging --> R2Staging
+    ApiStaging --> KVStaging
+    ApiStaging --> Airtable
+    ApiProd --> D1Prod
+    ApiProd --> R2Prod
+    ApiProd --> KVProd
+    ApiProd --> Airtable
+    ApiStaging -->|RA token| ProxyStaging
+    ApiProd -->|RA token| ProxyProd
+    ProxyStaging --> KVStaging
+    ProxyProd --> KVProd
+    ProxyStaging --> TunnelStaging
+    ProxyProd --> TunnelProd
+    TunnelStaging --> AgentStaging
+    TunnelProd --> AgentProd
+    AgentStaging --> BrowserStaging
+    AgentStaging --> Publisher
+    AgentProd --> Publisher
 ```
+
+---
+
+## 3. Cloudflare Kaynakları
+
+### 3.1 Pages
+
+| Alan | Değer |
+|---|---|
+| Project | `libedge-website` |
+| Production branch | `main` |
+| Preview branch | `staging` |
+| Production domain | `https://libedge-website.pages.dev` |
+| Staging alias | `https://staging.libedge-website.pages.dev` |
+| Build command | `npm run build:css` |
+
+### 3.2 Main API Workers
+
+| Ortam | Worker | URL |
+|---|---|---|
+| Staging | `libedge-api-staging` | `https://libedge-api-staging.agursel.workers.dev` |
+| Production | `libedge-api-prod` | `https://libedge-api-prod.agursel.workers.dev` |
+
+### 3.3 Remote Access Proxy Workers
+
+| Ortam | Worker | Proxy Host |
+|---|---|---|
+| Staging | `libedge-ra-proxy-staging` | `proxy-staging.selmiye.com` / `*.selmiye.com` |
+| Production | `libedge-ra-proxy-prod` | `proxy.selmiye.com` / `*.selmiye.com` |
+
+### 3.4 D1 Veritabanları
+
+| Ortam | Binding | Database | UUID |
+|---|---|---|---|
+| Staging | `DB` | `libedge-db` | `207d80d6-7e6b-4e10-aacf-b218970dbaf8` |
+| Production | `DB` | `libedge-db-production` | `64e57edf-8163-4495-8874-fec00485b2ff` |
+
+### 3.5 R2 Bucket'ları
+
+| Ortam | Binding | Bucket |
+|---|---|---|
+| Staging | `FILES_BUCKET` | `libedge-files-staging` |
+| Production | `FILES_BUCKET` | `libedge-files` |
+
+### 3.6 KV Namespace'leri
+
+| Ortam | Binding | Namespace |
+|---|---|---|
+| Staging | `RATE_LIMIT_KV` | `staging-RATE_LIMIT_KV` |
+| Staging | `RA_UPSTREAM_SESSIONS` | `staging-RA_UPSTREAM_SESSIONS` |
+| Production | `RATE_LIMIT_KV` | `production-RATE_LIMIT_KV` |
+| Production | `RA_UPSTREAM_SESSIONS` | `production-RA_UPSTREAM_SESSIONS` |
+
+---
+
+## 4. Environment Ayrımı
+
+| Bileşen | Staging | Production |
+|---|---|---|
+| Pages domain | `staging.libedge-website.pages.dev` | `libedge-website.pages.dev` |
+| Main Worker | `libedge-api-staging` | `libedge-api-prod` |
+| Proxy Worker | `libedge-ra-proxy-staging` | `libedge-ra-proxy-prod` |
+| D1 | `libedge-db` | `libedge-db-production` |
+| R2 | `libedge-files-staging` | `libedge-files` |
+| RA proxy host | `proxy-staging.selmiye.com` | `proxy.selmiye.com` |
+
+---
+
+## 5. Secret'lar
+
+### 5.1 Main API Worker Secret'ları
+
+| Secret | Kullanım |
+|---|---|
+| `JWT_SECRET` | Auth access/refresh token imzalama |
+| `R2_PUBLIC_URL` | R2 dosya URL üretimi |
+| `AIRTABLE_PAT` | Airtable API erişimi |
+| `RA_PROXY_TOKEN_SECRET` | Main API ile RA Proxy arasında token imzalama |
+| `RA_CREDS_MASTER_KEY` | RA credential encryption |
+| `RA_EGRESS_DEFAULT_SECRET` | RA egress HMAC shared secret |
+
+### 5.2 RA Proxy Worker Secret'ları
+
+| Secret | Kullanım |
+|---|---|
+| `RA_PROXY_TOKEN_SECRET` | Main API'den gelen proxy token doğrulama |
+| `RA_CREDS_MASTER_KEY` | Credential çözme/şifreleme |
+| `RA_EGRESS_DEFAULT_SECRET` | Egress agent ile güvenli iletişim |
+
+---
+
+## 6. Kod ve Repo Yapısı
+
+```text
 libedge-website/
-├── backend/src/               # Ana API (Hono Workers)
-│   ├── routes/ra/             # RA endpoint'leri
-│   │   ├── issue-token.js     # Token üret, KV'a yaz, redirect URL döndür
-│   │   └── ...
-│   └── ra/
-│       ├── jwt.js             # signProxyToken / verifyProxyToken (HS256)
-│       ├── schema.js          # ensureRemoteAccessSchema — runtime kolonlar
-│       ├── crypto.js          # AES-GCM egress secret encrypt/decrypt
-│       ├── host.js            # encodeHost / decodeHost (path-proxy URL)
-│       ├── proxy-url.js       # buildRARedirectUrl (trailing slash temizleme)
-│       └── tunnel-health.js   # cron heartbeat + /health kontrol helper'ı
-├── workers/proxy/src/
-│   ├── index.js               # Proxy Worker — path_proxy + session_host_proxy
-│   ├── egress-client.js       # HMAC-signed egress fetch
-│   ├── error-page.js          # LibEdge HTML hata sayfası
-│   └── rate-limit.js          # session/kurum bazlı proxy rate limit
-├── ra-egress/
-│   ├── main.go                # Go egress agent (HMAC verify → upstream fetch)
+├── backend/
+│   └── src/
+│       ├── index.js               ← Ana API (auth, admin, subscriptions, files, RA)
+│       ├── ra/
+│       │   ├── crypto.js
+│       │   ├── host.js
+│       │   ├── jwt.js
+│       │   └── proxy-url.js
+│       └── routes/
+│           └── ra/
+│               ├── admin-tunnel.js
+│               ├── egress-allowed-hosts.js
+│               └── issue-token.js
+├── workers/
+│   └── proxy/
+│       └── src/
+│           ├── index.js           ← Proxy Worker (session_host_proxy + path_proxy)
+│           ├── egress-client.js   ← egressFetch, browserFetch, assetBrowserFetch
+│           ├── alert-writer.js
+│           ├── error-page.js
+│           └── rate-limit.js
+├── ra-egress/                     ← Go egress agent + Docker setup
+│   ├── main.go
 │   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── tunnel-provision.ps1   # Tek seferlik Named Tunnel kurulum scripti
-│   └── .env                   # Gitignored — TUNNEL_TOKEN, EGRESS_SHARED_SECRET
-├── assets/js/auth.js          # API_BASE = '' (relative) · cookie auth
-├── profile.html               # Portal UI · openRemoteAccess()
-└── wrangler.toml              # Ana backend wrangler config
+│   └── docker-compose.yml
+├── ra-browser/                    ← Playwright/Chromium service (WAF bypass)
+│   └── server.js
+├── migrations/                    ← D1 SQL migrations (0001–0040+)
+├── index.html / admin.html / profile.html / tools.html
+└── package.json
 ```
 
 ---
 
-## §3 Cloudflare Kaynakları (Staging)
+## 7. Ana Veri Akışları
 
-| Kaynak | ID / İsim |
-|---|---|
-| D1 veritabanı | `libedge-db` · `207d80d6-7e6b-4e10-aacf-b218970dbaf8` |
-| KV (rate limit) | `RATE_LIMIT_KV` · `556d17f88a7a48e381e5ffed1d150536` |
-| KV (RA sessions) | `RA_UPSTREAM_SESSIONS` · `a3a0f76dca834921b4b1000bce675037` |
-| R2 bucket | `libedge-files-staging` |
-| Main Worker | `libedge-api-staging` |
-| Proxy Worker | `libedge-ra-proxy-staging` |
-| Named Tunnel | `libedge-ra-egress` → `ra-egress.selmiye.com` |
-| Pages site | `staging.libedge-website.pages.dev` |
+### 7.1 Normal Kullanıcı
 
-### Worker Routes (staging)
+```
+Kullanıcı → Cloudflare Pages → /api/* → libedge-api-* → D1 / R2 / KV
+```
 
-| Worker | Route |
-|---|---|
-| `libedge-api-staging` | `libedge-api-staging.agursel.workers.dev/*` |
-| `libedge-ra-proxy-staging` | `proxy-staging.selmiye.com/*` · `*.selmiye.com/*` |
+### 7.2 Login ve Oturum
 
-### Worker Secrets (proxy Worker staging)
+```
+POST /api/auth/login → D1 users → JWT access (1h) + refresh token (7 gün) → httpOnly cookie
+```
 
-| Secret | Açıklama |
-|---|---|
-| `RA_PROXY_TOKEN_SECRET` | JWT imzalama — main backend ile aynı değer |
-| `RA_EGRESS_DEFAULT_SECRET` | HMAC secret fallback — ra-egress `.env` ile eşleşmeli |
-| `RA_CREDS_MASTER_KEY` | AES-GCM master key (egress_secret_enc için) |
+Refresh token replay protection: `refresh_tokens` tablosunda `jti` hash tutulur, refresh'te rotate edilir.
 
----
+### 7.3 Remote Access
 
-## §4 D1 Şeması (RA ile ilgili)
-
-### `products` (RA kolonları)
-
-| Kolon | Tip | Açıklama |
-|---|---|---|
-| `ra_enabled` | INTEGER | 0/1 |
-| `ra_delivery_mode` | TEXT | `path_proxy` \| `session_host_proxy` |
-| `ra_origin_host` | TEXT | Upstream hostname, örn. `www.jove.com` |
-| `ra_origin_landing_path` | TEXT | İlk yönlendirme path'i, örn. `/research` |
-| `ra_host_allowlist_json` | TEXT | JSON array — egress SSRF koruması için |
-| `ra_requires_tunnel` | INTEGER | 1 = egress gerekli |
-
-### `products` (kart ve görsel kimlik kolonları)
-
-Ürün kartları için logo ve temel görünürlük bilgisi ürün kaydının parçasıdır.
-Repo içindeki eski `assets/images/...` logoları başlangıç seed/default değer olarak
-kalabilir; panelden yüklenen yeni logolar R2 altında `product-logos/{slug}/...`
-prefix'iyle saklanır.
-
-| Kolon | Tip | Açıklama |
-|---|---|---|
-| `logo_asset_key` | TEXT | R2 object key, örn. `product-logos/scopus/logo-...webp` |
-| `logo_url` | TEXT | Public R2 URL veya mevcut local asset yolu |
-| `logo_updated_at` | TEXT | Cache busting için versiyon zamanı |
-| `brand_color` | TEXT | Opsiyonel `#RRGGBB` vurgu rengi |
-| `card_background_asset_key` | TEXT | R2 object key, örn. `product-card-backgrounds/scopus/background-...webp` |
-| `card_background_url` | TEXT | Arka yüz görsel URL'si veya mevcut local asset yolu |
-| `card_background_updated_at` | TEXT | Arka plan cache busting zamanı |
-| `card_background_overlay` | TEXT | `light`, `dark`, `none` |
-| `card_front_text_color` | TEXT | Ön yüz başlık rengi (`#RRGGBB`) |
-| `card_back_text_color` | TEXT | Arka yüz yazı rengi (`#RRGGBB`) |
-| `short_description_tr` / `short_description_en` | TEXT | Kart/API kısa açıklaması |
-| `subjects_json` | TEXT | JSON array konu slugları |
-| `access_tags_json` | TEXT | JSON array erişim/ürün etiketleri: `EKUAL`, `LibEdge`, `Açık Erişim`, `Abonelik`, `Satınalma`, `Deneme` |
-| `card_visible` | INTEGER | 1 = public ürün kartlarında göster |
-| `display_order` | INTEGER | Public kart sıralaması |
-| `is_featured` | INTEGER | Öne çıkarma/carousel adaylığı |
-
-Public liste `GET /api/products` ile gelir. Admin tarafı aynı veriyi
-`GET /api/admin/products` üzerinden logo preview, kart sırası, görünürlük,
-arka plan ve yazı renkleriyle yönetir. Dosya upload endpoint'leri:
-`POST /api/admin/product/:slug/logo` ve
-`POST /api/admin/product/:slug/card-background`.
-
-### `institution_ra_settings`
-
-| Kolon | Açıklama |
-|---|---|
-| `institution_id` | PK |
-| `egress_endpoint` | Tunnel URL, örn. `https://ra-egress.selmiye.com` |
-| `egress_secret_enc` | AES-GCM şifreli HMAC secret (NULL ise RA_EGRESS_DEFAULT_SECRET kullanılır) |
-| `enabled` | 0/1 |
-| `tunnel_status` | `ok` / `error` / `unknown` / `unconfigured` |
-| `tunnel_last_seen` | Son başarılı heartbeat unix timestamp |
-
-### `admin_action_logs`
-
-Admin panelindeki kritik değişiklikler için geri alma/audit kayıtları tutulur.
-
-| Kolon | Açıklama |
-|---|---|
-| `id` | Undo/restore token'ı (`crypto.randomUUID()`) |
-| `actor_*` | İşlemi yapan admin kimliği |
-| `entity_type` | `product`, `subscription`, `institution_subscription`, `institution` |
-| `entity_id` | Değişen kayıt id/slug |
-| `action` | `update` veya `delete` |
-| `before_json` / `after_json` | Geri yükleme için snapshot |
-| `undo_expires_at` | Hızlı "Geri al" süresi |
-| `undone_at` | İşlem geri yüklendiyse timestamp |
-
-`/api/admin/actions/:id/undo` hızlı geri alma için süreyi kontrol eder.
-`/api/admin/actions/:id/restore` işlem geçmişinden daha sonra restore edebilir.
-İlk kapsam: ürün update, abonelik update/delete, kurum aboneliği update/delete,
-kurum update.
-
-### Staging D1 Mevcut Değerler
-
-```sql
--- products
-slug='jove-research'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_origin_landing_path = '/research'
-  ra_origin_host = 'www.jove.com'
-  ra_enabled = 1
-
-slug='emis'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_origin_landing_path = '/php/login/redirect'
-  ra_origin_host = 'www.emis.com'
-  ra_host_allowlist_json = '["www.emis.com","emis.com","cas.emis.com","auth.emis.com","m.emis.com"]'
-  ra_enabled = 1
-
-slug='acs'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_origin_landing_path = '/'
-  ra_origin_host = 'pubs.acs.org'
-  ra_host_allowlist_json = '["pubs.acs.org","www.pubs.acs.org","acs.org","www.acs.org","cenglobal.acs.org","www.chemistry.org","pubsdev.acs.org","pubstest.acs.org","idp.acs.org"]'
-  ra_enabled = 1  -- utls Chrome fingerprint ile Cloudflare bypass çözüldü ✅
-
-slug='primal-pictures'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_origin_landing_path = '/'
-  ra_origin_host = 'anatomy.tv'
-  ra_host_allowlist_json = '["anatomy.tv","www.anatomy.tv","cdn.anatomy.tv","anatomysearch.anatomy.tv"]'
-  ra_enabled = 1  -- ürün RA-ready; kurum aboneliği ayrı yönetilir
-
-slug='iopscience'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_origin_landing_path = '/'
-  ra_origin_host = 'iopscience.iop.org'
-  ra_host_allowlist_json = '["iopscience.iop.org","www.iopscience.iop.org","cdp.iopscience.iop.org","iopscience.org","www.iopscience.org","iop.org","www.iop.org","ioppublishing.org","www.ioppublishing.org","stacks.iop.org","www.stacks.iop.org","asia.iop.org","www.asia.iop.org","biologicalphysics.iop.org","www.biologicalphysics.iop.org","conferenceseries.iop.org","irish.iop.org","tap.iop.org","www.tap.iop.org","jphysplus.iop.org","librarians.iop.org","www.librarians.iop.org","njp.org","www.njp.org","physicsworld.com","www.physicsworld.com","physicsworldarchive.iop.org","www.physicsworldarchive.iop.org","stimulatingphysics.org","www.stimulatingphysics.org","stimulatingphysicssupport.iop.org"]'
-  ra_enabled = 1  -- staging kurum subscription id=16 active/proxy
-
-slug='cas-scifinder-discovery-platform'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_origin_landing_path = '/'
-  ra_origin_host = 'scifinder-n.cas.org'
-  ra_host_allowlist_json = '["sso.cas.org","scifinder-n.cas.org"]'
-  ra_enabled = 1  -- CAS OIDC desktop + mobil staging doğrulandı ✅
-
--- institution_ra_settings
-institution_id = 1
-  egress_endpoint = 'https://ra-egress.selmiye.com'
-  egress_secret_enc = NULL   ← RA_EGRESS_DEFAULT_SECRET fallback kullanılıyor
-  enabled = 1
-  tunnel_status = 'healthy'
+```
+Kullanıcı
+  → POST /api/ra/issue-token
+  → libedge-api-* kısa ömürlü JWT üretir, KV'a session yazar
+  → Redirect: https://r{sid}.selmiye.com{landingPath}?t={JWT}
+  → Proxy Worker token doğrular, cookie set eder
+  → Proxy Worker upstream'e egressFetch / browserFetch / assetBrowserFetch ile iletir
+  → ra-egress agent → publisher platformu
 ```
 
 ---
 
-## §5 RA Akışı — session_host_proxy Modu
+## 8. Önemli API Endpoint'leri
+
+| Method | Path | Açıklama | Auth |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | Giriş | Yok |
+| `POST` | `/api/auth/refresh` | Token yenileme | Refresh token |
+| `POST` | `/api/auth/logout` | Çıkış | Var |
+| `GET` | `/api/user/profile` | Profil | Var |
+| `GET` | `/api/announcements` | Duyuru listesi | Yok |
+| `POST` | `/api/ra/issue-token` | RA token üretimi | Var |
+| `GET` | `/api/ra/egress/allowed-hosts` | Egress host listesi | Service key |
+| `GET` | `/api/admin/dashboard` | Admin | Admin |
+
+---
+
+## 9. Deployment Komutları
+
+### 9.1 Main API Worker
+
+```powershell
+npx wrangler deploy --env staging
+npx wrangler deploy --env production
+```
+
+### 9.2 RA Proxy Worker
+
+```powershell
+cd workers/proxy
+npx wrangler deploy --env staging
+npx wrangler deploy --env production
+```
+
+### 9.3 D1 Migration
+
+```powershell
+npx wrangler d1 migrations apply libedge-db --env staging --remote
+npx wrangler d1 migrations apply libedge-db-production --env production --remote
+```
+
+### 9.4 Log Tail
+
+```powershell
+npx wrangler tail --env staging --format pretty
+npx wrangler tail libedge-ra-proxy-staging --format pretty
+```
+
+### 9.5 ra-browser Rebuild
+
+```powershell
+cd ra-egress
+docker compose build --no-cache ra-browser
+docker compose up -d --force-recreate ra-browser
+```
+
+---
+
+## 10. Güncel Durum (22 Mayıs 2026)
+
+| Bileşen | Staging | Production |
+|---|---|---|
+| Pages | Aktif | Aktif |
+| Main API Worker | Aktif | Aktif |
+| RA Proxy Worker | Aktif (`c7d0c78a` + `770b5da5`) | Deployed (Step 07 bekliyor) |
+| ra-egress | Aktif | Aktif |
+| ra-browser | Aktif (Referer fix rebuild edildi) | — |
+| D1 migrations | 0040 uygulandı | Prod-07 sonrası uygulanacak |
+| Scopus RA | Search ✅, SD full text ✅ | — |
+| Cloudflare block | Geçici (test trafiği) — 30-60 dk | — |
+
+---
+
+## 11. Remote Access — Teknik Detaylar
+
+### 11.1 session_host_proxy Akışı
 
 ```
 [Kullanıcı tarayıcı]
-  │
-  │  1. POST /api/ra/issue-token  (cookie: authToken httpOnly)
+  │  POST /api/ra/issue-token
   ▼
-[libedge-api-staging Worker]
-  │  - Abonelik lookup: ra_delivery_mode, ra_origin_landing_path
-  │  - JWT sign (HS256): sub, iid, sid, pid, jti, mod, exp
+[libedge-api-* Worker]
+  │  - Abonelik: ra_delivery_mode, ra_origin_landing_path
+  │  - JWT sign: sub, iid, sid, pid, jti, mod, exp
   │  - KV yaz: rhost:{sessionId} → {origin_host, institution_id, expires_at}
-  │  - Redirect URL: https://r{sid}.selmiye.com{landingPath}?t={JWT}
+  │  - Redirect: https://r{sid}.selmiye.com{path}?t={JWT}
   ▼
-[Tarayıcı → https://r{sid}.selmiye.com/research?t=JWT]
+[Tarayıcı → r{sid}.selmiye.com?t=JWT]
   │
   ▼
-[libedge-ra-proxy-staging Worker]
-  │  acceptSessionHostToken():
-  │  - JWT verify (HS256, RA_PROXY_TOKEN_SECRET)
-  │  - JTI tek kullanımlık kontrol (RATE_LIMIT_KV)
-  │  - KV session doğrula
+[libedge-ra-proxy-* Worker]
+  │  - JWT verify, JTI tek kullanımlık kontrol
   │  - 302 + Set-Cookie: ra_proxy_session={sid}
   ▼
-[Tarayıcı → https://r{sid}.selmiye.com/research (cookie ile)]
+[Tarayıcı → r{sid}.selmiye.com (cookie ile)]
   │
   ▼
-[libedge-ra-proxy-staging Worker]
-  │  handleSessionHost():
+[Proxy Worker]
   │  - KV'dan session yükle
-  │  - buildUpstreamHeaders(): ra_proxy_session strip, diğer cookieler forward
-  │  - Origin/Referer rewrite: r*.selmiye.com → publisher origin
-  │  - egressFetch() → ra-egress.selmiye.com/proxy
+  │  - buildUpstreamHeaders()
+  │  - egressFetch / browserFetch / assetBrowserFetch seç
   ▼
-[ra-egress (Go, Named Tunnel)]
-  │  - X-RA-Signature HMAC-SHA256 verify
-  │  - ALLOWED_HOST_REGEX kontrol (SSRF koruması)
-  │  - net/http → publisher allowlist host (kurum IP'siyle)
-  │  - Response stream
+[ra-egress → ra-browser (gerekirse)]
+  │  - HMAC verify, ALLOWED_HOST_REGEX kontrol
+  │  - publisher'a HTTP(S) istek (kurum IP'siyle)
   ▼
 [Publisher]
 ```
 
----
+### 11.2 Egress Routing Mantığı
 
-## §6 egressFetch — HMAC İmzalama
+| Koşul | Yol |
+|---|---|
+| `isGet && isDocNav && needsPlaywright` | `browserFetch` (Playwright tam sayfa) |
+| `isGet && !isDocNav && needsPlaywright` | `assetBrowserFetch` (Chrome TLS, cache'den) |
+| `!isGet && PLAYWRIGHT_SLUGS içinde` | `assetBrowserFetch` (POST, Chrome TLS) |
+| Diğer | `egressFetch` (Go HTTP client) |
 
-`workers/proxy/src/egress-client.js` — proxy Worker → ra-egress arası imzalama:
+`PLAYWRIGHT_SLUGS` = `cab-abstracts`, `wiley`, `scopus` — CF Bot Management gerektiren ürünler.
+
+### 11.3 egressFetch — HMAC İmzalama
 
 ```
 msg = "{METHOD}|{targetURL}|{timestamp}|{body_sha256_hex}"
 sig = HMAC-SHA256(msg, egress_secret)
 
-Request headers:
-  X-RA-Target-URL:  https://www.jove.com/...
-  X-RA-Method:      GET
+Headers:
+  X-RA-Target-URL:  https://www.scopus.com/...
+  X-RA-Method:      POST
   X-RA-Timestamp:   {unix_ts}
   X-RA-Signature:   {hex}
 ```
 
-Secret öncelik sırası (egress-client.js):
-1. D1'de `egress_secret_enc` varsa + `RA_CREDS_MASTER_KEY` varsa → AES-GCM decrypt
-2. `RA_EGRESS_DEFAULT_SECRET` env varı → plaintext fallback
-3. Hata fırlat
+Secret öncelik: D1 `egress_secret_enc` (AES-GCM) → `RA_EGRESS_DEFAULT_SECRET` env → hata.
 
----
+### 11.4 Proxy Worker — Header Politikası
 
-## §7 Proxy Worker — Header Politikası
+**Upstream'e gönderilen:**
+- Tüm browser cookie'leri (`ra_proxy_session` hariç)
+- Origin ve Referer → proxy domain'den publisher origin'e rewrite
+- CF runtime header'ları strip: `cf-connecting-ip`, `cf-ray`, `x-forwarded-for` vb.
+- EMIS: upstream'e desktop User-Agent / Client Hints gönderilir
 
-### Upstream'e gönderilen (browser → publisher):
-- Tüm browser cookie'leri **ra_proxy_session hariç** (aws-waf-token, cf_clearance, joveiptoken vb.)
-- Origin ve Referer → `r*.selmiye.com` → publisher origin olarak rewrite
-- Cloudflare runtime header'ları strip: `cf-connecting-ip`, `cf-ray`, `x-forwarded-for`, `cdn-loop` vb.
-- Ürün bazlı override: EMIS için upstream'e desktop User-Agent / Client Hints gönderilir
-
-### Publisher'dan gelen response:
+**Publisher'dan gelen response:**
 - Set-Cookie → domain `r*.selmiye.com`, path `/` olarak rewrite
-- `getSetCookie()` destekli çoklu Set-Cookie işleme
 - Location → `r*.selmiye.com` subdomain'e rewrite
-- CSP, HSTS strip (proxy domain'i bozuyor)
+- CSP, HSTS strip
 
-### Multi-host publisher routing
+### 11.5 Multi-Host Publisher Routing
 
-Bazı yayıncılar tek hostta kalmaz; örn. EMIS akışı:
-
-```
-www.emis.com/php/login/redirect → www.emis.com/php/emiscom/registered →
-cas.emis.com/login → www.emis.com/v2/app/auth → www.emis.com/v2/
-```
-
-`session_host_proxy` modunda primary host normal path'te kalır:
-
-```
-https://r{sid}.selmiye.com/v2/
-```
-
-Allowlist'teki alternatif hostlar encoded prefix altında taşınır:
+Bazı yayıncılar (EMIS, CAS SciFinder) birden fazla host kullanır. Allowlist'teki alt-hostlar
+`/__ra-host/{encoded-host}/` prefix'i altında taşınır:
 
 ```
 https://r{sid}.selmiye.com/__ra-host/cas-emis-com/login
-https://r{sid}.selmiye.com/__ra-host/m-emis-com/api/
+https://r{sid}.selmiye.com/__ra-host/sso-cas-org/as/...
 ```
 
-Bu sayede CAS/auth/mobile host geçişleri aynı `ra_proxy_session` altında kalır, ama
-SSRF sınırı `products.ra_host_allowlist_json` ile korunur.
+OIDC `redirect_uri` parametresi değiştirilmez; SSO callback orijinal host adresine kalır.
 
-### Cookie-based multi-origin SSO
+### 11.6 Session-Host Cookie Jar
 
-CAS SciFinder gibi bazı ürünlerde akış aynı path altında kalır ama upstream host değişir:
-
-```
-scifinder-n.cas.org/ → 302 → sso.cas.org/as/authorization.oauth2?... →
-login → 302 → scifinder-n.cas.org/pa/oidc/cb?code=...
-```
-
-Bu ürünler için `session_host_proxy` ek bir upstream-host cookie kullanır:
-
-1. Worker allowlist'teki farklı hosta giden `Location` header'ını aynı session hostuna yazar:
-   `https://sso.cas.org/as/...` → `https://r{sid}.selmiye.com/as/...`
-2. Aynı 302 yanıtında `__ra_upstream=sso.cas.org` set edilir.
-3. Cookie varken normal path istekleri origin host yerine cookie'deki hosta gider.
-4. Akış origin hosta döndüğünde (`scifinder-n.cas.org/pa/oidc/cb`) cookie temizlenir.
-
-Kritik kural: OIDC `redirect_uri` parametresi değiştirilmez. CAS bu değeri doğrular;
-`redirect_uri=https://scifinder-n.cas.org/pa/oidc/cb` olarak kalır. SSO tamamlandığında
-gelen absolute redirect Worker tarafından tekrar `r{sid}.selmiye.com/pa/oidc/cb` altına
-rewrite edilir.
-
-### Session-host upstream cookie jar
-
-CAS callback sırasında bazı gerekli upstream cookie'ler tarayıcı request'inde görünmeyebilir.
-SciFinder'da ilk 403/Try Again davranışının kök nedeni, callback isteğinde
-`nonce.{state.suffix}` cookie'sinin browser header'ında eksik olmasıydı.
-
-`session_host_proxy` bu yüzden `RA_UPSTREAM_SESSIONS` içinde session+host bazlı geçici jar tutar:
+CAS/OIDC gibi çok adımlı akışlarda bazı cookie'ler browser request'inde eksik kalabilir.
+`RA_UPSTREAM_SESSIONS` KV'da session+host bazlı jar:
 
 ```
 rhostjar:{sessionId}:{targetHost} → "nonce.xxx=...; PF=..."
 ```
 
-Her upstream yanıttaki `Set-Cookie` bu jar'a işlenir; sonraki upstream request'te jar cookie'leri
-browser cookie'lerinden önce eklenir, aynı isim varsa browser değeri kazanır. TTL proxy session
-TTL'i ile aynıdır. Bu mekanizma CAS gibi çok adımlı OIDC akışlarında callback'in ilk denemede
-geçmesini sağlar; Pangram gibi kullanıcı bazlı uzun ömürlü cookie jar davranışıyla karıştırılmamalıdır.
+Her upstream Set-Cookie bu jar'a işlenir; sonraki upstream request'te jar browser
+cookie'lerinden önce eklenir.
 
-Staging debug header'ları:
+### 11.7 Publisher Cookie Scoping
 
-| Header | Anlamı |
-|---|---|
-| `X-RA-Debug-Oidc-State-Suffix` | CAS `state` protected header içindeki `suffix` |
-| `X-RA-Debug-Oidc-Nonce-Cookie` | Browser request cookie'sinde nonce var mı |
-| `X-RA-Debug-Oidc-Upstream-Nonce-Cookie` | Upstream'e gönderilen efektif cookie'de nonce var mı |
+Elsevier ürünleri (ScienceDirect, Scopus) için cookie'ler `__cp_{scopeHost}|{name}` prefix'iyle
+namespace'lenir. Bu sayede farklı publisher oturumlarının cookie'leri çakışmaz.
 
----
+Scopus için namespace script devre dışı (`publisherCookieScopeHost !== 'scopus.com'` koşulu) —
+Next.js hydration uyumu için.
 
-## §7.1 Operasyonel Koruma ve Hata UX'i (2026-04-29)
+### 11.8 Rate Limit
 
-Proxy katmanında kullanıcıya ham upstream/egress hata mesajı gösterilmez.
-`workers/proxy/src/error-page.js` LibEdge markalı HTML hata sayfası döner; response
-`no-store`, `noindex`, `no-referrer` ve dar CSP header'ları taşır. İç hata detayları
-Cloudflare loglarında kalır, kullanıcıya yalnız güvenli açıklama gösterilir.
-
-Proxy rate limit `workers/proxy/src/rate-limit.js` ile KV fixed-window olarak uygulanır.
-Varsayılanlar:
-
-| Scope | Varsayılan |
+| Kapsam | Varsayılan |
 |---|---:|
 | Proxy session | 300 istek/dk |
 | Kurum | 5000 istek/dk |
 | Pencere | 60 sn |
 
-Env override'ları:
+429 + `Retry-After` döner. KV hatasında fail-open (yayıncı erişimi kesilmez).
 
-| Değişken | Açıklama |
-|---|---|
-| `RA_PROXY_RATE_LIMIT_ENABLED=0` | Limitleri geçici kapatır |
-| `RA_PROXY_RATE_WINDOW_SEC` | Pencere süresi |
-| `RA_PROXY_SESSION_RPM` | Session bazlı limit |
-| `RA_PROXY_INSTITUTION_RPM` | Kurum bazlı limit |
-
-Limit aşılırsa proxy `429` + `Retry-After` döner. KV hatasında fail-open davranır;
-yayıncı erişimini KV arızası yüzünden kesmez.
-
-Ana API cron'u (`wrangler.toml` içinde `*/5 * * * *`) artık upstream alert mail kontrolüne
-ek olarak `runTunnelHeartbeat()` çalıştırır. Aktif ve endpoint'i olan kurum tünellerinde
-`{egress_endpoint}/health` test edilir; başarılıysa `tunnel_status='ok'` ve
-`tunnel_last_seen=now`, başarısızsa `tunnel_status='error'` yazılır.
-
-Admin panelinde 2026-04-29 itibarıyla:
-
-- Ürün, abonelik ve kurum değişikliklerinde `undo_id` döner.
-- UI hızlı "Geri al" toast'ı gösterir.
-- Süre kaçırılırsa işlem geçmişinden "Geri yükle" mümkündür.
-- Admin auth kontrolü token refresh döngüsünü tekrar başlatır; oturumun
-  gereksiz kapanması azaltıldı.
-- Kurum arama/filtrelemede Türkçe karakter ve `tunnel_last_seen` numeric/string
-  uyumsuzluğu giderildi.
-- Ürünlere çoklu erişim etiketi eklendi (`access_tags_json`). EKUAL ürünleri
-  batch migration ile seed edilir; `proxy` delivery değeri `path_proxy`,
-  `username_password` erişim tipi `email_password_external` olarak normalize edilir.
-
----
-
-## §8 ra-egress Go Agent
-
-**Dosya:** `ra-egress/main.go`  
-**Build:** `CGO_ENABLED=0 go build -ldflags="-s -w" -o ra-egress .`  
-**Image:** ~10MB (scratch base)
+### 11.9 ra-egress Go Agent
 
 **Env değişkenleri:**
 
 | Değişken | Açıklama |
 |---|---|
 | `EGRESS_SHARED_SECRET` | HMAC key — proxy Worker ile eşleşmeli |
-| `ALLOWED_HOST_REGEX` | SSRF koruması regex, örn. `^(www\.jove\.com\|jove\.com)$` |
+| `ALLOWED_HOST_REGEX` | SSRF koruması, geniş fallback tüm RA ailelerini kapsar |
+| `LIBEDGE_API_URL` | Dinamik host listesi için API endpoint |
+| `LIBEDGE_SERVICE_KEY` | API servis anahtarı |
+| `LIBEDGE_INSTITUTION_ID` | Kurum bazlı host filtreleme |
 | `TUNNEL_TOKEN` | Cloudflare Named Tunnel token |
-| `MAX_REQUEST_BYTES` | Default 10MB |
 
-**`.env` mevcut değerleri (gitignored):**
-```
-EGRESS_SHARED_SECRET=5HycdKymy1sXwsICtdxrMmDd1CVjF6SUgCtTOilJIGg=
-ALLOWED_HOST_REGEX=^(www\.jove\.com|jove\.com|cdn\.jove\.com|player\.jove\.com|assets\.jove\.com)$
-```
+TLS: Go `net/tls` (HTTP/2 devre dışı — AWS WAF uyumu) + `utls` Chrome fingerprint
+(Cloudflare korumalı yayıncılar için — ACS, Wiley, Scopus, CABI).
 
-**Önemli:** `ALLOWED_HOST_REGEX` içindeki `$` karakteri PowerShell here-string'de
-backtick ile escape edilmeli: `` `$ `` — `tunnel-provision.ps1` düzeltildi.
+### 11.10 ra-browser (Playwright/Chromium)
 
----
+CF Bot Management korumalı yayıncılar için Playwright tabanlı Chrome servisi.
 
-## §9 Named Tunnel Kurulumu
+- `GET /proxy` → tam sayfa navigasyon (CF Turnstile çözme)
+- `POST /proxy` + `X-RA-Asset: 1` → sub-resource fetch (Chrome TLS, cache servis)
 
-**Script:** `ra-egress/tunnel-provision.ps1`
+Sub-resource cache: sayfa yüklemesinde yakalanan CSS/JS/image'lar 5 dk cache'de tutulur;
+asset-proxy istekleri cache'den servis edilir (upstream'e yeni istek atmadan).
 
-```powershell
-# Tek seferlik — repo kökünden:
-Set-ExecutionPolicy -Scope Process Bypass
-.\ra-egress\tunnel-provision.ps1
-
-# Farklı kurum için:
-.\ra-egress\tunnel-provision.ps1 -TunnelName "sabanciuniv-ra" -EgressHost "ra-egress-sabanciuniv.selmiye.com"
-```
-
-Script adımları:
-1. `cloudflared` kur (winget)
-2. Cloudflare hesabına login
-3. Named Tunnel oluştur (idempotent)
-4. DNS CNAME ekle: `EgressHost → {tunnelId}.cfargotunnel.com`
-5. Tunnel token al → `.env` yaz
-6. `docker compose up --build -d`
-7. D1'e `egress_endpoint` yaz
-
-**Sonraki başlatmalar:** `docker compose up -d` — URL değişmez.
+**Önemli:** `passHeaders` (Referer, Accept, vb.) artık `context.request.get()` çağrısına
+iletiliyor — önceki eksiklik doc-details gibi CSRF/Referer kontrollü API'lerde 403'e yol açıyordu.
 
 ---
 
-## §10 Portal UI (profile.html)
+## 12. Çözülen Teknik Sorunlar
 
-**Fonksiyon:** `openRemoteAccess(subscriptionId)`
-
-```javascript
-// 1. POST /api/ra/issue-token
-// 2. response.redirect_url → yeni sekmede aç
-// 3. iOS Safari: a.click() async sonrası popup engellenir
-//    → window.location.href veya kullanıcıya tıklanabilir link göster (açık sorun)
-```
-
-**Auth:** `credentials: 'include'` — `authToken` httpOnly cookie otomatik gider.  
-**API_BASE:** `''` (relative) — portal hangi domain'de çalışıyorsa oraya istek atar.
-
----
-
-## §11 Staging Test Akışı (PowerShell)
-
-```powershell
-$base = "https://libedge-api-staging.agursel.workers.dev"
-
-# 1. Login
-$auth = Invoke-RestMethod "$base/api/auth/login" -Method Post `
-    -Body '{"email":"...","password":"..."}' -ContentType "application/json" `
-    -SessionVariable sess
-
-# 2. Abonelik listesi
-$subs = Invoke-RestMethod "$base/api/subscription/list" `
-    -Headers @{Authorization="Bearer $($auth.access.token)"}
-
-# 3. RA token
-$ra = Invoke-RestMethod "$base/api/ra/issue-token" -Method Post `
-    -Body "{`"subscription_id`":$($subs[0].id)}" `
-    -ContentType "application/json" `
-    -Headers @{Authorization="Bearer $($auth.access.token)"}
-
-# 4. Tarayıcıda aç
-Start-Process $ra.redirect_url
-```
+| Sorun | Çözüm |
+|---|---|
+| AWS WAF HTTP/2 fingerprint (JoVE) | ra-egress'te HTTP/2 devre dışı, HTTP/1.1 zorunlu |
+| Cloudflare Bot Management (ACS, Wiley, Scopus, CABI) | utls Chrome TLS fingerprint + Playwright/ra-browser |
+| iOS Safari popup blocker | `window.open('')` await'ten önce açılıyor, URL sonra set ediliyor |
+| EMIS multi-host session | `__ra-host/{encoded}` prefix routing |
+| CAS SciFinder OIDC callback 403 | Session-host upstream cookie jar (KV) |
+| Proxy session invalid header | safeHeaders() + response header sanitization |
+| Scopus hydration flash | `__NEXT_DATA__` hostname patch server-side |
+| doc-details 403 | ra-browser passHeaders fix (Referer, Accept) |
 
 ---
 
-## §12 POC Sonuçları
+## 13. Yeni Ürün Onboarding Reçetesi
 
-### §12.1 Doğrulanan Akış (2026-04-26)
-
-```
-Portal (staging.libedge-website.pages.dev) → "Erişime Git" →
-issue-token → r{sid}.selmiye.com/research?t=JWT →
-Proxy Worker (302 + cookie) → r{sid}.selmiye.com/research →
-egressFetch → ra-egress.selmiye.com/proxy →
-www.jove.com/research → 200 ✅
-```
-
-**Kanıtlar:**
-- ra-egress logları: 40+ proxied request, tümü 200
-- `POST /api/ip-auth → 200` — JoVE kurum IP'sini tanıdı
-- Mobil (WiFi'sız) erişimde JoVE kurum IP'si (159.20.68.12) görüyor ✅ — paywall yok
-- `ra_origin_landing_path='/research'` doğru çalışıyor
-- Named Tunnel Docker restart'ta URL değişmiyor
-- JWT HS256 signing/verification çalışıyor
-- HMAC-imzalı proxy→egress iletişimi çalışıyor
-- Cookie round-trip: `ra_proxy_session` strip, diğerleri forward
-- Origin/Referer rewrite: `r*.selmiye.com` → `www.jove.com`
-- iOS Safari'de yeni sekme açılıyor (popup blocker aşıldı)
-
-### §12.2 Yürütülen Proxy Düzeltmeleri
-
-Bu oturumda `workers/proxy/src/index.js`'e eklenenler:
-
-1. **Cookie forward**: Tüm cookie'ler forward, yalnızca `ra_proxy_session` strip
-2. **Origin/Referer rewrite**: proxy domain → publisher origin
-3. **CF runtime header strip**: `cf-connecting-ip`, `cf-ray`, `x-forwarded-for` vb.
-4. **Set-Cookie multi**: `headers.getSetCookie()` destekli çoklu cookie handling
-5. **Trailing slash**: `proxy-url.js` — landing path'e gereksiz `/` eklenmiyor
-6. **Staging debug headers**: `X-RA-Debug-*` (yalnızca ENVIRONMENT=staging)
-7. **Redirect manual**: Proxy Worker → ra-egress fetch `redirect: 'manual'`  
-   → EMIS gibi ara `302 + Set-Cookie` kullanan akışlarda cookie kaybı engellendi.
-8. **Multi-host session routing**: `__ra-host/{encoded-host}` prefix'i  
-   → `cas.emis.com`, `auth.emis.com`, `m.emis.com` gibi hostlar tek session altında proxylanır.
-9. **EMIS mobile config rewrite**: `m.emis.com/config/application*.js` içindeki
-   absolute API originleri `r*.selmiye.com/__ra-host/m-emis-com/...` adreslerine çevrilir.
-10. **EMIS desktop-UA override**: Mobil cihazdan gelen EMIS isteklerinde upstream'e desktop
-    browser kimliği gönderilir; EMIS böylece çalışan `/v2/` CAS akışına yönlenir.
-11. **Cookie-based multi-origin SSO**: CAS SciFinder'da `scifinder-n.cas.org ↔ sso.cas.org`
-    geçişleri aynı `r{sid}.selmiye.com` hostu altında tutulur; `__ra_upstream` aktif upstream
-    hostunu seçer.
-12. **Session-host upstream cookie jar**: CAS callback'te browser'dan düşebilen
-    `nonce.{state.suffix}` cookie'si `rhostjar:{sessionId}:{targetHost}` üzerinden upstream'e
-    taşınır; ilk callback 403/Try Again problemi çözüldü.
-13. **CAS OIDC debug header'ları**: Staging'de state suffix, browser nonce ve upstream nonce
-    görünürlüğü `X-RA-Debug-Oidc-*` header'larıyla takip edilir.
-
-### §12.3 Yürütülen ra-egress Düzeltmeleri
-
-Bu oturumda `ra-egress/main.go`'ya eklenenler:
-
-1. **HTTP/2 devre dışı**: `TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{}`  
-   → Go'nun HTTP/2 SETTINGS frame fingerprint'i AWS WAF tarafından bot olarak sınıflandırılıyordu.  
-   → HTTP/1.1 ile `/_waf-probe → 200` ✅
-
-2. **IPv4 zorla**: `DialContext: tcp4`  
-   → Docker container default outbound IPv6 kullanabilir; kurum IP'si IPv4 (159.20.68.12).
-
-3. **IP-ifşa header filtreleme**: `isIPRevealingHeader()` header loop'a eklendi  
-   → `CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`, `CF-Ray`, `CF-Connecting-IPv6` vb.  
-   → JoVE artık mobil kaynak IP yerine yalnızca egress container IP'sini (kurum IP'si) görüyor.
-
-4. **Redirect takip etmeme**: `CheckRedirect: http.ErrUseLastResponse`  
-   → ara `302` yanıtları Proxy Worker'a döner; `Set-Cookie` ve `Location` Worker tarafından
-   rewrite edilip tarayıcıya iletilir. EMIS session cookie kaybı bu şekilde çözüldü.
-
-5. **Healthcheck modu**: `/ra-egress --healthcheck`  
-   → scratch image içinde `wget` bağımlılığı olmadan Docker healthcheck çalışır.
-
-### §12.4 Ürün Bazlı Doğrulama — EMIS (2026-04-26)
-
-**D1 konfigürasyonu:**
-
-```sql
-slug='emis'
-  ra_origin_host = 'www.emis.com'
-  ra_origin_landing_path = '/php/login/redirect'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_host_allowlist_json = '["www.emis.com","emis.com","cas.emis.com","auth.emis.com","m.emis.com"]'
-```
-
-**Kritik akış:**
-
-```
-Portal → r{sid}.selmiye.com/php/login/redirect?t=JWT →
-www.emis.com/php/login/redirect → 302 →
-www.emis.com/php/emiscom/registered → 302 →
-cas.emis.com/login → 302 →
-www.emis.com/v2/app/auth?token=... → 302 →
-www.emis.com/v2/ → 200 ✅
-```
-
-**Kanıtlar:**
-- Desktop kurum dışı erişim: `/v2/app/user?timezone=Europe%2FIstanbul → 200`
-- Mobil WiFi kapalı erişim: desktop `/v2/` arayüzü açılıyor ✅
-- `m.emis.com/api/` mobile fallback çağrıları proxylenebiliyor; ancak EMIS mobile API 401 döndüğü
-  için EMIS'e özel desktop-UA override ile çalışan CAS `/v2/` akışı tercih edildi.
-- `ra-egress` kurum IP'siyle çıkıyor; EMIS IP tabanlı auth kurum içinde doğrulandı.
-
-### §12.5 Ürün Bazlı Doğrulama — CAS SciFinder (2026-04-28)
-
-**D1 konfigürasyonu:**
-
-```sql
-slug='cas-scifinder-discovery-platform'
-  ra_origin_host = 'scifinder-n.cas.org'
-  ra_origin_landing_path = '/'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_host_allowlist_json = '["sso.cas.org","scifinder-n.cas.org"]'
-```
-
-**Kritik akış:**
-
-```
-Portal → r{sid}.selmiye.com/?t=JWT →
-scifinder-n.cas.org/ → 302 →
-sso.cas.org/as/authorization.oauth2?... →
-email → password → 302 →
-scifinder-n.cas.org/pa/oidc/cb?code=... →
-SciFinder search page ✅
-```
-
-**Kritik davranışlar:**
-- Tüm login/SSO adımları `r*.selmiye.com` altında kalır; browser doğrudan `sso.cas.org` veya
-  `scifinder-n.cas.org` hostuna çıkmaz.
-- OIDC `redirect_uri` değeri `https://scifinder-n.cas.org/pa/oidc/cb` olarak korunur.
-- İlk callback 403/Try Again problemi, session-host upstream cookie jar ile çözüldü.
-- Desktop ve mobil kurum dışı erişim doğrulandı; search sayfası açılıyor ✅
-- Logout sonrası yayıncı proxy dışına çıkabiliyor; mevcut aşamada kabul edilen davranış.
-
----
-
-## §13 Portal UI Entegrasyonu
-
-Portal `staging.libedge-website.pages.dev` üzerinde çalışıyor.  
-Backend: Pages → `libedge-api-staging` Worker (Pages integration, `_routes.json` yok).  
-`workers_dev = true` wrangler.toml `[env.staging]`'de explicit set edilmeli (routes eklenince
-varsayılan olarak devre dışı kalıyor).
-
----
-
-## §14 Açık Sorunlar ve Üretim Hazırlığı
-
-### §14.1 AWS WAF Challenge — ✅ ÇÖZÜLDÜ (2026-04-26)
-
-**Belirti:** `challenge.js: Max challenge attempts exceeded`  
-**Kök neden:** Go'nun HTTP/2 istemci SETTINGS/HEADERS frame sıralaması AWS WAF tarafından
-"non-browser" fingerprint olarak sınıflandırılıyordu.
-
-**Uygulanan çözüm (`ra-egress/main.go`):**
-
-```go
-Transport: &http.Transport{
-    // HTTP/2 devre dışı — Go h2 fingerprint AWS WAF'ı tetikliyordu
-    TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
-}
-```
-
-**Doğrulama:** `/_waf-probe → 200` ✅ — AWS WAF artık HTTP/1.1 isteği challenge'lamıyor.
-
-**Not — Vetis mimarisi:** Vetis forward proxy modelini kullanıyor (browser TLS doğrudan
-JoVE'ye); AWS WAF browser TLS fingerprint'ini görüyor. Bizim çözümümüz farklı ama eşdeğer
-sonuç veriyor (HTTP/1.1 fingerprint nötr).
-
-### §14.2 iOS Safari Popup Blocker — ✅ ÇÖZÜLDÜ (2026-04-26)
-
-**Belirti:** `a.click()` `async` fonksiyon içinde (await fetch() sonrası) iOS Safari'de
-engelleniyor; yeni sekme açılmıyordu.
-
-**Kök neden:** iOS Safari `window.open()` / `a.click()`'i yalnızca senkron kullanıcı
-gesture context'inde izin veriyor; `async` fonksiyon içinde `await` sonrasında engelliyor.
-
-**Uygulanan çözüm (`profile.html`):**
-
-```javascript
-// await'ten ÖNCE sekme aç (senkron gesture context'inde)
-const newTab = window.open('', '_blank');
-try {
-    const res = await fetch(`${API_BASE}/api/ra/issue-token`, { ... });
-    // ...
-    if (newTab) {
-        newTab.location.href = redirectUrl;  // fetch sonrası URL set et
-    } else {
-        window.location.href = redirectUrl;   // fallback: aynı sekme
-    }
-} catch (err) {
-    if (newTab) newTab.close();
-    // hata göster
-}
-```
-
-### §14.3 RA_PROXY_BASE_HOST ve Wildcard Route
-
-`RA_PROXY_BASE_HOST` explicit set edildi. Bu değer proxy hostname'i değil, session-host
-subdomain'lerinin bağlanacağı çıplak domain olmalıdır.
-
-```toml
-# wrangler.toml ve workers/proxy/wrangler.toml
-RA_PROXY_BASE_HOST = "selmiye.com"
-```
-
-Production `session_host_proxy` için Proxy Worker route listesinde wildcard şarttır:
-
-```toml
-routes = [
-  { pattern = "proxy.selmiye.com/*", zone_name = "selmiye.com" },
-  { pattern = "*.selmiye.com/*",     zone_name = "selmiye.com" }
-]
-```
-
-`libedge.com` taşınması için ayrıntılı checklist: `RA_PRODUCTION_READINESS.md`.
-
-### §14.4 Egress Secret Yönetimi (Production)
-
-Şu an: `RA_EGRESS_DEFAULT_SECRET` plaintext env var (tek kurum).  
-Production hedef: `encryptCredential(secret, masterKey)` ile şifrelenip D1'e yazılmalı.
-
-```javascript
-// backend/src/ra/crypto.js — encryptCredential mevcut
-const enc = await encryptCredential(egressSecret, env.RA_CREDS_MASTER_KEY);
-// D1: UPDATE institution_ra_settings SET egress_secret_enc = ? WHERE institution_id = ?
-```
-
-### §14.5 Migration — Production D1
-
-`migrations/0018_ra_schema_complete.sql` production D1'e uygulanmamış.
-`ensureColumns` runtime'da ekliyor ama production'da explicit migration tercih edilmeli:
-
-```powershell
-npx wrangler d1 execute libedge-db-production --env production --file migrations/0018_ra_schema_complete.sql
-```
-
-### §14.6 Çoklu Kurum Onboarding
-
-Her kurum için:
-1. `tunnel-provision.ps1 -TunnelName "{kurum}-ra" -EgressHost "ra-egress-{kurum}.selmiye.com"`
-2. `ALLOWED_HOST_REGEX` o kurumun yayıncı listesine göre güncelle
-3. D1: `institution_ra_settings` yeni satır
-4. Proxy Worker `RA_EGRESS_DEFAULT_SECRET` yerine kurum bazlı şifreli secret
-
----
-
-## §15 Başka Geliştirici için Hızlı Başlangıç
-
-```
-Repo: C:\Users\OWNER\Documents\GitHub\libedge-website
-
-Kritik dosyalar:
-  workers/proxy/src/index.js          ← Proxy Worker (session_host_proxy + path_proxy)
-  workers/proxy/src/egress-client.js  ← HMAC imzalama + RA_EGRESS_DEFAULT_SECRET fallback
-  backend/src/routes/ra/issue-token.js ← Token üretimi
-  backend/src/ra/jwt.js               ← HS256 sign/verify
-  backend/src/ra/schema.js            ← ensureRemoteAccessSchema
-  ra-egress/main.go                   ← Go egress agent
-  profile.html                        ← Portal UI
-
-Bilinen çalışan durum (2026-04-26):
-  - Staging portal → session_host_proxy → r*.selmiye.com ✅
-  - ra-egress tunnel → ra-egress.selmiye.com ✅
-  - JoVE /api/ip-auth → 200 (kurum IP tanınıyor) ✅
-  - JoVE içerik sayfaları → paywall yok, içerik açılıyor ✅
-  - Mobil (WiFi'sız) erişim → JoVE kurum IP (159.20.68.12) görüyor ✅
-  - EMIS CAS akışı → /v2/ desktop arayüzü açılıyor ✅
-  - EMIS mobil cihaz → desktop-UA override ile /v2/ açılıyor ✅
-  - ACS Publications → pubs.acs.org içerik açılıyor ✅ (utls Chrome bypass)
-  - IOPscience → iopscience.iop.org içerik açılıyor ✅
-  - iOS Safari → yeni sekme açılıyor ✅
-  - AWS WAF → HTTP/1.1 fingerprint ile bypass ✅
-  - Cloudflare korumalı yayıncılar → utls Chrome TLS fingerprint bypass ✅
-
-Sonraki adım: `libedge.com` domain taşıma + wildcard route doğrulaması,
-Production D1 migration (§14.5), egress secret yönetimi (§14.4) ve çoklu kurum
-onboarding (§14.6). Kurum gereksinimleri ve kapasite tahmini:
-`RA_PRODUCTION_READINESS.md`.
-```
-
----
-
-## §16 Yeni Ürün Onboarding Reçetesi
-
-Yeni bir IP-auth yayıncı ürünü eklerken önce kurum IP'sinden doğrudan davranış doğrulanır,
-sonra aynı akış proxy altında çoğaltılır.
-
-### §16.1 Gerekli D1 Alanları
+### 13.1 Gerekli D1 Alanları
 
 ```sql
 UPDATE products
@@ -810,196 +493,49 @@ SET
   ra_delivery_mode = 'session_host_proxy',
   ra_origin_host = '{primary-host}',
   ra_origin_landing_path = '{entry-path}',
-  ra_host_allowlist_json = '["{primary-host}","{auth-host}", "..."]',
-  ra_requires_tunnel = 1
+  ra_host_allowlist_json = '["{primary-host}", "{auth-host}", "..."]',
+  ra_waf_browser = 0  -- CF Bot Management varsa 1
 WHERE slug = '{product-slug}';
 ```
 
-`ra_origin_landing_path` mümkün olduğunca yayıncının IP-auth başlatan gerçek giriş yolu
-olmalı. EMIS için bu `/php/login/redirect`; JoVE için `/research`.
+### 13.2 Kontrol Listesi
 
-### §16.2 Kontrol Listesi
+1. Kurum IP'sinden incognito test: entry URL → son URL not al
+2. DevTools Network: `302 Location`, `Set-Cookie`, auth/CDN hostları listele
+3. `ra_host_allowlist_json`: yalnızca akışta gereken hostlar
+4. `ALLOWED_HOST_REGEX` fallback bu hostları kapsıyor mu?
+5. `ra_waf_browser=1` gerekiyor mu? (CF Bot Management varsa)
+6. Proxy test: `X-RA-Debug-Upstream-Status`, `Set-Cookies` header'ları
+7. Mobil test: desktop-UA override gerekip gerekmediğini değerlendir
 
-1. Kurum IP'sinden incognito test: entry URL hangi son URL'e gidiyor?
-2. DevTools Network: `302 Location`, `Set-Cookie`, auth/CAS hostları not edilir.
-3. `ra_host_allowlist_json`: yalnızca akışta gereken hostlar eklenir.
-4. `ra-egress/.env ALLOWED_HOST_REGEX`: aynı hostları kapsıyor mu?
-5. Proxy test: `X-RA-Debug-Upstream-Status`, `X-RA-Debug-Upstream-Location`,
-   `X-RA-Debug-Set-Cookies` header'ları kontrol edilir.
-6. Mobil test: yayıncı mobil hosta zorla yönlendiriyorsa desktop-UA override gerekip
-   gerekmediği değerlendirilir.
-7. Başarılı sayfa yüklemesi yetmez; gerçek kullanıcı endpoint'i 200 dönmeli
-   (`/api/user`, `/app/user`, `/ip-auth` vb.).
+### 13.3 Ürün Bazlı Özel Durumlar
 
-### §16.3 Ürün Bazlı Özel Durumlar
-
-| Ürün | Özel davranış | Çözüm |
+| Ürün | Özel durum | Çözüm |
 |---|---|---|
-| JoVE | AWS WAF HTTP/2 fingerprint challenge | `ra-egress` HTTP/2 kapalı |
-| JoVE | Mobil kaynak IP header'ları | IP-ifşa header'ları strip |
-| EMIS | Ara `302 + Set-Cookie` kaybı | Worker→egress `redirect: 'manual'` |
-| EMIS | CAS/auth multi-host akışı | `__ra-host/{encoded-host}` routing |
-| EMIS | Mobil app API 401 | EMIS için desktop-UA override |
-| EMIS | Mobile config absolute API URL | `application*.js` URL rewrite |
-| ACS | Cloudflare challenge 403 (`pubs.acs.org`) | utls Chrome TLS fingerprint taklit → Cloudflare bypass ✅ |
-| Primal Pictures | Kurum bazlı IP entitlement gerekir | Ürün RA-ready; yalnızca aboneliği olan kurumlarda subscription aktif edilir |
-| IOPscience | Geniş IOP host ailesi | Staging subscription aktif; portal doğrulama bekleniyor |
-| CAS SciFinder | OIDC SSO `scifinder-n.cas.org ↔ sso.cas.org` cross-origin akışı | `__ra_upstream` + session-host upstream cookie jar; desktop/mobil doğrulandı ✅ |
-
-### §16.4 ACS Publications — ✅ ÇÖZÜLDÜ (2026-04-26)
-
-ACS Publications `pubs.acs.org` Cloudflare koruması altında. Go'nun standart `net/tls`
-JA3 fingerprint'i Cloudflare bot detection tarafından 403 ile bloklanıyordu.
-
-**Çözüm:** `ra-egress/main.go`'ya `utls` (refraction-networking/utls) ile Chrome TLS
-fingerprint taklit eklendi. ALPN'den `h2` çıkarılarak HTTP/1.1 zorunlu kılındı (AWS WAF
-uyumluluğu da korundu).
-
-```go
-// dialTLSChrome — Chrome JA3 + HTTP/1.1 ALPN
-spec, _ := utls.UTLSIdToSpec(utls.HelloChrome_Auto)
-// h2'yi ALPN'den çıkar → http/1.1 only
-alpn.AlpnProtocols = []string{"http/1.1"}
-uconn := utls.UClient(tcpConn, &utls.Config{ServerName: host}, utls.HelloCustom)
-uconn.ApplyPreset(&spec)
-uconn.HandshakeContext(ctx)
-```
-
-**Doğrulama (2026-04-26):**
-```
-GET https://pubs.acs.org/ → 200 ✅  (önceden 403 "Just a moment...")
-CSS/JS/font asset'ler → 200 ✅
-```
-
-Staging D1: `ra_enabled = 1`, kurum aboneliği aktif.
-
-### §16.5 Primal Pictures / Anatomy TV (2026-04-26)
-
-Primal Pictures IP tabanlı RA-ready ürün olarak staging D1'e işlendi. Mevcut test kurumunda
-abonelik/yetki olmadığı için `institution_subscriptions` aktif edilmedi; ürün konfigürasyonu
-kurumdan bağımsız katalog seviyesinde hazır tutuluyor.
-
-EZproxy stanzası özeti:
-
-```
-Option CookiePassThrough
-AnonymousURL +*.json
-AnonymousURL +*.png
-AnonymousURL +*.jpg
-AnonymousURL +*.html
-AnonymousURL +*.unityweb
-Title Anatomy TV (updated 20220224)
-URL https://anatomy.tv
-HJ https://anatomy.tv
-HJ anatomy.tv
-HJ www.anatomy.tv
-HJ https://www.anatomy.tv
-DJ www.anatomy.tv
-DJ anatomy.tv
-Domain www.anatomy.tv
-Domain .anatomy.tv
-NeverProxy d11pbpfqgyaka7.cloudfront.net
-NeverProxy cdn.anatomy.tv
-NeverProxy *.prod.anatomy.tv
-NeverProxy anatomysearch.anatomy.tv
-AnonymousURL -*
-Option Cookie
-```
-
-Staging ürün config:
-
-```sql
-slug='primal-pictures'
-  ra_origin_host = 'anatomy.tv'
-  ra_origin_landing_path = '/'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_host_allowlist_json = '["anatomy.tv","www.anatomy.tv","cdn.anatomy.tv","anatomysearch.anatomy.tv"]'
-  ra_enabled = 1
-```
-
-Kurum bazlı kullanım kuralı:
-- Product `ra_enabled = 1` kalır; bu teknik RA desteğini ifade eder.
-- Abonelik yalnızca ilgili kurumda `institution_subscriptions.status = active` ve
-  `access_type = proxy` olduğunda kullanıcıya açılır.
-- Mevcut test kurumunda Primal subscription oluşturulmadı/aktif edilmedi.
-
-### §16.6 Institute of Physics / IOPscience (2026-04-26)
-
-IOPscience mevcut test kurumunda abonelik olduğu belirtilerek staging'e aktif proxy subscription
-olarak eklendi.
-
-EZproxy stanzası `URL http://iopscience.iop.org/` ile başlıyor; smoke testlerde:
-
-```
-GET http://iopscience.iop.org/  → 302 Location: https://iopscience.iop.org/
-GET https://iopscience.iop.org/ → 200
-```
-
-Bu nedenle mevcut `session_host_proxy` HTTPS upstream davranışı IOP için uygundur.
-
-Staging ürün config:
-
-```sql
-slug='iopscience'
-  ra_origin_host = 'iopscience.iop.org'
-  ra_origin_landing_path = '/'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_enabled = 1
-```
-
-Staging kurum subscription:
-
-```sql
-institution_id = 1
-product_slug = 'iopscience'
-status = 'active'
-access_type = 'proxy'
-subscription_id = 16
-```
-
-İlk HTML içinde `cdp.iopscience.iop.org` asset host'u görüldüğü için allowlist'e eklendi.
-Kullanıcı tarafı doğrulama için portal üzerinden IOPscience "Erişime Git" testi bekleniyor.
-
-### §16.7 CAS SciFinder Discovery Platform (2026-04-28)
-
-CAS SciFinder iki aşamalı bir model kullanır:
-
-1. `scifinder-n.cas.org` kurum/IP bağlamını başlatır.
-2. Kullanıcı login'i `sso.cas.org` üzerinde OIDC/PingFederate akışıyla tamamlanır.
-
-Bu nedenle ürün tek bir origin host gibi ele alınamaz; ama path de `__ra-host` prefix'iyle
-değiştirilmemelidir. CAS login formu aynı `r{sid}.selmiye.com` altında kalmalı, aktif upstream
-host `__ra_upstream` cookie'siyle seçilmelidir.
-
-Staging ürün config:
-
-```sql
-slug='cas-scifinder-discovery-platform'
-  ra_origin_host = 'scifinder-n.cas.org'
-  ra_origin_landing_path = '/'
-  ra_delivery_mode = 'session_host_proxy'
-  ra_host_allowlist_json = '["sso.cas.org","scifinder-n.cas.org"]'
-  ra_enabled = 1
-```
-
-Egress allowlist gereksinimi:
-
-```env
-ALLOWED_HOST_REGEX=...scifinder-n\.cas\.org|sso\.cas\.org...
-```
-
-Çalışan davranış:
-- `sso.cas.org` redirect'i proxy domain'ine rewrite edilir ve `__ra_upstream=sso.cas.org`
-  set edilir.
-- SSO callback `scifinder-n.cas.org/pa/oidc/cb` origin hostuna dönünce `__ra_upstream`
-  temizlenir.
-- `redirect_uri` parametresi rewrite edilmez; CAS tarafında kayıtlı gerçek callback URL'i
-  olarak kalır.
-- Callback'te eksik kalabilen `nonce.{state.suffix}` cookie'si session-host upstream cookie
-  jar üzerinden upstream'e taşınır.
-- Desktop ve mobil kurum dışı testte email → password → search page akışı başarılıdır.
+| JoVE | AWS WAF HTTP/2 | HTTP/2 kapalı (h1Client) |
+| EMIS | CAS multi-host, mobil API | `__ra-host` routing + desktop-UA |
+| ACS | Cloudflare Bot Management | utls Chrome fingerprint |
+| Wiley | CF Bot Management + persistent session | ra-browser + Step 06 (persistent pool) |
+| Scopus | CF Bot Management, Next.js hydration | ra-browser + passHeaders + `__NEXT_DATA__` patch |
+| ScienceDirect | Elsevier cookie namespace | `__cp_sciencedirect.com\|` prefix |
+| CAS SciFinder | OIDC SSO cross-origin | `__ra_upstream` + cookie jar |
 
 ---
 
-## Three Man Team
-Available agents: Arch (Architect), Bob (Builder), Richard (Reviewer)
+## 14. Hızlı Referans
+
+```text
+Staging site:      https://staging.libedge-website.pages.dev
+Production site:   https://libedge-website.pages.dev
+Staging API:       https://libedge-api-staging.agursel.workers.dev
+Production API:    https://libedge-api-prod.agursel.workers.dev
+Staging proxy:     proxy-staging.selmiye.com / *.selmiye.com
+Production proxy:  proxy.selmiye.com / *.selmiye.com (Step 07'yi bekliyor)
+
+Kritik dosyalar:
+  workers/proxy/src/index.js        ← Proxy Worker
+  workers/proxy/src/egress-client.js ← egressFetch / browserFetch / assetBrowserFetch
+  backend/src/routes/ra/issue-token.js
+  ra-egress/main.go
+  ra-browser/server.js
+```

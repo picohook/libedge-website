@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -11,10 +11,11 @@ const composeDir = args.composeDir || args['compose-dir'] || '';
 const timeoutMs = Number(args.timeout || 45000);
 const keepOpen = Boolean(args.keepOpen || args['keep-open']);
 const browserName = String(args.browser || 'chrome').toLowerCase();
+const cookieHeader = String(args.cookie || '');
 
 if (!startUrl) {
   console.error(`Usage:
-  node scripts/check-sciencedirect-search.mjs --url <proxied-sciencedirect-url> [--query nanotube] [--browser chrome|edge] [--compose-dir <ra-egress-dir>]
+  node scripts/check-sciencedirect-search.mjs --url <proxied-sciencedirect-url> [--query nanotube] [--browser chrome|edge] [--cookie "ra_proxy_session=..."]
 
 Examples:
   node scripts/check-sciencedirect-search.mjs --url "https://r123.selmiye.com/" --compose-dir "C:\\Users\\rgurs_u1q2xlu\\Downloads\\ra-egress-laptop-kit\\ra-egress"
@@ -33,8 +34,9 @@ const userDataDir = mkdtempSync(join(tmpdir(), 'ra-sd-check-'));
 const port = 9222 + Math.floor(Math.random() * 1000);
 let browser;
 
-try {
-  browser = spawn(browserPath, [
+async function main() {
+  try {
+    browser = spawn(browserPath, [
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${userDataDir}`,
     '--no-first-run',
@@ -125,6 +127,9 @@ try {
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
 
   const targetUrl = buildSearchUrl(startUrl, query);
+  if (cookieHeader) {
+    await setCookiesFromHeader(cdp, targetUrl, cookieHeader);
+  }
   console.log(`Opening: ${targetUrl}`);
   await cdp.send('Page.navigate', { url: targetUrl });
 
@@ -149,10 +154,11 @@ try {
   } else {
     console.log('\nBrowser left open because --keep-open was used.');
   }
-} finally {
-  if (!keepOpen) {
-    try { browser?.kill(); } catch {}
-    try { rmSync(userDataDir, { recursive: true, force: true }); } catch {}
+  } finally {
+    if (!keepOpen) {
+      try { browser?.kill(); } catch {}
+      try { rmSync(userDataDir, { recursive: true, force: true }); } catch {}
+    }
   }
 }
 
@@ -181,6 +187,7 @@ function findBrowser(name) {
     ? [
         join(pf, 'Microsoft\\Edge\\Application\\msedge.exe'),
         join(pfx86, 'Microsoft\\Edge\\Application\\msedge.exe'),
+        local ? join(local, 'Microsoft\\Edge\\Application\\msedge.exe') : '',
       ]
     : [
         join(pf, 'Google\\Chrome\\Application\\chrome.exe'),
@@ -188,10 +195,7 @@ function findBrowser(name) {
         local ? join(local, 'Google\\Chrome\\Application\\chrome.exe') : '',
       ];
   for (const path of candidates.filter(Boolean)) {
-    try {
-      execFileSync('cmd.exe', ['/c', 'if', 'exist', path, 'echo', 'ok'], { stdio: 'pipe' });
-      return path;
-    } catch {}
+    if (existsSync(path)) return path;
   }
   return null;
 }
@@ -273,9 +277,29 @@ function buildSearchUrl(input, query) {
 
 function isSearchApi(url) {
   try {
-    return new URL(url).pathname === '/search/api';
+    const parsed = new URL(url);
+    return parsed.pathname === '/search/api' ||
+      parsed.pathname === '/__ra-sd-search-api' ||
+      (parsed.pathname === '/search' && parsed.searchParams.get('__ra_sd_search_api') === '1');
   } catch {
     return false;
+  }
+}
+
+async function setCookiesFromHeader(cdp, url, header) {
+  const entries = String(header || '').split(';').map((part) => part.trim()).filter(Boolean);
+  for (const entry of entries) {
+    const idx = entry.indexOf('=');
+    if (idx <= 0) continue;
+    const name = entry.slice(0, idx).trim();
+    const value = entry.slice(idx + 1).trim();
+    await cdp.send('Network.setCookie', {
+      name,
+      value,
+      url,
+      path: '/',
+      secure: new URL(url).protocol === 'https:',
+    });
   }
 }
 
@@ -331,6 +355,7 @@ function printReport({ targetUrl, rec, cookies, state, dockerReport }) {
     const cfRay = headerValue(rec.responseHeaders, 'cf-ray');
 
     console.log(`\n/search/api status: ${rec.status || rec.extraStatusCode || 'unknown'} ${rec.statusText || ''}`.trim());
+    console.log(`url: ${rec.url || '(unknown)'}`);
     console.log(`content-type: ${respContentType || rec.mimeType || '(none)'}`);
     console.log(`server: ${server || '(none)'}`);
     console.log(`remote: ${rec.remoteIPAddress || '(unknown)'}${rec.remotePort ? `:${rec.remotePort}` : ''}`);
@@ -341,6 +366,8 @@ function printReport({ targetUrl, rec, cookies, state, dockerReport }) {
     console.log('\nRequest cookie flags');
     printFlag('raw cf_clearance', hasCookie(reqCookie, 'cf_clearance'));
     printFlag('raw __cf_bm', hasCookie(reqCookie, '__cf_bm'));
+    printFlag('ra_proxy_session', hasCookie(reqCookie, 'ra_proxy_session'));
+    printFlag('coproxy_session_id', hasCookie(reqCookie, 'coproxy_session_id'));
     printFlag('__ra_sd_clean marker', hasCookie(reqCookie, '__ra_sd_clean'));
     printFlag('namespaced MIAMISESSION', hasCookie(reqCookie, '__cp_sciencedirect.com|MIAMISESSION'));
     printFlag('namespaced SD_REMOTEACCESS', hasCookie(reqCookie, '__cp_sciencedirect.com|SD_REMOTEACCESS'));
@@ -357,6 +384,8 @@ function printReport({ targetUrl, rec, cookies, state, dockerReport }) {
   const sdCookies = cookies.filter((cookie) =>
     cookie.name === 'cf_clearance' ||
     cookie.name === '__cf_bm' ||
+    cookie.name === 'ra_proxy_session' ||
+    cookie.name === 'coproxy_session_id' ||
     cookie.name === '__ra_sd_clean' ||
     cookie.name.startsWith('__cp_sciencedirect.com|') ||
     ['MIAMISESSION', 'SD_REMOTEACCESS', 'sd_session_id', 'ANONRA_COOKIE'].includes(cookie.name)
@@ -433,3 +462,5 @@ function hasCookie(cookieHeader = '', name) {
 function printFlag(label, value) {
   console.log(`- ${label}: ${value ? 'YES' : 'no'}`);
 }
+
+await main();
