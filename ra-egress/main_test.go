@@ -103,6 +103,36 @@ func TestDefaultForceH1Regex_Compiles(t *testing.T) {
 	}
 }
 
+func TestIsHostAllowed_DynamicWildcardSuffixes(t *testing.T) {
+	allowedHostRegex = nil
+	dynamicHostsMu.Lock()
+	dynamicHosts = map[string]bool{"www.sciencedirect.com": true}
+	dynamicHostWildcards = []string{"els-cdn.com"}
+	dynamicHostsMu.Unlock()
+	t.Cleanup(func() {
+		dynamicHostsMu.Lock()
+		dynamicHosts = nil
+		dynamicHostWildcards = nil
+		dynamicHostsMu.Unlock()
+	})
+
+	cases := map[string]bool{
+		"www.sciencedirect.com": true,
+		"ars.els-cdn.com":       true,
+		"cdn.els-cdn.com":       true,
+		"els-cdn.com":           true,
+		"notels-cdn.com":        false,
+		"els-cdn.com.evil.test": false,
+	}
+	for host, want := range cases {
+		t.Run(host, func(t *testing.T) {
+			if got := isHostAllowed(host); got != want {
+				t.Fatalf("isHostAllowed(%q)=%v, want %v", host, got, want)
+			}
+		})
+	}
+}
+
 // autoClient'ın transport'u *http2.Transport olmalı — net/http Transport DEĞİL.
 //
 // Regression korumas: net/http Transport + http2.ConfigureTransport kombinasyonu

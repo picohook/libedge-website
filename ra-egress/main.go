@@ -57,8 +57,9 @@ var (
 
 	// Dinamik host listesi — API'den 5 dakikada bir yenilenir.
 	// Boşken sadece allowedHostRegex kullanılır (fallback).
-	dynamicHostsMu sync.RWMutex
-	dynamicHosts   map[string]bool
+	dynamicHostsMu       sync.RWMutex
+	dynamicHosts         map[string]bool
+	dynamicHostWildcards []string
 )
 
 // HTTP1_FORCE_HOSTS_REGEX default — JoVE'un AWS WAF'ı ve sso.cas.org'un
@@ -337,10 +338,11 @@ func main() {
 
 	apiURL := os.Getenv("LIBEDGE_API_URL")
 	serviceKey := os.Getenv("LIBEDGE_SERVICE_KEY")
+	institutionID := os.Getenv("LIBEDGE_INSTITUTION_ID")
 
-	if apiURL != "" && serviceKey != "" {
+	if apiURL != "" && serviceKey != "" && institutionID != "" {
 		// İlk yükleme — agent açılırken host listesini hemen çek
-		if err := refreshDynamicHosts(apiURL, serviceKey); err != nil {
+		if err := refreshDynamicHosts(apiURL, serviceKey, institutionID); err != nil {
 			log.Printf("initial host refresh failed (fallback to regex): %v", err)
 		}
 		// 5 dakikada bir yenile
@@ -348,13 +350,13 @@ func main() {
 			ticker := time.NewTicker(5 * time.Minute)
 			defer ticker.Stop()
 			for range ticker.C {
-				if err := refreshDynamicHosts(apiURL, serviceKey); err != nil {
+				if err := refreshDynamicHosts(apiURL, serviceKey, institutionID); err != nil {
 					log.Printf("host refresh failed: %v", err)
 				}
 			}
 		}()
 	} else {
-		log.Printf("LIBEDGE_API_URL / LIBEDGE_SERVICE_KEY not set — using ALLOWED_HOST_REGEX only")
+		log.Printf("LIBEDGE_API_URL / LIBEDGE_SERVICE_KEY / LIBEDGE_INSTITUTION_ID not set — using ALLOWED_HOST_REGEX only")
 	}
 
 	browserURL, _ := url.Parse("http://ra-browser:8081")
@@ -405,9 +407,9 @@ func mustEnv(k string) string {
 // /health — cloudflared arkasında Worker'ın cron'u ping atar
 // ──────────────────────────────────────────────────────────────────────────
 // refreshDynamicHosts — /api/ra/egress/allowed-hosts endpoint'inden host listesini çeker.
-func refreshDynamicHosts(apiURL, serviceKey string) error {
-	url := strings.TrimRight(apiURL, "/") + "/api/ra/egress/allowed-hosts"
-	req, err := http.NewRequest("GET", url, nil)
+func refreshDynamicHosts(apiURL, serviceKey, institutionID string) error {
+	endpoint := strings.TrimRight(apiURL, "/") + "/api/ra/egress/allowed-hosts?institution_id=" + url.QueryEscape(institutionID)
+	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		return err
 	}
@@ -432,17 +434,28 @@ func refreshDynamicHosts(apiURL, serviceKey string) error {
 	}
 
 	hosts := make(map[string]bool, len(body.Hosts))
+	wildcards := make([]string, 0)
 	for _, h := range body.Hosts {
-		if h != "" {
-			hosts[strings.ToLower(h)] = true
+		host := strings.TrimSpace(strings.ToLower(h))
+		if host == "" {
+			continue
 		}
+		if strings.HasPrefix(host, "*.") {
+			suffix := strings.TrimPrefix(host, "*.")
+			if suffix != "" {
+				wildcards = append(wildcards, suffix)
+			}
+			continue
+		}
+		hosts[host] = true
 	}
 
 	dynamicHostsMu.Lock()
 	dynamicHosts = hosts
+	dynamicHostWildcards = wildcards
 	dynamicHostsMu.Unlock()
 
-	log.Printf("dynamic host list refreshed: %d hosts", len(hosts))
+	log.Printf("dynamic host list refreshed: %d hosts, %d wildcard suffixes", len(hosts), len(wildcards))
 	return nil
 }
 
@@ -453,7 +466,16 @@ func isHostAllowed(hostname string) bool {
 		return true
 	}
 	dynamicHostsMu.RLock()
-	allowed := dynamicHosts[strings.ToLower(hostname)]
+	host := strings.ToLower(hostname)
+	allowed := dynamicHosts[host]
+	if !allowed {
+		for _, suffix := range dynamicHostWildcards {
+			if host == suffix || strings.HasSuffix(host, "."+suffix) {
+				allowed = true
+				break
+			}
+		}
+	}
 	dynamicHostsMu.RUnlock()
 	return allowed
 }

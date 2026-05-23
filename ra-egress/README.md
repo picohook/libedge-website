@@ -24,6 +24,7 @@ kurumunuzun gerçek internet IP'sinden yayıncıya ulaşır.
   - `EGRESS_SHARED_SECRET`
   - `LIBEDGE_API_URL`
   - `LIBEDGE_SERVICE_KEY`
+  - `LIBEDGE_INSTITUTION_ID`
   - `ALLOWED_HOST_REGEX` (fallback; dinamik liste çalışıyorsa değiştirmeniz gerekmez)
 
 ## Kurulum (5 dakika)
@@ -42,6 +43,7 @@ kurumunuzun gerçek internet IP'sinden yayıncıya ulaşır.
    EGRESS_SHARED_SECRET=...      # 32 byte random
    LIBEDGE_API_URL=https://...   # LibEdge API adresi
    LIBEDGE_SERVICE_KEY=...       # RA_SERVICE_KEY ile aynı değer
+   LIBEDGE_INSTITUTION_ID=1      # LibEdge institutions.id değeri
    ALLOWED_HOST_REGEX=...        # fallback, örn: ^(www\.)?sciencedirect\.com$
    ```
 
@@ -97,7 +99,8 @@ A: Şu anda tek tünel destekli — aynı kurum için bir tane yeterli. Yüksek 
 ## Sorun Giderme
 
 - **"Tüneli Test Et" kırmızı:** `docker compose logs cloudflared` → TUNNEL_TOKEN doğru mu?
-- **"host not allowed":** `LIBEDGE_API_URL` / `LIBEDGE_SERVICE_KEY` doğru mu?
+- **"host not allowed":** `LIBEDGE_API_URL` / `LIBEDGE_SERVICE_KEY` /
+  `LIBEDGE_INSTITUTION_ID` doğru mu?
   Agent loglarında `dynamic host list refreshed` görülmeli. Görülmüyorsa fallback
   `ALLOWED_HOST_REGEX` yayıncı hostname'ini kapsıyor mu kontrol edin.
 - **Publisher 403:** Host izinlidir ama yayıncı/WAF erişimi reddediyordur; ürün

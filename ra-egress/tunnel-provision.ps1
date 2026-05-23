@@ -43,6 +43,7 @@ param(
     # Dinamik host listesi için LibEdge API adresi ve servis anahtarı
     [string]$LibEdgeApiUrl = "",
     [string]$LibEdgeServiceKey = "",
+    [string]$LibEdgeInstitutionId = "",
 
     # D1 güncelleme yapma (sadece tunnel kur)
     [switch]$SkipD1
@@ -142,6 +143,7 @@ $envFile = Join-Path $RaEgressDir ".env"
 $existingEgressSecret = Read-ExistingEnvValue $envFile "EGRESS_SHARED_SECRET"
 $existingApiUrl = Read-ExistingEnvValue $envFile "LIBEDGE_API_URL"
 $existingServiceKey = Read-ExistingEnvValue $envFile "LIBEDGE_SERVICE_KEY"
+$existingInstitutionId = Read-ExistingEnvValue $envFile "LIBEDGE_INSTITUTION_ID"
 if (!$existingEgressSecret) { $existingEgressSecret = [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32)) }
 if (!$LibEdgeApiUrl) {
     if ($existingApiUrl) {
@@ -153,6 +155,7 @@ if (!$LibEdgeApiUrl) {
     }
 }
 if (!$LibEdgeServiceKey -and $existingServiceKey) { $LibEdgeServiceKey = $existingServiceKey }
+if (!$LibEdgeInstitutionId -and $existingInstitutionId) { $LibEdgeInstitutionId = $existingInstitutionId }
 
 $envContent = @"
 # ra-egress .env — kalıcı tunnel kurulumu
@@ -163,7 +166,8 @@ TUNNEL_TOKEN=$tunnelToken
 EGRESS_SHARED_SECRET=$existingEgressSecret
 LIBEDGE_API_URL=$LibEdgeApiUrl
 LIBEDGE_SERVICE_KEY=$LibEdgeServiceKey
-ALLOWED_HOST_REGEX=^(www\.jove\.com|jove\.com|cdn\.jove\.com|player\.jove\.com|assets\.jove\.com)`$
+LIBEDGE_INSTITUTION_ID=$LibEdgeInstitutionId
+ALLOWED_HOST_REGEX=^(([a-z0-9-]+\.)*(jove\.com|acs\.org|annualreviews\.org|webofscience\.com|iop\.org|iopscience\.iop\.org|cas\.org|anatomy\.tv|prod\.anatomy\.tv|emis\.com|els-cdn\.com|wiley\.com|onlinelibrary\.wiley\.com|springer\.com|emerald\.com|emeraldinsight\.com|oup\.com|sciencedirect\.com|nature\.com|nejm\.org|jamanetwork\.com|aacrjournals\.org|ieee\.org|cell\.com|thelancet\.com|sagepub\.com|cambridge\.org|bmj\.com|jstor\.org|projectmuse\.org|proquest\.com|ebsco\.com|ebscohost\.com|clarivate\.com|scopus\.com|knovel\.com|rsc\.org|tandfonline\.com|degruyter\.com|brill\.com|spie\.org|optica\.org|aip\.org|aps\.org|chemrxiv\.org|asme\.org|aiaa\.org|gale\.com|cnki\.net|asha\.org|engineeringvillage\.com)|chemistry\.org|sso\.cas\.org|physicsworld\.com|njp\.org|pubs\.rsc\.org|search\.proquest\.com|search\.ebscohost\.com|link\.springer\.com|academic\.oup\.com|pubs\.acs\.org|doi\.org|dx\.doi\.org|linkinghub\.elsevier\.com|id\.elsevier\.com|www\.elsevier\.com|sciverse-shindig\.elsevier\.com|app\.knovel\.com|adisinsight\.springer\.com|elibrary\.nci\.org\.tr|opac\.tubitak\.gov\.tr|trdizin\.gov\.tr|dergipark\.org\.tr)`$
 "@
 
 $envContent | Set-Content $envFile -Encoding UTF8

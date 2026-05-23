@@ -55,7 +55,10 @@ $browserFiles = @(
 )
 
 foreach ($file in $browserFiles) {
-    Copy-Item -LiteralPath (Join-Path $repoRoot "ra-browser/$file") -Destination (Join-Path $target "ra-browser/$file")
+    $source = Join-Path $repoRoot "ra-browser/$file"
+    if (Test-Path $source) {
+        Copy-Item -LiteralPath $source -Destination (Join-Path $target "ra-browser/$file")
+    }
 }
 
 @"

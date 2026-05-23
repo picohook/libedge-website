@@ -43,13 +43,15 @@ if (!(Test-Path $envPath)) {
     $egressSecret = Ask "EGRESS_SHARED_SECRET"
     $apiUrl = Ask "LIBEDGE_API_URL" "https://form-handler-staging.agursel.workers.dev"
     $serviceKey = Ask "LIBEDGE_SERVICE_KEY (yoksa bos birakabilirsiniz)" ""
-    $allowedHosts = Ask "ALLOWED_HOST_REGEX" "^(www\.jove\.com|jove\.com|cdn\.jove\.com|player\.jove\.com|assets\.jove\.com)$"
+    $institutionId = Ask "LIBEDGE_INSTITUTION_ID (dinamik host listesi icin kurum id; yoksa bos)" ""
+    $allowedHosts = Ask "ALLOWED_HOST_REGEX" "^(([a-z0-9-]+\.)*(jove\.com|acs\.org|annualreviews\.org|webofscience\.com|iop\.org|iopscience\.iop\.org|cas\.org|anatomy\.tv|prod\.anatomy\.tv|emis\.com|els-cdn\.com|wiley\.com|onlinelibrary\.wiley\.com|springer\.com|emerald\.com|emeraldinsight\.com|oup\.com|sciencedirect\.com|nature\.com|nejm\.org|jamanetwork\.com|aacrjournals\.org|ieee\.org|cell\.com|thelancet\.com|sagepub\.com|cambridge\.org|bmj\.com|jstor\.org|projectmuse\.org|proquest\.com|ebsco\.com|ebscohost\.com|clarivate\.com|scopus\.com|knovel\.com|rsc\.org|tandfonline\.com|degruyter\.com|brill\.com|spie\.org|optica\.org|aip\.org|aps\.org|chemrxiv\.org|asme\.org|aiaa\.org|gale\.com|cnki\.net|asha\.org|engineeringvillage\.com)|chemistry\.org|sso\.cas\.org|physicsworld\.com|njp\.org|pubs\.rsc\.org|search\.proquest\.com|search\.ebscohost\.com|link\.springer\.com|academic\.oup\.com|pubs\.acs\.org|doi\.org|dx\.doi\.org|linkinghub\.elsevier\.com|id\.elsevier\.com|www\.elsevier\.com|sciverse-shindig\.elsevier\.com|app\.knovel\.com|adisinsight\.springer\.com|elibrary\.nci\.org\.tr|opac\.tubitak\.gov\.tr|trdizin\.gov\.tr|dergipark\.org\.tr)$"
 
     @(
         "TUNNEL_TOKEN=$tunnelToken",
         "EGRESS_SHARED_SECRET=$egressSecret",
         "LIBEDGE_API_URL=$apiUrl",
         "LIBEDGE_SERVICE_KEY=$serviceKey",
+        "LIBEDGE_INSTITUTION_ID=$institutionId",
         "ALLOWED_HOST_REGEX=$allowedHosts"
     ) | Set-Content -LiteralPath $envPath -Encoding UTF8
     Write-Host ".env olusturuldu." -ForegroundColor Green
