@@ -169,12 +169,12 @@ cd ../..
 
 ---
 
-## Güncel Operasyon Notu (9 Mayıs 2026)
+## Güncel Operasyon Notu (23 Mayıs 2026)
 
-- Staging D1 migration durumu: `0035_product_requests_ai_usage_logs.sql` eklenmeden önce bekleyen migration yoktu; production penceresi öncesi staging/production listesi yeniden alınmalı.
-- Production D1 migration durumu: `0020_product_presentation.sql` ile `0035_product_requests_ai_usage_logs.sql` arası bekliyor kabul edilmeli; kesin durum için `PRODUCTION_MIGRATION_PLAN.md` preflight adımları çalıştırılmalı.
+- Staging ve production D1 migration durumu: `0041_user_kvkk_consent.sql` dahil güncel.
+- Production'a `0039_sciencedirect_els_cdn_allowlist.sql`, `0040_scopus_elsevier_allowlist.sql` ve `0041_user_kvkk_consent.sql` 23 Mayıs 2026'da uygulandı.
+- Register akışı KVKK/Gizlilik/Kullanım Şartları açık onayı olmadan kullanıcı oluşturmaz; consent metadata'sı `users` tablosunda tutulur.
 - Auth login akışı DB-backed refresh token replay protection kullanır.
-- Staging'de `0033_refresh_tokens.sql` ve `0034_users_lower_email_index.sql` uygulandı.
 - `backend/src/index.js` içinde strict env'lerde (`staging`, `production`) refresh token login yolunda runtime DDL guard atlanır; şema migration ile hazırlanmış olmalıdır.
 - DB-backed refresh token yazımı beklenmedik şekilde hata verirse login 500'e düşmez; geçici olarak stateless refresh token fallback kullanır ve hata loglanır.
 - `admin.html` ve `profile.html` içinde toast, error render ve file preview tarafında kullanıcı/server kaynaklı metinler sertleştirildi; dinamik metinler `textContent`/`escapeHtml`, dosya URL'leri `safeFileUrl` benzeri allowlist mantığıyla ele alınmalıdır.
@@ -306,6 +306,19 @@ Geçiş için sadece Cloudflare Worker env değişkenlerini güncellemek yeterli
 
 ---
 
+## CI/CD Notu
+
+Şu an deploy'lar kontrollü şekilde yerel Wrangler komutlarıyla yapılıyor. GitHub Actions tabanlı CI/CD kurulursa önerilen güvenli akış:
+
+- Pull request: `npm test`, lint/build kontrolleri ve mümkünse frontend smoke testleri çalışır; deploy yapmaz.
+- `staging` branch push: testler geçerse staging Worker + Pages deploy edilir; D1 migration yine manuel onaylı veya ayrı job olur.
+- `main` branch / release tag: production deploy manuel approval ister; önce migration listesi, sonra D1 apply, sonra Worker/Pages deploy ve smoke check çalışır.
+- Secrets GitHub Actions secrets içinde tutulur: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` ve gerekirse ortam bazlı Wrangler secret yönetimi.
+
+Production D1 migration'ları otomatikleştirilirken dikkatli olunmalıdır: D1 rollback pratikte "forward fix" gerektirir, bu yüzden production migration job'u manuel approval ve preflight çıktısı olmadan çalışmamalıdır.
+
+---
+
 ## Bilinen Eksikler / Sonraki Adımlar
 
 - [x] `direct_login` delivery mode'u kaldırıldı; legacy değerler `path_proxy` olarak normalize ediliyor
@@ -315,5 +328,7 @@ Geçiş için sadece Cloudflare Worker env değişkenlerini güncellemek yeterli
 - [x] Ürün/abonelik/kurum işlemleri için undo + işlem geçmişinden restore eklendi
 - [ ] Production'da `*.libedge.com` wildcard route aktif edilecek (session_host_proxy için zorunlu)
 - [ ] Admin UI/API'dan toplu ürün onboarding (manuel D1 SQL ihtiyacını azaltmak)
-- [ ] MIMARI.md ile migration'lar arasındaki terminoloji tutarsızlıklarını gider
+- [x] MIMARI.md ile migration'lar arasındaki temel durum notları güncellendi
 - [x] KVKK/Gizlilik metni kayıtlı kullanıcı, RA ve AI araçlarını kapsayacak şekilde güncellendi
+- [x] Register akışı KVKK/Gizlilik/Kullanım Şartları açık onayına bağlandı
+- [ ] GitHub Actions CI/CD pipeline kurulacak

@@ -314,6 +314,7 @@ ve sözleşmesel gerekliliklere göre güncellenebilir.
 ## 11. Açık Teknik İşler
 
 - [x] `privacy.html` kayıtlı kullanıcı, RA, AI, dosya paylaşımı ve kurum aboneliği modelini kapsayacak şekilde güncellendi.
+- [x] Kayıt akışı KVKK Aydınlatma/Gizlilik/Kullanım Şartları açık onayına bağlandı; onay zamanı, versiyonu, IP ve user-agent metadata'sı `users` tablosunda saklanır.
 - [ ] Legacy SHA-256 şifre hash'leri için rapor/migration hazırlanacak.
 - [x] `ra_access_logs` için 180 günlük retention cleanup job'u eklendi.
 - [x] `password_resets` için expired/used kayıt cleanup job'u eklendi.

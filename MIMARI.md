@@ -211,7 +211,7 @@ libedge-website/
 │   └── docker-compose.yml
 ├── ra-browser/                    ← Playwright/Chromium service (WAF bypass)
 │   └── server.js
-├── migrations/                    ← D1 SQL migrations (0001–0040+)
+├── migrations/                    ← D1 SQL migrations (0001–0041+)
 ├── index.html / admin.html / profile.html / tools.html
 └── package.json
 ```
@@ -304,16 +304,17 @@ docker compose up -d --force-recreate ra-browser
 
 ---
 
-## 10. Güncel Durum (22 Mayıs 2026)
+## 10. Güncel Durum (23 Mayıs 2026)
 
 | Bileşen | Staging | Production |
 |---|---|---|
 | Pages | Aktif | Aktif |
 | Main API Worker | Aktif | Aktif |
-| RA Proxy Worker | Aktif (`c7d0c78a` + `770b5da5`) | Deployed (Step 07 bekliyor) |
+| RA Proxy Worker | Aktif (`c7d0c78a` + `770b5da5`) | Deployed (domain migration / wildcard route finalizasyonu bekliyor) |
 | ra-egress | Aktif | Aktif |
 | ra-browser | Aktif (Referer fix rebuild edildi) | — |
-| D1 migrations | 0040 uygulandı | Prod-07 sonrası uygulanacak |
+| D1 migrations | 0041 uygulandı | 0041 uygulandı |
+| KVKK register consent | Aktif | Aktif |
 | Scopus RA | Search ✅, SD full text ✅ | — |
 | Cloudflare block | Geçici (test trafiği) — 30-60 dk | — |
 

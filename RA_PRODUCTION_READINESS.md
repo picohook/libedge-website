@@ -3,11 +3,11 @@
 Bu belge LibEdge Remote Access'in staging POC'den production kullanıma geçişinde
 gerekli operasyonel kararları ve kurum onboarding gereksinimlerini özetler.
 
-> Güncel not (19 Mayıs 2026): Production D1 migration'ları tamamlandı. `0020`–`0036`
-> arası tüm migration'lar uygulandı (0036: CABI ra_waf_browser=1). Main API Worker
-> (`libedge-api-prod`) ve Staging Proxy Worker (`libedge-ra-proxy-staging`) deploy edildi.
-> Production Proxy Worker deploy'u `libedge.com` domain geçişine ertelendi. RA testi:
-> Emerald ✅, CABI ✅ (CF Bot Management bypass uygulandı), Wiley ❌ (SPA sorunu devam ediyor).
+> Güncel not (23 Mayıs 2026): Production D1 migration'ları `0041_user_kvkk_consent.sql`
+> dahil güncel. `0039` ScienceDirect els-cdn allowlist, `0040` Scopus/Elsevier
+> allowlist ve `0041` KVKK register consent production'a uygulandı. Main API Worker
+> (`libedge-api-prod`) ve Pages production deployment güncellendi. Production Proxy
+> Worker tarafında domain/wildcard finalizasyonu `libedge.com` geçişiyle tamamlanacak.
 
 ## 1. Domain Taşıma
 
@@ -250,9 +250,10 @@ Bugünkü staging değişiklikleri:
   işlendi.
 - Test kapsamı genişledi: error page, proxy rate limit, tunnel health.
 
-Kalan production işleri (2026-04-29 itibarıyla):
+Kalan production işleri (2026-05-23 itibarıyla):
 
 - ~~Production migration planı hazırlanacak~~ → **TAMAMLANDI** (2026-05-19)
+- ~~Production D1 migration'ları güncellenecek~~ → **TAMAMLANDI** (`0041` dahil, 2026-05-23)
 - Limit değerleri production trafik ölçümüne göre env üzerinden kalibre edilecek.
 - Tünel heartbeat sonuçları admin panelde uyarı/badge davranışına bağlanacak.
 - Toplu ürün import UI/API eklenecek.

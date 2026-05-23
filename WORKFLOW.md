@@ -40,6 +40,7 @@ Dosya değişti
 - Preview environment doğrulaması için tercih edilen hat: `staging-preview.libedge-website.pages.dev`
 - Asıl staging doğrulaması için hat: `staging.libedge-website.pages.dev`
 - Production D1, staging D1 ile aynı migration seviyesinde olmayabilir. `apply` çalıştırmadan önce mutlaka `list` ile bekleyen migration'lar okunur ve `PRODUCTION_MIGRATION_PLAN.md` güncellenir.
-- 19 Mayıs 2026 itibarıyla staging ve production D1 aynı migration seviyesinde (`0035` dahil hepsi uygulandı). Bir sonraki migration eklendiğinde sadece production'a uygulanması gerekecek.
+- 23 Mayıs 2026 itibarıyla staging ve production D1 aynı migration seviyesinde (`0041` dahil hepsi uygulandı). Bir sonraki migration eklendiğinde staging/prod durumu ayrı ayrı doğrulanacak.
 - Auth/refresh-token değişikliklerinde login smoke testi sadece yanlış şifre 401'i değil, başarılı login + `/api/user/profile` kontrolünü de kapsamalıdır.
+- Register değişikliklerinde KVKK consent checkbox, API `kvkk_consent: true` kabulü ve onaysız 400 reddi smoke test kapsamındadır.
 - `admin.html` / `profile.html` gibi inline script içeren dosyalarda değişiklik sonrası en azından parse kontrolü yapılır. Güvenlik değişikliklerinde `innerHTML` kullanımının kaynağı ayrıca okunur.
