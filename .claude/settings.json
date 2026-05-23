@@ -1,19 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node fix-encoding.js)",
-      "Bash(python3 -)",
-      "Bash(python -)",
-      "Bash(where python:*)",
-      "Bash(\"C:\\\\Users\\\\OWNER\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -)",
-      "Bash(C:/Users/OWNER/AppData/Local/Programs/Python/Python313/python.exe -c ':*)",
-      "Bash(C:/Users/OWNER/AppData/Local/Programs/Python/Python313/python.exe --version)",
+      "Bash(npx wrangler pages deploy *)",
+      "Bash(npx wrangler deploy *)",
+      "Bash(npx wrangler d1 execute *)",
+      "Bash(npx wrangler d1 export *)",
       "Bash(wrangler r2:*)",
       "Bash(wrangler d1:*)",
-      "Bash(node scripts/add-data-en.js)"
+      "Bash(cd * && npx wrangler d1 execute *)",
+      "Bash(cd * && npx wrangler d1 export *)",
+      "Bash(cd * && npx wrangler deploy *)",
+      "Bash(cd * && npx wrangler pages deploy *)",
+      "Bash(wsl -e bash -c *)",
+      "Bash(git add * && git commit *)",
+      "Bash(git add * && git commit * && git push *)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\OWNER\\.claude\\projects\\c--Users-OWNER-Documents-GitHub-libedge-website\\memory"
+      "c:\\Users\\user\\.claude\\projects\\c--Users-user-Documents-GitHub\\memory"
     ]
   }
 }

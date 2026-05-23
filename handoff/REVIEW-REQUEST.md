@@ -1,118 +1,58 @@
-# Review Request — ra-browser: Playwright/Chromium Service for CF Managed Challenge
-*Written by Builder (Bob). Read by Reviewer (Richard).*
+# Review Request — W-02: Website → Production sync
+*Written by Bob. Read by Richard.*
 
 Ready for Review: YES
 
 ---
 
-## What Was Built
+## What Was Done
 
-Step 04 — added `ra-browser` (Node.js + Playwright/Chromium) as a new institution-side
-container. This bypasses CF Managed Challenge by using a real Chrome engine at the
-institution IP instead of the Go HTTP client. Six parts:
+Production DB ve code staging ile eşitlendi.
 
-1. **`ra-browser/` — new Node.js service** (Express + Playwright headless Chromium).
-   Accepts the same HMAC-signed RA headers as ra-egress, validates independently,
-   navigates to the target URL using a real browser context, detects and waits on
-   CF challenges (8s), returns JSON envelope `{ status, headers, body (base64), finalUrl }`.
+### DB Sync Özeti
+1. Migration 0037 (nature verify allowlist) — production'a uygulandı
+2. Migration 0038 (is_libedge_catalog, product_recommendations) — production'a uygulandı
+3. individual_tools: 6 eksik kolon eklendi (affiliate_*, extra_categories), 93 aktif araç INSERT OR REPLACE edildi
+4. products: extra_categories kolonu eklendi, 49 ürün güncellendi (logo_url, short_description_tr/en, is_libedge_catalog, extra_categories)
+5. simtics ürünü production'a INSERT edildi (staging'de vardı, prod'da yoktu)
+6. orcid bireysel aracı archived yapıldı (staging'de archived, prod'da active kalmıştı)
+7. d1_migrations tablosuna 0037 ve 0038 kayıtları eklendi
 
-2. **`ra-egress/docker-compose.yml`** — added `ra-browser` service. No external ports.
-   `depends_on: ra-egress`. Passes `EGRESS_SHARED_SECRET` and `MAX_CONCURRENT=3`.
+### Deploy
+- Pages: `libedge-website.pages.dev` — deploy `662eca91`
+- Worker: `libedge-api-prod` — version `18796ff1`
 
-3. **`ra-egress/main.go`** — added `/browser-proxy` handler and shared HMAC validation
-   helper. HMAC validation extracted from `handleProxy` into `validateRARequest` to
-   avoid duplication. `/browser-proxy` validates HMAC, then reverse-proxies to
-   `http://ra-browser:8081/proxy`. `RA_BROWSER_URL` env var overrides the target for testing.
+---
 
-4. **`workers/proxy/src/egress-client.js`** — added `browserFetch()`. Calls `/browser-proxy`
-   with signature format `HMAC-SHA256(secret, "${method}|${url}|${ts}|")` (empty body hash
-   for GET — matches ra-egress/ra-browser validation exactly). Decodes base64 response body.
+## Test Gates (Tümü Geçti)
 
-5. **`workers/proxy/src/index.js`** — routing in `proxySessionSurface` (stable-host only,
-   as approved). Before `egressFetch`: queries `ra_waf_browser` from D1. If flag is 1
-   AND method is GET AND not a CF challenge asset path: uses `browserFetch`. Otherwise
-   falls through to existing `egressFetch` path unchanged. Added `loadProductWafBrowserFlag`
-   helper with try/catch for pre-migration safety.
+| Gate | Sonuç |
+|------|-------|
+| `SELECT COUNT(*) FROM individual_tools WHERE status='active'` | **93** ✅ |
+| `SELECT COUNT(*) FROM products WHERE is_libedge_catalog=1` | **12** ✅ |
+| `SELECT name FROM d1_migrations WHERE name='0038_...'` | **kayıt var** ✅ |
 
-6. **`migrations/0027_ra_waf_browser.sql`** — adds `ra_waf_browser INTEGER NOT NULL DEFAULT 0`
-   to products. Seed UPDATE is commented out — apply manually when container is at institution.
+---
+
+## Manuel Test Beklentileri
+
+Richard, şunları kontrol etmeli:
+
+- [ ] `libedge-website.pages.dev/tools.html` — giriş yapılmamışsa login gate görünüyor
+- [ ] `libedge-website.pages.dev/tools.html` — giriş yapılmışsa 93 araç yükleniyor
+- [ ] `libedge-website.pages.dev/profile.html` — dashboard çalışıyor, katalog bölümü görünüyor
+
+---
 
 ## Files Changed
+Sadece production DB + deploy. Kaynak dosya değişikliği yok.
 
-| File | Change |
-|---|---|
-| `ra-browser/package.json` | New — Express + Playwright deps |
-| `ra-browser/server.js` | New — Playwright service (245 lines) |
-| `ra-browser/Dockerfile` | New — FROM playwright:v1.44.0-jammy |
-| `ra-egress/docker-compose.yml` | Added ra-browser service block |
-| `ra-egress/main.go` | Added `net/http/httputil` + `net/url` imports, `validateRARequest` helper, `handleBrowserProxy` handler, route registration. Refactored `handleProxy` to use shared helper. |
-| `workers/proxy/src/egress-client.js` | Added `browserFetch()` + `base64Decode()` |
-| `workers/proxy/src/index.js` | Added `browserFetch` import, `loadProductWafBrowserFlag`, browser routing in `proxySessionSurface` |
-| `migrations/0027_ra_waf_browser.sql` | New — D1 schema migration |
+---
 
-## Test Results
+## Anomaliler
+Detay için EXECUTION-REPORT.md bakınız. Tümü tespit edilip düzeltildi; kalan risk yok.
 
-**Go (`go test ./...` in ra-egress):** 11/11 PASS
+---
 
-```
-ok  libedge.com/ra-egress  0.348s
-```
-
-All existing tests pass. No new Go tests added (browser proxy is a network-level
-integration; unit testing requires a mock ra-browser server, deferred to Step 05 if needed).
-
-**JavaScript (`npm test`):** 175/175 PASS
-
-```
-Test Files  14 passed (14)
-Tests       175 passed (175)
-```
-
-## D1 Migration
-
-Applied to staging remote:
-
-```
-ALTER TABLE products ADD COLUMN ra_waf_browser INTEGER NOT NULL DEFAULT 0;
-```
-
-Executed: 1 query, 1 row written, 0 errors.
-
-## Staging Deploy
-
-```
-Uploaded libedge-ra-proxy-staging (12.10 sec)
-Deployed libedge-ra-proxy-staging triggers (9.25 sec)
-  proxy-staging.selmiye.com/* (zone name: selmiye.com)
-  *.selmiye.com/* (zone name: selmiye.com)
-Current Version ID: e0652048-0b46-4d03-8cf1-84f06dc93a26
-```
-
-## Stopping Point — Awaiting Arch Confirmation
-
-**Not yet done (per build order — stop before step 11):**
-- Docker Compose build + live start at institution (ra-browser container not yet running)
-- D1 seed UPDATE for Emerald (commented out in migration file — apply when container is ready)
-- Live Emerald test through ra-browser
-
-## HMAC Signature Verification
-
-The signature format used in `browserFetch()` is:
-```
-HMAC-SHA256(secret, "${method}|${url}|${ts}|")
-```
-This matches `validateRARequest` in ra-egress (`bodyHash` is `""` when body is empty)
-and `validateHmac` in ra-browser server.js (concatenates `|` at end with empty body hash).
-All three sides use the same secret (`EGRESS_SHARED_SECRET`).
-
-## Architecture Notes
-
-- ra-browser is never exposed externally — only ra-egress can reach it via Docker network.
-- HMAC validated at ra-egress before forwarding (SSRF protection) and re-validated by
-  ra-browser (defense in depth — same shared secret, original Worker-issued signature).
-- `RA_BROWSER_URL` env var in ra-egress allows pointing to a different host for local testing
-  without Docker Compose (e.g., `RA_BROWSER_URL=http://localhost:8081`).
-- `loadProductWafBrowserFlag` catches D1 errors silently and falls back to `false` —
-  safe before migration runs, safe if the column query fails for any reason.
-- Browser pool: one Chromium singleton, `BrowserContext` per request (cookie isolation),
-  context closed in `finally` block. Semaphore enforces `MAX_CONCURRENT=3` limit.
+## Stopping Point
+Brief'teki stop point'e uyuldu. W-03'e geçilmedi.

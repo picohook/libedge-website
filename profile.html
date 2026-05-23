@@ -2724,6 +2724,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+function prepareRemoteAccessTab() {
+    const tab = window.open('about:blank', '_blank');
+    if (!tab) return null;
+    try {
+        tab.document.open();
+        tab.document.write(`<!doctype html><html><head><title>Yönlendiriliyor...</title><meta charset="utf-8"><style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#f8fafc;color:#1f2937}.box{max-width:420px;padding:24px;text-align:center}.spin{width:28px;height:28px;border:3px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;margin:0 auto 16px;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}p{margin:8px 0 0;color:#64748b}</style></head><body><div class="box"><div class="spin"></div><strong>Yönlendiriliyor...</strong><p>Uzaktan erişim oturumu hazırlanıyor.</p></div></body></html>`);
+        tab.document.close();
+    } catch (_) { /* Some browsers may block writing to the interim tab. */ }
+    return tab;
+}
+
+function navigateRemoteAccessTab(tab, url) {
+    if (tab && !tab.closed) {
+        const safeUrl = String(url || '');
+        try {
+            tab.document.open();
+            tab.document.write(`<!doctype html><html><head><title>Yönlendiriliyor...</title><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(safeUrl)}"><style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#f8fafc;color:#1f2937}.box{max-width:460px;padding:24px;text-align:center}a{color:#2563eb;word-break:break-all}</style></head><body><div class="box"><strong>Yönlendiriliyor...</strong><p><a href="${escapeHtml(safeUrl)}">Devam et</a></p></div></body></html>`);
+            tab.document.close();
+        } catch (_) { /* fallback below */ }
+        try { tab.location.replace(safeUrl); return; } catch (_) { /* fallback below */ }
+        try { tab.location.href = safeUrl; return; } catch (_) { /* fallback below */ }
+    }
+    window.location.href = url;
+}
+
+function failRemoteAccessTab(tab, message) {
+    if (!tab || tab.closed) return;
+    try {
+        tab.document.open();
+        tab.document.write(`<!doctype html><html><head><title>Erişim başlatılamadı</title><meta charset="utf-8"><style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#fff7ed;color:#7c2d12}.box{max-width:460px;padding:24px;text-align:center}p{color:#9a3412}</style></head><body><div class="box"><strong>Erişim başlatılamadı</strong><p>${escapeHtml(message || 'Lütfen portal sekmesine dönüp tekrar deneyin.')}</p></div></body></html>`);
+        tab.document.close();
+    } catch (_) {
+        try { tab.close(); } catch (_) { /* ignore */ }
+    }
+}
+
 async function openRemoteAccess(btn) {
     if (!btn || btn.dataset.raBusy === '1') return;
     const subId = Number(btn.dataset.raSubId);
@@ -2750,10 +2786,9 @@ async function openRemoteAccess(btn) {
     btn.classList.add('opacity-70', 'cursor-wait');
     if (labelEl) labelEl.textContent = 'Yönlendiriliyor...';
 
-    // iOS Safari popup blocker fix: window.open() kullanıcı gesture'ı (click)
-    // sırasında — await'ten ÖNCE — çağrılmalı. Sonradan location set edilir.
-    // Boş sekme açılır, fetch tamamlanınca URL yazılır; sekme kapanmaz.
-    const newTab = window.open('', '_blank');
+    // iOS Safari popup blocker fix: sekme kullanıcı gesture'ı sırasında açılır.
+    // Boş about:blank yerine görünür bir ara ekran basılır; token dönünce URL yazılır.
+    const newTab = prepareRemoteAccessTab();
 
     try {
         const res = await fetch(`${window.API_BASE || ""}/api/ra/issue-token`, {
@@ -2766,27 +2801,23 @@ async function openRemoteAccess(btn) {
         try { data = await res.json(); } catch (_) { /* non-JSON body */ }
         if (!res.ok) {
             const msg = (data && data.error) || `Erişim hatası (HTTP ${res.status})`;
-            if (newTab) newTab.close();
+            failRemoteAccessTab(newTab, msg);
             notify(msg, 'error');
             return;
         }
         const redirectUrl = data && data.redirect_url;
         if (!redirectUrl) {
-            if (newTab) newTab.close();
-            notify('Sunucu geçerli bir yönlendirme adresi döndürmedi.', 'error');
+            const msg = 'Sunucu geçerli bir yönlendirme adresi döndürmedi.';
+            failRemoteAccessTab(newTab, msg);
+            notify(msg, 'error');
             return;
         }
-        if (newTab) {
-            // Önceden açılan sekmeye URL yaz — popup blocker devreye girmez
-            newTab.location.href = redirectUrl;
-        } else {
-            // newTab null ise (sistem popup'ı engelledi) aynı sekmede aç
-            window.location.href = redirectUrl;
-        }
+        navigateRemoteAccessTab(newTab, redirectUrl);
     } catch (err) {
         console.error('openRemoteAccess error:', err);
-        if (newTab) newTab.close();
-        notify('Uzaktan erişim başlatılamadı. Lütfen tekrar deneyin.', 'error');
+        const msg = 'Uzaktan erişim başlatılamadı. Lütfen tekrar deneyin.';
+        failRemoteAccessTab(newTab, msg);
+        notify(msg, 'error');
     } finally {
         btn.dataset.raBusy = '0';
         btn.disabled = false;

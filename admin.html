@@ -4785,6 +4785,42 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
 // flow'unu (token issue + tunnel + egress) ucundan ucuna doğrular. Backend
 // /api/ra/issue-token'ı admin_test=true ile çağırır; sadece admin/super_admin
 // için 200 döner. Normal kullanıcı erişimi hiç etkilenmez.
+function prepareAdminRaTestTab() {
+    const tab = window.open('about:blank', '_blank');
+    if (!tab) return null;
+    try {
+        tab.document.open();
+        tab.document.write(`<!doctype html><html><head><title>Yönlendiriliyor...</title><meta charset="utf-8"><style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#f8fafc;color:#1f2937}.box{max-width:420px;padding:24px;text-align:center}.spin{width:28px;height:28px;border:3px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;margin:0 auto 16px;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}p{margin:8px 0 0;color:#64748b}</style></head><body><div class="box"><div class="spin"></div><strong>Yönlendiriliyor...</strong><p>Test erişimi oturumu hazırlanıyor.</p></div></body></html>`);
+        tab.document.close();
+    } catch (_) { /* ignore */ }
+    return tab;
+}
+
+function navigateAdminRaTestTab(tab, url) {
+    if (tab && !tab.closed) {
+        const safeUrl = String(url || '');
+        try {
+            tab.document.open();
+            tab.document.write(`<!doctype html><html><head><title>Yönlendiriliyor...</title><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(safeUrl)}"><style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#f8fafc;color:#1f2937}.box{max-width:460px;padding:24px;text-align:center}a{color:#2563eb;word-break:break-all}</style></head><body><div class="box"><strong>Yönlendiriliyor...</strong><p><a href="${escapeHtml(safeUrl)}">Devam et</a></p></div></body></html>`);
+            tab.document.close();
+        } catch (_) { /* fallback below */ }
+        try { tab.location.replace(safeUrl); return; } catch (_) { /* fallback below */ }
+        try { tab.location.href = safeUrl; return; } catch (_) { /* fallback below */ }
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function failAdminRaTestTab(tab, message) {
+    if (!tab || tab.closed) return;
+    try {
+        tab.document.open();
+        tab.document.write(`<!doctype html><html><head><title>Test erişimi başlatılamadı</title><meta charset="utf-8"><style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#fff7ed;color:#7c2d12}.box{max-width:460px;padding:24px;text-align:center}p{color:#9a3412}</style></head><body><div class="box"><strong>Test erişimi başlatılamadı</strong><p>${escapeHtml(message || 'Admin sekmesine dönüp tekrar deneyin.')}</p></div></body></html>`);
+        tab.document.close();
+    } catch (_) {
+        try { tab.close(); } catch (_) { /* ignore */ }
+    }
+}
+
 async function startAdminProductRaTest(btn) {
     if (!btn || btn.dataset.raBusy === '1') return;
     const slug = String(btn.dataset.productSlug || '').trim();
@@ -4798,9 +4834,8 @@ async function startAdminProductRaTest(btn) {
     btn.disabled = true;
     btn.classList.add('opacity-70', 'cursor-wait');
 
-    // iOS Safari pop-up blocker fix (profile.html ile aynı pattern):
-    // window.open kullanıcı gesture'ı sırasında, await'ten ÖNCE çağrılmalı.
-    const newTab = window.open('', '_blank');
+    // iOS Safari pop-up blocker fix: sekme kullanıcı gesture'ı sırasında açılır.
+    const newTab = prepareAdminRaTestTab();
 
     try {
         const res = await fetch(`${API_BASE}/api/ra/issue-token`, {
@@ -4813,25 +4848,23 @@ async function startAdminProductRaTest(btn) {
         try { data = await res.json(); } catch (_) { /* non-JSON body */ }
         if (!res.ok) {
             const msg = (data && data.error) || `Test erişimi başarısız (HTTP ${res.status})`;
-            if (newTab) newTab.close();
+            failAdminRaTestTab(newTab, msg);
             notify(msg, 'error');
             return;
         }
         const redirectUrl = data && data.redirect_url;
         if (!redirectUrl) {
-            if (newTab) newTab.close();
-            notify('Sunucu geçerli bir yönlendirme adresi döndürmedi.', 'error');
+            const msg = 'Sunucu geçerli bir yönlendirme adresi döndürmedi.';
+            failAdminRaTestTab(newTab, msg);
+            notify(msg, 'error');
             return;
         }
-        if (newTab) {
-            newTab.location.href = redirectUrl;
-        } else {
-            window.open(redirectUrl, '_blank', 'noopener,noreferrer');
-        }
+        navigateAdminRaTestTab(newTab, redirectUrl);
     } catch (err) {
         console.error('startAdminProductRaTest error:', err);
-        if (newTab) newTab.close();
-        notify('Test erişimi başlatılamadı. Lütfen tekrar deneyin.', 'error');
+        const msg = 'Test erişimi başlatılamadı. Lütfen tekrar deneyin.';
+        failAdminRaTestTab(newTab, msg);
+        notify(msg, 'error');
     } finally {
         btn.dataset.raBusy = '0';
         btn.disabled = false;
@@ -7427,6 +7460,11 @@ function _initRemoteAccessTab() {
 
     const refreshBtn = document.getElementById('raRefreshTunnelsBtn');
     if (refreshBtn) refreshBtn.addEventListener('click', () => _raLoadTunnels(true));
+
+    // Tunnels sekmesi açıkken 60 sn'de bir otomatik yenile
+    setInterval(() => {
+        if (_ra.activeSubtab === 'tunnels') _raLoadTunnels();
+    }, 60000);
     const refreshSubsBtn = document.getElementById('raRefreshSubsBtn');
     if (refreshSubsBtn) refreshSubsBtn.addEventListener('click', () => _raLoadSubscriptions(true));
     const refreshProductsBtn = document.getElementById('raRefreshProductsBtn');
@@ -7566,8 +7604,15 @@ function _raRenderTunnels() {
         return;
     }
     const rows = _ra.institutions.map((inst) => {
-        const statusBadge = _raStatusBadge(inst.tunnel_status, inst.enabled);
-        const lastSeen = inst.tunnel_last_seen ? _raFormatTs(inst.tunnel_last_seen) : '<span class="text-gray-400">—</span>';
+        const nowSec = Math.floor(Date.now() / 1000);
+        const lastSeenSec = inst.tunnel_last_seen ? Number(inst.tunnel_last_seen) : 0;
+        const staleSeconds = lastSeenSec > 0 ? nowSec - lastSeenSec : null;
+        const isStale = inst.enabled && inst.egress_endpoint && staleSeconds !== null && staleSeconds > 900;
+        const statusBadge = _raStatusBadge(inst.tunnel_status, inst.enabled, isStale);
+        const lastSeenLabel = inst.tunnel_last_seen ? _raFormatTs(inst.tunnel_last_seen) : '<span class="text-gray-400">—</span>';
+        const lastSeen = isStale
+            ? `${lastSeenLabel} <span title="Son heartbeat ${Math.floor(staleSeconds/60)} dakika önce — cron çalışıyor mu?" class="text-[11px] text-amber-600 font-medium ml-1"><i class="fas fa-exclamation-triangle"></i> bayat</span>`
+            : lastSeenLabel;
         const endpoint = inst.egress_endpoint
             ? `<span class="font-mono text-xs">${escapeHtml(inst.egress_endpoint)}</span>`
             : '<span class="text-gray-400 text-xs">tanımsız</span>';
@@ -7608,9 +7653,9 @@ function _raRenderTunnels() {
     });
 }
 
-function _raStatusBadge(status, enabled) {
+function _raStatusBadge(status, enabled, isStale = false) {
     const map = {
-        ok: { label: 'OK', cls: 'bg-emerald-100 text-emerald-700' },
+        ok: { label: isStale ? 'BAYAT' : 'OK', cls: isStale ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700' },
         error: { label: 'HATA', cls: 'bg-red-100 text-red-700' },
         unknown: { label: 'Bilinmiyor', cls: 'bg-gray-100 text-gray-600' },
         unconfigured: { label: 'Yapılandırılmamış', cls: 'bg-gray-100 text-gray-400' },
