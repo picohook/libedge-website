@@ -26,16 +26,20 @@ export async function runTunnelHeartbeat(env, { limit = 25 } = {}) {
     checked += 1;
     if (health.ok) okCount += 1;
 
+    // tunnel_alert_sent_at: tunnel 'ok' olunca sıfırla, aksi halde dokunma.
+    // Alert spam koruması alertWriter (notifyTunnelDownAlerts) tarafında.
     await env.DB.prepare(
       `UPDATE institution_ra_settings
           SET tunnel_status = ?,
               tunnel_last_seen = CASE WHEN ? = 1 THEN ? ELSE tunnel_last_seen END,
+              tunnel_alert_sent_at = CASE WHEN ? = 1 THEN NULL ELSE tunnel_alert_sent_at END,
               updated_at = ?
         WHERE institution_id = ?`
     ).bind(
       health.ok ? 'ok' : 'error',
       health.ok ? 1 : 0,
       now,
+      health.ok ? 1 : 0,
       now,
       institutionId
     ).run();

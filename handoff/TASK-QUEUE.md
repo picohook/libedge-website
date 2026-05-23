@@ -104,16 +104,23 @@ Rollback: 🟢 Worker rollback + ra-browser rebuild
 
 - [x] Infra-01 — GitHub Actions CI → **Zaten vardı** — `.github/workflows/ci.yml` lint + test + syntax check, staging + main branch'e push/PR'da çalışıyor
 
-- [ ] Infra-02 — Monitoring / Alerting
-  - Tunnel düşünce haberdar ol: Better Stack (ücretsiz) veya Cloudflare Tail Worker → R2/mail
-  - Hedef: tunnel down → 5 dakika içinde bildirim
-  - Rollback: 🟢 Code
+- [x] Infra-02 — Monitoring / Alerting → **Done 2026-05-24**
+  - `notifyTunnelDownAlerts()` cron her 5 dk runTunnelHeartbeat sonrası çalışıyor
+  - Spam koruma: kurum başına 6 saatte bir mail, tunnel 'ok' olunca alert sıfırlanır
+  - Resend API (RESEND_API_KEY + RESEND_ALERT_TO env var'ları gerekli)
+  - Migration 0042 staging'e uygulandı, prod için bekliyor
+  - Rollback: 🟢 Code + d1 alter rollback
 
 ### KVKK (3 acil madde)
 
-- [ ] KVKK-01 — Açık rıza metni kayıt formuna eklenecek (1 saat)
-- [ ] KVKK-02 — Legacy SHA-256 password hash → PBKDF2 migrate (2 saat)
-- [ ] KVKK-03 — Veri saklama süreleri belirle + cleanup job yaz (4 saat)
+- [x] KVKK-01 — Açık rıza metni kayıt formuna → **Cleared** (migration 0041, register-consent.test.js)
+- [x] KVKK-02 — Legacy SHA-256 → PBKDF2 → **Done 2026-05-24**
+  - Lazy-rehash login akışında zaten aktif (1433-1442)
+  - Admin endpoint `/api/admin/legacy-passwords/stats` (super admin) — sayım + stale 180g
+  - Yeni şifreler her zaman PBKDF2; force reset stale hesaplar için ileride
+- [x] KVKK-03 — Veri saklama süreleri + cleanup cron'ları → **Done 2026-05-24**
+  - AI usage logs (90g), refresh tokens (30g), product_requests user_id NULL (2 yıl)
+  - Cron her 5 dk scheduled() handler'ında çalışıyor
 
 ### Pre-Launch (canlıya geçmeden hemen önce)
 

@@ -9785,6 +9785,85 @@ async function handleScheduledAlerts(env) {
   }
 }
 
+// Infra-02 — Tunnel down email alert (her kurum için 6 saatte bir tekrar).
+// runTunnelHeartbeat sonrası çağrılır. tunnel_status='error' AND
+// (tunnel_alert_sent_at IS NULL OR < now - 6h) olan kurumları toplar,
+// tek bir konsolide email atar ve tunnel_alert_sent_at'i güncelleştirir.
+async function notifyTunnelDownAlerts(env) {
+  if (!env?.DB) return;
+  const resendKey = env.RESEND_API_KEY;
+  const alertTo = env.RESEND_ALERT_TO;
+  if (!resendKey || !alertTo) return; // env yoksa sessizce geç
+
+  const now = Math.floor(Date.now() / 1000);
+  const cutoff = now - 6 * 60 * 60; // 6 saat
+  let rows;
+  try {
+    const result = await env.DB.prepare(`
+      SELECT s.institution_id, s.egress_endpoint, s.tunnel_last_seen, i.name AS institution_name
+      FROM institution_ra_settings s
+      LEFT JOIN institutions i ON i.id = s.institution_id
+      WHERE s.enabled = 1
+        AND s.tunnel_status = 'error'
+        AND (s.tunnel_alert_sent_at IS NULL OR s.tunnel_alert_sent_at < ?)
+      ORDER BY s.institution_id
+      LIMIT 50
+    `).bind(cutoff).all();
+    rows = result.results || [];
+  } catch (err) {
+    console.error('tunnel alert query failed', err?.message);
+    return;
+  }
+  if (!rows.length) return;
+
+  const lines = rows.map((r) => {
+    const lastSeen = r.tunnel_last_seen
+      ? new Date(Number(r.tunnel_last_seen) * 1000).toISOString()
+      : 'hiç görülmedi';
+    return `• ${r.institution_name || `kurum #${r.institution_id}`} | ${r.egress_endpoint || '?'} | son aktivite: ${lastSeen}`;
+  });
+
+  const body = {
+    from: 'LibEdge Alerts <noreply@libedge.com>',
+    to: [alertTo],
+    subject: `[LibEdge] ${rows.length} kurum tüneli erişilemiyor`,
+    text: [
+      'Aşağıdaki kurum RA tünelleri sağlık kontrolünde erişilemiyor:',
+      '',
+      ...lines,
+      '',
+      'Admin paneli: https://libedge.com/admin.html → Tunnels sekmesi',
+    ].join('\n'),
+  };
+
+  try {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      console.error('tunnel alert resend failed', resp.status, (await resp.text()).slice(0, 200));
+      return;
+    }
+  } catch (err) {
+    console.error('tunnel alert fetch failed', err?.message);
+    return;
+  }
+
+  // Mail başarılı → tüm uyarılan kurumlar için tunnel_alert_sent_at güncelle.
+  try {
+    const stmts = rows.map((r) =>
+      env.DB.prepare(
+        `UPDATE institution_ra_settings SET tunnel_alert_sent_at = ? WHERE institution_id = ?`
+      ).bind(now, Number(r.institution_id))
+    );
+    await env.DB.batch(stmts);
+  } catch (err) {
+    console.error('tunnel alert_sent_at update failed', err?.message);
+  }
+}
+
 async function cleanupExpiredPasswordResets(env) {
   if (!env.DB) return;
 
@@ -9892,6 +9971,10 @@ export default {
     ctx.waitUntil(cleanupOldAiUsageLogs(env));
     ctx.waitUntil(cleanupOldRefreshTokens(env));
     ctx.waitUntil(anonymizeOldProductRequests(env));
-    ctx.waitUntil(runTunnelHeartbeat(env).catch((err) => console.error('tunnel heartbeat failed', err)));
+    ctx.waitUntil(
+      runTunnelHeartbeat(env)
+        .then(() => notifyTunnelDownAlerts(env))
+        .catch((err) => console.error('tunnel heartbeat failed', err))
+    );
   },
 };
