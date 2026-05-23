@@ -1,0 +1,80 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '**/*.html'
+      - 'assets/**'
+      - 'partials/**'
+      - 'functions/**'
+      - '_headers'
+      - '_redirects'
+      - 'package.json'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Pages environment'
+        required: true
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: deploy-pages-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build CSS
+        run: npm run build
+
+  deploy-staging:
+    name: Deploy Pages to staging
+    needs: quality
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy . --project-name libedge-website --branch staging --commit-dirty=true
+
+  deploy-production:
+    name: Deploy Pages to production
+    needs: quality
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy . --project-name libedge-website --branch main --commit-dirty=true

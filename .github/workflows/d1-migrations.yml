@@ -1,0 +1,78 @@
+name: D1 Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target D1 environment'
+        required: true
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
+      operation:
+        description: 'Migration operation'
+        required: true
+        type: choice
+        default: list
+        options:
+          - list
+          - apply
+
+concurrency:
+  group: d1-migrations-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  list-staging:
+    name: List staging migrations
+    if: inputs.environment == 'staging' && inputs.operation == 'list'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations list libedge-db --remote --env staging
+
+  apply-staging:
+    name: Apply staging migrations
+    if: inputs.environment == 'staging' && inputs.operation == 'apply'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply libedge-db --remote --env staging
+
+  list-production:
+    name: List production migrations
+    if: inputs.environment == 'production' && inputs.operation == 'list'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations list libedge-db-production --remote --env production
+
+  apply-production:
+    name: Apply production migrations
+    if: inputs.environment == 'production' && inputs.operation == 'apply'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply libedge-db-production --remote --env production

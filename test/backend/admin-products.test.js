@@ -55,14 +55,14 @@ class ProductAdminD1 {
     }
 
     if (method === 'run' && sql.includes('INSERT INTO products')) {
-      this.products.set(binds[0], { slug: binds[0], name: binds[1], brochure_url: binds.at(-1) });
+      this.products.set(binds[0], { slug: binds[0], name: binds[1], brochure_url: binds.at(-2) });
       return { success: true };
     }
 
     if (method === 'run' && sql.includes('UPDATE products') && sql.includes('brochure_url = ?')) {
       const slug = binds.at(-1);
       const existing = this.products.get(slug) || { slug };
-      this.products.set(slug, { ...existing, brochure_url: binds.at(-2) });
+      this.products.set(slug, { ...existing, brochure_url: binds.at(-3) });
       return { success: true };
     }
 

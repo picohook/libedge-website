@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - staging
@@ -41,3 +42,6 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Build CSS
+        run: npm run build

@@ -308,12 +308,14 @@ Geçiş için sadece Cloudflare Worker env değişkenlerini güncellemek yeterli
 
 ## CI/CD Notu
 
-Şu an deploy'lar kontrollü şekilde yerel Wrangler komutlarıyla yapılıyor. GitHub Actions tabanlı CI/CD kurulursa önerilen güvenli akış:
+GitHub Actions tabanlı CI/CD iskeleti `.github/workflows/` altında tanımlıdır:
 
-- Pull request: `npm test`, lint/build kontrolleri ve mümkünse frontend smoke testleri çalışır; deploy yapmaz.
-- `staging` branch push: testler geçerse staging Worker + Pages deploy edilir; D1 migration yine manuel onaylı veya ayrı job olur.
-- `main` branch / release tag: production deploy manuel approval ister; önce migration listesi, sonra D1 apply, sonra Worker/Pages deploy ve smoke check çalışır.
-- Secrets GitHub Actions secrets içinde tutulur: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` ve gerekirse ortam bazlı Wrangler secret yönetimi.
+- `ci.yml`: PR ve `staging`/`main` push için syntax, lint, unit test ve CSS build çalıştırır; deploy yapmaz.
+- `deploy-workers.yml`: `staging` branch push ile staging backend/proxy deploy eder. Production deploy sadece manuel `workflow_dispatch` ile ve GitHub `production` environment approval'ı üzerinden çalışır.
+- `deploy-pages.yml`: `staging` branch push ile staging Pages deploy eder. Production Pages deploy sadece manuel çalıştırılır.
+- `d1-migrations.yml`: D1 migration `list`/`apply` işlemleri için manuel workflow'dur; production `apply` environment approval gerektirir.
+- Gerekli GitHub secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+- GitHub repo ayarlarında `staging` ve özellikle `production` environment'ları tanımlanmalı; `production` için required reviewer açılmalıdır.
 
 Production D1 migration'ları otomatikleştirilirken dikkatli olunmalıdır: D1 rollback pratikte "forward fix" gerektirir, bu yüzden production migration job'u manuel approval ve preflight çıktısı olmadan çalışmamalıdır.
 

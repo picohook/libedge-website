@@ -4,56 +4,122 @@ on:
   push:
     branches:
       - staging
-      - main
     paths:
       - 'backend/**'
       - 'wrangler.toml'
       - 'workers/proxy/**'
+      - 'package.json'
       - '.github/workflows/deploy-workers.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Cloudflare environment'
+        required: true
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
+      deploy_backend:
+        description: 'Deploy Main API Worker'
+        required: true
+        type: boolean
+        default: true
+      deploy_proxy:
+        description: 'Deploy RA Proxy Worker'
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-workers-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+  cancel-in-progress: false
 
 jobs:
-  deploy-backend-staging:
-    name: Deploy backend → libedge-api-staging
-    if: github.ref == 'refs/heads/staging'
+  quality:
+    name: Quality gate
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax check
+        run: |
+          node --check backend/src/index.js
+          for f in scripts/*.mjs; do
+            [ -e "$f" ] || continue
+            node --check "$f"
+          done
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build CSS
+        run: npm run build
+
+  deploy-backend-staging:
+    name: Deploy backend to staging
+    needs: quality
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && inputs.deploy_backend)
+    runs-on: ubuntu-latest
+    environment: staging
     steps:
       - uses: actions/checkout@v4
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --env staging
 
-  deploy-backend-prod:
-    name: Deploy backend → libedge-api-prod
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy --env production
-
   deploy-proxy-staging:
-    name: Deploy proxy → libedge-ra-proxy-staging
-    if: github.ref == 'refs/heads/staging'
+    name: Deploy proxy to staging
+    needs: quality
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && inputs.deploy_proxy)
     runs-on: ubuntu-latest
+    environment: staging
     steps:
       - uses: actions/checkout@v4
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/proxy
           command: deploy --env staging
 
-  deploy-proxy-prod:
-    name: Deploy proxy → libedge-ra-proxy-production
-    if: github.ref == 'refs/heads/main'
+  deploy-backend-production:
+    name: Deploy backend to production
+    needs: quality
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production' && inputs.deploy_backend
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - uses: actions/checkout@v4
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --env production
+
+  deploy-proxy-production:
+    name: Deploy proxy to production
+    needs: quality
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production' && inputs.deploy_proxy
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/proxy
           command: deploy --env production
