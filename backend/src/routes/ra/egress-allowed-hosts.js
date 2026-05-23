@@ -35,14 +35,24 @@ export function registerRaEgressAllowedHosts(app) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
 
-    // ── Tüm aktif RA ürünlerinin host'larını topla ──────────────────────────
+    // ── institution_id zorunlu — başka kurumların host'ları sızdırılmaz ──────
+    const institutionId = parseInt(c.req.query('institution_id') || '0', 10);
+    if (!institutionId || institutionId <= 0) {
+      return c.json({ error: 'institution_id required' }, 400);
+    }
+
+    // ── Kuruma ait aktif aboneliklerdeki RA ürünlerinin host'larını topla ───
     const rows = await c.env.DB.prepare(`
-      SELECT ra_origin_host, ra_host_allowlist_json
-      FROM   products
-      WHERE  ra_enabled = 1
-        AND  ra_origin_host IS NOT NULL
-        AND  TRIM(ra_origin_host) != ''
-    `).all();
+      SELECT p.ra_origin_host, p.ra_host_allowlist_json
+      FROM   products p
+      INNER JOIN institution_subscriptions s ON s.product_slug = p.slug
+      WHERE  p.ra_enabled = 1
+        AND  p.ra_origin_host IS NOT NULL
+        AND  TRIM(p.ra_origin_host) != ''
+        AND  s.institution_id = ?
+        AND  s.status IN ('active', 'trial')
+        AND  (s.end_date IS NULL OR s.end_date > datetime('now'))
+    `).bind(institutionId).all();
 
     const hostSet = new Set();
 

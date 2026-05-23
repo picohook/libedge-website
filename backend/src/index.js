@@ -9737,6 +9737,17 @@ async function cleanupOldRaAccessLogs(env) {
   }
 }
 
+async function cleanupOldRaDebugEvents(env) {
+  if (!env?.DB) return;
+  try {
+    await env.DB.prepare(
+      "DELETE FROM ra_debug_events WHERE created_at < datetime('now', '-30 days')"
+    ).run();
+  } catch {
+    // tablo yoksa veya hata varsa sessizce geç
+  }
+}
+
 export default {
   fetch: app.fetch,
   request: app.request.bind(app),
@@ -9744,6 +9755,7 @@ export default {
     ctx.waitUntil(handleScheduledAlerts(env));
     ctx.waitUntil(cleanupExpiredPasswordResets(env));
     ctx.waitUntil(cleanupOldRaAccessLogs(env));
+    ctx.waitUntil(cleanupOldRaDebugEvents(env));
     ctx.waitUntil(runTunnelHeartbeat(env).catch((err) => console.error('tunnel heartbeat failed', err)));
   },
 };
