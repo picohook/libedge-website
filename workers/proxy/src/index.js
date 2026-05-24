@@ -738,7 +738,15 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     targetPath: target.path,
   });
   const targetUrl = `https://${target.host}${target.path}${search}`;
-  const publisherCookieScopeHost = getPublisherCookieScopeHost(target.host);
+  let publisherCookieScopeHost = getPublisherCookieScopeHost(target.host);
+  // ra_cookie_mode='host' (vetis-tarzı per-session izolasyon) → scope'u boşalt.
+  // Tüm scoping logic (prefix, parent cookie domain, namespace shim) skip edilir.
+  // rewriteSessionHostSetCookie doğal olarak Domain=proxyHostname (session host) yazar.
+  // Default 'scoped' → mevcut davranış aynen korunur.
+  if (publisherCookieScopeHost) {
+    const cookieMode = await loadProductCookieMode(env.DB, session.product_slug);
+    if (cookieMode === 'host') publisherCookieScopeHost = '';
+  }
   const upstreamHeaders = buildUpstreamHeaders(request.headers, {
     proxyHostname: url.hostname,
     originHost: target.host,
@@ -3022,6 +3030,20 @@ async function loadProductWafBrowserFlag(db, productSlug) {
   } catch {
     // Column may not exist yet (pre-migration). Fall through to egressFetch.
     return false;
+  }
+}
+
+// 'scoped' (default) → mevcut __cp_<scope>|<name> prefix sistemi
+// 'host' → per-session host izolasyonu (vetis-tarzı), prefix yok
+async function loadProductCookieMode(db, productSlug) {
+  try {
+    const row = await db
+      .prepare('SELECT ra_cookie_mode FROM products WHERE slug = ?')
+      .bind(productSlug)
+      .first();
+    return row?.ra_cookie_mode === 'host' ? 'host' : 'scoped';
+  } catch {
+    return 'scoped';
   }
 }
 
