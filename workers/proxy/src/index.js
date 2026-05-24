@@ -426,6 +426,7 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
       text = injectScopusAnalyticsStub(text);
     }
     if (isWileyProxyHost(target.host) && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
+      text = stripWileyThirdPartyScripts(text);
       text = injectWileyConsentHide(text);
     }
     if (challengeSurface) {
@@ -1193,6 +1194,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
       text = injectScopusAnalyticsStub(text);
     }
     if (isWileyProxyHost(target.host) && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
+      text = stripWileyThirdPartyScripts(text);
       text = injectWileyConsentHide(text);
     }
     if (challengeSurface) {
@@ -2973,6 +2975,33 @@ function injectWileyConsentHide(text) {
   const style = `<style id="__raWileyConsentHide">.osano-cm-window,#osano-cm-window,.osano-cm-dialog,.osano-cm-info,.osano-cm-info-dialog,.cmplz-cookiebanner,#cookielaw-banner,#onetrust-banner-sdk,#onetrust-consent-sdk{display:none!important;visibility:hidden!important;pointer-events:none!important}html,body{overflow:auto!important}</style>`;
   if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b([^>]*)>/i, `<head$1>${style}`);
   return `${style}${html}`;
+}
+
+const WILEY_BLOCKED_SCRIPT_SRC_RE = /(?:assets\.adobedtm\.com|googletagmanager\.com|google-analytics\.com|googleadservices\.com|googlesyndication\.com|doubleclick\.net|connect\.facebook\.net|facebook\.com\/tr|static\.ads-twitter\.com|analytics\.twitter\.com|snap\.licdn\.com|px\.ads\.linkedin\.com|bat\.bing\.com|clarity\.ms|hm\.baidu\.com|rum-static\.pingdom\.net|pub\.doubleverify\.com|vtrk\.dv\.tech|cmp\.osano\.com|content\.wiley\.com\/analytics|beacon\.riskified\.com|img\.riskified\.com|servedbydoceree\.doceree\.com)/i;
+const WILEY_BLOCKED_INLINE_SCRIPT_RE = /(?:_satellite|googletag|gtag\s*\(|dataLayer|fbq\s*\(|twq\s*\(|uetq|clarity\s*\(|riskified|doceree|doubleverify|pingdom|baidu|adobedtm|googleadservices|googlesyndication|facebook\.net|linkedin|bing\.com)/i;
+
+function stripWileyThirdPartyScripts(text) {
+  let html = String(text || '');
+  if (!html || !/\btext|<html|<script/i.test(html)) return html;
+  let removed = 0;
+  html = html.replace(/<script\b([^>]*)\bsrc\s*=\s*(["'])([^"']+)\2([^>]*)>\s*<\/script>/gi, (match, _before, _quote, src) => {
+    if (!WILEY_BLOCKED_SCRIPT_SRC_RE.test(src)) return match;
+    removed++;
+    return `<!-- ra-wiley-script-diet: ${escapeHtmlComment(src)} -->`;
+  });
+  html = html.replace(/<script\b(?![^>]*\bsrc\s*=)([^>]*)>([\s\S]*?)<\/script>/gi, (match, _attrs, body) => {
+    if (!WILEY_BLOCKED_INLINE_SCRIPT_RE.test(body)) return match;
+    removed++;
+    return '<!-- ra-wiley-inline-script-diet -->';
+  });
+  if (html.includes('__raWileyScriptDiet')) return html;
+  const stub = `<script id="__raWileyScriptDiet">(function(){try{Object.defineProperty(window,'__raWileyScriptDiet',{value:1});window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){dataLayer.push(arguments)};window.googletag=window.googletag||{cmd:[],pubads:function(){return this},setConfig:function(){},defineSlot:function(){return {addService:function(){return this},setTargeting:function(){return this},setConfig:function(){return this}}},enableServices:function(){},display:function(){}};window.fbq=window.fbq||function(){};window.twq=window.twq||function(){};window.uetq=window.uetq||[];window.clarity=window.clarity||function(){};window._satellite=window._satellite||{track:function(){},pageBottom:function(){},getVar:function(){},setCookie:function(){},readCookie:function(){return''},cookie:{get:function(){return''},set:function(){}}};window.__uspapi=window.__uspapi||function(cmd,ver,cb){try{cb&&cb({uspString:'1---'},true)}catch(e){}};}catch(e){}})();</script>`;
+  if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b([^>]*)>/i, `<head$1>${stub}`);
+  return `${stub}${html}`;
+}
+
+function escapeHtmlComment(value) {
+  return String(value || '').replace(/--/g, '- -').slice(0, 180);
 }
 
 function injectScopusAnalyticsStub(text) {
