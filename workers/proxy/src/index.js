@@ -855,9 +855,57 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   const PERSISTENT_SESSION_SLUGS = new Set(['wiley']);
   const persistSession = PERSISTENT_SESSION_SLUGS.has(session.product_slug);
 
+  // Vetis-style asset cache (REVISED): cookies BIRAKILIR (Wiley auth), cache key
+  // cookieless → CF edge cache tüm session'lar arası paylaşılır.
+  //
+  // Önceki hata: cookie strip → ilk request 403 → cache asla populate olmadı.
+  // Doğru: cookies ile request gönder, CF cache key cookieless yap. İlk session
+  // cache'i doldurur, sonraki sessionlar (farklı user dahil) edge'den alır.
+  //
+  // Set-Cookie strip: response cache'lenmeden önce, kullanıcılar arası cookie
+  // sızıntısı olmasın. Static asset response'larında Set-Cookie beklenmez ama
+  // güvenli olalım.
+  const STATIC_ASSET_RE = /\.(css|js|mjs|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|webp|avif)(\?|$)/i;
+  const useFastAssetCache = cookieIsolationMode === 'host' && isGet && !isCfPath &&
+    STATIC_ASSET_RE.test(target.path);
+
   let upstreamResp;
   try {
-    if (useBrowserFetch) {
+    if (useFastAssetCache) {
+      const cachedResp = await egressFetch(env, session.institution_id, targetUrl, {
+        method: 'GET',
+        headers: upstreamHeaders, // Cookie KORUNUR — Wiley auth için
+        body: null,
+        cf: {
+          cacheTtl: 604800, // 1 hafta
+          cacheEverything: true,
+          cacheKey: `pub-asset:${target.host}${target.path}${search}`,
+        },
+      });
+      // Set-Cookie strip: cache'e girmiş olabilir, sonraki session'lara sızmasın.
+      // Response'u yeniden inşa et — orijinal headers - Set-Cookie + Cache-Control korunur.
+      const safeHdr = new Headers();
+      cachedResp.headers.forEach((value, key) => {
+        if (key.toLowerCase() === 'set-cookie') return;
+        safeHdr.set(key, value);
+      });
+      upstreamResp = new Response(cachedResp.body, {
+        status: cachedResp.status,
+        statusText: cachedResp.statusText,
+        headers: safeHdr,
+      });
+      // 403 fallback: cache populate başarısız → eski path'e düş (assetBrowserFetch)
+      if (cachedResp.status === 403 && needsPlaywright) {
+        try {
+          upstreamResp = await assetBrowserFetch(env, session.institution_id, targetUrl, {
+            method: 'GET',
+            headers: upstreamHeaders,
+            body: null,
+            sessionId,
+          });
+        } catch { /* keep 403 */ }
+      }
+    } else if (useBrowserFetch) {
       try {
         upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
           headers: upstreamHeaders,
