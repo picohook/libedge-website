@@ -324,20 +324,33 @@ async function handleProxy(req, res) {
   await acquireSemaphore();
   let context = null;
   let contextPersisted = false;
+  let usingPooledContext = false;
   try {
     const b = await ensureBrowser();
-    context = await b.newContext({
-      ignoreHTTPSErrors: false,
-      userAgent: pass['user-agent'] || CHROME_UA,
-      viewport: { width: 1920, height: 1080 },
-      locale: 'tr-TR',
-      timezoneId: 'Europe/Istanbul',
-      extraHTTPHeaders: {
-        'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"',
-      },
-    });
+    const persistSession = req.headers['x-ra-persist-session'] === '1';
+    const sessionId = req.headers['x-ra-session-id'];
+    const targetHostname = (() => { try { return new URL(targetUrl).hostname; } catch { return ''; } })();
+    const pooledContext = persistSession && sessionId && targetHostname
+      ? poolGet(sessionId, targetHostname)
+      : null;
+    if (pooledContext) {
+      context = pooledContext;
+      usingPooledContext = true;
+      console.log(`browser-proxy document using pooled context: ${targetUrl}`);
+    } else {
+      context = await b.newContext({
+        ignoreHTTPSErrors: false,
+        userAgent: pass['user-agent'] || CHROME_UA,
+        viewport: { width: 1920, height: 1080 },
+        locale: 'tr-TR',
+        timezoneId: 'Europe/Istanbul',
+        extraHTTPHeaders: {
+          'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"',
+        },
+      });
+    }
 
     await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
 
@@ -521,9 +534,16 @@ async function handleProxy(req, res) {
     // Step 06 — persistent session: X-RA-Persist-Session=1 + X-RA-Session-ID varsa
     // context'i pool'a koy, kapatma. Sonraki /asset-proxy istekleri bu context'i
     // tekrar kullanır → JS-set cookies, localStorage, cf_clearance korunur.
-    const persistSession = req.headers['x-ra-persist-session'] === '1';
-    const sessionId = req.headers['x-ra-session-id'];
-    if (persistSession && sessionId) {
+    if (persistSession && sessionId && !usingPooledContext) {
+      try {
+        const hostname = new URL(targetUrl).hostname;
+        poolPut(sessionId, hostname, context);
+        contextPersisted = true;
+      } catch (err) {
+        console.warn('context pool put failed', err?.message);
+      }
+    } else if (usingPooledContext) {
+      contextPersisted = true;
       try {
         const hostname = new URL(targetUrl).hostname;
         poolPut(sessionId, hostname, context);
