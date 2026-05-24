@@ -20,6 +20,25 @@ import { enforceProxyRateLimit } from './rate-limit.js';
 const SESSION_COOKIE  = 'ra_proxy_session';
 const COMPAT_SESSION_COOKIE = 'coproxy_session_id';
 const UPSTREAM_HOST_COOKIE = '__ra_upstream';
+
+// EZproxy "NeverProxy" eşdeğeri — analytics/teaser/3rd-party hostları proxy'leme.
+// Wiley sayfaları wiley.scienceconnect.io'dan teaser yüklüyor; biz proxy'lersek
+// __ra_upstream cookie bu hosta set oluyor ve sonraki link tıklamalarında relative
+// URL'ler (/action/showPublications) yanlış hosta gidip 404 alıyor.
+const NEVER_PROXY_HOSTS = new Set([
+  'wiley.scienceconnect.io',
+  'scienceconnect.io',
+]);
+
+function isNeverProxyHost(host) {
+  const normalized = normalizeHost(host);
+  if (!normalized) return false;
+  if (NEVER_PROXY_HOSTS.has(normalized)) return true;
+  for (const h of NEVER_PROXY_HOSTS) {
+    if (normalized.endsWith(`.${h}`)) return true;
+  }
+  return false;
+}
 const SESSION_TTL_SEC = 3600;
 const SESSION_ALT_HOST_PREFIX = '/__ra-host/';
 const SESSION_ENTRY_REDIRECT_PATH = '/__ra-redirect';
@@ -403,6 +422,9 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
       text = patchScopusNextData(text, session.origin_host, url.hostname);
       text = injectScopusAnalyticsStub(text);
     }
+    if (isWileyProxyHost(target.host) && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
+      text = injectWileyConsentHide(text);
+    }
     if (challengeSurface) {
       text = relaxProxyMetaContentSecurityPolicy(text);
       text = rewriteCloudflareChallengePaths(text);
@@ -557,6 +579,18 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   // Scopus: rum.scopus.com is NeverProxy — analytics only, 204 to avoid errors.
   if (session.product_slug === 'scopus' && target.host === 'rum.scopus.com') {
     return new Response(null, { status: 204 });
+  }
+
+  // Global NeverProxy list (Wiley scienceconnect.io vb. analytics/teaser hostları).
+  // EZproxy stanza eşdeğeri. 204 dön ki browser hata göstermesin; ayrıca
+  // __ra_upstream cookie temizle ki sonraki relative URL'ler bu hosta gitmesin.
+  if (isNeverProxyHost(target.host)) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Set-Cookie': `${UPSTREAM_HOST_COOKIE}=; Path=/; Domain=${url.hostname}; Max-Age=0; Secure; HttpOnly; SameSite=Lax`,
+      },
+    });
   }
 
   if (session.product_slug === 'sciencedirect' && target.path.startsWith('/cdn-cgi/challenge-platform/')) {
@@ -1061,6 +1095,9 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     if (isScopusProxyHost(target.host) && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
       text = patchScopusNextData(text, session.origin_host, url.hostname);
       text = injectScopusAnalyticsStub(text);
+    }
+    if (isWileyProxyHost(target.host) && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
+      text = injectWileyConsentHide(text);
     }
     if (challengeSurface) {
       text = relaxProxyMetaContentSecurityPolicy(text);
@@ -2725,6 +2762,16 @@ function escapeRegExp(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function injectWileyConsentHide(text) {
+  const html = String(text || '');
+  if (html.includes('__raWileyConsentHide')) return html;
+  // Osano (cookielaw) banner JS bloklanmış → X tuşu çalışmıyor. CSS ile gizle.
+  // Aynı zamanda Osano consent cookie'sini set ederek banner'ı suskunlaştır.
+  const style = `<style id="__raWileyConsentHide">.osano-cm-window,#osano-cm-window,.osano-cm-dialog,.osano-cm-info,.osano-cm-info-dialog,.cmplz-cookiebanner,#cookielaw-banner,#onetrust-banner-sdk,#onetrust-consent-sdk{display:none!important;visibility:hidden!important;pointer-events:none!important}html,body{overflow:auto!important}</style>`;
+  if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b([^>]*)>/i, `<head$1>${style}`);
+  return `${style}${html}`;
+}
+
 function injectScopusAnalyticsStub(text) {
   const html = String(text || '');
   if (html.includes('__raScopusAnalyticsStub')) return html;
@@ -3077,6 +3124,9 @@ function readProxySessionCookie(header) {
 function readAllowedUpstreamHostCookie(cookieHeader, proxyableHosts) {
   const host = normalizeHost(readCookie(cookieHeader, UPSTREAM_HOST_COOKIE));
   if (!host || !proxyableHosts.has(host)) return null;
+  // Never-proxy host (analytics/teaser) cookie'de takıldıysa görmezden gel,
+  // yoksa sonraki relative URL'ler yanlış hosta gidip 404 alır.
+  if (isNeverProxyHost(host)) return null;
   return host;
 }
 

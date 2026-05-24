@@ -6,7 +6,7 @@
 # Build: docker build -t ra-browser .
 # Run:   docker run -e EGRESS_SHARED_SECRET=<secret> -p 8081:8081 ra-browser
 
-FROM mcr.microsoft.com/playwright:v1.59.1-jammy
+FROM mcr.microsoft.com/playwright:v1.60.0-jammy
 
 WORKDIR /app
 
