@@ -842,10 +842,12 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     (isGet && !isCfPath && isWileyProxyHost(target.host)) ||
     scienceDirectSearchApiNeedsBrowser;
   // Vetis-style fast path: host-mode publisher (Wiley) + cf_clearance varsa Playwright'ı
-  // atla, direkt ra-egress (utls Chrome TLS) ile git → ~500ms vs ~10-15s.
-  // 403 olursa else branch'inde Playwright'a fallback eder (cf_clearance refresh).
+  // atla, direkt ra-egress ile git → ~500ms vs ~10-15s.
+  // YALNIZ DOC NAV: Asset (CSS/JS/font) request'lerinde Wiley CF JS asset'leri Chrome
+  // TLS fingerprint olmadan 403 dönüyor; bunlar assetBrowserFetch (pool context) ile gitsin.
+  // Sadece HTML navigation hızlandırılır → kullanıcının asıl deneyim hızı.
   const hasCfClearance = !!effectiveUpstreamCookies && /(?:^|;\s*)cf_clearance=[^;]+/.test(effectiveUpstreamCookies);
-  const fastPathEligible = cookieIsolationMode === 'host' && hasCfClearance && needsPlaywright;
+  const fastPathEligible = cookieIsolationMode === 'host' && hasCfClearance && needsPlaywright && isDocNav;
 
   const useBrowserFetch      = !fastPathEligible && isGet && !isCfPath && ((isDocNav && needsPlaywright) || scienceDirectSearchApiNeedsBrowser);
   // Scopus: route all API requests (including POST) through Chrome TLS to avoid
