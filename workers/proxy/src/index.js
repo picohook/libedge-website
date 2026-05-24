@@ -848,6 +848,11 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   const useAssetBrowserFetch = (!isCfPath && needsPlaywright && !scienceDirectSearchApiNeedsBrowser && (
     (isGet && !isDocNav) || scopusApiNeedsBrowser
   ));
+  const useWileyStaticAssetCache = useAssetBrowserFetch
+    && isGet
+    && cookieIsolationMode === 'host'
+    && isWileyProxyHost(target.host)
+    && isStaticAssetPath(target.path);
 
   // Step 06 — Wiley için persistent browser context (JS-set cookies: MAID,
   // MACHINE_LAST_SEEN, userRandomGroup). ra-browser sessionId+hostname bazlı
@@ -888,12 +893,51 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
         });
       }
     } else if (useAssetBrowserFetch) {
-      upstreamResp = await assetBrowserFetch(env, session.institution_id, targetUrl, {
-        method: request.method,
-        headers: upstreamHeaders,
-        body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
-        sessionId, // Wiley için pool context'i kullanmak üzere ra-browser'a iletilir
-      });
+      const assetCacheKey = useWileyStaticAssetCache
+        ? buildStaticAssetCacheKey(target, search)
+        : null;
+      if (assetCacheKey) {
+        upstreamResp = await caches.default.match(assetCacheKey);
+        if (upstreamResp) {
+          const cachedHeaders = new Headers(upstreamResp.headers);
+          cachedHeaders.set('X-RA-Asset-Cache', 'HIT');
+          upstreamResp = new Response(upstreamResp.body, {
+            status: upstreamResp.status,
+            statusText: upstreamResp.statusText,
+            headers: cachedHeaders,
+          });
+        }
+      }
+      if (!upstreamResp) {
+        upstreamResp = await assetBrowserFetch(env, session.institution_id, targetUrl, {
+          method: request.method,
+          headers: upstreamHeaders,
+          body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
+          sessionId, // Wiley için pool context'i kullanmak üzere ra-browser'a iletilir
+        });
+        if (assetCacheKey) {
+          const cacheableResp = buildStaticAssetCacheResponse(upstreamResp);
+          if (cacheableResp) {
+            ctx.waitUntil(caches.default.put(assetCacheKey, cacheableResp).catch(err => {
+              console.warn('static asset cache put failed', {
+                product_slug: session.product_slug,
+                target_host: target.host,
+                target_path: target.path,
+                message: err && err.message ? err.message : String(err),
+              });
+            }));
+            upstreamResp = new Response(upstreamResp.body, {
+              status: upstreamResp.status,
+              statusText: upstreamResp.statusText,
+              headers: (() => {
+                const h = new Headers(upstreamResp.headers);
+                h.set('X-RA-Asset-Cache', 'MISS');
+                return h;
+              })(),
+            });
+          }
+        }
+      }
     } else {
       upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
         method: request.method,
@@ -1379,6 +1423,38 @@ function isSafeSessionEntryPath(value) {
     && value.startsWith('/')
     && !value.startsWith('//')
     && !/[\r\n]/.test(value);
+}
+
+const STATIC_ASSET_PATH_RE = /\.(?:css|js|mjs|woff2?|ttf|otf|png|jpe?g|gif|svg|ico|txt|map)(?:$|[?#])/i;
+
+function isStaticAssetPath(path) {
+  return STATIC_ASSET_PATH_RE.test(String(path || ''));
+}
+
+function buildStaticAssetCacheKey(target, search) {
+  const keyUrl = new URL('https://ra-static-cache.libedge.local/wiley-asset');
+  keyUrl.searchParams.set('h', target.host);
+  keyUrl.searchParams.set('p', target.path || '/');
+  keyUrl.searchParams.set('q', String(search || '').replace(/^\?/, ''));
+  return new Request(keyUrl.toString(), { method: 'GET' });
+}
+
+function buildStaticAssetCacheResponse(resp) {
+  if (!resp || resp.status !== 200) return null;
+  const contentType = resp.headers.get('Content-Type') || '';
+  if (/\btext\/html\b/i.test(contentType)) return null;
+  const headers = new Headers(resp.headers);
+  headers.delete('Set-Cookie');
+  headers.delete('set-cookie');
+  headers.delete('Content-Length');
+  headers.delete('content-length');
+  headers.set('Cache-Control', 'public, max-age=604800, immutable');
+  headers.set('X-RA-Asset-Cache', 'STORE');
+  return new Response(resp.clone().body, {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers,
+  });
 }
 
 export function buildSessionHostResponseHeaders(incoming, proxyHostname, originHost, currentTargetHost, proxyableHosts, options = {}) {
