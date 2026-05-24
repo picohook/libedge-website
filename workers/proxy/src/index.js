@@ -243,6 +243,9 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
   if (isScienceDirectProxyHost(target.host) || isScopusProxyHost(target.host)) {
     effectiveUpstreamCookies = ensureCookiePair(effectiveUpstreamCookies, 'BROWSER_SUPPORTS_COOKIES', '1');
   }
+  if (cookieIsolationMode === 'host') {
+    effectiveUpstreamCookies = dedupeCookieHeaderKeepLast(effectiveUpstreamCookies);
+  }
   if (effectiveUpstreamCookies) {
     upstreamHeaders.set('Cookie', effectiveUpstreamCookies);
   } else {
@@ -1458,6 +1461,27 @@ function buildStaticAssetCacheResponse(resp) {
     statusText: resp.statusText,
     headers,
   });
+}
+
+function dedupeCookieHeaderKeepLast(cookieHeader) {
+  if (!cookieHeader) return '';
+  const order = [];
+  const values = new Map();
+  for (const part of String(cookieHeader).split(';')) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    const name = trimmed.slice(0, eq).trim();
+    const value = trimmed.slice(eq + 1);
+    if (!name) continue;
+    if (!values.has(name)) order.push(name);
+    values.set(name, value);
+  }
+  return order
+    .filter(name => values.has(name))
+    .map(name => `${name}=${values.get(name)}`)
+    .join('; ');
 }
 
 function wileyNoiseResponse(target, method = 'GET') {
