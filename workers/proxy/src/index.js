@@ -593,6 +593,9 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     });
   }
 
+  const wileyNoise = wileyNoiseResponse(target, request.method);
+  if (wileyNoise) return wileyNoise;
+
   if (session.product_slug === 'sciencedirect' && target.path.startsWith('/cdn-cgi/challenge-platform/')) {
     const headers = new Headers({
       'Content-Type': 'application/javascript; charset=utf-8',
@@ -1455,6 +1458,51 @@ function buildStaticAssetCacheResponse(resp) {
     statusText: resp.statusText,
     headers,
   });
+}
+
+function wileyNoiseResponse(target, method = 'GET') {
+  if (!isWileyProxyHost(target.host)) return null;
+  const path = String(target.path || '');
+  if (/^\/v2\/(?:r|p)(?:$|[/?#])/i.test(path)) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Cache-Control': 'no-store',
+        'X-RA-Wiley-Noise': '204',
+      },
+    });
+  }
+  if (/^\/v2\/decide(?:$|[/?#])/i.test(path)) {
+    const body = method.toUpperCase() === 'POST' ? '{}' : '';
+    return new Response(body, {
+      status: method.toUpperCase() === 'POST' ? 200 : 204,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-RA-Wiley-Noise': 'decide',
+      },
+    });
+  }
+  if (/^\/pb-assets\/utm_params_config\/submission-systems-domains-\d+\.txt$/i.test(path)) {
+    return new Response('', {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'public, max-age=86400',
+        'X-RA-Wiley-Noise': 'utm-empty',
+      },
+    });
+  }
+  if (/^\/products\/acropolis\/pericles\/releasedAssets\/fonts\/.+\.woff2?$/i.test(path)) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Cache-Control': 'public, max-age=86400',
+        'X-RA-Wiley-Noise': 'font-empty',
+      },
+    });
+  }
+  return null;
 }
 
 export function buildSessionHostResponseHeaders(incoming, proxyHostname, originHost, currentTargetHost, proxyableHosts, options = {}) {
