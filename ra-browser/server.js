@@ -487,7 +487,25 @@ async function handleProxy(req, res) {
     // Stored clearance lets subsequent visits bypass Turnstile without Playwright.
     const cfClearanceCookie = browserCookies.find(c => c.name === 'cf_clearance');
 
-    const html = await page.content();
+    // page.content() bazen "page is navigating and changing the content" hatası verir
+    // (Wiley gibi yoğun client-side routing yapan sayfalarda). Önce navigation'ı
+    // bekleyip 1 kez retry, yine başarısızsa page.evaluate fallback'i.
+    let html;
+    try {
+      html = await page.content();
+    } catch (e1) {
+      try {
+        await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
+        html = await page.content();
+      } catch (e2) {
+        try {
+          html = await page.evaluate(() => document.documentElement.outerHTML);
+        } catch (e3) {
+          html = '<!doctype html><html><body><p>Sayfa yüklenirken hata.</p></body></html>';
+          console.warn('page.content fallback all failed', { url: targetUrl, err: e3?.message });
+        }
+      }
+    }
     const envelope = { status, headers: responseHeaders, body: Buffer.from(html, 'utf8').toString('base64'), finalUrl: page.url() };
     if (cfClearanceCookie?.value) envelope.cfClearance = cfClearanceCookie.value;
     res.json(envelope);

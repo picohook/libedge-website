@@ -855,37 +855,9 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   const PERSISTENT_SESSION_SLUGS = new Set(['wiley']);
   const persistSession = PERSISTENT_SESSION_SLUGS.has(session.product_slug);
 
-  // Vetis-style asset cache: host mode publisher + static asset → cookie'siz
-  // forward + Cloudflare edge cache. HAR analizine göre Wiley CDN bu asset'ler
-  // için cookie istemiyor, response Cache-Control: public, max-age=604800 set
-  // ediyor → tüm session'lar arası shared edge cache mümkün.
-  const STATIC_ASSET_RE = /\.(css|js|mjs|map|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|webp|avif)(\?|$)/i;
-  const useLeanAssetFetch = cookieIsolationMode === 'host' && isGet && !isCfPath &&
-    STATIC_ASSET_RE.test(target.path);
-
   let upstreamResp;
   try {
-    if (useLeanAssetFetch) {
-      // Cookie'siz request → response edge-cacheable. Tüm Wiley session'ları
-      // aynı asset'i edge'den alır → ~50-200ms.
-      const leanHeaders = new Headers();
-      for (const [k, v] of upstreamHeaders.entries()) {
-        const lk = k.toLowerCase();
-        if (lk === 'cookie' || lk === 'authorization') continue;
-        leanHeaders.set(k, v);
-      }
-      upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
-        method: 'GET',
-        headers: leanHeaders,
-        body: null,
-        // Cloudflare edge cache: aynı targetUrl tüm session'larda paylaşılır
-        cf: {
-          cacheTtl: 604800, // 1 hafta
-          cacheEverything: true,
-          cacheKey: `wiley-asset:${target.host}${target.path}${search}`,
-        },
-      });
-    } else if (useBrowserFetch) {
+    if (useBrowserFetch) {
       try {
         upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
           headers: upstreamHeaders,
