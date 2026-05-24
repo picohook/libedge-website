@@ -84,14 +84,17 @@ export async function egressFetch(env, institutionId, targetUrl, init = {}) {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const resp = await fetch(agentUrl, {
+      const fetchInit = {
         method: 'POST',
         headers,
         body: bodyBytes,
         redirect: 'manual',
-        // Timeout'u Cloudflare Workers zaten 30s CPU ile sınırlar; fetch()
-        // network timeout'u ayrıca yok — önemliyse AbortController ile sar.
-      });
+      };
+      // Caller cache options gönderebilir (Wiley static asset cache için cf.cacheKey/TTL).
+      if (init.cf) fetchInit.cf = init.cf;
+      // Timeout'u Cloudflare Workers zaten 30s CPU ile sınırlar; fetch()
+      // network timeout'u ayrıca yok — önemliyse AbortController ile sar.
+      const resp = await fetch(agentUrl, fetchInit);
 
       if (
         attempt < maxAttempts &&
