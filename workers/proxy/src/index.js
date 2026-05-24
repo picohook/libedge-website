@@ -876,11 +876,15 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
 
   let upstreamResp;
   let wileyDocumentRoute = '';
+  const appendWileyDocumentRoute = (step) => {
+    if (!step) return;
+    wileyDocumentRoute = wileyDocumentRoute ? `${wileyDocumentRoute};${step}` : step;
+  };
   try {
     if (useBrowserFetch) {
       try {
         if (useWileyDocumentContextFetch) {
-          wileyDocumentRoute = 'context-attempt';
+          appendWileyDocumentRoute('context-attempt');
           upstreamResp = await assetBrowserFetch(env, session.institution_id, targetUrl, {
             method: request.method,
             headers: upstreamHeaders,
@@ -888,31 +892,31 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
             sessionId,
           });
           if (upstreamResp.status === 401 || upstreamResp.status === 403 || /\btext\/html\b/i.test(upstreamResp.headers.get('Content-Type') || '') && isCloudflareChallengeHtml(await upstreamResp.clone().text().catch(() => ''))) {
-            wileyDocumentRoute = `context-rejected-${upstreamResp.status}`;
+            appendWileyDocumentRoute(`context-rejected-${upstreamResp.status}`);
             upstreamResp = null;
           } else {
             upstreamResp.headers.set('X-RA-Wiley-Doc-Context', '1');
-            wileyDocumentRoute = 'context';
+            appendWileyDocumentRoute('context');
           }
         }
         if (!upstreamResp && useWileyDocumentFastPath) {
-          wileyDocumentRoute = 'direct-attempt';
+          appendWileyDocumentRoute('direct-attempt');
           upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
             method: request.method,
             headers: upstreamHeaders,
             body: null,
           });
           if (upstreamResp.status === 401 || upstreamResp.status === 403 || /\btext\/html\b/i.test(upstreamResp.headers.get('Content-Type') || '') && isCloudflareChallengeHtml(await upstreamResp.clone().text().catch(() => ''))) {
-            wileyDocumentRoute = `direct-rejected-${upstreamResp.status}`;
+            appendWileyDocumentRoute(`direct-rejected-${upstreamResp.status}`);
             upstreamResp = null;
           } else {
             upstreamResp.headers.set('X-RA-Wiley-Doc-Fast', '1');
-            wileyDocumentRoute = 'direct';
+            appendWileyDocumentRoute('direct');
           }
         }
         if (!upstreamResp) {
           if (useWileyDocumentContextFetch) {
-            wileyDocumentRoute = wileyDocumentRoute ? `${wileyDocumentRoute};browser` : 'browser';
+            appendWileyDocumentRoute('browser');
           }
           upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
             headers: upstreamHeaders,

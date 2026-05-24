@@ -325,6 +325,9 @@ async function handleProxy(req, res) {
   let context = null;
   let contextPersisted = false;
   let usingPooledContext = false;
+  const startedAt = Date.now();
+  const timing = {};
+  const mark = (name) => { timing[name] = Date.now() - startedAt; };
   try {
     const b = await ensureBrowser();
     const persistSession = req.headers['x-ra-persist-session'] === '1';
@@ -351,8 +354,10 @@ async function handleProxy(req, res) {
         },
       });
     }
+    mark('context');
 
     await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
+    mark('cookies');
 
     const fwdHeaders = { ...pass };
     for (const h of BROWSER_MANAGED) delete fwdHeaders[h];
@@ -446,10 +451,12 @@ async function handleProxy(req, res) {
       return;
     }
 
+    mark('before-goto');
     const navResponse = await page.goto(targetUrl, {
       waitUntil: fastDocument ? 'commit' : 'domcontentloaded',
       timeout: 30000,
     });
+    mark('goto');
 
     const firstStatus = navResponse ? navResponse.status() : 200;
     const firstTitle  = await page.title().catch(() => '');
@@ -485,6 +492,7 @@ async function handleProxy(req, res) {
     if (!isCfChallenge && !fastDocument) {
       await page.waitForLoadState('load', { timeout: 10000 }).catch(() => {});
     }
+    mark('load-wait');
 
     const responseHeaders = {};
     if (!isCfChallenge && navResponse) {
@@ -504,6 +512,7 @@ async function handleProxy(req, res) {
     // Return cf_clearance value so the Worker can persist it in D1 (ra_waf_clearance).
     // Stored clearance lets subsequent visits bypass Turnstile without Playwright.
     const cfClearanceCookie = browserCookies.find(c => c.name === 'cf_clearance');
+    mark('cookies-out');
 
     let html;
     if (fastDocument && navResponse && !isCfChallenge) {
@@ -512,6 +521,7 @@ async function handleProxy(req, res) {
       // döndürüp scriptleri kullanıcı browser'ında çalıştırmak Vetis'e daha yakın.
       html = await navResponse.text().catch(() => null);
     }
+    mark('html');
     if (!html) try {
       html = await page.content();
     } catch (e1) {
@@ -527,6 +537,9 @@ async function handleProxy(req, res) {
         }
       }
     }
+    mark('content');
+    responseHeaders['x-ra-browser-timing'] = Object.entries(timing).map(([k, v]) => `${k};dur=${v}`).join(', ');
+    responseHeaders['x-ra-browser-pooled'] = usingPooledContext ? '1' : '0';
     const envelope = { status, headers: responseHeaders, body: Buffer.from(html, 'utf8').toString('base64'), finalUrl: page.url() };
     if (cfClearanceCookie?.value) envelope.cfClearance = cfClearanceCookie.value;
     res.json(envelope);
