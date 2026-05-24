@@ -860,13 +860,13 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     && cookieIsolationMode === 'host'
     && isWileyProxyHost(target.host)
     && isStaticAssetPath(target.path);
-  const useWileyDocumentFastPath = useBrowserFetch
+  const useWileyDocumentContextFetch = useBrowserFetch
     && isGet
     && isDocNav
     && cookieIsolationMode === 'host'
-    && isWileyProxyHost(target.host)
+    && isWileyProxyHost(target.host);
+  const useWileyDocumentFastPath = useWileyDocumentContextFetch
     && /\bcf_clearance=/.test(effectiveUpstreamCookies || '');
-  const useWileyDocumentContextFetch = useWileyDocumentFastPath;
 
   // Step 06 — Wiley için persistent browser context (JS-set cookies: MAID,
   // MACHINE_LAST_SEEN, userRandomGroup). ra-browser sessionId+hostname bazlı
@@ -875,10 +875,12 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   const persistSession = PERSISTENT_SESSION_SLUGS.has(session.product_slug);
 
   let upstreamResp;
+  let wileyDocumentRoute = '';
   try {
     if (useBrowserFetch) {
       try {
         if (useWileyDocumentContextFetch) {
+          wileyDocumentRoute = 'context-attempt';
           upstreamResp = await assetBrowserFetch(env, session.institution_id, targetUrl, {
             method: request.method,
             headers: upstreamHeaders,
@@ -886,24 +888,32 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
             sessionId,
           });
           if (upstreamResp.status === 401 || upstreamResp.status === 403 || /\btext\/html\b/i.test(upstreamResp.headers.get('Content-Type') || '') && isCloudflareChallengeHtml(await upstreamResp.clone().text().catch(() => ''))) {
+            wileyDocumentRoute = `context-rejected-${upstreamResp.status}`;
             upstreamResp = null;
           } else {
             upstreamResp.headers.set('X-RA-Wiley-Doc-Context', '1');
+            wileyDocumentRoute = 'context';
           }
         }
         if (!upstreamResp && useWileyDocumentFastPath) {
+          wileyDocumentRoute = 'direct-attempt';
           upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
             method: request.method,
             headers: upstreamHeaders,
             body: null,
           });
           if (upstreamResp.status === 401 || upstreamResp.status === 403 || /\btext\/html\b/i.test(upstreamResp.headers.get('Content-Type') || '') && isCloudflareChallengeHtml(await upstreamResp.clone().text().catch(() => ''))) {
+            wileyDocumentRoute = `direct-rejected-${upstreamResp.status}`;
             upstreamResp = null;
           } else {
             upstreamResp.headers.set('X-RA-Wiley-Doc-Fast', '1');
+            wileyDocumentRoute = 'direct';
           }
         }
         if (!upstreamResp) {
+          if (useWileyDocumentContextFetch) {
+            wileyDocumentRoute = wileyDocumentRoute ? `${wileyDocumentRoute};browser` : 'browser';
+          }
           upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
             headers: upstreamHeaders,
             sessionId,
@@ -1120,6 +1130,10 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     respHeaders.set('X-RA-Debug-Content-Type', contentType.slice(0, 60));
     respHeaders.set('X-RA-Debug-Upstream-Cookie-Host', upstreamCookieHost || '-');
     respHeaders.set('X-RA-Debug-Cookie-Namespace', publisherCookieScopeHost || '-');
+    if (useWileyDocumentContextFetch) {
+      respHeaders.set('X-RA-Wiley-Doc-Route', wileyDocumentRoute || 'none');
+      respHeaders.set('X-RA-Wiley-Doc-Has-CF', /\bcf_clearance=/.test(effectiveUpstreamCookies || '') ? '1' : '0');
+    }
     addOidcCallbackDebugHeaders(
       respHeaders,
       target,

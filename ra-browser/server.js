@@ -433,7 +433,10 @@ async function handleProxy(req, res) {
       return;
     }
 
-    const navResponse = await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    const navResponse = await page.goto(targetUrl, {
+      waitUntil: fastDocument ? 'commit' : 'domcontentloaded',
+      timeout: 30000,
+    });
 
     const firstStatus = navResponse ? navResponse.status() : 200;
     const firstTitle  = await page.title().catch(() => '');
@@ -489,11 +492,14 @@ async function handleProxy(req, res) {
     // Stored clearance lets subsequent visits bypass Turnstile without Playwright.
     const cfClearanceCookie = browserCookies.find(c => c.name === 'cf_clearance');
 
-    // page.content() bazen "page is navigating and changing the content" hatası verir
-    // (Wiley gibi yoğun client-side routing yapan sayfalarda). Önce navigation'ı
-    // bekleyip 1 kez retry, yine başarısızsa page.evaluate fallback'i.
     let html;
-    try {
+    if (fastDocument && navResponse && !isCfChallenge) {
+      // Wiley gibi ağır client-side sayfalarda DOM'un ra-browser içinde hydrate
+      // olmasını beklemek 20-40sn sürebiliyor. Document response body'sini ham
+      // döndürüp scriptleri kullanıcı browser'ında çalıştırmak Vetis'e daha yakın.
+      html = await navResponse.text().catch(() => null);
+    }
+    if (!html) try {
       html = await page.content();
     } catch (e1) {
       try {
