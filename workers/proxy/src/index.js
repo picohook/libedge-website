@@ -865,6 +865,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     && cookieIsolationMode === 'host'
     && isWileyProxyHost(target.host)
     && /\bcf_clearance=/.test(effectiveUpstreamCookies || '');
+  const useWileyDocumentContextFetch = useWileyDocumentFastPath;
 
   // Step 06 — Wiley için persistent browser context (JS-set cookies: MAID,
   // MACHINE_LAST_SEEN, userRandomGroup). ra-browser sessionId+hostname bazlı
@@ -876,7 +877,20 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   try {
     if (useBrowserFetch) {
       try {
-        if (useWileyDocumentFastPath) {
+        if (useWileyDocumentContextFetch) {
+          upstreamResp = await assetBrowserFetch(env, session.institution_id, targetUrl, {
+            method: request.method,
+            headers: upstreamHeaders,
+            body: null,
+            sessionId,
+          });
+          if (upstreamResp.status === 401 || upstreamResp.status === 403 || /\btext\/html\b/i.test(upstreamResp.headers.get('Content-Type') || '') && isCloudflareChallengeHtml(await upstreamResp.clone().text().catch(() => ''))) {
+            upstreamResp = null;
+          } else {
+            upstreamResp.headers.set('X-RA-Wiley-Doc-Context', '1');
+          }
+        }
+        if (!upstreamResp && useWileyDocumentFastPath) {
           upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
             method: request.method,
             headers: upstreamHeaders,
