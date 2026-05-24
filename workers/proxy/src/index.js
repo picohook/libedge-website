@@ -739,13 +739,14 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   });
   const targetUrl = `https://${target.host}${target.path}${search}`;
   let publisherCookieScopeHost = getPublisherCookieScopeHost(target.host);
+  let cookieIsolationMode = 'scoped';
   // ra_cookie_mode='host' (vetis-tarzı per-session izolasyon) → scope'u boşalt.
   // Tüm scoping logic (prefix, parent cookie domain, namespace shim) skip edilir.
   // rewriteSessionHostSetCookie doğal olarak Domain=proxyHostname (session host) yazar.
   // Default 'scoped' → mevcut davranış aynen korunur.
   if (publisherCookieScopeHost) {
-    const cookieMode = await loadProductCookieMode(env.DB, session.product_slug);
-    if (cookieMode === 'host') publisherCookieScopeHost = '';
+    cookieIsolationMode = await loadProductCookieMode(env.DB, session.product_slug);
+    if (cookieIsolationMode === 'host') publisherCookieScopeHost = '';
   }
   const upstreamHeaders = buildUpstreamHeaders(request.headers, {
     proxyHostname: url.hostname,
@@ -981,7 +982,13 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   // When serving an alt-host page (/__ra-host/<host>/...) reached via JS navigation
   // (not HTTP 302), __ra_upstream is not set by the redirect handler. Set it here
   // so root-relative paths (CSS, JS) from that page go to the correct alt-host.
+  //
+  // ra_cookie_mode='host' (Wiley vb.) → __ra_upstream cookie set ETMEYE. Wiley'in
+  // alt-host'ları (nim.*, ars.els-cdn.com vb.) farklı path space kullanıyor; cookie
+  // set edilirse sonraki root navigation yanlış alt-hosta gider → 404. Wiley
+  // multi-host akışı zaten /__ra-host/{encoded}/ path prefix ile çalışır.
   if (target.host !== session.origin_host && !publisherCookieScopeHost
+      && cookieIsolationMode !== 'host'
       && upstreamCookieHost !== target.host) {
     respHeaders.append('Set-Cookie', buildUpstreamHostCookie(url.hostname, target.host));
   }
