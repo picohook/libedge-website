@@ -172,6 +172,9 @@ export async function browserFetch(env, institutionId, targetUrl, init = {}) {
   headers.set('X-RA-Method', method);
   headers.set('X-RA-Timestamp', String(ts));
   headers.set('X-RA-Signature', sig);
+  // Step 06 — persistent session: ra-browser context pool için sessionId + flag
+  if (init.sessionId) headers.set('X-RA-Session-ID', String(init.sessionId));
+  if (init.persistSession) headers.set('X-RA-Persist-Session', '1');
 
   const envelopeResp = await fetch(agentUrl, {
     method: 'POST',
@@ -297,6 +300,8 @@ export async function assetBrowserFetch(env, institutionId, targetUrl, init = {}
   headers.set('X-RA-Asset-Method', method);
   headers.set('X-RA-Timestamp', String(ts));
   headers.set('X-RA-Signature', sig);
+  // Step 06 — pool'dan context kullan (Wiley JS-set cookies için)
+  if (init.sessionId) headers.set('X-RA-Session-ID', String(init.sessionId));
 
   const envelopeResp = await fetch(agentUrl, {
     method: 'POST',

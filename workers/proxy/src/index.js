@@ -810,12 +810,20 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     (isGet && !isDocNav) || scopusApiNeedsBrowser
   ));
 
+  // Step 06 — Wiley için persistent browser context (JS-set cookies: MAID,
+  // MACHINE_LAST_SEEN, userRandomGroup). ra-browser sessionId+hostname bazlı
+  // context pool tutar; sonraki asset request'leri aynı context'i kullanır.
+  const PERSISTENT_SESSION_SLUGS = new Set(['wiley']);
+  const persistSession = PERSISTENT_SESSION_SLUGS.has(session.product_slug);
+
   let upstreamResp;
   try {
     if (useBrowserFetch) {
       try {
         upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
           headers: upstreamHeaders,
+          sessionId,
+          persistSession,
         });
         // Persist cf_clearance in D1 so subsequent visits can use ra-egress directly.
         const cfClearance = upstreamResp.headers.get('X-RA-CF-Clearance');
@@ -845,6 +853,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
         method: request.method,
         headers: upstreamHeaders,
         body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
+        sessionId, // Wiley için pool context'i kullanmak üzere ra-browser'a iletilir
       });
     } else {
       upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {

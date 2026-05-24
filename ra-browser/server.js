@@ -83,6 +83,79 @@ function shouldSkipUrl(url) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Session context pool — Step 06 (Wiley persistent sessions)
+//
+// Wiley (ve benzeri client-state ağırlıklı yayıncılar) login durumunu
+// document.cookie + localStorage + JS-set cookie ile takip eder. Bu state
+// HTTP Set-Cookie ile Worker'a aktarılamaz; Playwright context'inde yaşar.
+//
+// Pool, sessionId bazlı context tutar. /proxy navigation context'i
+// X-RA-Persist-Session=1 ile pool'a girer; /asset-proxy aynı sessionId
+// için pooled context'i tekrar kullanır → JS-set cookies, localStorage,
+// cf_clearance hepsi korunur.
+//
+// TTL: 15 dk (kullanıcı session_ttl ile uyumlu).
+// Max boyut: 8 context (Docker memory ~50-100MB/context).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CONTEXT_POOL_TTL_MS = 15 * 60 * 1000;
+const CONTEXT_POOL_MAX = 8;
+const contextPool = new Map(); // sessionId → { context, hostname, lastUsed, createdAt }
+
+function poolKey(sessionId, hostname) {
+  return `${sessionId}|${hostname}`;
+}
+
+function poolGet(sessionId, hostname) {
+  if (!sessionId) return null;
+  const key = poolKey(sessionId, hostname);
+  const entry = contextPool.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.createdAt > CONTEXT_POOL_TTL_MS) {
+    contextPool.delete(key);
+    entry.context.close().catch(() => {});
+    return null;
+  }
+  entry.lastUsed = Date.now();
+  return entry.context;
+}
+
+function poolPut(sessionId, hostname, context) {
+  if (!sessionId) return;
+  // LRU eviction if at capacity
+  while (contextPool.size >= CONTEXT_POOL_MAX) {
+    let oldestKey = null;
+    let oldestTime = Infinity;
+    for (const [k, v] of contextPool.entries()) {
+      if (v.lastUsed < oldestTime) { oldestTime = v.lastUsed; oldestKey = k; }
+    }
+    if (!oldestKey) break;
+    const evicted = contextPool.get(oldestKey);
+    contextPool.delete(oldestKey);
+    evicted.context.close().catch(() => {});
+  }
+  const key = poolKey(sessionId, hostname);
+  const existing = contextPool.get(key);
+  if (existing) {
+    // Replace + close old context
+    contextPool.delete(key);
+    existing.context.close().catch(() => {});
+  }
+  contextPool.set(key, { context, hostname, lastUsed: Date.now(), createdAt: Date.now() });
+}
+
+// Background cleanup: TTL geçen context'leri her 5 dk'da temizle
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of contextPool.entries()) {
+    if (now - v.createdAt > CONTEXT_POOL_TTL_MS) {
+      contextPool.delete(k);
+      v.context.close().catch(() => {});
+    }
+  }
+}, 5 * 60 * 1000).unref?.();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Browser singleton
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -248,6 +321,7 @@ async function handleProxy(req, res) {
   const pass = extractPassthroughHeaders(req.headers);
   await acquireSemaphore();
   let context = null;
+  let contextPersisted = false;
   try {
     const b = await ensureBrowser();
     context = await b.newContext({
@@ -417,6 +491,21 @@ async function handleProxy(req, res) {
     const envelope = { status, headers: responseHeaders, body: Buffer.from(html, 'utf8').toString('base64'), finalUrl: page.url() };
     if (cfClearanceCookie?.value) envelope.cfClearance = cfClearanceCookie.value;
     res.json(envelope);
+
+    // Step 06 — persistent session: X-RA-Persist-Session=1 + X-RA-Session-ID varsa
+    // context'i pool'a koy, kapatma. Sonraki /asset-proxy istekleri bu context'i
+    // tekrar kullanır → JS-set cookies, localStorage, cf_clearance korunur.
+    const persistSession = req.headers['x-ra-persist-session'] === '1';
+    const sessionId = req.headers['x-ra-session-id'];
+    if (persistSession && sessionId) {
+      try {
+        const hostname = new URL(targetUrl).hostname;
+        poolPut(sessionId, hostname, context);
+        contextPersisted = true;
+      } catch (err) {
+        console.warn('context pool put failed', err?.message);
+      }
+    }
   } catch (err) {
     console.error('browser-proxy error:', err.message);
     res.json({
@@ -425,7 +514,7 @@ async function handleProxy(req, res) {
       finalUrl: targetUrl,
     });
   } finally {
-    if (context) await context.close().catch(() => {});
+    if (context && !contextPersisted) await context.close().catch(() => {});
     releaseSemaphore();
   }
 }
@@ -453,16 +542,31 @@ async function handleAssetProxy(req, res) {
     return res.json({ status: cached.status, headers: cached.headers, body: cached.bodyB64, finalUrl: targetUrl });
   }
 
+  // Step 06: pooled session context for publishers that need client-state
+  // continuity (Wiley: MAID, MACHINE_LAST_SEEN, cf_clearance live in browser context).
+  const sessionId = req.headers['x-ra-session-id'];
+  const targetHostname = (() => { try { return new URL(targetUrl).hostname; } catch { return ''; } })();
+  const pooledContext = sessionId && targetHostname ? poolGet(sessionId, targetHostname) : null;
+
   // Cache miss: fall back to a fresh browser context request.
   // This may be blocked by CF Bot Management if cf_clearance is missing/stale.
-  console.log(`asset-proxy cache miss: ${targetUrl}`);
+  console.log(`asset-proxy cache miss: ${targetUrl}${pooledContext ? ' (pooled)' : ''}`);
   const pass = extractPassthroughHeaders(req.headers);
   await acquireSemaphore();
   let context = null;
+  let usingPooledContext = false;
   try {
-    const b = await ensureBrowser();
-    context = await b.newContext({ ignoreHTTPSErrors: false, userAgent: pass['user-agent'] || CHROME_UA });
-    await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
+    if (pooledContext) {
+      context = pooledContext;
+      usingPooledContext = true;
+      // Cookie inject — yeni HTTP cookies (Worker'dan gelen) pool context'ine eklenir,
+      // mevcut JS-set cookies + localStorage korunur.
+      await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
+    } else {
+      const b = await ensureBrowser();
+      context = await b.newContext({ ignoreHTTPSErrors: false, userAgent: pass['user-agent'] || CHROME_UA });
+      await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
+    }
 
     const assetMethod = (req.headers['x-ra-asset-method'] || 'GET').toUpperCase();
     const fetchOptions = { maxRedirects: 5, timeout: 30000 };
@@ -506,7 +610,8 @@ async function handleAssetProxy(req, res) {
       finalUrl: targetUrl,
     });
   } finally {
-    if (context) await context.close().catch(() => {});
+    // Pool'dan alındıysa kapatma, sonraki istekler için sakla
+    if (context && !usingPooledContext) await context.close().catch(() => {});
     releaseSemaphore();
   }
 }
