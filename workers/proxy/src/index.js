@@ -841,15 +841,17 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   const needsPlaywright = (!scopusRootNavigation && productWafBrowser && PLAYWRIGHT_SLUGS.has(session.product_slug)) ||
     (isGet && !isCfPath && isWileyProxyHost(target.host)) ||
     scienceDirectSearchApiNeedsBrowser;
-  // If cf_clearance is already in cookies (injected from D1), skip the slow full
-  // Playwright navigation and use Chrome context.request instead (~3-5s vs 15-30s).
-  // Full Playwright is only needed when no clearance is available (first visit /
-  // after expiry) to resolve the CF Bot Management challenge via Turnstile.
-  const useBrowserFetch      = isGet && !isCfPath && ((isDocNav && needsPlaywright) || scienceDirectSearchApiNeedsBrowser);
+  // Vetis-style fast path: host-mode publisher (Wiley) + cf_clearance varsa Playwright'ı
+  // atla, direkt ra-egress (utls Chrome TLS) ile git → ~500ms vs ~10-15s.
+  // 403 olursa else branch'inde Playwright'a fallback eder (cf_clearance refresh).
+  const hasCfClearance = !!effectiveUpstreamCookies && /(?:^|;\s*)cf_clearance=[^;]+/.test(effectiveUpstreamCookies);
+  const fastPathEligible = cookieIsolationMode === 'host' && hasCfClearance && needsPlaywright;
+
+  const useBrowserFetch      = !fastPathEligible && isGet && !isCfPath && ((isDocNav && needsPlaywright) || scienceDirectSearchApiNeedsBrowser);
   // Scopus: route all API requests (including POST) through Chrome TLS to avoid
   // TLS fingerprint inconsistency between Playwright page load and Go egress.
   const scopusApiNeedsBrowser = PLAYWRIGHT_SLUGS.has(session.product_slug) && !isGet && !isCfPath;
-  const useAssetBrowserFetch = (!isCfPath && needsPlaywright && !scienceDirectSearchApiNeedsBrowser && (
+  const useAssetBrowserFetch = !fastPathEligible && (!isCfPath && needsPlaywright && !scienceDirectSearchApiNeedsBrowser && (
     (isGet && !isDocNav) || scopusApiNeedsBrowser
   ));
 
@@ -904,6 +906,31 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
         headers: upstreamHeaders,
         body: ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : request.body,
       });
+      // Fast path 403 fallback: cf_clearance stale olabilir, Playwright ile bir kez refresh
+      if (fastPathEligible && upstreamResp.status === 403 && isGet) {
+        console.log('fast path 403; falling back to Playwright', {
+          product_slug: session.product_slug, host: target.host, path: target.path,
+        });
+        try {
+          if (isDocNav) {
+            upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
+              headers: upstreamHeaders,
+              sessionId,
+              persistSession,
+            });
+          } else {
+            upstreamResp = await assetBrowserFetch(env, session.institution_id, targetUrl, {
+              method: request.method,
+              headers: upstreamHeaders,
+              body: null,
+              sessionId,
+            });
+          }
+        } catch (fallbackErr) {
+          console.warn('Playwright fallback after fast-path 403 failed', fallbackErr?.message);
+          // 403'ü olduğu gibi bırak; client'a iletilir.
+        }
+      }
     }
   } catch (err) {
     console.error('egress error (stable-host)', err);
