@@ -859,6 +859,12 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     && cookieIsolationMode === 'host'
     && isWileyProxyHost(target.host)
     && isStaticAssetPath(target.path);
+  const useWileyDocumentFastPath = useBrowserFetch
+    && isGet
+    && isDocNav
+    && cookieIsolationMode === 'host'
+    && isWileyProxyHost(target.host)
+    && /\bcf_clearance=/.test(effectiveUpstreamCookies || '');
 
   // Step 06 — Wiley için persistent browser context (JS-set cookies: MAID,
   // MACHINE_LAST_SEEN, userRandomGroup). ra-browser sessionId+hostname bazlı
@@ -870,12 +876,26 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   try {
     if (useBrowserFetch) {
       try {
-        upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
-          headers: upstreamHeaders,
-          sessionId,
-          persistSession,
-          fastDocument: session.product_slug === 'wiley',
-        });
+        if (useWileyDocumentFastPath) {
+          upstreamResp = await egressFetch(env, session.institution_id, targetUrl, {
+            method: request.method,
+            headers: upstreamHeaders,
+            body: null,
+          });
+          if (upstreamResp.status === 401 || upstreamResp.status === 403 || /\btext\/html\b/i.test(upstreamResp.headers.get('Content-Type') || '') && isCloudflareChallengeHtml(await upstreamResp.clone().text().catch(() => ''))) {
+            upstreamResp = null;
+          } else {
+            upstreamResp.headers.set('X-RA-Wiley-Doc-Fast', '1');
+          }
+        }
+        if (!upstreamResp) {
+          upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
+            headers: upstreamHeaders,
+            sessionId,
+            persistSession,
+            fastDocument: session.product_slug === 'wiley',
+          });
+        }
         // Persist cf_clearance in D1 so subsequent visits can use ra-egress directly.
         const cfClearance = upstreamResp.headers.get('X-RA-CF-Clearance');
         if (cfClearance && publisherCookieScopeHost) {
@@ -1483,6 +1503,15 @@ function dedupeCookieHeaderKeepLast(cookieHeader) {
     .filter(name => values.has(name))
     .map(name => `${name}=${values.get(name)}`)
     .join('; ');
+}
+
+function isCloudflareChallengeHtml(text) {
+  const sample = String(text || '').slice(0, 5000).toLowerCase();
+  return sample.includes('__cf_chl')
+    || sample.includes('just a moment')
+    || sample.includes('checking your browser')
+    || sample.includes('cf-browser-verification')
+    || sample.includes('cloudflare ray id');
 }
 
 function wileyNoiseResponse(target, method = 'GET') {
