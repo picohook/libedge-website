@@ -178,6 +178,7 @@ export async function browserFetch(env, institutionId, targetUrl, init = {}) {
   // Step 06 — persistent session: ra-browser context pool için sessionId + flag
   if (init.sessionId) headers.set('X-RA-Session-ID', String(init.sessionId));
   if (init.persistSession) headers.set('X-RA-Persist-Session', '1');
+  if (init.fastDocument) headers.set('X-RA-Fast-Document', '1');
 
   const envelopeResp = await fetch(agentUrl, {
     method: 'POST',

@@ -874,6 +874,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
           headers: upstreamHeaders,
           sessionId,
           persistSession,
+          fastDocument: session.product_slug === 'wiley',
         });
         // Persist cf_clearance in D1 so subsequent visits can use ra-egress directly.
         const cfClearance = upstreamResp.headers.get('X-RA-CF-Clearance');

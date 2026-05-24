@@ -229,6 +229,7 @@ function validateHmac(method, targetUrl, tsStr, sigHex) {
 const RA_HEADERS = new Set([
   'x-ra-target-url', 'x-ra-method', 'x-ra-timestamp', 'x-ra-signature',
   'x-ra-raw',
+  'x-ra-fast-document',
 ]);
 
 const HOP_BY_HOP = new Set([
@@ -305,11 +306,12 @@ async function waitForCookie(context, url, name, timeoutMs) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function handleProxy(req, res) {
-  const targetUrl = req.headers['x-ra-target-url'];
-  const method    = req.headers['x-ra-method'];
-  const tsStr     = req.headers['x-ra-timestamp'];
-  const sigHex    = req.headers['x-ra-signature'];
-  const rawMode   = req.headers['x-ra-raw'] === '1';
+    const targetUrl = req.headers['x-ra-target-url'];
+    const method    = req.headers['x-ra-method'];
+    const tsStr     = req.headers['x-ra-timestamp'];
+    const sigHex    = req.headers['x-ra-signature'];
+    const rawMode   = req.headers['x-ra-raw'] === '1';
+    const fastDocument = req.headers['x-ra-fast-document'] === '1';
 
   const hmacErr = validateHmac(method, targetUrl, tsStr, sigHex);
   if (hmacErr) {
@@ -464,7 +466,7 @@ async function handleProxy(req, res) {
 
     // For non-challenge visits (cf_clearance already valid), wait for page load
     // so page.on('response') cache is populated with sub-resources.
-    if (!isCfChallenge) {
+    if (!isCfChallenge && !fastDocument) {
       await page.waitForLoadState('load', { timeout: 10000 }).catch(() => {});
     }
 
