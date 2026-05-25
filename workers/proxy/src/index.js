@@ -3000,7 +3000,6 @@ function injectWileyConsentHide(text) {
 }
 
 const WILEY_BLOCKED_SCRIPT_SRC_RE = /(?:assets\.adobedtm\.com|googletagmanager\.com|google-analytics\.com|googleadservices\.com|googlesyndication\.com|doubleclick\.net|connect\.facebook\.net|facebook\.com\/tr|static\.ads-twitter\.com|analytics\.twitter\.com|snap\.licdn\.com|px\.ads\.linkedin\.com|bat\.bing\.com|clarity\.ms|hm\.baidu\.com|rum-static\.pingdom\.net|pub\.doubleverify\.com|vtrk\.dv\.tech|cmp\.osano\.com|content\.wiley\.com\/analytics|beacon\.riskified\.com|img\.riskified\.com|servedbydoceree\.doceree\.com)/i;
-const WILEY_BLOCKED_INLINE_SCRIPT_RE = /(?:_satellite|googletag|gtag\s*\(|dataLayer|fbq\s*\(|twq\s*\(|uetq|clarity\s*\(|riskified|doceree|doubleverify|pingdom|baidu|adobedtm|googleadservices|googlesyndication|facebook\.net|linkedin|bing\.com)/i;
 
 function stripWileyThirdPartyScripts(text) {
   let html = String(text || '');
@@ -3010,11 +3009,6 @@ function stripWileyThirdPartyScripts(text) {
     if (!WILEY_BLOCKED_SCRIPT_SRC_RE.test(src)) return match;
     removed++;
     return `<!-- ra-wiley-script-diet: ${escapeHtmlComment(src)} -->`;
-  });
-  html = html.replace(/<script\b(?![^>]*\bsrc\s*=)([^>]*)>([\s\S]*?)<\/script>/gi, (match, _attrs, body) => {
-    if (!WILEY_BLOCKED_INLINE_SCRIPT_RE.test(body)) return match;
-    removed++;
-    return '<!-- ra-wiley-inline-script-diet -->';
   });
   if (html.includes('__raWileyScriptDiet')) return html;
   const stub = `<script id="__raWileyScriptDiet">(function(){try{Object.defineProperty(window,'__raWileyScriptDiet',{value:1});window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){dataLayer.push(arguments)};window.googletag=window.googletag||{cmd:[],pubads:function(){return this},setConfig:function(){},defineSlot:function(){return {addService:function(){return this},setTargeting:function(){return this},setConfig:function(){return this}}},enableServices:function(){},display:function(){}};window.fbq=window.fbq||function(){};window.twq=window.twq||function(){};window.uetq=window.uetq||[];window.clarity=window.clarity||function(){};window._satellite=window._satellite||{track:function(){},pageBottom:function(){},getVar:function(){},setCookie:function(){},readCookie:function(){return''},cookie:{get:function(){return''},set:function(){}}};window.__uspapi=window.__uspapi||function(cmd,ver,cb){try{cb&&cb({uspString:'1---'},true)}catch(e){}};}catch(e){}})();</script>`;
