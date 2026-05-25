@@ -122,6 +122,12 @@ function poolGet(sessionId, hostname) {
 
 function poolPut(sessionId, hostname, context) {
   if (!sessionId) return;
+  const key = poolKey(sessionId, hostname);
+  const existing = contextPool.get(key);
+  if (existing && existing.context === context) {
+    existing.lastUsed = Date.now();
+    return;
+  }
   // LRU eviction if at capacity
   while (contextPool.size >= CONTEXT_POOL_MAX) {
     let oldestKey = null;
@@ -134,8 +140,6 @@ function poolPut(sessionId, hostname, context) {
     contextPool.delete(oldestKey);
     evicted.context.close().catch(() => {});
   }
-  const key = poolKey(sessionId, hostname);
-  const existing = contextPool.get(key);
   if (existing) {
     // Replace + close old context
     contextPool.delete(key);
@@ -556,11 +560,11 @@ async function handleProxy(req, res) {
         console.warn('context pool put failed', err?.message);
       }
     } else if (usingPooledContext) {
+      // Same context is already in the pool; keep it alive and update LRU only.
       contextPersisted = true;
       try {
         const hostname = new URL(targetUrl).hostname;
         poolPut(sessionId, hostname, context);
-        contextPersisted = true;
       } catch (err) {
         console.warn('context pool put failed', err?.message);
       }
