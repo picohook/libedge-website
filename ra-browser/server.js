@@ -346,6 +346,7 @@ async function handleProxy(req, res) {
     const pooledContext = persistSession && sessionId && targetHostname
       ? poolGet(sessionId, targetHostname)
       : null;
+    console.log(`browser-proxy document pool probe: persist=${persistSession ? '1' : '0'} session=${sessionId ? '1' : '0'} host=${targetHostname || '-'} hit=${pooledContext ? '1' : '0'} url=${targetUrl}`);
     if (pooledContext) {
       context = pooledContext;
       usingPooledContext = true;
