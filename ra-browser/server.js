@@ -492,11 +492,32 @@ async function handleProxy(req, res) {
     let html;
 
     if (fastDocument && navResponse) {
-      // Return the original document bytes immediately. Waiting for Cloudflare
-      // challenge resolution or client-side hydration inside the headless
-      // browser is the remaining 20-30s Wiley bottleneck; the user's browser
-      // can load the returned HTML and sub-resources directly through Worker.
-      html = await navResponse.text().catch(() => null);
+      // Do not call navResponse.text() here: Wiley/Cloudflare can keep the
+      // document response body open for 20-30s even after the DOM is usable.
+      // Wait only until the challenge is gone or meaningful body text exists,
+      // then serialize the current DOM.
+      if (isCfChallenge) {
+        await page.waitForFunction(
+          () => {
+            const t = document.title.toLowerCase();
+            const challenge = t.includes('just a moment') || t.includes('bir dakika') ||
+              t.includes('verification') || t.includes('dogulama') ||
+              t.includes('security check') || location.href.includes('__cf_chl');
+            const bodyText = (document.body && document.body.innerText || '').trim();
+            return !challenge && bodyText.length > 80;
+          },
+          { timeout: 8000, polling: 250 }
+        ).catch(() => {});
+      } else {
+        await page.waitForFunction(
+          () => (document.body && document.body.innerText || '').trim().length > 80,
+          { timeout: 2500, polling: 250 }
+        ).catch(() => {});
+      }
+      html = await page.content().catch(() => null);
+      if (!html) {
+        html = await page.evaluate(() => document.documentElement.outerHTML).catch(() => null);
+      }
       mark('fast-html');
     } else if (isCfChallenge) {
       console.log(`CF challenge (status=${firstStatus} title="${firstTitle}") for ${targetUrl}, waiting...`);
