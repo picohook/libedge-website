@@ -489,37 +489,8 @@ async function handleProxy(req, res) {
     const firstStatus = navResponse ? navResponse.status() : 200;
     const firstTitle  = await page.title().catch(() => '');
     const isCfChallenge = page.url().includes('__cf_chl') || isChallengeTitle(firstTitle);
-    let html;
 
-    if (fastDocument && navResponse) {
-      // Do not call navResponse.text() here: Wiley/Cloudflare can keep the
-      // document response body open for 20-30s even after the DOM is usable.
-      // Wait only until the challenge is gone or meaningful body text exists,
-      // then serialize the current DOM.
-      if (isCfChallenge) {
-        await page.waitForFunction(
-          () => {
-            const t = document.title.toLowerCase();
-            const challenge = t.includes('just a moment') || t.includes('bir dakika') ||
-              t.includes('verification') || t.includes('dogulama') ||
-              t.includes('security check') || location.href.includes('__cf_chl');
-            const bodyText = (document.body && document.body.innerText || '').trim();
-            return !challenge && bodyText.length > 80;
-          },
-          { timeout: 8000, polling: 250 }
-        ).catch(() => {});
-      } else {
-        await page.waitForFunction(
-          () => (document.body && document.body.innerText || '').trim().length > 80,
-          { timeout: 2500, polling: 250 }
-        ).catch(() => {});
-      }
-      html = await page.content().catch(() => null);
-      if (!html) {
-        html = await page.evaluate(() => document.documentElement.outerHTML).catch(() => null);
-      }
-      mark('fast-html');
-    } else if (isCfChallenge) {
+    if (isCfChallenge) {
       console.log(`CF challenge (status=${firstStatus} title="${firstTitle}") for ${targetUrl}, waiting...`);
       try {
         await page.waitForFunction(
@@ -571,6 +542,13 @@ async function handleProxy(req, res) {
     const cfClearanceCookie = browserCookies.find(c => c.name === 'cf_clearance');
     mark('cookies-out');
 
+    let html;
+    if (fastDocument && navResponse && !isCfChallenge) {
+      // Wiley gibi ağır client-side sayfalarda DOM'un ra-browser içinde hydrate
+      // olmasını beklemek 20-40sn sürebiliyor. Document response body'sini ham
+      // döndürüp scriptleri kullanıcı browser'ında çalıştırmak Vetis'e daha yakın.
+      html = await navResponse.text().catch(() => null);
+    }
     mark('html');
     if (!html) try {
       html = await page.content();
