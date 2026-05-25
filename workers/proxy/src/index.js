@@ -860,11 +860,15 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     && cookieIsolationMode === 'host'
     && isWileyProxyHost(target.host)
     && isStaticAssetPath(target.path);
-  const useWileyDocumentContextFetch = useBrowserFetch
+  const isWileyDocumentNavigation = useBrowserFetch
     && isGet
     && isDocNav
     && cookieIsolationMode === 'host'
     && isWileyProxyHost(target.host);
+  // context.request and Go/utls direct document fetches are consistently 403
+  // for Wiley. Skip those probes; the fast path is now pooled-page navigation
+  // inside ra-browser, which preserves page-level CF/browser state.
+  const useWileyDocumentContextFetch = false;
   const useWileyDocumentFastPath = useWileyDocumentContextFetch
     && /\bcf_clearance=/.test(effectiveUpstreamCookies || '');
 
@@ -915,7 +919,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
           }
         }
         if (!upstreamResp) {
-          if (useWileyDocumentContextFetch) {
+          if (isWileyDocumentNavigation) {
             appendWileyDocumentRoute('browser');
           }
           upstreamResp = await browserFetch(env, session.institution_id, targetUrl, {
@@ -1134,7 +1138,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     respHeaders.set('X-RA-Debug-Content-Type', contentType.slice(0, 60));
     respHeaders.set('X-RA-Debug-Upstream-Cookie-Host', upstreamCookieHost || '-');
     respHeaders.set('X-RA-Debug-Cookie-Namespace', publisherCookieScopeHost || '-');
-    if (useWileyDocumentContextFetch) {
+    if (isWileyDocumentNavigation) {
       respHeaders.set('X-RA-Wiley-Doc-Route', wileyDocumentRoute || 'none');
       respHeaders.set('X-RA-Wiley-Doc-Has-CF', /\bcf_clearance=/.test(effectiveUpstreamCookies || '') ? '1' : '0');
     }

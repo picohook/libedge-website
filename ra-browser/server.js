@@ -374,19 +374,28 @@ async function handleProxy(req, res) {
     for (const h of BROWSER_MANAGED) delete fwdHeaders[h];
     if (Object.keys(fwdHeaders).length) await context.setExtraHTTPHeaders(fwdHeaders);
 
-    const page = await context.newPage();
+    const reusablePage = usingPooledContext
+      ? context.pages().find(p => !p.isClosed())
+      : null;
+    const page = reusablePage || await context.newPage();
+    if (reusablePage) {
+      console.log(`browser-proxy document using pooled page: ${targetUrl}`);
+    }
 
     // Capture sub-resource responses during page load with Chrome TLS/cookies.
     // Stored in module-level cache; served by /asset-proxy without new requests.
-    page.on('response', async (response) => {
-      const url = response.url();
-      const type = response.request().resourceType();
-      if (!CAPTURABLE_TYPES.has(type) || shouldSkipUrl(url)) return;
-      try {
-        const body = await response.body();
-        cachePut(url, response.status(), response.headers(), body);
-      } catch { /* body may not be available for some responses */ }
-    });
+    if (!page.__raCaptureAttached) {
+      page.__raCaptureAttached = true;
+      page.on('response', async (response) => {
+        const url = response.url();
+        const type = response.request().resourceType();
+        if (!CAPTURABLE_TYPES.has(type) || shouldSkipUrl(url)) return;
+        try {
+          const body = await response.body();
+          cachePut(url, response.status(), response.headers(), body);
+        } catch { /* body may not be available for some responses */ }
+      });
+    }
 
     if (rawMode) {
       const target = new URL(targetUrl);
