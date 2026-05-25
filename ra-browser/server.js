@@ -489,8 +489,16 @@ async function handleProxy(req, res) {
     const firstStatus = navResponse ? navResponse.status() : 200;
     const firstTitle  = await page.title().catch(() => '');
     const isCfChallenge = page.url().includes('__cf_chl') || isChallengeTitle(firstTitle);
+    let html;
 
-    if (isCfChallenge) {
+    if (fastDocument && navResponse) {
+      // Return the original document bytes immediately. Waiting for Cloudflare
+      // challenge resolution or client-side hydration inside the headless
+      // browser is the remaining 20-30s Wiley bottleneck; the user's browser
+      // can load the returned HTML and sub-resources directly through Worker.
+      html = await navResponse.text().catch(() => null);
+      mark('fast-html');
+    } else if (isCfChallenge) {
       console.log(`CF challenge (status=${firstStatus} title="${firstTitle}") for ${targetUrl}, waiting...`);
       try {
         await page.waitForFunction(
@@ -542,13 +550,6 @@ async function handleProxy(req, res) {
     const cfClearanceCookie = browserCookies.find(c => c.name === 'cf_clearance');
     mark('cookies-out');
 
-    let html;
-    if (fastDocument && navResponse && !isCfChallenge) {
-      // Wiley gibi ağır client-side sayfalarda DOM'un ra-browser içinde hydrate
-      // olmasını beklemek 20-40sn sürebiliyor. Document response body'sini ham
-      // döndürüp scriptleri kullanıcı browser'ında çalıştırmak Vetis'e daha yakın.
-      html = await navResponse.text().catch(() => null);
-    }
     mark('html');
     if (!html) try {
       html = await page.content();
