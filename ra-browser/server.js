@@ -178,11 +178,17 @@ async function ensureBrowser() {
         '--disable-blink-features=AutomationControlled',
         '--disable-infobars',
         '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-gpu',
         '--window-size=1920,1080',
-        '--use-gl=swiftshader',
-        '--enable-webgl',
-        '--ignore-gpu-blocklist',
       ],
+    });
+    browser.on('disconnected', () => {
+      browser = null;
+      for (const [k, v] of contextPool.entries()) {
+        contextPool.delete(k);
+        v.context.close().catch(() => {});
+      }
+      console.warn('Chromium disconnected; cleared context pool');
     });
     console.log('Chromium launched');
   }
