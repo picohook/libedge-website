@@ -430,7 +430,6 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
       text = injectWileyConsentHide(text);
       text = injectWileyBackForwardReload(text);
       respHeaders.set('Cache-Control', 'no-store');
-      respHeaders.set('Content-Security-Policy', WILEY_PROXY_CSP);
     }
     if (challengeSurface) {
       text = relaxProxyMetaContentSecurityPolicy(text);
@@ -1223,7 +1222,6 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
       text = injectWileyConsentHide(text);
       text = injectWileyBackForwardReload(text);
       respHeaders.set('Cache-Control', 'no-store');
-      respHeaders.set('Content-Security-Policy', WILEY_PROXY_CSP);
     }
     if (challengeSurface) {
       text = relaxProxyMetaContentSecurityPolicy(text);
@@ -2056,18 +2054,6 @@ const STRIP_WAF_CHALLENGE_RESPONSE = new Set([
   'x-frame-options',
 ]);
 const RELAXED_PROXY_CSP = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors *;";
-const WILEY_PROXY_CSP = [
-  "default-src 'self' data: blob:",
-  "base-uri 'self'",
-  "frame-ancestors *",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:",
-  "style-src 'self' 'unsafe-inline' data: blob:",
-  "img-src * data: blob:",
-  "font-src 'self' data: blob:",
-  "connect-src 'self'",
-  "frame-src 'self' https://cm.g.doubleclick.net",
-  "worker-src 'self' blob:",
-].join('; ');
 
 function sanitizeWafChallengeResponseHeaders(headers, scopeHost) {
   if (!scopeHost) return;
