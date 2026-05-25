@@ -428,6 +428,9 @@ async function handleSessionHost(request, env, ctx, url, sessionId) {
     if (isWileyProxyHost(target.host) && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
       text = stripWileyThirdPartyScripts(text);
       text = injectWileyConsentHide(text);
+      text = injectWileyBackForwardReload(text);
+      respHeaders.set('Cache-Control', 'no-store');
+      respHeaders.set('Content-Security-Policy', WILEY_PROXY_CSP);
     }
     if (challengeSurface) {
       text = relaxProxyMetaContentSecurityPolicy(text);
@@ -1218,6 +1221,9 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
     if (isWileyProxyHost(target.host) && !challengeSurface && /\btext\/html\b/i.test(contentType)) {
       text = stripWileyThirdPartyScripts(text);
       text = injectWileyConsentHide(text);
+      text = injectWileyBackForwardReload(text);
+      respHeaders.set('Cache-Control', 'no-store');
+      respHeaders.set('Content-Security-Policy', WILEY_PROXY_CSP);
     }
     if (challengeSurface) {
       text = relaxProxyMetaContentSecurityPolicy(text);
@@ -2050,6 +2056,18 @@ const STRIP_WAF_CHALLENGE_RESPONSE = new Set([
   'x-frame-options',
 ]);
 const RELAXED_PROXY_CSP = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors *;";
+const WILEY_PROXY_CSP = [
+  "default-src 'self' data: blob:",
+  "base-uri 'self'",
+  "frame-ancestors *",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:",
+  "style-src 'self' 'unsafe-inline' data: blob:",
+  "img-src * data: blob:",
+  "font-src 'self' data: blob:",
+  "connect-src 'self'",
+  "frame-src 'self' https://cm.g.doubleclick.net",
+  "worker-src 'self' blob:",
+].join('; ');
 
 function sanitizeWafChallengeResponseHeaders(headers, scopeHost) {
   if (!scopeHost) return;
@@ -2997,6 +3015,16 @@ function injectWileyConsentHide(text) {
   const style = `<style id="__raWileyConsentHide">.osano-cm-window,#osano-cm-window,.osano-cm-dialog,.osano-cm-info,.osano-cm-info-dialog,.cmplz-cookiebanner,#cookielaw-banner,#onetrust-banner-sdk,#onetrust-consent-sdk{display:none!important;visibility:hidden!important;pointer-events:none!important}html,body{overflow:auto!important}</style>`;
   if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b([^>]*)>/i, `<head$1>${style}`);
   return `${style}${html}`;
+}
+
+function injectWileyBackForwardReload(text) {
+  const html = String(text || '');
+  if (html.includes('__raWileyBackForwardReload')) return html;
+  // Wiley pages often restore from bfcache with a half-running JS state behind
+  // the proxy. Force a single fresh load on browser back/forward restore.
+  const script = `<script id="__raWileyBackForwardReload">(function(){try{if(window.__raWileyBackForwardReload)return;Object.defineProperty(window,'__raWileyBackForwardReload',{value:1});function shouldReload(e){try{if(e&&e.persisted)return true;var n=performance&&performance.getEntriesByType&&performance.getEntriesByType('navigation')[0];return !!(n&&n.type==='back_forward');}catch(_){return false;}}window.addEventListener('pageshow',function(e){try{if(!shouldReload(e))return;var k='__ra_wiley_bf_reload__'+location.href;var now=Date.now();var last=Number(sessionStorage.getItem(k)||0);if(now-last<5000)return;sessionStorage.setItem(k,String(now));location.reload();}catch(_){location.reload();}},true);}catch(_){}})();</script>`;
+  if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b([^>]*)>/i, `<head$1>${script}`);
+  return `${script}${html}`;
 }
 
 const WILEY_BLOCKED_SCRIPT_SRC_RE = /(?:assets\.adobedtm\.com|googletagmanager\.com|google-analytics\.com|googleadservices\.com|googlesyndication\.com|doubleclick\.net|connect\.facebook\.net|facebook\.com\/tr|static\.ads-twitter\.com|analytics\.twitter\.com|snap\.licdn\.com|px\.ads\.linkedin\.com|bat\.bing\.com|clarity\.ms|hm\.baidu\.com|rum-static\.pingdom\.net|pub\.doubleverify\.com|vtrk\.dv\.tech|cmp\.osano\.com|content\.wiley\.com\/analytics|beacon\.riskified\.com|img\.riskified\.com|servedbydoceree\.doceree\.com)/i;
