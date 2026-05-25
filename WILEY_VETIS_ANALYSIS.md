@@ -2,6 +2,8 @@
 
 Date: 2026-05-24
 
+Update: 2026-05-25 live CDP comparison added.
+
 ## Captures Used
 
 - `1551683842c92c442f30948395dc2e4ae6a00da3.vetisonline.com.har`
@@ -46,6 +48,75 @@ Our comparable HAR:
 ```
 
 So the browser receives HTML error pages where it expects font/text assets, which causes broken fonts, MIME errors, and page instability.
+
+## 2026-05-25 Live Vetis CDP Probe
+
+Fresh navigation in the already-open Vetis Wiley tab:
+
+```text
+URL: /action/doSearch?AllField=nanotube-vetisprobe
+Document: 200 DYNAMIC cloudflare at ~1.28s
+Visible text: ~2s
+ready=complete: ~8s
+```
+
+The important part is that the document request itself is not challenged:
+
+```text
+Document 200 DYNAMIC cloudflare /action/doSearch
+```
+
+Static assets are immediately served from Vetis' Cloudflare edge cache:
+
+```text
+~1.40s CSS 200 HIT /products/acropolis/pericles/releasedAssets/css/build-...
+~1.40s JS  200 HIT /products/acropolis/pericles/releasedAssets/js/main.bundle-...
+~1.41s CSS 200 HIT /wro/...~product.css
+~1.42s JS  200 HIT /wro/...~product.js
+~1.45s+ fonts 200 HIT /products/acropolis/pericles/releasedAssets/fonts/...
+```
+
+Vetis still allows many third-party analytics/ad scripts to load, but this does not block the first useful content:
+
+```text
+assets.adobedtm.com: many scripts after ~1.9s
+connect.facebook.net, google analytics, bing, linkedin, twitter: later
+```
+
+This means Vetis' speed advantage is not primarily "blocking all ads". The decisive differences are:
+
+1. Wiley document navigation does not hit a Cloudflare challenge.
+2. Static assets are already edge-cached and shared across sessions.
+
+## Current LibEdge Behavior After Step 06 Fixes
+
+LibEdge now has:
+
+- `ra_cookie_mode='host'` for Wiley.
+- persistent browser context pool.
+- pooled document context and pooled page reuse.
+- external Wiley tracker script stripping, while keeping inline bootstrap scripts.
+
+But ra-browser logs still show:
+
+```text
+browser-proxy document pool probe: persist=1 session=1 host=onlinelibrary.wiley.com hit=1
+browser-proxy document using pooled context: https://onlinelibrary.wiley.com/action/doSearch?AllField=nanotube
+browser-proxy document using pooled page: https://onlinelibrary.wiley.com/action/doSearch?AllField=nanotube
+CF challenge (status=403 title="Just a moment...") for https://onlinelibrary.wiley.com/action/doSearch?AllField=nanotube, waiting...
+CF challenge resolved...
+```
+
+So the remaining primary bottleneck is not missing pool state anymore. Even with pooled context and pooled page, Wiley challenges the headless browser document navigation.
+
+The consequence:
+
+```text
+Vetis document: ~1.3s, no challenge
+LibEdge document: challenge path, commonly 10-20s+
+```
+
+This is why small patches cannot fully reach Vetis speed.
 
 ## What We Tried And Why It Failed
 
@@ -119,6 +190,27 @@ Expected link/search after warm cache: roughly 3-8s instead of 30-40s
 ```
 
 HTML may still require Playwright and remain slower than Vetis until a separate HTML fast path is implemented. But the asset bottleneck should drop sharply.
+
+## Revised Correct Architecture For Vetis-Level Speed
+
+The asset cache plan helps, but it is not sufficient. Vetis-level Wiley requires removing Playwright document navigation from the hot path.
+
+Target architecture:
+
+1. Use Playwright only for initial Cloudflare clearance acquisition.
+2. Export/sync the usable browser session state needed for document requests.
+3. Serve later Wiley document navigations with a fast HTTP path that does not trigger Cloudflare challenge.
+4. If that fast path gets 403/challenge, fall back to Playwright and refresh state.
+5. Populate Worker/edge cache for static Wiley assets only after successful Chromium fetches.
+
+The hardest open problem is step 3: LibEdge's current Go/uTLS and Playwright `context.request` document paths both return 403 for Wiley document requests. Vetis has a document fetch path that Cloudflare accepts; ours does not yet.
+
+Next investigation should focus on this exact delta:
+
+- compare Vetis document request headers/cookies to LibEdge browser fallback headers.
+- compare IP/tunnel path and Cloudflare-facing TLS/fingerprint.
+- test whether Vetis' document path is browser-originated, server-originated, or Cloudflare edge-originated.
+- do not spend more time on CSP/inline-script tuning until document challenge is solved.
 
 ## Implementation Scope
 

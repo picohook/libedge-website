@@ -169,7 +169,8 @@ const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
 
 async function ensureBrowser() {
   if (!browser || !browser.isConnected()) {
-    browser = await chromium.launch({
+    const launchOptions = {
+      channel: process.env.PLAYWRIGHT_CHANNEL || 'chromium',
       headless: true,
       args: [
         '--no-sandbox',
@@ -181,7 +182,14 @@ async function ensureBrowser() {
         '--disable-gpu',
         '--window-size=1920,1080',
       ],
-    });
+    };
+    try {
+      browser = await chromium.launch(launchOptions);
+    } catch (err) {
+      console.warn(`Chromium channel launch failed (${launchOptions.channel}); falling back to bundled browser`, err?.message);
+      delete launchOptions.channel;
+      browser = await chromium.launch(launchOptions);
+    }
     browser.on('disconnected', () => {
       browser = null;
       for (const [k, v] of contextPool.entries()) {
