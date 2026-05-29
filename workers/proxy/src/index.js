@@ -1012,6 +1012,27 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
           });
         }
       }
+      // Wiley asset için workerDirectFetch denemesi — probe gösterdi ki
+      // /cover/*, /userimages/*, /cms/asset/*, /pb-assets/*, fonts/* hepsi
+      // CF Worker fetch ile 200 dönüyor (HIT 18-21ms). Aksi takdirde
+      // assetBrowserFetch ra-browser'a gider, pool=miss durumunda
+      // context.request.get fallback 403 alıyor (utls fingerprint).
+      if (!upstreamResp && isGet && isWileyProxyHost(target.host)) {
+        try {
+          const direct = await workerDirectFetch(targetUrl, {
+            method: request.method,
+            headers: upstreamHeaders,
+            body: null,
+          });
+          if (direct.response && !direct.challenged
+              && direct.response.status >= 200 && direct.response.status < 400) {
+            upstreamResp = direct.response;
+            upstreamResp.headers.set('X-RA-Wiley-Asset-Direct', '1');
+          }
+        } catch (err) {
+          console.warn('asset workerDirectFetch failed', err?.message);
+        }
+      }
       if (!upstreamResp) {
         upstreamResp = await assetBrowserFetch(env, session.institution_id, targetUrl, {
           method: request.method,
