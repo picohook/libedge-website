@@ -41,18 +41,21 @@ export function registerRaEgressAllowedHosts(app) {
       return c.json({ error: 'institution_id required' }, 400);
     }
 
-    // ── Kuruma ait aktif aboneliklerdeki RA ürünlerinin host'larını topla ───
+    // Tüm ra_enabled ürünlerin host'larını döndür. Abonelik kontrolü zaten
+    // /api/ra/issue-token'da yapılıyor (kullanıcı abonesi olmadığı ürün için
+    // token alamaz). Bu endpoint sadece ra-egress'in "fetch yapabileceği
+    // host'lar" allowlist'ini doldurur — kullanıcı erişim gating'i değil.
+    //
+    // institution_id parametresi geriye dönük uyumluluk için tutuluyor ama
+    // artık filtre olarak kullanılmıyor; super_admin admin_test akışı dahil
+    // tüm aktif ürünlerin host'ları egress allowlist'ine girer.
     const rows = await c.env.DB.prepare(`
       SELECT p.ra_origin_host, p.ra_host_allowlist_json
       FROM   products p
-      INNER JOIN institution_subscriptions s ON s.product_slug = p.slug
       WHERE  p.ra_enabled = 1
         AND  p.ra_origin_host IS NOT NULL
         AND  TRIM(p.ra_origin_host) != ''
-        AND  s.institution_id = ?
-        AND  s.status IN ('active', 'trial')
-        AND  (s.end_date IS NULL OR s.end_date > datetime('now'))
-    `).bind(institutionId).all();
+    `).all();
 
     const hostSet = new Set();
 
