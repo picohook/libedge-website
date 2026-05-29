@@ -167,6 +167,35 @@ let browser = null;
 
 const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
 
+function getHeaderCaseInsensitive(headers, name) {
+  const wanted = String(name || '').toLowerCase();
+  for (const [k, v] of Object.entries(headers || {})) {
+    if (String(k).toLowerCase() === wanted) return v;
+  }
+  return '';
+}
+
+function chromeMajorFromUserAgent(userAgent) {
+  const ua = String(userAgent || '');
+  const m = ua.match(/(?:Chrome|Chromium|Edg)\/(\d+)/i);
+  return m ? m[1] : '136';
+}
+
+function buildClientHintHeaders(pass, userAgent) {
+  const major = chromeMajorFromUserAgent(userAgent);
+  const incomingUa = getHeaderCaseInsensitive(pass, 'sec-ch-ua');
+  const incomingMobile = getHeaderCaseInsensitive(pass, 'sec-ch-ua-mobile');
+  const incomingPlatform = getHeaderCaseInsensitive(pass, 'sec-ch-ua-platform');
+  const incomingFull = getHeaderCaseInsensitive(pass, 'sec-ch-ua-full-version-list');
+  const headers = {
+    'sec-ch-ua': incomingUa || `"Chromium";v="${major}", "Google Chrome";v="${major}", "Not/A)Brand";v="99"`,
+    'sec-ch-ua-mobile': incomingMobile || '?0',
+    'sec-ch-ua-platform': incomingPlatform || '"Windows"',
+  };
+  if (incomingFull) headers['sec-ch-ua-full-version-list'] = incomingFull;
+  return headers;
+}
+
 async function ensureBrowser() {
   if (!browser || !browser.isConnected()) {
     const launchOptions = {
@@ -198,7 +227,7 @@ async function ensureBrowser() {
       }
       console.warn('Chromium disconnected; cleared context pool');
     });
-    console.log('Chromium launched');
+    console.log(`Chromium launched (channel=${launchOptions.channel || 'bundled'})`);
   }
   return browser;
 }
@@ -290,6 +319,34 @@ function isChallengeTitle(t) {
     lc.includes('verification') || lc.includes('dogrulama') || lc.includes('security check');
 }
 
+function looksLikeChallengeHtml(text) {
+  const sample = String(text || '').slice(0, 5000).toLowerCase();
+  return sample.includes('__cf_chl')
+    || sample.includes('just a moment')
+    || sample.includes('checking your browser')
+    || sample.includes('cf-browser-verification')
+    || sample.includes('cloudflare ray id');
+}
+
+async function fetchDocumentInPage(page, targetUrl, headers) {
+  return page.evaluate(async ({ url, headers }) => {
+    const resp = await fetch(url, {
+      credentials: 'include',
+      headers,
+      method: 'GET',
+    });
+    const rawHeaders = {};
+    resp.headers.forEach((value, key) => { rawHeaders[key] = value; });
+    const text = await resp.text();
+    return {
+      body: text,
+      finalUrl: resp.url,
+      headers: rawHeaders,
+      status: resp.status,
+    };
+  }, { url: targetUrl, headers });
+}
+
 function serializeBrowserCookie(cookie) {
   if (!cookie || !cookie.name) return '';
   const parts = [`${cookie.name}=${cookie.value || ''}`];
@@ -360,26 +417,36 @@ async function handleProxy(req, res) {
       usingPooledContext = true;
       console.log(`browser-proxy document using pooled context: ${targetUrl}`);
     } else {
+      const userAgent = getHeaderCaseInsensitive(pass, 'user-agent') || CHROME_UA;
       context = await b.newContext({
         ignoreHTTPSErrors: false,
-        userAgent: pass['user-agent'] || CHROME_UA,
+        userAgent,
         viewport: { width: 1920, height: 1080 },
         locale: 'tr-TR',
         timezoneId: 'Europe/Istanbul',
-        extraHTTPHeaders: {
-          'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
-          'sec-ch-ua-mobile': '?0',
-          'sec-ch-ua-platform': '"Windows"',
-        },
+        extraHTTPHeaders: buildClientHintHeaders(pass, userAgent),
       });
     }
     mark('context');
 
-    await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
+    // Pool context'in fresh cookies'i (özellikle cf_clearance) Worker'dan gelen
+    // stale Cookie header ile overwrite olmasın. Pool authoritative — sadece
+    // ilk context kurulumunda Worker cookie'lerini inject et.
+    if (!usingPooledContext) {
+      await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
+    } else {
+      // Pool'da olmayan, Worker'ın yeni session cookie'leri olabilir — sadece
+      // cf_clearance dışındakileri inject et (clearance overwrite olmasın).
+      const rawCookie = pass['cookie'] || pass['Cookie'] || '';
+      const filtered = rawCookie.split(';').map(c => c.trim()).filter(c => c && !c.toLowerCase().startsWith('cf_clearance=')).join('; ');
+      if (filtered) await injectCookiesFromHeader(context, filtered, targetUrl);
+    }
     mark('cookies');
 
+    const documentUserAgent = getHeaderCaseInsensitive(pass, 'user-agent') || CHROME_UA;
     const fwdHeaders = { ...pass };
     for (const h of BROWSER_MANAGED) delete fwdHeaders[h];
+    Object.assign(fwdHeaders, buildClientHintHeaders(pass, documentUserAgent));
     if (Object.keys(fwdHeaders).length) await context.setExtraHTTPHeaders(fwdHeaders);
 
     const reusablePage = usingPooledContext
@@ -403,6 +470,63 @@ async function handleProxy(req, res) {
           cachePut(url, response.status(), response.headers(), body);
         } catch { /* body may not be available for some responses */ }
       });
+    }
+
+    if (fastDocument && usingPooledContext && reusablePage) {
+      const pageFetchHeaders = { ...fwdHeaders };
+      for (const h of [
+        'accept-encoding',
+        'connection',
+        'content-length',
+        'cookie',
+        'host',
+        'origin',
+        'referer',
+        'user-agent',
+      ]) delete pageFetchHeaders[h];
+      for (const h of Object.keys(pageFetchHeaders)) {
+        if (h.toLowerCase().startsWith('sec-')) delete pageFetchHeaders[h];
+      }
+
+      try {
+        const fetchStart = Date.now();
+        const docFetch = await fetchDocumentInPage(page, targetUrl, pageFetchHeaders);
+        const contentType = docFetch.headers?.['content-type'] || docFetch.headers?.['Content-Type'] || '';
+        const okHtml = docFetch.status >= 200 && docFetch.status < 400
+          && /\btext\/html\b/i.test(contentType)
+          && !looksLikeChallengeHtml(docFetch.body);
+        console.log(`[timing] doc-page-fetch status=${docFetch.status} ok=${okHtml ? '1' : '0'} total=${Date.now() - fetchStart}ms url=${targetUrl}`);
+        if (okHtml) {
+          const rawHeaders = {};
+          for (const [k, v] of Object.entries(docFetch.headers || {})) {
+            const lk = k.toLowerCase();
+            if (!HOP_BY_HOP.has(lk) && lk !== 'content-encoding') rawHeaders[k] = v;
+          }
+          const browserCookies = await context.cookies(uniqueCookieUrls(targetUrl, page.url(), docFetch.finalUrl));
+          const setCookies = browserCookies.map(serializeBrowserCookie).filter(Boolean);
+          if (setCookies.length) rawHeaders['set-cookie'] = setCookies;
+          rawHeaders['x-ra-browser-pooled'] = '1';
+          rawHeaders['x-ra-browser-fast-page-fetch'] = '1';
+          rawHeaders['x-ra-browser-timing'] = `page-fetch;dur=${Date.now() - fetchStart}`;
+          const cfClearanceCookie = browserCookies.find(c => c.name === 'cf_clearance');
+          const envelope = {
+            status: docFetch.status,
+            headers: rawHeaders,
+            body: Buffer.from(docFetch.body, 'utf8').toString('base64'),
+            finalUrl: docFetch.finalUrl,
+          };
+          if (cfClearanceCookie?.value) envelope.cfClearance = cfClearanceCookie.value;
+          res.json(envelope);
+          contextPersisted = true;
+          try {
+            const hostname = new URL(targetUrl).hostname;
+            poolPut(sessionId, hostname, context);
+          } catch {}
+          return;
+        }
+      } catch (err) {
+        console.warn(`doc page.fetch failed, falling back to goto: ${err?.message}`);
+      }
     }
 
     if (rawMode) {
@@ -479,6 +603,14 @@ async function handleProxy(req, res) {
       return;
     }
 
+    // Debug: cf_clearance cookie before navigation (was it carried in pool context / injected?)
+    try {
+      const target = new URL(targetUrl);
+      const preCookies = await context.cookies(target.origin);
+      const cfPre = preCookies.find(c => c.name === 'cf_clearance');
+      console.log(`[debug] pre-goto clearance: present=${cfPre ? '1' : '0'} pool=${usingPooledContext ? 'hit' : 'miss'} url=${targetUrl}`);
+    } catch (e) { console.log(`[debug] pre-goto clearance probe failed: ${e?.message}`); }
+
     mark('before-goto');
     const navResponse = await page.goto(targetUrl, {
       waitUntil: fastDocument ? 'commit' : 'domcontentloaded',
@@ -491,6 +623,7 @@ async function handleProxy(req, res) {
     const isCfChallenge = page.url().includes('__cf_chl') || isChallengeTitle(firstTitle);
 
     if (isCfChallenge) {
+      const chlStart = Date.now();
       console.log(`CF challenge (status=${firstStatus} title="${firstTitle}") for ${targetUrl}, waiting...`);
       try {
         await page.waitForFunction(
@@ -503,12 +636,24 @@ async function handleProxy(req, res) {
           { timeout: 45000, polling: 1000 }
         );
         const resolvedTitle = await page.title().catch(() => '');
-        console.log(`CF challenge resolved: title="${resolvedTitle}" url=${page.url()}`);
+        console.log(`[debug] challenge waitForFunction=${Date.now() - chlStart}ms resolvedTitle="${resolvedTitle}"`);
       } catch {
-        console.log(`CF challenge timeout for ${targetUrl}`);
+        console.log(`[debug] challenge timeout after ${Date.now() - chlStart}ms url=${targetUrl}`);
       }
-      // Wait for sub-resources to load and be captured.
-      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      // Wait for sub-resources to load and be captured. Wiley sayfaları asla
+      // network idle'a girmiyor (sürekli analytics ping) → 8s timeout boşa
+      // gidiyordu. 1.5s'e indir — sayfa zaten render olmuş durumda.
+      const idleStart = Date.now();
+      await page.waitForLoadState('networkidle', { timeout: 1500 }).catch(() => {});
+      console.log(`[debug] networkidle wait=${Date.now() - idleStart}ms`);
+
+      // Debug: cf_clearance after challenge (got it?)
+      try {
+        const target = new URL(targetUrl);
+        const postCookies = await context.cookies(target.origin);
+        const cfPost = postCookies.find(c => c.name === 'cf_clearance');
+        console.log(`[debug] post-challenge clearance: present=${cfPost ? '1' : '0'} val=${cfPost?.value ? cfPost.value.slice(0, 12) + '...' : '-'}`);
+      } catch {}
     }
 
     const afterTitle     = await page.title().catch(() => '');
@@ -549,6 +694,24 @@ async function handleProxy(req, res) {
       // döndürüp scriptleri kullanıcı browser'ında çalıştırmak Vetis'e daha yakın.
       html = await navResponse.text().catch(() => null);
     }
+    // Challenge çözüldükten sonraki COLD path için: page.content() DOM'u yakalar
+    // ama JS-render edilen içerik (örn. /action/doSearch sonuçları) bitmeden
+    // önce yakalanabilir. fetchDocumentInPage ile artık valid cf_clearance'lı
+    // context'ten ham server HTML'ini alırız — user browser JS'i çalıştırır,
+    // sonuçları render eder. Warm path zaten aynı şeyi yapıyordu.
+    if (!html && fastDocument && isCfChallenge) {
+      try {
+        const docFetch = await fetchDocumentInPage(page, targetUrl, fwdHeaders);
+        const ct = docFetch.headers?.['content-type'] || docFetch.headers?.['Content-Type'] || '';
+        const okHtml = docFetch.status >= 200 && docFetch.status < 400
+          && /\btext\/html\b/i.test(ct)
+          && !looksLikeChallengeHtml(docFetch.body);
+        console.log(`[timing] doc-cold-fetch status=${docFetch.status} ok=${okHtml ? '1' : '0'} url=${targetUrl}`);
+        if (okHtml) html = docFetch.body;
+      } catch (err) {
+        console.warn(`doc-cold-fetch failed: ${err?.message}`);
+      }
+    }
     mark('html');
     if (!html) try {
       html = await page.content();
@@ -568,6 +731,21 @@ async function handleProxy(req, res) {
     mark('content');
     responseHeaders['x-ra-browser-timing'] = Object.entries(timing).map(([k, v]) => `${k};dur=${v}`).join(', ');
     responseHeaders['x-ra-browser-pooled'] = usingPooledContext ? '1' : '0';
+    {
+      const total = Date.now() - startedAt;
+      const phases = [
+        ['ctx', timing.context ?? 0],
+        ['cookies', (timing.cookies ?? 0) - (timing.context ?? 0)],
+        ['pre-goto', (timing['before-goto'] ?? 0) - (timing.cookies ?? 0)],
+        ['goto', (timing.goto ?? 0) - (timing['before-goto'] ?? 0)],
+        ['load-wait', (timing['load-wait'] ?? 0) - (timing.goto ?? 0)],
+        ['cookies-out', (timing['cookies-out'] ?? 0) - (timing['load-wait'] ?? 0)],
+        ['html', (timing.html ?? 0) - (timing['cookies-out'] ?? 0)],
+        ['content', (timing.content ?? 0) - (timing.html ?? 0)],
+      ];
+      const breakdown = phases.map(([k, v]) => `${k}=${v}ms`).join(' ');
+      console.log(`[timing] doc pool=${usingPooledContext ? 'hit' : 'miss'} challenge=${isCfChallenge ? '1' : '0'} fast=${fastDocument ? '1' : '0'} total=${total}ms ${breakdown} url=${targetUrl}`);
+    }
     const envelope = { status, headers: responseHeaders, body: Buffer.from(html, 'utf8').toString('base64'), finalUrl: page.url() };
     if (cfClearanceCookie?.value) envelope.cfClearance = cfClearanceCookie.value;
     res.json(envelope);
@@ -623,9 +801,11 @@ async function handleAssetProxy(req, res) {
     return;
   }
 
+  const assetStart = Date.now();
   // Serve from cache if available (captured during /proxy with Chrome TLS).
   const cached = cacheGet(targetUrl);
   if (cached) {
+    console.log(`[timing] asset src=cache total=${Date.now() - assetStart}ms url=${targetUrl}`);
     return res.json({ status: cached.status, headers: cached.headers, body: cached.bodyB64, finalUrl: targetUrl });
   }
 
@@ -639,7 +819,9 @@ async function handleAssetProxy(req, res) {
   // This may be blocked by CF Bot Management if cf_clearance is missing/stale.
   console.log(`asset-proxy cache miss: ${targetUrl}${pooledContext ? ' (pooled)' : ''}`);
   const pass = extractPassthroughHeaders(req.headers);
+  const semWaitStart = Date.now();
   await acquireSemaphore();
+  const semWaitMs = Date.now() - semWaitStart;
   let context = null;
   let usingPooledContext = false;
   try {
@@ -651,7 +833,12 @@ async function handleAssetProxy(req, res) {
       await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
     } else {
       const b = await ensureBrowser();
-      context = await b.newContext({ ignoreHTTPSErrors: false, userAgent: pass['user-agent'] || CHROME_UA });
+      const userAgent = getHeaderCaseInsensitive(pass, 'user-agent') || CHROME_UA;
+      context = await b.newContext({
+        ignoreHTTPSErrors: false,
+        userAgent,
+        extraHTTPHeaders: buildClientHintHeaders(pass, userAgent),
+      });
       await injectCookiesFromHeader(context, pass['cookie'] || pass['Cookie'] || '', targetUrl);
     }
 
@@ -677,20 +864,61 @@ async function handleAssetProxy(req, res) {
       fetchOptions.data = req.body;
       fetchOptions.headers = { ...passHeaders, ...(pass['content-type'] ? { 'Content-Type': pass['content-type'] } : {}) };
     }
-    const apiResp = assetMethod === 'GET'
-      ? await context.request.get(targetUrl, { maxRedirects: 5, timeout: 30000, headers: passHeaders })
-      : await context.request.fetch(targetUrl, fetchOptions);
-    const body    = await apiResp.body();
-    const cached2 = { status: apiResp.status(), headers: apiResp.headers(), bodyB64: body.toString('base64') };
+    const fetchStart = Date.now();
+    let cached2 = null;
+    let finalUrl = targetUrl;
+    let fetchSrc = 'request';
 
-    // Cache the result to avoid repeated fallback calls.
-    if (cached2.status === 200) {
-      cachePut(targetUrl, cached2.status, cached2.headers, body);
+    // Pool=hit ve GET ise: Chromium'un kendi fetch'ini kullan (page.evaluate).
+    // context.request.get() Playwright HTTP API, CF bot olarak işaretliyor → 403.
+    // page.evaluate(fetch) ise gerçek browser fetch — cf_clearance + tüm cookies + TLS
+    // fingerprint browser'la aynı → CF kabul ediyor, 200 dönüyor.
+    if (usingPooledContext && assetMethod === 'GET') {
+      const reusablePage = context.pages().find(p => !p.isClosed());
+      if (reusablePage) {
+        try {
+          const result = await reusablePage.evaluate(async ({ url, headers }) => {
+            const resp = await fetch(url, { credentials: 'include', headers });
+            const rh = {};
+            resp.headers.forEach((v, k) => { rh[k] = v; });
+            const buf = new Uint8Array(await resp.arrayBuffer());
+            let binary = '';
+            for (let i = 0; i < buf.length; i += 0x8000) {
+              binary += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+            }
+            return { status: resp.status, headers: rh, body: btoa(binary), finalUrl: resp.url };
+          }, { url: targetUrl, headers: passHeaders });
+          cached2 = { status: result.status, headers: result.headers, bodyB64: result.body };
+          finalUrl = result.finalUrl;
+          fetchSrc = 'page-eval';
+          // Cache to in-memory cache
+          if (cached2.status === 200) {
+            cachePut(targetUrl, cached2.status, cached2.headers, Buffer.from(result.body, 'base64'));
+          }
+        } catch (e) {
+          console.warn(`page.evaluate fetch failed, falling back: ${e?.message}`);
+        }
+      }
     }
 
-    res.json({ status: cached2.status, headers: cached2.headers, body: cached2.bodyB64, finalUrl: apiResp.url() });
+    // Fallback: Playwright HTTP API (context.request)
+    if (!cached2) {
+      const apiResp = assetMethod === 'GET'
+        ? await context.request.get(targetUrl, { maxRedirects: 5, timeout: 30000, headers: passHeaders })
+        : await context.request.fetch(targetUrl, fetchOptions);
+      const body = await apiResp.body();
+      cached2 = { status: apiResp.status(), headers: apiResp.headers(), bodyB64: body.toString('base64') };
+      finalUrl = apiResp.url();
+      if (cached2.status === 200) {
+        cachePut(targetUrl, cached2.status, cached2.headers, body);
+      }
+    }
+
+    const fetchMs = Date.now() - fetchStart;
+    console.log(`[timing] asset src=${usingPooledContext ? 'pool' : 'fresh'} via=${fetchSrc} status=${cached2.status} total=${Date.now() - assetStart}ms sem=${semWaitMs}ms fetch=${fetchMs}ms url=${targetUrl}`);
+    res.json({ status: cached2.status, headers: cached2.headers, body: cached2.bodyB64, finalUrl });
   } catch (err) {
-    console.error('asset-proxy error:', err.message);
+    console.error(`asset-proxy error: ${err.message} total=${Date.now() - assetStart}ms url=${targetUrl}`);
     res.json({
       status: 502, headers: {},
       body: Buffer.from(`asset-proxy error: ${err.message}`, 'utf8').toString('base64'),

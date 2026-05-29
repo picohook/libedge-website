@@ -12,7 +12,7 @@
 import { verifyProxyToken } from '../../../backend/src/ra/jwt.js';
 import { encodeHost, decodeHost, isValidEncodedHost } from '../../../backend/src/ra/host.js';
 import { stableProxyHostLabel } from '../../../backend/src/ra/proxy-url.js';
-import { egressFetch, browserFetch, assetBrowserFetch } from './egress-client.js';
+import { egressFetch, browserFetch, assetBrowserFetch, workerDirectFetch } from './egress-client.js';
 import { writeUpstreamAlert } from './alert-writer.js';
 import { htmlError } from './error-page.js';
 import { enforceProxyRateLimit } from './rate-limit.js';
@@ -857,15 +857,27 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
   const useAssetBrowserFetch = (!isCfPath && needsPlaywright && !scienceDirectSearchApiNeedsBrowser && (
     (isGet && !isDocNav) || scopusApiNeedsBrowser
   ));
+  // Wiley static asset edge cache (caches.default). Cache key URL-only,
+  // Set-Cookie/Content-Length stripped, Cache-Control 7d immutable. Cookie
+  // mode'a bakmıyor — key user-agnostic, response sanitize ediliyor (bkz.
+  // buildStaticAssetCacheKey, buildStaticAssetCacheResponse).
+  // ra-browser page-eval fetch (200 alıyoruz) + edge cache → vetis-style HIT
+  // (3-50ms küresel cache hit, asset 403 sorununu doğal çözer).
   const useWileyStaticAssetCache = useAssetBrowserFetch
     && isGet
-    && cookieIsolationMode === 'host'
     && isWileyProxyHost(target.host)
     && isStaticAssetPath(target.path);
   const isWileyDocumentNavigation = useBrowserFetch
     && isGet
     && isDocNav
     && cookieIsolationMode === 'host'
+    && isWileyProxyHost(target.host);
+  // Vetis-style Worker direct fetch path için ayrı koşul — cookie mode'a
+  // bakmıyor (workerDirectFetch URL-only fetch, scope/host cookie izolasyonu
+  // ile çelişmez). Wiley document path'ler için aktif.
+  const useWileyWorkerDirect = useBrowserFetch
+    && isGet
+    && isDocNav
     && isWileyProxyHost(target.host);
   // context.request and Go/utls direct document fetches are consistently 403
   // for Wiley. Skip those probes; the fast path is now pooled-page navigation
@@ -918,6 +930,35 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
           } else {
             upstreamResp.headers.set('X-RA-Wiley-Doc-Fast', '1');
             appendWileyDocumentRoute('direct');
+          }
+        }
+        // Vetis-style direct fetch (workerDirectFetch) — Wiley document path için
+        // birincil deneme. CF Worker → Wiley fetch'i Bot Management tarafından
+        // (genelde) challenge edilmiyor (kanıt: probe sonuçları 5/6 temiz).
+        // Cookie jar ile `?cookieSet=1` redirect zincirini takip eder.
+        // Challenge yer (cf-mitigated, body "Just a moment...") → browserFetch fallback.
+        //
+        // NOT: Search (`/action/doSearch?...`) muhtemelen challenge yer; bu sefer
+        // mevcut ra-browser yolu kullanılır (eski hız korunur). Çözüm değil, yan
+        // etki: search hâlâ Vetis seviyesi değil.
+        if (!upstreamResp && useWileyWorkerDirect) {
+          appendWileyDocumentRoute('worker-direct-attempt');
+          try {
+            const direct = await workerDirectFetch(targetUrl, {
+              method: request.method,
+              headers: upstreamHeaders,
+              body: null,
+            });
+            if (direct.response && !direct.challenged) {
+              upstreamResp = direct.response;
+              upstreamResp.headers.set('X-RA-Wiley-Doc-Worker-Direct', '1');
+              appendWileyDocumentRoute('worker-direct');
+            } else {
+              appendWileyDocumentRoute(`worker-direct-rejected-${direct.challenged ? 'challenge' : 'no-resp'}`);
+            }
+          } catch (err) {
+            appendWileyDocumentRoute('worker-direct-error');
+            console.warn('workerDirectFetch failed', err?.message);
           }
         }
         if (!upstreamResp) {
@@ -993,6 +1034,11 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
               statusText: upstreamResp.statusText,
               headers: (() => {
                 const h = new Headers(upstreamResp.headers);
+                h.delete('Set-Cookie');
+                h.delete('set-cookie');
+                h.delete('Content-Length');
+                h.delete('content-length');
+                h.set('Cache-Control', 'public, max-age=604800, immutable');
                 h.set('X-RA-Asset-Cache', 'MISS');
                 return h;
               })(),
@@ -1589,12 +1635,23 @@ function wileyNoiseResponse(target, method = 'GET') {
       },
     });
   }
-  if (/^\/products\/acropolis\/pericles\/releasedAssets\/fonts\/.+\.woff2?$/i.test(path)) {
-    return new Response(null, {
-      status: 204,
+  if (/^\/action\/doSuggest(?:$|[/?#])/i.test(path)) {
+    return new Response('[]', {
+      status: 200,
       headers: {
-        'Cache-Control': 'public, max-age=86400',
-        'X-RA-Wiley-Noise': 'font-empty',
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-RA-Wiley-Noise': 'suggest-empty',
+      },
+    });
+  }
+  if (/^\/resource\/lodash(?:$|[/?#])/i.test(path)) {
+    return new Response('/* Lodash is unavailable */\n', {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Cache-Control': 'public, max-age=604800, immutable',
+        'X-RA-Wiley-Noise': 'lodash-stub',
       },
     });
   }

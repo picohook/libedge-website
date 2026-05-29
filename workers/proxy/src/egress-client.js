@@ -361,6 +361,151 @@ export async function assetBrowserFetch(env, institutionId, targetUrl, init = {}
   });
 }
 
+/**
+ * workerDirectFetch — Vetis-style direct fetch from CF Worker to publisher.
+ *
+ * Background: CF Worker → Wiley fetch'i CF Bot Management tarafından
+ * (genelde) challenge edilmiyor — kanıt: probe sonuçları homepage/article/
+ * doi/asset/autocomplete için temiz 200/302. ra-egress (cloudflared tunnel
+ * çıkışı) ise challenge alıyor (farklı IP/network).
+ *
+ * Bu fonksiyon:
+ *   1. fetch() ile target URL'e gider (CF Worker IP'sinden)
+ *   2. Wiley'in `?cookieSet=1` cookie-detect redirect zincirini cookie jar
+ *      ile takip eder (max 3 hop, sadece same-origin)
+ *   3. Challenge tespit eder: cf-mitigated header VEYA body'de "Just a moment..."
+ *   4. Sonucu döndürür: { response, challenged, finalUrl }
+ *
+ * Caller:
+ *   - challenged=false → response'u kullanıcıya dön
+ *   - challenged=true  → mevcut browserFetch (ra-browser) fallback'ine düş
+ *
+ * Cookie handling: tüm hop'lardaki Set-Cookie header'ları toplanır ve final
+ * response'a aktarılır → kullanıcının browser'ı tüm session cookies'i alır.
+ *
+ * @param {string|URL} targetUrl publisher origin URL
+ * @param {{ method?: string, headers?: HeadersInit, body?: BodyInit | null, maxRedirects?: number }} init
+ * @returns {Promise<{response: Response|null, challenged: boolean, finalUrl: string, hops: number}>}
+ */
+export async function workerDirectFetch(targetUrl, init = {}) {
+  const maxRedirects = init.maxRedirects ?? 3;
+  const startOrigin = new URL(String(targetUrl)).origin;
+
+  // Cookie jar: name → value
+  const jar = new Map();
+  const setCookiesAggregate = []; // raw Set-Cookie strings to forward to user
+
+  // Seed jar from caller-provided Cookie header
+  let baseHeaders = new Headers();
+  if (init.headers) {
+    const src = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
+    for (const [k, v] of src.entries()) {
+      if (k.toLowerCase() === 'cookie') {
+        for (const pair of String(v || '').split(';')) {
+          const trimmed = pair.trim();
+          const eq = trimmed.indexOf('=');
+          if (eq > 0) jar.set(trimmed.slice(0, eq).trim(), trimmed.slice(eq + 1).trim());
+        }
+      } else {
+        baseHeaders.set(k, v);
+      }
+    }
+  }
+
+  let currentUrl = String(targetUrl);
+  let lastResp = null;
+  let challenged = false;
+
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    const headers = new Headers();
+    for (const [k, v] of baseHeaders.entries()) headers.set(k, v);
+    if (jar.size > 0) {
+      headers.set('Cookie', Array.from(jar.entries()).map(([n, v]) => `${n}=${v}`).join('; '));
+    }
+
+    const resp = await fetch(currentUrl, {
+      method: init.method || 'GET',
+      headers,
+      body: init.body || null,
+      redirect: 'manual',
+    });
+    lastResp = resp;
+
+    // Collect Set-Cookie from this hop
+    let setCookies = [];
+    if (typeof resp.headers.getSetCookie === 'function') {
+      setCookies = resp.headers.getSetCookie() || [];
+    } else {
+      const sc = resp.headers.get('set-cookie');
+      if (sc) setCookies = [sc];
+    }
+    for (const sc of setCookies) {
+      setCookiesAggregate.push(sc);
+      const firstPart = String(sc).split(';')[0].trim();
+      const eq = firstPart.indexOf('=');
+      if (eq > 0) jar.set(firstPart.slice(0, eq).trim(), firstPart.slice(eq + 1).trim());
+    }
+
+    // Challenge detection — header check (fast)
+    const cfMitigated = resp.headers.get('cf-mitigated');
+    if (cfMitigated && cfMitigated.toLowerCase().includes('challenge')) {
+      challenged = true;
+      break;
+    }
+
+    // Redirect handling
+    if (resp.status >= 300 && resp.status < 400) {
+      const loc = resp.headers.get('location');
+      if (!loc) break;
+      let nextUrl;
+      try { nextUrl = new URL(loc, currentUrl).toString(); } catch { break; }
+      // Only follow same-origin redirects (cross-origin is auth flow — let caller handle)
+      if (new URL(nextUrl).origin !== startOrigin) break;
+      try { await resp.arrayBuffer(); } catch {}
+      currentUrl = nextUrl;
+      continue;
+    }
+
+    // 2xx reached — sniff for HTML challenge page (some sites serve 200 + JS challenge)
+    if (resp.status === 200) {
+      const ct = resp.headers.get('content-type') || '';
+      if (/\btext\/html\b/i.test(ct)) {
+        // Sniff first 5KB of body
+        const cloneResp = resp.clone();
+        const sample = (await cloneResp.text().catch(() => '')).slice(0, 5000).toLowerCase();
+        if (sample.includes('just a moment') || sample.includes('__cf_chl') ||
+            sample.includes('cf-browser-verification')) {
+          challenged = true;
+          break;
+        }
+      }
+    }
+    break;
+  }
+
+  if (!lastResp) {
+    return { response: null, challenged: true, finalUrl: currentUrl, hops: 0 };
+  }
+
+  // Build final response with aggregated Set-Cookies
+  const finalHeaders = new Headers(lastResp.headers);
+  if (setCookiesAggregate.length > 0) {
+    // Remove existing set-cookie (we already collected those) and re-add all
+    finalHeaders.delete('set-cookie');
+    for (const sc of setCookiesAggregate) finalHeaders.append('Set-Cookie', sc);
+  }
+  finalHeaders.set('X-RA-Direct-Fetch', challenged ? 'challenged' : 'ok');
+  if (challenged) finalHeaders.set('X-RA-Direct-Challenge-Reason',
+    lastResp.headers.get('cf-mitigated') ? 'cf-mitigated' : 'body-challenge-html');
+
+  const response = new Response(lastResp.body, {
+    status: lastResp.status,
+    statusText: lastResp.statusText,
+    headers: finalHeaders,
+  });
+  return { response, challenged, finalUrl: currentUrl, hops: maxRedirects };
+}
+
 function safeHeaders(init) {
   const out = new Headers();
   if (!init) return out;

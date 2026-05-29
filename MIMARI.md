@@ -453,6 +453,37 @@ Next.js hydration uyumu için.
 TLS: Go `net/tls` (HTTP/2 devre dışı — AWS WAF uyumu) + `utls` Chrome fingerprint
 (Cloudflare korumalı yayıncılar için — ACS, Wiley, Scopus, CABI).
 
+### 11.9b workerDirectFetch — Vetis-style CF Worker direct fetch
+
+CF Worker `fetch()` ile direkt publisher origin'e gider; **CF Bot Management
+genelde CF Worker trafiğini challenge etmiyor** (CF-internal routing).
+ra-egress (cloudflared tunnel egress IP'si) ise CF tarafından bot-scored
+oluyor ve 403 + challenge alıyor. Bu farkı kullanarak Wiley için:
+
+```
+Old: Browser → proxy Worker → ra-egress → ra-browser (Playwright) → CF challenge → 14-17s
+New: Browser → proxy Worker → fetch(wiley.com) → 500ms
+```
+
+Implementation: `egress-client.js:workerDirectFetch(targetUrl, init)`
+- Manuel cookie jar (CF Workers fetch redirect:'follow' Set-Cookie taşımıyor)
+- Same-origin redirect takip (Wiley'in `?cookieSet=1` zinciri)
+- Challenge tespit: `cf-mitigated` header VEYA body'de "Just a moment..."
+- Tüm hop'ların Set-Cookie'lerini accumulate edip final response'a aktarır
+- Returns `{ response, challenged, finalUrl, hops }`
+
+Gate (index.js):
+```js
+const useWileyWorkerDirect = useBrowserFetch && isGet && isDocNav && isWileyProxyHost(target.host);
+```
+
+Challenge yer → mevcut `browserFetch` (ra-browser) fallback'i devreye girer.
+Wiley `/action/doSearch?...` path'i hâlâ challenge yer (CF anti-scrape kuralı)
+→ search ra-browser'a düşer, ~17s sürer ama functional (cold-path search
+results render fix ile, bkz. 11.10).
+
+Response header: `X-RA-Wiley-Doc-Worker-Direct: 1` + route `worker-direct`.
+
 ### 11.10 ra-browser (Playwright/Chromium)
 
 CF Bot Management korumalı yayıncılar için Playwright tabanlı Chrome servisi.
@@ -463,8 +494,37 @@ CF Bot Management korumalı yayıncılar için Playwright tabanlı Chrome servis
 Sub-resource cache: sayfa yüklemesinde yakalanan CSS/JS/image'lar 5 dk cache'de tutulur;
 asset-proxy istekleri cache'den servis edilir (upstream'e yeni istek atmadan).
 
+**Persistent session pool (Step 06):** `X-RA-Persist-Session=1` + `X-RA-Session-ID` ile gelen
+istekler context'i sessionId|hostname keyli pool'a koyar (TTL 15 dk, max 8 context). Sonraki
+istekler aynı context'i kullanır → cf_clearance + localStorage + JS-set cookies korunur.
+
+**Pool=hit case'de cookie injection selective:** Worker'dan gelen Cookie header tüm istekte
+inject edilirse pool'un taze cf_clearance'ını ESKİ değerle overwrite eder → CF clearance'ı
+reddeder → 27s challenge yeniden çalışır. Fix: pool=hit case'de cf_clearance hariç cookies
+inject edilir. Wiley doc-page 32s → 2.2s (2026-05-26).
+
+**Networkidle bekleme:** `page.waitForLoadState('networkidle')` timeout 8s → 1500ms. Wiley/SPA
+publisher'lar sürekli analytics ping yaptığı için 8s bedavaya gidiyordu.
+
+**Timing logları:** ra-browser her doc isteği için `[timing]` ve `[debug]` satırları yazar
+(challenge süresi, networkidle, clearance varlığı). Docker logs ile takip:
+```
+docker compose logs -f ra-browser
+```
+
 **Önemli:** `passHeaders` (Referer, Accept, vb.) artık `context.request.get()` çağrısına
 iletiliyor — önceki eksiklik doc-details gibi CSRF/Referer kontrollü API'lerde 403'e yol açıyordu.
+
+**Bilinen açık sorun:** `context.request.get()` Playwright HTTP API, CF tarafından bot
+işaretleniyor → font/autocomplete 403. Çözüm önerisi: `page.evaluate(() => fetch(url))`
+ile Chrome'un kendi fetch'i — CSP yan etkisi test gerek.
+
+**Cold-path search results fix (2026-05-29):** CF challenge çözüldükten sonra `page.content()`
+DOM'u yakalamadan önce `fetchDocumentInPage(page, targetUrl, fwdHeaders)` denenir
+(page.evaluate fetch ile valid cf_clearance'lı context'ten RAW server HTML).
+User browser bu HTML'i alıp JS'i çalıştırır, sonuçları render eder. Eski cold path
+`page.content()` JS-rendered search results bitmeden DOM yakalıyor, kullanıcıya
+"sonuçlar listelenemiyor" gibi görünüyordu.
 
 ---
 
@@ -480,6 +540,10 @@ iletiliyor — önceki eksiklik doc-details gibi CSRF/Referer kontrollü API'ler
 | Proxy session invalid header | safeHeaders() + response header sanitization |
 | Scopus hydration flash | `__NEXT_DATA__` hostname patch server-side |
 | doc-details 403 | ra-browser passHeaders fix (Referer, Accept) |
+| Wiley doc page 32s (CF her seferinde challenge) | Pool=hit case'de cf_clearance Worker cookie'siyle overwrite olmuyor — fresh clearance korunuyor → 2.2s |
+| Wiley load-wait 8s boşa | `networkidle` timeout 8000→1500ms (Wiley asla idle olmuyor) |
+| Wiley homepage/article cold 14-17s | `workerDirectFetch` (CF Worker fetch → Wiley, challenge yok) → 500ms (2026-05-29) |
+| Wiley search cold-path "result list görünmüyor" | ra-browser cold path `page.content()` JS-rendered results bitmeden DOM yakalıyordu. Fix: `fetchDocumentInPage` RAW server HTML — user browser JS çalıştırır (2026-05-29) |
 
 ---
 
@@ -516,7 +580,7 @@ WHERE slug = '{product-slug}';
 | JoVE | AWS WAF HTTP/2 | HTTP/2 kapalı (h1Client) |
 | EMIS | CAS multi-host, mobil API | `__ra-host` routing + desktop-UA |
 | ACS | Cloudflare Bot Management | utls Chrome fingerprint |
-| Wiley | CF Bot Management + persistent session | ra-browser + Step 06 (persistent pool) |
+| Wiley | CF Bot Management + persistent session | **workerDirectFetch** (homepage/article 500ms, CF Worker fetch → Wiley challenge'sız) + ra-browser fallback (search ~17s, cf-mitigated challenge) + Step 06 persistent pool + stable_host_proxy (migration 0044) |
 | Scopus | CF Bot Management, Next.js hydration | ra-browser + passHeaders + `__NEXT_DATA__` patch |
 | ScienceDirect | Elsevier cookie namespace | `__cp_sciencedirect.com\|` prefix |
 | CAS SciFinder | OIDC SSO cross-origin | `__ra_upstream` + cookie jar |
