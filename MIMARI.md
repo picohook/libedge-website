@@ -478,9 +478,9 @@ const useWileyWorkerDirect = useBrowserFetch && isGet && isDocNav && isWileyProx
 ```
 
 Challenge yer → mevcut `browserFetch` (ra-browser) fallback'i devreye girer.
-Wiley `/action/doSearch?...` path'i hâlâ challenge yer (CF anti-scrape kuralı)
-→ search ra-browser'a düşer, ~17s sürer ama functional (cold-path search
-results render fix ile, bkz. 11.10).
+Wiley `/action/doSearch?...` path'i CF Worker direct fetch'te challenge yer
+(CF anti-scrape kuralı), bu yüzden search ra-browser'ın native Chrome
+cookieless fetch yoluna düşer (bkz. 11.10).
 
 Response header: `X-RA-Wiley-Doc-Worker-Direct: 1` + route `worker-direct`.
 
@@ -519,12 +519,24 @@ iletiliyor — önceki eksiklik doc-details gibi CSRF/Referer kontrollü API'ler
 işaretleniyor → font/autocomplete 403. Çözüm önerisi: `page.evaluate(() => fetch(url))`
 ile Chrome'un kendi fetch'i — CSP yan etkisi test gerek.
 
-**Cold-path search results fix (2026-05-29):** CF challenge çözüldükten sonra `page.content()`
-DOM'u yakalamadan önce `fetchDocumentInPage(page, targetUrl, fwdHeaders)` denenir
-(page.evaluate fetch ile valid cf_clearance'lı context'ten RAW server HTML).
-User browser bu HTML'i alıp JS'i çalıştırır, sonuçları render eder. Eski cold path
-`page.content()` JS-rendered search results bitmeden DOM yakalıyor, kullanıcıya
-"sonuçlar listelenemiyor" gibi görünüyordu.
+**Wiley search native Chrome cookieless fetch (2026-05-29):** Wiley search path'i
+CF Worker direct fetch ve ra-egress/uTLS ile challenge yerken, gerçek Chrome
+context'inden `page.evaluate(fetch(..., { credentials: 'omit' }))` ile 200 döner.
+Pool=hit repeated search'lerde bu yol kullanılır ve challenge fallback'i korunur.
+
+**Wiley first-search cold bootstrap (2026-05-29):** Pool=miss ilk search'te page
+`about:blank` olduğu için cookieless same-origin fetch çalışamazdı. ra-browser önce
+Wiley origin'e commit-only bootstrap yapar, sonra aynı native Chrome cookieless fetch'i
+dener. Live test: `doc-cold-bootstrap-cookieless status=200 ok=1`, `total=3120ms`
+(`/action/doSearch?AllField=nanotube`). Başarısızlıkta eski CF challenge yolu fallback
+olarak kalır.
+
+**Cold-path search results render fix (2026-05-29):** Cookieless/cold-bootstrap
+başarısız olup CF challenge çözüldüğünde `page.content()` DOM'u yakalamadan önce
+`fetchDocumentInPage(page, targetUrl, fwdHeaders)` denenir (valid cf_clearance'lı
+context'ten RAW server HTML). User browser bu HTML'i alıp JS'i çalıştırır, sonuçları
+render eder. Eski cold path `page.content()` JS-rendered search results bitmeden DOM
+yakalıyor, kullanıcıya "sonuçlar listelenemiyor" gibi görünüyordu.
 
 ---
 
@@ -543,6 +555,7 @@ User browser bu HTML'i alıp JS'i çalıştırır, sonuçları render eder. Eski
 | Wiley doc page 32s (CF her seferinde challenge) | Pool=hit case'de cf_clearance Worker cookie'siyle overwrite olmuyor — fresh clearance korunuyor → 2.2s |
 | Wiley load-wait 8s boşa | `networkidle` timeout 8000→1500ms (Wiley asla idle olmuyor) |
 | Wiley homepage/article cold 14-17s | `workerDirectFetch` (CF Worker fetch → Wiley, challenge yok) → 500ms (2026-05-29) |
+| Wiley search first cold path 30-40s | ra-browser native Chrome cookieless fetch için commit-only Wiley origin bootstrap yapıyor → ilk search ~3.1s, fallback mevcut (2026-05-29) |
 | Wiley search cold-path "result list görünmüyor" | ra-browser cold path `page.content()` JS-rendered results bitmeden DOM yakalıyordu. Fix: `fetchDocumentInPage` RAW server HTML — user browser JS çalıştırır (2026-05-29) |
 
 ---

@@ -227,7 +227,7 @@ async function ensureBrowser() {
       }
       console.warn('Chromium disconnected; cleared context pool');
     });
-    console.log(`Chromium launched (channel=${launchOptions.channel || 'bundled'})`);
+    console.log(`Chromium launched (channel=${launchOptions.channel || 'bundled'}, wiley-cold-bootstrap=1)`);
   }
   return browser;
 }
@@ -354,6 +354,33 @@ async function fetchDocumentInPage(page, targetUrl, headers) {
       status: resp.status,
     };
   }, { url: targetUrl, headers });
+}
+
+function isWileySearchUrl(targetUrl) {
+  try {
+    const u = new URL(targetUrl);
+    return (u.hostname === 'onlinelibrary.wiley.com' || /\.wiley\.com$/i.test(u.hostname))
+      && u.pathname === '/action/doSearch';
+  } catch {
+    return false;
+  }
+}
+
+async function fetchCookielessDocumentInPage(page, targetUrl) {
+  const target = new URL(targetUrl);
+  return page.evaluate(async ({ url, refer }) => {
+    const resp = await fetch(url, {
+      credentials: 'omit',
+      method: 'GET',
+      headers: { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
+      referrer: refer,
+      referrerPolicy: 'strict-origin-when-cross-origin',
+    });
+    const rh = {};
+    resp.headers.forEach((v, k) => { rh[k] = v; });
+    const text = await resp.text();
+    return { status: resp.status, body: text, headers: rh, finalUrl: resp.url };
+  }, { url: targetUrl, refer: `${target.origin}/` });
 }
 
 function serializeBrowserCookie(cookie) {
@@ -496,27 +523,13 @@ async function handleProxy(req, res) {
       cookielessProbeable = fastDocument
         && usingPooledContext
         && reusablePage
-        && (tu.hostname === 'onlinelibrary.wiley.com' || /\.wiley\.com$/i.test(tu.hostname))
-        && tu.pathname === '/action/doSearch';
+        && isWileySearchUrl(tu.toString());
     } catch {}
 
     if (cookielessProbeable) {
       try {
         const probeStart = Date.now();
-        const tu = new URL(targetUrl);
-        const docFetch = await page.evaluate(async ({ url, refer }) => {
-          const resp = await fetch(url, {
-            credentials: 'omit',
-            method: 'GET',
-            headers: { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
-            referrer: refer,
-            referrerPolicy: 'strict-origin-when-cross-origin',
-          });
-          const rh = {};
-          resp.headers.forEach((v, k) => rh[k] = v);
-          const text = await resp.text();
-          return { status: resp.status, body: text, headers: rh, finalUrl: resp.url };
-        }, { url: targetUrl, refer: `${tu.origin}/` });
+        const docFetch = await fetchCookielessDocumentInPage(page, targetUrl);
 
         const ct = docFetch.headers?.['content-type'] || docFetch.headers?.['Content-Type'] || '';
         const okHtml = docFetch.status === 200
@@ -550,6 +563,60 @@ async function handleProxy(req, res) {
         }
       } catch (err) {
         console.warn(`doc-cookieless-fetch failed: ${err?.message}`);
+      }
+    }
+
+    // Wiley first-search cold path: the pooled cookieless fetch above needs a
+    // same-origin page. On a fresh context the page is about:blank, so first
+    // search used to fall through to full CF challenge (~30-40s). Bootstrap the
+    // page to Wiley origin with a commit-only root navigation, then try the
+    // same native-Chrome cookieless fetch. Failure falls back to the existing
+    // navigation/challenge path.
+    if (fastDocument && !usingPooledContext && isWileySearchUrl(targetUrl)) {
+      try {
+        const totalStart = Date.now();
+        const target = new URL(targetUrl);
+        const bootStart = Date.now();
+        await page.goto(`${target.origin}/`, {
+          waitUntil: 'commit',
+          timeout: 7000,
+        }).catch((err) => {
+          console.log(`[debug] doc-cold-bootstrap goto failed after ${Date.now() - bootStart}ms: ${err?.message}`);
+        });
+        const fetchStart = Date.now();
+        const docFetch = await fetchCookielessDocumentInPage(page, targetUrl);
+        const ct = docFetch.headers?.['content-type'] || docFetch.headers?.['Content-Type'] || '';
+        const okHtml = docFetch.status === 200
+          && /\btext\/html\b/i.test(ct)
+          && !looksLikeChallengeHtml(docFetch.body)
+          && docFetch.body.length > 1000;
+        console.log(`[timing] doc-cold-bootstrap-cookieless status=${docFetch.status} ok=${okHtml ? '1' : '0'} bodyLen=${docFetch.body.length} bootstrap=${fetchStart - totalStart}ms fetch=${Date.now() - fetchStart}ms total=${Date.now() - totalStart}ms url=${targetUrl}`);
+
+        if (okHtml) {
+          const rawHeaders = {};
+          for (const [k, v] of Object.entries(docFetch.headers || {})) {
+            const lk = k.toLowerCase();
+            if (!HOP_BY_HOP.has(lk) && lk !== 'content-encoding') rawHeaders[k] = v;
+          }
+          rawHeaders['x-ra-browser-pooled'] = '0';
+          rawHeaders['x-ra-browser-cold-bootstrap-cookieless'] = '1';
+          rawHeaders['x-ra-browser-timing'] = `cold-bootstrap-cookieless;dur=${Date.now() - totalStart}`;
+          const envelope = {
+            status: 200,
+            headers: rawHeaders,
+            body: Buffer.from(docFetch.body, 'utf8').toString('base64'),
+            finalUrl: docFetch.finalUrl,
+          };
+          res.json(envelope);
+          contextPersisted = true;
+          try {
+            const hostname = new URL(targetUrl).hostname;
+            poolPut(sessionId, hostname, context);
+          } catch {}
+          return;
+        }
+      } catch (err) {
+        console.warn(`doc-cold-bootstrap-cookieless failed: ${err?.message}`);
       }
     }
 
