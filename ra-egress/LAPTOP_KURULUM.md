@@ -30,6 +30,13 @@ Kopyalanmaması gerekenler:
 
 Paket klasörünü kurum laptop'ına kopyalayın.
 
+Paket kökündeki `KIT-MANIFEST.txt` dosyasını kontrol edin. Dosyada kaynak commit
+ve aşağıdaki runtime marker beklentisi görünmelidir:
+
+```text
+Chromium launched (channel=chrome, wiley-cold-bootstrap=1)
+```
+
 ```powershell
 cd ra-egress
 .\KURULUM-BASLAT.ps1
