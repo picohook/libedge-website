@@ -961,6 +961,7 @@ async function proxySessionSurface(request, env, ctx, url, session, sessionId) {
             console.warn('workerDirectFetch failed', err?.message);
           }
         }
+
         if (!upstreamResp) {
           if (isWileyDocumentNavigation) {
             appendWileyDocumentRoute('browser');

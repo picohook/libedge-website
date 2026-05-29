@@ -323,6 +323,15 @@ function looksLikeChallengeHtml(text) {
   const sample = String(text || '').slice(0, 5000).toLowerCase();
   return sample.includes('__cf_chl')
     || sample.includes('just a moment')
+    || sample.includes('performing security verification')
+    || sample.includes('security verification')
+    || sample.includes('unable to connect to the website')
+    || sample.includes('malicious bots')
+    || sample.includes('not a bot')
+    || sample.includes('güvenlik doğrulaması')
+    || sample.includes('guvenlik dogrulamasi')
+    || sample.includes('uyumsuz tarayıcı')
+    || sample.includes('uyumsuz tarayici')
     || sample.includes('checking your browser')
     || sample.includes('cf-browser-verification')
     || sample.includes('cloudflare ray id');
@@ -470,6 +479,78 @@ async function handleProxy(req, res) {
           cachePut(url, response.status(), response.headers(), body);
         } catch { /* body may not be available for some responses */ }
       });
+    }
+
+    // Wiley search COOKIELESS probe (scoped, pool=hit only).
+    // Kanıt: kurum IP + native Chrome + cookieless → 200 (HAR, ~3.2s).
+    // ra-egress utls 403 yiyordu (TLS fingerprint farkı). Real Chrome (Playwright
+    // channel='chrome') ile fingerprint native'e en yakın → CF kabul edebilir.
+    //
+    // SADECE: fastDocument + pool=hit + reusablePage + Wiley /action/doSearch.
+    // Cold (pool=miss) case'de navigation gerekirdi, mevcut yol aynen çalışır
+    // (~17s). Pool=hit'te probe maliyeti düşük; başarısızlık → cookied fetch +
+    // page.goto + challenge fallback aynen devam.
+    let cookielessProbeable = false;
+    try {
+      const tu = new URL(targetUrl);
+      cookielessProbeable = fastDocument
+        && usingPooledContext
+        && reusablePage
+        && (tu.hostname === 'onlinelibrary.wiley.com' || /\.wiley\.com$/i.test(tu.hostname))
+        && tu.pathname === '/action/doSearch';
+    } catch {}
+
+    if (cookielessProbeable) {
+      try {
+        const probeStart = Date.now();
+        const tu = new URL(targetUrl);
+        const docFetch = await page.evaluate(async ({ url, refer }) => {
+          const resp = await fetch(url, {
+            credentials: 'omit',
+            method: 'GET',
+            headers: { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
+            referrer: refer,
+            referrerPolicy: 'strict-origin-when-cross-origin',
+          });
+          const rh = {};
+          resp.headers.forEach((v, k) => rh[k] = v);
+          const text = await resp.text();
+          return { status: resp.status, body: text, headers: rh, finalUrl: resp.url };
+        }, { url: targetUrl, refer: `${tu.origin}/` });
+
+        const ct = docFetch.headers?.['content-type'] || docFetch.headers?.['Content-Type'] || '';
+        const okHtml = docFetch.status === 200
+          && /\btext\/html\b/i.test(ct)
+          && !looksLikeChallengeHtml(docFetch.body)
+          && docFetch.body.length > 1000;
+        console.log(`[timing] doc-cookieless-fetch status=${docFetch.status} ok=${okHtml ? '1' : '0'} bodyLen=${docFetch.body.length} elapsed=${Date.now() - probeStart}ms url=${targetUrl}`);
+
+        if (okHtml) {
+          const rawHeaders = {};
+          for (const [k, v] of Object.entries(docFetch.headers || {})) {
+            const lk = k.toLowerCase();
+            if (!HOP_BY_HOP.has(lk) && lk !== 'content-encoding') rawHeaders[k] = v;
+          }
+          rawHeaders['x-ra-browser-pooled'] = '1';
+          rawHeaders['x-ra-browser-cookieless-fetch'] = '1';
+          rawHeaders['x-ra-browser-timing'] = `cookieless-fetch;dur=${Date.now() - probeStart}`;
+          const envelope = {
+            status: 200,
+            headers: rawHeaders,
+            body: Buffer.from(docFetch.body, 'utf8').toString('base64'),
+            finalUrl: docFetch.finalUrl,
+          };
+          res.json(envelope);
+          contextPersisted = true;
+          try {
+            const hostname = new URL(targetUrl).hostname;
+            poolPut(sessionId, hostname, context);
+          } catch {}
+          return;
+        }
+      } catch (err) {
+        console.warn(`doc-cookieless-fetch failed: ${err?.message}`);
+      }
     }
 
     if (fastDocument && usingPooledContext && reusablePage) {
@@ -658,7 +739,7 @@ async function handleProxy(req, res) {
 
     const afterTitle     = await page.title().catch(() => '');
     const stillChallenge = isChallengeTitle(afterTitle);
-    const status = isCfChallenge && !stillChallenge ? 200 : firstStatus;
+    let status = isCfChallenge && !stillChallenge ? 200 : firstStatus;
 
     // For non-challenge visits (cf_clearance already valid), wait for page load
     // so page.on('response') cache is populated with sub-resources.
@@ -707,7 +788,16 @@ async function handleProxy(req, res) {
           && /\btext\/html\b/i.test(ct)
           && !looksLikeChallengeHtml(docFetch.body);
         console.log(`[timing] doc-cold-fetch status=${docFetch.status} ok=${okHtml ? '1' : '0'} url=${targetUrl}`);
-        if (okHtml) html = docFetch.body;
+        if (okHtml) {
+          html = docFetch.body;
+          status = docFetch.status;
+          for (const [k, v] of Object.entries(docFetch.headers || {})) {
+            const lk = k.toLowerCase();
+            if (!HOP_BY_HOP.has(lk) && lk !== 'content-encoding' && lk !== 'content-length') {
+              responseHeaders[k] = v;
+            }
+          }
+        }
       } catch (err) {
         console.warn(`doc-cold-fetch failed: ${err?.message}`);
       }
