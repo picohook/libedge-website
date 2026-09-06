@@ -68,6 +68,8 @@ const ALLOWED_ORIGINS = [
   'https://staging.libedge-website.pages.dev',
 ];
 
+const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
 const DEFAULT_PRODUCT_CATALOG = [
   { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/pangram_logo.webp', card_background_url: 'assets/images/pangram.webp', subjects_json: '["yapay-zeka","akademik-durustluk"]', display_order: 10 },
   { slug: 'chatpdf', name: 'ChatPDF', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/ChatPDF_LOGO.webp', card_background_url: 'assets/images/chat.webp', card_back_text_color: '#ffffff', subjects_json: '["yapay-zeka"]', display_order: 20 },
@@ -186,11 +188,25 @@ app.use('*', async (c, next) => {
       return ALLOWED_ORIGINS.includes(origin) ? origin : null;
     },
     credentials: true,
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     exposeHeaders: ['Set-Cookie', 'Content-Length'],
     maxAge: 86400,
   })(c, next);
+});
+
+app.use('*', async (c, next) => {
+  const method = String(c.req.method || '').toUpperCase();
+  if (!STATE_CHANGING_METHODS.has(method)) {
+    return next();
+  }
+
+  const origin = c.req.header('Origin') || c.req.header('origin') || '';
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+    return c.json({ error: 'Geçersiz istek kaynağı' }, 403);
+  }
+
+  return next();
 });
 
 // ====================== TOKEN HELPERS ======================
@@ -1465,7 +1481,7 @@ app.post('/api/auth/login', zValidator('json', loginSchema, (result, c) => {
     setCookie(c, 'authToken', accessToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'None',
+      sameSite: 'Lax',
       maxAge: 3600,
       path: '/',
     });
@@ -1474,7 +1490,7 @@ app.post('/api/auth/login', zValidator('json', loginSchema, (result, c) => {
     setCookie(c, 'refreshToken', refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'None',
+      sameSite: 'Lax',
       maxAge: REFRESH_TOKEN_TTL_SECONDS,
       path: '/',
     });
@@ -1522,7 +1538,7 @@ app.post('/api/auth/logout', async (c) => {
   setCookie(c, 'authToken', '', {
     httpOnly: true,
     secure: true,
-    sameSite: 'None',
+    sameSite: 'Lax',
     maxAge: 0,
     path: '/'
   });
@@ -1530,7 +1546,7 @@ app.post('/api/auth/logout', async (c) => {
   setCookie(c, 'refreshToken', '', {
     httpOnly: true,
     secure: true,
-    sameSite: 'None',
+    sameSite: 'Lax',
     maxAge: 0,
     path: '/'
   });
@@ -1629,7 +1645,7 @@ app.post('/api/auth/refresh', async (c) => {
   setCookie(c, 'authToken', newAccessToken, {
     httpOnly: true,
     secure: true,
-    sameSite: 'None',
+    sameSite: 'Lax',
     maxAge: 3600,
     path: '/'
   });
@@ -1637,7 +1653,7 @@ app.post('/api/auth/refresh', async (c) => {
   setCookie(c, 'refreshToken', newRefreshToken, {
     httpOnly: true,
     secure: true,
-    sameSite: 'None',
+    sameSite: 'Lax',
     maxAge: REFRESH_TOKEN_TTL_SECONDS,
     path: '/'
   });
@@ -2040,7 +2056,7 @@ app.delete('/api/user/delete', async (c) => {
   setCookie(c, 'authToken', '', {
   httpOnly: true,
   secure: true,
-  sameSite: 'None',
+  sameSite: 'Lax',
   maxAge: 0,
   path: '/'
 });
@@ -2048,7 +2064,7 @@ app.delete('/api/user/delete', async (c) => {
 setCookie(c, 'refreshToken', '', {
   httpOnly: true,
   secure: true,
-  sameSite: 'None',
+  sameSite: 'Lax',
   maxAge: 0,
   path: '/'
 });

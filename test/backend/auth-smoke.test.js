@@ -148,6 +148,15 @@ function cookieHeaderFrom(res) {
     .join('; ');
 }
 
+function expectAuthCookiesUseSameSiteLax(res) {
+  const cookies = getSetCookies(res).filter((cookie) => /^(authToken|refreshToken)=/i.test(cookie));
+  expect(cookies).toHaveLength(2);
+  for (const cookie of cookies) {
+    expect(cookie).toMatch(/;\s*SameSite=Lax(?:;|$)/i);
+    expect(cookie).not.toMatch(/;\s*SameSite=None(?:;|$)/i);
+  }
+}
+
 async function makeUser(overrides = {}) {
   return {
     id: 7,
@@ -191,6 +200,7 @@ describe('auth smoke flow', () => {
     const loginCookie = cookieHeaderFrom(loginRes);
     expect(loginCookie).toContain('authToken=');
     expect(loginCookie).toContain('refreshToken=');
+    expectAuthCookiesUseSameSiteLax(loginRes);
 
     const profileRes = await app.request('/api/user/profile', {
       headers: { cookie: loginCookie },
@@ -207,6 +217,7 @@ describe('auth smoke flow', () => {
       headers: {
         cookie: loginCookie,
         'cf-connecting-ip': '203.0.113.10',
+        origin: 'https://staging.libedge-website.pages.dev',
       },
     }, env);
     expect(refreshRes.status).toBe(200);
@@ -215,6 +226,7 @@ describe('auth smoke flow', () => {
     const refreshedCookie = cookieHeaderFrom(refreshRes);
     expect(refreshedCookie).toContain('authToken=');
     expect(refreshedCookie).toContain('refreshToken=');
+    expectAuthCookiesUseSameSiteLax(refreshRes);
 
     const refreshedProfileRes = await app.request('/api/user/profile', {
       headers: { cookie: refreshedCookie },
@@ -232,6 +244,7 @@ describe('auth smoke flow', () => {
     expect(logoutRes.status).toBe(200);
     expect(await logoutRes.json()).toMatchObject({ success: true });
     expect(cookieHeaderFrom(logoutRes)).toBe('authToken=; refreshToken=');
+    expectAuthCookiesUseSameSiteLax(logoutRes);
 
     const loggedOutProfileRes = await app.request('/api/user/profile', {
       headers: { cookie: cookieHeaderFrom(logoutRes) },
@@ -287,6 +300,39 @@ describe('auth smoke flow', () => {
       },
     }, env);
     expect(expiredRefreshRes.status).toBe(401);
+  });
+
+  it('rejects state-changing requests from foreign origins while allowing origin-less clients', async () => {
+    const secret = 'test-jwt-secret';
+    const db = new AuthSmokeD1(await makeUser());
+    const env = testEnv(db, secret);
+
+    const foreignOriginRes = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'https://evil.example',
+      },
+      body: JSON.stringify({
+        email: 'smoke@example.edu',
+        password: 'CorrectHorseBattery1!',
+      }),
+    }, env);
+    expect(foreignOriginRes.status).toBe(403);
+
+    const noOriginRes = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'cf-connecting-ip': '203.0.113.12',
+      },
+      body: JSON.stringify({
+        email: 'smoke@example.edu',
+        password: 'CorrectHorseBattery1!',
+      }),
+    }, env);
+    expect(noOriginRes.status).toBe(200);
+    expectAuthCookiesUseSameSiteLax(noOriginRes);
   });
 
   it('enforces user and super admin authorization boundaries', async () => {
