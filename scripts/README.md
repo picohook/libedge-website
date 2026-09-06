@@ -1,5 +1,37 @@
 # scripts/
 
+## auth-smoke.mjs
+
+End-to-end auth smoke check for staging or a dedicated test deployment.
+It uses real HTTP requests but reads credentials only from environment
+variables; do not commit test-user passwords.
+
+Required:
+
+```bash
+export LIBEDGE_SMOKE_EMAIL=user@example.edu
+export LIBEDGE_SMOKE_PASSWORD=...
+```
+
+Optional:
+
+```bash
+export LIBEDGE_SMOKE_BASE_URL=https://staging.libedge-website.pages.dev
+export LIBEDGE_SMOKE_ADMIN_EMAIL=admin@example.edu
+export LIBEDGE_SMOKE_ADMIN_PASSWORD=...
+```
+
+Usage:
+
+```bash
+npm run smoke:auth
+```
+
+The script verifies login cookies, profile access, refresh rotation,
+logout clearing, post-logout 401s, invalid refresh attempts, wrong
+password rejection, normal-user admin denial, and admin products access
+when admin credentials are provided.
+
 ## cleanup-r2-orphans.mjs
 
 One-shot tool that finds R2 objects under `avatars/`,
