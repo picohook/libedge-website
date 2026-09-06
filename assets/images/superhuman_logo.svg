@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="180" viewBox="0 0 640 180" role="img" aria-labelledby="title">
+  <title id="title">Superhuman logo</title>
+  <rect width="640" height="180" rx="24" fill="#f8fafc"/>
+  <g transform="translate(44 42)">
+    <rect width="96" height="96" rx="28" fill="#111827"/>
+    <path d="M30 33h39L48 50h22L33 70l15-18H27z" fill="#fbbf24"/>
+  </g>
+  <text x="166" y="104" fill="#0f172a" font-family="Arial, Helvetica, sans-serif" font-size="55" font-weight="700">Superhuman</text>
+</svg>
