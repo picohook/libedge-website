@@ -72,9 +72,9 @@ const DEFAULT_PRODUCT_CATALOG = [
   { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/pangram_logo.webp', card_background_url: 'assets/images/pangram.webp', subjects_json: '["yapay-zeka","akademik-durustluk"]', display_order: 10 },
   { slug: 'chatpdf', name: 'ChatPDF', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/ChatPDF_LOGO.webp', card_background_url: 'assets/images/chat.webp', card_back_text_color: '#ffffff', subjects_json: '["yapay-zeka"]', display_order: 20 },
   { slug: 'wonders', name: 'Wonders', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/wonders_logo.svg', card_background_url: 'assets/images/wond.webp', card_back_text_color: '#ffffff', subjects_json: '["yapay-zeka"]', display_order: 30 },
-  { slug: 'evidencemd', name: 'EvidenceMD', category: 'Sağlık ve Yapay Zeka', region: 'Türkiye, Orta Doğu', default_access_type: 'direct', default_access_url: 'https://evidencemd.ai/', logo_url: 'assets/images/evidencemd_logo.png', card_background_url: 'assets/images/medical.webp', subjects_json: '["saglik","yapay-zeka"]', display_order: 32 },
-  { slug: 'grammarly', name: 'Grammarly', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', default_access_type: 'direct', default_access_url: 'https://www.grammarly.com/', logo_url: 'assets/images/grammarly_logo.svg', card_background_url: 'assets/images/transl.webp', subjects_json: '["yapay-zeka"]', display_order: 34 },
-  { slug: 'superhuman-suite', name: 'Superhuman Suite', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', default_access_type: 'direct', default_access_url: 'https://superhuman.com/', logo_url: 'assets/images/superhuman_logo.png', card_background_url: 'assets/images/library.webp', subjects_json: '["yapay-zeka"]', display_order: 36 },
+  { slug: 'evidencemd', name: 'EvidenceMD', category: 'Sağlık ve Yapay Zeka', region: 'Türkiye, Orta Doğu', default_access_type: 'direct', default_access_url: 'https://evidencemd.ai/', logo_url: 'assets/images/evidencemd_logo.png', card_background_url: 'assets/images/medical.webp', short_description_tr: 'Klinik muhakeme, karar desteği ve kanıt sentezi için sağlık odaklı yapay zeka platformu.', short_description_en: 'A health-focused AI platform for clinical reasoning, decision support, and evidence synthesis.', subjects_json: '["saglik","yapay-zeka"]', display_order: 32, is_libedge_catalog: 1 },
+  { slug: 'grammarly', name: 'Grammarly', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', default_access_type: 'direct', default_access_url: 'https://www.grammarly.com/', logo_url: 'assets/images/grammarly_logo.svg', card_background_url: 'assets/images/transl.webp', short_description_tr: 'Yazım, ton, açıklık ve üretkenlik için yapay zeka destekli iletişim asistanı.', short_description_en: 'An AI-powered communication assistant for writing, tone, clarity, and productivity.', subjects_json: '["yapay-zeka"]', display_order: 34, is_libedge_catalog: 1 },
+  { slug: 'superhuman-suite', name: 'Superhuman Suite', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', default_access_type: 'direct', default_access_url: 'https://superhuman.com/', logo_url: 'assets/images/superhuman_logo.png', card_background_url: 'assets/images/library.webp', short_description_tr: 'E-posta, doküman ve günlük iş akışlarında yapay zeka destekli üretkenlik paketi.', short_description_en: 'An AI productivity suite for email, documents, and everyday workflows.', subjects_json: '["yapay-zeka"]', display_order: 36, is_libedge_catalog: 1 },
   { slug: 'assistin', name: 'Assistin', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/assistin_logo.webp', card_background_url: 'assets/images/assistin.webp', subjects_json: '["yapay-zeka"]', display_order: 40 },
   { slug: 'primal-pictures', name: 'Primal Pictures', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/primalpictures_logo.svg', card_background_url: 'assets/images/anatomy.png', subjects_json: '["saglik"]', display_order: 50 },
   { slug: 'lecturio', name: 'Lecturio', category: 'Sağlık', region: 'Türkiye, Orta Doğu', logo_url: 'assets/images/Lecturio_logo.PNG', card_background_url: 'assets/images/lect_back.webp', subjects_json: '["saglik"]', display_order: 60 },
@@ -943,6 +943,7 @@ async function ensureProductsTableAndSeed(db, env = {}) {
       short_description_en TEXT,
       subjects_json TEXT,
       access_tags_json TEXT,
+      is_libedge_catalog INTEGER NOT NULL DEFAULT 0,
       card_visible INTEGER DEFAULT 1,
       display_order INTEGER DEFAULT 999,
       is_featured INTEGER DEFAULT 0,
@@ -972,6 +973,7 @@ async function ensureProductsTableAndSeed(db, env = {}) {
     'ALTER TABLE products ADD COLUMN short_description_en TEXT',
     'ALTER TABLE products ADD COLUMN subjects_json TEXT',
     'ALTER TABLE products ADD COLUMN access_tags_json TEXT',
+    'ALTER TABLE products ADD COLUMN is_libedge_catalog INTEGER NOT NULL DEFAULT 0',
     'ALTER TABLE products ADD COLUMN card_visible INTEGER DEFAULT 1',
     'ALTER TABLE products ADD COLUMN display_order INTEGER DEFAULT 999',
     'ALTER TABLE products ADD COLUMN is_featured INTEGER DEFAULT 0',
@@ -998,9 +1000,9 @@ async function ensureProductsTableAndSeed(db, env = {}) {
         card_background_asset_key, card_background_url, card_background_updated_at,
         card_background_overlay, card_front_text_color, card_back_text_color,
         short_description_tr, short_description_en, subjects_json, access_tags_json,
-        card_visible, display_order, is_featured
+        is_libedge_catalog, card_visible, display_order, is_featured
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       product.slug,
       product.name,
@@ -1026,6 +1028,7 @@ async function ensureProductsTableAndSeed(db, env = {}) {
       product.short_description_en || null,
       product.subjects_json || null,
       product.access_tags_json || null,
+      product.is_libedge_catalog ? 1 : 0,
       product.card_visible == null ? 1 : (product.card_visible ? 1 : 0),
       product.display_order == null ? 999 : Number(product.display_order),
       product.is_featured ? 1 : 0
@@ -1062,8 +1065,14 @@ async function ensureProductsTableAndSeed(db, env = {}) {
           END,
           card_background_overlay = COALESCE(NULLIF(card_background_overlay, ''), ?),
           card_back_text_color = COALESCE(NULLIF(card_back_text_color, ''), ?),
+          short_description_tr = COALESCE(NULLIF(short_description_tr, ''), ?),
+          short_description_en = COALESCE(NULLIF(short_description_en, ''), ?),
           subjects_json = COALESCE(NULLIF(subjects_json, ''), ?),
           access_tags_json = COALESCE(NULLIF(access_tags_json, ''), ?),
+          is_libedge_catalog = CASE
+            WHEN ? = 1 THEN 1
+            ELSE COALESCE(is_libedge_catalog, 0)
+          END,
           display_order = CASE
             WHEN display_order IS NULL OR display_order = 999 THEN ?
             ELSE display_order
@@ -1082,8 +1091,11 @@ async function ensureProductsTableAndSeed(db, env = {}) {
         product.card_background_url ? new Date().toISOString() : null,
         product.card_background_overlay || 'light',
         product.card_back_text_color || null,
+        product.short_description_tr || null,
+        product.short_description_en || null,
         product.subjects_json || null,
         product.access_tags_json || null,
+        product.is_libedge_catalog ? 1 : 0,
         product.display_order == null ? 999 : Number(product.display_order),
         product.slug
       ).run();
