@@ -519,8 +519,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'We identify the most suitable educational and research resources for your institution and manage the most advantageous procurement processes within your budget.',
         'Tedariğini sağladığımız veya kurumunuzda bulunan kaynakların en verimli şekilde kullanılması için yerinde veya online eğitimler düzenliyoruz.': 
             'We organize on-site or online training to ensure the most efficient use of the resources we provide or those already available at your institution.',
-        'Kaynakların kurumunuzun sistemlerine entegrasyonu, uzaktan erişim ayarları ve teknik sorun giderme konularında destek sağlıyoruz.': 
-            'We provide support for integrating resources into your institution’s systems, setting up remote access, and resolving technical issues.',
+        'Kaynakların kurumunuzun sistemlerine entegrasyonu, erişim ayarları ve teknik sorun giderme konularında destek sağlıyoruz.':
+            'We provide support for integrating resources into your institution’s systems, configuring access settings, and resolving technical issues.',
         'Kütüphane ve bilgi merkezlerinin koleksiyonlarını güncel tutmaları ve geliştirmeleri için uzman danışmanlık hizmeti veriyoruz.': 
             'We offer expert consulting services to help libraries and information centers keep their collections up-to-date and develop them further.',
         // Partners

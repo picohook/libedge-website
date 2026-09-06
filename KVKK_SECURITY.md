@@ -61,55 +61,16 @@ Kontroller:
 - Süre sonu (`expires_at`)
 - Kullanım zamanı (`used_at`)
 
-### Publisher ve Egress Secret
+### Harici Erişim Bilgileri
 
-`backend/src/ra/crypto.js` AES-256-GCM kullanır.
-
-Şifreli saklanan alanlar:
-
-- `institution_subscriptions.ra_credential_enc`
-- `institution_ra_settings.egress_secret_enc`
-- `ra_user_credentials.credential_enc`
+Harici sistemlerde kullanılan erişim bilgileri plaintext olarak loglanmamalı ve
+yalnız yetkili admin ekranlarında kontrollü şekilde yönetilmelidir.
 
 Kontroller:
 
-- Master key `RA_CREDS_MASTER_KEY` wrangler secret olarak tutulur.
 - Plaintext credential GET endpoint'lerinde dönmez.
-- Admin UI sadece `has_credential` gösterir.
-- PUT sırasında plaintext request body'den alınır ve hemen encrypted forma çevrilir.
-
-### RA Access Logs
-
-RA issue-token akışında IP adresi ham olarak saklanmaz; SHA-256 çıktısının kısa prefix'i
-`ip_hash` alanına yazılır.
-
-Mevcut log alanları:
-
-```text
-user_id
-institution_id
-product_slug
-target_host
-target_path
-ip_hash
-ts
-```
-
-Bu loglar işlem güvenliği ve denetim amacıyla tutulur.
-
-### Frontend Output Encoding
-
-Kullanıcı, kurum, dosya, destek talebi, hata mesajı veya upstream/server kaynaklı metin
-tarayıcıda varsayılan olarak HTML değil metin kabul edilir.
-
-Kontroller:
-
-- Toast ve error mesajları mümkünse DOM node + `textContent` ile oluşturulur.
-- HTML template zorunluysa kullanıcı/server kaynaklı her metin `escapeHtml` ile kaçılır.
-- Dosya preview gibi `src`/`href` üreten akışlarda URL değeri allowlist mantığıyla kontrol edilir; geçersiz veya tehlikeli scheme'ler render edilmez.
-- `innerHTML` kullanımı sadece sabit template veya açıkça sanitize edilmiş veriyle sınırlı tutulur.
-
-8 Mayıs 2026'da `admin.html` ve `profile.html` içinde toast, support error ve file preview tarafında bu prensiplere uygun sertleştirme yapıldı. Kalan `innerHTML` kullanımları periyodik güvenlik taramasının parçasıdır.
+- Admin UI sadece gerekli maskeleme/durum bilgisini gösterir.
+- PUT sırasında gelen hassas değerler kalıcı loglara yazılmaz.
 
 ## 3. Production Öncesi Zorunlu Kontroller
 
@@ -133,14 +94,11 @@ Retention süreleri ve uygulanan cleanup yöntemi:
 |---|---:|---|
 | Aktif kullanıcı hesabı | Hesap aktif olduğu sürece | — |
 | Silinen/pasif kullanıcı hesabı | 30-90 gün içinde anonimleştirme | Manuel prosedür (§6) |
-| RA access logs | 180 gün | `cleanupOldRaAccessLogs` cron |
-| RA debug events | 30 gün | `cleanupOldRaDebugEvents` cron |
 | Password reset token kayıtları | 30 gün (süre bitimi sonrası) | `cleanupExpiredPasswordResets` cron |
 | Refresh token (expired/revoked) | 30 gün | `cleanupOldRefreshTokens` cron |
 | Product request kayıtları | 2 yıl sonra user_id NULL (anonimleştirme) | `anonymizeOldProductRequests` cron |
 | AI usage logs | 90 gün | `cleanupOldAiUsageLogs` cron |
 | Publisher credential | Abonelik/entegrasyon aktif olduğu sürece | — |
-| `ra_debug_events` (manuel debug) | 30 gün | Mevcut cron |
 
 Tüm cron job'ları `backend/src/index.js` `scheduled()` handler'ında, `*/5 * * * *` tetiklemesinde çalışır. Yasal gereklilik değişirse retention sabitleri (`*_RETENTION_SECONDS`) güncellenmelidir.
 
@@ -185,7 +143,6 @@ KVKK Madde 11 kapsamındaki talepler için operasyonel akış:
    - `users`
    - `subscriptions`
    - `institution_subscriptions` bağlantıları
-   - `ra_access_logs`
    - `product_requests`
    - `ai_usage_logs`
    - file/share/notification tabloları
@@ -268,63 +225,18 @@ Minimum kontrol listesi:
 - Sağlayıcı değişikliği privacy policy ve kurum sözleşmesi etkisi açısından değerlendirilir.
 - Veri sahibi talebinde hangi sağlayıcıda arama/silme yapılacağı operasyon dosyasına eklenir.
 
-## 10. Kurum Sözleşmesi İçin RA Egress ve Loglama Açıklaması
+## 10. Kurum Sözleşmesi İçin Erişim ve Loglama Açıklaması
 
-Aşağıdaki metin kurumsal sözleşme, ek protokol veya teknik hizmet eki için
-başlangıç taslağıdır; hukuk kontrolünden geçirilmeden nihai metin sayılmaz.
-
-### Uzaktan Erişim Hizmeti
-
-LibEdge Uzaktan Erişim (RA) hizmeti, yetkili kurum kullanıcılarının kurum ağı
-dışından abonelikli yayıncı kaynaklarına erişebilmesi için proxy ve kurum egress
-tüneli altyapısı kullanır. Yayıncıya giden trafik, ilgili kurum için yapılandırılan
-egress agent üzerinden kurum internet çıkışına yönlendirilebilir. Bu yapı,
-yayıncıların IP tabanlı erişim kontrolleriyle uyum sağlamak için kullanılır.
-
-### Kurum Egress Agent
-
-- Egress agent kurumun belirlediği sunucu veya VM üzerinde çalışır.
-- Agent yalnız LibEdge proxy tarafından HMAC imzalı isteklerle çağrılır.
-- Agent inbound publisher credential veya kullanıcı parolasını plaintext olarak
-  LibEdge paneline geri göndermez.
-- Kurum egress endpoint ve secret bilgileri LibEdge tarafında secret/şifreli alan
-  olarak tutulur; admin ekranlarında plaintext gösterilmez.
-- Kurum, egress agent'ın çalıştığı ortamın ağ, erişim ve işletim sistemi güvenliğinden
-  sorumludur.
-
-### Loglama ve Veri Minimizasyonu
-
-RA erişim logları güvenlik, hata ayıklama, yetki denetimi ve hizmet kalitesi amacıyla
-tutulur. Varsayılan log alanları:
-
-- kullanıcı id
-- kurum id
-- ürün/publisher slug
-- hedef host/path
-- zaman damgası
-- upstream status/latency gibi teknik metrikler
-- ham IP yerine kısa hash/pseudonym (`ip_hash`)
-
-RA loglarında publisher sayfa içeriği, kullanıcı şifresi, JWT, cookie veya credential
-plaintext saklanmaz. RA access log retention başlangıç politikası 180 gündür; hukuki
-ve sözleşmesel gerekliliklere göre güncellenebilir.
-
-### Kurum ve LibEdge Sorumlulukları
-
-- Kurum, RA kapsamındaki kullanıcıların yetkilendirilmesinden ve kurum içi kullanım
-  kurallarını kullanıcılarına duyurmaktan sorumludur.
-- LibEdge, RA secret'larını ve erişim loglarını yetki kontrollü şekilde işler.
-- Yayıncı lisans koşulları kurum ve yayıncı arasındaki sözleşmeye tabidir; RA
-  altyapısı bu koşulların teknik uygulanmasına yardımcı olur.
-- Olay incelemesi veya veri sahibi talebi halinde ilgili RA logları, retention süresi
-  içinde kurumla kontrollü şekilde paylaşılabilir.
+Kurum sözleşmeleri, LibEdge'in kullanıcı hesabı, abonelik görünürlüğü, doğrudan
+erişim bağlantıları, SSO/kurumsal giriş yönlendirmeleri, dosya paylaşımı, destek
+ve güvenlik kayıtları için işlediği verileri açıkça tarif etmelidir. Yayıncı
+credential veya kullanıcı şifresi plaintext olarak loglanmamalıdır.
 
 ## 11. Açık Teknik İşler
 
-- [x] `privacy.html` kayıtlı kullanıcı, RA, AI, dosya paylaşımı ve kurum aboneliği modelini kapsayacak şekilde güncellendi.
+- [x] `privacy.html` kayıtlı kullanıcı, AI, dosya paylaşımı ve kurum aboneliği modelini kapsayacak şekilde güncellendi.
 - [x] Kayıt akışı KVKK Aydınlatma/Gizlilik/Kullanım Şartları açık onayına bağlandı; onay zamanı, versiyonu, IP ve user-agent metadata'sı `users` tablosunda saklanır.
 - [ ] Legacy SHA-256 şifre hash'leri için rapor/migration hazırlanacak.
-- [x] `ra_access_logs` için 180 günlük retention cleanup job'u eklendi.
 - [x] `password_resets` için expired/used kayıt cleanup job'u eklendi.
 - [x] `product_requests` ve `ai_usage_logs` migration'larında privacy-by-design uygulandı.
 - [x] Admin audit log ürün, abonelik, kurum ve kullanıcı yönetimi için eklendi.

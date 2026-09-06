@@ -14,7 +14,6 @@
         "build:css:watch": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --watch",
         "build": "npm run build:css",
         "deploy": "wrangler deploy",
-        "ra:check:sciencedirect": "node scripts/check-sciencedirect-search.mjs",
         "import:institution-logos": "node scripts/import-institution-logos.mjs"
     },
     "dependencies": {

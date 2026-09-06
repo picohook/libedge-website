@@ -31,22 +31,10 @@ bucket_name = "libedge-files-staging"
 binding = "RATE_LIMIT_KV"
 id = "36237237597442bbb7c00ab9b6ee821f"
 
-# RA: Remote Access upstream cookie jar (ayrı KV namespace)
-# Oluşturma: npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS
-[[kv_namespaces]]
-binding = "RA_UPSTREAM_SESSIONS"
-id = "d742f0d165234385bacf6ddfc0cd43e1"
-
 # JWT_SECRET: npx wrangler secret put JWT_SECRET
 # R2_PUBLIC_URL: npx wrangler secret put R2_PUBLIC_URL
 # AIRTABLE_PAT: npx wrangler secret put AIRTABLE_PAT
 # AIRTABLE_BASE_ID: npx wrangler secret put AIRTABLE_BASE_ID
-#
-# RA (Remote Access) secrets — her env için ayrı ayrı yüklenir:
-# RA_PROXY_TOKEN_SECRET: npx wrangler secret put RA_PROXY_TOKEN_SECRET [--env staging|production]
-# RA_CREDS_MASTER_KEY:   npx wrangler secret put RA_CREDS_MASTER_KEY   [--env staging|production]
-# RA_EGRESS_DEFAULT_SECRET: npx wrangler secret put RA_EGRESS_DEFAULT_SECRET [--env staging|production]
-# RA_PROXY_HOST: [vars] içinde env bazlı set edilir (aşağıda tanımlı)
 # RESEND_API_KEY:   npx wrangler secret put RESEND_API_KEY   [--env staging|production]
 # RESEND_ALERT_TO:  npx wrangler secret put RESEND_ALERT_TO  [--env staging|production]
 
@@ -61,8 +49,6 @@ crons = ["*/5 * * * *"]
 [env.staging.vars]
 ENVIRONMENT = "staging"
 WORKER_NAME = "libedge-api-staging"
-RA_PROXY_HOST = "proxy-staging.selmiye.com"
-RA_PROXY_BASE_HOST = "selmiye.com"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -77,12 +63,6 @@ bucket_name = "libedge-files-staging"
 binding = "RATE_LIMIT_KV"
 id = "556d17f88a7a48e381e5ffed1d150536"
 
-# RA: Remote Access upstream cookie jar (staging)
-# Oluşturma: npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS --env staging
-[[env.staging.kv_namespaces]]
-binding = "RA_UPSTREAM_SESSIONS"
-id = "a3a0f76dca834921b4b1000bce675037"
-
 # Production environment
 [env.production]
 name = "libedge-api-prod"
@@ -93,8 +73,6 @@ crons = ["*/5 * * * *"]
 [env.production.vars]
 ENVIRONMENT = "production"
 WORKER_NAME = "libedge-api-prod"
-RA_PROXY_HOST = "proxy.selmiye.com"
-RA_PROXY_BASE_HOST = "selmiye.com"
 
 [[env.production.d1_databases]]
 binding = "DB"
@@ -108,9 +86,3 @@ bucket_name = "libedge-files"
 [[env.production.kv_namespaces]]
 binding = "RATE_LIMIT_KV"
 id = "5640d9b898c54a96bdd9e361e1c6f593"
-
-# RA: Remote Access upstream cookie jar (production)
-# Oluşturma: npx wrangler kv:namespace create RA_UPSTREAM_SESSIONS --env production
-[[env.production.kv_namespaces]]
-binding = "RA_UPSTREAM_SESSIONS"
-id = "503551dabe024adf9afa425fa2ec1c54"

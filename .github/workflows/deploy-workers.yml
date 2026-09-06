@@ -7,7 +7,6 @@ on:
     paths:
       - 'backend/**'
       - 'wrangler.toml'
-      - 'workers/proxy/**'
       - 'package.json'
       - '.github/workflows/deploy-workers.yml'
   workflow_dispatch:
@@ -25,12 +24,6 @@ on:
         required: true
         type: boolean
         default: true
-      deploy_proxy:
-        description: 'Deploy RA Proxy Worker'
-        required: true
-        type: boolean
-        default: false
-
 concurrency:
   group: deploy-workers-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
   cancel-in-progress: false
@@ -80,21 +73,6 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --env staging
 
-  deploy-proxy-staging:
-    name: Deploy proxy to staging
-    needs: quality
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && inputs.deploy_proxy)
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: workers/proxy
-          command: deploy --env staging
-
   deploy-backend-production:
     name: Deploy backend to production
     needs: quality
@@ -107,19 +85,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --env production
-
-  deploy-proxy-production:
-    name: Deploy proxy to production
-    needs: quality
-    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production' && inputs.deploy_proxy
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: workers/proxy
           command: deploy --env production

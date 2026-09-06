@@ -1,619 +1,68 @@
-# LibEdge — Proje Mimarisi
+# LibEdge Mimari
 
-Son güncelleme: 22 Mayıs 2026  
-Sürüm: 3.0 — Sistem genel bakış + RA teknik detaylar birleştirildi
+Bu belge RA/proxy bileşenleri çıkarılmış LibEdge sürümünün güncel mimarisini özetler.
+Eski uzaktan erişim kodu arşiv branch'inde saklanmıştır:
+`archive-staging-before-ra-cleanup-2026-09-06`.
 
-Bu doküman LibEdge web uygulamasının Cloudflare mimarisini, staging/production ayrımını,
-veri akışlarını, Remote Access teknik detaylarını ve operasyon notlarını özetler.
-Secret değerleri bu dokümana yazılmaz; yalnızca secret adları ve bağlı oldukları bileşenler listelenir.
-
----
-
-## 1. Genel Bakış
-
-LibEdge şu anda Cloudflare Pages, Workers, D1, R2 ve KV üzerinde çalışan statik frontend + API Worker mimarisine sahiptir.
-
-| Ortam | Pages Domain | API Worker | Amaç |
-|---|---|---|---|
-| Staging | `staging.libedge-website.pages.dev` | `libedge-api-staging` | Test ve doğrulama |
-| Production | `libedge-website.pages.dev` | `libedge-api-prod` | Canlı ortam |
-
-Remote Access için ek bileşenler: RA Proxy Worker + ra-egress Go agent (Named Tunnel).
-
----
-
-## 2. Sistem Diyagramı
-
-```mermaid
-graph TB
-    User[Web Tarayıcı]
-
-    subgraph Pages["Cloudflare Pages"]
-        PagesStaging["Staging Pages\nstaging.libedge-website.pages.dev\nbranch: staging"]
-        PagesProd["Production Pages\nlibedge-website.pages.dev\nbranch: main"]
-    end
-
-    subgraph API["Main API Workers"]
-        ApiStaging["libedge-api-staging"]
-        ApiProd["libedge-api-prod"]
-    end
-
-    subgraph Proxy["Remote Access Proxy Workers"]
-        ProxyStaging["libedge-ra-proxy-staging"]
-        ProxyProd["libedge-ra-proxy-prod"]
-    end
-
-    subgraph Data["Cloudflare Data Layer"]
-        D1Staging[("D1: libedge-db")]
-        D1Prod[("D1: libedge-db-production")]
-        R2Staging[("R2: libedge-files-staging")]
-        R2Prod[("R2: libedge-files")]
-        KVStaging[("KV: staging-RATE_LIMIT_KV\nKV: staging-RA_UPSTREAM_SESSIONS")]
-        KVProd[("KV: production-RATE_LIMIT_KV\nKV: production-RA_UPSTREAM_SESSIONS")]
-    end
-
-    subgraph Egress["Kurum İçi Remote Access Egress"]
-        TunnelStaging["Cloudflared tunnel\nstaging"]
-        TunnelProd["Cloudflared tunnel\nproduction"]
-        AgentStaging["ra-egress agent\nstaging"]
-        AgentProd["ra-egress agent\nproduction"]
-        BrowserStaging["ra-browser\n(Playwright/Chromium)"]
-    end
-
-    subgraph External["Dış Sistemler"]
-        Airtable["Airtable CRM"]
-        Publisher["Publisher platformları\nJoVE, EMIS, Scopus, SD vb."]
-    end
-
-    User --> PagesStaging
-    User --> PagesProd
-    PagesStaging -->|/api/* via WORKER_BASE_URL| ApiStaging
-    PagesProd -->|/api/* via WORKER_BASE_URL| ApiProd
-    ApiStaging --> D1Staging
-    ApiStaging --> R2Staging
-    ApiStaging --> KVStaging
-    ApiStaging --> Airtable
-    ApiProd --> D1Prod
-    ApiProd --> R2Prod
-    ApiProd --> KVProd
-    ApiProd --> Airtable
-    ApiStaging -->|RA token| ProxyStaging
-    ApiProd -->|RA token| ProxyProd
-    ProxyStaging --> KVStaging
-    ProxyProd --> KVProd
-    ProxyStaging --> TunnelStaging
-    ProxyProd --> TunnelProd
-    TunnelStaging --> AgentStaging
-    TunnelProd --> AgentProd
-    AgentStaging --> BrowserStaging
-    AgentStaging --> Publisher
-    AgentProd --> Publisher
-```
-
----
-
-## 3. Cloudflare Kaynakları
-
-### 3.1 Pages
-
-| Alan | Değer |
-|---|---|
-| Project | `libedge-website` |
-| Production branch | `main` |
-| Preview branch | `staging` |
-| Production domain | `https://libedge-website.pages.dev` |
-| Staging alias | `https://staging.libedge-website.pages.dev` |
-| Build command | `npm run build:css` |
-
-### 3.2 Main API Workers
-
-| Ortam | Worker | URL |
-|---|---|---|
-| Staging | `libedge-api-staging` | `https://libedge-api-staging.agursel.workers.dev` |
-| Production | `libedge-api-prod` | `https://libedge-api-prod.agursel.workers.dev` |
-
-### 3.3 Remote Access Proxy Workers
-
-| Ortam | Worker | Proxy Host |
-|---|---|---|
-| Staging | `libedge-ra-proxy-staging` | `proxy-staging.selmiye.com` / `*.selmiye.com` |
-| Production | `libedge-ra-proxy-prod` | `proxy.selmiye.com` / `*.selmiye.com` |
-
-### 3.4 D1 Veritabanları
-
-| Ortam | Binding | Database | UUID |
-|---|---|---|---|
-| Staging | `DB` | `libedge-db` | `207d80d6-7e6b-4e10-aacf-b218970dbaf8` |
-| Production | `DB` | `libedge-db-production` | `64e57edf-8163-4495-8874-fec00485b2ff` |
-
-### 3.5 R2 Bucket'ları
-
-| Ortam | Binding | Bucket |
-|---|---|---|
-| Staging | `FILES_BUCKET` | `libedge-files-staging` |
-| Production | `FILES_BUCKET` | `libedge-files` |
-
-### 3.6 KV Namespace'leri
-
-| Ortam | Binding | Namespace |
-|---|---|---|
-| Staging | `RATE_LIMIT_KV` | `staging-RATE_LIMIT_KV` |
-| Staging | `RA_UPSTREAM_SESSIONS` | `staging-RA_UPSTREAM_SESSIONS` |
-| Production | `RATE_LIMIT_KV` | `production-RATE_LIMIT_KV` |
-| Production | `RA_UPSTREAM_SESSIONS` | `production-RA_UPSTREAM_SESSIONS` |
-
----
-
-## 4. Environment Ayrımı
-
-| Bileşen | Staging | Production |
-|---|---|---|
-| Pages domain | `staging.libedge-website.pages.dev` | `libedge-website.pages.dev` |
-| Main Worker | `libedge-api-staging` | `libedge-api-prod` |
-| Proxy Worker | `libedge-ra-proxy-staging` | `libedge-ra-proxy-prod` |
-| D1 | `libedge-db` | `libedge-db-production` |
-| R2 | `libedge-files-staging` | `libedge-files` |
-| RA proxy host | `proxy-staging.selmiye.com` | `proxy.selmiye.com` |
-
----
-
-## 5. Secret'lar
-
-### 5.1 Main API Worker Secret'ları
-
-| Secret | Kullanım |
-|---|---|
-| `JWT_SECRET` | Auth access/refresh token imzalama |
-| `R2_PUBLIC_URL` | R2 dosya URL üretimi |
-| `AIRTABLE_PAT` | Airtable API erişimi |
-| `RA_PROXY_TOKEN_SECRET` | Main API ile RA Proxy arasında token imzalama |
-| `RA_CREDS_MASTER_KEY` | RA credential encryption |
-| `RA_EGRESS_DEFAULT_SECRET` | RA egress HMAC shared secret |
-
-### 5.2 RA Proxy Worker Secret'ları
-
-| Secret | Kullanım |
-|---|---|
-| `RA_PROXY_TOKEN_SECRET` | Main API'den gelen proxy token doğrulama |
-| `RA_CREDS_MASTER_KEY` | Credential çözme/şifreleme |
-| `RA_EGRESS_DEFAULT_SECRET` | Egress agent ile güvenli iletişim |
-
----
-
-## 6. Kod ve Repo Yapısı
+## Çalışma Modeli
 
 ```text
-libedge-website/
-├── backend/
-│   └── src/
-│       ├── index.js               ← Ana API (auth, admin, subscriptions, files, RA)
-│       ├── ra/
-│       │   ├── crypto.js
-│       │   ├── host.js
-│       │   ├── jwt.js
-│       │   └── proxy-url.js
-│       └── routes/
-│           └── ra/
-│               ├── admin-tunnel.js
-│               ├── egress-allowed-hosts.js
-│               └── issue-token.js
-├── workers/
-│   └── proxy/
-│       └── src/
-│           ├── index.js           ← Proxy Worker (session_host_proxy + path_proxy)
-│           ├── egress-client.js   ← egressFetch, browserFetch, assetBrowserFetch
-│           ├── alert-writer.js
-│           ├── error-page.js
-│           └── rate-limit.js
-├── ra-egress/                     ← Go egress agent + Docker setup
-│   ├── main.go
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── ra-browser/                    ← Playwright/Chromium service (WAF bypass)
-│   └── server.js
-├── migrations/                    ← D1 SQL migrations (0001–0041+)
-├── index.html / admin.html / profile.html / tools.html
-└── package.json
+Cloudflare Pages
+  -> statik HTML/CSS/JS
+  -> functions/api/[[path]].js
+  -> Hono Main Worker
+  -> D1, R2, KV
 ```
 
----
+## Ortamlar
 
-## 7. Ana Veri Akışları
+| Ortam | Pages | Worker | D1 | R2 |
+|---|---|---|---|---|
+| Staging | `staging.libedge-website.pages.dev` | `libedge-api-staging` | `libedge-db` | `libedge-files-staging` |
+| Production | `libedge-website.pages.dev` | `libedge-api-prod` | `libedge-db-production` | `libedge-files` |
 
-### 7.1 Normal Kullanıcı
+## Ana Bileşenler
 
-```
-Kullanıcı → Cloudflare Pages → /api/* → libedge-api-* → D1 / R2 / KV
-```
+- `backend/src/index.js`: Hono API, auth, admin, dosya, duyuru, ürün ve abonelik route'ları.
+- `backend/src/auth`: cookie/bearer auth, refresh token, parola ve rate limit helper'ları.
+- `admin.html`: super-admin ve kurum admin paneli.
+- `profile.html`: kullanıcı dashboard'u, abonelikler, dosyalar ve destek akışları.
+- `functions/api/[[path]].js`: Pages ortamından Worker API'ye yönlendirme.
+- `wrangler.toml`: local, staging ve production Worker binding'leri.
+- `migrations/`: D1 migration geçmişi.
 
-### 7.2 Login ve Oturum
+## Erişim Modeli
 
-```
-POST /api/auth/login → D1 users → JWT access (1h) + refresh token (7 gün) → httpOnly cookie
-```
+Ürün ve abonelik erişimleri RA proxy üretmeden çözülür:
 
-Refresh token replay protection: `refresh_tokens` tablosunda `jti` hash tutulur, refresh'te rotate edilir.
+- `direct`: doğrudan ürün URL'i.
+- `institution_link`: kuruma özel giriş sayfası.
+- `sso`: kurumsal SSO bağlantısı.
+- `email_password_external`: harici sistemde kullanıcı adı/şifre ile erişim notu.
+- `mixed`: birden fazla erişim yöntemi için açıklama/not akışı.
+- `ip`: kampüs/VPN/IP kısıtı bilgisi; otomatik proxy üretmez.
 
-### 7.3 Remote Access
+Frontend erişim butonu yalnız tanımlı ve güvenli URL olduğunda yeni sekmede açılır.
 
-```
-Kullanıcı
-  → POST /api/ra/issue-token
-  → libedge-api-* kısa ömürlü JWT üretir, KV'a session yazar
-  → Redirect: https://r{sid}.selmiye.com{landingPath}?t={JWT}
-  → Proxy Worker token doğrular, cookie set eder
-  → Proxy Worker upstream'e egressFetch / browserFetch / assetBrowserFetch ile iletir
-  → ra-egress agent → publisher platformu
-```
+## Veri ve Migration Notu
 
----
+Production/staging veritabanı geçmişinde eski RA tabloları ve `products.ra_*`
+kolonları bulunabilir. Bu temizlikte production veri kaybı riskini önlemek için
+migration geçmişi ve mevcut DB kolonları silinmedi. Runtime artık RA route'u,
+proxy token üretimi, tünel heartbeat'i veya RA admin ekranı çalıştırmaz.
 
-## 8. Önemli API Endpoint'leri
+İleride fiziksel DB sadeleştirme istenirse ayrı bir cleanup migration planı,
+önce staging snapshot ve smoke test ile hazırlanmalıdır.
 
-| Method | Path | Açıklama | Auth |
-|---|---|---|---|
-| `POST` | `/api/auth/login` | Giriş | Yok |
-| `POST` | `/api/auth/refresh` | Token yenileme | Refresh token |
-| `POST` | `/api/auth/logout` | Çıkış | Var |
-| `GET` | `/api/user/profile` | Profil | Var |
-| `GET` | `/api/announcements` | Duyuru listesi | Yok |
-| `POST` | `/api/ra/issue-token` | RA token üretimi | Var |
-| `GET` | `/api/ra/egress/allowed-hosts` | Egress host listesi | Service key |
-| `GET` | `/api/admin/dashboard` | Admin | Admin |
+## Deploy Akışı
 
----
+- Staging push: CI, Pages staging deploy ve backend staging deploy.
+- Production: manuel workflow dispatch ve environment approval.
+- D1 migration apply işleri manuel ve onaylı çalıştırılır.
 
-## 9. Deployment Komutları
+## Güvenlik Baseline
 
-### 9.1 Main API Worker
-
-```powershell
-npx wrangler deploy --env staging
-npx wrangler deploy --env production
-```
-
-### 9.2 RA Proxy Worker
-
-```powershell
-cd workers/proxy
-npx wrangler deploy --env staging
-npx wrangler deploy --env production
-```
-
-### 9.3 D1 Migration
-
-```powershell
-npx wrangler d1 migrations apply libedge-db --env staging --remote
-npx wrangler d1 migrations apply libedge-db-production --env production --remote
-```
-
-### 9.4 Log Tail
-
-```powershell
-npx wrangler tail --env staging --format pretty
-npx wrangler tail libedge-ra-proxy-staging --format pretty
-```
-
-### 9.5 ra-browser Rebuild
-
-```powershell
-cd ra-egress
-docker compose build --no-cache ra-browser
-docker compose up -d --force-recreate ra-browser
-```
-
----
-
-## 10. Güncel Durum (23 Mayıs 2026)
-
-| Bileşen | Staging | Production |
-|---|---|---|
-| Pages | Aktif | Aktif |
-| Main API Worker | Aktif | Aktif |
-| RA Proxy Worker | Aktif (`c7d0c78a` + `770b5da5`) | Deployed (domain migration / wildcard route finalizasyonu bekliyor) |
-| ra-egress | Aktif | Aktif |
-| ra-browser | Aktif (Referer fix rebuild edildi) | — |
-| D1 migrations | 0041 uygulandı | 0041 uygulandı |
-| KVKK register consent | Aktif | Aktif |
-| Scopus RA | Search ✅, SD full text ✅ | — |
-| Cloudflare block | Geçici (test trafiği) — 30-60 dk | — |
-
----
-
-## 11. Remote Access — Teknik Detaylar
-
-### 11.1 session_host_proxy Akışı
-
-```
-[Kullanıcı tarayıcı]
-  │  POST /api/ra/issue-token
-  ▼
-[libedge-api-* Worker]
-  │  - Abonelik: ra_delivery_mode, ra_origin_landing_path
-  │  - JWT sign: sub, iid, sid, pid, jti, mod, exp
-  │  - KV yaz: rhost:{sessionId} → {origin_host, institution_id, expires_at}
-  │  - Redirect: https://r{sid}.selmiye.com{path}?t={JWT}
-  ▼
-[Tarayıcı → r{sid}.selmiye.com?t=JWT]
-  │
-  ▼
-[libedge-ra-proxy-* Worker]
-  │  - JWT verify, JTI tek kullanımlık kontrol
-  │  - 302 + Set-Cookie: ra_proxy_session={sid}
-  ▼
-[Tarayıcı → r{sid}.selmiye.com (cookie ile)]
-  │
-  ▼
-[Proxy Worker]
-  │  - KV'dan session yükle
-  │  - buildUpstreamHeaders()
-  │  - egressFetch / browserFetch / assetBrowserFetch seç
-  ▼
-[ra-egress → ra-browser (gerekirse)]
-  │  - HMAC verify, ALLOWED_HOST_REGEX kontrol
-  │  - publisher'a HTTP(S) istek (kurum IP'siyle)
-  ▼
-[Publisher]
-```
-
-### 11.2 Egress Routing Mantığı
-
-| Koşul | Yol |
-|---|---|
-| `isGet && isDocNav && needsPlaywright` | `browserFetch` (Playwright tam sayfa) |
-| `isGet && !isDocNav && needsPlaywright` | `assetBrowserFetch` (Chrome TLS, cache'den) |
-| `!isGet && PLAYWRIGHT_SLUGS içinde` | `assetBrowserFetch` (POST, Chrome TLS) |
-| Diğer | `egressFetch` (Go HTTP client) |
-
-`PLAYWRIGHT_SLUGS` = `cab-abstracts`, `wiley`, `scopus` — CF Bot Management gerektiren ürünler.
-
-### 11.3 egressFetch — HMAC İmzalama
-
-```
-msg = "{METHOD}|{targetURL}|{timestamp}|{body_sha256_hex}"
-sig = HMAC-SHA256(msg, egress_secret)
-
-Headers:
-  X-RA-Target-URL:  https://www.scopus.com/...
-  X-RA-Method:      POST
-  X-RA-Timestamp:   {unix_ts}
-  X-RA-Signature:   {hex}
-```
-
-Secret öncelik: D1 `egress_secret_enc` (AES-GCM) → `RA_EGRESS_DEFAULT_SECRET` env → hata.
-
-### 11.4 Proxy Worker — Header Politikası
-
-**Upstream'e gönderilen:**
-- Tüm browser cookie'leri (`ra_proxy_session` hariç)
-- Origin ve Referer → proxy domain'den publisher origin'e rewrite
-- CF runtime header'ları strip: `cf-connecting-ip`, `cf-ray`, `x-forwarded-for` vb.
-- EMIS: upstream'e desktop User-Agent / Client Hints gönderilir
-
-**Publisher'dan gelen response:**
-- Set-Cookie → domain `r*.selmiye.com`, path `/` olarak rewrite
-- Location → `r*.selmiye.com` subdomain'e rewrite
-- CSP, HSTS strip
-
-### 11.5 Multi-Host Publisher Routing
-
-Bazı yayıncılar (EMIS, CAS SciFinder) birden fazla host kullanır. Allowlist'teki alt-hostlar
-`/__ra-host/{encoded-host}/` prefix'i altında taşınır:
-
-```
-https://r{sid}.selmiye.com/__ra-host/cas-emis-com/login
-https://r{sid}.selmiye.com/__ra-host/sso-cas-org/as/...
-```
-
-OIDC `redirect_uri` parametresi değiştirilmez; SSO callback orijinal host adresine kalır.
-
-### 11.6 Session-Host Cookie Jar
-
-CAS/OIDC gibi çok adımlı akışlarda bazı cookie'ler browser request'inde eksik kalabilir.
-`RA_UPSTREAM_SESSIONS` KV'da session+host bazlı jar:
-
-```
-rhostjar:{sessionId}:{targetHost} → "nonce.xxx=...; PF=..."
-```
-
-Her upstream Set-Cookie bu jar'a işlenir; sonraki upstream request'te jar browser
-cookie'lerinden önce eklenir.
-
-### 11.7 Publisher Cookie Scoping
-
-Elsevier ürünleri (ScienceDirect, Scopus) için cookie'ler `__cp_{scopeHost}|{name}` prefix'iyle
-namespace'lenir. Bu sayede farklı publisher oturumlarının cookie'leri çakışmaz.
-
-Scopus için namespace script devre dışı (`publisherCookieScopeHost !== 'scopus.com'` koşulu) —
-Next.js hydration uyumu için.
-
-### 11.8 Rate Limit
-
-| Kapsam | Varsayılan |
-|---|---:|
-| Proxy session | 300 istek/dk |
-| Kurum | 5000 istek/dk |
-| Pencere | 60 sn |
-
-429 + `Retry-After` döner. KV hatasında fail-open (yayıncı erişimi kesilmez).
-
-### 11.9 ra-egress Go Agent
-
-**Env değişkenleri:**
-
-| Değişken | Açıklama |
-|---|---|
-| `EGRESS_SHARED_SECRET` | HMAC key — proxy Worker ile eşleşmeli |
-| `ALLOWED_HOST_REGEX` | SSRF koruması, geniş fallback tüm RA ailelerini kapsar |
-| `LIBEDGE_API_URL` | Dinamik host listesi için API endpoint |
-| `LIBEDGE_SERVICE_KEY` | API servis anahtarı |
-| `LIBEDGE_INSTITUTION_ID` | Kurum bazlı host filtreleme |
-| `TUNNEL_TOKEN` | Cloudflare Named Tunnel token |
-
-TLS: Go `net/tls` (HTTP/2 devre dışı — AWS WAF uyumu) + `utls` Chrome fingerprint
-(Cloudflare korumalı yayıncılar için — ACS, Wiley, Scopus, CABI).
-
-### 11.9b workerDirectFetch — Vetis-style CF Worker direct fetch
-
-CF Worker `fetch()` ile direkt publisher origin'e gider; **CF Bot Management
-genelde CF Worker trafiğini challenge etmiyor** (CF-internal routing).
-ra-egress (cloudflared tunnel egress IP'si) ise CF tarafından bot-scored
-oluyor ve 403 + challenge alıyor. Bu farkı kullanarak Wiley için:
-
-```
-Old: Browser → proxy Worker → ra-egress → ra-browser (Playwright) → CF challenge → 14-17s
-New: Browser → proxy Worker → fetch(wiley.com) → 500ms
-```
-
-Implementation: `egress-client.js:workerDirectFetch(targetUrl, init)`
-- Manuel cookie jar (CF Workers fetch redirect:'follow' Set-Cookie taşımıyor)
-- Same-origin redirect takip (Wiley'in `?cookieSet=1` zinciri)
-- Challenge tespit: `cf-mitigated` header VEYA body'de "Just a moment..."
-- Tüm hop'ların Set-Cookie'lerini accumulate edip final response'a aktarır
-- Returns `{ response, challenged, finalUrl, hops }`
-
-Gate (index.js):
-```js
-const useWileyWorkerDirect = useBrowserFetch && isGet && isDocNav && isWileyProxyHost(target.host);
-```
-
-Challenge yer → mevcut `browserFetch` (ra-browser) fallback'i devreye girer.
-Wiley `/action/doSearch?...` path'i CF Worker direct fetch'te challenge yer
-(CF anti-scrape kuralı), bu yüzden search ra-browser'ın native Chrome
-cookieless fetch yoluna düşer (bkz. 11.10).
-
-Response header: `X-RA-Wiley-Doc-Worker-Direct: 1` + route `worker-direct`.
-
-### 11.10 ra-browser (Playwright/Chromium)
-
-CF Bot Management korumalı yayıncılar için Playwright tabanlı Chrome servisi.
-
-- `GET /proxy` → tam sayfa navigasyon (CF Turnstile çözme)
-- `POST /proxy` + `X-RA-Asset: 1` → sub-resource fetch (Chrome TLS, cache servis)
-
-Sub-resource cache: sayfa yüklemesinde yakalanan CSS/JS/image'lar 5 dk cache'de tutulur;
-asset-proxy istekleri cache'den servis edilir (upstream'e yeni istek atmadan).
-
-**Persistent session pool (Step 06):** `X-RA-Persist-Session=1` + `X-RA-Session-ID` ile gelen
-istekler context'i sessionId|hostname keyli pool'a koyar (TTL 15 dk, max 8 context). Sonraki
-istekler aynı context'i kullanır → cf_clearance + localStorage + JS-set cookies korunur.
-
-**Pool=hit case'de cookie injection selective:** Worker'dan gelen Cookie header tüm istekte
-inject edilirse pool'un taze cf_clearance'ını ESKİ değerle overwrite eder → CF clearance'ı
-reddeder → 27s challenge yeniden çalışır. Fix: pool=hit case'de cf_clearance hariç cookies
-inject edilir. Wiley doc-page 32s → 2.2s (2026-05-26).
-
-**Networkidle bekleme:** `page.waitForLoadState('networkidle')` timeout 8s → 1500ms. Wiley/SPA
-publisher'lar sürekli analytics ping yaptığı için 8s bedavaya gidiyordu.
-
-**Timing logları:** ra-browser her doc isteği için `[timing]` ve `[debug]` satırları yazar
-(challenge süresi, networkidle, clearance varlığı). Docker logs ile takip:
-```
-docker compose logs -f ra-browser
-```
-
-**Önemli:** `passHeaders` (Referer, Accept, vb.) artık `context.request.get()` çağrısına
-iletiliyor — önceki eksiklik doc-details gibi CSRF/Referer kontrollü API'lerde 403'e yol açıyordu.
-
-**Bilinen açık sorun:** `context.request.get()` Playwright HTTP API, CF tarafından bot
-işaretleniyor → font/autocomplete 403. Çözüm önerisi: `page.evaluate(() => fetch(url))`
-ile Chrome'un kendi fetch'i — CSP yan etkisi test gerek.
-
-**Wiley search native Chrome cookieless fetch (2026-05-29):** Wiley search path'i
-CF Worker direct fetch ve ra-egress/uTLS ile challenge yerken, gerçek Chrome
-context'inden `page.evaluate(fetch(..., { credentials: 'omit' }))` ile 200 döner.
-Pool=hit repeated search'lerde bu yol kullanılır ve challenge fallback'i korunur.
-
-**Wiley first-search cold bootstrap (2026-05-29):** Pool=miss ilk search'te page
-`about:blank` olduğu için cookieless same-origin fetch çalışamazdı. ra-browser önce
-Wiley origin'e commit-only bootstrap yapar, sonra aynı native Chrome cookieless fetch'i
-dener. Live test: `doc-cold-bootstrap-cookieless status=200 ok=1`, `total=3120ms`
-(`/action/doSearch?AllField=nanotube`). Başarısızlıkta eski CF challenge yolu fallback
-olarak kalır.
-
-**Cold-path search results render fix (2026-05-29):** Cookieless/cold-bootstrap
-başarısız olup CF challenge çözüldüğünde `page.content()` DOM'u yakalamadan önce
-`fetchDocumentInPage(page, targetUrl, fwdHeaders)` denenir (valid cf_clearance'lı
-context'ten RAW server HTML). User browser bu HTML'i alıp JS'i çalıştırır, sonuçları
-render eder. Eski cold path `page.content()` JS-rendered search results bitmeden DOM
-yakalıyor, kullanıcıya "sonuçlar listelenemiyor" gibi görünüyordu.
-
----
-
-## 12. Çözülen Teknik Sorunlar
-
-| Sorun | Çözüm |
-|---|---|
-| AWS WAF HTTP/2 fingerprint (JoVE) | ra-egress'te HTTP/2 devre dışı, HTTP/1.1 zorunlu |
-| Cloudflare Bot Management (ACS, Wiley, Scopus, CABI) | utls Chrome TLS fingerprint + Playwright/ra-browser |
-| iOS Safari popup blocker | `window.open('')` await'ten önce açılıyor, URL sonra set ediliyor |
-| EMIS multi-host session | `__ra-host/{encoded}` prefix routing |
-| CAS SciFinder OIDC callback 403 | Session-host upstream cookie jar (KV) |
-| Proxy session invalid header | safeHeaders() + response header sanitization |
-| Scopus hydration flash | `__NEXT_DATA__` hostname patch server-side |
-| doc-details 403 | ra-browser passHeaders fix (Referer, Accept) |
-| Wiley doc page 32s (CF her seferinde challenge) | Pool=hit case'de cf_clearance Worker cookie'siyle overwrite olmuyor — fresh clearance korunuyor → 2.2s |
-| Wiley load-wait 8s boşa | `networkidle` timeout 8000→1500ms (Wiley asla idle olmuyor) |
-| Wiley homepage/article cold 14-17s | `workerDirectFetch` (CF Worker fetch → Wiley, challenge yok) → 500ms (2026-05-29) |
-| Wiley search first cold path 30-40s | ra-browser native Chrome cookieless fetch için commit-only Wiley origin bootstrap yapıyor → ilk search ~3.1s, fallback mevcut (2026-05-29) |
-| Wiley search cold-path "result list görünmüyor" | ra-browser cold path `page.content()` JS-rendered results bitmeden DOM yakalıyordu. Fix: `fetchDocumentInPage` RAW server HTML — user browser JS çalıştırır (2026-05-29) |
-
----
-
-## 13. Yeni Ürün Onboarding Reçetesi
-
-### 13.1 Gerekli D1 Alanları
-
-```sql
-UPDATE products
-SET
-  ra_enabled = 1,
-  ra_delivery_mode = 'session_host_proxy',
-  ra_origin_host = '{primary-host}',
-  ra_origin_landing_path = '{entry-path}',
-  ra_host_allowlist_json = '["{primary-host}", "{auth-host}", "..."]',
-  ra_waf_browser = 0  -- CF Bot Management varsa 1
-WHERE slug = '{product-slug}';
-```
-
-### 13.2 Kontrol Listesi
-
-1. Kurum IP'sinden incognito test: entry URL → son URL not al
-2. DevTools Network: `302 Location`, `Set-Cookie`, auth/CDN hostları listele
-3. `ra_host_allowlist_json`: yalnızca akışta gereken hostlar
-4. `ALLOWED_HOST_REGEX` fallback bu hostları kapsıyor mu?
-5. `ra_waf_browser=1` gerekiyor mu? (CF Bot Management varsa)
-6. Proxy test: `X-RA-Debug-Upstream-Status`, `Set-Cookies` header'ları
-7. Mobil test: desktop-UA override gerekip gerekmediğini değerlendir
-
-### 13.3 Ürün Bazlı Özel Durumlar
-
-| Ürün | Özel durum | Çözüm |
-|---|---|---|
-| JoVE | AWS WAF HTTP/2 | HTTP/2 kapalı (h1Client) |
-| EMIS | CAS multi-host, mobil API | `__ra-host` routing + desktop-UA |
-| ACS | Cloudflare Bot Management | utls Chrome fingerprint |
-| Wiley | CF Bot Management + persistent session | **workerDirectFetch** (homepage/article 500ms, CF Worker fetch → Wiley challenge'sız) + ra-browser fallback (search ~17s, cf-mitigated challenge) + Step 06 persistent pool + stable_host_proxy (migration 0044) |
-| Scopus | CF Bot Management, Next.js hydration | ra-browser + passHeaders + `__NEXT_DATA__` patch |
-| ScienceDirect | Elsevier cookie namespace | `__cp_sciencedirect.com\|` prefix |
-| CAS SciFinder | OIDC SSO cross-origin | `__ra_upstream` + cookie jar |
-
----
-
-## 14. Hızlı Referans
-
-```text
-Staging site:      https://staging.libedge-website.pages.dev
-Production site:   https://libedge-website.pages.dev
-Staging API:       https://libedge-api-staging.agursel.workers.dev
-Production API:    https://libedge-api-prod.agursel.workers.dev
-Staging proxy:     proxy-staging.selmiye.com / *.selmiye.com
-Production proxy:  proxy.selmiye.com / *.selmiye.com (Step 07'yi bekliyor)
-
-Kritik dosyalar:
-  workers/proxy/src/index.js        ← Proxy Worker
-  workers/proxy/src/egress-client.js ← egressFetch / browserFetch / assetBrowserFetch
-  backend/src/routes/ra/issue-token.js
-  ra-egress/main.go
-  ra-browser/server.js
-```
+- Secrets `.dev.vars`, Cloudflare secrets veya GitHub secrets üzerinden yönetilir.
+- Kullanıcı/server kaynaklı dinamik metinler escape edilmeden `innerHTML` içine yazılmamalıdır.
+- Dosya URL'leri allowlist mantığıyla gösterilir.
+- Refresh token replay protection ve rate limit helper'ları aktif tutulur.

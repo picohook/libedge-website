@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import app from '../../backend/src/index.js';
-import { ensureRemoteAccessSchema } from '../../backend/src/ra/schema.js';
 
 function strictNoDdlDb() {
   const calls = [];
@@ -47,13 +46,5 @@ describe('runtime DDL guard', () => {
 
     expect(res.status).toBe(200);
     expect(db.calls.some((sql) => /\b(CREATE|ALTER)\b/i.test(sql))).toBe(false);
-  });
-
-  it('does not run RA schema DDL in strict environments', async () => {
-    const db = strictNoDdlDb();
-
-    await ensureRemoteAccessSchema(db, { ENVIRONMENT: 'production' });
-
-    expect(db.calls).toHaveLength(0);
   });
 });

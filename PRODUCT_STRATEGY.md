@@ -17,7 +17,7 @@ LibEdge'in hedef vaadi:
 Bu nedenle ürün deneyimi dört ihtiyacı birlikte karşılamalıdır:
 
 1. Kullanıcı hangi kaynaklara erişebildiğini hemen görmeli.
-2. Kurum RA anlaşması varsa kurumun tüm erişilebilir kaynakları öne çıkmalı.
+2. Kurum aboneliği varsa kurumun tüm erişilebilir kaynakları öne çıkmalı.
 3. Bireysel kullanıcı ücretsiz, ücretli ve affiliate ürünleri keşfedebilmeli.
 4. AI destekli ücretsiz araçlar kullanıcıyı siteye getirmeli ve doğru ürüne yönlendirmeli.
 
@@ -60,7 +60,7 @@ Kullanıcı dili:
 
 ### Kurum Kaynakları
 
-Kurumun zaten abone olduğu ve LibEdge RA üzerinden erişim verdiği kaynaklar.
+Kurumun zaten abone olduğu ve LibEdge portalında yönettiği kaynaklar.
 LibEdge burada satıcı gibi değil, erişim altyapısı gibi davranır.
 
 Kullanıcı dili:
@@ -70,7 +70,7 @@ Kullanıcı dili:
 - Kurum erişim sunucusu aktif/pasif
 - Bu kaynak kurumunuz tarafından sağlanır
 
-Bu alan yalnız RA anlaşmalı kurum kullanıcılarına gösterilir.
+Bu alan yalnız ilgili kurum aboneliği olan kullanıcılara gösterilir.
 
 ## 3. Ürün Sınıflandırması
 
@@ -129,19 +129,16 @@ ile açılan bir ürün hem `LibEdge` hem `Abonelik` etiketi alabilir.
 ### Toplu Ürün Onboarding
 
 Yeni kaynak listeleri önce minimal metadata ile içeri alınmalı, sonra admin ürün
-modalından görsel/renk/RA ayrıntıları tamamlanmalıdır. İlk import formatı:
+modalından görsel/renk/erişim ayrıntıları tamamlanmalıdır. İlk import formatı:
 
 ```text
-slug, name, category, default_access_type, default_access_url,
-ra_enabled, ra_origin_host, ra_delivery_mode, ra_origin_landing_path,
-ra_host_allowlist_json
+slug, name, category, default_access_type, default_access_url, access_tags_json
 ```
 
 Kural:
 
-- IP kontrollü kaynaklar `default_access_type=ip`, `ra_enabled=1` olur.
-- Direkt link kaynakları `default_access_type=direct`, `default_access_url` dolu,
-  `ra_enabled=0` olur.
+- IP kontrollü kaynaklar `default_access_type=ip` olur ve gerekli kampüs/VPN notu erişim notlarında açıklanır.
+- Direkt link kaynakları `default_access_type=direct`, `default_access_url` dolu olur.
 - Kullanıcı adı/şifreyle dış sistemde açılan kaynaklar `email_password_external`
   olarak saklanır.
 - EKUAL listesi `access_tags_json=["EKUAL"]` ile işaretlenir.
@@ -181,7 +178,7 @@ Gösterilecek bölümler:
 4. Affiliate öneriler
 5. LibEdge Kurumsal
 
-### Login Olmuş, RA Anlaşması Olmayan Kullanıcı
+### Login Olmuş, Kurum Aboneliği Olmayan Kullanıcı
 
 Gösterilecek bölümler:
 
@@ -191,7 +188,7 @@ Gösterilecek bölümler:
 4. Ücretsiz ürünler
 5. LibEdge Kurumsal
 
-### Login Olmuş, RA Anlaşmalı Kurum Kullanıcısı
+### Login Olmuş, Kurum Aboneliği Olan Kullanıcı
 
 Gösterilecek bölümler:
 
@@ -257,7 +254,7 @@ GET /api/home-feed
   "user": {
     "id": 123,
     "institution_id": 188,
-    "has_ra_access": true
+    "has_institution_access": true
   },
   "sections": [
     {
@@ -303,7 +300,7 @@ Her item kendi aksiyonlarını taşımalıdır:
   "access_status": "institution_available",
   "badges": ["Kurum aboneliği", "Video"],
   "primary_action": {
-    "type": "ra_access",
+    "type": "access_link",
     "label": "Erişime Git",
     "subscription_id": 16
   },
@@ -334,7 +331,7 @@ deterministik olmalıdır.
 
 Öncelik sırası:
 
-1. Kurum erişimi varsa ve kullanıcı RA kullanabiliyorsa → `ra_access`
+1. Kurum erişimi ve geçerli erişim bağlantısı varsa → `access_link`
 2. Kullanıcının bireysel aboneliği/satın alımı varsa → `owned_access`
 3. Ürün ücretsizse → `free_access`
 4. Bireysel ücretli ürünse → `purchase`
@@ -345,8 +342,8 @@ deterministik olmalıdır.
 Örnek:
 
 ```text
-if institution_access AND user.has_ra:
-  primary = ra_access
+if institution_access AND access_url:
+  primary = access_link
 else if user_has_individual_access:
   primary = owned_access
 else if product.monetization == free:
@@ -673,7 +670,7 @@ access_attempts
 
 Kullanım:
 
-- RA hatalarının ürün/kategori bazlı görünmesi
+- Erişim hatalarının ürün/kategori bazlı görünmesi
 - Hangi kaynakların gerçekten kullanıldığının ölçülmesi
 - Kart aksiyonlarının iyileştirilmesi
 - Kurum raporlarına başarı/arıza verisi eklenmesi

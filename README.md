@@ -1,337 +1,113 @@
 # LibEdge
 
-Üniversiteler ve kurumlar için akademik içerik erişim platformu. Kullanıcılar abonelikli yayıncı içeriklerine (JoVE, EMIS, IOP, ACS, Lecturio, Primal Pictures vb.) LibEdge portalı üzerinden erişir. Uzaktan Erişim (RA) modülü, kurum ağı dışındaki kullanıcıların kurum IP kimliğiyle yayıncı içeriklerine ulaşmasını sağlar.
+LibEdge, kurumlar ve kullanıcılar için akademik içerik erişimi, ürün kataloğu,
+duyurular, dosya paylaşımı, destek ve yönetim akışlarını bir araya getiren
+Cloudflare tabanlı bir portaldır.
 
----
+Bu sürümde uzaktan erişim/proxy altyapısı çalışma kodundan çıkarılmıştır.
+Kullanıcı erişimleri doğrudan URL, kuruma özel giriş bağlantısı, SSO, kayıt
+bağlantısı veya harici erişim bilgisi üzerinden yönetilir.
 
 ## Mimari
 
-```
-Kullanıcı → LibEdge Portal (Cloudflare Pages)
-               ↓ /api/* (Hono, Cloudflare Workers)
-          Main Worker  ──────────────── D1 (SQLite)
-               ↓ /api/ra/issue-token        KV (session, rate-limit)
-          JWT (5 dk)                         R2 (dosya depolama)
-               ↓
-          RA Proxy Worker (proxy.libedge.com)
-               ↓ egressFetch
-          Kurum Egress Agent (cloudflared, kampüs ağında)
-               ↓
-          Yayıncı (jove.com, emis.com, …)
+```text
+Kullanıcı
+  -> Cloudflare Pages frontend
+  -> /api/* Hono Worker
+  -> D1 SQLite, R2 dosya depolama, KV rate limit
 ```
 
-Tüm backend Cloudflare Workers üzerinde çalışır; sunucu yok, cold-start yok.
-
----
+Backend Cloudflare Workers üzerinde çalışır. Frontend statik HTML/CSS/JS olarak
+Cloudflare Pages üzerinden yayınlanır.
 
 ## Repo Yapısı
 
-```
+```text
 libedge-website/
-├── backend/
-│   └── src/
-│       ├── index.js                  # Main Worker — tüm /api/* route'ları
-│       ├── validation.js             # Zod JSON parse ve ortak validation helper'ları
-│       ├── auth/
-│       │   ├── middleware.js         # requireAuth / optional auth cookie+bearer helpers
-│       │   ├── security.js           # PBKDF2 password hash, token hash helpers
-│       │   ├── refresh-tokens.js     # DB-backed refresh token rotation/replay helpers
-│       │   └── rate-limit.js         # protected endpoint rate-limit helpers
-│       ├── ra/
-│       │   ├── schema.js             # D1 şema ensure (idempotent)
-│       │   ├── jwt.js                # HS256 proxy token sign/verify
-│       │   ├── crypto.js             # AES-GCM credential şifreleme
-│       │   ├── host.js               # host encode/decode (hyphen-label)
-│       │   ├── proxy-url.js          # landing path builder
-│       │   └── tunnel-health.js      # cron heartbeat / egress health helper
-│       └── routes/ra/
-│           ├── issue-token.js        # POST /api/ra/issue-token
-│           ├── admin-overview.js     # GET /api/ra/admin/institutions, /logs
-│           ├── admin-tunnel.js       # GET/PUT /api/ra/admin/institution-egress/:id
-│           └── admin-config.js       # Ürün RA ayarları CRUD
-├── workers/
-│   └── proxy/
-│       ├── wrangler.toml
-│       └── src/
-│           ├── index.js              # RA Proxy Worker (path_proxy + session_host_proxy)
-│           ├── egress-client.js      # Kurum tüneline HMAC-imzalı istek
-│           ├── error-page.js         # LibEdge HTML hata sayfası
-│           ├── rate-limit.js         # proxy session/kurum rate limit
-│           ├── upstream.js           # Cookie jar + login recipe executor
-│           └── recipe.js             # form_post / js_spa recipe motoru
-├── migrations/                       # D1 SQL migration'ları (sıralı)
-├── admin.html                        # Super-admin tek sayfa arayüzü
-├── profile.html                      # Kullanıcı portalı
-├── wrangler.toml                     # Main Worker config (local / staging / production)
-├── MIMARI.md                         # Detaylı teknik mimari belgesi
-├── PRODUCT_STRATEGY.md               # Katalog, AI, öneri ve home-feed stratejisi
-├── RA_PRODUCTION_READINESS.md        # RA production hazırlık rehberi
-├── LIBEDGE_DOMAIN_MIGRATION.md       # libedge.com geçiş checklist'i
-└── KVKK_SECURITY.md                  # KVKK ve veri güvenliği baseline'ı
+├── backend/src/index.js          # Main Worker ve API route'ları
+├── backend/src/auth/             # Auth, refresh token, rate limit helper'ları
+├── backend/src/validation.js     # Ortak validation helper'ları
+├── migrations/                   # D1 migration geçmişi
+├── admin.html                    # Admin paneli
+├── profile.html                  # Kullanıcı portalı
+├── assets/                       # CSS, JS ve görseller
+├── functions/api/[[path]].js     # Pages -> Worker API yönlendirmesi
+├── wrangler.toml                 # Worker env config
+└── .github/workflows/            # CI, deploy ve migration workflow'ları
 ```
 
----
+Not: Migration geçmişinde eski RA tabloları/kolonları bulunabilir. Bunlar üretim
+veritabanı geçmişini temsil ettiği için bu temizlikte fiziksel olarak silinmedi.
 
 ## Gereksinimler
 
 - Node.js 18+
-- `npm install -g wrangler` (Cloudflare Workers CLI)
-- Cloudflare hesabı (Workers, D1, KV, R2 etkin)
-
----
+- Cloudflare hesabı: Workers, Pages, D1, R2, KV
+- Proje bağımlılıkları: `npm install`
 
 ## Lokal Geliştirme
 
 ```powershell
-# Bağımlılıkları yükle
-cd backend && npm install && cd ..
-
-# Lokal D1 migration'ı uygula
+npm install
 npx wrangler d1 migrations apply libedge-db --local
-
-# Main Worker'ı başlat (http://localhost:8787)
 npx wrangler dev --env local
-
-# Proxy Worker'ı başlat (ayrı terminalde, http://localhost:8788)
-cd workers/proxy
-npx wrangler dev --env local --port 8788
 ```
 
-Secrets lokal test için `.dev.vars` dosyasına yazılır (git'e commit edilmez):
+Lokal secrets `.dev.vars` dosyasında tutulur ve Git'e commit edilmez.
 
-```
-JWT_SECRET=test-secret-32-chars-minimum
-RA_PROXY_TOKEN_SECRET=test-proxy-secret-32-chars
-RA_CREDS_MASTER_KEY=base64-encoded-32-byte-key
-RA_EGRESS_DEFAULT_SECRET=test-egress-secret
+```text
+JWT_SECRET=...
+R2_PUBLIC_URL=...
+AIRTABLE_PAT=...
+AIRTABLE_BASE_ID=...
+RESEND_API_KEY=...
+RESEND_ALERT_TO=...
 ```
 
----
+## Test ve Build
+
+```powershell
+npm test
+npm run lint
+npm run build
+```
 
 ## Deploy
 
-> **Production notu:** Production D1, staging'den geride olabilir. Production'a deploy/migration
-> uygulamadan önce `npx wrangler d1 migrations list libedge-db-production --remote --env production`
-> çıktısı incelenmeli, [PRODUCTION_MIGRATION_PLAN.md](PRODUCTION_MIGRATION_PLAN.md) güncellenmeli
-> ve smoke/rollback adımları netleşmelidir.
-
-### Staging
+Staging backend:
 
 ```powershell
-# Main Worker
 npx wrangler deploy --env staging
-
-# D1 migration (staging DB)
 npx wrangler d1 migrations apply libedge-db --remote --env staging
-
-# Proxy Worker
-cd workers/proxy
-npx wrangler deploy --env staging
-cd ../..
 ```
 
-### Production
-
-Production için bu komutlar doğrudan "rutin deploy" gibi çalıştırılmamalıdır. Önce bekleyen
-migration listesi, veri etkisi, smoke test ve rollback yolu kontrol edilir.
+Production backend:
 
 ```powershell
-# Main Worker
 npx wrangler deploy --env production
-
-# D1 migration (production DB — AYRI veritabanı)
 npx wrangler d1 migrations apply libedge-db-production --remote --env production
-
-# Proxy Worker
-cd workers/proxy
-npx wrangler deploy --env production
-cd ../..
 ```
 
-### Secrets (her ortam için ayrı)
+Production migration'ları otomatik veya rutin işlem gibi çalıştırılmamalıdır.
+Önce bekleyen migration listesi, veri etkisi, smoke test ve rollback yolu
+kontrol edilmelidir.
 
-```powershell
-# Main Worker
-npx wrangler secret put JWT_SECRET            --env staging
-npx wrangler secret put RA_PROXY_TOKEN_SECRET --env staging
-npx wrangler secret put RA_CREDS_MASTER_KEY   --env staging
-npx wrangler secret put RA_EGRESS_DEFAULT_SECRET --env staging
+## CI/CD
 
-# Proxy Worker (ayrı klasörden)
-cd workers/proxy
-npx wrangler secret put RA_PROXY_TOKEN_SECRET --env staging
-npx wrangler secret put RA_CREDS_MASTER_KEY   --env staging
-npx wrangler secret put RA_EGRESS_DEFAULT_SECRET --env staging
-cd ../..
-```
+- `ci.yml`: PR ve `staging`/`main` push için syntax, lint, test ve CSS build.
+- `deploy-workers.yml`: `staging` push ile staging backend deploy eder.
+  Production backend deploy manuel `workflow_dispatch` ve environment approval ile yapılır.
+- `deploy-pages.yml`: `staging` push ile staging Pages deploy eder.
+  Production Pages deploy manuel çalıştırılır.
+- `d1-migrations.yml`: D1 migration `list`/`apply` işleri için manuel workflow.
 
-`--env staging` yerine `--env production` kullanarak production için tekrarla.
+## Ana Özellikler
 
----
-
-## Güncel Operasyon Notu (23 Mayıs 2026)
-
-- Staging ve production D1 migration durumu: `0041_user_kvkk_consent.sql` dahil güncel.
-- Production'a `0039_sciencedirect_els_cdn_allowlist.sql`, `0040_scopus_elsevier_allowlist.sql` ve `0041_user_kvkk_consent.sql` 23 Mayıs 2026'da uygulandı.
-- Register akışı KVKK/Gizlilik/Kullanım Şartları açık onayı olmadan kullanıcı oluşturmaz; consent metadata'sı `users` tablosunda tutulur.
-- Auth login akışı DB-backed refresh token replay protection kullanır.
-- `backend/src/index.js` ve RA schema guard'ları strict env'lerde (`staging`, `production`) runtime DDL çalıştırmaz; şema migration ile hazırlanmış olmalıdır.
-- DB-backed refresh token yazımı beklenmedik şekilde hata verirse login 500'e düşmez; geçici olarak stateless refresh token fallback kullanır ve hata loglanır.
-- `admin.html` ve `profile.html` içinde toast, error render ve file preview tarafında kullanıcı/server kaynaklı metinler sertleştirildi; dinamik metinler `textContent`/`escapeHtml`, dosya URL'leri `safeFileUrl` benzeri allowlist mantığıyla ele alınmalıdır.
-- Frontend `innerHTML` kullanımı tamamen yasaklanmış değildir; ancak her yeni kullanımda kullanıcı, server veya dosya metadata'sı interpolasyonu güvenlik incelemesinden geçmelidir.
-
-## Cloudflare DNS / Route Yapılandırması
-
-| Ortam | Main Worker Route | Proxy Worker Route |
-|---|---|---|
-| Staging | `api-staging.libedge.com/*` | `proxy-staging.libedge.com/*`, `*.libedge.com/*` |
-| Production | `api.libedge.com/*` | `proxy.libedge.com/*`, `*.libedge.com/*` |
-
-> **Wildcard subdomain** (`*.libedge.com`) `session_host_proxy` modu için zorunludur — JoVE, EMIS, IOP bu modda çalışır. Cloudflare Proxied DNS kaydı + Universal SSL otomatik devreye girer.
-
----
-
-## Uzaktan Erişim (RA) Modülü
-
-### Proxy Modları
-
-| Mod | Nasıl çalışır | Ürünler |
-|---|---|---|
-| `path_proxy` | `proxy.libedge.com/{encoded-host}/path` | Basit path tabanlı proxy akışları |
-| `session_host_proxy` | `r{sid}.libedge.com/path` | JoVE, EMIS, ACS, IOP, Primal |
-
-`ra_delivery_mode` kolonu bu iki değerden birini alır. `direct_login` ve `proxy` eski/geçersiz değerlerdir — `path_proxy` olarak migrate edilmeli.
-
-### Erişim Tipleri (`access_type`)
-
-| Değer | Anlamı |
-|---|---|
-| `direct` | Ücretsiz / doğrudan link |
-| `ip` | Kurum IP'si / RA tüneli |
-| `institution_link` | Kuruma özel giriş sayfası (Lecturio gibi) |
-| `sso` | Kurumsal SSO |
-| `email_password_external` | Kullanıcı adı + şifre |
-
-### Token Akışı
-
-1. Kullanıcı portalde "Erişime Git" → `POST /api/ra/issue-token`
-2. Main Worker: abonelik doğrula → 5 dk geçerli JWT üret → KV'ya session yaz → `redirect_url` dön
-3. Tarayıcı proxy Worker'a yönlenir → JWT doğrulanır (tek kullanımlık `jti`) → session cookie set → içerik proxylenir
-4. Proxy Worker kurum egress agent'ına HMAC-imzalı istek atar; içerik kurum IP'sinden yayıncıya ulaşır
-
-### Operasyonel Koruma
-
-- Proxy hata yanıtları LibEdge HTML sayfası olarak döner; ham upstream/egress hata
-  detayları kullanıcıya gösterilmez.
-- Proxy Worker KV tabanlı rate limit uygular:
-  - oturum başına varsayılan `300/dk`
-  - kurum başına varsayılan `5000/dk`
-  - limit aşımında `429` + `Retry-After`
-- Main Worker cron'u 5 dakikada bir aktif egress endpoint'leri `/health` ile
-  kontrol eder ve `tunnel_status` / `tunnel_last_seen` alanlarını günceller.
-
-### Admin Geri Alma / Audit
-
-Kritik admin değişiklikleri `admin_action_logs` tablosuna snapshot ile yazılır.
-Ürün, abonelik ve kurum değişikliklerinde API `undo_id` döner; admin UI hızlı
-"Geri al" toast'ı gösterir. Hızlı süre kaçarsa işlem geçmişindeki "Geri yükle"
-aksiyonu aynı snapshot üzerinden kaydı restore eder.
-
-### Ürün Etiketleri
-
-Ürünlerde çoklu erişim etiketi `products.access_tags_json` alanında JSON array
-olarak tutulur. Geçerli etiketler: `EKUAL`, `LibEdge`, `Açık Erişim`,
-`Abonelik`, `Satınalma`, `Deneme`. Admin ürün modalında checkbox olarak yönetilir.
-
----
-
-## Kurum Onboarding — RA Tünel Kurulumu
-
-Kurumun kampüs ağında çalışan bir egress agent'a ihtiyacı var. Bu agent sayesinde kullanıcı trafik kurum IP'sinden çıkar.
-
-### Gereksinimler
-
-- Kampüs ağında sürekli açık bir sunucu/VM (Linux önerilir, Windows de desteklenir)
-- Minimum 512 MB RAM, dışa çıkış interneti (gelen port açmaya gerek yok)
-- `cloudflared` kurulumu (~10 dk)
-
-### Kurulum Adımları
-
-1. **LibEdge admin panelinden** kuruma ait egress endpoint ve secret alın (`Uzaktan Erişim > Kurum Tünelleri > Düzenle`)
-2. Sunucuya `cloudflared` kurun:
-   ```bash
-   # Linux
-   curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
-     -o /usr/local/bin/cloudflared && chmod +x /usr/local/bin/cloudflared
-   ```
-3. LibEdge'in sağladığı `tunnel-provision.ps1` / kurulum scriptini çalıştırın
-4. Admin panelinde tünel durumunu kontrol edin (yeşil = aktif)
-
-### Kurumdan İstenen Bilgiler
-
-- Kampüs statik IP aralığı (publisher IP whitelisting için)
-- Teknik iletişim kişisi (ad, e-posta)
-- Hangi ürünlere erişim istendiği
-
----
-
-## Kapasite
-
-Cloudflare Workers + D1 mimarisinde pratik limitler:
-
-| Kaynak | Kapasite |
-|---|---|
-| Kurumlar | Binlerce (D1 limiti değil, admin yönetim kapasitesi belirler) |
-| Kullanıcılar | Onlarca bin (D1 5 GB free tier'da yüz binlerce kayıt) |
-| Ürünler | Sınırsız pratik (onlarca–yüzlerce) |
-| Eşzamanlı proxy oturumu | Workers concurrency limiti yok; KV okuma ~1 ms |
-| Erişim log yazma | Aylık 50 M D1 write hakkı — günde 10.000 oturum limitin çok altında |
-| Bant genişliği | Dağıtık: her kurumun egress agent'ı kendi bant genişliğini kullanır |
-
-Gerçek bottleneck teknik değil operasyoneldir: her kurum tünelini kim kurar ve güncel tutar.
-
----
-
-## Domain Geçişi (selmiye.com → libedge.com)
-
-Geçiş için sadece Cloudflare Worker env değişkenlerini güncellemek yeterli — kod değişikliği minimumdur:
-
-| Değişken | Staging | Production |
-|---|---|---|
-| `RA_PROXY_HOST` | `proxy-staging.libedge.com` | `proxy.libedge.com` |
-| `RA_PROXY_BASE_HOST` | `libedge.com` | `libedge.com` |
-| `RA_EGRESS_HOST` | `ra-egress-staging.libedge.com` | `ra-egress.libedge.com` |
-
-`workers/proxy/wrangler.toml` route'larını, Cloudflare DNS kayıtlarını ve proxy hata sayfasındaki portal URL'ini güncelle. Bu geçiş canlıya alınırken yapılacak; staging/prod CI akışı hazırdır.
-
----
-
-## CI/CD Notu
-
-GitHub Actions tabanlı CI/CD iskeleti `.github/workflows/` altında tanımlıdır:
-
-- `ci.yml`: PR ve `staging`/`main` push için syntax, lint, unit test ve CSS build çalıştırır; deploy yapmaz.
-- `deploy-workers.yml`: `staging` branch push ile staging backend/proxy deploy eder. Production deploy sadece manuel `workflow_dispatch` ile ve GitHub `production` environment approval'ı üzerinden çalışır.
-- `deploy-pages.yml`: `staging` branch push ile staging Pages deploy eder. Production Pages deploy sadece manuel çalıştırılır.
-- `d1-migrations.yml`: D1 migration `list`/`apply` işlemleri için manuel workflow'dur; production `apply` environment approval gerektirir.
-- Gerekli GitHub secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
-- GitHub repo ayarlarında `staging` ve özellikle `production` environment'ları tanımlanmalı; `production` için required reviewer açılmalıdır.
-
-Production D1 migration'ları otomatikleştirilirken dikkatli olunmalıdır: D1 rollback pratikte "forward fix" gerektirir, bu yüzden production migration job'u manuel approval ve preflight çıktısı olmadan çalışmamalıdır.
-
----
-
-## Bilinen Eksikler / Sonraki Adımlar
-
-- [x] `direct_login` delivery mode'u kaldırıldı; legacy değerler `path_proxy` olarak normalize ediliyor
-- [x] Proxy hata sayfası güvenli hale getirildi
-- [x] Proxy rate limit eklendi
-- [x] Egress tunnel heartbeat cron'a bağlandı
-- [x] Ürün/abonelik/kurum işlemleri için undo + işlem geçmişinden restore eklendi
-- [ ] Canlı geçişte production `*.libedge.com` wildcard route aktif edilecek (session_host_proxy için zorunlu)
-- [ ] Admin UI/API'dan toplu ürün onboarding (manuel D1 SQL ihtiyacını azaltmak)
-- [x] MIMARI.md ile migration'lar arasındaki temel durum notları güncellendi
-- [x] KVKK/Gizlilik metni kayıtlı kullanıcı, RA ve AI araçlarını kapsayacak şekilde güncellendi
-- [x] Register akışı KVKK/Gizlilik/Kullanım Şartları açık onayına bağlandı
-- [x] Staging/production runtime DDL guard'ları kapatıldı; schema değişiklikleri migration disiplinine bağlandı
-- [x] GitHub Actions CI/CD pipeline kuruldu; production deploy/migration işleri manuel approval gerektirir
+- Kullanıcı kayıt/giriş, refresh token ve KVKK onayı
+- Profil dashboard'u ve abonelik erişim kartları
+- Kurum, kullanıcı, ürün ve abonelik yönetimi
+- Merkezi ve kurumsal dosya paylaşımı
+- Duyuru yönetimi
+- Destek talepleri
+- Ürün önerileri ve bireysel araçlar
+- Airtable senkronizasyonu

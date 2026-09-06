@@ -5,20 +5,6 @@ import { sign, verify } from 'hono/jwt';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 
-// ─── Remote Access (RA) modülü ─────────────────────────────────────────────
-// Kurumsal publisher aboneliklerine uzaktan erişim proxy'si.
-// Route handler: POST /api/ra/issue-token
-// Local/test schema guards are allowed for developer ergonomics; staging and
-// production schema changes must come from D1 migrations.
-import { registerRaIssueToken } from './routes/ra/issue-token.js';
-import { registerRaAdminTunnel } from './routes/ra/admin-tunnel.js';
-import { registerRaAdminOverview } from './routes/ra/admin-overview.js';
-import { registerRaAdminConfig } from './routes/ra/admin-config.js';
-import { registerRaEgressAllowedHosts } from './routes/ra/egress-allowed-hosts.js';
-import { registerRaAdminAlerts } from './routes/ra/admin-alerts.js';
-import { registerRaAdminLinkAudit } from './routes/ra/admin-link-audit.js';
-import { runTunnelHeartbeat } from './ra/tunnel-health.js';
-import { ensureRemoteAccessSchema } from './ra/schema.js';
 import {
   generateSecureTokenHex,
   generateResetToken,
@@ -1658,11 +1644,8 @@ app.post('/api/auth/refresh', async (c) => {
 
 const PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 60;
 const PASSWORD_RESET_RETENTION_SECONDS = 30 * 24 * 60 * 60;
-const RA_ACCESS_LOG_RETENTION_SECONDS = 180 * 24 * 60 * 60;
 // KVKK retention (KVKK_SECURITY.md §4 — finalized 2026-05-24)
-const AI_USAGE_LOG_RETENTION_SECONDS = 90 * 24 * 60 * 60;       // 90 gün — ham prompt zaten saklanmıyor
 const REFRESH_TOKEN_RETENTION_SECONDS = 30 * 24 * 60 * 60;      // 30 gün (expired veya revoked)
-const PRODUCT_REQUEST_ANONYMIZE_SECONDS = 2 * 365 * 24 * 60 * 60; // 2 yıl sonra user_id NULL
 const PASSWORD_RESET_MIN_LENGTH = 8;
 const forgotPasswordSchema = z.object({
   email: zRequiredString('email', { max: 254, email: true })
@@ -2130,12 +2113,6 @@ app.get('/api/subscription/list', async (c) => {
     SELECT s.id, s.product_slug, s.status, s.start_date, s.end_date, s.created_at, 'individual' as source,
            p.default_access_type AS access_type,
            p.default_access_url AS access_url,
-           CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
-             WHEN 'session_host_proxy' THEN 'session_host_proxy'
-             WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
-             ELSE 'path_proxy'
-           END AS ra_delivery_mode,
-           COALESCE(p.ra_enabled, 0) AS ra_enabled,
            COALESCE(p.default_requires_institution_email, 0) AS requires_institution_email,
            COALESCE(p.default_requires_vpn, 0) AS requires_vpn,
            p.default_access_notes_tr AS access_notes_tr,
@@ -2151,12 +2128,6 @@ app.get('/api/subscription/list', async (c) => {
       SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date, is2.created_at, 'institution' as source,
              COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-             CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
-               WHEN 'session_host_proxy' THEN 'session_host_proxy'
-               WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
-               ELSE 'path_proxy'
-             END AS ra_delivery_mode,
-             COALESCE(p.ra_enabled, 0) AS ra_enabled,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
@@ -2193,11 +2164,6 @@ app.get('/api/user/subscriptions', async (c) => {
     SELECT s.id, s.product_slug, s.status, s.start_date, s.end_date, 'individual' as source,
            p.default_access_type AS access_type,
            p.default_access_url AS access_url,
-           CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
-             WHEN 'session_host_proxy' THEN 'session_host_proxy'
-             WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
-             ELSE 'path_proxy'
-           END AS ra_delivery_mode,
            COALESCE(p.default_requires_institution_email, 0) AS requires_institution_email,
            COALESCE(p.default_requires_vpn, 0) AS requires_vpn,
            p.default_access_notes_tr AS access_notes_tr,
@@ -2214,11 +2180,6 @@ app.get('/api/user/subscriptions', async (c) => {
       SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date, 'institution' as source,
              COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-             CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
-               WHEN 'session_host_proxy' THEN 'session_host_proxy'
-               WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
-               ELSE 'path_proxy'
-             END AS ra_delivery_mode,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
@@ -3053,13 +3014,6 @@ app.get('/api/admin/dashboard', async (c) => {
     SELECT COUNT(*) as count FROM announcements WHERE is_published = 0
   `).first();
 
-  // Aktif tünel sayısı (institution_ra_settings.enabled = 1)
-  const activeTunnelsRow = isSuper
-    ? await db.prepare(`SELECT COUNT(*) as count FROM institution_ra_settings WHERE enabled = 1`).first()
-    : adminInstitutionId
-      ? await db.prepare(`SELECT COUNT(*) as count FROM institution_ra_settings WHERE enabled = 1 AND institution_id = ?`).bind(adminInstitutionId).first()
-      : { count: 0 };
-
   // Açık destek talepleri (sidebar badge)
   const openSupportTicketsRow = isSuper
     ? await db.prepare(`SELECT COUNT(*) as count FROM support_tickets WHERE status IN ('open', 'in_progress')`).first()
@@ -3079,7 +3033,6 @@ app.get('/api/admin/dashboard', async (c) => {
     active_institution_subscriptions: activeInstitutionRow?.count || 0,
     published_announcements: publishedAnnouncementsRow?.count || 0,
     draft_announcements: draftAnnouncementsRow?.count || 0,
-    active_tunnels: activeTunnelsRow?.count || 0,
     open_support_tickets: openSupportTicketsRow?.count || 0
   };
 
@@ -3372,8 +3325,6 @@ app.post('/api/admin/set-role/:id', async (c) => {
   return c.json({ success: true });
 });
 
-const MAX_PRODUCT_RA_RECIPE_BYTES = 16 * 1024;
-const MAX_PRODUCT_RA_ALLOWLIST_BYTES = 4 * 1024;
 const MAX_PRODUCT_SUBJECTS_BYTES = 2 * 1024;
 const MAX_PRODUCT_ACCESS_TAGS_BYTES = 1024;
 const PRODUCT_ACCESS_TAGS = ['EKUAL', 'LibEdge', 'Açık Erişim', 'Abonelik', 'Satınalma', 'Deneme'];
@@ -3385,42 +3336,6 @@ const PRODUCT_ACCESS_TYPE_ALIASES = new Map([
 const VALID_PRODUCT_ACCESS_TYPES = new Set([
   'direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed',
 ]);
-
-function normalizeProductRaDeliveryMode(raw) {
-  const mode = String(raw || '').trim().toLowerCase();
-  if (mode === 'session_host_proxy') return 'session_host_proxy';
-  if (mode === 'stable_host_proxy') return 'stable_host_proxy';
-  return 'path_proxy';
-}
-
-function normalizeProductRaHost(raw) {
-  if (raw == null) return null;
-  const s = String(raw).trim().toLowerCase();
-  if (!s) return null;
-  return s.replace(/^https?:\/\//, '').replace(/\/.*$/, '') || null;
-}
-
-function isValidProductRaHost(host) {
-  if (typeof host !== 'string') return false;
-  if (host.length > 253) return false;
-  return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(host);
-}
-
-function isValidProductRaHostPattern(host) {
-  if (typeof host !== 'string') return false;
-  if (host.startsWith('*.')) return isValidProductRaHost(host.slice(2));
-  return isValidProductRaHost(host);
-}
-
-function normalizeProductRaLandingPath(raw) {
-  if (raw == null) return null;
-  const trimmed = String(raw).trim();
-  if (!trimmed || trimmed === '/') return null;
-  if (/^[a-z]+:\/\//i.test(trimmed)) return null;
-  if (trimmed.includes('..')) return null;
-  if (trimmed.length > 512) return null;
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-}
 
 function cleanProductText(raw, max = 500) {
   if (raw == null) return null;
@@ -3551,79 +3466,16 @@ function normalizeProductPresentation(body) {
   };
 }
 
-function validateProductRaConfig(body, existing = {}) {
-  const raEnabled = !!body.ra_enabled;
-  const raOriginHost = raEnabled ? normalizeProductRaHost(body.ra_origin_host) : null;
-  if (raEnabled && raOriginHost && !isValidProductRaHost(raOriginHost)) {
-    return { error: 'ra_origin_host geçersiz bir hostname' };
-  }
-
-  let raLoginRecipeJson = null;
-  if (raEnabled && body.ra_login_recipe_json != null && body.ra_login_recipe_json !== '') {
-    const raw = String(body.ra_login_recipe_json);
-    if (raw.length > MAX_PRODUCT_RA_RECIPE_BYTES) return { error: 'ra_login_recipe_json çok uzun' };
-    try {
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        return { error: 'recipe JSON objesi olmalı' };
-      }
-    } catch (err) {
-      return { error: `recipe JSON parse hatası: ${err.message}` };
-    }
-    raLoginRecipeJson = raw;
-  }
-
-  let raHostAllowlistJson = null;
-  if (raEnabled && body.ra_host_allowlist_json != null && body.ra_host_allowlist_json !== '') {
-    const raw = String(body.ra_host_allowlist_json);
-    if (raw.length > MAX_PRODUCT_RA_ALLOWLIST_BYTES) return { error: 'ra_host_allowlist_json çok uzun' };
-    try {
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return { error: 'host allowlist bir dizi olmalı' };
-      for (const h of parsed) {
-        const host = normalizeProductRaHost(h);
-        if (!host || !isValidProductRaHostPattern(host)) {
-          return { error: `allowlist geçersiz host içeriyor: ${h}` };
-        }
-      }
-    } catch (err) {
-      return { error: `allowlist JSON parse hatası: ${err.message}` };
-    }
-    raHostAllowlistJson = raw;
-  }
-
-  return {
-    values: {
-      ra_delivery_mode: normalizeProductRaDeliveryMode(body.ra_delivery_mode),
-      ra_origin_host: raEnabled ? raOriginHost : (existing?.ra_origin_host || null),
-      ra_origin_landing_path: raEnabled ? normalizeProductRaLandingPath(body.ra_origin_landing_path) : (existing?.ra_origin_landing_path || null),
-      ra_requires_tunnel: raEnabled
-        ? (body.ra_requires_tunnel == null ? 1 : (body.ra_requires_tunnel ? 1 : 0))
-        : (existing?.ra_requires_tunnel == null ? 1 : (existing.ra_requires_tunnel ? 1 : 0)),
-      ra_login_recipe_json: raEnabled ? raLoginRecipeJson : (existing?.ra_login_recipe_json || null),
-      ra_host_allowlist_json: raEnabled ? raHostAllowlistJson : (existing?.ra_host_allowlist_json || null),
-    },
-  };
-}
-
 app.get('/api/admin/products', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db, c.env);
-  await ensureRemoteAccessSchema(db, c.env);
   const rows = await db.prepare(`
     SELECT slug, name, category, region,
            default_access_type, default_access_url,
            COALESCE(default_requires_institution_email, 0) AS default_requires_institution_email,
            COALESCE(default_requires_vpn, 0) AS default_requires_vpn,
            default_access_notes_tr, default_access_notes_en,
-           COALESCE(ra_enabled, 0) AS ra_enabled,
-           ra_delivery_mode,
-           ra_origin_host,
-           ra_origin_landing_path,
-           COALESCE(ra_requires_tunnel, 1) AS ra_requires_tunnel,
-           ra_login_recipe_json,
-           ra_host_allowlist_json,
            logo_asset_key,
            logo_url,
            logo_updated_at,
@@ -3876,12 +3728,11 @@ app.put('/api/admin/product/:slug', async (c) => {
     default_access_type, default_access_url,
     default_requires_institution_email, default_requires_vpn,
     default_access_notes_tr, default_access_notes_en,
-    ra_enabled, is_libedge_catalog
+    is_libedge_catalog
   } = body;
 
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db, c.env);
-  await ensureRemoteAccessSchema(db, c.env);
   await ensureInstitutionSubscriptionAccessColumns(db, c.env);
   await ensureInstitutionMetadataColumns(db, c.env);
   await ensureAdminActionLogsTable(db, c.env);
@@ -3889,9 +3740,6 @@ app.put('/api/admin/product/:slug', async (c) => {
   const existing = await db.prepare(`SELECT * FROM products WHERE slug = ?`).bind(slug).first();
   if (!existing) return c.json({ error: 'Ürün bulunamadı' }, 404);
 
-  const raConfig = validateProductRaConfig(body, existing);
-  if (raConfig.error) return c.json({ error: raConfig.error }, 400);
-  const ra = raConfig.values;
   const presentationConfig = normalizeProductPresentation(body);
   if (presentationConfig.error) return c.json({ error: presentationConfig.error }, 400);
   const presentation = presentationConfig.values;
@@ -3917,9 +3765,6 @@ app.put('/api/admin/product/:slug', async (c) => {
         card_background_overlay = ?, card_front_text_color = ?, card_back_text_color = ?,
         short_description_tr = ?, short_description_en = ?,
         subjects_json = ?, access_tags_json = ?, card_visible = ?, display_order = ?, is_featured = ?,
-        ra_enabled = ?, ra_delivery_mode = ?,
-        ra_origin_host = ?, ra_origin_landing_path = ?,
-        ra_requires_tunnel = ?, ra_login_recipe_json = ?, ra_host_allowlist_json = ?,
         brochure_url = ?, is_libedge_catalog = ?
     WHERE slug = ?
   `).bind(
@@ -3951,13 +3796,6 @@ app.put('/api/admin/product/:slug', async (c) => {
     presentation.card_visible,
     presentation.display_order,
     presentation.is_featured,
-    ra_enabled ? 1 : 0,
-    ra.ra_delivery_mode,
-    ra.ra_origin_host,
-    ra.ra_origin_landing_path,
-    ra.ra_requires_tunnel,
-    ra.ra_login_recipe_json,
-    ra.ra_host_allowlist_json,
     String(body.brochure_url || '').trim() || null,
     is_libedge_catalog ? 1 : 0,
     slug
@@ -3993,8 +3831,6 @@ async function restoreProductAction(db, id, { enforceExpiry = false } = {}) {
     'card_background_overlay', 'card_front_text_color', 'card_back_text_color',
     'short_description_tr', 'short_description_en', 'subjects_json', 'access_tags_json',
     'card_visible', 'display_order', 'is_featured',
-    'ra_enabled', 'ra_delivery_mode', 'ra_origin_host', 'ra_origin_landing_path',
-    'ra_requires_tunnel', 'ra_login_recipe_json', 'ra_host_allowlist_json',
     'brochure_url'
   ];
   const updateStmt = db.prepare(`
@@ -4087,7 +3923,6 @@ app.post('/api/admin/actions/:id/undo', async (c) => {
   if (!id) return c.json({ error: 'Geçersiz işlem' }, 400);
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db, c.env);
-  await ensureRemoteAccessSchema(db, c.env);
   await ensureAdminActionLogsTable(db, c.env);
   const log = await db.prepare(`SELECT entity_type FROM admin_action_logs WHERE id = ?`).bind(id).first();
   const result = log?.entity_type === 'product'
@@ -4107,7 +3942,6 @@ app.post('/api/admin/actions/:id/restore', async (c) => {
   if (!id) return c.json({ error: 'Geçersiz işlem' }, 400);
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db, c.env);
-  await ensureRemoteAccessSchema(db, c.env);
   await ensureInstitutionSubscriptionAccessColumns(db, c.env);
   await ensureInstitutionMetadataColumns(db, c.env);
   await ensureAdminActionLogsTable(db, c.env);
@@ -4127,15 +3961,13 @@ app.post('/api/admin/products', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db, c.env);
-  await ensureRemoteAccessSchema(db, c.env);
 
   const body = await c.req.json().catch(() => ({}));
   const {
     slug, name, category, region,
     default_access_type, default_access_url,
     default_requires_institution_email, default_requires_vpn,
-    default_access_notes_tr, default_access_notes_en,
-    ra_enabled
+    default_access_notes_tr, default_access_notes_en
   } = body;
 
   const slugNorm = String(slug || '').trim().toLowerCase();
@@ -4147,9 +3979,6 @@ app.post('/api/admin/products', async (c) => {
   const conflict = await db.prepare('SELECT slug FROM products WHERE slug = ?').bind(slugNorm).first();
   if (conflict) return c.json({ error: 'Bu slug zaten kullanımda' }, 409);
 
-  const raConfig = validateProductRaConfig(body);
-  if (raConfig.error) return c.json({ error: raConfig.error }, 400);
-  const ra = raConfig.values;
   const presentationConfig = normalizeProductPresentation(body);
   if (presentationConfig.error) return c.json({ error: presentationConfig.error }, 400);
   const presentation = presentationConfig.values;
@@ -4167,10 +3996,8 @@ app.post('/api/admin/products', async (c) => {
       card_background_overlay, card_front_text_color, card_back_text_color,
       short_description_tr, short_description_en, subjects_json, access_tags_json,
       card_visible, display_order, is_featured,
-      ra_enabled, ra_delivery_mode, ra_origin_host, ra_origin_landing_path,
-      ra_requires_tunnel, ra_login_recipe_json, ra_host_allowlist_json,
       brochure_url, is_libedge_catalog
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     slugNorm,
     String(name).trim(),
@@ -4199,13 +4026,6 @@ app.post('/api/admin/products', async (c) => {
     presentation.card_visible,
     presentation.display_order,
     presentation.is_featured,
-    ra_enabled ? 1 : 0,
-    ra.ra_delivery_mode,
-    ra.ra_origin_host,
-    ra.ra_origin_landing_path,
-    ra.ra_requires_tunnel,
-    ra.ra_login_recipe_json,
-    ra.ra_host_allowlist_json,
     String(body.brochure_url || '').trim() || null,
     body.is_libedge_catalog ? 1 : 0
   ).run();
@@ -4415,7 +4235,7 @@ app.get('/api/admin/subscriptions', async (c) => {
              NULL AS raw_access_type, NULL AS raw_access_url, 0 AS raw_requires_institution_email,
              0 AS raw_requires_vpn, NULL AS raw_registration_url, NULL AS raw_access_notes_tr,
              NULL AS raw_access_notes_en, NULL AS access_type, NULL AS access_url,
-             NULL AS ra_delivery_mode, 0 AS ra_enabled, 0 AS requires_institution_email, 0 AS requires_vpn,
+             0 AS requires_institution_email, 0 AS requires_vpn,
              NULL AS registration_url, NULL AS access_notes_tr, NULL AS access_notes_en
       FROM subscriptions s
       LEFT JOIN users u ON s.user_id = u.id
@@ -4432,12 +4252,6 @@ app.get('/api/admin/subscriptions', async (c) => {
              is2.access_notes_en AS raw_access_notes_en,
              COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-             CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
-               WHEN 'session_host_proxy' THEN 'session_host_proxy'
-               WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
-               ELSE 'path_proxy'
-             END AS ra_delivery_mode,
-             COALESCE(p.ra_enabled, 0) AS ra_enabled,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
              CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
              NULLIF(TRIM(is2.registration_url), '') AS registration_url,
@@ -4522,12 +4336,6 @@ app.get('/api/admin/subscriptions', async (c) => {
                is2.access_notes_en AS raw_access_notes_en,
                COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
                COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-               CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
-                 WHEN 'session_host_proxy' THEN 'session_host_proxy'
-                 WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
-                 ELSE 'path_proxy'
-               END AS ra_delivery_mode,
-               COALESCE(p.ra_enabled, 0) AS ra_enabled,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
                NULLIF(TRIM(is2.registration_url), '') AS registration_url,
@@ -4552,12 +4360,6 @@ app.get('/api/admin/subscriptions', async (c) => {
                is2.access_notes_en AS raw_access_notes_en,
                COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
                COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
-               CASE LOWER(TRIM(COALESCE(p.ra_delivery_mode, '')))
-                 WHEN 'session_host_proxy' THEN 'session_host_proxy'
-                 WHEN 'stable_host_proxy' THEN 'stable_host_proxy'
-                 ELSE 'path_proxy'
-               END AS ra_delivery_mode,
-               COALESCE(p.ra_enabled, 0) AS ra_enabled,
                CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
                CASE WHEN COALESCE(is2.requires_vpn, 0) = 1 OR COALESCE(p.default_requires_vpn, 0) = 1 THEN 1 ELSE 0 END AS requires_vpn,
                NULLIF(TRIM(is2.registration_url), '') AS registration_url,
@@ -4986,7 +4788,6 @@ app.get('/api/admin/institutions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
   await ensureInstitutionMetadataColumns(db, c.env);
-  await ensureRemoteAccessSchema(db, c.env); // p.ra_enabled ve institution_ra_settings için gerekli
   const role = await getUserRole(c);
   const url = new URL(c.req.url);
   const searchRaw = (url.searchParams.get('search') || '').trim();
@@ -5061,18 +4862,8 @@ app.get('/api/admin/institutions', async (c) => {
             AND col.scope_id = inst.id
             AND col.is_active = 1
             AND cf.is_active = 1
-        ) AS file_count,
-        irs.enabled        AS tunnel_enabled,
-        irs.tunnel_status  AS tunnel_status,
-        irs.tunnel_last_seen AS tunnel_last_seen,
-        (
-          SELECT GROUP_CONCAT(isub.product_slug)
-          FROM institution_subscriptions isub
-          JOIN products p ON p.slug = isub.product_slug AND COALESCE(p.ra_enabled, 0) = 1
-          WHERE isub.institution_id = inst.id AND isub.status = 'active'
-        ) AS ra_products
+        ) AS file_count
       FROM institutions inst
-      LEFT JOIN institution_ra_settings irs ON irs.institution_id = inst.id
       ${whereSql}
       ORDER BY ${sortSql} ${order}, inst.id ASC
       LIMIT ? OFFSET ?
@@ -9563,23 +9354,6 @@ app.put('/api/admin/airtable/accounts/:id', async (c) => {
     return c.json({ error: 'Tek yönlü sync aktif. Airtable kayıtları proje içinden güncellenmez.' }, 410);
 });
 
-// ─── Remote Access (RA) route registration ─────────────────────────────────
-// POST /api/ra/issue-token
-registerRaIssueToken(app);
-// GET/PUT /api/ra/admin/institution-egress/:id ; POST .../test
-registerRaAdminTunnel(app);
-// GET /api/ra/admin/institutions ; GET /api/ra/admin/logs (super_admin read-only)
-registerRaAdminOverview(app);
-// GET/PUT /api/ra/admin/products-ra + subscriptions-ra (super_admin config)
-registerRaAdminConfig(app);
-// GET /api/ra/egress/allowed-hosts — egress agent'lar için dinamik host listesi
-registerRaEgressAllowedHosts(app);
-// GET /api/ra/admin/alerts ; POST .../dismiss ; POST .../dismiss-all
-registerRaAdminAlerts(app);
-// GET/DELETE /api/ra/admin/link-audit — rendered page escaped-link findings
-registerRaAdminLinkAudit(app);
-
-
 // ====================== PAGE VIEWS ROUTES ======================
 
 function normalizeViewSlug(raw) {
@@ -9785,85 +9559,6 @@ async function handleScheduledAlerts(env) {
   }
 }
 
-// Infra-02 — Tunnel down email alert (her kurum için 6 saatte bir tekrar).
-// runTunnelHeartbeat sonrası çağrılır. tunnel_status='error' AND
-// (tunnel_alert_sent_at IS NULL OR < now - 6h) olan kurumları toplar,
-// tek bir konsolide email atar ve tunnel_alert_sent_at'i güncelleştirir.
-async function notifyTunnelDownAlerts(env) {
-  if (!env?.DB) return;
-  const resendKey = env.RESEND_API_KEY;
-  const alertTo = env.RESEND_ALERT_TO;
-  if (!resendKey || !alertTo) return; // env yoksa sessizce geç
-
-  const now = Math.floor(Date.now() / 1000);
-  const cutoff = now - 6 * 60 * 60; // 6 saat
-  let rows;
-  try {
-    const result = await env.DB.prepare(`
-      SELECT s.institution_id, s.egress_endpoint, s.tunnel_last_seen, i.name AS institution_name
-      FROM institution_ra_settings s
-      LEFT JOIN institutions i ON i.id = s.institution_id
-      WHERE s.enabled = 1
-        AND s.tunnel_status = 'error'
-        AND (s.tunnel_alert_sent_at IS NULL OR s.tunnel_alert_sent_at < ?)
-      ORDER BY s.institution_id
-      LIMIT 50
-    `).bind(cutoff).all();
-    rows = result.results || [];
-  } catch (err) {
-    console.error('tunnel alert query failed', err?.message);
-    return;
-  }
-  if (!rows.length) return;
-
-  const lines = rows.map((r) => {
-    const lastSeen = r.tunnel_last_seen
-      ? new Date(Number(r.tunnel_last_seen) * 1000).toISOString()
-      : 'hiç görülmedi';
-    return `• ${r.institution_name || `kurum #${r.institution_id}`} | ${r.egress_endpoint || '?'} | son aktivite: ${lastSeen}`;
-  });
-
-  const body = {
-    from: 'LibEdge Alerts <noreply@libedge.com>',
-    to: [alertTo],
-    subject: `[LibEdge] ${rows.length} kurum tüneli erişilemiyor`,
-    text: [
-      'Aşağıdaki kurum RA tünelleri sağlık kontrolünde erişilemiyor:',
-      '',
-      ...lines,
-      '',
-      'Admin paneli: https://libedge.com/admin.html → Tunnels sekmesi',
-    ].join('\n'),
-  };
-
-  try {
-    const resp = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!resp.ok) {
-      console.error('tunnel alert resend failed', resp.status, (await resp.text()).slice(0, 200));
-      return;
-    }
-  } catch (err) {
-    console.error('tunnel alert fetch failed', err?.message);
-    return;
-  }
-
-  // Mail başarılı → tüm uyarılan kurumlar için tunnel_alert_sent_at güncelle.
-  try {
-    const stmts = rows.map((r) =>
-      env.DB.prepare(
-        `UPDATE institution_ra_settings SET tunnel_alert_sent_at = ? WHERE institution_id = ?`
-      ).bind(now, Number(r.institution_id))
-    );
-    await env.DB.batch(stmts);
-  } catch (err) {
-    console.error('tunnel alert_sent_at update failed', err?.message);
-  }
-}
-
 async function cleanupExpiredPasswordResets(env) {
   if (!env.DB) return;
 
@@ -9876,41 +9571,6 @@ async function cleanupExpiredPasswordResets(env) {
     `).bind(cutoff, cutoff).run();
   } catch (err) {
     console.error('password reset cleanup failed', err);
-  }
-}
-
-async function cleanupOldRaAccessLogs(env) {
-  if (!env.DB) return;
-
-  try {
-    const tableInfo = await env.DB.prepare('PRAGMA table_info(ra_access_logs)').all();
-    const columns = new Set((tableInfo.results || []).map((column) => column.name));
-    if (!columns.size) return;
-
-    if (columns.has('ts')) {
-      const cutoff = Math.floor(Date.now() / 1000) - RA_ACCESS_LOG_RETENTION_SECONDS;
-      await env.DB.prepare('DELETE FROM ra_access_logs WHERE ts < ?').bind(cutoff).run();
-      return;
-    }
-
-    if (columns.has('created_at')) {
-      await env.DB.prepare(
-        "DELETE FROM ra_access_logs WHERE created_at < datetime('now', '-180 days')"
-      ).run();
-    }
-  } catch (err) {
-    console.error('RA access log cleanup failed', err);
-  }
-}
-
-async function cleanupOldRaDebugEvents(env) {
-  if (!env?.DB) return;
-  try {
-    await env.DB.prepare(
-      "DELETE FROM ra_debug_events WHERE created_at < datetime('now', '-30 days')"
-    ).run();
-  } catch {
-    // tablo yoksa veya hata varsa sessizce geç
   }
 }
 
@@ -9966,15 +9626,8 @@ export default {
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(handleScheduledAlerts(env));
     ctx.waitUntil(cleanupExpiredPasswordResets(env));
-    ctx.waitUntil(cleanupOldRaAccessLogs(env));
-    ctx.waitUntil(cleanupOldRaDebugEvents(env));
     ctx.waitUntil(cleanupOldAiUsageLogs(env));
     ctx.waitUntil(cleanupOldRefreshTokens(env));
     ctx.waitUntil(anonymizeOldProductRequests(env));
-    ctx.waitUntil(
-      runTunnelHeartbeat(env)
-        .then(() => notifyTunnelDownAlerts(env))
-        .catch((err) => console.error('tunnel heartbeat failed', err))
-    );
   },
 };

@@ -11,9 +11,7 @@
     "types": ["@cloudflare/workers-types"]
   },
   "include": [
-    "backend/src/**/*",
-    "workers/proxy/src/**/*",
-    "ra-browser/**/*"
+    "backend/src/**/*"
   ],
   "exclude": [
     "node_modules",

@@ -1,56 +1,33 @@
 # Tests
 
-[Vitest](https://vitest.dev/) based. Runs under Node (not Wrangler/Miniflare) —
-fast enough for a pre-commit loop (<2 seconds today). Anything that needs real
-D1 / KV / R2 bindings lives as a manual smoke check until we pick a pool-workers
-solution.
+[Vitest](https://vitest.dev/) based. Runs under Node rather than Wrangler/Miniflare,
+so it is fast enough for a pre-commit loop. Anything that needs real D1 / KV / R2
+bindings remains a manual smoke check until a workers test harness is introduced.
 
 ## Layout
 
-```
+```text
 test/
-  ra/            → unit tests for the RA (remote access) module
-    host.test.js       — hyphen encoding / decoding / validation
-    jwt.test.js        — HS256 JWT signing/verification, tamper detection
-    crypto.test.js     — AES-GCM credential encryption, HMAC, SHA-256
-    routes.test.js     — issue-token delivery-mode normalization + admin RA listing coverage
-    upstream.test.js   — proxy rewrite, cookies, session-host routing helpers
-    error-page.test.js — branded proxy error page, escaping, no raw detail leak
-    proxy-rate-limit.test.js — KV fixed-window proxy session/institution limits
-    tunnel-health.test.js — egress /health probe helper behavior
-  backend/       → unit tests for helpers exported from backend/src/index.js
-    password.test.js   — PBKDF2 hash/verify + legacy SHA-256 path
-    rate-limit.test.js — KV-backed fixed-window rate limiter
+  backend/       -> unit tests for helpers exported from backend/src/index.js
+    password.test.js          -> PBKDF2 hash/verify + legacy SHA-256 path
+    rate-limit.test.js        -> KV-backed fixed-window rate limiter
+    auth-refresh.test.js      -> refresh token helpers
+    password-reset.test.js    -> reset token flow helpers
+    register-consent.test.js  -> KVKK consent validation
+    admin-products.test.js    -> product/admin helpers
 ```
 
 ## Running
 
 ```bash
-npm test              # one-shot, CI-style
-npm run test:watch    # watch mode for local development
+npm test
+npm run test:watch
 ```
 
-## Adding tests
+## Adding Tests
 
-- Pure helper? Export it from its module (if not already) and add a test
-  under `test/<module>/…`. No env setup required — see
-  `test/ra/host.test.js` for the simplest pattern.
-
-- Needs Hono `c.env`? Use `app.request(path, init, env)` from Hono — the
-  worker's `app` is the default export of `backend/src/index.js`. Provide
-  an in-memory env:
-
-  ```js
-  import app from '../../backend/src/index.js';
-
-  const env = {
-    DB: fakeD1(),        // see e.g. better-sqlite3 in-memory wrapper
-    FILES_BUCKET: fakeR2(),
-    RATE_LIMIT_KV: memoryKV(),  // see test/backend/rate-limit.test.js
-  };
-  const res = await app.request('/api/...', { method: 'POST', body: ... }, env);
-  ```
-
-  (No D1 fake in this PR — adding it is a follow-up.)
-
+- Pure helper? Export it from its module and add a focused test under
+  `test/<module>/...`.
+- Needs Hono `c.env`? Use `app.request(path, init, env)` from Hono and provide
+  in-memory fakes for DB, R2 and KV.
 - Never commit real secrets. Tests generate random keys on the fly.
