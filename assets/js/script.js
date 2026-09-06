@@ -513,8 +513,8 @@ document.addEventListener('DOMContentLoaded', function() {
         'Kullanıcı ve Yönetici Eğitimleri': 'User and Administrator Trainings',
         'Erişim ve Entegrasyon Desteği': 'Access and Integration Support',
         'Koleksiyon Geliştirme Danışmanlığı': 'Collection Development Consulting',
-        'LibEdge olarak, 15 yılı aşkın sektör deneyimimizle eğitim ve araştırma kurumlarına özel danışmanlık ve destek hizmetleri sunuyoruz. Ürün tedarik süreçlerinin yanı sıra, ihtiyaçlarınıza yönelik çözümler geliştiriyoruz.': 
-            'As LibEdge, with over 15 years of industry experience, we offer specialized consulting and support services to educational and research institutions. In addition to product procurement processes, we develop solutions tailored to your needs.',
+        'LibEdge olarak, 20 yıla yakın sektör deneyimimizle eğitim ve araştırma kurumlarına özel danışmanlık ve destek hizmetleri sunuyoruz. Ürün tedarik süreçlerinin yanı sıra, ihtiyaçlarınıza yönelik çözümler geliştiriyoruz.':
+            'As LibEdge, with nearly 20 years of industry experience, we offer specialized consulting and support services to educational and research institutions. In addition to product procurement processes, we develop solutions tailored to your needs.',
         'Kurumunuz için en uygun eğitim ve araştırma kaynaklarını belirliyor, bütçeniz doğrultusunda en avantajlı tedarik süreçlerini yönetiyoruz.': 
             'We identify the most suitable educational and research resources for your institution and manage the most advantageous procurement processes within your budget.',
         'Tedariğini sağladığımız veya kurumunuzda bulunan kaynakların en verimli şekilde kullanılması için yerinde veya online eğitimler düzenliyoruz.': 
