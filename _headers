@@ -5,7 +5,13 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()
   X-Frame-Options: SAMEORIGIN
 
+/profile
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
 /profile.html
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/admin
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
 /admin.html
