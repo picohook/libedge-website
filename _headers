@@ -5,6 +5,18 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()
   X-Frame-Options: SAMEORIGIN
 
+/style.css
+  Cache-Control: no-cache, must-revalidate
+
+/assets/js/header.js
+  Cache-Control: no-cache, must-revalidate
+
+/assets/js/header-controller.js
+  Cache-Control: no-cache, must-revalidate
+
+/partials/header.html
+  Cache-Control: no-cache, must-revalidate
+
 /profile
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
