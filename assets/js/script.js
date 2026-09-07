@@ -153,6 +153,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (front) front.style.borderTopColor = product.brand_color;
                     if (accessLink) accessLink.style.backgroundColor = product.brand_color;
                 }
+                if (product.brochure_url) {
+                    const brochureUrl = safeCatalogUrl(product.brochure_url);
+                    const brochureLink = card.querySelector('.flip-back a[href="#brochures"]');
+                    if (brochureUrl && brochureLink) {
+                        brochureLink.href = brochureUrl;
+                        brochureLink.target = '_blank';
+                        brochureLink.rel = 'noopener';
+                    }
+                }
                 if (product.card_front_text_color) {
                     card.querySelectorAll('.flip-front h3').forEach(el => { el.style.color = product.card_front_text_color; });
                 }

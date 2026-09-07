@@ -3672,6 +3672,7 @@ app.get('/api/products', async (c) => {
            COALESCE(card_background_overlay, 'light') AS card_background_overlay,
            card_front_text_color, card_back_text_color,
            short_description_tr, short_description_en,
+           brochure_url,
            subjects_json, access_tags_json,
            COALESCE(card_visible, 1) AS card_visible,
            COALESCE(display_order, 999) AS display_order,
