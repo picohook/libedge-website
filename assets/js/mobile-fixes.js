@@ -34,23 +34,37 @@
         
         const hamburger = document.querySelector('.hamburger');
         const navLinks = document.querySelector('.nav-links');
+        const navGlass = document.querySelector('nav.nav-glass');
         
         if (!hamburger || !navLinks) {
             console.warn('⚠️ Hamburger veya nav-links bulunamadı');
             return;
         }
 
-        // Mobil menü panelini viewport genişliğine zorla. Tailwind space-x ve
-        // masaüstü hizalama sınıflarının paneli daraltmasını engeller.
+        // Mobil menüyü sticky/backdrop-filter içeren nav'ın dışına taşıyabilmek
+        // için orijinal konumunu işaretle. Bazı mobil tarayıcılar fixed çocukları
+        // backdrop-filter uygulanmış ataya göre sınırlar; bu da paneli kısa/dar gösterir.
+        const originalParent = navLinks.parentNode;
+        const navAnchor = document.createComment('mobile-nav-anchor');
+        originalParent.insertBefore(navAnchor, navLinks);
+
+        // Panel her durumda viewport'u kaplasın.
+        navLinks.style.position = 'fixed';
+        navLinks.style.top = '56px';
+        navLinks.style.bottom = '0';
+        navLinks.style.left = '0';
+        navLinks.style.right = '0';
         navLinks.style.width = '100vw';
         navLinks.style.maxWidth = '100vw';
-        navLinks.style.left = '0';
-        navLinks.style.right = 'auto';
+        navLinks.style.height = 'calc(100dvh - 56px)';
+        navLinks.style.minHeight = 'calc(100dvh - 56px)';
+        navLinks.style.maxHeight = 'none';
         navLinks.style.boxSizing = 'border-box';
         navLinks.style.alignItems = 'stretch';
         navLinks.style.gap = '0';
         navLinks.style.paddingLeft = '1rem';
         navLinks.style.paddingRight = '1rem';
+        navLinks.style.overflowY = 'auto';
 
         Array.from(navLinks.children).forEach((child) => {
             child.style.width = '100%';
@@ -71,6 +85,15 @@
         // Menü durumunu güncelle
         function updateMenuState(isOpen) {
             if (isOpen) {
+                // Fixed paneli sticky/backdrop-filter konteynerinden çıkar.
+                if (navLinks.parentNode !== document.body) {
+                    document.body.appendChild(navLinks);
+                }
+                if (navGlass) {
+                    navGlass.style.backdropFilter = 'none';
+                    navGlass.style.webkitBackdropFilter = 'none';
+                }
+
                 navLinks.classList.add('active');
                 document.documentElement.classList.add('menu-open');
                 document.body.classList.add('menu-open');
@@ -90,6 +113,15 @@
                 document.documentElement.classList.remove('menu-open');
                 document.body.classList.remove('menu-open');
                 hamburger.setAttribute('aria-expanded', 'false');
+
+                // Paneli kapatınca orijinal nav konumuna geri koy.
+                if (navLinks.parentNode !== originalParent) {
+                    originalParent.insertBefore(navLinks, navAnchor.nextSibling);
+                }
+                if (navGlass) {
+                    navGlass.style.backdropFilter = '';
+                    navGlass.style.webkitBackdropFilter = '';
+                }
                 
                 // Hamburger ikonunu geri değiştir
                 const icon = hamburger.querySelector('i');
