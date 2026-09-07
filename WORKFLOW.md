@@ -89,8 +89,76 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 - KVKK kullanıcı silme ve anonimleştirme: staging D1 E2E SUCCESS
 - Privacy R2 purge: staging R2 E2E SUCCESS
 - Çerez/analytics policy uyumu: CLOSED; aktif analytics tracker yok
-- Final canlı staging smoke: AUTH + FILES + FRONTEND SUCCESS
-- Super-admin Sistem Sağlığı: endpoint + dashboard widget + RA/tünel KPI temizliği uygulanmış; staging canlı doğrulaması deploy sonrası yapılır
+- Final canlı staging bütünlük smoke: AUTH + FILES + FRONTEND + SYSTEM HEALTH SUCCESS
+- Super-admin Sistem Sağlığı: endpoint + dashboard widget + RA/tünel KPI temizliği staging'de LIVE ve doğrulanmış
 - Production D1 preflight/rollback guardrail: uygulanmış
 - Production Infrastructure Preflight: uygulanmış, production geçişinde manuel çalıştırılacak
 - Staging henüz freeze edilmemiştir; geliştirme devam eder.
+
+## Post-Stabilizasyon Ürün İyileştirme Roadmap'i
+
+Aşağıdaki maddeler mevcut stabil staging tabanı üzerinde davranış değişikliklerini kontrollü ve küçük paketler halinde geliştirmek için sıralanmıştır.
+
+### P2-A — Admin Dashboard / Genel Bakış
+
+- Genel Bakış KPI kartlarını gerçek yönetim ekranlarına bağla: kullanıcılar, kurumlar, ürünler, abonelikler, talepler, duyurular, destek kayıtları ve dosyalar ilgili filtrelenmiş listeye tek tıkla gitmeli.
+- KPI kartlarında yalnız sayı değil anlamlı alt bilgi göster: ör. bekleyen, son 7 gün, süresi yaklaşan, işlem gerektiren.
+- "İşlem Gerektirenler" alanı ekle: açık destek talepleri, bekleyen ürün istekleri, yakında bitecek abonelikler, privacy purge hatası gibi yönetici aksiyonu isteyen durumlar.
+- "Son Aktiviteler" özetini audit log üzerinden kullanıcı dostu hale getir; ham teknik log yerine kim/ne/zaman formatı ve ilgili kayda link.
+- Hızlı işlemler ekle: kullanıcı ekle, kurum ekle, ürün ekle, duyuru oluştur, dosya yükle gibi en sık kullanılan admin aksiyonları.
+- Sistem Sağlığı kartını mevcut haliyle sade tut; detayları yalnız super-admin için açılır panel/modal üzerinden göster.
+- Dashboard kartlarını role göre göster; normal admin için gereksiz super-admin teknik bilgisini gizli tut.
+
+### P2-B — Profil / Kullanıcı Dashboard'u
+
+- Profil sayfasının bilgi hiyerarşisini yeniden ele al: kullanıcının ilk bakışta erişebildiği ürünler, son duyurular, dosyalar ve önemli abonelik durumları görünmeli.
+- Aktif abonelik/erişim kartlarını daha anlaşılır yap: erişim tipi, kurum, geçerlilik ve doğrudan "Eriş" aksiyonu.
+- Kullanıcının sık kullandığı ürünleri veya son erişilenleri öne çıkarma seçeneğini değerlendir.
+- Duyuru ve dosya bölümlerinde okunmamış/yeni durumunu daha görünür yap.
+- Profil bilgileri, şifre/güvenlik ve KVKK/hesap silme gibi hesap ayarlarını içerikten görsel olarak ayır.
+- Mobil dashboard kullanımını ayrıca optimize et; kart yoğunluğunu ve gereksiz dikey kaydırmayı azalt.
+- Boş durumları iyileştir: "henüz dosya yok" yerine kullanıcıyı doğru sonraki adıma yönlendiren mesaj ve butonlar.
+
+### P2-C — AI Araçları
+
+- AI Araçları alanını baştan ürün mantığıyla gözden geçir: hangi araç ne işe yarıyor, kim için, hangi ihtiyacı çözüyor açık olmalı.
+- Kartları yalnız logo/ad listesi olmaktan çıkar; kısa kullanım amacı, kategori, erişim tipi ve güçlü CTA ekle.
+- Kategorileri netleştir: yazım, araştırma, literatür, sunum, veri analizi, üretkenlik vb.
+- Arama/filtreleme ve kategori filtrelerini sadeleştir; gereksiz seçenekleri kaldır.
+- Kuruma/aboneliğe göre erişilebilir araçları kullanıcıya önceliklendir; erişilemeyen araçların durumu açıkça belirtilsin.
+- Yeni/popüler/önerilen gibi rozetleri yalnız gerçek veri varsa kullan; yapay "popüler" etiket üretme.
+- Araç detayına veya doğrudan erişime giderken beklenen davranışı standartlaştır.
+- AI araç kullanım verisi tutulacaksa KVKK/veri minimizasyonu ve amaç sınırlaması tasarımın parçası olmalı.
+
+### P2-D — Genel Kullanılabilirlik ve Bilgi Mimarisi
+
+- Admin ve profil navigasyonunda aktif bölüm, breadcrumb ve geri dönüş yollarını standardize et.
+- Liste ekranlarında ortak arama, filtre, sıralama, pagination ve "filtreyi temizle" davranışı oluştur.
+- Tablolarda mobil görünümü iyileştir; kritik alanları kart/stack formuna dönüştürmeyi değerlendir.
+- Başarı/hata/toast mesajlarını ortaklaştır; teknik hata metni kullanıcıya doğrudan gösterilmemeli.
+- Yükleme skeleton/spinner ve empty-state davranışlarını ortaklaştır.
+- Silme, rol değiştirme, abonelik iptali gibi kritik işlemlerde tutarlı confirmation ve sonuç geri bildirimi sağla.
+- Erişilebilirlik turu yap: klavye navigasyonu, focus state, form label, kontrast, aria ve modal focus yönetimi.
+
+### P2-E — Arama ve Hızlı Erişim
+
+- Admin için global hızlı arama/command palette değerlendir: kullanıcı, kurum, ürün ve destek kaydını tek yerden bulma.
+- Kullanıcı profilinde ürün/dosya/duyuru aramasını bağlama göre basitleştir.
+- Admin dashboard KPI linklerinde ilgili filtre query parametreleri korunmalı; ör. "bekleyen talepler" tıklanınca tüm talepler değil doğrudan bekleyenler açılmalı.
+
+### P2-F — Privacy / Harici İçerik Hardening
+
+- Google Maps iframe'ini kullanıcı haritayı açmadan yüklemeyecek şekilde `data-src`/on-demand modele geçirmek değerlendirilecek.
+- Gelecekte analytics veya başka üçüncü taraf tracker eklenirse consent gate olmadan aktive edilmeyecek.
+
+### P3 — Teknik Borç / Refactor
+
+- `admin.html` içindeki büyük inline CSS/JS parçalarını davranışı değiştirmeden modüllere ayırma.
+- `backend/src/index.js` monolitini domain bazlı route/service modüllerine küçük adımlarla ayırma.
+- Ortak frontend API URL/fetch/error helper'larını standardize etme.
+- Bu refactor'lar kullanıcıya görünür P2 iyileştirmeler ve regresyon testleri oturduktan sonra yapılmalı; stabil staging tabanını gereksiz yere riske atmamalı.
+
+### Production'a Geçiş Öncesi
+
+- Ürün iyileştirme fazı tamamlandığında final staging smoke tekrar çalıştırılır.
+- Ardından production read-only preflight, migration list/plan, backup/Time Travel noktası, production deploy ve production smoke sırasıyla uygulanır.
