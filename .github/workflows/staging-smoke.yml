@@ -23,6 +23,11 @@ on:
         required: true
         type: boolean
         default: true
+      run_frontend:
+        description: 'Run frontend browser smoke'
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -47,6 +52,10 @@ jobs:
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Install Chromium for frontend smoke
+        if: inputs.run_frontend
+        run: npx playwright install --with-deps chromium
 
       - name: Verify smoke credentials
         env:
@@ -96,3 +105,9 @@ jobs:
           LIBEDGE_SMOKE_OTHER_EMAIL: ${{ secrets.LIBEDGE_SMOKE_OTHER_EMAIL }}
           LIBEDGE_SMOKE_OTHER_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_OTHER_PASSWORD }}
         run: npm run smoke:files
+
+      - name: Run frontend browser smoke
+        if: inputs.run_frontend
+        env:
+          LIBEDGE_FRONTEND_SMOKE_LIVE_URL: ${{ inputs.base_url }}
+        run: npm run smoke:frontend
