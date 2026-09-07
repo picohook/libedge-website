@@ -26,15 +26,19 @@ görevini ekler.
 
 | Ortam | Worker | D1 | R2 | KV |
 |---|---|---|---|---|
-| Local/default | `libedge-api-local` | staging D1 (`libedge-db`) | staging R2 (`libedge-files-staging`) | local/default KV namespace |
+| Local/default | `libedge-api-local` | local D1 simülasyonu | local R2 simülasyonu | local KV simülasyonu |
 | Staging | `libedge-api-staging` | `libedge-db` | `libedge-files-staging` | staging KV namespace |
 | Production | `libedge-api-prod` | `libedge-db-production` | `libedge-files` | production KV namespace |
 
-**Önemli:** Local ve staging aynı kodu çalıştırabilir, ancak tamamen aynı ortam değildir.
-Default/local Worker adı ve KV binding'i farklıdır. Buna karşılık mevcut `wrangler.toml`
-tasarımında local/default D1 ve R2 staging kaynaklarını kullanır. Bu nedenle local testler
-staging verisini/dosyalarını etkileyebilir; gerçek veri üzerinde destructive local test yapılmamalıdır.
-Production kaynakları local/staging'den ayrıdır.
+**Önemli:** Kaynak kod açısından local ve staging aynı branch/commit'ten çalıştırılmalıdır;
+farklı olan runtime kaynakları ve secret'lardır. Normal `npx wrangler dev` sırasında Wrangler
+D1, R2 ve KV binding'lerini yerelde simüle eder; `wrangler.toml` içindeki remote resource
+kimlikleri local veriyi staging verisi yapmaz. Staging/production kaynaklarına ancak açıkça
+remote geliştirme veya remote CLI komutu seçildiğinde gidilir (`remote = true`,
+`wrangler dev --remote`, `wrangler d1 ... --remote` gibi).
+
+Local veri işlemlerinde mümkün olduğunda `--local`, gerçek staging işlemlerinde ise
+`--remote --env staging` açıkça kullanılmalıdır. Production kaynakları staging'den de ayrıdır.
 
 ## Repo Yapısı
 
@@ -64,6 +68,19 @@ npx wrangler dev
 `wrangler.toml` default bloğu local geliştirme içindir; `--env local` diye ayrı bir
 environment tanımlı değildir. Lokal secrets `.dev.vars` dosyasında tutulur ve Git'e
 commit edilmez.
+
+Local D1 migration/komut örneği:
+
+```powershell
+npx wrangler d1 migrations apply libedge-db --local
+npx wrangler d1 execute libedge-db --local --command "SELECT 1;"
+```
+
+Remote staging komutları yalnız bilinçli olarak çalıştırılmalıdır:
+
+```powershell
+npx wrangler d1 migrations list libedge-db --remote --env staging
+```
 
 ```text
 JWT_SECRET=...
