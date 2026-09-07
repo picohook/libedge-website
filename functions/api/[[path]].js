@@ -48,11 +48,16 @@
     body,
   }));
 
+  const contentType = response.headers.get('Content-Type') || '';
+  const responseBody = /^(application\/json|text\/)/i.test(contentType)
+    ? await response.arrayBuffer()
+    : response.body;
+
   // new Headers(response.headers) merges duplicate set-cookie lines into one,
   // breaking browser cookie parsing. Pass the original Headers object to the
   // Response constructor so CF Workers copies all set-cookie entries individually,
   // then mutate only the CSP header on the resulting mutable Headers instance.
-  const newResponse = new Response(response.body, {
+  const newResponse = new Response(responseBody, {
     status: response.status,
     statusText: response.statusText,
     headers: response.headers,
@@ -63,4 +68,3 @@
 
   return newResponse;
 }
-
