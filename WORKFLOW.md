@@ -33,10 +33,22 @@ Dosya değişti
 - Local/default Worker: `libedge-api-local`.
 - Staging Worker: `libedge-api-staging`.
 - Production Worker: `libedge-api-prod`.
-- Local/default ve staging aynı kodu çalıştırabilir fakat aynı runtime değildir.
-- Mevcut `wrangler.toml` içinde local/default D1 ve R2 staging kaynaklarına bağlıdır; KV namespace farklıdır.
-- Bu nedenle local destructive D1/R2 testleri staging verisini etkileyebilir.
-- Production D1/R2/KV tamamen ayrı kaynaklardır.
+- Kaynak kod local ve staging'de aynı branch/commit olmalıdır.
+- Normal `npx wrangler dev` D1/R2/KV binding'lerini yerelde simüle eder; staging verisine otomatik bağlanmaz.
+- Remote kaynağa yalnız açık seçimle gidilir: `remote = true`, `wrangler dev --remote` veya ilgili CLI komutunda `--remote`.
+- Local D1 işlemleri için `--local` kullanılır.
+- Staging D1 işlemleri için `--remote --env staging` açıkça kullanılır.
+- Production D1/R2/KV tamamen ayrı kaynaklardır ve production workflow'ları dışında doğrudan kullanılmamalıdır.
+
+Örnek:
+
+```powershell
+# Local-only D1
+npx wrangler d1 execute libedge-db --local --command "SELECT 1;"
+
+# Gerçek staging D1 - bilinçli remote işlem
+npx wrangler d1 migrations list libedge-db --remote --env staging
+```
 
 ## CI/CD
 
