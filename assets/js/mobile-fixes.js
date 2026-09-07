@@ -39,6 +39,26 @@
             console.warn('⚠️ Hamburger veya nav-links bulunamadı');
             return;
         }
+
+        // Mobil menü panelini viewport genişliğine zorla. Tailwind space-x ve
+        // masaüstü hizalama sınıflarının paneli daraltmasını engeller.
+        navLinks.style.width = '100vw';
+        navLinks.style.maxWidth = '100vw';
+        navLinks.style.left = '0';
+        navLinks.style.right = 'auto';
+        navLinks.style.boxSizing = 'border-box';
+        navLinks.style.alignItems = 'stretch';
+        navLinks.style.gap = '0';
+        navLinks.style.paddingLeft = '1rem';
+        navLinks.style.paddingRight = '1rem';
+
+        Array.from(navLinks.children).forEach((child) => {
+            child.style.width = '100%';
+            child.style.maxWidth = '100%';
+            child.style.marginLeft = '0';
+            child.style.marginRight = '0';
+            child.style.boxSizing = 'border-box';
+        });
         
         // Overlay oluştur (yoksa)
         let overlay = document.querySelector('.nav-overlay');
