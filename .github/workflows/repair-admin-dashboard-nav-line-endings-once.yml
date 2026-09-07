@@ -17,19 +17,26 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: staging
-          fetch-depth: 2
+          fetch-depth: 4
 
-      - name: Restore parent admin bytes and insert one script line
+      - name: Restore pre-patch admin bytes and insert one script line
         run: |
           git show 585afc09c8e10a425583285b999a199e5fc1c881:admin.html > admin.html
           python - <<'PY'
           from pathlib import Path
           path = Path('admin.html')
           data = path.read_bytes()
-          marker = b'<script src="assets/js/admin-health.js?v=20260907a"></script>\r\n'
-          insert = marker + b'<script src="assets/js/admin-dashboard-nav.js?v=20260907a"></script>\r\n'
-          if data.count(marker) != 1:
-              raise SystemExit(f'expected exactly one CRLF marker, found {data.count(marker)}')
+          marker_crlf = b'<script src="assets/js/admin-health.js?v=20260907a"></script>\r\n'
+          marker_lf = b'<script src="assets/js/admin-health.js?v=20260907a"></script>\n'
+          if data.count(marker_crlf) == 1:
+              marker = marker_crlf
+              newline = b'\r\n'
+          elif data.count(marker_lf) == 1:
+              marker = marker_lf
+              newline = b'\n'
+          else:
+              raise SystemExit('expected exactly one admin-health script marker')
+          insert = marker + b'<script src="assets/js/admin-dashboard-nav.js?v=20260907a"></script>' + newline
           data = data.replace(marker, insert, 1)
           path.write_bytes(data)
           PY
@@ -37,7 +44,9 @@ jobs:
       - name: Validate minimal diff
         run: |
           grep -q 'assets/js/admin-dashboard-nav.js?v=20260907a' admin.html
-          test "$(git diff --numstat -- admin.html | awk '{print $1+$2}')" -le 4
+          changes="$(git diff --numstat -- admin.html | awk '{print $1+$2}')"
+          echo "admin.html changed lines: ${changes:-0}"
+          test "${changes:-0}" -le 4
 
       - name: Commit repaired patch
         run: |
