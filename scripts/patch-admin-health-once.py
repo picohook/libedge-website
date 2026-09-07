@@ -9,15 +9,6 @@ def lines(text: str) -> bytes:
     return text.encode('utf-8').replace(b'\n', nl)
 
 
-old_card = lines('''            <div class="stat-card flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm">Aktif Tünel</p>
-                    <p id="statActiveTunnels" class="text-2xl font-bold">—</p>
-                    <p id="statActiveTunnelsSub" class="text-xs text-gray-400 mt-0.5">kurum tüneli</p>
-                </div>
-                <i class="fas fa-network-wired text-3xl text-purple-400 opacity-50"></i>
-            </div>''')
-
 new_card = lines('''            <div id="systemHealthCard" class="stat-card flex justify-between items-start hidden">
                 <div>
                     <p class="text-gray-500 text-sm">Sistem Sağlığı</p>
@@ -27,20 +18,30 @@ new_card = lines('''            <div id="systemHealthCard" class="stat-card flex
                 <i id="systemHealthIcon" class="fas fa-shield-alt text-3xl text-gray-400 opacity-60"></i>
             </div>''')
 
-old_script = lines('''<script src="assets/js/script.js?v=20260508b"></script>
-<script>''')
-new_script = lines('''<script src="assets/js/script.js?v=20260508b"></script>
-<script src="assets/js/admin-health.js?v=20260907a"></script>
-<script>''')
+health_script = b'<script src="assets/js/admin-health.js?v=20260907a"></script>'
 
-if data.count(old_card) != 1:
-    raise SystemExit(f'Expected exactly one legacy tunnel card, found {data.count(old_card)}')
-if data.count(old_script) != 1:
-    raise SystemExit(f'Expected exactly one admin script insertion point, found {data.count(old_script)}')
+if data.count(new_card) != 1:
+    raise SystemExit(f'Expected exactly one system health card, found {data.count(new_card)}')
+if data.count(health_script) != 1:
+    raise SystemExit(f'Expected exactly one system health script, found {data.count(health_script)}')
 
-patched = data.replace(old_card, new_card, 1).replace(old_script, new_script, 1)
-if patched == data:
-    raise SystemExit('No admin changes were produced')
+source_lines = data.splitlines(keepends=True)
+legacy_lines = [line for line in source_lines if b'statActiveTunnels' in line or 'Aktif Tünel'.encode('utf-8') in line]
+if not legacy_lines:
+    raise SystemExit('No obsolete tunnel references found')
+
+for line in legacy_lines:
+    print('Removing obsolete tunnel reference:', line.decode('utf-8', errors='replace').strip())
+
+patched = b''.join(
+    line for line in source_lines
+    if b'statActiveTunnels' not in line and 'Aktif Tünel'.encode('utf-8') not in line
+)
+
+if b'statActiveTunnels' in patched or 'Aktif Tünel'.encode('utf-8') in patched:
+    raise SystemExit('Obsolete tunnel reference remains after patch')
+if patched.count(new_card) != 1 or patched.count(health_script) != 1:
+    raise SystemExit('System health integration changed unexpectedly')
 
 path.write_bytes(patched)
-print('Patched admin.html successfully')
+print(f'Cleaned {len(legacy_lines)} obsolete tunnel reference line(s)')
