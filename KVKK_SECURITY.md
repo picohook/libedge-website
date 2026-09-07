@@ -1,259 +1,214 @@
 # KVKK and Data Security Baseline
 
-Bu belge LibEdge'in KVKK, veri gizliliği ve teknik güvenlik açısından mevcut
-durumunu, hedef kontrollerini ve açık işleri özetler. Hukuki metin yerine teknik
-uyum checklist'i olarak düşünülmelidir; production öncesi hukuk danışmanı ile
-nihai aydınlatma metni ve sözleşmeler ayrıca gözden geçirilmelidir.
+Bu belge LibEdge'in KVKK, veri gizliliği ve teknik güvenlik açısından güncel teknik
+baseline'ını özetler. Hukuki görüş yerine teknik uyum ve operasyon checklist'i olarak
+kullanılmalıdır. Production öncesinde nihai aydınlatma metni, sözleşmeler ve veri işleyen
+şartları ayrıca hukuk danışmanı ile gözden geçirilmelidir.
+
+**Son teknik senkronizasyon:** 7 Eylül 2026
 
 ## 1. Veri Kategorileri
-
-LibEdge aşağıdaki veri sınıflarını işler:
 
 | Veri sınıfı | Örnekler | Risk |
 |---|---|---|
 | Kimlik ve iletişim | Ad soyad, e-posta, telefon | Kişisel veri |
 | Kurum bilgisi | Kurum adı, kurum ID, rol, bölüm | Kişisel/kurumsal veri |
 | Kimlik doğrulama | Şifre hash'i, reset token hash'i, JWT cookie | Hassas güvenlik verisi |
-| Abonelik/erişim | Ürün abonelikleri, RA erişim yetkileri | Kişisel davranış verisi |
-| RA logları | Kullanıcı, kurum, ürün, hedef host/path, zaman, IP hash | İşlem güvenliği/veri minimizasyonu gerekli |
-| Publisher credential | Kurumsal publisher kullanıcı adı/şifresi | Çok hassas secret |
+| Abonelik/erişim | Ürün abonelikleri, erişim türleri | Kişisel davranış verisi |
 | Dosya metadata | Dosya adı, mime type, yükleyen kullanıcı, paylaşım kayıtları | Kişisel veri içerebilir |
-| AI kullanım verisi | Sorgu, öneri, ürün eşleşmeleri, kullanım limiti | Profil çıkarımı riski |
+| Destek kayıtları | Ticket, reply, attachment | Kişisel veri içerebilir |
+| AI kullanım verisi | Sorgu hash'i, öneri, ürün eşleşmeleri, kullanım limiti | Profil çıkarımı riski |
+| Harici servis credential | Airtable/API secret vb. | Çok hassas secret |
 
-## 2. Mevcut Teknik Kontroller
+Eski RA/proxy runtime kodu aktif uygulamadan çıkarılmıştır. Migration geçmişinde legacy RA
+tabloları/kolonları bulunabilir; bunlar production veri kaybı riskini önlemek için otomatik
+olarak fiziksel silinmemiştir.
 
-### Şifreler
+## 2. Auth ve Şifre Kontrolleri
 
-`backend/src/index.js` içinde kullanıcı şifreleri PBKDF2 + random salt ile saklanır.
+- Kullanıcı şifreleri PBKDF2 + random salt + SHA-256 ile saklanır.
+- Timing-safe karşılaştırma kullanılır.
+- Eski unsalted SHA-256 hash'leri başarılı login sonrası lazy-rehash ile PBKDF2 formatına yükseltilir.
+- Yeni şifreler legacy SHA-256 formatında üretilmez.
+- Password reset kayıtlarında ham token yerine SHA-256 hash saklanır.
+- Auth cookie'leri HttpOnly, Secure, SameSite=Lax olarak çalışır.
+- State-changing `POST/PUT/PATCH/DELETE` isteklerinde origin allowlist uygulanır.
+- Refresh token replay/revocation kontrolleri aktiftir.
 
-Mevcut format:
+## 3. Kayıt ve Açık Rıza
 
-```text
-saltHex:hashHex
-```
+Kayıt API'si `kvkk_consent` alanını zorunlu boolean olarak doğrular ve yalnız `true`
+olduğunda kayıt oluşturur. Kullanıcı kaydında onay durumu ile birlikte onay zamanı, versiyonu,
+IP ve user-agent metadata'sı tutulur.
 
-Kontroller:
+**Durum: CLOSED / uygulanmış.**
 
-- Random 16 byte salt
-- PBKDF2
-- SHA-256
-- Timing-safe karşılaştırma
-- Eski unsalted SHA-256 hash desteği yalnız migration/rehash için
+## 4. Çerez ve Yerel Tercihler
 
-Hedef:
+7 Eylül 2026 kod taramasında Google Analytics, Google Tag Manager, Clarity, Plausible veya
+Umami gibi aktif analytics tracker bulunmamıştır. Bu nedenle gerçekte var olmayan bir CMP
+veya analytics rızası akışı kullanıcıya sunulmaz.
 
-- Başarılı legacy login sonrası hash mutlaka PBKDF2 formatına yükseltilmeli ✅ (`backend/src/index.js` login route'unda lazy-rehash aktif).
-- Yeni şifrelerde legacy SHA-256 asla üretilmemeli ✅ (`hashPassword` yalnız PBKDF2 üretir).
+- Auth/session cookie'leri zorunlu güvenlik/oturum işlevi içindir.
+- Dil tercihi kullanıcı etkileşimiyle `localStorage` içinde saklanır.
+- `cookies.html` mevcut gerçek davranışla eşleştirilmiştir; aktif olmayan Google Analytics/CMP
+  kullanılıyormuş gibi ifade kaldırılmıştır.
+- Yeni analytics veya marketing tracker eklenirse non-essential consent mekanizması ayrıca
+  uygulanmadan production'a alınmamalıdır.
 
-Legacy hash takibi (KVKK-02, 2026-05-24):
+**Durum: CLOSED mevcut sistem için.**
 
-- Admin endpoint `GET /api/admin/legacy-passwords/stats` (super admin) kalan legacy hash sayısını ve 180+ gün login olmayan stale hesap sayısını döner. E-posta açığa çıkmaz.
-- Legacy hash tespiti: `password_hash NOT LIKE '%:%'` (PBKDF2 hash'leri `saltHex:hashHex` formatındadır).
-- Strateji: organik yükseltme (login = otomatik PBKDF2). Stale hesaplar production'a geçişten önce ayrıca değerlendirilir (force reset email veya manuel iptal).
+## 5. Veri Saklama ve Cleanup
 
-### Reset Token
+| Veri | Saklama / davranış | Uygulanma |
+|---|---|---|
+| Aktif kullanıcı hesabı | Hesap aktif olduğu sürece | uygulama |
+| Password reset token kayıtları | süre bitimi sonrası cleanup | `cleanupExpiredPasswordResets` |
+| Refresh token expired/revoked | cleanup | `cleanupOldRefreshTokens` |
+| Product request | 2 yıl sonra kullanıcı bağlantısını kaldırma | `anonymizeOldProductRequests` |
+| AI usage logs | 90 gün cleanup | `cleanupOldAiUsageLogs` |
+| Kullanıcı silme talebi | merkezi D1 privacy trigger | migration `0047_user_deletion_integrity.sql` |
+| Ticket attachment purge | privacy queue + scheduled R2 consumer | `backend/src/privacy/r2-purge.js` |
 
-`password_resets` tablosu ham reset token saklamaz. Token'ın SHA-256 hash'i saklanır.
+Scheduled görevler Worker entrypoint `backend/src/worker.js` üzerinden mevcut API scheduled
+handler'ı ile birlikte çalışır.
 
-Kontroller:
+## 6. Kullanıcı Silme / Anonimleştirme Politikası
 
-- `token_hash` unique
-- Süre sonu (`expires_at`)
-- Kullanım zamanı (`used_at`)
+`0047_user_deletion_integrity.sql` içindeki merkezi `BEFORE DELETE ON users` trigger,
+self-service ve admin silmelerinin aynı privacy policy'yi uygulamasını sağlar.
 
-### Harici Erişim Bilgileri
+### Silinen hesap-özel veriler
 
-Harici sistemlerde kullanılan erişim bilgileri plaintext olarak loglanmamalı ve
-yalnız yetkili admin ekranlarında kontrollü şekilde yönetilmelidir.
+- subscriptions
+- newsletter_subscriptions
+- user_profile_links
+- refresh_tokens
+- password_resets
+- ra_user_credentials (legacy sensitive records)
+- announcement reactions/comments
+- notifications
+- user collections ve ilgili private paylaşım kayıtları
+- kullanıcının support ticket kayıtları
+- `ai_usage_logs` kullanıcı-linked satırları
+- legacy `ra_link_audit_findings`
 
-Kontroller:
+### Anonimleştirilen / kullanıcı bağlantısı kaldırılan kayıtlar
 
-- Plaintext credential GET endpoint'lerinde dönmez.
-- Admin UI sadece gerekli maskeleme/durum bilgisini gösterir.
-- PUT sırasında gelen hassas değerler kalıcı loglara yazılmaz.
+- product_requests → `user_id = NULL`
+- affiliate_clicks → user/referer/user-agent temizliği
+- form_submissions → name/email/subject/message/admin_note/user_id temizliği
+- shared/institutional content creator/uploader alanları → `NULL`
+- başka kullanıcının ticket'ındaki reply author → `NULL`
+- audit log actor → `NULL`, kullanıcı/ticket PII snapshot'ları redakte edilir
 
-## 3. Production Öncesi Zorunlu Kontroller
+Paylaşılan/kurumsal içerik yalnız hesabı silinen kullanıcı tarafından oluşturuldu diye fiziksel
+olarak silinmez; sahiplik/creator bağlantısı kaldırılır.
 
-- [x] Privacy policy kayıtlı kullanıcı, RA, AI, dosya ve abonelik verilerini kapsayacak şekilde güncellendi.
-- [ ] Açık rıza / aydınlatma metni kullanıcı kayıt akışına bağlandı.
-- [ ] Çerez yönetimi ve analitik rızası ayrıştırıldı.
-- [x] Veri saklama süreleri belirlendi ve cleanup cron job'ları yazıldı (2026-05-24).
-- [ ] Kullanıcının hesap/veri silme talebi için operasyon prosedürü yazıldı.
-- [ ] Admin erişimleri rol bazlı ve loglanabilir hale getirildi.
-- [ ] Production secrets Cloudflare secret olarak tutuluyor; repoda secret yok.
-- [x] Legacy SHA-256 şifre hash migration stratejisi: lazy-rehash + admin stats endpoint (KVKK-02, 2026-05-24).
-- [ ] RA credential ve egress secret plaintext export mümkün değil.
-- [ ] D1 export/backupları şifreli ve erişim kontrollü saklanıyor.
-- [ ] AI araçlarına gönderilecek inputlar için veri minimizasyonu uygulanıyor.
+### Staging E2E doğrulaması
 
-## 4. Veri Saklama Süreleri (Kararlaştırıldı 2026-05-24)
+Sentetik staging kullanıcısı gerçek D1 üzerinde oluşturulup silinmiştir. Kullanıcı ve abonelik
+kayıtlarının silindiği, form kaydının korunarak kişisel alanlarının temizlendiği doğrulanmıştır.
 
-Retention süreleri ve uygulanan cleanup yöntemi:
+**D1 kullanıcı silme/anonimleştirme: CLOSED.**
 
-| Veri | Saklama | Uygulanma |
-|---|---:|---|
-| Aktif kullanıcı hesabı | Hesap aktif olduğu sürece | — |
-| Silinen/pasif kullanıcı hesabı | 30-90 gün içinde anonimleştirme | Manuel prosedür (§6) |
-| Password reset token kayıtları | 30 gün (süre bitimi sonrası) | `cleanupExpiredPasswordResets` cron |
-| Refresh token (expired/revoked) | 30 gün | `cleanupOldRefreshTokens` cron |
-| Product request kayıtları | 2 yıl sonra user_id NULL (anonimleştirme) | `anonymizeOldProductRequests` cron |
-| AI usage logs | 90 gün | `cleanupOldAiUsageLogs` cron |
-| Publisher credential | Abonelik/entegrasyon aktif olduğu sürece | — |
+## 7. R2 Privacy Purge
 
-Tüm cron job'ları `backend/src/index.js` `scheduled()` handler'ında, `*/5 * * * *` tetiklemesinde çalışır. Yasal gereklilik değişirse retention sabitleri (`*_RETENTION_SECONDS`) güncellenmelidir.
+Support ticket attachment referansları kullanıcı silinmeden önce `privacy_r2_purge_queue`
+içine alınır. Scheduled consumer yalnız `ticket-attachments/` allowlist prefix'ini fiziksel
+R2 silmeye kabul eder. Beklenmeyen key/prefix silinmez ve hata queue kaydına yazılır.
 
-## 5. AI Araçları İçin KVKK İlkeleri
+Gerçek staging R2 üzerinde sentetik attachment oluşturulmuş, queue'ya eklenmiş, scheduled
+consumer tarafından işlenmiş ve objenin fiziksel olarak artık bulunmadığı doğrulanmıştır.
 
-Ücretsiz AI araçları ve öneri sistemi kişisel veri işleme riskini artırır.
+**Privacy R2 purge: CLOSED.**
 
-Kurallar:
+## 8. Admin Audit ve Yetki
 
-- AI sağlayıcısına gereksiz kişisel veri gönderilmez.
-- Kullanıcı adı, e-posta, telefon, ham IP, credential, JWT, cookie gönderilmez.
-- Kullanıcı sorgusu ürün/katalog eşleşmesi için gerekiyorsa minimum bağlamla gönderilir.
-- AI cevabı otomatik karar olarak kullanılmaz; öneri/yardım niteliğindedir.
-- Kullanıcıya AI kullanımında verinin nasıl işlendiği açıklanır.
-- Kurum sözleşmelerinde AI veri aktarımı ayrıca belirtilir.
-- Mümkünse katalog eşleştirme önce yerel/kural tabanlı yapılır, AI yalnız açıklama ve sıralama için kullanılır.
+`admin_action_logs` ve merkezi `recordAdminAction(...)` altyapısı aktiftir. Kullanıcı, ürün,
+abonelik, kurum, dosya, duyuru, sync ve destek gibi kritik admin işlemlerinin önemli bölümü audit
+metadata'sı üretir.
 
-Önerilen AI log modeli:
+Audit loglarda secret, password, dosya içeriği veya hassas ham credential tutulmamalıdır.
+Kullanıcı silme policy'si audit event'i korurken kişisel snapshot'ları redakte eder ve actor
+ilişkisini kaldırır.
 
-```text
-ai_usage_logs
-- id
-- user_id nullable
-- anonymous_id nullable
-- tool
-- input_hash
-- output_hash
-- tokens_estimate
-- created_at
-```
+**Admin audit altyapısı: uygulanmış; yeni admin feature'ları eklenirken audit kapsamı korunmalıdır.**
 
-Ham prompt/output saklanacaksa ayrıca açık iş amacı, retention ve erişim kontrolü
-tanımlanmalıdır.
+## 9. Secrets ve Production Guardrails
 
-## 6. Veri Sahibi Hakları
+- Secret/API key değerleri repoya yazılmaz.
+- Local secrets `.dev.vars` ile tutulur.
+- Production Worker deploy'u `wrangler.toml` içindeki required-secret sözleşmesiyle kritik
+  secret'lar eksikse fail-closed durur.
+- Production için en az `JWT_SECRET`, `RESEND_API_KEY`, `AIRTABLE_PAT`, `AIRTABLE_BASE_ID`
+  beklenir.
+- `.github/workflows/production-preflight.yml` secret değerlerini göstermeden isim/varlık
+  kontrolü yapar; ayrıca D1, Time Travel, R2, KV ve production config dry-run erişimini kontrol eder.
+- Production preflight read-only'dir; migration/deploy yapmaz.
 
-KVKK Madde 11 kapsamındaki talepler için operasyonel akış:
+**Kod/guardrail durumu: CLOSED. Gerçek production preflight production geçiş gününde çalıştırılacaktır.**
 
-1. Talep `privacy@libedge.com` veya `info@libedge.com` üzerinden alınır.
-2. Kimlik doğrulama yapılır.
-3. Kullanıcının verileri şu kaynaklarda aranır:
-   - `users`
-   - `subscriptions`
-   - `institution_subscriptions` bağlantıları
-   - `product_requests`
-   - `ai_usage_logs`
-   - file/share/notification tabloları
-4. Silme, düzeltme veya export talebi kayda alınır.
-5. Yasal saklama yükümlülüğü yoksa veri silinir veya anonimleştirilir.
-6. Talep sonucu kullanıcıya yazılı iletilir.
+## 10. D1 Backup / Recovery
 
-## 7. R2 Dosya Silme ve Anonimleştirme Prosedürü
+Production migration apply öncesi:
 
-R2 içinde iki dosya sınıfı vardır:
+1. migration listesi alınır,
+2. kritik şemalar doğrulanır,
+3. D1 Time Travel bookmark bilgisi alınır,
+4. migration ancak bundan sonra uygulanır.
 
-- `files/{sha256-prefix}/...`: merkezi dosya kütüphanesi. Aynı dosya birden fazla kurum/kullanıcı referansında kullanılabilir.
-- Yönetilen görsel/ek dosya prefixleri: `announcement-covers/`, `institution-logos/`, `product-logos/`, `product-card-backgrounds/`, `avatars/`, ticket attachment gibi uygulama tarafından üretilen ekler.
+Production kişisel veri export'u rutin GitHub Actions artifact'ı olarak tutulmaz. D1 recovery
+öncelikle forward-fix veya gerektiğinde Cloudflare D1 Time Travel ile yapılır.
 
-Silme ilkeleri:
+Ayrıntı: `PRODUCTION_MIGRATION_PLAN.md`.
 
-1. Merkezi dosyalarda önce D1 referansları kontrol edilir:
-   - `collection_files`
-   - `user_collection_files`
-2. Aktif referans varsa yalnız ilgili referans pasifleştirilir veya silinir; R2 objesi korunur.
-3. Aktif referans kalmadığında `files` satırı ve ilgili R2 objesi silinir.
-4. Logo/avatar/cover gibi tekil varlıklarda eski obje yalnız uygulamanın yönettiği allowlist prefixindeyse silinir. Harici URL veya beklenmeyen prefix silinmez.
-5. Kullanıcı silme/anonimleştirme talebinde:
-   - Kullanıcı profili ve avatarı kaldırılır.
-   - Kullanıcının özel dosya referansları ve bildirim/paylaşım kayıtları incelenir.
-   - Kurumsal dosyalar başka kullanıcılara veya kuruma hizmet veriyorsa doğrudan silinmez; kişisel veri içeren `display_name`, not veya paylaşım kaydı anonimleştirilir.
-6. R2 objesinin fiziksel silinmesi audit log'a metadata olarak yazılır; dosya içeriği, public URL, token veya R2 key audit log'a yazılmaz.
-7. D1 export/backupları ve R2 yedekleri ayrı saklama takvimine tabidir. Veri sahibi talebinde canlı sistem silindikten sonra backup içindeki kopyalar ilk normal backup retention döngüsünde düşürülür; acil hukuki talep varsa manuel purge planı açılır.
+## 11. Veri İşleyen / Alt Sağlayıcı Envanteri
 
-Operasyonel kontrol listesi:
+| Sağlayıcı | Amaç | Ana kontrol |
+|---|---|---|
+| Cloudflare | Pages, Workers, D1, KV, R2, DNS/SSL | secrets ve production kaynak ayrımı, Time Travel/preflight |
+| GitHub | kaynak kod ve CI/CD | production kişisel veri export/log commitlenmez; secrets GitHub Secrets |
+| Resend | transactional e-posta/reset/alert | minimum e-posta verisi, kısa token TTL |
+| Airtable | kurum/contact sync ve CRM operasyonları | minimum payload, secret PAT |
+| AI sağlayıcısı (TBD) | AI araçları/öneri | sağlayıcı seçilmeden DPA, retention, training opt-out ve bölge şartları doğrulanmalı |
 
-- Silinecek kayıt için `file_id`, `collection_file.id`, `user_collection_files.id` ve varsa kullanıcı/kurum bağlamı belirlenir.
-- Aktif referans sayısı doğrulanır.
-- R2 silme yalnız `FILES_BUCKET` bağlıysa ve obje uygulama tarafından yönetiliyorsa yapılır.
-- İşlem sonucu admin audit log veya talep dosyasına metadata olarak kaydedilir.
+## 12. AI Veri Minimizasyonu
 
-## 8. Admin ve Yetki Modeli
+- Kullanıcı adı, e-posta, telefon, ham IP, credential, JWT veya cookie AI sağlayıcısına gönderilmez.
+- Katalog eşleştirmesi için minimum bağlam kullanılır.
+- Ham prompt/output saklanacaksa ayrıca açık iş amacı, retention ve erişim kontrolü tanımlanır.
+- AI cevabı otomatik karar yerine öneri/yardım niteliğinde kalır.
 
-Minimum hedef:
+## 13. Production Öncesi Zorunlu Kontroller
 
-- Super admin tüm kurumları yönetebilir.
-- Kurum admini yalnız kendi kurumunu ve kullanıcılarını görebilir.
-- RA credential plaintext hiçbir admin ekranında gösterilmez.
-- Access logs admin ekranında amaca uygun filtreyle gösterilir.
-- Admin işlemleri audit log'a metadata olarak yazılır; secret, password, ham prompt veya dosya içeriği loglanmaz.
+- [x] Privacy policy güncel veri modelini kapsıyor.
+- [x] Kayıt akışı KVKK onayına bağlı.
+- [x] Mevcut çerez/analytics davranışı politika ile eşleştirildi.
+- [x] Retention cleanup job'ları uygulanmış.
+- [x] Kullanıcı silme/anonimleştirme merkezi policy ile uygulanmış ve staging E2E doğrulanmış.
+- [x] Ticket attachment R2 privacy purge staging E2E doğrulanmış.
+- [x] Admin audit altyapısı mevcut.
+- [x] Legacy şifre lazy-rehash stratejisi mevcut.
+- [x] Production D1 migration preflight + Time Travel guardrail mevcut.
+- [x] Production required-secret guardrail ve read-only infrastructure preflight mevcut.
+- [ ] Production Infrastructure Preflight production geçiş gününde gerçek kaynaklara karşı çalıştırılacak.
+- [ ] Production Pages/Worker/D1/R2/KV final smoke ve DNS/custom-domain doğrulaması production geçiş gününde yapılacak.
+- [ ] Nihai hukuki metinler/DPA/sağlayıcı şartları hukuk danışmanı ile doğrulanacak.
 
-Önerilen audit tablosu:
+## 14. Açık Teknik İşler
 
-```text
-admin_audit_logs
-- id
-- actor_user_id
-- actor_role
-- action
-- target_type
-- target_id
-- metadata_json
-- ip_hash
-- created_at
-```
+- [ ] Yeni admin feature'larında audit kapsamı korunacak; gerektiğinde health/ops özeti P2 olarak eklenebilir.
+- [ ] Backend `index.js` monolit refactor yalnız ayrı ve kontrollü çalışma olarak ele alınacak; production blocker değildir.
+- [ ] Frontend URL-helper/fallback tekrarları P2 cleanup olarak ele alınabilir.
+- [ ] Analytics/marketing entegrasyonu eklenirse consent management yeniden açılacaktır.
 
-## 9. Veri İşleyen ve Alt Sağlayıcı Envanteri
+## 15. Uygulama Prensipleri
 
-Bu liste operasyonel envanterdir; sözleşme ve aydınlatma metni hazırlığında hukuki
-kontrolle kesinleştirilmelidir.
-
-| Sağlayıcı | Kullanım amacı | Veri kategorisi | Not / kontrol |
-|---|---|---|---|
-| Cloudflare | Pages, Workers, D1, KV, R2, DNS/SSL, rate limit/session altyapısı | Kullanıcı hesabı, kurum/abonelik verisi, dosya metadata ve R2 objeleri, RA/session metadata, IP/header metadata | Ana altyapı sağlayıcısı. Secrets Cloudflare secret olarak tutulur; D1/R2 backup erişimi sınırlı olmalı. |
-| GitHub | Kaynak kod, issue/PR, CI/CD ve deployment hazırlığı | Normalde production kişisel verisi yok; commit/PR içinde test verisi veya log parçası sızmamalı | Repo secret'ları GitHub Secrets/Actions seviyesinde tutulmalı; kişisel veri içeren export/log commitlenmez. |
-| Resend | Transactional e-posta, password reset ve RA alert e-postaları | Alıcı e-posta adresi, kullanıcı adı/selamlama, reset linki veya alert içeriği | E-postada minimum veri kullanılır; reset token TTL kısa, token hash DB'de saklanır. |
-| Airtable | Kurum/contact sync, form ve CRM operasyonları | Kurum adı/domain/şehir, contact e-posta/ad/unvan, form başvuruları | Sync yönü ve conflict stratejisi açık tutulmalı; gereksiz kişisel veri Airtable'a gönderilmemeli. |
-| AI sağlayıcısı (TBD) | Ücretsiz AI araçları, ürün keşfi/öneri yardımcıları | Minimum kullanıcı girdisi, katalog metadata'sı, hashlenmiş kullanım logları | Sağlayıcı seçilmeden DPA, veri saklama, model training opt-out ve bölge koşulları netleştirilmeli. Ham prompt/output varsayılan olarak saklanmaz. |
-
-Minimum kontrol listesi:
-
-- Her sağlayıcı için sözleşme/DPA veya hizmet şartı bağlantısı kayıt altında tutulur.
-- Production secret ve API key'ler repoda tutulmaz.
-- Dış sağlayıcıya gönderilen payload örnekleri release öncesi gözden geçirilir.
-- Sağlayıcı değişikliği privacy policy ve kurum sözleşmesi etkisi açısından değerlendirilir.
-- Veri sahibi talebinde hangi sağlayıcıda arama/silme yapılacağı operasyon dosyasına eklenir.
-
-## 10. Kurum Sözleşmesi İçin Erişim ve Loglama Açıklaması
-
-Kurum sözleşmeleri, LibEdge'in kullanıcı hesabı, abonelik görünürlüğü, doğrudan
-erişim bağlantıları, SSO/kurumsal giriş yönlendirmeleri, dosya paylaşımı, destek
-ve güvenlik kayıtları için işlediği verileri açıkça tarif etmelidir. Yayıncı
-credential veya kullanıcı şifresi plaintext olarak loglanmamalıdır.
-
-## 11. Açık Teknik İşler
-
-- [x] `privacy.html` kayıtlı kullanıcı, AI, dosya paylaşımı ve kurum aboneliği modelini kapsayacak şekilde güncellendi.
-- [x] Kayıt akışı KVKK Aydınlatma/Gizlilik/Kullanım Şartları açık onayına bağlandı; onay zamanı, versiyonu, IP ve user-agent metadata'sı `users` tablosunda saklanır.
-- [ ] Legacy SHA-256 şifre hash'leri için rapor/migration hazırlanacak.
-- [x] `password_resets` için expired/used kayıt cleanup job'u eklendi.
-- [x] `product_requests` ve `ai_usage_logs` migration'larında privacy-by-design uygulandı.
-- [x] Admin audit log ürün, abonelik, kurum ve kullanıcı yönetimi için eklendi.
-- [x] Admin audit log kapsamı sync, duyuru AI ve toplu klasör paylaşımı operasyonlarına genişletildi.
-- [x] Admin audit log kapsamı destek ticket status/reply operasyonlarına genişletildi.
-- [x] Admin audit log kapsamı çekirdek dosya yükleme/silme operasyonları için genişletildi.
-- [x] R2 dosya silme/anonimleştirme prosedürü belgelendi.
-- [x] Cloudflare, GitHub, e-posta sağlayıcıları ve AI sağlayıcıları için veri işleyen listesi çıkarıldı.
-- [x] Kurum sözleşmeleri için RA egress ve loglama açıklaması taslağı eklendi.
-- [ ] Frontend `innerHTML` audit'i release öncesi tekrarlanacak; kullanıcı/server verisi içeren her render noktası `textContent`, `escapeHtml` veya güvenli URL helper ile doğrulanacak.
-
-## 12. Uygulama Prensipleri
-
-- Plaintext şifre veya credential saklanmaz.
-- Geri döndürülebilir şifreleme yalnız gerçekten ihtiyaç olan secret'larda kullanılır.
+- Plaintext kullanıcı şifresi saklanmaz.
+- Secret değerleri loglanmaz veya response ile geri verilmez.
 - Kullanıcı şifreleri yalnız hash + salt olarak tutulur.
-- Loglarda ham IP yerine hash/pseudonym kullanılır.
-- AI araçlarında veri minimizasyonu varsayılandır.
 - Yeni her tablo için veri sınıfı, saklama süresi ve silme davranışı tanımlanır.
-- Production debug header/logları kişisel veri sızdırmayacak şekilde kapatılır.
+- Kullanıcı silme ile paylaşılan/kurumsal içerik gereksiz yere fiziksel olarak silinmez.
+- R2 fiziksel silme yalnız allowlist edilmiş yönetilen key prefix'lerinde yapılır.
+- Production debug/log çıktıları kişisel veri sızdırmayacak şekilde tutulur.
