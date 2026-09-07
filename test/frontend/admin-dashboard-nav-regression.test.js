@@ -5,7 +5,7 @@ const admin = readFileSync('admin.html', 'utf8');
 const nav = readFileSync('assets/js/admin-dashboard-nav.js', 'utf8');
 
 describe('admin dashboard KPI navigation regression coverage', () => {
-  it('loads the KPI navigation helper from admin.html', () => {
+  it('loads the dashboard navigation helper from admin.html', () => {
     expect(admin).toContain('assets/js/admin-dashboard-nav.js?v=20260907b');
   });
 
@@ -27,9 +27,25 @@ describe('admin dashboard KPI navigation regression coverage', () => {
     expect(nav).toContain("if (element) element.value = ''");
   });
 
-  it('keeps KPI navigation keyboard accessible and leaves system health independent', () => {
+  it('links activity feed entries to the appropriate admin sections', () => {
+    expect(nav).toContain('const ACTIVITY_LINKS = {');
+    expect(nav).toContain("user: {");
+    expect(nav).toContain("institution: {");
+    expect(nav).toContain("announcement: {");
+    expect(nav).toContain("subscription: {");
+    expect(nav).toContain("institution_subscription: {");
+    expect(nav).toContain("searchId: 'userSearchInput'");
+    expect(nav).toContain("searchId: 'institutionSearchInput'");
+    expect(nav).toContain("searchId: 'subscriptionSearchInput'");
+    expect(nav).toContain('wrapActivityRenderer()');
+    expect(nav).toContain('bindActivityRows(items)');
+  });
+
+  it('keeps dashboard navigation keyboard accessible and leaves system health independent', () => {
     expect(nav).toContain("card.setAttribute('role', 'link')");
     expect(nav).toContain("card.setAttribute('tabindex', '0')");
+    expect(nav).toContain("row.setAttribute('role', 'link')");
+    expect(nav).toContain("row.setAttribute('tabindex', '0')");
     expect(nav).toContain("event.key === 'Enter' || event.key === ' '");
     expect(nav).toContain("card.id === 'systemHealthCard'");
     expect(nav).not.toContain('.innerHTML');
