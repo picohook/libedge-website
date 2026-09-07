@@ -27,6 +27,7 @@ Dosya değişti
 | Frontend HTML/JS güvenlik değişikliği yaptın | parse kontrolü + `git diff --check`; kullanıcı/server verisi ham `innerHTML` içine girmemeli |
 | KVKK kullanıcı silme değişikliği yaptın | D1 policy testi + gerekiyorsa R2 purge E2E |
 | Secret/config değiştirdin | değeri repoya/loga yazmadan environment ve required-secret guardrail'ini doğrula |
+| Sistem Sağlığı değişikliği yaptın | super-admin 200 + normal admin 403 + anonymous 401; response no-store ve PII/secret içermemeli |
 
 ## Ortam Ayrımı
 
@@ -77,6 +78,7 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 - Frontend değişikliklerinde desktop/mobile browser smoke.
 - Privacy silme değişikliklerinde sentetik kullanıcıyla D1 cleanup ve attachment purge queue/R2 zinciri.
 - Playwright yalnız `test/frontend/**/*.spec.js` browser testlerini çalıştırır; Vitest `.test.js` dosyaları browser smoke'a dahil edilmez.
+- Sistem Sağlığı UI testi eski RA/tünel KPI referanslarının geri gelmediğini de doğrular.
 
 ## Güncel Stabilizasyon Durumu — 7 Eylül 2026
 
@@ -88,6 +90,7 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 - Privacy R2 purge: staging R2 E2E SUCCESS
 - Çerez/analytics policy uyumu: CLOSED; aktif analytics tracker yok
 - Final canlı staging smoke: AUTH + FILES + FRONTEND SUCCESS
+- Super-admin Sistem Sağlığı: endpoint + dashboard widget + RA/tünel KPI temizliği uygulanmış; staging canlı doğrulaması deploy sonrası yapılır
 - Production D1 preflight/rollback guardrail: uygulanmış
 - Production Infrastructure Preflight: uygulanmış, production geçişinde manuel çalıştırılacak
 - Staging henüz freeze edilmemiştir; geliştirme devam eder.
