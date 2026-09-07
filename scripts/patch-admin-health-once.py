@@ -18,30 +18,44 @@ new_card = lines('''            <div id="systemHealthCard" class="stat-card flex
                 <i id="systemHealthIcon" class="fas fa-shield-alt text-3xl text-gray-400 opacity-60"></i>
             </div>''')
 
+legacy_settings_card = lines('''                    <div class="bg-purple-50 rounded-lg p-3 text-center">
+                        <p class="text-2xl font-bold text-purple-600" id="settingsStatTunnels">—</p>
+                    </div>
+''')
+
 health_script = b'<script src="assets/js/admin-health.js?v=20260907a"></script>'
 
 if data.count(new_card) != 1:
     raise SystemExit(f'Expected exactly one system health card, found {data.count(new_card)}')
 if data.count(health_script) != 1:
     raise SystemExit(f'Expected exactly one system health script, found {data.count(health_script)}')
+if data.count(legacy_settings_card) != 1:
+    raise SystemExit(f'Expected exactly one legacy settings tunnel card, found {data.count(legacy_settings_card)}')
 
-source_lines = data.splitlines(keepends=True)
-legacy_lines = [line for line in source_lines if b'statActiveTunnels' in line or 'Aktif Tünel'.encode('utf-8') in line]
-if not legacy_lines:
-    raise SystemExit('No obsolete tunnel references found')
+patched = data.replace(legacy_settings_card, b'', 1)
+source_lines = patched.splitlines(keepends=True)
+legacy_lines = [
+    line for line in source_lines
+    if b'statActiveTunnels' in line
+    or b'settingsStatTunnels' in line
+    or 'Aktif Tünel'.encode('utf-8') in line
+]
 
 for line in legacy_lines:
     print('Removing obsolete tunnel reference:', line.decode('utf-8', errors='replace').strip())
 
 patched = b''.join(
     line for line in source_lines
-    if b'statActiveTunnels' not in line and 'Aktif Tünel'.encode('utf-8') not in line
+    if b'statActiveTunnels' not in line
+    and b'settingsStatTunnels' not in line
+    and 'Aktif Tünel'.encode('utf-8') not in line
 )
 
-if b'statActiveTunnels' in patched or 'Aktif Tünel'.encode('utf-8') in patched:
-    raise SystemExit('Obsolete tunnel reference remains after patch')
+for token in (b'statActiveTunnels', b'settingsStatTunnels', 'Aktif Tünel'.encode('utf-8')):
+    if token in patched:
+        raise SystemExit(f'Obsolete tunnel reference remains after patch: {token!r}')
 if patched.count(new_card) != 1 or patched.count(health_script) != 1:
     raise SystemExit('System health integration changed unexpectedly')
 
 path.write_bytes(patched)
-print(f'Cleaned {len(legacy_lines)} obsolete tunnel reference line(s)')
+print(f'Cleaned legacy settings tunnel card and {len(legacy_lines)} remaining reference line(s)')
