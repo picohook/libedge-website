@@ -2,7 +2,8 @@ name: Staging Admin Health Patch Once
 
 on:
   push:
-    branches: [staging]
+    branches:
+      - staging
     paths:
       - '.github/workflows/staging-admin-health-patch-once.yml'
 
@@ -18,54 +19,13 @@ jobs:
           ref: staging
           fetch-depth: 0
 
-      - name: Patch admin system health card
+      - name: Patch admin dashboard
+        run: python scripts/patch-admin-health-once.py
+
+      - name: Validate targeted diff
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('admin.html')
-          data = path.read_bytes()
-          nl = b'\r\n' if b'\r\n' in data else b'\n'
-
-          def lines(text):
-              return text.encode('utf-8').replace(b'\n', nl)
-
-          old_card = lines('''            <div class="stat-card flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm">Aktif Tünel</p>
-                    <p id="statActiveTunnels" class="text-2xl font-bold">—</p>
-                    <p id="statActiveTunnelsSub" class="text-xs text-gray-400 mt-0.5">kurum tüneli</p>
-                </div>
-                <i class="fas fa-network-wired text-3xl text-purple-400 opacity-50"></i>
-            </div>''')
-
-          new_card = lines('''            <div id="systemHealthCard" class="stat-card flex justify-between items-start hidden">
-                <div>
-                    <p class="text-gray-500 text-sm">Sistem Sağlığı</p>
-                    <p id="systemHealthStatus" class="text-xl font-bold text-gray-500">Kontrol ediliyor</p>
-                    <p id="systemHealthSub" class="text-xs text-gray-400 mt-0.5">D1 • R2 • KV</p>
-                </div>
-                <i id="systemHealthIcon" class="fas fa-shield-alt text-3xl text-gray-400 opacity-60"></i>
-            </div>''')
-
-          old_script = lines('''<script src="assets/js/script.js?v=20260508b"></script>
-<script>''')
-          new_script = lines('''<script src="assets/js/script.js?v=20260508b"></script>
-<script src="assets/js/admin-health.js?v=20260907a"></script>
-<script>''')
-
-          if data.count(old_card) != 1:
-              raise SystemExit(f'Expected exactly one legacy tunnel card, found {data.count(old_card)}')
-          if data.count(old_script) != 1:
-              raise SystemExit(f'Expected exactly one admin script insertion point, found {data.count(old_script)}')
-
-          patched = data.replace(old_card, new_card, 1).replace(old_script, new_script, 1)
-          if patched == data:
-              raise SystemExit('No admin changes were produced')
-          path.write_bytes(patched)
-          PY
-
           git diff --check
+          git diff --exit-code -- . ':!admin.html' || true
           git diff -- admin.html
 
       - name: Commit targeted admin patch
