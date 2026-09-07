@@ -9,6 +9,7 @@ on:
       - 'assets/**'
       - 'partials/**'
       - 'functions/**'
+      - 'style.css'
       - '_headers'
       - '_redirects'
       - 'package.json'
