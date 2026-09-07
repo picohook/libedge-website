@@ -1,4 +1,4 @@
-// Dashboard KPI navigation helper. Keeps the overview useful without changing backend behavior.
+// P2-A: accessible navigation from dashboard overview KPI cards to the corresponding admin sections.
 (function () {
     'use strict';
 
