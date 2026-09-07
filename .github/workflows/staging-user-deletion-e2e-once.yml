@@ -1,0 +1,44 @@
+name: Staging User Deletion E2E Once
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - '.github/workflows/staging-user-deletion-e2e-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Seed disposable privacy fixture
+        run: |
+          set -euo pipefail
+          ID="kvkk-e2e-${GITHUB_RUN_ID}"
+          EMAIL="${ID}@example.invalid"
+          echo "TEST_ID=$ID" >> "$GITHUB_ENV"
+          SQL="INSERT INTO users (id,email,password_hash,role) VALUES ('$ID','$EMAIL','e2e-not-a-real-password','user'); INSERT INTO product_requests (id,user_id) VALUES ('pr-$ID','$ID'); INSERT INTO affiliate_clicks (id,user_id,referer,user_agent) VALUES ('ac-$ID','$ID','https://private.example/','privacy-e2e-agent'); INSERT INTO form_submissions (id,name,email,user_id,subject,message,admin_note) VALUES ('fs-$ID','Privacy Test','$EMAIL','$ID','private subject','private message','private admin note'); INSERT INTO ai_usage_logs (id,user_id) VALUES ('ai-$ID','$ID');"
+          npx wrangler d1 execute libedge-db --remote --env staging --command "$SQL"
+      - name: Delete disposable user and invoke privacy trigger
+        run: npx wrangler d1 execute libedge-db --remote --env staging --command "DELETE FROM users WHERE id = '$TEST_ID';"
+      - name: Verify deletion and anonymization
+        run: |
+          set -euo pipefail
+          OUT="$(npx wrangler d1 execute libedge-db --remote --env staging --json --command "SELECT (SELECT COUNT(*) FROM users WHERE id='$TEST_ID') AS users_left, (SELECT COUNT(*) FROM ai_usage_logs WHERE id='ai-$TEST_ID') AS ai_left, (SELECT COUNT(*) FROM product_requests WHERE id='pr-$TEST_ID' AND user_id IS NULL) AS product_unlinked, (SELECT COUNT(*) FROM affiliate_clicks WHERE id='ac-$TEST_ID' AND user_id IS NULL AND referer IS NULL AND user_agent IS NULL) AS affiliate_scrubbed, (SELECT COUNT(*) FROM form_submissions WHERE id='fs-$TEST_ID' AND user_id IS NULL AND name IS NULL AND email IS NULL AND subject IS NULL AND message IS NULL AND admin_note IS NULL) AS form_scrubbed;" 2>&1)"
+          printf '%s\n' "$OUT"
+          node -e 'const x=JSON.parse(process.argv[1]); const r=x[0]?.results?.[0]||x[0]?.result?.[0]?.results?.[0]; if(!r||Number(r.users_left)!==0||Number(r.ai_left)!==0||Number(r.product_unlinked)!==1||Number(r.affiliate_scrubbed)!==1||Number(r.form_scrubbed)!==1){console.error("Privacy verification failed",r);process.exit(1)}' "$OUT"
+      - name: Clean disposable retained rows
+        if: always()
+        run: |
+          npx wrangler d1 execute libedge-db --remote --env staging --command "DELETE FROM product_requests WHERE id='pr-$TEST_ID'; DELETE FROM affiliate_clicks WHERE id='ac-$TEST_ID'; DELETE FROM form_submissions WHERE id='fs-$TEST_ID'; DELETE FROM users WHERE id='$TEST_ID';" || true
