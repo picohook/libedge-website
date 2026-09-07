@@ -418,7 +418,20 @@
 
 @media (max-width: 639px) {
     .nav-glass {
+        position: sticky;
+        top: 0;
         z-index: 1001;
+    }
+
+    .nav-glass .max-w-7xl {
+        min-height: 56px;
+    }
+
+    .nav-logo {
+        max-width: calc(100vw - 72px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .nav-links {

@@ -180,6 +180,26 @@ test('mobile menu opens and exposes new product links', async ({ page }) => {
   await expect(aiLinks.locator('a[href="index.html#superhuman-suite"]')).toBeVisible();
 });
 
+test('mobile hamburger remains available while scrolling', async ({ page }) => {
+  test.skip(test.info().project.name !== 'mobile-chromium', 'mobile navigation behavior is covered in the mobile project');
+
+  const hamburger = page.locator('.hamburger');
+  await expect(hamburger).toBeVisible();
+
+  await page.evaluate('window.scrollTo(0, 1200)');
+  await expect.poll(() => page.evaluate('window.scrollY')).toBeGreaterThan(900);
+  await expect(hamburger).toBeInViewport();
+  await expect(hamburger).toBeVisible();
+  await expect.poll(async () => {
+    const box = await hamburger.boundingBox();
+    return box ? Math.round(box.y) : 9999;
+  }).toBeLessThan(80);
+
+  await hamburger.click();
+  await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('.nav-links')).toHaveClass(/active/);
+});
+
 test('live staging products endpoint completes in a browser when requested', async ({ page }) => {
   const liveURL = process.env.LIBEDGE_FRONTEND_SMOKE_LIVE_URL;
   test.skip(!liveURL, 'set LIBEDGE_FRONTEND_SMOKE_LIVE_URL to run live Network-panel style API validation');
