@@ -37,4 +37,4 @@ jobs:
           git commit -m "Remove obsolete tunnel dashboard references"
           git push origin HEAD:staging
 
-# cleanup pass after system-health card replacement
+# final cleanup pass for settings tunnel KPI
