@@ -128,6 +128,10 @@ gösterilmez.
 Staging backend normalde `staging` push ile workflow üzerinden deploy edilir.
 Production backend ve Pages manuel workflow dispatch + production environment ile çalıştırılır.
 
+GitHub Actions'tan Pages deploy edebilmek için kullanılan Cloudflare API token'ın hesap
+kapsamında **Cloudflare Pages Edit** (güncel API adlandırmasında **Pages Write**) yetkisi
+olmalıdır. Workers/D1 izinleri tek başına Pages deploy için yeterli değildir.
+
 Production için doğrudan CLI yerine repo workflow'ları tercih edilir. Migration apply öncesi
 `PRODUCTION_MIGRATION_PLAN.md` ve Production Infrastructure Preflight takip edilmelidir.
 
@@ -150,7 +154,8 @@ Production için doğrudan CLI yerine repo workflow'ları tercih edilir. Migrati
 - Support ticket attachment privacy purge: staging R2 E2E doğrulandı
 - Çerez politikası: mevcut gerçek site davranışıyla eşleştirildi; aktif analytics tracker bulunmuyor
 - Final canlı staging smoke: AUTH + FILES + FRONTEND SUCCESS
-- Super-admin Sistem Sağlığı: read-only endpoint + dashboard widget uygulanmış
+- Super-admin Sistem Sağlığı backend: staging'de canlı; anonymous 401, super-admin 200 E2E SUCCESS
+- Super-admin Sistem Sağlığı frontend: kod ve testler hazır; Pages deploy mevcut token'da Pages Write/Edit izni olmadığı için bekliyor
 - Production D1 migration preflight: uygulanmış
 - Production infrastructure preflight: uygulanmış; gerçek production çalıştırması production geçiş gününde yapılacak
 
