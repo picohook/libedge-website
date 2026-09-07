@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const admin = readFileSync('admin.html', 'utf8');
 const nav = readFileSync('assets/js/admin-dashboard-nav.js', 'utf8');
 
-describe('admin dashboard KPI navigation regression coverage', () => {
+describe('admin dashboard navigation regression coverage', () => {
   it('loads the dashboard navigation helper from admin.html', () => {
     expect(admin).toContain('assets/js/admin-dashboard-nav.js?v=20260907b');
   });
@@ -25,6 +25,18 @@ describe('admin dashboard KPI navigation regression coverage', () => {
     expect(nav).toContain("filters: { requestsTypeFilter: 'trial' }");
     expect(nav).toContain('applyFilters(resetFilters, filters)');
     expect(nav).toContain("if (element) element.value = ''");
+  });
+
+  it('makes action-required items actionable without inventing unsupported filters', () => {
+    expect(nav).toContain('const ACTION_LINKS = {');
+    expect(nav).toContain('pending_requests: {');
+    expect(nav).toContain('users_without_institution: {');
+    expect(nav).toContain('expiring_subscriptions: {');
+    expect(nav).toContain("filters: { requestsStatusFilter: 'pending' }");
+    expect(nav).toContain("resetFilters: ['userSearchInput', 'userRoleFilter', 'userInstitutionFilter']");
+    expect(nav).toContain("resetFilters: ['subscriptionSearchInput', 'subscriptionTypeFilter', 'subscriptionStatusFilter']");
+    expect(nav).toContain('wrapActionRenderer()');
+    expect(nav).toContain('bindActionRows(items)');
   });
 
   it('links activity feed entries to the appropriate admin sections', () => {
