@@ -1,4 +1,4 @@
-// P2-A: accessible navigation from dashboard overview KPI cards to the corresponding admin sections.
+// P2-A: accessible, filter-aware navigation from overview KPI cards to the corresponding admin sections.
 (function () {
     'use strict';
 
