@@ -13,6 +13,36 @@ if (!USER_EMAIL || !USER_PASSWORD || !ADMIN_EMAIL || !ADMIN_PASSWORD) {
   process.exit(2);
 }
 
+class CookieJar {
+  constructor() {
+    this.cookies = new Map();
+  }
+
+  get(name) {
+    return this.cookies.get(name) || '';
+  }
+
+  header() {
+    return [...this.cookies.entries()]
+      .filter(([, value]) => value)
+      .map(([name, value]) => `${name}=${value}`)
+      .join('; ');
+  }
+
+  apply(res) {
+    for (const cookie of getSetCookieHeaders(res)) {
+      const match = /^([^=;\s]+)=([^;]*)/.exec(cookie);
+      if (!match) continue;
+      const [, name, value] = match;
+      if (!value || /;\s*Max-Age=0(?:;|$)/i.test(cookie)) {
+        this.cookies.delete(name);
+      } else {
+        this.cookies.set(name, value);
+      }
+    }
+  }
+}
+
 const runId = `smoke-${Date.now()}`;
 const userJar = new CookieJar();
 const adminJar = new CookieJar();
@@ -223,7 +253,7 @@ async function request(pathOrUrl, options = {}) {
       ? undefined
       : JSON.stringify(options.json);
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method,
     headers,
     body,
@@ -242,6 +272,30 @@ async function request(pathOrUrl, options = {}) {
   }
 
   return { res, json, text };
+}
+
+async function fetchWithRetry(url, init, attempts = 3) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fetch(url, init);
+    } catch (err) {
+      lastError = err;
+      if (attempt === attempts || !isRetryableFetchError(err)) throw err;
+      console.warn(`WARN transient fetch failure for ${url}; retrying (${attempt + 1}/${attempts})`);
+      await sleep(300 * attempt);
+    }
+  }
+  throw lastError;
+}
+
+function isRetryableFetchError(err) {
+  const code = err?.cause?.code || err?.code || '';
+  return ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'UND_ERR_SOCKET'].includes(code);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function step(name, fn) {
@@ -264,36 +318,6 @@ function assert(condition, message) {
 
 function normalizeBaseUrl(value) {
   return String(value || '').replace(/\/+$/, '');
-}
-
-class CookieJar {
-  constructor() {
-    this.cookies = new Map();
-  }
-
-  get(name) {
-    return this.cookies.get(name) || '';
-  }
-
-  header() {
-    return [...this.cookies.entries()]
-      .filter(([, value]) => value)
-      .map(([name, value]) => `${name}=${value}`)
-      .join('; ');
-  }
-
-  apply(res) {
-    for (const cookie of getSetCookieHeaders(res)) {
-      const match = /^([^=;\s]+)=([^;]*)/.exec(cookie);
-      if (!match) continue;
-      const [, name, value] = match;
-      if (!value || /;\s*Max-Age=0(?:;|$)/i.test(cookie)) {
-        this.cookies.delete(name);
-      } else {
-        this.cookies.set(name, value);
-      }
-    }
-  }
 }
 
 function getSetCookieHeaders(res) {

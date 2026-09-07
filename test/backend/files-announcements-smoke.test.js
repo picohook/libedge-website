@@ -260,7 +260,7 @@ function env(db, bucket, secret = 'test-jwt-secret') {
     DB: db,
     FILES_BUCKET: bucket,
     JWT_SECRET: secret,
-    R2_PUBLIC_URL: '',
+    R2_PUBLIC_URL: 'https://files.example.test',
     ENVIRONMENT: 'staging',
   };
 }

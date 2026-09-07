@@ -8290,10 +8290,10 @@ app.post('/api/support/tickets/:id/reply', async (c) => {
     if (file && typeof file !== 'string' && bucket) {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
       const key = `ticket-attachments/${id}-${Date.now()}.${ext}`;
-      await bucket.put(key, await file.arrayBuffer(), { 
-    httpMetadata: { contentType: file.type },
-    });
-      attachment_url = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : `/api/files/${key}`;
+      await bucket.put(key, await file.arrayBuffer(), {
+        httpMetadata: { contentType: file.type },
+      });
+      attachment_url = `/api/files/${key}`;
     }
   } else {
     const body = await c.req.json();
@@ -8449,11 +8449,10 @@ app.post('/api/admin/support/tickets/:id/reply', async (c) => {
     if (file && typeof file !== 'string' && bucket) {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
       const key = `ticket-attachments/${id}-admin-${Date.now()}.${ext}`;
-      await bucket.put(key, await file.arrayBuffer(), { 
-    httpMetadata: { contentType: file.type },
-    customMetadata: { 'x-amz-acl': 'public-read' }
-    });
-      attachment_url = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : `/api/files/${key}`;
+      await bucket.put(key, await file.arrayBuffer(), {
+        httpMetadata: { contentType: file.type },
+      });
+      attachment_url = `/api/files/${key}`;
     }
   } else {
     const body = await c.req.json();
