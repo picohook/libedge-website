@@ -163,15 +163,25 @@ test('language toggle translates key homepage controls', async ({ page }) => {
   await expect(page.locator('#products h2')).toHaveText('Ürünler');
 });
 
-test('mobile menu opens and exposes new product links', async ({ page }) => {
+test('mobile menu opens full-width and exposes new product links', async ({ page }) => {
   test.skip(test.info().project.name !== 'mobile-chromium', 'mobile navigation behavior is covered in the mobile project');
 
   await page.locator('.hamburger').click();
   await expect(page.locator('.hamburger')).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.locator('.nav-links')).toHaveClass(/active/);
+  const navLinks = page.locator('.nav-links');
+  await expect(navLinks).toHaveClass(/active/);
+
+  const viewportWidth = page.viewportSize()?.width || 0;
+  const navBox = await navLinks.boundingBox();
+  expect(navBox).not.toBeNull();
+  expect(navBox.width).toBeGreaterThanOrEqual(viewportWidth - 2);
 
   const mobileProducts = page.locator('#mobile-products');
   await expect(mobileProducts).toBeVisible();
+  const productsBox = await mobileProducts.boundingBox();
+  expect(productsBox).not.toBeNull();
+  expect(productsBox.width).toBeGreaterThan(viewportWidth * 0.85);
+
   await mobileProducts.getByRole('button', { name: /yapay zeka/i }).click();
 
   const aiLinks = mobileProducts.locator('.dropdown-list').first();
