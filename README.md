@@ -19,8 +19,8 @@ Kullanıcı
 ```
 
 Worker giriş noktası `backend/src/worker.js` dosyasıdır. Bu wrapper mevcut
-`backend/src/index.js` API uygulamasını çalıştırır ve scheduled privacy R2 purge
-görevini ekler.
+`backend/src/index.js` API uygulamasını çalıştırır, super-admin sistem sağlığı
+endpoint'ini yönlendirir ve scheduled privacy R2 purge görevini ekler.
 
 ## Ortamlar
 
@@ -44,13 +44,15 @@ Local veri işlemlerinde mümkün olduğunda `--local`, gerçek staging işlemle
 
 ```text
 libedge-website/
-├── backend/src/worker.js         # Worker entrypoint + scheduled privacy purge
+├── backend/src/worker.js         # Worker entrypoint + route wrapper + scheduled privacy purge
 ├── backend/src/index.js          # Hono API route'ları
+├── backend/src/system-health.js  # Super-admin read-only D1/R2/KV sağlık özeti
 ├── backend/src/privacy/          # Privacy R2 purge helper'ları
 ├── backend/src/auth/             # Auth, refresh token, rate limit helper'ları
 ├── backend/src/validation.js     # Ortak validation helper'ları
 ├── migrations/                   # D1 migration geçmişi
 ├── admin.html                    # Admin paneli
+├── assets/js/admin-health.js     # Super-admin dashboard sistem sağlığı UI'sı
 ├── profile.html                  # Kullanıcı portalı
 ├── assets/                       # CSS, JS ve görseller
 ├── functions/api/[[path]].js     # Pages -> Worker API yönlendirmesi
@@ -104,6 +106,23 @@ Playwright browser smoke yalnız `test/frontend/**/*.spec.js` dosyalarını çal
 Vitest `.test.js` regresyon testleri normal `npm test` kapsamındadır.
 Canlı staging smoke testleri GitHub Actions üzerinden çalıştırılır.
 
+## Admin Sistem Sağlığı
+
+Super-admin dashboard'undaki eski RA/"Aktif Tünel" KPI'sı kaldırılmıştır. Yerine
+`/api/admin/system-health` üzerinden read-only teknik sağlık özeti gösterilir.
+
+Kontroller:
+
+- D1 `SELECT 1` erişimi
+- R2 read-only `list(limit: 1)` erişimi
+- KV read-only probe
+- Bekleyen `privacy_r2_purge_queue` sayısı
+- Son 24 saatteki `admin_action_logs` işlem sayısı
+
+Endpoint yalnız `super_admin` rolüne açıktır, `Cache-Control: no-store` döner ve secret,
+token, PII veya ham altyapı hata mesajı içermez. Normal adminlerde teknik sağlık kartı
+gösterilmez.
+
 ## Deploy
 
 Staging backend normalde `staging` push ile workflow üzerinden deploy edilir.
@@ -131,6 +150,7 @@ Production için doğrudan CLI yerine repo workflow'ları tercih edilir. Migrati
 - Support ticket attachment privacy purge: staging R2 E2E doğrulandı
 - Çerez politikası: mevcut gerçek site davranışıyla eşleştirildi; aktif analytics tracker bulunmuyor
 - Final canlı staging smoke: AUTH + FILES + FRONTEND SUCCESS
+- Super-admin Sistem Sağlığı: read-only endpoint + dashboard widget uygulanmış
 - Production D1 migration preflight: uygulanmış
 - Production infrastructure preflight: uygulanmış; gerçek production çalıştırması production geçiş gününde yapılacak
 
