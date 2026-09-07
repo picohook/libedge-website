@@ -17,6 +17,12 @@
 /assets/js/mobile-fixes.js
   Cache-Control: no-cache, must-revalidate
 
+/assets/js/admin-health.js
+  Cache-Control: no-cache, must-revalidate
+
+/assets/js/admin-dashboard-nav.js
+  Cache-Control: no-cache, must-revalidate
+
 /partials/header.html
   Cache-Control: no-cache, must-revalidate
 
