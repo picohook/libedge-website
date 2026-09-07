@@ -67,14 +67,14 @@ describe('system health endpoint', () => {
     expect(body.activity.actions_24h).toBe(7);
   });
 
-  it('degrades instead of exposing internals when a component fails', async () => {
+  it('degrades without exposing backend error details', async () => {
     const response = await handleSystemHealthRequest(
       await requestWithRole('super_admin'),
       createEnv({ FILES_BUCKET: { async list() { throw new Error('bucket unavailable'); } } }),
     );
     const body = await response.json();
     expect(body.status).toBe('degraded');
-    expect(body.components.object_storage.status).toBe('error');
-    expect(body.components.object_storage.error).toContain('bucket unavailable');
+    expect(body.components.object_storage).toEqual({ status: 'error' });
+    expect(JSON.stringify(body)).not.toContain('bucket unavailable');
   });
 });
