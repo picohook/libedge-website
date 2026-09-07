@@ -1,0 +1,72 @@
+name: Staging Final Integrity Once
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '.github/workflows/staging-final-integrity-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Final live staging integrity
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run auth smoke
+        env:
+          LIBEDGE_SMOKE_BASE_URL: https://staging.libedge-website.pages.dev
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+        run: npm run smoke:auth
+
+      - name: Run file smoke
+        env:
+          LIBEDGE_SMOKE_BASE_URL: https://staging.libedge-website.pages.dev
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+          LIBEDGE_SMOKE_OTHER_EMAIL: ${{ secrets.LIBEDGE_SMOKE_OTHER_EMAIL }}
+          LIBEDGE_SMOKE_OTHER_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_OTHER_PASSWORD }}
+        run: npm run smoke:files
+
+      - name: Run frontend smoke
+        env:
+          LIBEDGE_FRONTEND_SMOKE_LIVE_URL: https://staging.libedge-website.pages.dev
+        run: npm run smoke:frontend
+
+      - name: Verify super-admin system health
+        env:
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          curl -fsS -c /tmp/cookies.txt -H 'content-type: application/json' \
+            --data "$(jq -nc --arg email "$LIBEDGE_SMOKE_ADMIN_EMAIL" --arg password "$LIBEDGE_SMOKE_ADMIN_PASSWORD" '{email:$email,password:$password}')" \
+            https://staging.libedge-website.pages.dev/api/auth/login -o /tmp/login.json
+          code="$(curl -sS -b /tmp/cookies.txt -o /tmp/health.json -w '%{http_code}' https://staging.libedge-website.pages.dev/api/admin/system-health)"
+          test "$code" = "200"
+          jq -e '(.status == "healthy" or .status == "degraded") and .checked_at and .environment == "staging"' /tmp/health.json >/dev/null
+          curl -fsSL https://staging.libedge-website.pages.dev/admin.html -o /tmp/admin.html
+          grep -q 'id="systemHealthCard"' /tmp/admin.html
+          grep -q 'assets/js/admin-health.js' /tmp/admin.html
