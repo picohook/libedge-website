@@ -71,6 +71,36 @@ user credentials are provided. Ticket attachments must remain behind
 `/api/files/ticket-attachments/...`; a public R2 URL is treated as a
 failed smoke check.
 
+## frontend behavior smoke
+
+Playwright smoke checks for homepage behavior. It serves the current
+working tree locally, mocks contact/products API responses, and verifies
+product filters, brochure links, trial/suggestion modal validation and
+submission, desktop/mobile language toggle behavior, and mobile product
+navigation.
+
+First local run:
+
+```bash
+npx playwright install chromium
+```
+
+Usage:
+
+```bash
+npm run smoke:frontend
+```
+
+Optional live browser-style `/api/products` validation:
+
+```bash
+export LIBEDGE_FRONTEND_SMOKE_LIVE_URL=https://staging.libedge-website.pages.dev
+npm run smoke:frontend
+```
+
+The live check is skipped unless `LIBEDGE_FRONTEND_SMOKE_LIVE_URL` is
+set.
+
 ## GitHub Actions staging smoke
 
 The manual `Staging Smoke` workflow runs the same live smoke scripts

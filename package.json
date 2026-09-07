@@ -11,6 +11,7 @@
         "smoke-checklist": "echo \"Manual smoke checks: homepage, login/logout, profile, announcements, newsletter, admin, institution files\"",
         "smoke:auth": "node scripts/auth-smoke.mjs",
         "smoke:files": "node scripts/files-smoke.mjs",
+        "smoke:frontend": "playwright test",
         "dev": "wrangler dev",
         "build:css": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --minify",
         "build:css:watch": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --watch",
@@ -27,6 +28,7 @@
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20260506.1",
         "@eslint/js": "^9.39.4",
+        "@playwright/test": "^1.63.0",
         "eslint": "^9.39.4",
         "globals": "^17.5.0",
         "jsonwebtoken": "^9.0.3",

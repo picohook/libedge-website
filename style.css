@@ -417,6 +417,10 @@
         }
 
 @media (max-width: 639px) {
+    .nav-glass {
+        z-index: 1001;
+    }
+
     .nav-links {
         position: fixed;
         top: 0;
