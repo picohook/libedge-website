@@ -34,9 +34,16 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          set +e
           output="$(npx wrangler d1 migrations list libedge-db --remote --env staging 2>&1)"
+          status=$?
+          set -e
           printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            echo "Wrangler migration list failed with exit code $status" >&2
+            exit "$status"
+          fi
 
           pending="$(printf '%s\n' "$output" | grep -Eo '[0-9]{4}[A-Za-z0-9_-]*\.sql' | sort -u || true)"
           other="$(printf '%s\n' "$pending" | grep -v '^0047_user_deletion_integrity\.sql$' || true)"
