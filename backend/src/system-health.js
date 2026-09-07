@@ -36,11 +36,8 @@ async function requireSuperAdmin(request, env) {
 async function safeCheck(fn) {
   try {
     return { status: 'ok', ...(await fn()) };
-  } catch (error) {
-    return {
-      status: 'error',
-      error: String(error?.message || error || 'Kontrol başarısız').slice(0, 160),
-    };
+  } catch {
+    return { status: 'error' };
   }
 }
 
@@ -58,21 +55,21 @@ export async function handleSystemHealthRequest(request, env) {
         await env.DB.prepare('SELECT 1 AS ok').first();
         return {};
       })
-    : { status: 'error', error: 'DB binding missing' };
+    : { status: 'error' };
 
   const objectStorage = env.FILES_BUCKET
     ? await safeCheck(async () => {
         await env.FILES_BUCKET.list({ limit: 1 });
         return {};
       })
-    : { status: 'error', error: 'FILES_BUCKET binding missing' };
+    : { status: 'error' };
 
   const rateLimitStore = env.RATE_LIMIT_KV
     ? await safeCheck(async () => {
         await env.RATE_LIMIT_KV.get('__libedge_system_health_probe__');
         return {};
       })
-    : { status: 'error', error: 'RATE_LIMIT_KV binding missing' };
+    : { status: 'error' };
 
   const privacyQueue = env.DB
     ? await safeCheck(async () => ({
@@ -82,7 +79,7 @@ export async function handleSystemHealthRequest(request, env) {
           'count',
         ),
       }))
-    : { status: 'error', error: 'DB binding missing', pending_r2_purge: null };
+    : { status: 'error', pending_r2_purge: null };
 
   const adminActivity = env.DB
     ? await safeCheck(async () => ({
@@ -92,7 +89,7 @@ export async function handleSystemHealthRequest(request, env) {
           'count',
         ),
       }))
-    : { status: 'error', error: 'DB binding missing', actions_24h: null };
+    : { status: 'error', actions_24h: null };
 
   const checks = [database, objectStorage, rateLimitStore, privacyQueue, adminActivity];
   const overall = checks.every((item) => item.status === 'ok') ? 'healthy' : 'degraded';
