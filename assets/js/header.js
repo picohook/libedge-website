@@ -1,4 +1,4 @@
-﻿function getHeaderFallbackHtml() {
+function getHeaderFallbackHtml() {
     return `
 <header class="bg-primary text-white py-6 px-4">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center relative">
@@ -118,6 +118,9 @@
         <a class="text-2xl text-primary nav-logo" href="index.html">
             <span class="lib-bold">Lib</span><span>Edge Eğitim ve Danışmanlık</span>
         </a>
+        <button class="hamburger" aria-label="Menüyü aç/kapat" aria-expanded="false">
+            <i class="fas fa-bars"></i>
+        </button>
         <div class="nav-links flex items-center space-x-4 text-xs sm:text-sm font-medium text-gray-700">
             <a href="index.html#products" class="hover:text-primary font-semibold">Ürünler</a>
             <a href="tools.html" class="hover:text-primary font-semibold">Bireysel Araçlar</a>
@@ -130,7 +133,7 @@
 }
 
 async function fetchHeaderHtml() {
-    const headerVersion = '20260907a';
+    const headerVersion = '20260907b';
     const candidates = [`/partials/header.html?v=${headerVersion}`, `partials/header.html?v=${headerVersion}`];
 
     for (const url of candidates) {
@@ -163,8 +166,8 @@ async function mountSharedHeader() {
         target.innerHTML = getHeaderFallbackHtml();
         const nav = target.querySelector('nav');
         if (nav) target.after(nav);
+        document.dispatchEvent(new CustomEvent('header:ready', { detail: { target } }));
     }
 }
 
 document.addEventListener('DOMContentLoaded', mountSharedHeader);
-
