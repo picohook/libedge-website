@@ -6,7 +6,7 @@
 # overwriting production. R2 points at the staging bucket for the same
 # reason — never the production bucket by default.
 name = "libedge-api-local"
-main = "backend/src/index.js"
+main = "backend/src/worker.js"
 compatibility_date = "2026-03-01"
 # compatibility_flags = ["nodejs_compat"]
 
