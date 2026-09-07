@@ -25,6 +25,7 @@ describe('Pages API proxy', () => {
     const upstreamRequest = fetchMock.mock.calls[0][0];
     expect(upstreamRequest.url).toBe('https://libedge-api-staging.agursel.workers.dev/api/products?visible=1');
     expect(await res.json()).toEqual({ products: [{ slug: 'evidencemd' }] });
+    expect(res.headers.has('Content-Length')).toBe(false);
     expect(res.headers.get('Content-Security-Policy')).toContain("default-src 'self'");
   });
 

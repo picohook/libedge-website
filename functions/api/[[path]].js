@@ -53,14 +53,25 @@
     ? await response.arrayBuffer()
     : response.body;
 
-  // new Headers(response.headers) merges duplicate set-cookie lines into one,
-  // breaking browser cookie parsing. Pass the original Headers object to the
-  // Response constructor so CF Workers copies all set-cookie entries individually,
-  // then mutate only the CSP header on the resulting mutable Headers instance.
+  const responseHeaders = new Headers(response.headers);
+  responseHeaders.delete('Content-Length');
+
+  // Copying through new Headers can merge duplicate Set-Cookie values. Workers
+  // exposes getSetCookie(), so restore them as separate headers when available.
+  const setCookieHeaders = typeof response.headers.getSetCookie === 'function'
+    ? response.headers.getSetCookie()
+    : [];
+  if (setCookieHeaders.length > 0) {
+    responseHeaders.delete('Set-Cookie');
+    for (const cookie of setCookieHeaders) {
+      responseHeaders.append('Set-Cookie', cookie);
+    }
+  }
+
   const newResponse = new Response(responseBody, {
     status: response.status,
     statusText: response.statusText,
-    headers: response.headers,
+    headers: responseHeaders,
   });
   newResponse.headers.set('Content-Security-Policy',
     "default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://; frame-src 'self';"
