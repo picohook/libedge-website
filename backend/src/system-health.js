@@ -1,3 +1,4 @@
+// Read-only super-admin infrastructure health summary. Never return secret, token, PII, or raw provider errors.
 import { verify } from 'hono/jwt';
 
 function json(body, status = 200) {
