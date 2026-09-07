@@ -1,0 +1,48 @@
+name: Repair Admin Dashboard KPI Patch Line Endings Once
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '.github/workflows/repair-admin-dashboard-nav-line-endings-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 2
+
+      - name: Restore parent admin bytes and insert one script line
+        run: |
+          git show 585afc09c8e10a425583285b999a199e5fc1c881:admin.html > admin.html
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('admin.html')
+          data = path.read_bytes()
+          marker = b'<script src="assets/js/admin-health.js?v=20260907a"></script>\r\n'
+          insert = marker + b'<script src="assets/js/admin-dashboard-nav.js?v=20260907a"></script>\r\n'
+          if data.count(marker) != 1:
+              raise SystemExit(f'expected exactly one CRLF marker, found {data.count(marker)}')
+          data = data.replace(marker, insert, 1)
+          path.write_bytes(data)
+          PY
+
+      - name: Validate minimal diff
+        run: |
+          grep -q 'assets/js/admin-dashboard-nav.js?v=20260907a' admin.html
+          test "$(git diff --numstat -- admin.html | awk '{print $1+$2}')" -le 4
+
+      - name: Commit repaired patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin.html
+          git commit -m 'Preserve admin line endings for KPI navigation'
+          git push origin staging
