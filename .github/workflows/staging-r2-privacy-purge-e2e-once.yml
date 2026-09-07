@@ -1,0 +1,55 @@
+name: Staging R2 Privacy Purge E2E Once
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - '.github/workflows/staging-r2-privacy-purge-e2e-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Create disposable R2 object and purge queue row
+        run: |
+          set -euo pipefail
+          KEY="ticket-attachments/kvkk-e2e-${GITHUB_RUN_ID}.txt"
+          printf 'synthetic privacy purge test only\n' > /tmp/kvkk-r2-e2e.txt
+          echo "TEST_KEY=$KEY" >> "$GITHUB_ENV"
+          npx wrangler r2 object put "libedge-files-staging/$KEY" --remote --file /tmp/kvkk-r2-e2e.txt
+          npx wrangler d1 execute libedge-db --remote --env staging --command "INSERT INTO privacy_r2_purge_queue (object_url,reason) VALUES ('$KEY','e2e_validation');"
+      - name: Wait for staging scheduled purge
+        run: sleep 360
+      - name: Verify queue row was purged
+        run: |
+          set -euo pipefail
+          OUT="$(npx wrangler d1 execute libedge-db --remote --env staging --json --command "SELECT purged_at,last_error FROM privacy_r2_purge_queue WHERE object_url='$TEST_KEY';")"
+          printf '%s\n' "$OUT"
+          node -e 'const x=JSON.parse(process.argv[1]); const r=x[0]?.results?.[0]; if(!r||!r.purged_at||r.last_error){console.error("R2 purge queue verification failed",r);process.exit(1)}' "$OUT"
+      - name: Verify R2 object is physically absent
+        run: |
+          set -euo pipefail
+          if npx wrangler r2 object get "libedge-files-staging/$TEST_KEY" --remote --file /tmp/should-not-exist.txt 2>/tmp/r2-get.err; then
+            echo "R2 object still exists after privacy purge"
+            exit 1
+          fi
+          cat /tmp/r2-get.err || true
+      - name: Clean disposable test data
+        if: always()
+        run: |
+          if [ -n "${TEST_KEY:-}" ]; then
+            npx wrangler r2 object delete "libedge-files-staging/$TEST_KEY" --remote || true
+            npx wrangler d1 execute libedge-db --remote --env staging --command "DELETE FROM privacy_r2_purge_queue WHERE object_url='$TEST_KEY';" || true
+          fi
