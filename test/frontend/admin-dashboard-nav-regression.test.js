@@ -6,7 +6,7 @@ const nav = readFileSync('assets/js/admin-dashboard-nav.js', 'utf8');
 
 describe('admin dashboard KPI navigation regression coverage', () => {
   it('loads the KPI navigation helper from admin.html', () => {
-    expect(admin).toContain('assets/js/admin-dashboard-nav.js?v=20260907a');
+    expect(admin).toContain('assets/js/admin-dashboard-nav.js?v=20260907b');
   });
 
   it('maps the overview KPIs to their real admin tabs', () => {
