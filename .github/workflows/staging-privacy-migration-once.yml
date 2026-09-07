@@ -20,24 +20,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: List pending staging migrations
-        id: list
-        uses: cloudflare/wrangler-action@v4
+      - uses: actions/setup-node@v4
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: '4'
-          command: d1 migrations list libedge-db --remote --env staging
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
 
       - name: Verify only migration 0047 is pending
         id: guard
         env:
-          CMD_OUTPUT: ${{ steps.list.outputs.command-output }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' "$CMD_OUTPUT"
-          pending="$(printf '%s\n' "$CMD_OUTPUT" | grep -Eo '[0-9]{4}[A-Za-z0-9_-]*\.sql' | sort -u || true)"
+          output="$(npx wrangler d1 migrations list libedge-db --remote --env staging 2>&1)"
+          printf '%s\n' "$output"
+
+          pending="$(printf '%s\n' "$output" | grep -Eo '[0-9]{4}[A-Za-z0-9_-]*\.sql' | sort -u || true)"
           other="$(printf '%s\n' "$pending" | grep -v '^0047_user_deletion_integrity\.sql$' || true)"
 
           if [ -n "$other" ]; then
@@ -55,30 +56,21 @@ jobs:
 
       - name: Apply migration 0047
         if: steps.guard.outputs.apply == 'true'
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: '4'
-          command: d1 migrations apply libedge-db --remote --env staging
-
-      - name: Verify staging migrations after apply
-        id: verify
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: '4'
-          command: d1 migrations list libedge-db --remote --env staging
-
-      - name: Assert migration 0047 is no longer pending
         env:
-          CMD_OUTPUT: ${{ steps.verify.outputs.command-output }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 migrations apply libedge-db --remote --env staging
+
+      - name: Verify migration 0047 is no longer pending
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' "$CMD_OUTPUT"
-          if printf '%s\n' "$CMD_OUTPUT" | grep -q '0047_user_deletion_integrity.sql'; then
+          output="$(npx wrangler d1 migrations list libedge-db --remote --env staging 2>&1)"
+          printf '%s\n' "$output"
+          if printf '%s\n' "$output" | grep -q '0047_user_deletion_integrity.sql'; then
             echo 'Migration 0047 still appears pending after apply.' >&2
             exit 1
           fi
