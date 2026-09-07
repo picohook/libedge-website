@@ -616,13 +616,13 @@
                 </div>
                 <i class="fas fa-user-clock text-3xl text-indigo-500 opacity-50"></i>
             </div>
-            <div class="stat-card flex justify-between items-start">
+            <div id="systemHealthCard" class="stat-card flex justify-between items-start hidden">
                 <div>
-                    <p class="text-gray-500 text-sm">Aktif Tünel</p>
-                    <p id="statActiveTunnels" class="text-2xl font-bold">—</p>
-                    <p id="statActiveTunnelsSub" class="text-xs text-gray-400 mt-0.5">kurum tüneli</p>
+                    <p class="text-gray-500 text-sm">Sistem Sağlığı</p>
+                    <p id="systemHealthStatus" class="text-xl font-bold text-gray-500">Kontrol ediliyor</p>
+                    <p id="systemHealthSub" class="text-xs text-gray-400 mt-0.5">D1 • R2 • KV</p>
                 </div>
-                <i class="fas fa-network-wired text-3xl text-purple-400 opacity-50"></i>
+                <i id="systemHealthIcon" class="fas fa-shield-alt text-3xl text-gray-400 opacity-60"></i>
             </div>
         </div>
 
@@ -2923,6 +2923,7 @@
 <script src="assets/js/url-safety.js?v=20260508a"></script>
 <script src="assets/js/auth.js?v=20260508b"></script>
 <script src="assets/js/script.js?v=20260508b"></script>
+<script src="assets/js/admin-health.js?v=20260907a"></script>
 <script>
 // ====================== ADMIN AUTH GATE ======================
 let currentAdmin = null; 
