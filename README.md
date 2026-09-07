@@ -100,6 +100,8 @@ npm run build
 npm run smoke:frontend
 ```
 
+Playwright browser smoke yalnız `test/frontend/**/*.spec.js` dosyalarını çalıştırır;
+Vitest `.test.js` regresyon testleri normal `npm test` kapsamındadır.
 Canlı staging smoke testleri GitHub Actions üzerinden çalıştırılır.
 
 ## Deploy
@@ -128,6 +130,7 @@ Production için doğrudan CLI yerine repo workflow'ları tercih edilir. Migrati
 - KVKK kullanıcı silme/anonimleştirme: staging D1 E2E doğrulandı
 - Support ticket attachment privacy purge: staging R2 E2E doğrulandı
 - Çerez politikası: mevcut gerçek site davranışıyla eşleştirildi; aktif analytics tracker bulunmuyor
+- Final canlı staging smoke: AUTH + FILES + FRONTEND SUCCESS
 - Production D1 migration preflight: uygulanmış
 - Production infrastructure preflight: uygulanmış; gerçek production çalıştırması production geçiş gününde yapılacak
 
