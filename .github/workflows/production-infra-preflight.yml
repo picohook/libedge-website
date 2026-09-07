@@ -1,0 +1,72 @@
+name: Production Infrastructure Preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-infra-preflight
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Validate production infrastructure
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify production secret names
+        run: |
+          set -euo pipefail
+          OUT="$(npx wrangler secret list --env production --format json)"
+          node -e '
+            const rows = JSON.parse(process.argv[1]);
+            const names = new Set(rows.map((row) => row.name));
+            const required = ["JWT_SECRET", "RESEND_API_KEY", "AIRTABLE_PAT", "AIRTABLE_BASE_ID"];
+            const missing = required.filter((name) => !names.has(name));
+            if (missing.length) {
+              console.error(`Missing production Worker secrets: ${missing.join(", ")}`);
+              process.exit(1);
+            }
+            console.log(`Required production Worker secrets present: ${required.join(", ")}`);
+          ' "$OUT"
+
+      - name: Verify production D1 and rollback capability
+        run: |
+          set -euo pipefail
+          npx wrangler d1 migrations list libedge-db-production --remote --env production
+          npx wrangler d1 execute libedge-db-production --remote --env production --command "PRAGMA table_info(users); PRAGMA table_info(products);"
+          npx wrangler d1 time-travel info libedge-db-production --env production
+
+      - name: Verify production R2 bucket
+        run: npx wrangler r2 bucket info libedge-files --json
+
+      - name: Verify production KV namespace exists
+        run: |
+          set -euo pipefail
+          OUT="$(npx wrangler kv namespace list)"
+          node -e '
+            const rows = JSON.parse(process.argv[1]);
+            const requiredId = "5640d9b898c54a96bdd9e361e1c6f593";
+            if (!rows.some((row) => row.id === requiredId)) {
+              console.error(`Production KV namespace not found: ${requiredId}`);
+              process.exit(1);
+            }
+            console.log("Production RATE_LIMIT_KV namespace exists");
+          ' "$OUT"
+
+      - name: Validate production Wrangler configuration
+        run: npx wrangler deploy --env production --dry-run
