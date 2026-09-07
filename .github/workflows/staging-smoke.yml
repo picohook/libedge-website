@@ -1,0 +1,91 @@
+name: Staging Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Staging base URL'
+        required: true
+        type: string
+        default: 'https://staging.libedge-website.pages.dev'
+      run_auth:
+        description: 'Run auth smoke'
+        required: true
+        type: boolean
+        default: true
+      run_files:
+        description: 'Run file smoke'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Live staging smoke
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify smoke credentials
+        env:
+          RUN_AUTH: ${{ inputs.run_auth }}
+          RUN_FILES: ${{ inputs.run_files }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+        run: |
+          missing=0
+
+          require_secret() {
+            if [ -z "${!1}" ]; then
+              echo "::error title=Missing secret::$1 is required for staging smoke"
+              missing=1
+            fi
+          }
+
+          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ]; then
+            require_secret LIBEDGE_SMOKE_EMAIL
+            require_secret LIBEDGE_SMOKE_PASSWORD
+            require_secret LIBEDGE_SMOKE_ADMIN_EMAIL
+            require_secret LIBEDGE_SMOKE_ADMIN_PASSWORD
+          fi
+
+          exit "$missing"
+
+      - name: Run auth smoke
+        if: inputs.run_auth
+        env:
+          LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+        run: npm run smoke:auth
+
+      - name: Run file smoke
+        if: inputs.run_files
+        env:
+          LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+          LIBEDGE_SMOKE_OTHER_EMAIL: ${{ secrets.LIBEDGE_SMOKE_OTHER_EMAIL }}
+          LIBEDGE_SMOKE_OTHER_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_OTHER_PASSWORD }}
+        run: npm run smoke:files

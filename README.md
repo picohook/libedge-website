@@ -99,6 +99,8 @@ kontrol edilmelidir.
   Production backend deploy manuel `workflow_dispatch` ve environment approval ile yapılır.
 - `deploy-pages.yml`: `staging` push ile staging Pages deploy eder.
   Production Pages deploy manuel çalıştırılır.
+- `staging-smoke.yml`: GitHub Secrets ile gerçek staging auth ve dosya smoke
+  testlerini manuel çalıştırır.
 - `d1-migrations.yml`: D1 migration `list`/`apply` işleri için manuel workflow.
 
 ## Ana Özellikler

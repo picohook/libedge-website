@@ -71,6 +71,29 @@ user credentials are provided. Ticket attachments must remain behind
 `/api/files/ticket-attachments/...`; a public R2 URL is treated as a
 failed smoke check.
 
+## GitHub Actions staging smoke
+
+The manual `Staging Smoke` workflow runs the same live smoke scripts
+against staging without committing credentials. Add these secrets to the
+`staging` environment or repository secrets:
+
+```bash
+LIBEDGE_SMOKE_EMAIL
+LIBEDGE_SMOKE_PASSWORD
+LIBEDGE_SMOKE_ADMIN_EMAIL
+LIBEDGE_SMOKE_ADMIN_PASSWORD
+```
+
+Optional, for the other-user ticket attachment denial check:
+
+```bash
+LIBEDGE_SMOKE_OTHER_EMAIL
+LIBEDGE_SMOKE_OTHER_PASSWORD
+```
+
+Then run **Actions -> Staging Smoke -> Run workflow**. The default target
+is `https://staging.libedge-website.pages.dev`.
+
 ## cleanup-r2-orphans.mjs
 
 One-shot tool that finds R2 objects under `avatars/`,
