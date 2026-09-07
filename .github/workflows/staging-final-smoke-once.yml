@@ -63,3 +63,5 @@ jobs:
         env:
           LIBEDGE_FRONTEND_SMOKE_LIVE_URL: https://staging.libedge-website.pages.dev
         run: npm run smoke:frontend
+
+# one-shot rerun after Playwright testMatch fix
