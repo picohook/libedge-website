@@ -34,12 +34,39 @@ function initHeaderInteractions() {
     if (hamburger.dataset.headerInitialized === 'true') return;
     hamburger.dataset.headerInitialized = 'true';
 
-    const nav = hamburger.closest('nav.nav-glass');
     const navRow = navLinks.parentElement;
     const placeholder = document.createElement('span');
     placeholder.hidden = true;
     placeholder.dataset.navLinksPlaceholder = 'true';
     navRow.insertBefore(placeholder, navLinks);
+
+    function resetOffcanvasGeometry() {
+        navLinks.style.removeProperty('position');
+        navLinks.style.removeProperty('top');
+        navLinks.style.removeProperty('right');
+        navLinks.style.removeProperty('bottom');
+        navLinks.style.removeProperty('left');
+        navLinks.style.removeProperty('width');
+        navLinks.style.removeProperty('height');
+        navLinks.style.removeProperty('max-height');
+        navLinks.style.removeProperty('box-sizing');
+        navLinks.style.removeProperty('overflow-y');
+        navLinks.style.removeProperty('z-index');
+    }
+
+    function applyOffcanvasGeometry() {
+        navLinks.style.position = 'fixed';
+        navLinks.style.top = '56px';
+        navLinks.style.right = '0';
+        navLinks.style.bottom = '0';
+        navLinks.style.left = '0';
+        navLinks.style.width = '100vw';
+        navLinks.style.height = 'auto';
+        navLinks.style.maxHeight = 'none';
+        navLinks.style.boxSizing = 'border-box';
+        navLinks.style.overflowY = 'auto';
+        navLinks.style.zIndex = '1000';
+    }
 
     function closeMobileMenu() {
         navLinks.classList.remove('active');
@@ -59,10 +86,12 @@ function initHeaderInteractions() {
                 document.body.appendChild(navLinks);
             }
             navLinks.dataset.mobileOffcanvas = 'true';
+            applyOffcanvasGeometry();
             return;
         }
 
         closeMobileMenu();
+        resetOffcanvasGeometry();
         if (placeholder.parentElement && navLinks.parentElement !== navRow) {
             placeholder.after(navLinks);
         }
@@ -76,8 +105,11 @@ function initHeaderInteractions() {
         e.stopPropagation();
         const willOpen = !navLinks.classList.contains('active');
 
-        if (window.innerWidth <= 639 && navLinks.parentElement !== document.body) {
-            document.body.appendChild(navLinks);
+        if (window.innerWidth <= 639) {
+            if (navLinks.parentElement !== document.body) {
+                document.body.appendChild(navLinks);
+            }
+            applyOffcanvasGeometry();
         }
 
         navLinks.classList.toggle('active', willOpen);
@@ -167,11 +199,9 @@ function initHeaderInteractions() {
         const scrollY = window.scrollY;
         const threshold = getHeaderHeight();
 
-        // Nav: saydam cam olur — header geçildikten sonra
         const nav = document.querySelector('nav.nav-glass');
         if (nav) nav.classList.toggle('nav-scrolled', scrollY > threshold);
 
-        // Hero: kaydırınca küçülür
         const hero = document.querySelector('.hero-slider-container');
         if (hero) {
             if (scrollY <= 0) {
@@ -191,7 +221,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initHeaderInteractions();
 });
 
-// Case A: header loaded after auth was already done
 document.addEventListener('header:ready', function() {
     initTranslateButtonSync();
     initHeaderInteractions();
@@ -201,7 +230,6 @@ document.addEventListener('header:ready', function() {
     }
 });
 
-// Case B: auth finished after header was already mounted
 document.addEventListener('auth:ready', function() {
     if (typeof window.updateAuthUI === 'function') {
         window.updateAuthUI(!!window.currentUser);
