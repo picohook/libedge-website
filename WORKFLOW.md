@@ -76,6 +76,7 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 - File değişikliklerinde erişim izinleri, R2 key ve cache-control.
 - Frontend değişikliklerinde desktop/mobile browser smoke.
 - Privacy silme değişikliklerinde sentetik kullanıcıyla D1 cleanup ve attachment purge queue/R2 zinciri.
+- Playwright yalnız `test/frontend/**/*.spec.js` browser testlerini çalıştırır; Vitest `.test.js` dosyaları browser smoke'a dahil edilmez.
 
 ## Güncel Stabilizasyon Durumu — 7 Eylül 2026
 
@@ -86,6 +87,7 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 - KVKK kullanıcı silme ve anonimleştirme: staging D1 E2E SUCCESS
 - Privacy R2 purge: staging R2 E2E SUCCESS
 - Çerez/analytics policy uyumu: CLOSED; aktif analytics tracker yok
+- Final canlı staging smoke: AUTH + FILES + FRONTEND SUCCESS
 - Production D1 preflight/rollback guardrail: uygulanmış
 - Production Infrastructure Preflight: uygulanmış, production geçişinde manuel çalıştırılacak
 - Staging henüz freeze edilmemiştir; geliştirme devam eder.
