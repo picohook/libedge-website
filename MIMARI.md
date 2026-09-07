@@ -11,6 +11,7 @@ Cloudflare Pages
   -> statik HTML/CSS/JS
   -> functions/api/[[path]].js
   -> backend/src/worker.js
+       -> /api/admin/system-health -> backend/src/system-health.js
        -> backend/src/index.js (Hono API)
        -> backend/src/privacy/r2-purge.js (scheduled privacy purge)
   -> D1, R2, KV
@@ -36,15 +37,32 @@ production veri ayrı. Local D1 işlemlerinde `--local`; gerçek staging D1 işl
 
 ## Ana Bileşenler
 
-- `backend/src/worker.js`: gerçek Worker entrypoint; API'yi delege eder ve scheduled privacy purge çalıştırır.
+- `backend/src/worker.js`: gerçek Worker entrypoint; system-health route'unu ayırır, ana API'yi delege eder ve scheduled privacy purge çalıştırır.
 - `backend/src/index.js`: Hono API, auth, admin, dosya, duyuru, ürün ve abonelik route'ları.
+- `backend/src/system-health.js`: yalnız super-admin için read-only D1/R2/KV ve privacy/admin activity sağlık özeti.
 - `backend/src/privacy/r2-purge.js`: yalnız allowlist `ticket-attachments/` prefix'i için privacy purge queue tüketicisi.
 - `backend/src/auth`: cookie auth, refresh token, parola ve rate limit helper'ları.
-- `admin.html`: super-admin ve kurum admin paneli.
+- `admin.html`: super-admin ve kurum admin paneli; eski RA "Aktif Tünel" KPI'sı kaldırılmıştır.
+- `assets/js/admin-health.js`: sistem sağlığı özetini ve ayrıntı panelini DOM-safe şekilde render eder.
 - `profile.html`: kullanıcı dashboard'u, abonelikler, dosyalar ve destek akışları.
 - `functions/api/[[path]].js`: Pages ortamından Worker API'ye yönlendirme.
 - `wrangler.toml`: local/default, staging ve production Worker binding'leri.
 - `migrations/`: D1 migration geçmişi; `0047_user_deletion_integrity.sql` privacy cleanup policy'sini içerir.
+
+## Sistem Sağlığı Mimarisi
+
+`GET /api/admin/system-health` yalnız `super_admin` rolüne açıktır. Endpoint state değiştirmez ve
+`Cache-Control: no-store` ile döner. Kontroller minimum yetki/prensiple read-only yapılır:
+
+- D1: `SELECT 1`
+- R2: `list({ limit: 1 })`
+- KV: sentetik, var olmayan bir health-probe anahtarına `get`
+- Privacy: `privacy_r2_purge_queue` içindeki bekleyen kayıt sayısı
+- Admin activity: son 24 saatteki `admin_action_logs` sayısı
+
+Response secret, token, PII, dosya adı/içeriği veya Cloudflare/D1'nin ham hata mesajlarını içermez.
+Bileşen hataları yalnız `status: error` olarak yüzeye çıkar. Normal admin endpoint'e erişemez ve
+Dashboard teknik sağlık kartını göstermez.
 
 ## Kullanıcı Silme / Privacy Mimarisi
 
@@ -82,6 +100,7 @@ Frontend erişim butonu yalnız tanımlı ve güvenli URL olduğunda yeni sekmed
 - State-changing request'lerde origin allowlist uygulanır.
 - Secrets repoda tutulmaz; production gerekli secret sözleşmesi deploy sırasında fail-closed uygulanır.
 - Kullanıcı/server kaynaklı dinamik metinler escape edilmeden `innerHTML` içine yazılmamalıdır.
+- Sistem Sağlığı UI'sı API değerlerini `textContent`/DOM node'larıyla render eder; ham backend HTML'i yoktur.
 - Dosya/R2 silme allowlist mantığıyla yapılır.
 - Refresh token replay protection ve rate limit helper'ları aktiftir.
 - Aktif analytics tracker bulunmadığı için sahte CMP/analytics iddiası yoktur; cookie policy gerçek davranışla eşleştirilmiştir.
