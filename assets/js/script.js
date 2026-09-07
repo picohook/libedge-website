@@ -147,11 +147,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         img.alt = `${product.name || product.slug} Logo`;
                     }
                 }
+                const accessLink = card.querySelector('.flip-back a[href^="http"]');
                 if (product.brand_color) {
                     const front = card.querySelector('.flip-front');
-                    const accessLink = card.querySelector('.flip-back a[href^="http"]');
                     if (front) front.style.borderTopColor = product.brand_color;
                     if (accessLink) accessLink.style.backgroundColor = product.brand_color;
+                }
+                if (product.access_url && accessLink) {
+                    const accessUrl = safeCatalogUrl(product.access_url);
+                    if (accessUrl) {
+                        accessLink.href = accessUrl;
+                        accessLink.target = '_blank';
+                        accessLink.rel = 'noopener noreferrer';
+                    }
                 }
                 if (product.brochure_url) {
                     const brochureUrl = safeCatalogUrl(product.brochure_url);
@@ -159,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (brochureUrl && brochureLink) {
                         brochureLink.href = brochureUrl;
                         brochureLink.target = '_blank';
-                        brochureLink.rel = 'noopener';
+                        brochureLink.rel = 'noopener noreferrer';
                     }
                 }
                 if (product.card_front_text_color) {

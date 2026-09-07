@@ -48,7 +48,7 @@ describe('runtime DDL guard', () => {
     expect(db.calls.some((sql) => /\b(CREATE|ALTER)\b/i.test(sql))).toBe(false);
   });
 
-  it('exposes product brochure_url in public product cards response', async () => {
+  it('exposes product action URLs in public product cards response', async () => {
     const db = {
       prepare() {
         return {
@@ -65,6 +65,7 @@ describe('runtime DDL guard', () => {
                 logo_url: null,
                 logo_updated_at: null,
                 brand_color: null,
+                access_url: 'https://example.com/access',
                 card_background_url: null,
                 card_background_updated_at: null,
                 card_background_overlay: 'light',
@@ -95,6 +96,7 @@ describe('runtime DDL guard', () => {
     expect(data.products).toHaveLength(1);
     expect(data.products[0]).toMatchObject({
       slug: 'sample-card',
+      access_url: 'https://example.com/access',
       brochure_url: 'https://example.com/sample.pdf',
       subjects: ['yapay-zeka'],
     });

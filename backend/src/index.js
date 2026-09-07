@@ -3668,6 +3668,7 @@ app.get('/api/products', async (c) => {
   const rows = await db.prepare(`
     SELECT slug, name, category, region,
            logo_url, logo_updated_at, brand_color,
+           default_access_url AS access_url,
            card_background_url, card_background_updated_at,
            COALESCE(card_background_overlay, 'light') AS card_background_overlay,
            card_front_text_color, card_back_text_color,

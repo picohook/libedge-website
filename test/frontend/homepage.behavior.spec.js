@@ -20,6 +20,7 @@ test.beforeAll(async () => {
             slug: 'evidencemd',
             name: 'EvidenceMD',
             logo_url: 'assets/images/evidencemd_logo.png',
+            access_url: 'https://evidencemd.ai/',
             brochure_url: 'https://evidencemd.ai/brochure.pdf',
             subjects_json: '["saglik","yapay-zeka"]',
           },
@@ -27,6 +28,7 @@ test.beforeAll(async () => {
             slug: 'grammarly',
             name: 'Grammarly',
             logo_url: 'assets/images/grammarly_logo.svg',
+            access_url: 'https://www.grammarly.com/',
             brochure_url: 'https://www.grammarly.com/business/education',
             subjects_json: '["yapay-zeka"]',
           },
@@ -34,6 +36,7 @@ test.beforeAll(async () => {
             slug: 'superhuman-suite',
             name: 'Superhuman Suite',
             logo_url: 'assets/images/superhuman_logo.png',
+            access_url: 'https://superhuman.com/',
             brochure_url: 'https://superhuman.com/',
             subjects_json: '["yapay-zeka"]',
           },
@@ -94,11 +97,13 @@ test('product filters keep new product cards discoverable', async ({ page }) => 
   await expect(page.locator('#superhuman-suite')).toBeVisible();
 });
 
-test('product brochure buttons use API brochure links when present', async ({ page }) => {
+test('product action buttons use API links when present', async ({ page }) => {
   await expect(page.locator('#evidencemd .flip-back a', { hasText: 'Broşür' }))
     .toHaveAttribute('href', 'https://evidencemd.ai/brochure.pdf');
   await expect(page.locator('#grammarly .flip-back a', { hasText: 'Broşür' }))
     .toHaveAttribute('href', 'https://www.grammarly.com/business/education');
+  await expect(page.locator('#superhuman-suite .flip-back a', { hasText: 'Erişim Linki' }))
+    .toHaveAttribute('href', 'https://superhuman.com/');
 });
 
 test('homepage content keeps public QA copy clean', async ({ page }) => {
@@ -186,6 +191,7 @@ test('live staging products endpoint completes in a browser when requested', asy
   const body = await page.locator('body').innerText();
   expect(body).toContain('EvidenceMD');
   expect(body).toContain('"brochure_url"');
+  expect(body).toContain('"access_url"');
 });
 
 function resolveStaticPath(urlPathname) {
