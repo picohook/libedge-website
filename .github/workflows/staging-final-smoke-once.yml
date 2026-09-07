@@ -1,0 +1,65 @@
+name: Staging Final Smoke Once
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - '.github/workflows/staging-final-smoke-once.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-final-smoke-once
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Final live staging smoke
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify smoke credentials
+        env:
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in LIBEDGE_SMOKE_EMAIL LIBEDGE_SMOKE_PASSWORD LIBEDGE_SMOKE_ADMIN_EMAIL LIBEDGE_SMOKE_ADMIN_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error title=Missing secret::$name is required for final staging smoke"
+              exit 1
+            fi
+          done
+      - name: Run auth smoke
+        env:
+          LIBEDGE_SMOKE_BASE_URL: https://staging.libedge-website.pages.dev
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+        run: npm run smoke:auth
+      - name: Run file smoke
+        env:
+          LIBEDGE_SMOKE_BASE_URL: https://staging.libedge-website.pages.dev
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+          LIBEDGE_SMOKE_OTHER_EMAIL: ${{ secrets.LIBEDGE_SMOKE_OTHER_EMAIL }}
+          LIBEDGE_SMOKE_OTHER_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_OTHER_PASSWORD }}
+        run: npm run smoke:files
+      - name: Run frontend smoke
+        env:
+          LIBEDGE_FRONTEND_SMOKE_LIVE_URL: https://staging.libedge-website.pages.dev
+        run: npm run smoke:frontend
