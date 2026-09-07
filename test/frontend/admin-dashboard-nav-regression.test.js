@@ -14,8 +14,17 @@ describe('admin dashboard KPI navigation regression coverage', () => {
     expect(nav).toContain("{ valueId: 'statSubscriptions', tab: 'subscriptions'");
     expect(nav).toContain("{ valueId: 'statInstitutions', tab: 'institutions'");
     expect(nav).toContain("{ valueId: 'statPublishedAnnouncements', tab: 'announcements'");
-    expect(nav).toContain("{ valueId: 'statPendingRequests', tab: 'requests'");
-    expect(nav).toContain("{ valueId: 'statTrials', tab: 'requests'");
+    expect(nav).toContain("valueId: 'statPendingRequests'");
+    expect(nav).toContain("valueId: 'statTrials'");
+    expect(nav).toContain("tab: 'requests'");
+  });
+
+  it('opens request KPIs with the matching filter and clears stale request filters first', () => {
+    expect(nav).toContain("resetFilters: ['requestsTypeFilter', 'requestsStatusFilter']");
+    expect(nav).toContain("filters: { requestsStatusFilter: 'pending' }");
+    expect(nav).toContain("filters: { requestsTypeFilter: 'trial' }");
+    expect(nav).toContain('applyFilters(resetFilters, filters)');
+    expect(nav).toContain("if (element) element.value = ''");
   });
 
   it('keeps KPI navigation keyboard accessible and leaves system health independent', () => {
