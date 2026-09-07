@@ -14,6 +14,9 @@
 /assets/js/header-controller.js
   Cache-Control: no-cache, must-revalidate
 
+/assets/js/mobile-fixes.js
+  Cache-Control: no-cache, must-revalidate
+
 /partials/header.html
   Cache-Control: no-cache, must-revalidate
 
