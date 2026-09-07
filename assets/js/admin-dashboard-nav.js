@@ -1,4 +1,4 @@
-// P2-A: accessible, filter-aware navigation from overview KPI cards and activity feed to admin sections.
+// P2-A: accessible, filter-aware navigation from overview KPI cards, action-required items, and activity feed to admin sections.
 (function () {
     'use strict';
 
@@ -23,6 +23,25 @@
         },
         { valueId: 'statTodayRegistrations', tab: 'users', label: 'Kullanıcı kayıtlarını görüntüle' },
     ];
+
+    const ACTION_LINKS = {
+        pending_requests: {
+            tab: 'requests',
+            resetFilters: ['requestsTypeFilter', 'requestsStatusFilter'],
+            filters: { requestsStatusFilter: 'pending' },
+            label: 'Bekleyen talepleri görüntüle',
+        },
+        users_without_institution: {
+            tab: 'users',
+            resetFilters: ['userSearchInput', 'userRoleFilter', 'userInstitutionFilter'],
+            label: 'Kurumsuz kullanıcıları yönet',
+        },
+        expiring_subscriptions: {
+            tab: 'subscriptions',
+            resetFilters: ['subscriptionSearchInput', 'subscriptionTypeFilter', 'subscriptionStatusFilter'],
+            label: 'Yakında bitecek abonelikleri yönet',
+        },
+    };
 
     const ACTIVITY_LINKS = {
         user: {
@@ -112,6 +131,47 @@
         });
     }
 
+    function bindActionRows(items = []) {
+        const container = document.getElementById('dashboardActions');
+        if (!container) return;
+
+        const visibleItems = (items || []).filter(item => item.count > 0 || item.key === 'pending_requests');
+        Array.from(container.children).forEach((row, index) => {
+            const item = visibleItems[index];
+            const config = ACTION_LINKS[item?.key];
+            if (!item || !config || Number(item.count || 0) <= 0 || row.dataset.dashboardActionNavBound === 'true') return;
+
+            row.dataset.dashboardActionNavBound = 'true';
+            row.dataset.dashboardActionKey = item.key;
+            row.dataset.dashboardTargetTab = config.tab;
+            row.setAttribute('aria-label', config.label);
+            row.title = config.label;
+
+            const activate = (event) => {
+                event?.preventDefault();
+                event?.stopPropagation();
+                openTab(config.tab, config.resetFilters, config.filters);
+            };
+            row.addEventListener('click', activate);
+            row.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') activate(event);
+            });
+        });
+    }
+
+    function wrapActionRenderer() {
+        const original = window.renderDashboardActions;
+        if (typeof original !== 'function' || original.dashboardNavWrapped) return;
+
+        const wrapped = function (items) {
+            const result = original.apply(this, arguments);
+            bindActionRows(items);
+            return result;
+        };
+        wrapped.dashboardNavWrapped = true;
+        window.renderDashboardActions = wrapped;
+    }
+
     function bindActivityRows(items = []) {
         const container = document.getElementById('dashboardActivityFeed');
         if (!container) return;
@@ -160,6 +220,7 @@
 
     function init() {
         KPI_LINKS.forEach(bindCard);
+        wrapActionRenderer();
         wrapActivityRenderer();
     }
 
