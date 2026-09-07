@@ -1,5 +1,5 @@
 // Super-admin only system health widget for admin dashboard.
-// Reads only the sanitized /api/admin/system-health summary; no secrets or PII.
+// Reads only the sanitized /api/admin/system-health summary; no secrets, tokens, raw provider errors, or PII.
 (function () {
     'use strict';
 
