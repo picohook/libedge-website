@@ -6,11 +6,12 @@ const healthUi = readFileSync('assets/js/admin-health.js', 'utf8');
 const worker = readFileSync('backend/src/worker.js', 'utf8');
 
 describe('admin system health regression coverage', () => {
-  it('replaces the obsolete remote-access tunnel KPI', () => {
+  it('replaces all obsolete remote-access tunnel KPIs', () => {
     expect(admin).toContain('id="systemHealthCard"');
     expect(admin).toContain('id="systemHealthStatus"');
     expect(admin).toContain('assets/js/admin-health.js?v=20260907a');
-    expect(admin).not.toContain('id="statActiveTunnels"');
+    expect(admin).not.toContain('statActiveTunnels');
+    expect(admin).not.toContain('settingsStatTunnels');
     expect(admin).not.toContain('Aktif Tünel');
   });
 
