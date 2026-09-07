@@ -17,6 +17,7 @@ Optional:
 
 ```bash
 export LIBEDGE_SMOKE_BASE_URL=https://staging.libedge-website.pages.dev
+export LIBEDGE_SMOKE_ORIGIN=https://staging.libedge-website.pages.dev
 export LIBEDGE_SMOKE_ADMIN_EMAIL=admin@example.edu
 export LIBEDGE_SMOKE_ADMIN_PASSWORD=...
 ```
@@ -31,6 +32,44 @@ The script verifies login cookies, profile access, refresh rotation,
 logout clearing, post-logout 401s, invalid refresh attempts, wrong
 password rejection, normal-user admin denial, and admin products access
 when admin credentials are provided.
+
+## files-smoke.mjs
+
+Live file and ticket attachment smoke check for staging or a dedicated
+test deployment. It uses real HTTP requests and writes temporary smoke
+objects to the target environment, then attempts to close the smoke
+ticket and delete the managed file reference.
+
+Required:
+
+```bash
+export LIBEDGE_SMOKE_EMAIL=user@example.edu
+export LIBEDGE_SMOKE_PASSWORD=...
+export LIBEDGE_SMOKE_ADMIN_EMAIL=admin@example.edu
+export LIBEDGE_SMOKE_ADMIN_PASSWORD=...
+```
+
+Optional:
+
+```bash
+export LIBEDGE_SMOKE_BASE_URL=https://staging.libedge-website.pages.dev
+export LIBEDGE_SMOKE_ORIGIN=https://staging.libedge-website.pages.dev
+export LIBEDGE_SMOKE_OTHER_EMAIL=other-user@example.edu
+export LIBEDGE_SMOKE_OTHER_PASSWORD=...
+```
+
+Usage:
+
+```bash
+npm run smoke:files
+```
+
+The script verifies managed upload, anonymous/user denial, admin
+download, private no-store cache headers, ticket attachment creation,
+anonymous denial, owner/admin download, and other-user denial when other
+user credentials are provided. Ticket attachments must remain behind
+`/api/files/ticket-attachments/...`; a public R2 URL is treated as a
+failed smoke check.
 
 ## cleanup-r2-orphans.mjs
 

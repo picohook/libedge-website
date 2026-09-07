@@ -3,6 +3,7 @@ const USER_EMAIL = process.env.LIBEDGE_SMOKE_EMAIL;
 const USER_PASSWORD = process.env.LIBEDGE_SMOKE_PASSWORD;
 const ADMIN_EMAIL = process.env.LIBEDGE_SMOKE_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.LIBEDGE_SMOKE_ADMIN_PASSWORD;
+const REQUEST_ORIGIN = process.env.LIBEDGE_SMOKE_ORIGIN || new URL(BASE_URL).origin;
 
 if (!USER_EMAIL || !USER_PASSWORD) {
   console.error('Missing LIBEDGE_SMOKE_EMAIL or LIBEDGE_SMOKE_PASSWORD.');
@@ -25,6 +26,7 @@ await step('login succeeds and sets auth cookies', async () => {
   assert(json?.success === true, 'login response success=true expected');
   assert(Boolean(jar.get('authToken')), 'authToken cookie missing after login');
   assert(Boolean(jar.get('refreshToken')), 'refreshToken cookie missing after login');
+  assertAuthCookiesUseSameSiteLax(res);
 });
 
 await step('profile succeeds with login cookies', async () => {
@@ -50,6 +52,7 @@ await step('refresh succeeds and rotates session cookies', async () => {
   assert(json?.success === true, 'refresh response success=true expected');
   assert(Boolean(jar.get('authToken')), 'authToken cookie missing after refresh');
   assert(Boolean(jar.get('refreshToken')), 'refreshToken cookie missing after refresh');
+  assertAuthCookiesUseSameSiteLax(res);
   assert(jar.get('authToken') !== previousAuth || jar.get('refreshToken') !== previousRefresh, 'session cookies did not rotate');
 });
 
@@ -67,6 +70,7 @@ await step('logout succeeds and clears cookies', async () => {
   assert(json?.success === true, 'logout response success=true expected');
   assert(!jar.get('authToken'), 'authToken cookie still present after logout');
   assert(!jar.get('refreshToken'), 'refreshToken cookie still present after logout');
+  assertAuthCookiesUseSameSiteLax(res);
 });
 
 await step('profile is rejected after logout', async () => {
@@ -121,6 +125,7 @@ if (ADMIN_EMAIL && ADMIN_PASSWORD) {
 
     assertStatus(login.res, 200);
     assert(login.json?.success === true, 'admin login response success=true expected');
+    assertAuthCookiesUseSameSiteLax(login.res);
 
     const products = await request('/api/admin/products', { jarOverride: adminJar });
     assertStatus(products.res, 200);
@@ -141,6 +146,11 @@ async function request(path, options = {}) {
     headers.set('content-type', 'application/json');
   }
 
+  const method = String(options.method || 'GET').toUpperCase();
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !headers.has('origin')) {
+    headers.set('origin', REQUEST_ORIGIN);
+  }
+
   if (options.cookieOverride) {
     headers.set('cookie', options.cookieOverride);
   } else if (options.useCookies !== false) {
@@ -149,7 +159,7 @@ async function request(path, options = {}) {
   }
 
   const res = await fetch(url, {
-    method: options.method || 'GET',
+    method,
     headers,
     body: options.json === undefined ? undefined : JSON.stringify(options.json),
     redirect: 'manual',
@@ -183,6 +193,15 @@ function assertStatus(res, expected) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function assertAuthCookiesUseSameSiteLax(res) {
+  const cookies = getSetCookieHeaders(res).filter((cookie) => /^(authToken|refreshToken)=/i.test(cookie));
+  assert(cookies.length === 2, `expected authToken and refreshToken Set-Cookie headers, got ${cookies.length}`);
+  for (const cookie of cookies) {
+    assert(/;\s*SameSite=Lax(?:;|$)/i.test(cookie), `expected SameSite=Lax on ${cookie}`);
+    assert(!/;\s*SameSite=None(?:;|$)/i.test(cookie), `unexpected SameSite=None on ${cookie}`);
+  }
 }
 
 function normalizeBaseUrl(value) {
