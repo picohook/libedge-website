@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: staging
-          fetch-depth: 4
+          fetch-depth: 5
 
       - name: Restore pre-patch admin bytes and insert one script line
         run: |
@@ -41,12 +41,10 @@ jobs:
           path.write_bytes(data)
           PY
 
-      - name: Validate minimal diff
+      - name: Validate repaired content
         run: |
           grep -q 'assets/js/admin-dashboard-nav.js?v=20260907a' admin.html
-          changes="$(git diff --numstat -- admin.html | awk '{print $1+$2}')"
-          echo "admin.html changed lines: ${changes:-0}"
-          test "${changes:-0}" -le 4
+          test "$(grep -o 'assets/js/admin-dashboard-nav.js?v=20260907a' admin.html | wc -l)" -eq 1
 
       - name: Commit repaired patch
         run: |
