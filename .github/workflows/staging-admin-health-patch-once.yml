@@ -24,8 +24,9 @@ jobs:
 
       - name: Validate targeted diff
         run: |
-          git diff --check
-          git diff --exit-code -- . ':!admin.html' || true
+          changed="$(git diff --name-only)"
+          test "$changed" = "admin.html"
+          git diff --numstat -- admin.html
           git diff -- admin.html
 
       - name: Commit targeted admin patch
