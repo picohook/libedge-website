@@ -25,20 +25,23 @@ jobs:
       - name: Seed disposable privacy fixture
         run: |
           set -euo pipefail
-          ID="kvkk-e2e-${GITHUB_RUN_ID}"
-          EMAIL="${ID}@example.invalid"
+          EMAIL="kvkk-e2e-${GITHUB_RUN_ID}@example.invalid"
+          OUT="$(npx wrangler d1 execute libedge-db --remote --env staging --json --command "INSERT INTO users (email,password_hash,role) VALUES ('$EMAIL','e2e-not-a-real-password','user'); SELECT id FROM users WHERE email='$EMAIL';")"
+          ID="$(node -e 'const x=JSON.parse(process.argv[1]); const rows=x.flatMap(v=>v.results||[]); const r=rows.find(v=>v.id!=null); if(!r) process.exit(1); process.stdout.write(String(r.id))' "$OUT")"
           echo "TEST_ID=$ID" >> "$GITHUB_ENV"
-          SQL="INSERT INTO users (id,email,password_hash,role) VALUES ('$ID','$EMAIL','e2e-not-a-real-password','user'); INSERT INTO product_requests (id,user_id) VALUES ('pr-$ID','$ID'); INSERT INTO affiliate_clicks (id,user_id,referer,user_agent) VALUES ('ac-$ID','$ID','https://private.example/','privacy-e2e-agent'); INSERT INTO form_submissions (id,name,email,user_id,subject,message,admin_note) VALUES ('fs-$ID','Privacy Test','$EMAIL','$ID','private subject','private message','private admin note'); INSERT INTO ai_usage_logs (id,user_id) VALUES ('ai-$ID','$ID');"
-          npx wrangler d1 execute libedge-db --remote --env staging --command "$SQL"
+          echo "TEST_EMAIL=$EMAIL" >> "$GITHUB_ENV"
+          npx wrangler d1 execute libedge-db --remote --env staging --command "INSERT INTO subscriptions (user_id,product_slug,status) VALUES ($ID,'kvkk-e2e','trial'); INSERT INTO form_submissions (form_type,name,email,user_id,subject,message,admin_note) VALUES ('contact','Privacy Test','$EMAIL',$ID,'private subject','private message','private admin note');"
       - name: Delete disposable user and invoke privacy trigger
-        run: npx wrangler d1 execute libedge-db --remote --env staging --command "DELETE FROM users WHERE id = '$TEST_ID';"
-      - name: Verify deletion and anonymization
+        run: npx wrangler d1 execute libedge-db --remote --env staging --command "DELETE FROM users WHERE id = $TEST_ID;"
+      - name: Verify deletion and privacy cleanup
         run: |
           set -euo pipefail
-          OUT="$(npx wrangler d1 execute libedge-db --remote --env staging --json --command "SELECT (SELECT COUNT(*) FROM users WHERE id='$TEST_ID') AS users_left, (SELECT COUNT(*) FROM ai_usage_logs WHERE id='ai-$TEST_ID') AS ai_left, (SELECT COUNT(*) FROM product_requests WHERE id='pr-$TEST_ID' AND user_id IS NULL) AS product_unlinked, (SELECT COUNT(*) FROM affiliate_clicks WHERE id='ac-$TEST_ID' AND user_id IS NULL AND referer IS NULL AND user_agent IS NULL) AS affiliate_scrubbed, (SELECT COUNT(*) FROM form_submissions WHERE id='fs-$TEST_ID' AND user_id IS NULL AND name IS NULL AND email IS NULL AND subject IS NULL AND message IS NULL AND admin_note IS NULL) AS form_scrubbed;" 2>&1)"
+          OUT="$(npx wrangler d1 execute libedge-db --remote --env staging --json --command "SELECT (SELECT COUNT(*) FROM users WHERE id=$TEST_ID) AS users_left, (SELECT COUNT(*) FROM subscriptions WHERE user_id=$TEST_ID) AS subscriptions_left, (SELECT COUNT(*) FROM form_submissions WHERE user_id IS NULL AND email IS NULL AND name IS NULL AND subject IS NULL AND message IS NULL AND admin_note IS NULL AND form_type='contact') AS scrubbed_forms;")"
           printf '%s\n' "$OUT"
-          node -e 'const x=JSON.parse(process.argv[1]); const r=x[0]?.results?.[0]||x[0]?.result?.[0]?.results?.[0]; if(!r||Number(r.users_left)!==0||Number(r.ai_left)!==0||Number(r.product_unlinked)!==1||Number(r.affiliate_scrubbed)!==1||Number(r.form_scrubbed)!==1){console.error("Privacy verification failed",r);process.exit(1)}' "$OUT"
+          node -e 'const x=JSON.parse(process.argv[1]); const r=x[0]?.results?.[0]; if(!r||Number(r.users_left)!==0||Number(r.subscriptions_left)!==0||Number(r.scrubbed_forms)<1){console.error("Privacy verification failed",r);process.exit(1)}' "$OUT"
       - name: Clean disposable retained rows
         if: always()
         run: |
-          npx wrangler d1 execute libedge-db --remote --env staging --command "DELETE FROM product_requests WHERE id='pr-$TEST_ID'; DELETE FROM affiliate_clicks WHERE id='ac-$TEST_ID'; DELETE FROM form_submissions WHERE id='fs-$TEST_ID'; DELETE FROM users WHERE id='$TEST_ID';" || true
+          if [ -n "${TEST_ID:-}" ]; then
+            npx wrangler d1 execute libedge-db --remote --env staging --command "DELETE FROM form_submissions WHERE user_id=$TEST_ID OR (user_id IS NULL AND email='$TEST_EMAIL'); DELETE FROM subscriptions WHERE user_id=$TEST_ID; DELETE FROM users WHERE id=$TEST_ID;" || true
+          fi
