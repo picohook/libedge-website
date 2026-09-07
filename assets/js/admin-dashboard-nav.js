@@ -7,14 +7,39 @@
         { valueId: 'statSubscriptions', tab: 'subscriptions', label: 'Abonelikleri görüntüle' },
         { valueId: 'statInstitutions', tab: 'institutions', label: 'Kurumları görüntüle' },
         { valueId: 'statPublishedAnnouncements', tab: 'announcements', label: 'Duyuruları görüntüle' },
-        { valueId: 'statPendingRequests', tab: 'requests', label: 'Talepleri görüntüle' },
-        { valueId: 'statTrials', tab: 'requests', label: 'Deneme taleplerini görüntüle' },
+        {
+            valueId: 'statPendingRequests',
+            tab: 'requests',
+            label: 'Bekleyen talepleri görüntüle',
+            resetFilters: ['requestsTypeFilter', 'requestsStatusFilter'],
+            filters: { requestsStatusFilter: 'pending' },
+        },
+        {
+            valueId: 'statTrials',
+            tab: 'requests',
+            label: 'Deneme taleplerini görüntüle',
+            resetFilters: ['requestsTypeFilter', 'requestsStatusFilter'],
+            filters: { requestsTypeFilter: 'trial' },
+        },
         { valueId: 'statTodayRegistrations', tab: 'users', label: 'Kullanıcı kayıtlarını görüntüle' },
     ];
 
-    function openTab(tab) {
+    function applyFilters(resetFilters = [], filters = {}) {
+        resetFilters.forEach((id) => {
+            const element = document.getElementById(id);
+            if (element) element.value = '';
+        });
+
+        Object.entries(filters).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) element.value = value;
+        });
+    }
+
+    function openTab(tab, resetFilters, filters) {
         const link = document.querySelector(`.sidebar-link[data-tab="${tab}"]`);
         if (!link || link.offsetParent === null) return;
+        applyFilters(resetFilters, filters);
         link.click();
     }
 
@@ -29,7 +54,7 @@
         content.appendChild(hint);
     }
 
-    function bindCard({ valueId, tab, label }) {
+    function bindCard({ valueId, tab, label, resetFilters, filters }) {
         const value = document.getElementById(valueId);
         const card = value?.closest('.stat-card');
         if (!card || card.id === 'systemHealthCard' || card.dataset.dashboardNavBound === 'true') return;
@@ -43,7 +68,7 @@
         card.classList.add('cursor-pointer', 'transition', 'hover:shadow-md', 'hover:ring-1', 'hover:ring-indigo-200');
         addHint(card, label);
 
-        const activate = () => openTab(tab);
+        const activate = () => openTab(tab, resetFilters, filters);
         card.addEventListener('click', (event) => {
             if (event.target.closest('button, a, input, select, textarea')) return;
             activate();
