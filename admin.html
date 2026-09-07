@@ -1177,7 +1177,7 @@
             <!-- Ortak alt alanlar -->
             <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Dosya Adı</label>
-                <input type="text" id="adminFileName" placeholder="Otomatik dolar veya manuel girin" class="w-full border p-2 rounded">
+                <input type="text" id="adminFileName" placeholder="Otomatik doldur veya manuel girin" class="w-full border p-2 rounded">
             </div>
             <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
@@ -3395,6 +3395,9 @@ document.addEventListener('click', function(e) {
         { slug: 'pangram', name: 'Pangram', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
         { slug: 'chatpdf', name: 'ChatPDF', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
         { slug: 'wonders', name: 'Wonders', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+        { slug: 'evidencemd', name: 'EvidenceMD', category: 'Sağlık ve Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+        { slug: 'grammarly', name: 'Grammarly', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
+        { slug: 'superhuman-suite', name: 'Superhuman Suite', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
         { slug: 'assistin', name: 'Assistin', category: 'Yapay Zeka', region: 'Türkiye, Orta Doğu' },
         { slug: 'primal-pictures', name: 'Primal Pictures', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
         { slug: 'lecturio', name: 'Lecturio', category: 'Sağlık', region: 'Türkiye, Orta Doğu' },
@@ -10191,7 +10194,7 @@ function closeFileViewer() {
         <a id="fileViewerDownload" href="#" download aria-label="Dosyayı indir" style="color:#9ca3af;padding:0.625rem;border-radius:0.625rem;text-decoration:none;min-width:2.75rem;min-height:2.75rem;display:flex;align-items:center;justify-content:center" title="İndir">
             <i class="fas fa-download"></i>
         </a>
-        <a id="fileViewerOpenNew" href="#" target="_blank" aria-label="Dosyayı yeni sekmede aç" style="color:#9ca3af;padding:0.625rem;border-radius:0.625rem;text-decoration:none;min-width:2.75rem;min-height:2.75rem;display:flex;align-items:center;justify-content:center" title="Yeni sekmede aç">
+        <a id="fileViewerOpenNew" href="#" target="_blank" rel="noopener" aria-label="Dosyayı yeni sekmede aç" style="color:#9ca3af;padding:0.625rem;border-radius:0.625rem;text-decoration:none;min-width:2.75rem;min-height:2.75rem;display:flex;align-items:center;justify-content:center" title="Yeni sekmede aç">
             <i class="fas fa-external-link-alt"></i>
         </a>
     </div>
