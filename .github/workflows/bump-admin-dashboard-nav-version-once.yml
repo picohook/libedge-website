@@ -1,0 +1,41 @@
+name: Bump Admin Dashboard Nav Version Once
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '.github/workflows/bump-admin-dashboard-nav-version-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+
+      - name: Bump dashboard navigation asset version without changing line endings
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('admin.html')
+          data = path.read_bytes()
+          old = b'assets/js/admin-dashboard-nav.js?v=20260907a'
+          new = b'assets/js/admin-dashboard-nav.js?v=20260907b'
+          if data.count(old) != 1:
+              raise SystemExit(f'expected one old asset reference, found {data.count(old)}')
+          path.write_bytes(data.replace(old, new, 1))
+          PY
+          test "$(git diff --numstat -- admin.html | awk '{print $1+$2}')" -le 2
+
+      - name: Commit version bump
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin.html
+          git commit -m 'Bump admin dashboard navigation asset version'
+          git push origin staging
