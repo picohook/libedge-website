@@ -1,8 +1,15 @@
 import worker from './index.js';
 import { purgePrivacyR2Queue } from './privacy/r2-purge.js';
+import { handleSystemHealthRequest } from './system-health.js';
 
 export default {
-  fetch: worker.fetch,
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    if (url.pathname === '/api/admin/system-health' && request.method === 'GET') {
+      return handleSystemHealthRequest(request, env);
+    }
+    return worker.fetch(request, env, ctx);
+  },
   request: worker.request,
   scheduled(event, env, ctx) {
     if (typeof worker.scheduled === 'function') {
