@@ -8,6 +8,11 @@ on:
         required: true
         type: string
         default: 'https://staging.libedge-website.pages.dev'
+      source_ref:
+        description: 'Git ref to test'
+        required: true
+        type: string
+        default: 'staging'
       run_auth:
         description: 'Run auth smoke'
         required: true
@@ -33,6 +38,8 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
 
       - uses: actions/setup-node@v4
         with:
