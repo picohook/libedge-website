@@ -34,20 +34,65 @@ function initHeaderInteractions() {
     if (hamburger.dataset.headerInitialized === 'true') return;
     hamburger.dataset.headerInitialized = 'true';
 
-    const dropdownGroups = document.querySelectorAll('.nav-links .group');
+    const nav = hamburger.closest('nav.nav-glass');
+    const navRow = navLinks.parentElement;
+    const placeholder = document.createElement('span');
+    placeholder.hidden = true;
+    placeholder.dataset.navLinksPlaceholder = 'true';
+    navRow.insertBefore(placeholder, navLinks);
+
+    function closeMobileMenu() {
+        navLinks.classList.remove('active');
+        hamburger.setAttribute('aria-expanded', 'false');
+        const icon = hamburger.querySelector('i');
+        if (icon) icon.className = 'fas fa-bars';
+        document.documentElement.classList.remove('menu-open');
+        document.body.classList.remove('menu-open');
+        document.querySelectorAll('.nav-links .group').forEach(group => group.classList.remove('active'));
+    }
+
+    function syncMobileMenuPlacement() {
+        const isMobile = window.innerWidth <= 639;
+
+        if (isMobile) {
+            if (navLinks.parentElement !== document.body) {
+                document.body.appendChild(navLinks);
+            }
+            navLinks.dataset.mobileOffcanvas = 'true';
+            return;
+        }
+
+        closeMobileMenu();
+        if (placeholder.parentElement && navLinks.parentElement !== navRow) {
+            placeholder.after(navLinks);
+        }
+        delete navLinks.dataset.mobileOffcanvas;
+    }
+
+    syncMobileMenuPlacement();
     navLinks.classList.remove('active');
 
     hamburger.addEventListener('click', function(e) {
         e.stopPropagation();
-        navLinks.classList.toggle('active');
-        const isActive = navLinks.classList.contains('active');
-        this.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+        const willOpen = !navLinks.classList.contains('active');
+
+        if (window.innerWidth <= 639 && navLinks.parentElement !== document.body) {
+            document.body.appendChild(navLinks);
+        }
+
+        navLinks.classList.toggle('active', willOpen);
+        this.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
         const icon = this.querySelector('i');
-        if (icon) icon.className = isActive ? 'fas fa-times' : 'fas fa-bars';
-        if (!isActive) dropdownGroups.forEach(group => group.classList.remove('active'));
+        if (icon) icon.className = willOpen ? 'fas fa-times' : 'fas fa-bars';
+        document.documentElement.classList.toggle('menu-open', willOpen);
+        document.body.classList.toggle('menu-open', willOpen);
+
+        if (!willOpen) {
+            document.querySelectorAll('.nav-links .group').forEach(group => group.classList.remove('active'));
+        }
     });
 
-    dropdownGroups.forEach(group => {
+    navLinks.querySelectorAll('.group').forEach(group => {
         const dropdownLink = group.querySelector('a');
         if (!dropdownLink || dropdownLink.dataset.headerInitialized === 'true') return;
 
@@ -57,7 +102,7 @@ function initHeaderInteractions() {
                 e.preventDefault();
                 e.stopPropagation();
                 const wasActive = group.classList.contains('active');
-                dropdownGroups.forEach(other => other.classList.remove('active'));
+                navLinks.querySelectorAll('.group').forEach(other => other.classList.remove('active'));
                 if (!wasActive) group.classList.add('active');
             }
         });
@@ -67,40 +112,19 @@ function initHeaderInteractions() {
         document.body.dataset.navOutsideClickBound = 'true';
         document.addEventListener('click', function(e) {
             const currentNavLinks = document.querySelector('.nav-links');
-            const currentHamburger = document.querySelector('.hamburger');
-            const currentDropdownGroups = document.querySelectorAll('.nav-links .group');
-
             if (currentNavLinks && currentNavLinks.classList.contains('active') &&
                 !e.target.closest('.hamburger') && !e.target.closest('.nav-links')) {
-                currentNavLinks.classList.remove('active');
-                if (currentHamburger) {
-                    currentHamburger.setAttribute('aria-expanded', 'false');
-                    currentHamburger.querySelector('i').className = 'fas fa-bars';
-                }
-                currentDropdownGroups.forEach(group => group.classList.remove('active'));
+                closeMobileMenu();
             }
         });
     }
 
     if (!window.__headerResizeBound) {
         window.__headerResizeBound = true;
-        window.addEventListener('resize', () => {
-            const currentNavLinks = document.querySelector('.nav-links');
-            const currentHamburger = document.querySelector('.hamburger');
-            const currentDropdownGroups = document.querySelectorAll('.nav-links .group');
-
-            if (window.innerWidth > 639 && currentNavLinks && currentNavLinks.classList.contains('active')) {
-                currentNavLinks.classList.remove('active');
-                if (currentHamburger) {
-                    currentHamburger.setAttribute('aria-expanded', 'false');
-                    currentHamburger.querySelector('i').className = 'fas fa-bars';
-                }
-                currentDropdownGroups.forEach(group => group.classList.remove('active'));
-            }
-        });
+        window.addEventListener('resize', syncMobileMenuPlacement);
     }
 
-    document.querySelectorAll('.nav-links .dropdown a').forEach(link => {
+    navLinks.querySelectorAll('.dropdown a').forEach(link => {
         if (link.dataset.dropdownInitialized === 'true') return;
 
         link.dataset.dropdownInitialized = 'true';
@@ -117,6 +141,7 @@ function initHeaderInteractions() {
             const targetId = url.hash.substring(1);
             const targetCard = document.getElementById(targetId);
             if (targetCard) {
+                closeMobileMenu();
                 targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 const flipInner = targetCard.querySelector('.flip-inner');
                 if (flipInner && !flipInner.classList.contains('flipped')) {
