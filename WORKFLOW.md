@@ -1,6 +1,6 @@
 # Workflow
 
-LibEdge repo'sunda günlük çalışma için kısa akış:
+LibEdge repo'sunda günlük çalışma için güncel kısa akış:
 
 ## Şema
 
@@ -12,7 +12,7 @@ Dosya değişti
   -> git commit -m "..."
   -> git branch --show-current
   -> git push origin <branch>
-  -> staging / preview / deploy sonucu kontrol et
+  -> CI / staging deploy / smoke sonucu kontrol et
 ```
 
 ## Ne Zaman Ne Yapılır
@@ -22,26 +22,58 @@ Dosya değişti
 | AI veya sen dosya değiştirdi | `git status --short` |
 | Tam olarak ne değiştiğini görmek istiyorsun | `git diff --name-only` ve gerekirse `git diff` |
 | Davranışı doğrulamak istiyorsun | staging veya preview üzerinde smoke test |
-| Değişikliği yerelde güvenle kaydetmek istiyorsun | `git add ...` + `git commit -m "..."` |
-| Değişikliği GitHub'a göndermek istiyorsun | `git push origin <branch>` |
-| Hangi branch'te olduğunu bilmiyorsun | `git branch --show-current` |
-| Staging benzeri Pages testi yapmak istiyorsun | `staging-preview` branch preview kullan |
-| Asıl staging hattını güncellemek istiyorsun | `staging` hattına deploy/push yap |
-| Riskli hattı kontrol etmek istiyorsun | `main` öncesi diff + branch + test mutlaka kontrol et |
-| Production migration/deploy istiyorsun | Önce migration listesi + plan + smoke/rollback notu hazırla |
-| Frontend HTML/JS güvenlik değişikliği yaptın | Inline script parse kontrolü + `git diff --check`; kullanıcı/server verisi `innerHTML` içine ham girmemeli |
+| Asıl staging hattını güncellemek istiyorsun | `staging` branch'e push/deploy |
+| Production migration/deploy istiyorsun | önce Production Infrastructure Preflight + migration list + rollback yolu |
+| Frontend HTML/JS güvenlik değişikliği yaptın | parse kontrolü + `git diff --check`; kullanıcı/server verisi ham `innerHTML` içine girmemeli |
+| KVKK kullanıcı silme değişikliği yaptın | D1 policy testi + gerekiyorsa R2 purge E2E |
+| Secret/config değiştirdin | değeri repoya/loga yazmadan environment ve required-secret guardrail'ini doğrula |
 
-## Kısa Notlar
+## Ortam Ayrımı
 
-- `commit` sadece yerel kayıttır.
-- `push origin` commit'leri GitHub'daki remote branch'e yollar.
-- `push` tek başına her zaman deploy anlamına gelmez.
-- Pages preview testlerinde `main` hash deploy'ları production environment binding'leriyle çalışabilir.
-- Preview environment doğrulaması için tercih edilen hat: `staging-preview.libedge-website.pages.dev`
-- Asıl staging doğrulaması için hat: `staging.libedge-website.pages.dev`
-- Production D1, staging D1 ile aynı migration seviyesinde olmayabilir. `apply` çalıştırmadan önce mutlaka `list` ile bekleyen migration'lar okunur ve `PRODUCTION_MIGRATION_PLAN.md` güncellenir.
-- 23 Mayıs 2026 itibarıyla staging ve production D1 aynı migration seviyesinde (`0041` dahil hepsi uygulandı). Bir sonraki migration eklendiğinde staging/prod durumu ayrı ayrı doğrulanacak.
-- GitHub Actions CI/CD: PR/push kalite kapısı `ci.yml`; staging deploy `deploy-workers.yml` / `deploy-pages.yml`; production deploy ve D1 `apply` manuel workflow + environment approval ile yapılır.
-- Auth/refresh-token değişikliklerinde login smoke testi sadece yanlış şifre 401'i değil, başarılı login + `/api/user/profile` kontrolünü de kapsamalıdır.
-- Register değişikliklerinde KVKK consent checkbox, API `kvkk_consent: true` kabulü ve onaysız 400 reddi smoke test kapsamındadır.
-- `admin.html` / `profile.html` gibi inline script içeren dosyalarda değişiklik sonrası en azından parse kontrolü yapılır. Güvenlik değişikliklerinde `innerHTML` kullanımının kaynağı ayrıca okunur.
+- Local/default Worker: `libedge-api-local`.
+- Staging Worker: `libedge-api-staging`.
+- Production Worker: `libedge-api-prod`.
+- Local/default ve staging aynı kodu çalıştırabilir fakat aynı runtime değildir.
+- Mevcut `wrangler.toml` içinde local/default D1 ve R2 staging kaynaklarına bağlıdır; KV namespace farklıdır.
+- Bu nedenle local destructive D1/R2 testleri staging verisini etkileyebilir.
+- Production D1/R2/KV tamamen ayrı kaynaklardır.
+
+## CI/CD
+
+- `ci.yml`: syntax, lint, test ve CSS build kalite kapısı.
+- `deploy-workers.yml`: staging Worker otomatik; production Worker manuel.
+- `deploy-pages.yml`: staging Pages deploy; production Pages manuel.
+- `staging-smoke.yml`: auth, files ve frontend browser smoke.
+- `d1-migrations.yml`: D1 list/apply; production apply öncesi şema kontrolü ve Time Travel bookmark.
+- `production-preflight.yml`: production'a yazmadan secret isimleri, D1, Time Travel, R2, KV ve config dry-run kontrolü.
+
+## Migration Kuralları
+
+- Staging ve production D1'in aynı migration seviyesinde olduğu **asla varsayılmaz**.
+- Her apply öncesi `migrations list` okunur.
+- Staging'de 7 Eylül 2026 itibarıyla `0046_add_ai_product_cards.sql` ve `0047_user_deletion_integrity.sql` uygulanmıştır.
+- Production migration seviyesi production preflight gününde ayrıca doğrulanır.
+- Production'a bu stabilizasyon çalışması sırasında migration uygulanmamıştır.
+- D1 rollback için öncelik forward-fix; gerektiğinde Time Travel bookmark kullanılır.
+- Production kişisel veri export'u rutin GitHub Actions artifact'ı olarak saklanmaz.
+
+## Smoke Kuralları
+
+- Auth değişikliklerinde başarılı login + profile + refresh + logout + 401/403 senaryoları.
+- Register değişikliklerinde KVKK onayı true zorunluluğu ve onaysız kayıt reddi.
+- File değişikliklerinde erişim izinleri, R2 key ve cache-control.
+- Frontend değişikliklerinde desktop/mobile browser smoke.
+- Privacy silme değişikliklerinde sentetik kullanıcıyla D1 cleanup ve attachment purge queue/R2 zinciri.
+
+## Güncel Stabilizasyon Durumu — 7 Eylül 2026
+
+- Auth/cookie/origin: CLOSED
+- Mobile off-canvas navigation: CLOSED
+- `/api/products` staging erişimi: CLOSED
+- Admin audit altyapısı: uygulanmış
+- KVKK kullanıcı silme ve anonimleştirme: staging D1 E2E SUCCESS
+- Privacy R2 purge: staging R2 E2E SUCCESS
+- Çerez/analytics policy uyumu: CLOSED; aktif analytics tracker yok
+- Production D1 preflight/rollback guardrail: uygulanmış
+- Production Infrastructure Preflight: uygulanmış, production geçişinde manuel çalıştırılacak
+- Staging henüz freeze edilmemiştir; geliştirme devam eder.
