@@ -20,14 +20,19 @@ Cloudflare Pages
 
 | Ortam | Pages | Worker | D1 | R2 | KV |
 |---|---|---|---|---|---|
-| Local/default | local dev | `libedge-api-local` | `libedge-db` (staging D1) | `libedge-files-staging` | default/local KV namespace |
+| Local/default | local dev | `libedge-api-local` | local D1 simülasyonu | local R2 simülasyonu | local KV simülasyonu |
 | Staging | `staging.libedge-website.pages.dev` | `libedge-api-staging` | `libedge-db` | `libedge-files-staging` | staging KV namespace |
 | Production | production Pages / `libedge.com` hedefi | `libedge-api-prod` | `libedge-db-production` | `libedge-files` | production KV namespace |
 
-Local/default ve staging **tam olarak aynı ortam değildir**. Kod aynı branch/commit'ten
-çalıştırılabilir; fakat Worker adı ve KV namespace'i farklıdır. Mevcut güvenli varsayılan
-tasarımda local/default D1 ve R2 staging kaynaklarını kullanır. Dolayısıyla local destructive
-D1/R2 testi staging verisini etkileyebilir. Production kaynakları ayrıdır.
+Kaynak kod açısından local ve staging aynı branch/commit'ten çalıştırılmalıdır.
+Normal `wrangler dev` sırasında D1/R2/KV binding'leri yerelde simüle edilir ve remote
+staging verisine bağlanmaz. `wrangler.toml` içindeki staging resource kimliklerinin default
+blokta görünmesi local simülasyonu remote hale getirmez. Remote kaynağa yalnız açık bir seçimle
+gidilir (`remote = true`, `wrangler dev --remote` veya ilgili CLI komutunda `--remote`).
+
+Bu nedenle güvenli günlük geliştirme modeli: kod aynı, local veri ayrı, staging veri ayrı,
+production veri ayrı. Local D1 işlemlerinde `--local`; gerçek staging D1 işlemlerinde
+`--remote --env staging` açıkça kullanılır.
 
 ## Ana Bileşenler
 
