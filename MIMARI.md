@@ -10,26 +10,46 @@ Eski uzaktan erişim kodu arşiv branch'inde saklanmıştır:
 Cloudflare Pages
   -> statik HTML/CSS/JS
   -> functions/api/[[path]].js
-  -> Hono Main Worker
+  -> backend/src/worker.js
+       -> backend/src/index.js (Hono API)
+       -> backend/src/privacy/r2-purge.js (scheduled privacy purge)
   -> D1, R2, KV
 ```
 
 ## Ortamlar
 
-| Ortam | Pages | Worker | D1 | R2 |
-|---|---|---|---|---|
-| Staging | `staging.libedge-website.pages.dev` | `libedge-api-staging` | `libedge-db` | `libedge-files-staging` |
-| Production | `libedge-website.pages.dev` | `libedge-api-prod` | `libedge-db-production` | `libedge-files` |
+| Ortam | Pages | Worker | D1 | R2 | KV |
+|---|---|---|---|---|---|
+| Local/default | local dev | `libedge-api-local` | `libedge-db` (staging D1) | `libedge-files-staging` | default/local KV namespace |
+| Staging | `staging.libedge-website.pages.dev` | `libedge-api-staging` | `libedge-db` | `libedge-files-staging` | staging KV namespace |
+| Production | production Pages / `libedge.com` hedefi | `libedge-api-prod` | `libedge-db-production` | `libedge-files` | production KV namespace |
+
+Local/default ve staging **tam olarak aynı ortam değildir**. Kod aynı branch/commit'ten
+çalıştırılabilir; fakat Worker adı ve KV namespace'i farklıdır. Mevcut güvenli varsayılan
+tasarımda local/default D1 ve R2 staging kaynaklarını kullanır. Dolayısıyla local destructive
+D1/R2 testi staging verisini etkileyebilir. Production kaynakları ayrıdır.
 
 ## Ana Bileşenler
 
+- `backend/src/worker.js`: gerçek Worker entrypoint; API'yi delege eder ve scheduled privacy purge çalıştırır.
 - `backend/src/index.js`: Hono API, auth, admin, dosya, duyuru, ürün ve abonelik route'ları.
-- `backend/src/auth`: cookie/bearer auth, refresh token, parola ve rate limit helper'ları.
+- `backend/src/privacy/r2-purge.js`: yalnız allowlist `ticket-attachments/` prefix'i için privacy purge queue tüketicisi.
+- `backend/src/auth`: cookie auth, refresh token, parola ve rate limit helper'ları.
 - `admin.html`: super-admin ve kurum admin paneli.
 - `profile.html`: kullanıcı dashboard'u, abonelikler, dosyalar ve destek akışları.
 - `functions/api/[[path]].js`: Pages ortamından Worker API'ye yönlendirme.
-- `wrangler.toml`: local, staging ve production Worker binding'leri.
-- `migrations/`: D1 migration geçmişi.
+- `wrangler.toml`: local/default, staging ve production Worker binding'leri.
+- `migrations/`: D1 migration geçmişi; `0047_user_deletion_integrity.sql` privacy cleanup policy'sini içerir.
+
+## Kullanıcı Silme / Privacy Mimarisi
+
+- Kullanıcı silme policy'si merkezi D1 trigger ile uygulanır.
+- Hesaba özel auth/engagement verileri silinir.
+- İş kayıtları gerektiğinde anonimleştirilir veya kullanıcı bağlantısı kaldırılır.
+- Paylaşılan/kurumsal içerikler fiziksel olarak gereksiz yere silinmez; creator/uploader ilişkisi kaldırılır.
+- Support ticket attachment referansları silinmeden önce `privacy_r2_purge_queue` içine alınır.
+- Scheduled Worker consumer yalnız `ticket-attachments/` prefix'ini fiziksel R2 silmeye kabul eder.
+- D1 ve R2 zinciri gerçek staging sentetik E2E testleriyle doğrulanmıştır.
 
 ## Erişim Modeli
 
@@ -44,25 +64,19 @@ Cloudflare Pages
 
 Frontend erişim butonu yalnız tanımlı ve güvenli URL olduğunda yeni sekmede açılır.
 
-## Veri ve Migration Notu
-
-Production/staging veritabanı geçmişinde eski RA tabloları ve `products.ra_*`
-kolonları bulunabilir. Bu temizlikte production veri kaybı riskini önlemek için
-migration geçmişi ve mevcut DB kolonları silinmedi. Runtime artık RA route'u,
-proxy token üretimi, tünel heartbeat'i veya RA admin ekranı çalıştırmaz.
-
-İleride fiziksel DB sadeleştirme istenirse ayrı bir cleanup migration planı,
-önce staging snapshot ve smoke test ile hazırlanmalıdır.
-
 ## Deploy Akışı
 
-- Staging push: CI, Pages staging deploy ve backend staging deploy.
-- Production: manuel workflow dispatch ve environment approval.
-- D1 migration apply işleri manuel ve onaylı çalıştırılır.
+- `staging` push: CI ve ilgili Pages/Worker staging deploy'ları.
+- Production: manuel workflow dispatch + production environment.
+- D1 production apply: manuel; migrations list + şema kontrolü + Time Travel bookmark öncesinde çalışır.
+- Production Infrastructure Preflight: read-only D1/Time Travel/R2/KV/secret-name/config kontrolü.
 
 ## Güvenlik Baseline
 
-- Secrets `.dev.vars`, Cloudflare secrets veya GitHub secrets üzerinden yönetilir.
+- Auth cookie'leri HttpOnly, Secure, SameSite=Lax.
+- State-changing request'lerde origin allowlist uygulanır.
+- Secrets repoda tutulmaz; production gerekli secret sözleşmesi deploy sırasında fail-closed uygulanır.
 - Kullanıcı/server kaynaklı dinamik metinler escape edilmeden `innerHTML` içine yazılmamalıdır.
-- Dosya URL'leri allowlist mantığıyla gösterilir.
-- Refresh token replay protection ve rate limit helper'ları aktif tutulur.
+- Dosya/R2 silme allowlist mantığıyla yapılır.
+- Refresh token replay protection ve rate limit helper'ları aktiftir.
+- Aktif analytics tracker bulunmadığı için sahte CMP/analytics iddiası yoktur; cookie policy gerçek davranışla eşleştirilmiştir.
