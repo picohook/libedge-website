@@ -74,6 +74,11 @@ crons = ["*/5 * * * *"]
 ENVIRONMENT = "production"
 WORKER_NAME = "libedge-api-prod"
 
+# Production deploys fail closed when core application secrets are missing.
+# Secret values remain encrypted in Cloudflare and are never stored here.
+[env.production.secrets]
+required = ["JWT_SECRET", "RESEND_API_KEY", "AIRTABLE_PAT", "AIRTABLE_BASE_ID"]
+
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "libedge-db-production"
