@@ -1,0 +1,28 @@
+name: Staging Final Smoke Once
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - '.github/workflows/staging-final-smoke-once.yml'
+  workflow_dispatch:
+
+jobs:
+  final-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run smoke:auth
+      - run: npm run smoke:files
+      - run: npm run smoke:frontend
+      - name: Live staging basic check
+        run: |
+          curl --fail --silent --show-error --retry 3 https://staging.libedge-website.pages.dev/ > /dev/null
+          curl --fail --silent --show-error --retry 3 https://staging.libedge-website.pages.dev/profile.html > /dev/null
+          curl --fail --silent --show-error --retry 3 https://staging.libedge-website.pages.dev/admin.html > /dev/null
