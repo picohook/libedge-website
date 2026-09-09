@@ -1,0 +1,9 @@
+name: Staging Final Smoke Trigger
+
+on:
+  push:
+    branches: [staging]
+
+jobs:
+  smoke:
+    uses: ./.github/workflows/staging-final-smoke-once.yml
