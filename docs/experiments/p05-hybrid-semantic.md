@@ -40,6 +40,8 @@ Query mechanism: `search.semantic=<intent>`.
 
 Candidate depth: first 50 works returned by the provider, or all returned works when fewer than 50 are available.
 
+The L=100 / S=50 asymmetry is intentional and provider-constrained, not a tuning choice: the semantic endpoint supports at most 50 returned works per query in the current official interface. The experiment therefore evaluates the strongest directly available provider-level semantic candidate set against the existing deeper lexical candidate set.
+
 Execution pacing: semantic calls MUST be paced at <=1 request/second under D-012.
 
 Output: provider semantic order, truncated to top 10 after normalization/deduplication.
@@ -59,7 +61,11 @@ For candidate `d`:
 
 `RRF(d) = I_L(d)/(60 + rank_L(d)) + I_S(d)/(60 + rank_S(d))`
 
-where ranks are 1-based and `I` is 1 when the candidate occurs in that arm, otherwise 0.
+where:
+- `rank_L(d)` and `rank_S(d)` are 1-based ranks;
+- `I_L(d)=1` only when `d` occurs in L, otherwise `0`;
+- `I_S(d)=1` only when `d` occurs in S, otherwise `0`;
+- absence from an arm contributes exactly zero and is not assigned a synthetic rank or penalty.
 
 Score normalization: none. Provider lexical and semantic scores, if exposed, are not mixed or tuned.
 
@@ -116,13 +122,24 @@ After generation, the 40 queries and their domain/slice tags are frozen. No repl
 
 ## MECHANICAL VALIDITY / COVERAGE
 
-For each arm/query, record returned candidate count before top-10 truncation.
+The P0.5-A baseline-relative coverage principle is retained rather than replaced with a new ad hoc rule.
 
-A query-arm is `low-corpus` if fewer than 8 unique normalized candidates are returned.
+For each arm/query, record the unique normalized candidate count before top-10 truncation.
 
-Primary pairwise relevance comparisons involving an arm require both compared arms to have at least 8 unique candidates. Low-corpus cases remain reported and are not silently replaced.
+For every pairwise comparison, the second-named arm is the comparator baseline for coverage purposes:
+- H vs L -> L is the coverage baseline.
+- S vs L -> L is the coverage baseline.
+- H vs S -> S is the coverage baseline.
 
-Coverage itself is an outcome and must be reported per arm and domain.
+A pairwise coverage regression occurs if:
+- comparator baseline count >= 8 and compared-arm count < 8; OR
+- compared-arm count / comparator baseline count < 0.80.
+
+If either arm in the pair returns fewer than 8 unique normalized candidates, that pair/query is marked `low-corpus`, excluded from aggregate pairwise relevance metrics, and still reported explicitly.
+
+Low-corpus queries are never silently replaced because of sparse results.
+
+Coverage itself is an outcome and must be reported per arm, pair, domain, and declared slice.
 
 ## RELEVANCE RUBRIC
 
@@ -164,21 +181,21 @@ Arm mapping is opened only after labels are locked.
 
 ## PRIMARY COMPARISONS
 
-Primary product question: whether H is safe and materially better than L.
+Primary product question: whether H is safe and materially better than L while not being worse than the simpler semantic-only S architecture.
 
-Primary comparison: `H vs L`.
+Primary adoption comparison: `H vs L`.
 
-Secondary architecture comparison: `S vs L`.
+Mandatory non-inferiority architecture guardrail: `H vs S`.
 
-Diagnostic comparison: `H vs S`.
+Secondary architecture diagnostic: `S vs L`.
 
-The experiment must report all three, but H cannot be adopted merely because S beats L.
+The experiment must report all three. H cannot be adopted merely because it beats L if it is materially worse than S, and S beating L does not by itself imply that H should be adopted.
 
-## GATE — H VS L
+## GATE A — H VS L
 
 Let `N_eff` be fresh-holdout queries valid for both H and L.
 
-H passes only if ALL conditions hold:
+H passes Gate A only if ALL conditions hold:
 
 1. Mean Relevant@10 improvement H-L >= +5 percentage points.
 2. Non-worse queries (`delta >= 0`) >= ceil(0.70 * N_eff).
@@ -187,23 +204,48 @@ H passes only if ALL conditions hold:
 5. No single-query regression worse than -20pp.
 6. Conjunctive-intent slice mean regression is not below 0pp.
 7. Lexical-ambiguity slice mean regression is not below 0pp.
-8. H coverage-valid rate is not more than 5 percentage points below L.
+8. No baseline-relative coverage regression pattern that violates the mechanical validity rule above.
 
-Failure of any condition means H does not pass the adoption gate.
+Failure of any condition means H does not pass Gate A.
 
-## S VS L DIAGNOSTIC GATE
+## GATE B — H VS S NON-INFERIORITY
 
-S is evaluated with the same metrics as H vs L, but the result is architecture evidence rather than an automatic production-adoption decision.
+Let `N_eff` be fresh-holdout queries valid for both H and S.
+
+H passes Gate B only if ALL conditions hold:
+
+1. Mean Relevant@10 difference H-S >= 0pp.
+2. Non-worse queries (`delta >= 0`) >= ceil(0.60 * N_eff).
+3. No domain mean regression worse than -5pp.
+4. No single-query regression worse than -20pp.
+5. Conjunctive-intent slice mean regression is not below 0pp.
+6. Lexical-ambiguity slice mean regression is not below 0pp.
+7. No baseline-relative coverage regression pattern that violates the mechanical validity rule above.
+
+Gate B is a non-inferiority guardrail, not a requirement that H materially outperform S. If H fails Gate B, H cannot be the preferred architecture even if it passes H-vs-L Gate A.
+
+## S VS L DIAGNOSTIC
+
+S vs L is evaluated with the same reported metrics used above, but it is architecture evidence rather than an automatic production-adoption decision.
 
 This distinguishes whether gains come from semantic retrieval itself or from hybrid fusion.
 
+## ADOPTION LOGIC
+
+- H is eligible for architecture consideration only if both Gate A (H vs L) and Gate B (H vs S) PASS.
+- If H fails Gate A, H is rejected for this experiment regardless of Gate B.
+- If H passes Gate A but fails Gate B, prefer further consideration of S over H; do not adopt the more complex hybrid merely because it beats L.
+- If S materially outperforms H, record that result explicitly as evidence in favor of semantic-only simplicity.
+- Passing both gates still does not automatically deploy H to production; production adoption remains a separate architecture decision.
+
 ## SEEN HARM-REGRESSION SLICE
 
-After the fresh gate is fully evaluated and mappings are locked/opened, run A1/A2/A5/A6/A7 through L/S/H using the same frozen retrieval rules.
+After the fresh gate is fully evaluated and mappings are locked/opened, run A1/A2/A5/A6/A7 through **all three arms L, S, and H** using the same frozen retrieval, deduplication, fusion, and ranking rules.
 
 Purpose: detect recurrence of previously observed harm patterns.
 
 These five queries:
+- are actually executed against L/S/H; they are not reference-only records,
 - are diagnostic only,
 - cannot rescue a failed fresh gate,
 - cannot create a PASS,
@@ -256,7 +298,7 @@ Raw measurement evidence must be preserved in `docs/architecture/research-retrie
 6. Execute L/S/H retrieval without tuning.
 7. Prepare randomized blind evaluator bundle.
 8. Obtain and lock blind labels.
-9. Open arm mapping and calculate gates.
+9. Open arm mapping and calculate Gate A, Gate B, and S-vs-L diagnostics.
 10. Run/report seen harm-regression slice.
 11. Record final outcome and architecture consequence.
 
