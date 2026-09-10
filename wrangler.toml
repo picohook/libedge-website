@@ -13,6 +13,8 @@ compatibility_date = "2026-03-01"
 [vars]
 ENVIRONMENT = "local"
 WORKER_NAME = "libedge-api-local"
+RESEARCH_SEMANTIC_PRIMARY_ENABLED = "false"
+RESEARCH_SEMANTIC_CANDIDATE_DEPTH = "50"
 
 # D1 Binding (default env) — shares the staging database for `wrangler dev`.
 [[d1_databases]]
@@ -30,6 +32,16 @@ bucket_name = "libedge-files-staging"
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
 id = "36237237597442bbb7c00ab9b6ee821f"
+
+# Durable Object used only as a global semantic request-start pacing gate.
+[[durable_objects.bindings]]
+name = "OPENALEX_SEMANTIC_PACER"
+class_name = "OpenAlexSemanticPacer"
+
+# New Durable Object namespaces use SQLite-backed storage.
+[exports.OpenAlexSemanticPacer]
+type = "durable-object"
+storage = "sqlite"
 
 # JWT_SECRET: npx wrangler secret put JWT_SECRET
 # R2_PUBLIC_URL: npx wrangler secret put R2_PUBLIC_URL
@@ -49,6 +61,8 @@ crons = ["*/5 * * * *"]
 [env.staging.vars]
 ENVIRONMENT = "staging"
 WORKER_NAME = "libedge-api-staging"
+RESEARCH_SEMANTIC_PRIMARY_ENABLED = "false"
+RESEARCH_SEMANTIC_CANDIDATE_DEPTH = "50"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -63,6 +77,10 @@ bucket_name = "libedge-files-staging"
 binding = "RATE_LIMIT_KV"
 id = "556d17f88a7a48e381e5ffed1d150536"
 
+[[env.staging.durable_objects.bindings]]
+name = "OPENALEX_SEMANTIC_PACER"
+class_name = "OpenAlexSemanticPacer"
+
 # Production environment
 [env.production]
 name = "libedge-api-prod"
@@ -73,6 +91,8 @@ crons = ["*/5 * * * *"]
 [env.production.vars]
 ENVIRONMENT = "production"
 WORKER_NAME = "libedge-api-prod"
+RESEARCH_SEMANTIC_PRIMARY_ENABLED = "false"
+RESEARCH_SEMANTIC_CANDIDATE_DEPTH = "50"
 
 # Production deploys fail closed when core application secrets are missing.
 # Secret values remain encrypted in Cloudflare and are never stored here.
@@ -91,3 +111,7 @@ bucket_name = "libedge-files"
 [[env.production.kv_namespaces]]
 binding = "RATE_LIMIT_KV"
 id = "5640d9b898c54a96bdd9e361e1c6f593"
+
+[[env.production.durable_objects.bindings]]
+name = "OPENALEX_SEMANTIC_PACER"
+class_name = "OpenAlexSemanticPacer"
