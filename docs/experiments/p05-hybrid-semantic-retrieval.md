@@ -1,7 +1,7 @@
 # P0.5 Hybrid Semantic Retrieval — Fresh Holdout Retrieval Record
 
 Status: `ACTIVE`
-Qualifier: `RETRIEVAL EXECUTED — RELEVANCE NOT YET EVALUATED`
+Qualifier: `RETRIEVAL EXECUTED — MECHANICALLY REVIEWED / ACCEPTED — RELEVANCE NOT YET EVALUATED`
 Executed: `2026-09-10`
 Parent protocol: `docs/experiments/p05-hybrid-semantic.md`
 Frozen holdout: `docs/experiments/p05-hybrid-semantic-holdout.md`
@@ -34,7 +34,7 @@ Frozen holdout: `docs/experiments/p05-hybrid-semantic-holdout.md`
 - H union unique normalized candidates: min `128`, max `149`, mean `144.450`.
 - Low-corpus query/pairs (`<8` unique on either arm): none.
 - Frozen coverage-regression rule: H-vs-L `0/40`; H-vs-S `0/40`; S-vs-L `40/40`.
-- The S-vs-L coverage result is a mechanical consequence of the frozen L=100 / S<=50 depth asymmetry and is reported without reinterpretation or rule change.
+- The S-vs-L coverage result is a mechanical consequence of the frozen L=100 / S<=50 depth asymmetry and is reported without reinterpretation or rule change. Any later report or architecture-decision summary MUST preserve this caveat adjacent to the statistic; it is not by itself a relevance conclusion.
 
 ## Per-query mechanical counts
 
@@ -89,10 +89,24 @@ Any such correction MUST be recorded append-only as `EXECUTION CORRECTION`, iden
 
 No execution correction may be justified by apparent relevance quality, expected gate direction, evaluator labels, or production preference.
 
+## Independent reviewer acceptance
+
+Reviewer Packet `P05-RETRIEVAL-EXECUTION-2026-09-10` received classification `ACCEPTED` after fresh raw-content/diff inspection, including independent recomputation of all 40 H top-10 rankings (400/400 positions matched), holdout-text comparison, telemetry/cost verification, and execution-correction diff inspection.
+
+Canonical review record: `docs/reviews/2026-09-10-p05-retrieval-execution-review.md`.
+
+Two non-blocking OUT-OF-SCOPE findings were triaged by the main engineering thread:
+
+1. Dedup DOI/title fallback branches were not exercised by this OpenAlex-native artifact — `ACKNOWLEDGED / DEFERRED`; revisit before any OpenAlex-external or ID-less ingestion path depends on those fallbacks.
+2. S-vs-L coverage regression `40/40` is structurally induced by the frozen L=100 / S<=50 depth asymmetry and can be misread — `ACKNOWLEDGED / DEFERRED`; any final evaluation or architecture summary must keep that caveat adjacent to the statistic.
+
+No execution correction is required as a result of the review.
+
 ## Execution history
 
 - `2026-09-10 — RETRIEVAL FREEZE`: workflow run `34498804224`; raw artifact ID `10161068719`; SHA-256 `79241e3b530649d53845c4220c91c8f53dd77e561d9d5ccdd7fe9f5e988e33c8`.
 - `2026-09-10 — EXECUTION CORRECTION CONTROL`: before any relevance labels were collected, defined the append-only mechanism for correcting objectively demonstrable mechanical computation/recording defects from the immutable frozen raw artifact. No retrieval result, candidate pool, RRF parameter, holdout item/tag, relevance rule, gate, or evaluator label was changed.
+- `2026-09-10 — INDEPENDENT MECHANICAL REVIEW ACCEPTED`: full raw-artifact review accepted execution as compliant; two non-blocking OUT-OF-SCOPE findings explicitly triaged; no correction applied.
 
 ## Interpretation boundary
 
@@ -100,6 +114,6 @@ This record contains retrieval execution and mechanical validity/coverage only. 
 
 ## Next permitted operation
 
-Freeze the evaluator bundle field set and deterministic anonymization/randomization, then obtain two independent blind-rater label sets in separate fresh lineages. Do not expose L/S/H mapping until both primary raters lock their labels.
+Deliver the exact already-frozen public evaluator artifact to two primary blind raters in separate fresh lineages, then collect and lock both complete R/M/N label sets before opening the private mapping.
 
 Last updated: 2026-09-10
