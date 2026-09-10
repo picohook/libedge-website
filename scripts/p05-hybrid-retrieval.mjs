@@ -8,7 +8,7 @@ const OUT_DIR = 'docs/experiments/p05-hybrid-semantic-retrieval';
 const SUMMARY_PATH = `${OUT_DIR}/summary.json`;
 const API_KEY = process.env.OPENALEX_API_KEY;
 const MAX_RETRIES = 2;
-const MAX_FRESH_ATTEMPTS = 110; // 80 required fresh calls + at most 30 experiment-wide retry headroom; preserves 10 mandatory harm-slice base calls.
+const MAX_FRESH_ATTEMPTS = 110; // 80 fresh base calls + up to 30 global retry headroom; preserves 10 base harm-slice calls under the 120-call cap.
 const EXPECTED_COST_USD = 0.001;
 const RRF_K = 60;
 
@@ -17,7 +17,7 @@ if (!API_KEY) throw new Error('OPENALEX_API_KEY is required');
 let totalAttempts = 0;
 let chargedResponses = 0;
 let observedCostUsd = 0;
-let pricingAnomalies = [];
+const pricingAnomalies = [];
 let lastSemanticStartedAt = 0;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -29,8 +29,12 @@ function parseHoldout(markdown) {
     const cells = line.split('|').slice(1, -1).map((v) => v.trim());
     if (cells.length < 4) continue;
     const [id, domain, intent, slicesRaw] = cells;
-    const slices = slicesRaw === '—' ? [] : slicesRaw.split(',').map((v) => v.trim()).filter(Boolean);
-    rows.push({ id, domain, intent, slices });
+    rows.push({
+      id,
+      domain,
+      intent,
+      slices: slicesRaw === '—' ? [] : slicesRaw.split(',').map((v) => v.trim()).filter(Boolean)
+    });
   }
   return rows;
 }
@@ -67,18 +71,18 @@ function dedupeRanked(rawRecords) {
   const seen = new Set();
   const out = [];
   rawRecords.forEach((record, index) => {
+    const normalized = normalizeOpenAlexWork(record);
+    if (!normalized) return;
     const identity = canonicalIdentity(record);
     if (!identity || seen.has(identity)) return;
     seen.add(identity);
-    out.push({ identity, providerRank: index + 1, raw: record, normalized: normalizeOpenAlexWork(record) });
+    out.push({ identity, providerRank: index + 1, raw: record, normalized });
   });
   return out;
 }
 
 function compareNullableRank(a, b) {
-  const aa = Number.isInteger(a) ? a : Number.POSITIVE_INFINITY;
-  const bb = Number.isInteger(b) ? b : Number.POSITIVE_INFINITY;
-  return aa - bb;
+  return (Number.isInteger(a) ? a : Infinity) - (Number.isInteger(b) ? b : Infinity);
 }
 
 function buildHybrid(lPool, sPool) {
@@ -94,9 +98,8 @@ function buildHybrid(lPool, sPool) {
   }
   for (const item of sPool) {
     const existing = byId.get(item.identity);
-    if (existing) {
-      existing.sRank = item.providerRank;
-    } else {
+    if (existing) existing.sRank = item.providerRank;
+    else {
       byId.set(item.identity, {
         identity: item.identity,
         lRank: null,
@@ -107,11 +110,11 @@ function buildHybrid(lPool, sPool) {
     }
   }
 
-  const items = [...byId.values()].map((item) => {
-    const l = item.lRank == null ? 0 : 1 / (RRF_K + item.lRank);
-    const s = item.sRank == null ? 0 : 1 / (RRF_K + item.sRank);
-    return { ...item, rrf: l + s };
-  });
+  const items = [...byId.values()].map((item) => ({
+    ...item,
+    rrf: (item.lRank == null ? 0 : 1 / (RRF_K + item.lRank))
+      + (item.sRank == null ? 0 : 1 / (RRF_K + item.sRank))
+  }));
 
   items.sort((a, b) => {
     if (b.rrf !== a.rrf) return b.rrf - a.rrf;
@@ -122,7 +125,7 @@ function buildHybrid(lPool, sPool) {
     if (lCmp !== 0) return lCmp;
     const sCmp = compareNullableRank(a.sRank, b.sRank);
     if (sCmp !== 0) return sCmp;
-    return a.identity.localeCompare(b.identity, 'en');
+    return a.identity < b.identity ? -1 : a.identity > b.identity ? 1 : 0;
   });
 
   return items.map((item, index) => ({ ...item, hRank: index + 1 }));
@@ -136,10 +139,48 @@ function isRetryable(error) {
 }
 
 async function paceSemantic() {
-  const now = Date.now();
-  const elapsed = now - lastSemanticStartedAt;
+  const elapsed = Date.now() - lastSemanticStartedAt;
   if (lastSemanticStartedAt && elapsed < 1100) await sleep(1100 - elapsed);
   lastSemanticStartedAt = Date.now();
+}
+
+function parseHeaderNumber(response, name) {
+  const raw = response.headers.get(name);
+  if (raw == null || raw === '') return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+function costEvidence(response, payload) {
+  const headerCostUsd = parseHeaderNumber(response, 'X-RateLimit-Cost-USD');
+  const bodyRaw = payload?.meta?.cost_usd;
+  const bodyCostUsd = Number.isFinite(Number(bodyRaw)) ? Number(bodyRaw) : null;
+  return {
+    headerCostUsd,
+    bodyCostUsd,
+    conflict: headerCostUsd != null && bodyCostUsd != null && Math.abs(headerCostUsd - bodyCostUsd) > 1e-9
+  };
+}
+
+function recordPricingObservation(arm, attemptNumber, startedAt, evidence, telemetry) {
+  const observed = telemetry.requestCostUsd;
+  if (observed != null) {
+    chargedResponses += 1;
+    observedCostUsd += observed;
+  }
+  const differs = observed != null && Math.abs(observed - EXPECTED_COST_USD) > 1e-9;
+  if (differs || evidence.conflict) {
+    pricingAnomalies.push({
+      arm,
+      attemptNumber,
+      startedAt,
+      expectedCostUsd: EXPECTED_COST_USD,
+      observedCostUsd: observed,
+      headerCostUsd: evidence.headerCostUsd,
+      bodyCostUsd: evidence.bodyCostUsd,
+      bodyHeaderConflict: evidence.conflict
+    });
+  }
 }
 
 async function providerCall(intent, arm, attemptNumber) {
@@ -164,29 +205,25 @@ async function providerCall(intent, arm, attemptNumber) {
     const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
     let payload = null;
     try { payload = await response.json(); } catch { payload = null; }
+
     const telemetry = extractOpenAlexTelemetry(response, payload);
-    if (telemetry.requestCostUsd != null) {
-      chargedResponses += 1;
-      observedCostUsd += telemetry.requestCostUsd;
-      if (Math.abs(telemetry.requestCostUsd - EXPECTED_COST_USD) > 1e-9) {
-        pricingAnomalies.push({ arm, attemptNumber, observed: telemetry.requestCostUsd, startedAt });
-      }
-    }
+    const evidence = costEvidence(response, payload);
+    recordPricingObservation(arm, attemptNumber, startedAt, evidence, telemetry);
 
     if (!response.ok) {
       const error = new Error(`HTTP_${response.status}`);
       error.status = response.status;
       error.telemetry = telemetry;
-      error.startedAt = startedAt;
+      error.costEvidence = evidence;
       throw error;
     }
 
     return {
-      ok: true,
       status: response.status,
       startedAt,
       retrievedAt: new Date().toISOString(),
       telemetry,
+      costEvidence: evidence,
       rawRecords: Array.isArray(payload?.results) ? payload.results : []
     };
   } finally {
@@ -206,7 +243,8 @@ async function fetchArm(intent, arm) {
         status: result.status,
         startedAt: result.startedAt,
         retrievedAt: result.retrievedAt,
-        telemetry: result.telemetry
+        telemetry: result.telemetry,
+        costEvidence: result.costEvidence
       });
       return { status: 'success', attempts, result };
     } catch (error) {
@@ -216,13 +254,48 @@ async function fetchArm(intent, arm) {
         status: Number.isFinite(Number(error?.status)) ? Number(error.status) : null,
         code: error?.name === 'AbortError' ? 'TIMEOUT' : String(error?.message || 'PROVIDER_ERROR'),
         telemetry: error?.telemetry || null,
+        costEvidence: error?.costEvidence || null,
         at: new Date().toISOString()
       });
-      if (error?.nonRetryable || !isRetryable(error) || retry === MAX_RETRIES) break;
+
+      if (error?.nonRetryable) throw error;
+      if (!isRetryable(error)) {
+        const fatal = new Error(`NON_RETRYABLE_PROVIDER_ERROR_${arm}_${attempts.at(-1).status ?? 'UNKNOWN'}`);
+        fatal.nonRetryable = true;
+        fatal.arm = arm;
+        fatal.attempts = attempts;
+        throw fatal;
+      }
+      if (retry === MAX_RETRIES) break;
       await sleep(750 * (retry + 1));
     }
   }
   return { status: 'retrieval-failure', attempts, result: null };
+}
+
+function aggregate(summary) {
+  return {
+    totalAttempts,
+    chargedResponses,
+    observedCostUsd: Number(observedCostUsd.toFixed(6)),
+    pricingAnomalies,
+    successes: {
+      L: summary.queries.filter((q) => q.L.status === 'success').length,
+      S: summary.queries.filter((q) => q.S.status === 'success').length,
+      H: summary.queries.filter((q) => q.H.status === 'success').length
+    },
+    retrievalFailures: {
+      L: summary.queries.filter((q) => q.L.status !== 'success').map((q) => q.id),
+      S: summary.queries.filter((q) => q.S.status !== 'success').map((q) => q.id)
+    }
+  };
+}
+
+async function writeSummary(summary, fatal = null) {
+  summary.aggregate = aggregate(summary);
+  summary.executionFinishedAt = new Date().toISOString();
+  if (fatal) summary.fatal = fatal;
+  await fs.writeFile(SUMMARY_PATH, `${JSON.stringify(summary, null, 2)}\n`);
 }
 
 const holdoutMd = await fs.readFile(HOLDOUT_PATH, 'utf8');
@@ -240,68 +313,63 @@ const summary = {
   aggregate: null
 };
 
-for (const query of queries) {
-  const l = await fetchArm(query.intent, 'L');
-  const s = await fetchArm(query.intent, 'S');
-
-  const lPool = l.status === 'success' ? dedupeRanked(l.result.rawRecords) : [];
-  const sPool = s.status === 'success' ? dedupeRanked(s.result.rawRecords) : [];
-  const hPool = l.status === 'success' && s.status === 'success' ? buildHybrid(lPool, sPool) : null;
-
-  const record = {
-    id: query.id,
-    domain: query.domain,
-    intent: query.intent,
-    slices: query.slices,
-    execution: {
-      L: { status: l.status, attempts: l.attempts, rawCount: l.result?.rawRecords?.length ?? null, uniqueNormalizedCount: l.status === 'success' ? lPool.length : null },
-      S: { status: s.status, attempts: s.attempts, rawCount: s.result?.rawRecords?.length ?? null, uniqueNormalizedCount: s.status === 'success' ? sPool.length : null },
-      H: { status: hPool ? 'success' : 'invalid-retrieval-failure', uniqueNormalizedCount: hPool?.length ?? null }
-    },
-    pools: {
-      L: lPool,
-      S: sPool,
-      H: hPool
-    },
-    top10: {
-      L: lPool.slice(0, 10).map(({ identity, providerRank, normalized }) => ({ identity, rank: providerRank, work: normalized })),
-      S: sPool.slice(0, 10).map(({ identity, providerRank, normalized }) => ({ identity, rank: providerRank, work: normalized })),
-      H: hPool ? hPool.slice(0, 10).map(({ identity, hRank, lRank, sRank, rrf, normalized }) => ({ identity, rank: hRank, lRank, sRank, rrf, work: normalized })) : null
+try {
+  for (const query of queries) {
+    const l = await fetchArm(query.intent, 'L');
+    if (pricingAnomalies.length) {
+      await writeSummary(summary, { code: 'D013_PRICING_ANOMALY', queryId: query.id, afterArm: 'L' });
+      throw new Error('D013_PRICING_ANOMALY');
     }
-  };
 
-  await fs.writeFile(path.join(OUT_DIR, `${query.id}.json`), `${JSON.stringify(record, null, 2)}\n`);
-  summary.queries.push({
-    id: query.id,
-    domain: query.domain,
-    slices: query.slices,
-    L: record.execution.L,
-    S: record.execution.S,
-    H: record.execution.H
-  });
-}
+    const s = await fetchArm(query.intent, 'S');
+    if (pricingAnomalies.length) {
+      await writeSummary(summary, { code: 'D013_PRICING_ANOMALY', queryId: query.id, afterArm: 'S' });
+      throw new Error('D013_PRICING_ANOMALY');
+    }
 
-summary.executionFinishedAt = new Date().toISOString();
-summary.aggregate = {
-  totalAttempts,
-  chargedResponses,
-  observedCostUsd: Number(observedCostUsd.toFixed(6)),
-  pricingAnomalies,
-  successes: {
-    L: summary.queries.filter((q) => q.L.status === 'success').length,
-    S: summary.queries.filter((q) => q.S.status === 'success').length,
-    H: summary.queries.filter((q) => q.H.status === 'success').length
-  },
-  retrievalFailures: {
-    L: summary.queries.filter((q) => q.L.status !== 'success').map((q) => q.id),
-    S: summary.queries.filter((q) => q.S.status !== 'success').map((q) => q.id)
+    const lPool = l.status === 'success' ? dedupeRanked(l.result.rawRecords) : [];
+    const sPool = s.status === 'success' ? dedupeRanked(s.result.rawRecords) : [];
+    const hPool = l.status === 'success' && s.status === 'success' ? buildHybrid(lPool, sPool) : null;
+
+    const record = {
+      id: query.id,
+      domain: query.domain,
+      intent: query.intent,
+      slices: query.slices,
+      execution: {
+        L: { status: l.status, attempts: l.attempts, rawCount: l.result?.rawRecords?.length ?? null, uniqueNormalizedCount: l.status === 'success' ? lPool.length : null },
+        S: { status: s.status, attempts: s.attempts, rawCount: s.result?.rawRecords?.length ?? null, uniqueNormalizedCount: s.status === 'success' ? sPool.length : null },
+        H: { status: hPool ? 'success' : 'invalid-retrieval-failure', uniqueNormalizedCount: hPool?.length ?? null }
+      },
+      pools: { L: lPool, S: sPool, H: hPool },
+      top10: {
+        L: lPool.slice(0, 10).map(({ identity, providerRank, normalized }) => ({ identity, rank: providerRank, work: normalized })),
+        S: sPool.slice(0, 10).map(({ identity, providerRank, normalized }) => ({ identity, rank: providerRank, work: normalized })),
+        H: hPool ? hPool.slice(0, 10).map(({ identity, hRank, lRank, sRank, rrf, normalized }) => ({ identity, rank: hRank, lRank, sRank, rrf, work: normalized })) : null
+      }
+    };
+
+    await fs.writeFile(path.join(OUT_DIR, `${query.id}.json`), `${JSON.stringify(record, null, 2)}\n`);
+    summary.queries.push({
+      id: query.id,
+      domain: query.domain,
+      slices: query.slices,
+      L: record.execution.L,
+      S: record.execution.S,
+      H: record.execution.H
+    });
+    await writeSummary(summary);
   }
-};
 
-await fs.writeFile(SUMMARY_PATH, `${JSON.stringify(summary, null, 2)}\n`);
-console.log(JSON.stringify(summary.aggregate, null, 2));
-
-if (pricingAnomalies.length > 0) {
-  console.error('D-013 pricing anomaly detected; results preserved, governance review required before continuing.');
-  process.exitCode = 2;
+  await writeSummary(summary);
+  console.log(JSON.stringify(summary.aggregate, null, 2));
+} catch (error) {
+  if (!summary.fatal) {
+    await writeSummary(summary, {
+      code: String(error?.message || 'EXECUTION_FAILED'),
+      arm: error?.arm || null,
+      attempts: error?.attempts || null
+    });
+  }
+  throw error;
 }
