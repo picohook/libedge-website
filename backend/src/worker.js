@@ -3,6 +3,9 @@ import { purgePrivacyR2Queue } from './privacy/r2-purge.js';
 import { handleSystemHealthRequest } from './system-health.js';
 import { handleResearchRequest } from './research/router.js';
 
+// Research metadata may be cached server-side in KV using hashed, user-independent
+// keys to reduce provider cost. Authenticated HTTP responses are intentionally
+// private/no-store so browsers and intermediary caches do not retain user requests.
 function privateNoStore(response) {
   const headers = new Headers(response.headers);
   headers.set('Cache-Control', 'private, no-store');
