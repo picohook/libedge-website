@@ -1,0 +1,68 @@
+name: D-013 OpenAlex semantic pricing telemetry
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    env:
+      OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+    steps:
+      - name: Run controlled telemetry probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${OPENALEX_API_KEY:-}" ]; then
+            echo "ERROR: OPENALEX_API_KEY secret is unavailable or empty"
+            exit 2
+          fi
+          python3 - <<'PY'
+          import json, os, time, urllib.parse, urllib.request, urllib.error
+          from datetime import datetime, timezone
+
+          key = os.environ['OPENALEX_API_KEY']
+          intent = 'digital divide rural education'
+          base = 'https://api.openalex.org/works'
+
+          def call(mode, index):
+              params = {mode: intent, 'per-page': '5', 'api_key': key}
+              url = base + '?' + urllib.parse.urlencode(params)
+              redacted = base + '?' + urllib.parse.urlencode({mode:intent, 'per-page':'5', 'api_key':'REDACTED'})
+              req = urllib.request.Request(url, headers={'User-Agent':'LibEdge-D013-Telemetry/1.0'})
+              ts = datetime.now(timezone.utc).isoformat()
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      body = json.load(r)
+                      headers = {k.lower(): v for k,v in r.headers.items()}
+                      works = [{'id':w.get('id'), 'title':w.get('title')} for w in body.get('results',[])[:5]]
+                      meta = body.get('meta') or {}
+                      out = {
+                        'kind': 'semantic' if mode == 'search.semantic' else 'lexical-control',
+                        'index': index,
+                        'timestamp_utc': ts,
+                        'request_url_redacted': redacted,
+                        'http_status': r.status,
+                        'meta_cost_usd': meta.get('cost_usd'),
+                        'x_ratelimit_credits_used': headers.get('x-ratelimit-credits-used'),
+                        'x_ratelimit_cost_usd': headers.get('x-ratelimit-cost-usd'),
+                        'ratelimit_headers': {k:v for k,v in headers.items() if k.startswith('x-ratelimit')},
+                        'works': works,
+                      }
+                      print('D013_RECORD ' + json.dumps(out, ensure_ascii=False))
+                      return [w['id'] for w in works]
+              except urllib.error.HTTPError as e:
+                  print('D013_RECORD ' + json.dumps({'kind':mode,'index':index,'timestamp_utc':ts,'request_url_redacted':redacted,'http_status':e.code,'error':'HTTPError'}))
+                  raise
+
+          semantic_ids=[]
+          for i in range(1,4):
+              semantic_ids.append(call('search.semantic', i))
+              if i < 3: time.sleep(1.2)
+          time.sleep(1.2)
+          lexical_ids=call('search', 1)
+          print('D013_MODE_CHECK ' + json.dumps({'semantic_first_ids':semantic_ids[0], 'lexical_first_ids':lexical_ids, 'different': semantic_ids[0] != lexical_ids}))
+          PY
