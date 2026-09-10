@@ -2,6 +2,7 @@ import worker from './index.js';
 import { purgePrivacyR2Queue } from './privacy/r2-purge.js';
 import { handleSystemHealthRequest } from './system-health.js';
 import { handleResearchRequest } from './research/router.js';
+export { OpenAlexSemanticPacer } from './research/semantic-pacer.js';
 
 // Research metadata may be cached server-side in KV using hashed, user-independent
 // keys to reduce provider cost. Authenticated HTTP responses are intentionally
