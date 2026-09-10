@@ -1,4 +1,5 @@
 import { doiUrl, normalizeDoi, normalizeOrcid, normalizeTitle, stripCrossrefMarkup } from '../normalize.js';
+import { parseResearchWork } from '../research-work.js';
 
 const CROSSREF_BASE = 'https://api.crossref.org';
 
@@ -69,6 +70,51 @@ export function normalizeCrossrefMessage(message, retrievedAt = new Date().toISO
   };
 }
 
+export function crossrefMessageToResearchWork(message, retrievedAt = new Date().toISOString()) {
+  const normalized = normalizeCrossrefMessage(message, retrievedAt);
+  if (!normalized) return null;
+
+  const count = normalized.citationObservation?.count ?? null;
+  const work = {
+    id: `doi:${normalized.doi}`,
+    title: normalized.title,
+    authors: normalized.authors,
+    publicationDate: normalized.publicationDate,
+    publicationYear: normalized.publicationYear,
+    type: normalized.type,
+    language: normalized.language,
+    doi: normalized.doi,
+    identifiers: normalized.identifiers,
+    venue: normalized.venue,
+    abstract: normalized.abstract,
+    evidence: {
+      level: normalized.abstract ? 'ABSTRACT' : 'METADATA_ONLY',
+      sources: [normalized.evidenceSource]
+    },
+    openAccess: {
+      isOa: null,
+      status: null,
+      url: null,
+      source: null
+    },
+    licenses: normalized.licenses,
+    citations: {
+      preferredCount: count,
+      preferredSource: count == null ? null : 'crossref',
+      observations: normalized.citationObservation ? [normalized.citationObservation] : []
+    },
+    urls: {
+      doi: normalized.urls.doi,
+      publisher: normalized.urls.publisher,
+      openAccess: null
+    },
+    flags: { retracted: null },
+    provenance: [normalized.provenance]
+  };
+
+  return parseResearchWork(work);
+}
+
 function providerError(status, code) {
   const error = new Error(code);
   error.status = status;
@@ -76,23 +122,30 @@ function providerError(status, code) {
   return error;
 }
 
-export async function fetchCrossrefByDoi(doi, env, options = {}) {
-  const normalized = normalizeDoi(doi);
-  if (!normalized) return null;
-  const url = new URL(`${CROSSREF_BASE}/works/${encodeURIComponent(normalized)}`);
-  if (env.CROSSREF_MAILTO) url.searchParams.set('mailto', env.CROSSREF_MAILTO);
-
+function crossrefHeaders(env) {
   const headers = { Accept: 'application/json' };
   if (env.CROSSREF_MAILTO) headers['User-Agent'] = `LibEdge/1.0 (mailto:${env.CROSSREF_MAILTO})`;
+  return headers;
+}
 
+async function crossrefFetch(url, env, options = {}) {
+  if (env.CROSSREF_MAILTO) url.searchParams.set('mailto', env.CROSSREF_MAILTO);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs || 8000);
   let response;
   try {
-    response = await fetch(url, { signal: controller.signal, headers });
+    response = await fetch(url, { signal: controller.signal, headers: crossrefHeaders(env) });
   } finally {
     clearTimeout(timeout);
   }
+  return response;
+}
+
+export async function fetchCrossrefByDoi(doi, env, options = {}) {
+  const normalized = normalizeDoi(doi);
+  if (!normalized) return null;
+  const url = new URL(`${CROSSREF_BASE}/works/${encodeURIComponent(normalized)}`);
+  const response = await crossrefFetch(url, env, options);
 
   if (response.status === 404) return null;
   if (!response.ok) {
@@ -102,4 +155,24 @@ export async function fetchCrossrefByDoi(doi, env, options = {}) {
 
   const payload = await response.json();
   return normalizeCrossrefMessage(payload?.message, new Date().toISOString());
+}
+
+export async function searchCrossref(query, env, options = {}) {
+  const url = new URL(`${CROSSREF_BASE}/works`);
+  url.searchParams.set('query.bibliographic', query);
+  url.searchParams.set('rows', String(options.perPage || 10));
+  const response = await crossrefFetch(url, env, options);
+
+  if (!response.ok) {
+    if (response.status === 429) throw providerError(429, 'CROSSREF_RATE_LIMITED');
+    throw providerError(response.status, 'CROSSREF_UNAVAILABLE');
+  }
+
+  const payload = await response.json();
+  const retrievedAt = new Date().toISOString();
+  const items = Array.isArray(payload?.message?.items) ? payload.message.items : [];
+  return {
+    results: items.map((item) => crossrefMessageToResearchWork(item, retrievedAt)).filter(Boolean),
+    retrievedAt
+  };
 }
