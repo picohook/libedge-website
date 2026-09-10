@@ -228,11 +228,12 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 ## D-013
 
 - Type: `architecture`
-- Status: `LOCKED`
-- Decision: Use $1 per 1,000 semantic-search API calls as the current P0.5 planning price, while preserving the previously reported $10/1,000 discrepancy as historical conflict evidence rather than an active current fact.
-- Reason: On 2026-09-10 the current official OpenAlex Example Costs page lists semantic search at $1/1,000, and the semantic-search page delegates pricing to the pricing-by-endpoint documentation. The previously reported conflicting $10 figure is not currently reproduced by the authoritative pages checked.
-- Provenance: OOS-01 in `docs/reviews/2026-09-10-governance-red-team.md`; official OpenAlex pricing/semantic documentation rechecked 2026-09-10.
+- Status: `PROPOSED`
+- Decision: Semantic-search unit price is unresolved; use the conservative planning assumption of $10 per 1,000 semantic-search calls until live authenticated semantic-search telemetry reconciles the conflict.
+- Reason: The current OpenAlex Authentication & Pricing page is internally inconsistent: its pricing table lists semantic search at $1/1,000 calls, while the same page's `/rate-limit` example reports `endpoint_costs_usd.semantic = 0.01`, equivalent to $10/1,000 calls. Under D-010, mixed/inconsistent evidence cannot close the conflict.
+- Provenance: reviewer rejection of prior D-013, 2026-09-10; current official `developers.openalex.org/api-reference/authentication` independently rechecked by main thread on 2026-09-10.
 - Canonical reference: `docs/architecture/research-retrieval.md`
+- Reconciliation trigger: one or more live authenticated `search.semantic` calls whose returned `meta.cost_usd` and/or rate-limit credit telemetry unambiguously establishes the charged semantic-search unit cost. If telemetry is mixed or inconsistent, conflict remains OPEN and the $10/1,000 conservative assumption remains in force.
 
 ## D-014
 
