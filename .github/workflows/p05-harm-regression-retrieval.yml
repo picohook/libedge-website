@@ -2,11 +2,6 @@ name: P0.5 Harm Regression Retrieval
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - staging
-    paths:
-      - '.github/workflows/p05-harm-regression-retrieval.yml'
 
 permissions:
   contents: read
