@@ -8,7 +8,7 @@ Status: `ACTIVE`
 
 ## Current phase
 
-P0.5 — Hybrid Semantic Retrieval feasibility and preregistration.
+P0.5 — Hybrid Semantic Retrieval preregistration freeze and fresh-holdout construction.
 
 ## CLOSED
 
@@ -20,28 +20,30 @@ P0.5 — Hybrid Semantic Retrieval feasibility and preregistration.
 - Lexical top-100 depth diagnostic — CLOSED.
 - Semantic-vs-lexical gap diagnostic — CLOSED; material retrieval-level recall gap found.
 - Governance red-team review 2026-09-10 — CLOSED; findings triaged and control-plane corrections applied.
+- P0.5 hybrid preregistration methodology review — CLOSED; reviewer reports no remaining methodological FREEZE blocker.
+- D-013 semantic pricing reconciliation — CLOSED by live authenticated telemetry on 2026-09-10. Three successful `search.semantic` calls each returned `meta.cost_usd = 0.001` and `X-RateLimit-Cost-USD = 0.001`; lexical control produced a distinct result set. Observed charged price: `$1 / 1,000` semantic calls. Canonical evidence: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`.
 
 ## ACTIVE
 
-- Define and preregister P0.5 Hybrid Semantic Retrieval experiment.
+- Freeze `docs/experiments/p05-hybrid-semantic.md` before fresh holdout generation.
 - Candidate architecture under test:
-  - L: OpenAlex lexical retrieval baseline.
-  - S: OpenAlex semantic retrieval.
-  - H: lexical + semantic candidate union -> deduplication -> preregistered deterministic fusion/ranking -> top 10.
-- H-arm fusion/ranking algorithm is NOT YET DEFINED and must be frozen before execution.
+  - L: OpenAlex lexical top-100 baseline.
+  - S: OpenAlex semantic top-50 retrieval.
+  - H: L/S union -> canonical deduplication -> RRF `k=60` -> deterministic tie-break -> top 10.
 - OpenAlex semantic-search operational constraint: <=1 request/second.
-- Current planning price for OpenAlex semantic search: $1/1,000 calls as of 2026-09-10 official documentation check; historical contrary pricing report retained as reopenable conflict evidence.
+- P0.5 economic assumption: `$0.001 / semantic call` (`$1 / 1,000`), reconciled by authenticated live telemetry. Reopen only on materially different authenticated charge telemetry.
+- Production semantic/hybrid retrieval remains NOT ADOPTED pending the frozen fresh-holdout experiment.
 
 ## NEXT
 
-1. Freeze P0.5 Hybrid Semantic Retrieval preregistration before implementation tuning.
-2. Define and freeze H-arm candidate depths, dedup identity rule, fusion/ranking algorithm, normalization (if any), tie-breaking, and truncation rule.
-3. Construct a fresh, previously unseen hypothesis-driven holdout.
-4. Include a predeclared conjunctive-intent slice.
-5. Preserve the existing 30-query P0.5-A benchmark as diagnostic-only.
-6. Preserve A1/A2/A5/A6/A7 as a mandatory harm-regression slice; it cannot determine Gate PASS by itself.
-7. Pace semantic retrieval at <=1 request/second and account for current documented semantic-search pricing.
-8. Run blind evaluation in a physically separate evaluator thread with minimum necessary context only.
+1. Mark the reviewed P0.5 Hybrid Semantic Retrieval preregistration FROZEN.
+2. Generate and freeze the fresh 40-query hypothesis-driven holdout only after freeze.
+3. Preserve four-domain balance and preregistered conjunctive, lexical-ambiguity, jargon and broad/straightforward structure.
+4. Execute L/S/H without tuning, pacing semantic calls at <=1 request/second.
+5. Prepare the frozen randomized evaluator bundle.
+6. Obtain two independent blind-rater label sets in physically separate fresh lineages; use a third fresh lineage only for Gate A/B disagreement as preregistered.
+7. Report Gate A, Gate B and S-vs-L component vectors per rater; never synthesize numeric consensus metrics.
+8. After gate reconciliation, run A1/A2/A5/A6/A7 as the separate two-rater blind harm-regression diagnostic.
 
 ## DO NOT REOPEN WITHOUT NEW EVIDENCE
 
@@ -49,7 +51,8 @@ P0.5 — Hybrid Semantic Retrieval feasibility and preregistration.
 - Conditional lexical phrase heuristic as a production relevance fix.
 - Existing 30-query P0.5-A benchmark as the semantic gate set.
 - Reranking-only architecture restricted to lexical candidates.
-- Vectorize before evidence shows OpenAlex semantic retrieval / hybrid retrieval is insufficient.
+- Vectorize before evidence shows OpenAlex semantic/hybrid retrieval is insufficient.
+- D-013 pricing conflict unless materially different authenticated charge telemetry appears.
 
 ## Evaluation invariants
 
@@ -57,6 +60,7 @@ P0.5 — Hybrid Semantic Retrieval feasibility and preregistration.
 - Seen diagnostic data and fresh gate data are physically and procedurally separated.
 - Reviewer thread receives summary plus raw materials and may challenge the implementer framing.
 - Blind evaluator receives only frozen evaluation materials and rubric; no mapping, prior labels, gate metrics, or discussion history.
+- Numeric rater metrics remain per-rater; only preregistered binary Gate A/B dispositions may use the third-rater 2-of-3 rule.
 
 ## Privacy invariants
 
@@ -69,11 +73,12 @@ P0.5 — Hybrid Semantic Retrieval feasibility and preregistration.
 - Project decisions: `docs/decisions.md`
 - Current operational state: `docs/current-state.md`
 - Retrieval architecture: `docs/architecture/research-retrieval.md`
+- P0.5 hybrid experiment/preregistration: `docs/experiments/p05-hybrid-semantic.md`
+- D-013 live reconciliation: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`
 - Research privacy/evidence invariants: `docs/privacy/research-privacy.md`
 - Reviewer packet completeness control: `docs/reviewer-packet-checklist.md`
 - Governance red-team review: `docs/reviews/2026-09-10-governance-red-team.md`
 - P0.5-A experiment history: `docs/experiments/p05a-lexical.md`
-- Future P0.5 hybrid experiment: `docs/experiments/p05-hybrid-semantic.md` (to be created at preregistration)
 
 ## Status semantics
 
