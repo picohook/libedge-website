@@ -177,7 +177,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Provenance: semantic-gap diagnostic; technical/governance review recorded in `docs/reviews/2026-09-10-governance-red-team.md`.
 - Canonical references:
   - Architecture dimension: `docs/architecture/research-retrieval.md`
-  - Experimental dimension: `docs/experiments/p05-hybrid-semantic.md` (to be created at preregistration)
+  - Experimental dimension: `docs/experiments/p05-hybrid-semantic.md`
 
 ## D-008
 
@@ -228,12 +228,12 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 ## D-013
 
 - Type: `architecture`
-- Status: `PROPOSED`
-- Decision: Semantic-search unit price is unresolved; use the conservative planning assumption of $10 per 1,000 semantic-search calls until live authenticated semantic-search telemetry reconciles the conflict.
-- Reason: The current OpenAlex Authentication & Pricing page is internally inconsistent: its pricing table lists semantic search at $1/1,000 calls, while the same page's `/rate-limit` example reports `endpoint_costs_usd.semantic = 0.01`, equivalent to $10/1,000 calls. Under D-010, mixed/inconsistent evidence cannot close the conflict.
-- Provenance: reviewer rejection of prior D-013, 2026-09-10; current official `developers.openalex.org/api-reference/authentication` independently rechecked by main thread on 2026-09-10.
+- Status: `LOCKED`
+- Decision: For P0.5 planning, OpenAlex authenticated `search.semantic` is charged at the observed live rate of `$0.001 per call` (`$1 / 1,000` semantic calls).
+- Reason: Three successful authenticated semantic calls returned `meta.cost_usd = 0.001`, `X-RateLimit-Cost-USD = 0.001`, and `X-RateLimit-Credits-Used = 10` on 3/3 observations; the explicit `search.semantic` request shape and distinct lexical-control result set verified retrieval mode. The previously conflicting `$10/1,000` documentation example remains historical conflict evidence.
+- Provenance: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`; reviewer acceptance/freeze authorization returned to the main engineering thread on 2026-09-10.
 - Canonical reference: `docs/architecture/research-retrieval.md`
-- Reconciliation trigger: one or more live authenticated `search.semantic` calls whose returned `meta.cost_usd` and/or rate-limit credit telemetry unambiguously establishes the charged semantic-search unit cost. If telemetry is mixed or inconsistent, conflict remains OPEN and the $10/1,000 conservative assumption remains in force.
+- Reopen trigger: materially different authenticated `meta.cost_usd`, `X-RateLimit-Cost-USD`, or equivalent charged-credit telemetry observed in diagnostic or production operation.
 
 ## D-014
 
@@ -244,7 +244,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Provenance: OOS-01 in `docs/reviews/2026-09-10-governance-red-team.md`.
 - Canonical references:
   - Architecture constraint: `docs/architecture/research-retrieval.md`
-  - Experimental protocol: `docs/experiments/p05-hybrid-semantic.md` (to be created before execution)
+  - Experimental protocol: `docs/experiments/p05-hybrid-semantic.md`
 
 ## D-015
 
