@@ -1,5 +1,9 @@
 # Research Retrieval Architecture
 
+Status: `ACTIVE — EXPERIMENTAL / NOT PRODUCTION-ADOPTED`
+Canonical decision index: `docs/decisions.md`
+Supersession rule: if this architecture record is replaced in full, change this header to `SUPERSEDED (see D-0XX and replacement record)` before treating the replacement as canonical.
+
 ## Current status
 
 P0.5 retrieval architecture is under experiment; no production semantic/hybrid retrieval has been adopted yet.
@@ -13,6 +17,12 @@ Evaluate three retrieval arms before any production implementation:
 - `H` — lexical + semantic candidate union -> deduplication -> frozen deterministic fusion/ranking -> top 10.
 
 The existing user-facing research endpoint contract remains unchanged during feasibility work.
+
+This proposal spans two canonical dimensions:
+- architecture rationale and consequences live in this file;
+- preregistration, frozen protocol, amendments, and gate results will live in `docs/experiments/p05-hybrid-semantic.md` once created.
+
+Neither dimension substitutes for the other.
 
 ## SUPERSEDED ARCHITECTURE
 
@@ -71,7 +81,7 @@ Conflict status:
 No architectural conflict recorded for semantic-vs-lexical retrieval availability. Historical OpenAlex pricing/header documentation conflicts must be recorded separately when they affect operational limits or cost assumptions.
 
 Reconciliation trigger:
-For any operational source conflict, the next real provider call exposing the disputed field/value in live telemetry must reconcile or update the conflict record.
+For an operational source conflict, use a real provider call/telemetry observation only if it directly measures the disputed value. A single observation closes the conflict only when unambiguous and sufficient to distinguish the competing claims. If the observation is mixed, incomplete, or inconsistent, keep the conflict `OPEN`, retain the conservative assumption, and record the next review trigger or required observation count before reconsideration.
 
 Consequence:
 Reranking-only is superseded; L/S/H hybrid feasibility must be tested before choosing production retrieval architecture.
