@@ -31,6 +31,7 @@ P0.5 — Fresh 40-query retrieval COMPLETE and independently mechanically ACCEPT
 - Retrieval mechanical audit — CLOSED: all 40 H top-10 lists independently recomputed under frozen RRF/tie-break with exact agreement; semantic pacing compliant; no low-corpus pairs. Frozen coverage rule reports H-v-L 0/40 regressions, H-v-S 0/40, S-v-L 40/40; the latter is reported without rule reinterpretation.
 - Independent P0.5 retrieval-execution review — CLOSED / ACCEPTED. Reviewer freshly inspected the complete raw artifact and relevant diffs, independently recomputed all 40 H top-10 lists with 400/400 positional agreement, and found no execution correction required. Canonical review: `docs/reviews/2026-09-10-p05-retrieval-execution-review.md`.
 - Fresh blind evaluator bundle construction — CLOSED / FROZEN 2026-09-10 before any relevance labels. Public bundle SHA-256 `a39f172b249dd8fd1b1b97598257fb936a81e3da40e77bc21af9609373330624`; private mapping sealed. Canonical freeze record: `docs/experiments/p05-hybrid-semantic-evaluator-bundle.md`.
+- Evaluator-bundle structural review — CLOSED / ACCEPTED. Reviewer found no blocker to delivering the existing frozen bundle to the two independent blind raters. A sequencing defect was identified: the bundle had been promoted to FROZEN before upstream retrieval review acceptance. This caused no retrospective invalidity because retrieval was subsequently ACCEPTED without correction; prospective control D-017 is now LOCKED.
 
 ## ACTIVE
 
@@ -46,6 +47,9 @@ P0.5 — Fresh 40-query retrieval COMPLETE and independently mechanically ACCEPT
 - Private evaluator mapping artifact ID `10161316449`, mapping-file SHA-256 `defd6b39361dff452a826966769b680254d2bc43924143a52cfe2af7ed0b6b0c`; seed commitment `388813fddbb0d2519baafa62cbc28af7e82f3a0cd665314c61ed4c1ddf801bd1`. Mapping MUST remain sealed until BOTH primary blind raters lock all labels.
 - Reviewer OOS-01 is `ACKNOWLEDGED / DEFERRED`: DOI/title dedup fallback branches were not exercised by this OpenAlex-native artifact. Revisit before an OpenAlex-external or ID-less ingestion path depends on fallback identity behavior.
 - Reviewer OOS-02 is `ACKNOWLEDGED / DEFERRED`: S-vs-L coverage regression `40/40` is structurally induced by frozen depth asymmetry (L=100, S<=50). Any final evaluation/architecture summary must keep this caveat adjacent to the statistic and must not present it as a standalone relevance conclusion.
+- Bundle-review OOS sequencing finding is `OPEN -> RESOLVED BY PROCESS CONTROL`: D-017 now requires upstream reviewer acceptance before a derived experimental artifact enters an irreversible/frozen stage; provisional parallel construction remains allowed.
+- Bundle-review note is `ACKNOWLEDGED / DEFERRED`: the randomization seed must be revealed and verified against commitment `388813f...` after both primary label sets are locked and the mapping is legitimately opened. Revisit at mapping-open/final-report stage.
+- Bundle-review limitation is `ACKNOWLEDGED / DEFERRED`: anonymous H may be structurally inferable from cross-list overlap because it is derived from L/S union+rerank. No change is made to the already-frozen bundle; record as an evaluation-design limitation and revisit before a future experiment if stronger arm-independence masking is needed.
 - No relevance labels, Gate A/B result, S-vs-L relevance conclusion, or production architecture decision exists yet.
 - P0.5 frozen economic assumption remains measured `$0.001 / provider call`. Fresh retrieval consumed 80 of the base experiment's 90 planned calls; later 5-query harm slice still requires 10 base calls. Global experiment cap remains 120 charged provider calls / `$0.120`.
 - Passive charged-cost/credit monitoring remains ACTIVE for the later 5-query harm slice. Cost monitoring stores no query/topic/user research-interest content.
@@ -56,7 +60,7 @@ P0.5 — Fresh 40-query retrieval COMPLETE and independently mechanically ACCEPT
 1. Deliver the exact frozen public evaluator bundle to primary blind rater 1 in a fresh independent context lineage.
 2. Deliver the exact same frozen public evaluator bundle to primary blind rater 2 in a separate fresh independent context lineage. Neither rater receives the private mapping, provider identity, prior labels/gate results, P0.5-A history, expected winner, or implementation discussion.
 3. Collect and lock both complete R/M/N label sets before opening the private mapping.
-4. Only after both primary label sets are locked, open the frozen mapping and calculate Gate A, Gate B and S-vs-L component vectors separately per rater under the preregistered mechanical-validity rules.
+4. Only after both primary label sets are locked, open the frozen mapping, reveal/verify the randomization seed commitment, and calculate Gate A, Gate B and S-vs-L component vectors separately per rater under the preregistered mechanical-validity rules.
 5. If either Gate A or Gate B binary disposition differs between primary raters, obtain a third blind evaluator in a third fresh lineage and apply only the preregistered 2-of-3 gate-level majority. S-vs-L disagreement alone does not trigger a third rater.
 6. Apply the predeclared A/B decision matrix; no production adoption is automatic.
 7. Only after fresh-gate reconciliation run A1/A2/A5/A6/A7 two-rater harm diagnostic with the same provider-cost monitoring.
@@ -82,6 +86,7 @@ P0.5 — Fresh 40-query retrieval COMPLETE and independently mechanically ACCEPT
 - Both primary raters receive the exact same frozen public bundle but operate in physically separate fresh lineages.
 - Mapping opens only after both primary raters lock all labels.
 - Numeric rater metrics remain per-rater; only preregistered binary Gate A/B dispositions may use third-rater 2-of-3 rule.
+- Under D-017, a derived experimental artifact may become FROZEN/irreversible only after required upstream reviewer acceptance; parallel work before acceptance must remain explicitly PROVISIONAL.
 
 ## Privacy invariants
 
