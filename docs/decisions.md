@@ -180,13 +180,14 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 ## D-016
 
 - Type: `architecture`
-- Status: `PROPOSED`
-- Decision: Adopt lexical (L), semantic (S), or hybrid lexical+semantic (H) as the production retrieval architecture only after the frozen P0.5 experiment is completed and a separate post-experiment architecture decision is made.
-- Reason: Experiment execution is now locked, but production architecture remains contingent on fresh-holdout evidence, the preregistered A/B decision matrix, S-vs-L evidence, and a later architecture decision.
-- Provenance: split from the former mixed architecture/experimental D-007 during pre-retrieval governance cleanup; no frozen experimental parameter changed.
-- Canonical references:
-  - Architecture dimension: `docs/architecture/research-retrieval.md`
-  - Experimental evidence: `docs/experiments/p05-hybrid-semantic.md`
+- Status: `LOCKED`
+- Decision: Use OpenAlex semantic retrieval (S) as the primary retrieval architecture for the existing top-10 research-result contract; retain lexical retrieval (L) only as objective availability fallback/rollback; a valid zero-candidate S response does not trigger L; do not adopt H; do not add Vectorize without new evidence; require the locked pre-broad-enable capacity guardrail and first production-scale D-013 checkpoint.
+- Reason: P0.5 closed with independently verified fresh evidence showing large S-vs-L top-10 relevance gains, H failing non-inferiority versus S for both primary raters, and a directionally consistent seen harm diagnostic. Independent architecture review accepted the core direction with modifications, and follow-up review accepted the modified proposal without further conditions.
+- Provenance:
+  - `docs/reviews/2026-09-10-d016-production-architecture-review.md` — `ACCEPTED WITH MODIFICATION`.
+  - `docs/reviews/2026-09-10-d016-production-architecture-followup-review.md` — `ACCEPTED`.
+  - Final experiment evidence: `docs/experiments/p05-final-outcome.md`.
+- Canonical reference: `docs/architecture/p05-production-retrieval-decision.md`
 
 ## D-008
 
@@ -229,7 +230,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 
 - Type: `architecture`
 - Status: `LOCKED`
-- Decision: Treat OpenAlex semantic search as a 1 request/second dependency during P0.5 feasibility work and design experiment execution/budgeting accordingly.
+- Decision: Treat OpenAlex semantic search as a 1 request/second dependency during P0.5 feasibility work and production planning until new provider evidence changes that constraint.
 - Reason: Current official semantic-search documentation specifies a 1 request/second semantic-search limit, which is stricter than the general API ceiling.
 - Provenance: OOS-01 in `docs/reviews/2026-09-10-governance-red-team.md`; official OpenAlex semantic-search documentation rechecked 2026-09-10.
 - Canonical reference: `docs/architecture/research-retrieval.md`
@@ -238,9 +239,9 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 
 - Type: `architecture`
 - Status: `LOCKED`
-- Decision: For P0.5 planning, OpenAlex authenticated `search.semantic` is charged at the observed live rate of `$0.001 per call` (`$1 / 1,000` semantic calls).
-- Reason: Three successful authenticated semantic calls returned `meta.cost_usd = 0.001`, `X-RateLimit-Cost-USD = 0.001`, and `X-RateLimit-Credits-Used = 10` on 3/3 observations; the explicit `search.semantic` request shape and distinct lexical-control result set verified retrieval mode. The previously conflicting `$10/1,000` documentation example remains historical conflict evidence.
-- Provenance: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`; reviewer acceptance/freeze authorization returned to the main engineering thread on 2026-09-10.
+- Decision: For P0.5 and initial semantic-primary production monitoring, OpenAlex authenticated `search.semantic` is charged at the observed live rate of `$0.001 per call` (`$1 / 1,000` semantic calls), subject to the existing reopen trigger and first production-scale checkpoint in D-016.
+- Reason: Three successful authenticated semantic calls returned `meta.cost_usd = 0.001`, `X-RateLimit-Cost-USD = 0.001`, and `X-RateLimit-Credits-Used = 10` on 3/3 observations; later P0.5 calls were consistent. The contradictory `$10/1,000` documentation example remains historical conflict evidence.
+- Provenance: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`; P0.5 execution telemetry; D-016 architecture review.
 - Canonical reference: `docs/architecture/research-retrieval.md`
 - Reopen trigger: materially different authenticated `meta.cost_usd`, `X-RateLimit-Cost-USD`, or equivalent charged-credit telemetry observed in diagnostic or production operation.
 
