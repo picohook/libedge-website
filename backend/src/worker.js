@@ -3,6 +3,16 @@ import { purgePrivacyR2Queue } from './privacy/r2-purge.js';
 import { handleSystemHealthRequest } from './system-health.js';
 import { handleResearchRequest } from './research/router.js';
 
+function privateNoStore(response) {
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', 'private, no-store');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -10,7 +20,7 @@ export default {
       return handleSystemHealthRequest(request, env);
     }
     if (url.pathname === '/api/research/search' && request.method === 'GET') {
-      return handleResearchRequest(request, env, ctx);
+      return privateNoStore(await handleResearchRequest(request, env, ctx));
     }
     return worker.fetch(request, env, ctx);
   },
