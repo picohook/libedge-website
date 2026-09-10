@@ -1,7 +1,8 @@
 # P0.5 — Hybrid Semantic Retrieval
 
 Status: `ACTIVE`
-Qualifier: `PREREGISTRATION DRAFT — NOT FROZEN / DO NOT EXECUTE GATE`
+Qualifier: `PREREGISTRATION FROZEN — HOLDOUT MAY NOW BE CONSTRUCTED / NO RETRIEVAL TUNING`
+Frozen: `2026-09-10`
 Canonical decision index: `docs/decisions.md` D-007, D-012, D-013, D-014
 
 ## PURPOSE
@@ -10,46 +11,33 @@ Determine whether OpenAlex corpus-level semantic retrieval, alone or combined wi
 
 This experiment evaluates retrieval, not production deployment. A winning arm does not automatically become production architecture.
 
-## PRE-FREEZE BLOCKERS
+## FREEZE CONDITIONS — SATISFIED
 
-The preregistration MUST NOT be marked FROZEN until:
+1. D-013 is CLOSED by live authenticated telemetry at `$0.001 / semantic call` (`$1 / 1,000`).
+2. Independent reviewer reviewed the preregistration and canonical evidence and reported no remaining methodological FREEZE blocker.
+3. Accepted reviewer modifications were incorporated before holdout construction.
+4. No fresh gate holdout was generated or inspected before this freeze.
 
-1. D-013 semantic-search pricing conflict is reconciled by live authenticated telemetry, OR the experiment explicitly freezes the conservative `$10 / 1,000 semantic calls` assumption while leaving D-013 OPEN.
-2. Independent reviewer has reviewed this preregistration draft and all raw canonical materials required for the review.
-3. Any accepted reviewer modifications are incorporated before holdout construction.
-
-No gate queries may be generated or inspected before the retrieval/fusion rules and gate definitions below are frozen.
+From this point onward, retrieval/fusion rules, evaluator protocol, gate thresholds, economic assumption, and mechanical validity rules below are immutable for this experiment except through an explicit append-only amendment made before affected data are observed. No amendment may respond to observed gate results.
 
 ## ARMS
 
 ### L — Lexical baseline
-
 Provider: OpenAlex works endpoint.
-
 Query mechanism: standard lexical `search=<intent>`.
-
 Candidate depth: first 100 works returned by the provider, subject to provider availability.
-
 Output: provider lexical order, truncated to top 10 after normalization/deduplication.
 
 ### S — Semantic retrieval
-
 Provider: OpenAlex works endpoint.
-
 Query mechanism: `search.semantic=<intent>`.
-
 Candidate depth: first 50 works returned by the provider, or all returned works when fewer than 50 are available.
-
-The L=100 / S=50 asymmetry is intentional and provider-constrained, not a tuning choice: the semantic endpoint supports at most 50 returned works per query in the current official interface. The experiment therefore evaluates the strongest directly available provider-level semantic candidate set against the existing deeper lexical candidate set.
-
+The L=100 / S=50 asymmetry is provider-constrained, not a tuning choice: the semantic endpoint supports at most 50 returned works per query in the current official interface.
 Execution pacing: semantic calls MUST be paced at <=1 request/second under D-012.
-
 Output: provider semantic order, truncated to top 10 after normalization/deduplication.
 
 ### H — Hybrid retrieval
-
 Candidate pool: union of the L top-100 and S top-50 candidate sets.
-
 Deduplication identity, in order:
 1. OpenAlex Work ID when available.
 2. Normalized DOI when OpenAlex ID is unavailable.
@@ -57,315 +45,186 @@ Deduplication identity, in order:
 
 Fusion algorithm: Reciprocal Rank Fusion (RRF), fixed `k = 60`.
 
-For candidate `d`:
-
 `RRF(d) = I_L(d)/(60 + rank_L(d)) + I_S(d)/(60 + rank_S(d))`
 
-where:
-- `rank_L(d)` and `rank_S(d)` are 1-based ranks;
-- `I_L(d)=1` only when `d` occurs in L, otherwise `0`;
-- `I_S(d)=1` only when `d` occurs in S, otherwise `0`;
-- absence from an arm contributes exactly zero and is not assigned a synthetic rank or penalty.
+where ranks are 1-based, an absent arm contributes exactly zero, and no synthetic rank/penalty is assigned.
 
-Score normalization: none. Provider lexical and semantic scores, if exposed, are not mixed or tuned.
+Score normalization: none. Provider lexical and semantic scores are not mixed or tuned.
 
 Tie-breaking, in order:
 1. Higher RRF score.
 2. Better minimum rank across L and S.
-3. Better lexical rank when present; absent lexical rank sorts after present lexical rank.
-4. Better semantic rank when present; absent semantic rank sorts after present semantic rank.
+3. Better lexical rank when present; absent sorts after present.
+4. Better semantic rank when present; absent sorts after present.
 5. Lexicographically ascending canonical identity string.
 
 Final truncation: first 10 unique candidates after deterministic RRF ordering.
 
-The RRF constant, candidate depths, deduplication identity, normalization rule, tie-break sequence, and truncation rule MUST NOT be tuned after the fresh holdout is generated.
+The RRF constant, candidate depths, deduplication identity, normalization rule, tie-break sequence, and truncation rule MUST NOT be tuned after this freeze.
 
 ## QUERY HANDLING
 
-The exact user intent string is supplied independently to L and S.
-
-No phrase quoting, query expansion, synonym injection, LLM rewrite, discipline-specific rewrite, or result-dependent query transformation is permitted in this experiment.
-
-This isolates retrieval-mode effects from query-construction effects.
+The exact user intent string is supplied independently to L and S. No phrase quoting, query expansion, synonym injection, LLM rewrite, discipline-specific rewrite, or result-dependent query transformation is permitted.
 
 ## FRESH GATE HOLDOUT — CONSTRUCTION PROTOCOL
 
-Target size: 40 previously unseen queries.
+Target size: 40 previously unseen queries, generated only after this frozen protocol.
 
-The holdout is generated only after this protocol is frozen.
-
-It must be hypothesis-driven rather than a random list and balanced across four broad domains:
+Balanced domains:
 - Materials / Energy: 10
 - Biomedical: 10
 - Social Science: 10
 - Humanities: 10
 
-Within each domain, include a deliberate mixture of:
-- straightforward intents,
-- conjunctive intents,
-- lexical-ambiguity intents,
-- technical/jargon intents,
-- broad conceptual intents.
+Within each domain include a deliberate mixture of straightforward, conjunctive, lexical-ambiguity, technical/jargon, and broad conceptual intents.
 
 Mandatory slices across the 40-query holdout:
-- Conjunctive-intent slice: at least 12 queries.
-- Lexical-ambiguity slice: at least 8 queries.
-- Technical/jargon slice: at least 8 queries.
+- Conjunctive-intent: at least 12.
+- Lexical-ambiguity: at least 8.
+- Technical/jargon: at least 8.
 
-Slices may overlap, but every query must have its slice tags frozen before retrieval results are inspected.
+Slices may overlap; every query's domain/slice tags are frozen before retrieval results are inspected.
 
-The 30-query P0.5-A benchmark is SEEN/CONTAMINATED and prohibited from the gate holdout.
+The 30-query P0.5-A benchmark is SEEN/CONTAMINATED and prohibited from the gate holdout. A1/A2/A5/A6/A7 remain a separate mandatory diagnostic harm-regression slice and cannot cause Gate PASS.
 
-A1/A2/A5/A6/A7 remain a separate mandatory diagnostic harm-regression slice. They are not counted in the fresh 40-query gate and cannot cause Gate PASS.
-
-After generation, the 40 queries and their domain/slice tags are frozen. No replacement is permitted because a query produces inconvenient results. A query may be excluded only by a preregistered mechanical validity rule below.
+After generation, no query replacement is permitted because of inconvenient results. Exclusion is permitted only by the frozen mechanical validity rule below.
 
 ## MECHANICAL VALIDITY / COVERAGE
 
-The P0.5-A baseline-relative coverage principle is retained rather than replaced with a new ad hoc rule.
+For each arm/query record unique normalized candidate count before top-10 truncation.
 
-For each arm/query, record the unique normalized candidate count before top-10 truncation.
+Coverage comparator baseline:
+- H vs L -> L.
+- S vs L -> L.
+- H vs S -> S.
 
-For every pairwise comparison, the second-named arm is the comparator baseline for coverage purposes:
-- H vs L -> L is the coverage baseline.
-- S vs L -> L is the coverage baseline.
-- H vs S -> S is the coverage baseline.
+A pairwise coverage regression occurs if comparator baseline count >=8 and compared-arm count <8, OR compared-arm count/comparator baseline count <0.80.
 
-A pairwise coverage regression occurs if:
-- comparator baseline count >= 8 and compared-arm count < 8; OR
-- compared-arm count / comparator baseline count < 0.80.
-
-If either arm in the pair returns fewer than 8 unique normalized candidates, that pair/query is marked `low-corpus`, excluded from aggregate pairwise relevance metrics, and still reported explicitly.
-
-Low-corpus queries are never silently replaced because of sparse results.
-
-Coverage itself is an outcome and must be reported per arm, pair, domain, and declared slice.
+If either arm in a pair returns fewer than 8 unique normalized candidates, that pair/query is `low-corpus`, excluded from aggregate pairwise relevance metrics, and still reported. Sparse queries are never silently replaced. Coverage is reported per arm, pair, domain, and declared slice.
 
 ## RELEVANCE RUBRIC
-
-Evaluation unit: each displayed work title plus the minimum frozen bibliographic/evidence fields included in the evaluator bundle. The exact evaluator bundle fields must be fixed before labels begin and applied identically across arms.
 
 Labels:
 - `R` — directly relevant to the stated intent.
 - `M` — materially related but incomplete/partial.
 - `N` — indirect, topic-adjacent, or irrelevant.
 
-Conjunctive-intent invariant:
-`R` requires direct coverage of ALL essential explicitly stated components of the intent. Strong coverage of only one essential component is `M`, not `R`.
+Conjunctive invariant: `R` requires direct coverage of ALL essential explicitly stated components. Strong coverage of only one essential component is `M`.
 
-Primary relevance metric: `Relevant@10`, where only `R` counts positive.
+Primary metric: `Relevant@10`, only R positive.
+Secondary diagnostic: `(R+M)@10`; descriptive only and cannot override a failed primary gate.
 
-Secondary diagnostic metric: `(R+M)@10`; it is descriptive and cannot override a failed primary gate.
+The evaluator bundle's exact bibliographic/evidence fields must be frozen before labels begin and applied identically across arms.
 
 ## BLIND TWO-RATER EVALUATION
 
-The fresh 40-query Gate A/Gate B evaluation uses two independent blind raters. Each rater must operate in a physically separate fresh conversation/context with a distinct session/context lineage and must not see the other rater's labels, reasoning, or gate results before locking their own labels.
+The fresh 40-query evaluation uses two independent blind raters in physically separate fresh context lineages. Neither sees the other's labels/reasoning/gates before locking.
 
-Each rater receives:
-- anonymous query ID,
-- intent text,
-- randomized anonymous result lists,
-- frozen relevance rubric,
-- only the bibliographic/evidence fields defined in the frozen evaluator bundle.
+Each receives only anonymous query ID, intent, randomized anonymous result lists, frozen rubric, and frozen evaluator-bundle fields. They must not receive L/S/H mapping, provider identity, prior P0.5-A results, A1/A2/A5/A6/A7 history, expected winner, gate calculations, implementation discussion, or other-rater output.
 
-Each rater must NOT receive:
-- L/S/H mapping,
-- provider/ranking-arm identity,
-- previous P0.5-A labels or results,
-- A1/A2/A5/A6/A7 diagnostic history,
-- expected winner,
-- gate calculations,
-- implementation discussion,
-- the other rater's labels or conclusions.
+Same frozen randomized bundle/rubric for both. Mapping opens only after BOTH primary raters lock all labels.
 
-The same frozen randomized bundle and rubric are used for both primary raters. Arm mapping is opened only after both primary raters have locked all labels.
+Gate A, Gate B and S-vs-L metrics are calculated separately per rater. N_eff is mechanically determined from retrieval coverage. Do not average labels before gate calculation or post-hoc reconcile item labels.
 
-### Per-rater gate calculation
+If both raters agree on Gate A PASS/FAIL and Gate B PASS/FAIL, outcome is `RATER-ROBUST`. If either gate differs, obtain a third blind evaluator in a third fresh independent lineage using the same frozen bundle/rubric and no prior outputs. Each disputed gate is resolved by 2-of-3 gate-level majority. No synthetic numeric metric or consensus item labels are created. All valid per-rater component vectors remain official.
 
-Gate A, Gate B, and S-vs-L diagnostic metrics are calculated separately for each rater using that rater's labels. `N_eff` is determined mechanically from retrieval coverage and therefore is the same for all valid raters for a given pairwise comparison; all count thresholds use the preregistered `ceil(fraction * N_eff)` rule.
+S-vs-L disagreement alone does not trigger a third rater; preserve all valid rater-specific diagnostic metrics.
 
-Do not average R/M/N labels across raters before gate calculation and do not reconcile individual labels post hoc merely to force agreement.
+## COMPONENT-LEVEL REPORTING
 
-### Rater reconciliation
+For every valid rater report separately for Gate A, Gate B and S-vs-L: N_eff; mean Relevant@10 delta; non-worse count/rate; strong-improvement count/rate where defined; domain deltas; worst query delta/ID; conjunctive and lexical-ambiguity slice deltas/effective N; coverage-regression count/rate/IDs; and every gate component PASS/FAIL where applicable.
 
-- If both primary raters produce the same PASS/FAIL result for Gate A **and** the same PASS/FAIL result for Gate B, the H gate outcome is `RATER-ROBUST` for this experiment.
-- If the two primary raters disagree on Gate A or Gate B, obtain a third blind evaluator in a **third physically separate fresh session/context lineage**, independent of both primary raters and with no access to either prior rater output, using the exact same frozen bundle and rubric.
-- With three raters, each disputed gate is resolved independently by majority gate-level PASS/FAIL: at least 2 of 3 raters must return the same gate outcome.
-- Majority applies only to the binary gate disposition. **No synthetic or consensus numeric metric is created.** Mean deltas, non-worse counts/rates, strong-improvement counts/rates, domain deltas, slice deltas, worst-query deltas, and coverage results remain official only as per-rater component metrics.
-- Do not average only the two raters on the majority side, do not discard the minority rater from component reporting, and do not create item-level majority R/M/N labels for gate recomputation.
-- A third rater is not used to rewrite or negotiate earlier labels.
-- If a rater cannot complete the frozen bundle or a procedural contamination occurs, that rater is invalidated for procedural reasons before mapping/gate interpretation and must be replaced by a fresh blind rater with a distinct new lineage; do not selectively invalidate a rater because of an unfavorable result.
-
-The S-vs-L comparison remains diagnostic and is reported per rater; it does not independently create an H PASS. **Disagreement between raters on the magnitude or direction of S-vs-L does not trigger a third rater by itself.** All valid S-vs-L rater-specific metrics are retained separately, and any downstream architecture decision that relies on S-vs-L must explicitly record the disagreement rather than collapsing it into a synthetic consensus.
-
-## COMPONENT-LEVEL REPORTING REQUIREMENT
-
-Gate-level PASS/FAIL never substitutes for component reporting.
-
-For **every valid rater**, report separately for Gate A, Gate B, and the S-vs-L diagnostic:
-- `N_eff`,
-- mean Relevant@10 delta,
-- non-worse count and rate,
-- strong-improvement count and rate where defined,
-- each domain mean delta,
-- worst single-query delta and query ID,
-- conjunctive-intent slice mean delta and effective slice N,
-- lexical-ambiguity slice mean delta and effective slice N,
-- coverage-regression count/rate and affected query IDs,
-- every gate component's individual PASS/FAIL status where the comparison has a gate.
-
-If a gate fails, identify **all** failed components, not only the first failing condition. If two or three raters reach the same gate outcome through different failed/passed components, that divergence must be preserved explicitly in the final experiment record.
-
-If a third rater is required, the final record must show all three full component vectors side by side and then state the separate 2-of-3 gate-level majority result. No aggregate component vector may replace the individual vectors.
-
-This requirement is diagnostic evidence for any later retrieval/fusion hypothesis; it does not authorize post-hoc tuning within this frozen experiment.
+If a gate fails, identify all failed components. With a third rater, show all three component vectors side by side and then the binary majority result. No aggregate component vector replaces individual vectors.
 
 ## PRIMARY COMPARISONS
 
-Primary product question: whether H is safe and materially better than L while not being worse than the simpler semantic-only S architecture.
-
-Primary adoption comparison: `H vs L`.
-
-Mandatory non-inferiority architecture guardrail: `H vs S`.
-
-Secondary architecture diagnostic: `S vs L`.
-
-`S vs L` is **not** an adoption gate in this experiment. It is mandatory architecture evidence used to interpret whether semantic retrieval alone is the simpler promising alternative when H is not preferred.
-
-The experiment must report all three. H cannot be adopted merely because it beats L if it is materially worse than S, and S beating L does not by itself imply that H should be adopted.
+Primary adoption comparison: H vs L.
+Mandatory non-inferiority guardrail: H vs S.
+Secondary architecture diagnostic: S vs L; NOT an adoption gate.
 
 ## GATE A — H VS L
 
-Let `N_eff` be fresh-holdout queries valid for both H and L.
-
-H passes Gate A only if ALL conditions hold:
-
-1. Mean Relevant@10 improvement H-L >= +5 percentage points.
-2. Non-worse queries (`delta >= 0`) >= ceil(0.70 * N_eff).
-3. Strong-improvement queries (`delta >= +20pp`) >= ceil(0.25 * N_eff).
+H passes only if ALL hold:
+1. Mean Relevant@10 H-L >= +5pp.
+2. Non-worse >= ceil(0.70*N_eff).
+3. Strong improvement (>=+20pp) >= ceil(0.25*N_eff).
 4. No domain mean regression worse than -5pp.
 5. No single-query regression worse than -20pp.
-6. Conjunctive-intent slice mean H-L >= -3pp.
-7. Lexical-ambiguity slice mean H-L >= -3pp.
-8. No baseline-relative coverage regression pattern that violates the mechanical validity rule above.
-
-The `-3pp` slice floor is a preregistered tolerance for small evaluator/granularity variation; it is stricter than the `-5pp` domain floor and must not be changed after holdout generation.
-
-Failure of any condition means H does not pass Gate A.
+6. Conjunctive slice mean >= -3pp.
+7. Lexical-ambiguity slice mean >= -3pp.
+8. No frozen-rule coverage regression pattern.
 
 ## GATE B — H VS S NON-INFERIORITY
 
-Let `N_eff` be fresh-holdout queries valid for both H and S.
-
-H passes Gate B only if ALL conditions hold:
-
-1. Mean Relevant@10 difference H-S >= 0pp.
-2. Non-worse queries (`delta >= 0`) >= ceil(0.60 * N_eff).
+H passes only if ALL hold:
+1. Mean Relevant@10 H-S >=0pp.
+2. Non-worse >= ceil(0.60*N_eff).
 3. No domain mean regression worse than -5pp.
 4. No single-query regression worse than -20pp.
-5. Conjunctive-intent slice mean H-S >= -3pp.
-6. Lexical-ambiguity slice mean H-S >= -3pp.
-7. No baseline-relative coverage regression pattern that violates the mechanical validity rule above.
-
-The same preregistered `-3pp` slice floor applies to Gate B and must not be changed after holdout generation.
-
-Gate B is a non-inferiority guardrail, not a requirement that H materially outperform S. If H fails Gate B, H cannot be the preferred architecture even if it passes H-vs-L Gate A.
+5. Conjunctive slice mean >= -3pp.
+6. Lexical-ambiguity slice mean >= -3pp.
+7. No frozen-rule coverage regression pattern.
 
 ## S VS L DIAGNOSTIC
 
-S vs L is evaluated with the same reported component metrics used above, including mean Relevant@10 delta, non-worse rate/count, domain deltas, worst single-query delta, declared-slice deltas, and coverage. It has no PASS/FAIL adoption status in this preregistration.
-
-This distinguishes whether gains come from semantic retrieval itself or from hybrid fusion and informs the next architecture decision when H is rejected or merely eligible for consideration.
+Report the same relevant component metrics. It has no PASS/FAIL adoption status in this experiment and informs whether semantic-only is a simpler promising alternative.
 
 ## PREDECLARED A/B DECISION MATRIX
 
-Final H disposition is determined from the reconciled Gate A and Gate B results before inspecting the seen harm-regression slice:
-
-| Gate A: H vs L | Gate B: H vs S | H disposition | Architecture consequence |
+| Gate A | Gate B | H disposition | Consequence |
 | --- | --- | --- | --- |
-| PASS | PASS | `H ELIGIBLE` | H may advance to a separate production-architecture decision; compare complexity/cost against S-vs-L diagnostic evidence. No automatic deployment. |
-| PASS | FAIL | `H REJECTED` | H improves on L but is inferior to simpler S; do not adopt H. Use S-vs-L diagnostic evidence to decide whether S merits separate architecture consideration. |
-| FAIL | PASS | `H REJECTED` | H is not materially better than L even though non-inferior to S. Do not adopt H. Use S-vs-L diagnostic evidence to decide whether S merits separate architecture consideration; otherwise retain L. |
-| FAIL | FAIL | `H REJECTED` | H fails both requirements. Use S-vs-L diagnostic evidence to determine whether S remains a candidate; if S is also not compelling, retain L and open a new hypothesis only on new evidence. Vectorize is not automatically triggered. |
+| PASS | PASS | `H ELIGIBLE` | Separate production-architecture decision required; compare complexity/cost with S-vs-L evidence. |
+| PASS | FAIL | `H REJECTED` | H improves L but is inferior to simpler S; use S-vs-L evidence for separate S consideration. |
+| FAIL | PASS | `H REJECTED` | H not materially better than L; consider S only if S-vs-L merits it, otherwise retain L. |
+| FAIL | FAIL | `H REJECTED` | Use S-vs-L to assess S; if not compelling retain L. Vectorize is not automatically triggered. |
 
-The matrix is exhaustive for H in this experiment. No post-hoc fifth category may be invented after results are observed.
-
-A separate production architecture decision is required even for `H ELIGIBLE`.
+No post-hoc fifth category.
 
 ## SEEN HARM-REGRESSION SLICE
 
-After the fresh gate is fully evaluated, primary rater labels are locked, any required third-rater reconciliation is complete, and mappings are opened, run A1/A2/A5/A6/A7 through **all three arms L, S, and H** using the same frozen retrieval, deduplication, fusion, and ranking rules.
+After fresh gate evaluation/reconciliation and mapping opening, run A1/A2/A5/A6/A7 through all L/S/H using the frozen rules. This slice is diagnostic only, cannot rescue/create PASS, and must report unfavorable results.
 
-Purpose: detect recurrence of previously observed harm patterns.
+Use the same frozen R/M/N rubric and two-rater blind-independence standard with a separate randomized anonymous harm-slice bundle. Each rater uses a distinct fresh lineage and sees no mapping or other-rater labels before locking. Because this slice has no adoption gate, disagreement does not trigger a third rater; preserve both rater-specific results separately with no synthetic consensus.
 
-These five queries:
-- are actually executed against L/S/H; they are not reference-only records,
-- are diagnostic only,
-- cannot rescue a failed fresh gate,
-- cannot create a PASS,
-- must be reported even if results are unfavorable.
+## ECONOMIC / OPERATIONAL RECORD — FROZEN
 
-**Evaluation protocol for the seen harm-regression slice:** use the same frozen R/M/N rubric and the same two-rater blind-independence standard as the fresh holdout, with a separate randomized anonymous harm-slice bundle. Each of the two harm-slice raters must operate in a distinct fresh session/context lineage, independent of the implementation thread and of the other harm-slice rater, and must not see L/S/H mapping or the other rater's labels before locking. Because this slice is diagnostic and has no adoption gate, rater disagreement does not trigger a third rater; both rater-specific component results are preserved and reported separately. No synthetic consensus labels or metrics are created.
+Governing D-013 price: `$0.001 / semantic call` (`$1 / 1,000`), reconciled by 3/3 authenticated live observations on 2026-09-10. Canonical raw evidence: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`.
 
-The seen harm-regression slice may influence the later separate production-architecture decision as risk evidence, but it may not retroactively change the preregistered fresh-holdout Gate A/Gate B result.
+The prior `$0.01/call` conservative interim assumption is historical only and is NOT used for this frozen experiment's budget/capacity calculation.
 
-## ECONOMIC / OPERATIONAL RECORD
+Planned semantic calls for fresh retrieval: 40 S calls. H reuses the same frozen L/S candidate sets and does not issue an additional semantic request. Seen harm slice adds 5 S calls after gate reconciliation. Base planned semantic-call count: 45. Base planned semantic charge: `$0.045`.
 
-Before execution, freeze:
-- semantic calls required by the protocol,
-- maximum planned semantic-call cost under the governing D-013 assumption,
-- semantic pacing plan under D-012,
-- retry policy.
+Transport/provider retries are counted in actual cost. Result-dependent retries are prohibited. For operational headroom, maximum planned semantic charge before manual investigation is frozen at `$0.060` (60 charged semantic calls total, allowing at most 15 transport/provider retry calls across the experiment). Exceeding this cap stops automated execution for investigation; it does not authorize query/result replacement.
 
-Until D-013 is reconciled, use `$0.01 per semantic call` (`$10 / 1,000`) for conservative maximum-cost calculations.
+Semantic pacing remains <=1 request/second.
 
-Retries caused by transport/provider failure must be counted in actual semantic-call cost. Result-dependent retries are prohibited.
+### Passive D-013 reopen observation
 
-## D-013 TELEMETRY RECONCILIATION PROTOCOL
+Existing provider telemetry extraction already captures `requestCostUsd` from `X-RateLimit-Cost-USD` or `meta.cost_usd` and `requestCredits` from `X-RateLimit-Credits-Used`. During P0.5 execution and any later production semantic operation, preserve these fields in operational telemetry at aggregate/request-cost level without storing user query text or research-interest content.
 
-Before preregistration freeze, attempt 3 authenticated semantic calls using the same simple intent, paced >=1 second apart.
+If an authenticated semantic call reports a materially different charge from `$0.001`, or body/header cost telemetry conflicts, flag D-013 for review rather than silently accepting the new price. This passive observation is a reopen detector, not permission to change the frozen experiment's pricing assumption mid-run.
 
-For each call record:
-- UTC timestamp,
-- request URL with API key/token redacted,
-- HTTP status,
-- `meta.cost_usd`,
-- `X-RateLimit-Credits-Used`, if present,
-- `X-RateLimit-Cost-USD`, if present,
-- detected header family,
-- first returned OpenAlex Work IDs/titles sufficient to audit retrieval mode.
+## D-013 RECONCILIATION — CLOSED BEFORE FREEZE
 
-Semantic-mode verification:
-- run one lexical control call using `search=<same intent>`;
-- compare its leading work IDs/titles with the semantic calls;
-- do not infer semantic pricing from a call unless the request URL explicitly contains `search.semantic` and the response is a successful semantic result set.
-
-Reconciliation rule:
-- If all successful semantic calls provide the same unambiguous per-call USD cost and telemetry is internally consistent, D-013 may be reconciled to that observed cost.
-- If values differ, required fields conflict, the endpoint mode is uncertain, or telemetry is incomplete in a way that prevents distinguishing `$0.001` from `$0.01`, D-013 remains OPEN and `$0.01/call` remains the conservative assumption.
-
-Raw measurement evidence must be preserved in `docs/architecture/research-retrieval.md`; do not record only the conclusion.
+Three authenticated `search.semantic` calls returned `meta.cost_usd=0.001`, `X-RateLimit-Cost-USD=0.001`, and `X-RateLimit-Credits-Used=10` on 3/3 observations. A lexical control on the same intent returned a distinct leading Work-ID set, verifying semantic mode. D-013 is LOCKED at the observed `$1/1,000` P0.5 planning price; materially different authenticated telemetry is the reopen trigger.
 
 ## EXECUTION ORDER
 
-1. Reviewer reviews this DRAFT and raw canonical materials.
-2. Main thread reconciles reviewer findings.
-3. Resolve D-013 by the telemetry protocol, or explicitly retain OPEN conflict + conservative cost.
-4. Mark this preregistration `FROZEN`.
-5. Generate/freeze the fresh 40-query holdout and slice tags.
-6. Execute L/S/H retrieval without tuning.
-7. Prepare one frozen randomized blind evaluator bundle.
-8. Obtain and lock two independent blind-rater label sets in separate fresh session/context lineages.
-9. Open arm mapping only after both primary label sets are locked; calculate Gate A, Gate B, and S-vs-L diagnostic separately for each rater and record all component metrics.
-10. If Gate A or Gate B differs between primary raters, obtain a third blind-rater label set in a third independent fresh lineage; report all three component vectors and apply only the preregistered 2-of-3 gate-level majority rule.
-11. Apply the predeclared A/B decision matrix.
-12. Run/report the seen A1/A2/A5/A6/A7 harm-regression slice under its own two-rater blind diagnostic protocol.
-13. Record final experiment outcome and architecture consequence.
+1. **FROZEN preregistration — completed 2026-09-10.**
+2. Generate/freeze the fresh 40-query holdout and slice tags.
+3. Execute L/S/H retrieval without tuning; H reuses L/S candidate sets.
+4. Prepare one frozen randomized blind evaluator bundle and freeze its bibliographic/evidence fields.
+5. Obtain/lock two independent blind-rater label sets in separate fresh lineages.
+6. Open mapping only after both lock; calculate Gate A, Gate B, S-vs-L separately per rater.
+7. If Gate A or B differs, obtain third fresh blind rater and apply only 2-of-3 binary gate majority.
+8. Apply predeclared A/B matrix.
+9. Run/report A1/A2/A5/A6/A7 harm-regression slice under its own two-rater blind diagnostic protocol.
+10. Record final experiment outcome and architecture consequence.
 
 ## AMENDMENT HISTORY
 
-Append-only after the first FROZEN version. No amendment may retroactively alter already-observed gate data or labels.
+Append-only from this frozen version onward. No amendment may retroactively alter observed gate data or labels.
 
-No amendments yet — preregistration is still DRAFT.
+- `2026-09-10 — FREEZE`: initial frozen preregistration. D-013 price fixed for this experiment at `$0.001/call`; base semantic-call budget fixed at 45 calls / `$0.045`, operational cap 60 calls / `$0.060`; passive cost-telemetry reopen detector specified. No fresh gate holdout existed at freeze time.
 
 Last updated: 2026-09-10
