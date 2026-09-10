@@ -10,11 +10,11 @@ Status: `ACTIVE`
 
 P0.5 experimental sequence is **CLOSED / independently verified**. The tested hybrid retrieval architecture H is rejected.
 
-D-016 is **LOCKED** after independent architecture review (`ACCEPTED WITH MODIFICATION`) and focused follow-up review (`ACCEPTED`). Governing architecture for the existing top-10 research-result contract is semantic-primary OpenAlex retrieval (`S`) with lexical OpenAlex retrieval (`L`) retained only as objective availability fallback/rollback.
+D-016 is **LOCKED**. Governing architecture for the existing top-10 research-result contract is semantic-primary retrieval (`S`) with lexical retrieval (`L`) retained only as objective availability fallback/rollback.
 
-Production implementation is authorized **in staging/feature-flag form only**. Broad production enablement remains NOT authorized.
+The staging implementation plan received independent `ACCEPTED WITH MODIFICATION`. The required cache-provenance correction and the S+L dual-failure reporting clarification are now incorporated in `docs/architecture/p05-production-retrieval-implementation-plan.md` and await focused follow-up acceptance.
 
-The current implementation baseline has been freshly inspected. Canonical pre-implementation plan: `docs/architecture/p05-production-retrieval-implementation-plan.md` at commit `068d42e783c7b29dd0c662a5ef6924987fe5c0c2`. No production retrieval code has yet been modified for D-016; the plan is pending independent pre-implementation review.
+**No D-016 production retrieval code has been changed yet.** Broad production enablement remains unauthorized.
 
 ## CLOSED — P0.5 evidence chain
 
@@ -30,7 +30,7 @@ The current implementation baseline has been freshly inspected. Canonical pre-im
 - Frozen S-v-L coverage regression remains `40/40` because L=100 and provider-constrained S<=50; caveat remains adjacent.
 - Known fresh weak examples retained: Q08 `-10pp` for Rater 1 and Q27 `-40pp` for Rater 2.
 - Seen harm diagnostic independently accepted: Rater 1 L/H/S `44/72/78%`; Rater 2 `46/72/82%`; diagnostic only.
-- Automatic provider-call `push` triggers removed; retrieval workflows require explicit manual dispatch.
+- Automatic provider-call push triggers removed; retrieval workflows require explicit manual dispatch.
 
 Canonical final experimental outcome: `docs/experiments/p05-final-outcome.md`.
 
@@ -54,77 +54,49 @@ Locked architecture:
 - H is not used as primary, fallback, supplement, or reranking/fusion stage.
 - Vectorize is not added without new evidence.
 
-## CURRENT IMPLEMENTATION BASELINE — freshly inspected
-
-### Request path
-
-- `backend/src/worker.js` routes `GET /api/research/search` to `handleResearchRequest()` and enforces private/no-store response caching.
-- `functions/api/[[path]].js` is a Pages proxy to the staging/production Workers and does not implement retrieval logic.
-
-### Current retrieval orchestration
-
-`backend/src/research/router.js` currently:
-
-1. authenticates;
-2. applies protected user rate limiting;
-3. validates/normalizes query text;
-4. uses a SHA-256 hashed KV cache;
-5. checks OpenAlex soft budget;
-6. performs one OpenAlex **lexical** retrieval;
-7. falls back to Crossref search if OpenAlex is unavailable/budget-blocked;
-8. optionally enriches DOI-bearing OpenAlex results via Crossref;
-9. caches the payload.
-
-### Current OpenAlex provider
-
-`backend/src/research/providers/openalex.js` currently hardcodes `/works?search=<query>`; production semantic-primary is therefore not implemented yet. The provider already centralizes normalization, timeout/error classification, evidence-level construction, and cost/credit telemetry extraction.
-
-### Important fallback distinction
-
-The current OpenAlex -> Crossref fallback is not D-016's L fallback. The locked architecture requires the new internal sequence:
-
-`OpenAlex S semantic primary -> OpenAlex L lexical objective fallback -> existing Crossref contingency only if no valid OpenAlex path`
-
-Crossref DOI enrichment remains a separate enrichment stage, not a retrieval-arm selection mechanism.
-
-## ACTIVE — pre-implementation plan review
+## ACTIVE — staging implementation pre-code review
 
 Canonical plan: `docs/architecture/p05-production-retrieval-implementation-plan.md`.
+Review record: `docs/reviews/2026-09-11-d016-preimplementation-review.md`.
 
-Planned controls include:
+The first pre-implementation review classification was `ACCEPTED WITH MODIFICATION`.
 
-1. feature flag `RESEARCH_SEMANTIC_PRIMARY_ENABLED`, default/off until reviewed staging enablement;
-2. one shared OpenAlex provider/normalization path with explicit `lexical` vs `semantic` mode (`search` vs `search.semantic`);
-3. valid-empty/valid-short S treated as successful S with no L/Crossref search supplementation;
-4. one narrow objective semantic-availability failure classifier;
-5. S -> L -> Crossref contingency chain with no fusion/parallel retrieval;
-6. mode-partitioned hashed cache so lexical cached responses cannot masquerade as semantic-primary responses after flag changes;
-7. provider-wide semantic pacing via a single global serialization primitive, proposed as one named Durable Object rather than unsafe per-isolate timing;
-8. aggregate-only telemetry for semantic success/failure, valid-empty, objective fallback, latency/queueing, capacity and D-013 cost/credit checkpoints;
-9. tests for unchanged query text, `search.semantic` construction, no result-dependent fallback, no S/L merge, valid-empty behavior, pacing, cache separation, privacy-safe telemetry and rollback;
-10. staging deployment with flag off first, then controlled enablement only after independent code/diff review.
+### Required correction now incorporated
 
-## Mandatory locked rollout constraints
+Cache identity/read policy is now based on the **actual retrieval source** rather than only the feature-flag/request architecture state:
 
-1. **Objective-only L fallback.** Allowed for timeout/network failure, 429 after permitted handling, provider 5xx, semantic endpoint unavailable/disabled, malformed/unprocessable provider response, or failure of the mandatory semantic pacing gate. Never content/result-dependent.
-2. **Valid-empty semantics.** HTTP-success + syntactically valid zero-candidate S response is returned as valid empty semantic result and does not trigger L/Crossref search fallback.
-3. **Provider pacing.** Treat semantic search as `<=1 request/second` until new provider evidence changes the constraint.
-4. **Pre-broad-enable capacity guardrail.** Aggregate/no-query-text evidence or conservative forecast must show peak eligible research-query arrival rate `<=0.5 requests/second`; otherwise broad enablement remains blocked.
-5. **D-013 checkpoint.** Review aggregate authenticated cost/credit telemetry after the first `1,000` charged semantic responses or `7 calendar days` of enabled real traffic, whichever occurs first.
-6. **Privacy.** Capacity/cost/availability telemetry must not store query text, topics, research interests, result content, or user IDs.
-7. **No relevance retuning.** P0.5 holdouts/labels may not be used to retune rollout relevance behavior.
-8. **Top-10 scope only.** No deep-pagination/exhaustive-recall superiority claim is authorized.
+- `semantic` cache = only valid S output, including valid-empty/short S;
+- `lexical` cache = only valid L output, including objective S->L fallback output;
+- `crossref` cache = only final Crossref search contingency, if retained as cacheable.
+
+A semantic-primary request cannot be satisfied directly by a cached lexical fallback response. A lexical fallback cache may be consulted only after the current S attempt itself has failed objectively. Thus a transient S outage cannot cause lexical output to masquerade as semantic output or suppress later S attempts for the TTL.
+
+### Additional clarification now incorporated
+
+If both S and L fail before Crossref contingency, implementation must preserve structured privacy-safe provenance for both failure stages. It may not arbitrarily collapse one error into a single misleading OpenAlex status. No raw provider error/query/user/result content may be exposed or persisted.
+
+### Other locked implementation constraints
+
+1. Feature flag defaults OFF; code implementation is staging/feature-flag only.
+2. One shared OpenAlex provider/normalization implementation with explicit `lexical`/`semantic` mode.
+3. Valid empty/short S does not trigger L.
+4. Objective-only S->L fallback; no content/count/relevance/topic routing.
+5. S and L never run in parallel and are never merged.
+6. Crossref search remains final provider contingency; Crossref DOI enrichment remains separate.
+7. Global semantic request-start pacing uses one shared serialization primitive; process-local timers are insufficient.
+8. Pacing-gate failure is fail-closed to L fallback, never ungated S.
+9. Aggregate-only telemetry; no stored query text, topics, research interests or user IDs.
+10. D-013 checkpoint remains first `1,000` charged semantic responses or `7 days`, whichever occurs first.
+11. Broad enablement remains blocked unless peak eligible research-query arrival rate is documented `<=0.5 requests/second`.
 
 ## NEXT
 
-1. Independent reviewer inspects the complete pre-implementation plan against the locked D-016 architecture and current source files.
-2. If accepted, implement the reviewed plan in staging with feature flag default/off.
-3. Run unit/integration tests before semantic-primary enablement.
-4. Obtain independent code/diff review.
-5. Deploy staging with flag off, verify baseline, then controlled feature-flag enablement.
-6. Verify mechanical operational invariants; do not reuse P0.5 holdouts as rollout relevance tests.
-7. Obtain independent staging review.
-8. Separately satisfy the `<=0.5 requests/second` capacity guardrail before any broad production enablement decision.
+1. Focused reviewer verifies the actual-source cache correction and dual S/L failure provenance clarification.
+2. Only after follow-up `ACCEPTED` may D-016 retrieval code implementation begin.
+3. Implement with feature flag default OFF.
+4. Run unit/integration suite and obtain independent code/diff review.
+5. Deploy staging with flag OFF, verify baseline, then controlled staging enablement and mechanical operational verification.
+6. Broad production enablement remains a separate later decision after capacity/rollout controls.
 
 ## DO NOT REOPEN WITHOUT NEW EVIDENCE
 
@@ -157,8 +129,7 @@ Planned controls include:
 - Retrieval architecture overview: `docs/architecture/research-retrieval.md`
 - Locked production architecture: `docs/architecture/p05-production-retrieval-decision.md`
 - Staging implementation plan: `docs/architecture/p05-production-retrieval-implementation-plan.md`
-- D-016 architecture review: `docs/reviews/2026-09-10-d016-production-architecture-review.md`
-- D-016 follow-up acceptance: `docs/reviews/2026-09-10-d016-production-architecture-followup-review.md`
+- Pre-implementation review: `docs/reviews/2026-09-11-d016-preimplementation-review.md`
 - Final P0.5 outcome: `docs/experiments/p05-final-outcome.md`
 - Reviewer packet checklist: `docs/reviewer-packet-checklist.md`
 - Research privacy: `docs/privacy/research-privacy.md`
