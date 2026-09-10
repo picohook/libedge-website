@@ -23,6 +23,7 @@ P0.5 — Hybrid Semantic Retrieval fresh-holdout construction under FROZEN prere
 - P0.5 hybrid preregistration methodology review — CLOSED; reviewer reports no remaining methodological FREEZE blocker.
 - D-013 semantic pricing reconciliation — CLOSED / LOCKED at observed `$0.001/call` (`$1/1,000`) for P0.5 planning; raw evidence in `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`.
 - P0.5 Hybrid Semantic Retrieval preregistration — FROZEN 2026-09-10 before any fresh gate holdout generation.
+- Pre-holdout economic amendment — CLOSED before holdout generation/results: total provider budget corrected to include both L and S calls.
 
 ## ACTIVE
 
@@ -30,10 +31,10 @@ P0.5 — Hybrid Semantic Retrieval fresh-holdout construction under FROZEN prere
 - Candidate architecture under test:
   - L: OpenAlex lexical top-100 baseline.
   - S: OpenAlex semantic top-50 retrieval.
-  - H: L/S union -> canonical deduplication -> RRF `k=60` -> deterministic tie-break -> top 10.
+  - H: L/S union -> canonical deduplication -> RRF `k=60` -> deterministic tie-break -> top 10; no additional provider call.
 - OpenAlex semantic-search operational constraint: <=1 request/second.
-- P0.5 frozen economic assumption: `$0.001 / semantic call` (`$1 / 1,000`). Base plan: 45 semantic calls / `$0.045`; operational cap: 60 charged semantic calls / `$0.060` including transport/provider retry headroom.
-- Existing OpenAlex provider telemetry extraction captures charged cost/credits. During semantic operation these fields are to be preserved without query/research-interest content; materially different authenticated charge or body/header conflict reopens D-013 for review.
+- P0.5 frozen economic assumption: measured `$0.001 / provider call` for both D-013 semantic observations and lexical control. Base plan: 45 lexical + 45 semantic = 90 provider calls / `$0.090`. Operational cap: 120 charged provider calls / `$0.120`, allowing 30 retry calls across L+S.
+- Passive charged-cost/credit monitoring is ACTIVE for the upcoming 40-query batch and later 5-query harm slice, not only future production. Cost monitoring stores no query/topic/user research-interest content. Material semantic price deviation or body/header conflict reopens D-013; lexical price deviation is also recorded as a provider-pricing anomaly because it affects the frozen total-cost budget.
 - Production semantic/hybrid retrieval remains NOT ADOPTED pending fresh-holdout evidence and a later architecture decision.
 
 ## NEXT
@@ -41,11 +42,11 @@ P0.5 — Hybrid Semantic Retrieval fresh-holdout construction under FROZEN prere
 1. Generate exactly 40 previously unseen intents after the preregistration freeze: 10 Materials/Energy, 10 Biomedical, 10 Social Science, 10 Humanities.
 2. Freeze domain and slice tags before retrieval; conjunctive >=12, lexical ambiguity >=8, technical/jargon >=8.
 3. Do not inspect retrieval results while constructing/revising the holdout.
-4. Execute L/S once per frozen intent; H reuses those candidate sets and applies frozen RRF rules with no tuning.
+4. Execute one L and one S provider request per frozen intent with passive cost telemetry; H reuses those candidate sets and applies frozen RRF rules with no tuning.
 5. Prepare/freeze the randomized evaluator bundle and its evidence fields.
 6. Obtain two independent blind-rater label sets in separate fresh lineages; third rater only for Gate A/B disagreement.
 7. Report all component vectors per rater and apply the frozen A/B matrix.
-8. Only after fresh-gate reconciliation run the separate A1/A2/A5/A6/A7 two-rater harm diagnostic.
+8. Only after fresh-gate reconciliation run the separate A1/A2/A5/A6/A7 two-rater harm diagnostic with the same provider-cost monitoring.
 
 ## DO NOT REOPEN WITHOUT NEW EVIDENCE
 
