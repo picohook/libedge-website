@@ -11,6 +11,7 @@
         "smoke-checklist": "echo \"Manual smoke checks: homepage, login/logout, profile, announcements, newsletter, admin, institution files\"",
         "smoke:auth": "node scripts/auth-smoke.mjs",
         "smoke:files": "node scripts/files-smoke.mjs",
+        "smoke:research": "node scripts/research-smoke.mjs",
         "smoke:frontend": "playwright test",
         "dev": "wrangler dev",
         "build:css": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --minify",
