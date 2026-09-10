@@ -1,0 +1,28 @@
+name: Research Query A/B Once
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - '.github/workflows/research-query-ab-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run query construction A/B
+        env:
+          LIBEDGE_SMOKE_BASE_URL: 'https://staging.libedge-website.pages.dev'
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+        run: node scripts/research-query-ab.mjs
