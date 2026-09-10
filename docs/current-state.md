@@ -8,7 +8,7 @@ Status: `ACTIVE`
 
 ## Current phase
 
-P0.5 — Fresh gate CLOSED / independently ACCEPTED; harm retrieval CLOSED / independently ACCEPTED; exact harm evaluator bundle pair constructed as `PROVISIONAL` and now PENDING independent structural/leakage review before any freeze or blind-rater delivery.
+P0.5 — Fresh gate CLOSED / independently ACCEPTED; harm retrieval CLOSED / independently ACCEPTED; exact harm evaluator artifact pair independently structurally ACCEPTED and governance-promoted to `FROZEN`; ready for two new primary blind-rater lineages. Private harm mapping/seed remain SEALED.
 
 ## CLOSED
 
@@ -32,7 +32,10 @@ P0.5 — Fresh gate CLOSED / independently ACCEPTED; harm retrieval CLOSED / ind
 - Harm retrieval trigger-only pre-execution review — CLOSED / ACCEPTED.
 - A1/A2/A5/A6/A7 harm retrieval — CLOSED / EXECUTED: run `34520257298`, 10 calls = 5 L + 5 S, zero retries/failures, `$0.010`; cumulative experiment usage `90/120` calls / `$0.090`.
 - Harm retrieval mechanical review — CLOSED / ACCEPTED. Reviewer freshly inspected the complete six-file artifact and independently reconstructed all 5 H top-10 lists with zero mismatch. Canonical review: `docs/reviews/2026-09-10-p05-harm-retrieval-execution-review.md`.
-- Automatic provider-call trigger cleanup — CLOSED. The temporary path-scoped `push` triggers were removed from both `.github/workflows/p05-harm-regression-retrieval.yml` and `.github/workflows/p05-hybrid-retrieval.yml`; both now retain only `workflow_dispatch`.
+- Harm evaluator bundle provisional construction — CLOSED: run `34521366508`, exact public/private artifact pair produced without blind-rater delivery.
+- Harm evaluator bundle structural/leakage review — CLOSED / ACCEPTED. Reviewer independently verified hashes, retrieval provenance, 5×3×10 structure, mapping bijection/permutations, frozen field set, all 150 mapped projections, historical intents, and absence of structural retrieval metadata leakage. Canonical review: `docs/reviews/2026-09-10-p05-harm-evaluator-bundle-review.md`.
+- Harm evaluator bundle freeze promotion — CLOSED: governance-only promotion of the exact reviewed artifact bytes; no rebuild/rerandomization/seed regeneration occurred. Canonical: `docs/experiments/p05-harm-evaluator-bundle.md`.
+- Automatic provider-call trigger cleanup — CLOSED. Temporary path-scoped `push` triggers were removed from both provider-call retrieval workflows; both now retain only `workflow_dispatch`.
 
 ## ACTIVE
 
@@ -56,19 +59,18 @@ P0.5 — Fresh gate CLOSED / independently ACCEPTED; harm retrieval CLOSED / ind
 - Cost: `$0.010`; cumulative experiment total `$0.090`, 90/120 charged calls.
 - Canonical execution record: `docs/experiments/p05-harm-regression-retrieval.md`.
 
-### Harm evaluator bundle — PROVISIONAL
+### Harm evaluator bundle — FROZEN
 
 - Canonical record: `docs/experiments/p05-harm-evaluator-bundle.md`.
-- Builder: shared `scripts/p05-build-evaluator-bundle.mjs`, parameterized for both fresh and harm bundles.
-- Builder parameterization commit: `14f60e4cf8c26f460ab5437ede76ea8f8fd139fd`.
-- Provisional build workflow/run head: `2886d279f9659f9adf72ad0d39d1c25950605356`; run `34521366508`, success.
-- Public provisional artifact ID `10169773484`; artifact ZIP SHA-256 `63b0250c49fadb633d403cfb547f6ec2f0a92157265eebd34ca0f68dc9f706a4`; bundle-file SHA-256 `8f4fc6b73ab10eadc9f8a2710dd4708af4b41f96ddda2eed22cd568e14aea038`.
-- Private provisional mapping artifact ID `10169774220`; artifact ZIP SHA-256 `26a76e571492326a893a9cf7606e596579e2b63c8fa8ff0c31ea872f4cd34e40`; mapping-file SHA-256 `b631edb52b79ba2f48a4a8199521a5db2f9f412be9f9a03b84264f00058f3a14`.
-- Seed commitment SHA-256 `3b2add532142ba50eead979609f6b1620d89e5cd6d675993e9db4e3aea5e3003`; seed remains private.
-- Bundle version `p05-harm-evaluator-v1`, status `PROVISIONAL`, query count 5, 3 anonymous A/B/C lists/query, 10 results/list.
-- Implementer structural comparison against accepted raw retrieval: `0` mismatches across 150 public result records.
-- No obvious retrieval-arm metadata leakage found. Ordinary words `hybrid` and `provider` appear only inside publication abstracts, not as implementation metadata.
-- `raterUse = PROHIBITED UNTIL PROMOTED TO FROZEN`.
+- Structural review: `docs/reviews/2026-09-10-p05-harm-evaluator-bundle-review.md` — `ACCEPTED`.
+- Shared builder: `scripts/p05-build-evaluator-bundle.mjs`; builder parameterization commit `14f60e4cf8c26f460ab5437ede76ea8f8fd139fd`.
+- Build run/head: `34521366508` @ `2886d279f9659f9adf72ad0d39d1c25950605356`.
+- FROZEN public artifact ID `10169773484`; artifact ZIP SHA-256 `63b0250c49fadb633d403cfb547f6ec2f0a92157265eebd34ca0f68dc9f706a4`; bundle-file SHA-256 `8f4fc6b73ab10eadc9f8a2710dd4708af4b41f96ddda2eed22cd568e14aea038`.
+- SEALED private mapping artifact ID `10169774220`; artifact ZIP SHA-256 `26a76e571492326a893a9cf7606e596579e2b63c8fa8ff0c31ea872f4cd34e40`; mapping-file SHA-256 `b631edb52b79ba2f48a4a8199521a5db2f9f412be9f9a03b84264f00058f3a14`.
+- Seed commitment SHA-256 `3b2add532142ba50eead979609f6b1620d89e5cd6d675993e9db4e3aea5e3003`; seed remains sealed with private mapping.
+- Bundle version `p05-harm-evaluator-v1`; exact structure: 5 anonymous queries × 3 A/B/C lists × 10 results = 150 records.
+- The artifact-internal manifest still contains its construction-time `PROVISIONAL` / `PROHIBITED UNTIL PROMOTED TO FROZEN` fields because byte-preserving promotion was required. That promotion condition is now satisfied by the accepted structural review plus the canonical governance record; the artifact itself was not rewritten.
+- The same exact public bundle must be supplied to both harm primary blind raters. Private mapping/seed MUST remain sealed until both harm label sets are FINAL / LOCKED.
 
 ### Deferred/known limitations
 
@@ -78,12 +80,12 @@ P0.5 — Fresh gate CLOSED / independently ACCEPTED; harm retrieval CLOSED / ind
 
 ## NEXT
 
-1. Independent reviewer inspects the exact provisional public bundle + private mapping + manifest + accepted raw harm retrieval + builder/workflow provenance.
-2. Reviewer verifies hashes, 5×3×10 structure, query/mapping permutation, exact projection of all 150 public result records from raw top-10 lists, evaluator-visible field set, and leakage scan.
-3. Reviewer returns `ACCEPTED`, `ACCEPTED WITH MODIFICATION`, or `REJECTED`, plus any material OUT-OF-SCOPE finding.
-4. If `ACCEPTED`, promote the **same exact artifact pair** to FROZEN by governance/state update only. Do not rebuild, rerandomize, regenerate seed, or alter bytes.
-5. Only after FROZEN promotion, send the same public bundle to two new physically separate blind-rater lineages. Private mapping/seed remain sealed until both harm label sets are FINAL / LOCKED.
-6. After both harm rater sets lock, open mapping, reveal/verify seed commitment, compute the preregistered harm diagnostic separately per rater, and complete the final P0.5 architecture decision process. No automatic production adoption.
+1. Deliver the exact FROZEN harm public bundle to **Primary Blind Rater 1 (harm)** in a fresh, physically separate context lineage with only the minimal role instruction plus the embedded bundle rubric/instructions.
+2. Deliver the exact same FROZEN public bundle to **Primary Blind Rater 2 (harm)** in a different fresh context lineage. Neither rater receives private mapping, seed, reviewer history, fresh-gate results, previous rater labels, current-state/decisions files, or implementation discussion.
+3. Collect and lock both complete harm label sets before opening the private mapping.
+4. Only after both harm primary label sets are FINAL / LOCKED, open the private mapping, reveal the seed, verify SHA-256 against commitment `3b2add532142ba50eead979609f6b1620d89e5cd6d675993e9db4e3aea5e3003`, and compute the preregistered harm diagnostic separately per rater.
+5. Harm is diagnostic only: no automatic adoption gate and no third-rater trigger arises from harm disagreement unless explicitly defined by the already-frozen parent protocol.
+6. After harm diagnostic completion and independent mechanical review, close the full P0.5 experiment and make a separate production-architecture decision. No production adoption is automatic.
 
 ## DO NOT REOPEN WITHOUT NEW EVIDENCE
 
@@ -94,17 +96,17 @@ P0.5 — Fresh gate CLOSED / independently ACCEPTED; harm retrieval CLOSED / ind
 - Frozen P0.5 retrieval/fusion/gate parameters in response to observed results.
 - Frozen fresh holdout wording/domain/slice tags.
 - Locked primary-rater labels or agreement definitions.
-- Exact provisional harm bundle bytes after review acceptance; accepted promotion must preserve artifact identity.
+- Exact FROZEN harm public/private artifact bytes in response to rater labels or harm results.
 
 ## Evaluation invariants
 
 - Conjunctive-intent rule: R only if available evaluation evidence directly covers all essential explicitly stated components; one essential component only is M; indirect/topic-adjacent is N.
 - Reviewer receives summary plus raw materials and may challenge implementer framing.
-- Blind evaluator receives only the frozen public bundle/rubric; no mapping, prior labels, gate metrics, provider identity, or implementation discussion.
+- Blind evaluator receives only the frozen public bundle/rubric plus minimal role instruction; no mapping, prior labels, gate metrics, provider identity, reviewer history, or implementation discussion.
 - Primary rater outputs are immutable once FINAL / LOCKED.
 - Fresh Gate A, Gate B and S-v-L vectors remain per-rater; labels are never averaged/reconciled.
 - Harm slice is diagnostic only and creates no automatic adoption gate.
-- Under D-017, derived artifacts may become FROZEN/irreversible only after required upstream review; provisional construction is allowed but cannot be delivered to blind raters.
+- Under D-017, derived artifacts may become FROZEN/irreversible only after required upstream review; the harm bundle followed `retrieval ACCEPTED -> PROVISIONAL build -> structural ACCEPTED -> FROZEN promotion`.
 
 ## Privacy invariants
 
@@ -126,7 +128,8 @@ P0.5 — Fresh gate CLOSED / independently ACCEPTED; harm retrieval CLOSED / ind
 - Fresh-gate review: `docs/reviews/2026-09-10-p05-fresh-gate-review.md`
 - Harm retrieval: `docs/experiments/p05-harm-regression-retrieval.md`
 - Harm retrieval review: `docs/reviews/2026-09-10-p05-harm-retrieval-execution-review.md`
-- Harm provisional evaluator bundle: `docs/experiments/p05-harm-evaluator-bundle.md`
+- Harm evaluator bundle: `docs/experiments/p05-harm-evaluator-bundle.md`
+- Harm bundle review: `docs/reviews/2026-09-10-p05-harm-evaluator-bundle-review.md`
 - Reviewer packet completeness control: `docs/reviewer-packet-checklist.md`
 - Research privacy/evidence invariants: `docs/privacy/research-privacy.md`
 
