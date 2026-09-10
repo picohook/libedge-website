@@ -24,6 +24,7 @@ on:
         required: true
         type: boolean
         default: true
+# Staging deployment checkpoint: semantic-primary remains feature-flagged OFF.
 concurrency:
   group: deploy-workers-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
   cancel-in-progress: false
