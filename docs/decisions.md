@@ -12,6 +12,8 @@
 - `privacy/security`
 - `product-scope`
 
+A decision may have more than one type when it materially spans domains.
+
 ## Status vocabulary
 
 - `PROPOSED`
@@ -33,7 +35,15 @@ To preserve a single source of truth:
 - `product-scope` -> the narrowest relevant product/spec document; create one if the decision cannot be represented safely in this log alone
 - `process-rule` -> may remain canonical in this file when the rule is short and self-contained
 
-`decisions.md` stores only the decision, type, status/outcome, short reason, and canonical reference. Detailed protocols, amendments, evidence tables, or implementation specifications must live in the canonical record, not be duplicated here.
+A decision that spans more than one type may list multiple canonical references. Each referenced document is authoritative only for its own dimension; protocol results belong to the experiment record, while architecture consequences belong to the architecture record. `decisions.md` is the cross-reference and decision index, not a duplicate source.
+
+`decisions.md` stores only the decision, type(s), status/outcome, short reason, provenance, and canonical reference(s). Detailed protocols, amendments, evidence tables, or implementation specifications must live in canonical records, not be duplicated here.
+
+## Decision provenance
+
+Every decision created or materially changed from reviewer input must include a `Provenance` field identifying the reviewer packet/session or other traceable source. This is not an assertion that the reviewer made the final decision; it permits later verification that the main-thread transcription/classification faithfully reflects the source finding.
+
+When no reviewer was involved, record the originating experiment, diagnostic, main-thread decision, or source record instead.
 
 ## Source-evidence record format
 
@@ -48,11 +58,13 @@ When an external source materially supports a decision, record in the canonical 
 
 If official sources conflict, do not silently select one. Record the conflict explicitly and use the conservative interpretation when necessary.
 
-A source conflict must include a concrete reconciliation trigger. Preferred trigger: the next real live provider call or telemetry observation that can directly measure the disputed field/value. When the trigger occurs, update or close the conflict record; do not allow `unresolved` to persist indefinitely without a defined observation path.
+A source conflict must include a concrete reconciliation trigger. Preferred trigger: a real live provider call or telemetry observation that can directly measure the disputed field/value.
+
+A trigger observation closes a conflict only when it is unambiguous and sufficient to distinguish the competing claims. If the observation is mixed, incomplete, or itself inconsistent, the conflict remains open, the conservative interpretation remains in force, and the record must specify the next review trigger or observation count before reconsideration. An unresolved conflict may not be silently treated as reconciled merely because a trigger fired.
 
 ## Reviewer governance
 
-Reviewer packets must include both a concise implementer summary and access/references to raw materials.
+Reviewer packets must include both a concise implementer summary and access/references to raw materials. A packet that asks the reviewer to treat raw materials as authoritative but does not actually provide accessible raw materials is incomplete and must not be represented as a full red-team review.
 
 Required reviewer output categories:
 
@@ -61,9 +73,17 @@ Required reviewer output categories:
 - `REJECTED` — implementer proposal rejected
 - `OUT-OF-SCOPE FINDING` — material finding discovered while reviewing that is not itself an evaluation of the proposal
 
-`OUT-OF-SCOPE FINDING` does not modify the active proposal. The main engineering thread decides whether to open it as a new decision, experiment, risk, or follow-up task.
-
 Reviewer freedom invariant: the reviewer is not limited to the implementer framing and may inspect raw materials independently.
+
+### OUT-OF-SCOPE FINDING triage
+
+Every material `OUT-OF-SCOPE FINDING` must return to the main engineering thread and receive exactly one explicit triage disposition:
+
+1. `OPEN` — create a new decision, experiment, risk, or follow-up task with a canonical reference where appropriate.
+2. `ACKNOWLEDGED / DEFERRED` — finding accepted as valid but no action is currently taken; record reason and revisit trigger if one exists.
+3. `REJECTED` — finding is not carried forward; record reason.
+
+An out-of-scope finding may not disappear merely because it does not modify the active proposal.
 
 Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only the frozen evaluation bundle and rubric required for the task, with no mapping, previous labels, prior gate results, or discussion context.
 
@@ -75,6 +95,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Only the main engineering thread may write `docs/current-state.md` and `docs/decisions.md`.
 - Reason: Prevent reviewer/evaluator outputs from becoming project state before human-gated reconciliation.
+- Provenance: main-thread governance design, 2026-09-10.
 - Canonical record: this file.
 
 ## D-002
@@ -83,6 +104,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Reviewer packets must expose raw materials in addition to implementer summaries and must explicitly permit proposal-external findings.
 - Reason: Reduce anchoring and curated-evidence risk in red-team review.
+- Provenance: reviewer governance review, 2026-09-10.
 - Canonical record: this file.
 
 ## D-003
@@ -91,6 +113,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Blind evaluations requiring independence must run in a physically separate fresh conversation with minimum necessary context.
 - Reason: Prevent context leakage and anchoring from prior labels, mappings, and discussion.
+- Provenance: P0.5-A rater reconciliation experience.
 - Canonical record: this file.
 
 ## D-004
@@ -99,6 +122,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Seen diagnostic data may not be reused as a future gate set for the same line of development.
 - Reason: Prevent test-set contamination and post-hoc optimization.
+- Provenance: P0.5-A post-evaluation review.
 - Canonical record: this file.
 
 ## D-005
@@ -108,7 +132,8 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Outcome: `REJECTED`
 - Decision: The conditional lexical phrase heuristic will not ship and no second lexical-tuning round will be opened.
 - Reason: P0.5-A reached Gate A2 FAIL and Gate B FAIL under both rating definitions.
-- Canonical record: `docs/experiments/p05a-lexical.md`
+- Provenance: `docs/experiments/p05a-lexical.md` final evaluation.
+- Canonical reference: `docs/experiments/p05a-lexical.md`
 
 ## D-006
 
@@ -116,15 +141,19 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `SUPERSEDED`
 - Decision: Restrict P0.5 to semantic reranking of lexical candidates only.
 - Reason: Later semantic-vs-lexical diagnostics found a material retrieval-level recall gap.
-- Canonical record: `docs/architecture/research-retrieval.md`
+- Provenance: semantic-gap diagnostic and reviewer challenge to candidate-pool adequacy.
+- Canonical reference: `docs/architecture/research-retrieval.md`
 
 ## D-007
 
-- Type: `architecture`
+- Types: `architecture`, `experimental-outcome`
 - Status: `PROPOSED`
 - Decision: Evaluate a three-arm P0.5 retrieval design: lexical (L), semantic (S), and hybrid lexical+semantic (H).
-- Reason: OpenAlex corpus-level semantic retrieval surfaced many high-relevance works absent from lexical top-100 pools.
-- Canonical record: `docs/architecture/research-retrieval.md`
+- Reason: OpenAlex corpus-level semantic retrieval surfaced many high-relevance works absent from lexical top-100 pools; production architecture remains contingent on a preregistered fresh-holdout experiment.
+- Provenance: semantic-gap diagnostic; architecture remains a proposal pending P0.5 hybrid experiment.
+- Canonical references:
+  - Architecture dimension: `docs/architecture/research-retrieval.md`
+  - Experimental dimension: `docs/experiments/p05-hybrid-semantic.md` (to be created at preregistration)
 
 ## D-008
 
@@ -132,7 +161,8 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Never claim more evidence than the system has actually seen.
 - Reason: Preserve evidence integrity across metadata/abstract/full-text levels.
-- Canonical record: `docs/privacy/research-privacy.md`
+- Provenance: main research architecture invariant.
+- Canonical reference: `docs/privacy/research-privacy.md`
 
 ## D-009
 
@@ -140,6 +170,16 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Never expose a user's research interests to anyone other than that user; institutional analytics, if added, must be aggregate-only with no stored queries, topics, or user IDs.
 - Reason: Preserve research-interest privacy.
-- Canonical record: `docs/privacy/research-privacy.md`
+- Provenance: main research privacy invariant.
+- Canonical reference: `docs/privacy/research-privacy.md`
+
+## D-010
+
+- Type: `process-rule`
+- Status: `LOCKED`
+- Decision: Reviewer-derived decisions must carry traceable provenance; material out-of-scope findings require explicit main-thread triage; mixed/inconclusive reconciliation observations do not close source conflicts.
+- Reason: Prevent transcription drift, orphaned reviewer findings, and false reconciliation.
+- Provenance: reviewer governance review, 2026-09-10.
+- Canonical record: this file.
 
 Last updated: 2026-09-10
