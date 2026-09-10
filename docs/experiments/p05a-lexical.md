@@ -1,5 +1,9 @@
 # P0.5-A — Conditional Lexical Feasibility
 
+Status: `ACTIVE CANONICAL RECORD — EXPERIMENT CLOSED / OUTCOME REJECTED`
+Canonical decision: `docs/decisions.md` D-005
+Supersession rule: this historical experiment record remains canonical for P0.5-A even after later experiments supersede its product direction; if the record itself is replaced, mark it `SUPERSEDED` and name the replacement explicitly.
+
 ## CURRENT LOCKED PROTOCOL
 
 Status: `CLOSED — FAIL`
