@@ -1,0 +1,53 @@
+name: P0.5 Build Frozen Evaluator Bundle
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '.github/workflows/p05-build-evaluator-bundle.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  build:
+    name: Build blind evaluator bundle from frozen retrieval artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download frozen retrieval artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: p05-hybrid-semantic-retrieval
+          path: input
+          repository: picohook/libedge-website
+          run-id: 34498804224
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate bundle builder syntax
+        run: node --check scripts/p05-build-evaluator-bundle.mjs
+
+      - name: Build frozen blind bundle and private mapping
+        run: node scripts/p05-build-evaluator-bundle.mjs
+
+      - name: Upload public evaluator bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: p05-evaluator-bundle-public
+          path: p05-evaluator-output/public/
+          retention-days: 30
+
+      - name: Upload private mapping
+        uses: actions/upload-artifact@v4
+        with:
+          name: p05-evaluator-mapping-private
+          path: p05-evaluator-output/private/
+          retention-days: 30
