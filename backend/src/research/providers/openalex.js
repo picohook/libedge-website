@@ -2,6 +2,7 @@ import { doiUrl, normalizeDoi, normalizeOrcid, normalizeTitle, reconstructOpenAl
 import { parseResearchWork } from '../research-work.js';
 
 const OPENALEX_BASE = 'https://api.openalex.org';
+const OPENALEX_MODES = new Set(['lexical', 'semantic']);
 
 function readHeaderNumber(headers, names) {
   for (const name of names) {
@@ -139,9 +140,19 @@ function providerError(status, code, telemetry = null) {
   return error;
 }
 
+function queryParameterForMode(mode) {
+  if (!OPENALEX_MODES.has(mode)) {
+    const error = new Error('OPENALEX_RETRIEVAL_MODE_INVALID');
+    error.code = 'OPENALEX_RETRIEVAL_MODE_INVALID';
+    throw error;
+  }
+  return mode === 'semantic' ? 'search.semantic' : 'search';
+}
+
 export async function searchOpenAlex(query, env, options = {}) {
+  const mode = options.mode || 'lexical';
   const url = new URL(`${OPENALEX_BASE}/works`);
-  url.searchParams.set('search', query);
+  url.searchParams.set(queryParameterForMode(mode), query);
   url.searchParams.set('per-page', String(options.perPage || 25));
   if (env.OPENALEX_API_KEY) url.searchParams.set('api_key', env.OPENALEX_API_KEY);
 
@@ -160,15 +171,24 @@ export async function searchOpenAlex(query, env, options = {}) {
     throw providerError(response.status, 'OPENALEX_UNAVAILABLE', telemetry);
   }
 
-  const payload = await response.json();
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    throw providerError(response.status, 'OPENALEX_MALFORMED', extractOpenAlexTelemetry(response));
+  }
+
+  if (!payload || typeof payload !== 'object' || !Array.isArray(payload.results)) {
+    throw providerError(response.status, 'OPENALEX_MALFORMED', extractOpenAlexTelemetry(response, payload));
+  }
+
   const retrievedAt = new Date().toISOString();
-  const results = Array.isArray(payload?.results)
-    ? payload.results.map((record) => normalizeOpenAlexWork(record, retrievedAt)).filter(Boolean)
-    : [];
+  const results = payload.results.map((record) => normalizeOpenAlexWork(record, retrievedAt)).filter(Boolean);
 
   return {
     results,
     telemetry: extractOpenAlexTelemetry(response, payload),
-    retrievedAt
+    retrievedAt,
+    mode
   };
 }
