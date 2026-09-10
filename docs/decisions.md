@@ -170,14 +170,23 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 
 ## D-007
 
-- Types: `architecture`, `experimental-outcome`
+- Type: `experimental-outcome`
+- Status: `LOCKED`
+- Decision: Execute the frozen three-arm P0.5 retrieval experiment using lexical (L), semantic (S), and hybrid lexical+semantic (H) exactly as specified in `docs/experiments/p05-hybrid-semantic.md`.
+- Reason: The L/S/H experimental design and preregistration are frozen; locking this decision authorizes experiment execution only and does not adopt any arm as production retrieval architecture.
+- Provenance: semantic-gap diagnostic; frozen preregistration and technical/governance review recorded in `docs/reviews/2026-09-10-governance-red-team.md`.
+- Canonical reference: `docs/experiments/p05-hybrid-semantic.md`
+
+## D-016
+
+- Type: `architecture`
 - Status: `PROPOSED`
-- Decision: Evaluate a three-arm P0.5 retrieval design: lexical (L), semantic (S), and hybrid lexical+semantic (H).
-- Reason: OpenAlex corpus-level semantic retrieval surfaced many high-relevance works absent from lexical top-100 pools; production architecture remains contingent on a preregistered fresh-holdout experiment.
-- Provenance: semantic-gap diagnostic; technical/governance review recorded in `docs/reviews/2026-09-10-governance-red-team.md`.
+- Decision: Adopt lexical (L), semantic (S), or hybrid lexical+semantic (H) as the production retrieval architecture only after the frozen P0.5 experiment is completed and a separate post-experiment architecture decision is made.
+- Reason: Experiment execution is now locked, but production architecture remains contingent on fresh-holdout evidence, the preregistered A/B decision matrix, S-vs-L evidence, and a later architecture decision.
+- Provenance: split from the former mixed architecture/experimental D-007 during pre-retrieval governance cleanup; no frozen experimental parameter changed.
 - Canonical references:
   - Architecture dimension: `docs/architecture/research-retrieval.md`
-  - Experimental dimension: `docs/experiments/p05-hybrid-semantic.md`
+  - Experimental evidence: `docs/experiments/p05-hybrid-semantic.md`
 
 ## D-008
 
