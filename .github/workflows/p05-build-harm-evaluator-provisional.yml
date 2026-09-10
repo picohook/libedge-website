@@ -1,0 +1,64 @@
+name: P0.5 Build Provisional Harm Evaluator Bundle
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '.github/workflows/p05-build-harm-evaluator-provisional.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  build:
+    name: Build provisional blind evaluator bundle from accepted harm retrieval
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      P05_RETRIEVAL_DIR: input
+      P05_BUNDLE_OUT: p05-harm-evaluator-output
+      P05_BUNDLE_QUERY_COUNT: '5'
+      P05_BUNDLE_VERSION: p05-harm-evaluator-v1
+      P05_BUNDLE_STATUS: PROVISIONAL
+      P05_BUNDLE_FILE: p05-harm-evaluator-bundle.json
+      P05_MAPPING_FILE: p05-harm-evaluator-mapping.json
+      P05_RETRIEVAL_WORKFLOW_RUN: '34520257298'
+      P05_RETRIEVAL_ARTIFACT_ID: '10169351909'
+      P05_RETRIEVAL_ARTIFACT_SHA256: 5d22038d5e0f215cde98d0d948168bfc028c6e84b851789c3ac4dd9666e8b933
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download accepted harm retrieval artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: p05-harm-regression-retrieval
+          path: input
+          repository: picohook/libedge-website
+          run-id: 34520257298
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate bundle builder syntax
+        run: node --check scripts/p05-build-evaluator-bundle.mjs
+
+      - name: Build PROVISIONAL blind bundle and private mapping
+        run: node scripts/p05-build-evaluator-bundle.mjs
+
+      - name: Upload provisional public evaluator bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: p05-harm-evaluator-bundle-public-provisional
+          path: p05-harm-evaluator-output/public/
+          retention-days: 30
+
+      - name: Upload provisional private mapping
+        uses: actions/upload-artifact@v4
+        with:
+          name: p05-harm-evaluator-mapping-private-provisional
+          path: p05-harm-evaluator-output/private/
+          retention-days: 30
