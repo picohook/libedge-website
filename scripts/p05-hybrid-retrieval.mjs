@@ -3,16 +3,33 @@ import path from 'node:path';
 import { normalizeOpenAlexWork, extractOpenAlexTelemetry } from '../backend/src/research/providers/openalex.js';
 
 const OPENALEX_BASE = 'https://api.openalex.org/works';
-const HOLDOUT_PATH = 'docs/experiments/p05-hybrid-semantic-holdout.md';
-const OUT_DIR = 'docs/experiments/p05-hybrid-semantic-retrieval';
+const MODE = String(process.env.P05_RETRIEVAL_MODE || 'fresh').trim().toLowerCase();
+const VALIDATE_ONLY = process.env.P05_VALIDATE_ONLY === '1';
+const SOURCE_PATH = process.env.P05_QUERY_SOURCE
+  || (MODE === 'harm' ? 'scripts/research-query-conditional.mjs' : 'docs/experiments/p05-hybrid-semantic-holdout.md');
+const OUT_DIR = process.env.P05_OUTPUT_DIR
+  || (MODE === 'harm' ? 'docs/experiments/p05-harm-regression-retrieval' : 'docs/experiments/p05-hybrid-semantic-retrieval');
 const SUMMARY_PATH = `${OUT_DIR}/summary.json`;
 const API_KEY = process.env.OPENALEX_API_KEY;
 const MAX_RETRIES = 2;
-const MAX_FRESH_ATTEMPTS = 110; // 80 fresh base calls + up to 30 global retry headroom; preserves 10 base harm-slice calls under the 120-call cap.
 const EXPECTED_COST_USD = 0.001;
 const RRF_K = 60;
+const GLOBAL_CALL_CAP = 120;
+const EXPECTED_QUERY_COUNT = Number(process.env.P05_EXPECTED_QUERY_COUNT || (MODE === 'harm' ? 5 : 40));
+const PRIOR_CHARGED_CALLS = Number(process.env.P05_PRIOR_CHARGED_CALLS || 0);
+const PRIOR_OBSERVED_COST_USD = Number(process.env.P05_PRIOR_OBSERVED_COST_USD || 0);
+const RESERVED_FUTURE_CALLS = Number(process.env.P05_RESERVED_FUTURE_CALLS || (MODE === 'fresh' ? 10 : 0));
+const SELECTED_IDS = String(process.env.P05_QUERY_IDS || (MODE === 'harm' ? 'A1,A2,A5,A6,A7' : ''))
+  .split(',').map((v) => v.trim()).filter(Boolean);
 
-if (!API_KEY) throw new Error('OPENALEX_API_KEY is required');
+if (!['fresh', 'harm'].includes(MODE)) throw new Error(`Unsupported P05_RETRIEVAL_MODE: ${MODE}`);
+if (!Number.isInteger(EXPECTED_QUERY_COUNT) || EXPECTED_QUERY_COUNT <= 0) throw new Error('P05_EXPECTED_QUERY_COUNT must be a positive integer');
+if (!Number.isInteger(PRIOR_CHARGED_CALLS) || PRIOR_CHARGED_CALLS < 0) throw new Error('P05_PRIOR_CHARGED_CALLS must be a non-negative integer');
+if (!Number.isFinite(PRIOR_OBSERVED_COST_USD) || PRIOR_OBSERVED_COST_USD < 0) throw new Error('P05_PRIOR_OBSERVED_COST_USD must be non-negative');
+if (!Number.isInteger(RESERVED_FUTURE_CALLS) || RESERVED_FUTURE_CALLS < 0) throw new Error('P05_RESERVED_FUTURE_CALLS must be a non-negative integer');
+if (PRIOR_CHARGED_CALLS + RESERVED_FUTURE_CALLS >= GLOBAL_CALL_CAP) throw new Error('No provider-call budget remains under the frozen global cap');
+
+const LOCAL_ATTEMPT_CAP = GLOBAL_CALL_CAP - PRIOR_CHARGED_CALLS - RESERVED_FUTURE_CALLS;
 
 let totalAttempts = 0;
 let chargedResponses = 0;
@@ -22,7 +39,7 @@ let lastSemanticStartedAt = 0;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function parseHoldout(markdown) {
+function parseFreshHoldout(markdown) {
   const rows = [];
   for (const line of markdown.split(/\r?\n/)) {
     if (!/^\|\s*(ME|BM|SS|HU)\d{2}\s*\|/.test(line)) continue;
@@ -33,10 +50,43 @@ function parseHoldout(markdown) {
       id,
       domain,
       intent,
-      slices: slicesRaw === '—' ? [] : slicesRaw.split(',').map((v) => v.trim()).filter(Boolean)
+      retrievalText: intent,
+      slices: slicesRaw === '—' ? [] : slicesRaw.split(',').map((v) => v.trim()).filter(Boolean),
+      sourceKind: 'fresh-holdout-markdown'
     });
   }
   return rows;
+}
+
+function parseHistoricalCases(sourceText) {
+  const rows = [];
+  const casePattern = /\{\s*id:'([^']+)',\s*group:'([^']+)',\s*discipline:'([^']+)',\s*intent:'([^']*)',\s*q:'([^']*)',\s*probePhrase:'([^']*)'\s*\}/g;
+  for (const match of sourceText.matchAll(casePattern)) {
+    const [, id, group, discipline, intent, q, probePhrase] = match;
+    rows.push({
+      id,
+      domain: discipline,
+      intent,
+      retrievalText: q,
+      slices: [],
+      group,
+      probePhrase,
+      sourceKind: 'p05a-historical-case-source'
+    });
+  }
+  return rows;
+}
+
+async function loadQueries() {
+  const sourceText = await fs.readFile(SOURCE_PATH, 'utf8');
+  if (MODE === 'fresh') return parseFreshHoldout(sourceText);
+
+  const allCases = parseHistoricalCases(sourceText);
+  const byId = new Map(allCases.map((row) => [row.id, row]));
+  const missing = SELECTED_IDS.filter((id) => !byId.has(id));
+  if (missing.length) throw new Error(`Selected historical case IDs not found in canonical source: ${missing.join(',')}`);
+  if (new Set(SELECTED_IDS).size !== SELECTED_IDS.length) throw new Error('Duplicate P05_QUERY_IDS are not permitted');
+  return SELECTED_IDS.map((id) => byId.get(id));
 }
 
 function normalizeDoi(value) {
@@ -183,9 +233,9 @@ function recordPricingObservation(arm, attemptNumber, startedAt, evidence, telem
   }
 }
 
-async function providerCall(intent, arm, attemptNumber) {
-  if (totalAttempts >= MAX_FRESH_ATTEMPTS) {
-    const error = new Error('FRESH_ATTEMPT_CAP_REACHED');
+async function providerCall(retrievalText, arm, attemptNumber) {
+  if (totalAttempts >= LOCAL_ATTEMPT_CAP) {
+    const error = new Error('GLOBAL_EXPERIMENT_CALL_CAP_REACHED');
     error.nonRetryable = true;
     throw error;
   }
@@ -194,7 +244,7 @@ async function providerCall(intent, arm, attemptNumber) {
   totalAttempts += 1;
 
   const url = new URL(OPENALEX_BASE);
-  url.searchParams.set(arm === 'L' ? 'search' : 'search.semantic', intent);
+  url.searchParams.set(arm === 'L' ? 'search' : 'search.semantic', retrievalText);
   url.searchParams.set('per-page', arm === 'L' ? '100' : '50');
   url.searchParams.set('api_key', API_KEY);
 
@@ -231,12 +281,12 @@ async function providerCall(intent, arm, attemptNumber) {
   }
 }
 
-async function fetchArm(intent, arm) {
+async function fetchArm(retrievalText, arm) {
   const attempts = [];
   for (let retry = 0; retry <= MAX_RETRIES; retry += 1) {
     const attemptNumber = retry + 1;
     try {
-      const result = await providerCall(intent, arm, attemptNumber);
+      const result = await providerCall(retrievalText, arm, attemptNumber);
       attempts.push({
         attemptNumber,
         ok: true,
@@ -278,6 +328,17 @@ function aggregate(summary) {
     totalAttempts,
     chargedResponses,
     observedCostUsd: Number(observedCostUsd.toFixed(6)),
+    cumulativeExperiment: {
+      priorChargedCalls: PRIOR_CHARGED_CALLS,
+      priorObservedCostUsd: Number(PRIOR_OBSERVED_COST_USD.toFixed(6)),
+      currentRunAttemptsUpperBound: totalAttempts,
+      currentRunChargedResponses: chargedResponses,
+      cumulativeChargedResponses: PRIOR_CHARGED_CALLS + chargedResponses,
+      cumulativeObservedCostUsd: Number((PRIOR_OBSERVED_COST_USD + observedCostUsd).toFixed(6)),
+      globalCallCap: GLOBAL_CALL_CAP,
+      reservedFutureCalls: RESERVED_FUTURE_CALLS,
+      localAttemptCap: LOCAL_ATTEMPT_CAP
+    },
     pricingAnomalies,
     successes: {
       L: summary.queries.filter((q) => q.L.status === 'success').length,
@@ -298,30 +359,54 @@ async function writeSummary(summary, fatal = null) {
   await fs.writeFile(SUMMARY_PATH, `${JSON.stringify(summary, null, 2)}\n`);
 }
 
-const holdoutMd = await fs.readFile(HOLDOUT_PATH, 'utf8');
-const queries = parseHoldout(holdoutMd);
-if (queries.length !== 40) throw new Error(`Expected 40 frozen intents, parsed ${queries.length}`);
+const queries = await loadQueries();
+if (queries.length !== EXPECTED_QUERY_COUNT) throw new Error(`Expected ${EXPECTED_QUERY_COUNT} selected intents, parsed ${queries.length}`);
 
+const inputManifest = {
+  mode: MODE,
+  sourcePath: SOURCE_PATH,
+  selectedIds: queries.map((q) => q.id),
+  expectedQueryCount: EXPECTED_QUERY_COUNT,
+  queries: queries.map(({ id, domain, intent, retrievalText, sourceKind }) => ({ id, domain, intent, retrievalText, sourceKind })),
+  frozenParameters: { lexicalDepth: 100, semanticDepth: 50, rrfK: 60, maxRetriesPerArm: 2 },
+  budget: {
+    priorChargedCalls: PRIOR_CHARGED_CALLS,
+    priorObservedCostUsd: Number(PRIOR_OBSERVED_COST_USD.toFixed(6)),
+    globalCallCap: GLOBAL_CALL_CAP,
+    reservedFutureCalls: RESERVED_FUTURE_CALLS,
+    localAttemptCap: LOCAL_ATTEMPT_CAP
+  }
+};
+
+if (VALIDATE_ONLY) {
+  console.log('P05_RETRIEVAL_INPUT_VALIDATED', JSON.stringify(inputManifest));
+  process.exit(0);
+}
+
+if (!API_KEY) throw new Error('OPENALEX_API_KEY is required');
 await fs.mkdir(OUT_DIR, { recursive: true });
 
 const summary = {
   protocol: 'P0.5 Hybrid Semantic Retrieval',
-  sourceHoldout: HOLDOUT_PATH,
+  executionMode: MODE,
+  sourceQueryFile: SOURCE_PATH,
+  selectedIds: queries.map((q) => q.id),
   executionStartedAt: new Date().toISOString(),
-  frozenParameters: { lexicalDepth: 100, semanticDepth: 50, rrfK: 60, maxRetriesPerArm: 2 },
+  frozenParameters: inputManifest.frozenParameters,
+  budget: inputManifest.budget,
   queries: [],
   aggregate: null
 };
 
 try {
   for (const query of queries) {
-    const l = await fetchArm(query.intent, 'L');
+    const l = await fetchArm(query.retrievalText, 'L');
     if (pricingAnomalies.length) {
       await writeSummary(summary, { code: 'D013_PRICING_ANOMALY', queryId: query.id, afterArm: 'L' });
       throw new Error('D013_PRICING_ANOMALY');
     }
 
-    const s = await fetchArm(query.intent, 'S');
+    const s = await fetchArm(query.retrievalText, 'S');
     if (pricingAnomalies.length) {
       await writeSummary(summary, { code: 'D013_PRICING_ANOMALY', queryId: query.id, afterArm: 'S' });
       throw new Error('D013_PRICING_ANOMALY');
@@ -335,6 +420,8 @@ try {
       id: query.id,
       domain: query.domain,
       intent: query.intent,
+      retrievalText: query.retrievalText,
+      sourceKind: query.sourceKind,
       slices: query.slices,
       execution: {
         L: { status: l.status, attempts: l.attempts, rawCount: l.result?.rawRecords?.length ?? null, uniqueNormalizedCount: l.status === 'success' ? lPool.length : null },
@@ -353,7 +440,9 @@ try {
     summary.queries.push({
       id: query.id,
       domain: query.domain,
-      slices: query.slices,
+      intent: query.intent,
+      retrievalText: query.retrievalText,
+      sourceKind: query.sourceKind,
       L: record.execution.L,
       S: record.execution.S,
       H: record.execution.H
