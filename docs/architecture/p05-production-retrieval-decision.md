@@ -1,17 +1,18 @@
-# P0.5 — Production Retrieval Architecture Proposal
+# P0.5 — Production Retrieval Architecture Decision
 
-Status: `ACTIVE — PROPOSED / MODIFIED AFTER INDEPENDENT ARCHITECTURE REVIEW`
+Status: `ACTIVE — LOCKED`
 Decision index: `docs/decisions.md` D-016
 Evidence closure: `docs/experiments/p05-final-outcome.md`
-Review provenance: `docs/reviews/2026-09-10-d016-production-architecture-review.md`
+Architecture review: `docs/reviews/2026-09-10-d016-production-architecture-review.md`
+Follow-up acceptance: `docs/reviews/2026-09-10-d016-production-architecture-followup-review.md`
 
-## Decision to review
+## Locked decision
 
-Adopt OpenAlex corpus-level semantic retrieval (`S`) as the **primary production retrieval path for the existing top-10 research-result contract**, with lexical retrieval (`L`) retained only as an objective availability fallback. Do not adopt the tested RRF hybrid (`H`). Do not add Vectorize at this stage.
+Adopt OpenAlex corpus-level semantic retrieval (`S`) as the **primary production retrieval path for the existing top-10 research-result contract**, with lexical retrieval (`L`) retained only as an objective availability fallback/rollback path. Do not adopt the tested RRF hybrid (`H`). Do not add Vectorize at this stage.
 
-This is a separate production-architecture proposal. It is not an automatic consequence of the P0.5 experiment and is not governing production state until D-016 is explicitly LOCKED after follow-up review of the modifications below.
+This decision is now governing architecture under D-016. It authorizes implementation work, not broad production enablement.
 
-## Evidence supporting the proposal
+## Evidence basis
 
 ### Fresh 40-query holdout
 
@@ -35,12 +36,12 @@ The frozen S-vs-L coverage rule reports `40/40` regressions because L retrieves 
 
 ### Seen harm-regression slice
 
-Two new independent harm raters produced aggregate Relevant@10:
+Two independent harm raters produced aggregate Relevant@10:
 
 - Rater 1: L `44%`, H `72%`, S `78%`.
 - Rater 2: L `46%`, H `72%`, S `82%`.
 
-Both therefore show `S > H > L` on aggregate, while unfavorable per-case results remain retained. This slice is diagnostic only and does not itself create an adoption gate.
+Both therefore show `S > H > L` on aggregate, while unfavorable per-case results remain retained. This slice is diagnostic only and did not create an adoption gate.
 
 ## Why S rather than H
 
@@ -54,7 +55,7 @@ For the current top-10 output contract, S produced a large and rater-robust rele
 
 L remains useful as an operational fallback because it is already integrated and does not share the semantic-search-specific pacing dependency.
 
-## Proposed production architecture
+## Locked production architecture
 
 ### Primary path
 
@@ -83,7 +84,7 @@ A syntactically valid successful S response with **zero candidates is NOT an ava
 
 Fallback MUST NOT depend on candidate content, candidate count once a valid response is returned, apparent relevance, expected answer quality, topic, discipline, or whether lexical results look preferable.
 
-This deliberately prefers deterministic architecture semantics over result-dependent routing. If empty-result behavior later proves to be a material product problem, that requires new evidence and an explicit architecture review rather than silently redefining availability.
+If valid-empty behavior later proves to be a material product problem, that requires new evidence and an explicit architecture review rather than silently redefining availability.
 
 ### No H
 
@@ -93,37 +94,37 @@ The frozen RRF hybrid is not a production fallback or secondary reranking stage.
 
 Do not add a separate vector database/retrieval layer now. P0.5 found strong relevance gains from the provider's corpus-level semantic endpoint. Vectorize remains a future option if new evidence shows the provider semantic path is insufficient for product requirements, including capacity or availability requirements; such a future evaluation need not reopen P0.5 relevance unless new relevance evidence independently warrants it.
 
-## Operational constraints that remain real
+## Operational constraints
 
 ### Semantic pacing / capacity
 
 The current canonical provider record treats semantic search as a `<=1 request/second` dependency. Production S therefore requires explicit concurrency control/queueing or another compliant request-shaping mechanism at the application boundary.
 
-**Pre-adoption capacity check:** before D-016 is implemented for broad production enablement, use existing aggregate/no-query-text traffic telemetry (or, if production traffic is not yet representative, a documented conservative forecast) to estimate peak eligible research-query arrival rate. The semantic-primary path may proceed to broad enablement only if the documented peak estimate is `<=0.5 requests/second` (50% of the current provider ceiling). If the estimate exceeds `0.5 requests/second`, or if a representative estimate cannot be produced, broad enablement is blocked pending an explicit capacity plan/review. Staging/feature-flag implementation may still proceed for measurement under the provider limit.
+**Pre-broad-enable capacity guardrail:** use existing aggregate/no-query-text traffic telemetry or, if representative traffic is unavailable, a documented conservative forecast to estimate peak eligible research-query arrival rate. Broad semantic-primary enablement is permitted only if the documented peak estimate is `<=0.5 requests/second`.
 
-The 50% headroom threshold is an operational rollout guardrail, not a relevance gate. It is intentionally conservative because the provider ceiling is global to the dependency and burstiness/latency can make average rates misleading.
+If the estimate exceeds `0.5 requests/second`, or if a representative/conservative estimate cannot be produced, broad enablement is blocked pending an explicit capacity plan/review. Controlled staging/feature-flag implementation may still proceed for measurement under the provider limit.
 
-If expected production demand cannot be served within this constraint without unacceptable latency, that is an operational deployment blocker to resolve; it is not a reason to silently change the evidence conclusion or reintroduce H.
+The 50% headroom threshold is an operational rollout guardrail, not a relevance gate.
 
 ### Candidate depth
 
-S is provider-constrained to at most 50 candidates versus L top-100. The experiment establishes superiority for the current top-10 relevance contract, not superiority for deep pagination, exhaustive recall, or arbitrary candidate-pool depth.
+S is provider-constrained to at most 50 candidates versus L top-100. P0.5 establishes superiority for the current top-10 relevance contract, not for deep pagination, exhaustive recall, or arbitrary candidate-pool depth.
 
-Therefore this proposal applies only to the current top-10 retrieval contract. Any future product requirement for deep result pagination/exhaustive recall requires separate evidence.
+Any future product requirement for deep result pagination/exhaustive recall requires separate evidence.
 
-### Pricing
+### Pricing / D-013
 
-Observed authenticated P0.5 telemetry charged `$0.001` per successful S call. A semantic-only primary path uses one provider retrieval call per normal query, whereas the tested H path requires both L and S calls. D-013 remains subject to its existing reopen trigger if authenticated charged-cost telemetry materially changes.
+Observed authenticated P0.5 telemetry charged `$0.001` per successful S call. A semantic-only primary path uses one provider retrieval call per normal query, whereas H requires both L and S calls. D-013 retains its existing reopen trigger if authenticated charged-cost telemetry materially changes.
 
-**First production-scale D-013 checkpoint:** after semantic-primary has accumulated the first `1,000` charged semantic responses in controlled staging/production, or after `7 calendar days` of enabled real traffic, whichever occurs first, review aggregate authenticated cost/credit telemetry against D-013. The checkpoint records only aggregate counters/cost fields and must not store query text, topics, research interests, or user IDs. Any material charged-cost inconsistency follows the existing D-013 reopen rule.
+**First production-scale D-013 checkpoint:** after semantic-primary accumulates the first `1,000` charged semantic responses in controlled staging/production, or after `7 calendar days` of enabled real traffic, whichever occurs first, review aggregate authenticated cost/credit telemetry against D-013. The checkpoint records only aggregate counters/cost fields and must not store query text, topics, research interests, or user IDs.
 
 ### Provider dependency
 
 S increases dependence on the semantic endpoint's availability and rate policy. L remains available as an objective availability fallback and rollback path.
 
-## Rollout boundary
+## Implementation / rollout boundary
 
-If this proposal is accepted and D-016 becomes LOCKED:
+D-016 LOCK authorizes implementation work under these constraints:
 
 - implement S-primary behind a controlled staging/feature-flag path first;
 - preserve L as the immediate operational rollback/fallback path;
@@ -133,7 +134,7 @@ If this proposal is accepted and D-016 becomes LOCKED:
 - perform the first production-scale D-013 checkpoint at 1,000 charged semantic responses or 7 calendar days, whichever occurs first;
 - do not retune relevance behavior against the seen P0.5 holdouts during rollout.
 
-These are implementation/operational checks, not a new post-hoc relevance gate.
+These are implementation/operational controls, not a new post-hoc relevance gate.
 
 ## Monitoring invariants
 
@@ -152,40 +153,30 @@ A rising fallback rate, material zero-result rate, capacity pressure, or materia
 
 ## Alternatives considered
 
-### Adopt H
+### H
 
 `REJECTED BY EXPERIMENTAL EVIDENCE` — Gate B failed for both primary fresh raters and H adds complexity/calls relative to S.
 
-### Retain L as primary
+### L primary
 
 Operationally simplest, but inconsistent with the large, independently verified top-10 relevance advantage of S on the fresh holdout and seen diagnostic.
 
-### Adopt S with no fallback
+### S with no fallback
 
-Not preferred. It would create unnecessary availability risk while an already integrated lexical path exists.
+Not selected. It would create unnecessary availability risk while an already integrated lexical path exists.
 
-### Add Vectorize now
+### Vectorize now
 
-Not supported by current evidence. It adds infrastructure before the existing provider semantic endpoint has been shown insufficient. Capacity/availability evidence may independently justify revisiting this option later.
+Not selected. It adds infrastructure before the existing provider semantic endpoint has been shown insufficient. Capacity/availability evidence may independently justify revisiting this option later.
 
-## Proposed D-016 disposition
+## Decision state
 
-If follow-up independent architecture review accepts these modifications, update D-016:
+D-016: `LOCKED`.
 
-- Status: `LOCKED`.
-- Decision: `Use S as the primary retrieval architecture for the existing top-10 research-result contract; retain L only as objective availability fallback; a valid zero-candidate S response does not trigger L; reject H; do not add Vectorize without new evidence; require the documented pre-broad-enable capacity check and first production-scale D-013 checkpoint.`
+Locked decision summary:
 
-Until that transition occurs, current production behavior remains unchanged.
+`Use S as the primary retrieval architecture for the existing top-10 research-result contract; retain L only as objective availability fallback; a valid zero-candidate S response does not trigger L; reject H; do not add Vectorize without new evidence; require the documented pre-broad-enable capacity check and first production-scale D-013 checkpoint.`
 
-## Follow-up review questions
-
-The independent reviewer should verify specifically that the requested modifications are closed without creating new result-dependent behavior:
-
-1. Is valid zero-candidate S behavior now unambiguous and consistent with objective-only fallback?
-2. Is the `<=0.5 requests/second` pre-broad-enable threshold a concrete, conservative and non-relevance operational guardrail against the current `<=1 request/second` dependency?
-3. Is the first D-013 production-scale checkpoint (`1,000` charged semantic responses or `7 days`, whichever first) concrete while preserving the no-query-text privacy invariant?
-4. Are Q08 `-10pp` and Q27 `-40pp` retained as historical weak examples without becoming content-dependent routing or a new relevance gate?
-5. Is the Vectorize capacity/availability revisit trigger appropriately triaged without prematurely adopting new infrastructure?
-6. With these modifications, may D-016 transition `PROPOSED -> LOCKED`?
+Broad production enablement remains a later operational action, not an automatic consequence of this lock.
 
 Last updated: 2026-09-10
