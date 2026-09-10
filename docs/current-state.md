@@ -8,7 +8,7 @@ Status: `ACTIVE`
 
 ## Current phase
 
-P0.5 — Hybrid Semantic Retrieval preregistration freeze and fresh-holdout construction.
+P0.5 — Hybrid Semantic Retrieval fresh-holdout construction under FROZEN preregistration.
 
 ## CLOSED
 
@@ -21,29 +21,31 @@ P0.5 — Hybrid Semantic Retrieval preregistration freeze and fresh-holdout cons
 - Semantic-vs-lexical gap diagnostic — CLOSED; material retrieval-level recall gap found.
 - Governance red-team review 2026-09-10 — CLOSED; findings triaged and control-plane corrections applied.
 - P0.5 hybrid preregistration methodology review — CLOSED; reviewer reports no remaining methodological FREEZE blocker.
-- D-013 semantic pricing reconciliation — CLOSED by live authenticated telemetry on 2026-09-10. Three successful `search.semantic` calls each returned `meta.cost_usd = 0.001` and `X-RateLimit-Cost-USD = 0.001`; lexical control produced a distinct result set. Observed charged price: `$1 / 1,000` semantic calls. Canonical evidence: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`.
+- D-013 semantic pricing reconciliation — CLOSED / LOCKED at observed `$0.001/call` (`$1/1,000`) for P0.5 planning; raw evidence in `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`.
+- P0.5 Hybrid Semantic Retrieval preregistration — FROZEN 2026-09-10 before any fresh gate holdout generation.
 
 ## ACTIVE
 
-- Freeze `docs/experiments/p05-hybrid-semantic.md` before fresh holdout generation.
+- Construct and freeze the fresh 40-query hypothesis-driven holdout under the frozen protocol.
 - Candidate architecture under test:
   - L: OpenAlex lexical top-100 baseline.
   - S: OpenAlex semantic top-50 retrieval.
   - H: L/S union -> canonical deduplication -> RRF `k=60` -> deterministic tie-break -> top 10.
 - OpenAlex semantic-search operational constraint: <=1 request/second.
-- P0.5 economic assumption: `$0.001 / semantic call` (`$1 / 1,000`), reconciled by authenticated live telemetry. Reopen only on materially different authenticated charge telemetry.
-- Production semantic/hybrid retrieval remains NOT ADOPTED pending the frozen fresh-holdout experiment.
+- P0.5 frozen economic assumption: `$0.001 / semantic call` (`$1 / 1,000`). Base plan: 45 semantic calls / `$0.045`; operational cap: 60 charged semantic calls / `$0.060` including transport/provider retry headroom.
+- Existing OpenAlex provider telemetry extraction captures charged cost/credits. During semantic operation these fields are to be preserved without query/research-interest content; materially different authenticated charge or body/header conflict reopens D-013 for review.
+- Production semantic/hybrid retrieval remains NOT ADOPTED pending fresh-holdout evidence and a later architecture decision.
 
 ## NEXT
 
-1. Mark the reviewed P0.5 Hybrid Semantic Retrieval preregistration FROZEN.
-2. Generate and freeze the fresh 40-query hypothesis-driven holdout only after freeze.
-3. Preserve four-domain balance and preregistered conjunctive, lexical-ambiguity, jargon and broad/straightforward structure.
-4. Execute L/S/H without tuning, pacing semantic calls at <=1 request/second.
-5. Prepare the frozen randomized evaluator bundle.
-6. Obtain two independent blind-rater label sets in physically separate fresh lineages; use a third fresh lineage only for Gate A/B disagreement as preregistered.
-7. Report Gate A, Gate B and S-vs-L component vectors per rater; never synthesize numeric consensus metrics.
-8. After gate reconciliation, run A1/A2/A5/A6/A7 as the separate two-rater blind harm-regression diagnostic.
+1. Generate exactly 40 previously unseen intents after the preregistration freeze: 10 Materials/Energy, 10 Biomedical, 10 Social Science, 10 Humanities.
+2. Freeze domain and slice tags before retrieval; conjunctive >=12, lexical ambiguity >=8, technical/jargon >=8.
+3. Do not inspect retrieval results while constructing/revising the holdout.
+4. Execute L/S once per frozen intent; H reuses those candidate sets and applies frozen RRF rules with no tuning.
+5. Prepare/freeze the randomized evaluator bundle and its evidence fields.
+6. Obtain two independent blind-rater label sets in separate fresh lineages; third rater only for Gate A/B disagreement.
+7. Report all component vectors per rater and apply the frozen A/B matrix.
+8. Only after fresh-gate reconciliation run the separate A1/A2/A5/A6/A7 two-rater harm diagnostic.
 
 ## DO NOT REOPEN WITHOUT NEW EVIDENCE
 
@@ -52,14 +54,15 @@ P0.5 — Hybrid Semantic Retrieval preregistration freeze and fresh-holdout cons
 - Existing 30-query P0.5-A benchmark as the semantic gate set.
 - Reranking-only architecture restricted to lexical candidates.
 - Vectorize before evidence shows OpenAlex semantic/hybrid retrieval is insufficient.
-- D-013 pricing conflict unless materially different authenticated charge telemetry appears.
+- D-013 pricing unless materially different authenticated charged-cost telemetry appears.
+- Frozen P0.5 retrieval/fusion/gate parameters in response to observed holdout results.
 
 ## Evaluation invariants
 
-- Conjunctive-intent rule: an item is R only if the available evaluation evidence directly covers all essential explicitly stated intent components. One essential component only is M; indirect/topic-adjacent is N.
-- Seen diagnostic data and fresh gate data are physically and procedurally separated.
-- Reviewer thread receives summary plus raw materials and may challenge the implementer framing.
-- Blind evaluator receives only frozen evaluation materials and rubric; no mapping, prior labels, gate metrics, or discussion history.
+- Conjunctive-intent rule: R only if available evaluation evidence directly covers all essential explicitly stated components; one essential component only is M; indirect/topic-adjacent is N.
+- Seen diagnostic data and fresh gate data remain physically/procedurally separated.
+- Reviewer receives summary plus raw materials and may challenge implementer framing.
+- Blind evaluator receives only frozen evaluation materials/rubric; no mapping, prior labels, gate metrics, or discussion history.
 - Numeric rater metrics remain per-rater; only preregistered binary Gate A/B dispositions may use the third-rater 2-of-3 rule.
 
 ## Privacy invariants
@@ -67,13 +70,14 @@ P0.5 — Hybrid Semantic Retrieval preregistration freeze and fresh-holdout cons
 1. Never claim more evidence than the system has actually seen.
 2. Never expose a user's research interests to anyone other than that user.
 3. Future institutional analytics, if implemented, must use aggregate counters only; no queries, topics, or user IDs.
+4. Cost/rate telemetry used for passive provider-price monitoring must not add stored query text or research-interest content.
 
 ## Canonical records
 
 - Project decisions: `docs/decisions.md`
 - Current operational state: `docs/current-state.md`
 - Retrieval architecture: `docs/architecture/research-retrieval.md`
-- P0.5 hybrid experiment/preregistration: `docs/experiments/p05-hybrid-semantic.md`
+- P0.5 frozen hybrid experiment/preregistration: `docs/experiments/p05-hybrid-semantic.md`
 - D-013 live reconciliation: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`
 - Research privacy/evidence invariants: `docs/privacy/research-privacy.md`
 - Reviewer packet completeness control: `docs/reviewer-packet-checklist.md`
