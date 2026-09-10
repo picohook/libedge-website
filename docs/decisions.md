@@ -14,16 +14,34 @@
 
 A decision may have more than one type when it materially spans domains.
 
-## Status vocabulary
+## Decision lifecycle vocabulary
 
-- `PROPOSED`
-- `LOCKED`
-- `SUPERSEDED`
+- `PROPOSED` — under consideration; not adopted.
+- `LOCKED` — adopted/governing until explicitly changed.
+- `REJECTED` — evaluated/considered but never adopted as governing state.
+- `SUPERSEDED` — previously LOCKED/adopted, then replaced by a later decision.
+
+Allowed lifecycle transitions:
+- `PROPOSED -> LOCKED`
+- `PROPOSED -> REJECTED`
+- `LOCKED -> SUPERSEDED`
+
+`SUPERSEDED` must not be used merely to mean “an idea we stopped considering.”
 
 For `experimental-outcome`, outcome is additionally one of:
 - `ADOPTED`
 - `REJECTED`
 - `INCONCLUSIVE`
+
+## File-level status vocabulary
+
+Canonical-file status is separate from decision lifecycle status and must use one of:
+
+- `ACTIVE` — currently governing/current canonical operational record.
+- `HISTORICAL` — canonical record of a closed experiment/event; retained for audit/history, not governing current product behavior.
+- `SUPERSEDED` — the file itself has been replaced by another canonical record; replacement must be named.
+
+A file may add descriptive qualifiers after the controlled status, but the first status token must be one of the three above.
 
 ## Canonical-record routing
 
@@ -37,11 +55,15 @@ To preserve a single source of truth:
 
 A decision that spans more than one type may list multiple canonical references. Each referenced document is authoritative only for its own dimension; protocol results belong to the experiment record, while architecture consequences belong to the architecture record. `decisions.md` is the cross-reference and decision index, not a duplicate source.
 
-`decisions.md` stores only the decision, type(s), status/outcome, short reason, provenance, and canonical reference(s). Detailed protocols, amendments, evidence tables, or implementation specifications must live in canonical records, not be duplicated here.
+`decisions.md` stores only the decision, type(s), lifecycle status/outcome, short reason, provenance, and canonical reference(s). Detailed protocols, amendments, evidence tables, or implementation specifications must live in canonical records, not be duplicated here.
 
 ## Decision provenance
 
-Every decision created or materially changed from reviewer input must include a `Provenance` field identifying the reviewer packet/session or other traceable source. This is not an assertion that the reviewer made the final decision; it permits later verification that the main-thread transcription/classification faithfully reflects the source finding.
+Every decision created or materially changed from reviewer input must include a `Provenance` field identifying a concrete review artifact/session, preferably `docs/reviews/<...>.md` plus packet ID when available.
+
+Generic descriptions such as “reviewer governance review, 2026-09-10” alone are insufficient for new reviewer-derived decisions.
+
+This is not an assertion that the reviewer made the final decision; it permits later verification that the main-thread transcription/classification faithfully reflects the source finding.
 
 When no reviewer was involved, record the originating experiment, diagnostic, main-thread decision, or source record instead.
 
@@ -66,7 +88,7 @@ A trigger observation closes a conflict only when it is unambiguous and sufficie
 
 Reviewer packets must include both a concise implementer summary and access/references to raw materials. A packet that asks the reviewer to treat raw materials as authoritative but does not actually provide accessible raw materials is incomplete and must not be represented as a full red-team review.
 
-Before sending any full Reviewer Packet, the main engineering thread must pass the mandatory checklist in `docs/reviewer-packet-checklist.md`. If any listed raw material is absent, stale, partial while labeled full, or inaccessible, the packet is `INCOMPLETE — DO NOT SEND AS FULL REVIEW PACKET`.
+Before sending any full Reviewer Packet, the main engineering thread must pass the mandatory checklist in `docs/reviewer-packet-checklist.md` **and embed the completed attestation in the packet itself**. The existence of the checklist file alone does not satisfy the control.
 
 Required reviewer output categories:
 
@@ -97,7 +119,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Only the main engineering thread may write `docs/current-state.md` and `docs/decisions.md`.
 - Reason: Prevent reviewer/evaluator outputs from becoming project state before human-gated reconciliation.
-- Provenance: main-thread governance design, 2026-09-10.
+- Provenance: main-thread governance design; indexed by `docs/reviews/2026-09-10-governance-red-team.md` for later governance review.
 - Canonical record: this file.
 
 ## D-002
@@ -106,7 +128,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Reviewer packets must expose raw materials in addition to implementer summaries and must explicitly permit proposal-external findings.
 - Reason: Reduce anchoring and curated-evidence risk in red-team review.
-- Provenance: reviewer governance review, 2026-09-10.
+- Provenance: `docs/reviews/2026-09-10-governance-red-team.md`; Reviewer Packet `91637` and prior governance-review thread.
 - Canonical record: this file.
 
 ## D-003
@@ -115,7 +137,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Blind evaluations requiring independence must run in a physically separate fresh conversation with minimum necessary context.
 - Reason: Prevent context leakage and anchoring from prior labels, mappings, and discussion.
-- Provenance: P0.5-A rater reconciliation experience.
+- Provenance: P0.5-A rater reconciliation; canonical experiment record `docs/experiments/p05a-lexical.md`.
 - Canonical record: this file.
 
 ## D-004
@@ -124,7 +146,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Seen diagnostic data may not be reused as a future gate set for the same line of development.
 - Reason: Prevent test-set contamination and post-hoc optimization.
-- Provenance: P0.5-A post-evaluation review.
+- Provenance: P0.5-A post-evaluation review; `docs/experiments/p05a-lexical.md`.
 - Canonical record: this file.
 
 ## D-005
@@ -140,10 +162,10 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 ## D-006
 
 - Type: `architecture`
-- Status: `SUPERSEDED`
+- Status: `REJECTED`
 - Decision: Restrict P0.5 to semantic reranking of lexical candidates only.
-- Reason: Later semantic-vs-lexical diagnostics found a material retrieval-level recall gap.
-- Provenance: semantic-gap diagnostic and reviewer challenge to candidate-pool adequacy.
+- Reason: The idea was never adopted as governing/production architecture; later semantic-vs-lexical diagnostics showed a material retrieval-level recall gap.
+- Provenance: semantic-gap diagnostic plus reviewer challenge; see `docs/reviews/2026-09-10-governance-red-team.md` and `docs/architecture/research-retrieval.md`.
 - Canonical reference: `docs/architecture/research-retrieval.md`
 
 ## D-007
@@ -152,7 +174,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `PROPOSED`
 - Decision: Evaluate a three-arm P0.5 retrieval design: lexical (L), semantic (S), and hybrid lexical+semantic (H).
 - Reason: OpenAlex corpus-level semantic retrieval surfaced many high-relevance works absent from lexical top-100 pools; production architecture remains contingent on a preregistered fresh-holdout experiment.
-- Provenance: semantic-gap diagnostic; architecture remains a proposal pending P0.5 hybrid experiment.
+- Provenance: semantic-gap diagnostic; technical/governance review recorded in `docs/reviews/2026-09-10-governance-red-team.md`.
 - Canonical references:
   - Architecture dimension: `docs/architecture/research-retrieval.md`
   - Experimental dimension: `docs/experiments/p05-hybrid-semantic.md` (to be created at preregistration)
@@ -163,7 +185,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Never claim more evidence than the system has actually seen.
 - Reason: Preserve evidence integrity across metadata/abstract/full-text levels.
-- Provenance: main research architecture invariant.
+- Provenance: main research architecture invariant; canonical record `docs/privacy/research-privacy.md`.
 - Canonical reference: `docs/privacy/research-privacy.md`
 
 ## D-009
@@ -172,7 +194,7 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Never expose a user's research interests to anyone other than that user; institutional analytics, if added, must be aggregate-only with no stored queries, topics, or user IDs.
 - Reason: Preserve research-interest privacy.
-- Provenance: main research privacy invariant.
+- Provenance: main research privacy invariant; canonical record `docs/privacy/research-privacy.md`.
 - Canonical reference: `docs/privacy/research-privacy.md`
 
 ## D-010
@@ -181,17 +203,55 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Status: `LOCKED`
 - Decision: Reviewer-derived decisions must carry traceable provenance; material out-of-scope findings require explicit main-thread triage; mixed/inconclusive reconciliation observations do not close source conflicts.
 - Reason: Prevent transcription drift, orphaned reviewer findings, and false reconciliation.
-- Provenance: reviewer governance review, 2026-09-10.
+- Provenance: `docs/reviews/2026-09-10-governance-red-team.md`.
 - Canonical record: this file.
 
 ## D-011
 
 - Type: `process-rule`
 - Status: `LOCKED`
-- Decision: A full Reviewer Packet may not be sent until every listed RAW MATERIALS item passes an explicit completeness check for presence/accessibility, currency, and full-vs-excerpt labeling.
-- Reason: Two consecutive packets claimed that raw canonical files were attached/pasted when they were not; a declarative rule alone did not prevent recurrence.
-- Provenance: `OUT-OF-SCOPE FINDING — Reviewer Packet oluşturma sürecinde tamlık kontrolü yok`, reviewer feedback, 2026-09-10.
+- Decision: A full Reviewer Packet may not be sent until every listed RAW MATERIALS item passes an explicit completeness check and the completed attestation is embedded in the packet itself.
+- Reason: Two consecutive packets claimed that raw canonical files were attached/pasted when they were not; a declarative checklist file alone did not prevent recurrence.
+- Provenance: `docs/reviews/2026-09-10-governance-red-team.md`, findings G-01/OOS-02.
 - Canonical reference: `docs/reviewer-packet-checklist.md`
-- Triage: `OPEN -> RESOLVED BY PROCESS CONTROL` through mandatory pre-send checklist implementation.
+- Triage: `OPEN -> RESOLVED BY PROCESS CONTROL` through embedded pre-send attestation.
+
+## D-012
+
+- Type: `architecture`
+- Status: `LOCKED`
+- Decision: Treat OpenAlex semantic search as a 1 request/second dependency during P0.5 feasibility work and design experiment execution/budgeting accordingly.
+- Reason: Current official semantic-search documentation specifies a 1 request/second semantic-search limit, which is stricter than the general API ceiling.
+- Provenance: OOS-01 in `docs/reviews/2026-09-10-governance-red-team.md`; official OpenAlex semantic-search documentation rechecked 2026-09-10.
+- Canonical reference: `docs/architecture/research-retrieval.md`
+
+## D-013
+
+- Type: `architecture`
+- Status: `LOCKED`
+- Decision: Use $1 per 1,000 semantic-search API calls as the current P0.5 planning price, while preserving the previously reported $10/1,000 discrepancy as historical conflict evidence rather than an active current fact.
+- Reason: On 2026-09-10 the current official OpenAlex Example Costs page lists semantic search at $1/1,000, and the semantic-search page delegates pricing to the pricing-by-endpoint documentation. The previously reported conflicting $10 figure is not currently reproduced by the authoritative pages checked.
+- Provenance: OOS-01 in `docs/reviews/2026-09-10-governance-red-team.md`; official OpenAlex pricing/semantic documentation rechecked 2026-09-10.
+- Canonical reference: `docs/architecture/research-retrieval.md`
+
+## D-014
+
+- Types: `architecture`, `experimental-outcome`
+- Status: `LOCKED`
+- Decision: The H arm must not be executed or evaluated until its fusion/ranking algorithm, tie-breaking, candidate depths, and any score normalization are explicitly specified and frozen in the P0.5 hybrid preregistration.
+- Reason: “Frozen deterministic fusion/ranking” currently names a requirement, not an algorithm; leaving it undefined would permit post-hoc tuning and invalidate a clean L/S/H comparison.
+- Provenance: OOS-01 in `docs/reviews/2026-09-10-governance-red-team.md`.
+- Canonical references:
+  - Architecture constraint: `docs/architecture/research-retrieval.md`
+  - Experimental protocol: `docs/experiments/p05-hybrid-semantic.md` (to be created before execution)
+
+## D-015
+
+- Type: `process-rule`
+- Status: `LOCKED`
+- Decision: Canonical files and decision records use separate controlled status vocabularies; `SUPERSEDED` is reserved for previously adopted/LOCKED state, while never-adopted proposals use `REJECTED`.
+- Reason: Prevent readers from inferring that a discarded proposal was once production/governing state and remove free-form file-status ambiguity.
+- Provenance: governance findings G-03/G-04 in `docs/reviews/2026-09-10-governance-red-team.md`.
+- Canonical record: this file.
 
 Last updated: 2026-09-10
