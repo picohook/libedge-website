@@ -1,5 +1,9 @@
 # Research Privacy and Evidence Invariants
 
+Status: `ACTIVE`
+Canonical decisions: `docs/decisions.md` D-008, D-009
+Supersession rule: if these invariants are replaced, this file must be marked `SUPERSEDED (see D-0XX and replacement record)`; a replacement may not silently overwrite the historical governing record.
+
 ## LOCKED PRINCIPLES
 
 ### Evidence integrity
