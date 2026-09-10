@@ -23,6 +23,11 @@ on:
         required: true
         type: boolean
         default: true
+      run_research:
+        description: 'Run research metadata smoke'
+        required: true
+        type: boolean
+        default: true
       run_frontend:
         description: 'Run frontend browser smoke'
         required: true
@@ -61,6 +66,7 @@ jobs:
         env:
           RUN_AUTH: ${{ inputs.run_auth }}
           RUN_FILES: ${{ inputs.run_files }}
+          RUN_RESEARCH: ${{ inputs.run_research }}
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
           LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
@@ -75,9 +81,12 @@ jobs:
             fi
           }
 
-          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ]; then
+          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_RESEARCH" = "true" ]; then
             require_secret LIBEDGE_SMOKE_EMAIL
             require_secret LIBEDGE_SMOKE_PASSWORD
+          fi
+
+          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ]; then
             require_secret LIBEDGE_SMOKE_ADMIN_EMAIL
             require_secret LIBEDGE_SMOKE_ADMIN_PASSWORD
           fi
@@ -105,6 +114,14 @@ jobs:
           LIBEDGE_SMOKE_OTHER_EMAIL: ${{ secrets.LIBEDGE_SMOKE_OTHER_EMAIL }}
           LIBEDGE_SMOKE_OTHER_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_OTHER_PASSWORD }}
         run: npm run smoke:files
+
+      - name: Run research smoke
+        if: inputs.run_research
+        env:
+          LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+        run: npm run smoke:research
 
       - name: Run frontend browser smoke
         if: inputs.run_frontend
