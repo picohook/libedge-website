@@ -9,7 +9,34 @@ Prevent a Reviewer Packet from claiming that raw materials are attached or acces
 
 ## Mandatory pre-send check
 
-Before a Reviewer Packet is handed to an independent reviewer, the main engineering thread must verify every item below.
+Before a Reviewer Packet is handed to an independent reviewer, the main engineering thread must verify every item below **inside the packet itself**.
+
+A separate checklist file is not sufficient evidence of completion. Every full Reviewer Packet must carry a completed attestation block showing the actual materials and checks for that packet.
+
+## Required embedded attestation block
+
+Every full Reviewer Packet must contain a block equivalent to:
+
+```text
+REVIEWER PACKET COMPLETENESS ATTESTATION
+Packet ID: <id>
+Branch/ref/commit: <exact version context>
+
+RAW MATERIALS
+[x] <material 1> — present/accessibly linked — full/excerpt correctly labeled — current intended version
+[x] <material 2> — present/accessibly linked — full/excerpt correctly labeled — current intended version
+...
+
+CONSISTENCY
+[x] No claim such as attached/pasted/included is false.
+[x] Implementer summary is separated from raw material.
+[x] Raw material is authoritative over the summary.
+[x] Reviewer may report OUT-OF-SCOPE FINDING items.
+
+RESULT: COMPLETE
+```
+
+Unchecked `[ ]`, missing rows, or a non-COMPLETE result mean the packet is not a full Reviewer Packet.
 
 ### RAW MATERIALS completeness
 
@@ -28,11 +55,14 @@ For each item listed under `RAW MATERIALS` in the packet:
 - [ ] The reviewer is explicitly told that raw materials are authoritative over the implementer summary.
 - [ ] The reviewer has permission to report `OUT-OF-SCOPE FINDING` items.
 
-### Gate
+## Gate
 
-A packet is `COMPLETE` only if every applicable checkbox above is YES.
+A packet is `COMPLETE` only if:
 
-If any item is NO:
+1. every applicable checklist condition is YES; and
+2. the packet itself contains the completed attestation block with every listed material explicitly marked `[x]`.
+
+If any item is NO or unchecked:
 
 - Status: `INCOMPLETE — DO NOT SEND AS FULL REVIEW PACKET`.
 - Either add the missing material or explicitly downgrade the request to a limited summary-only review.
