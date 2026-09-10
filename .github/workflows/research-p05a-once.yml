@@ -26,3 +26,5 @@ jobs:
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
         run: node scripts/research-query-conditional.mjs
+
+# One-shot rerun after staging-only research quota override.
