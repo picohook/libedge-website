@@ -10,7 +10,7 @@ Status: `ACTIVE`
 
 P0.5 experimental sequence is **CLOSED / independently verified**. H is rejected. D-016 is **LOCKED** for the existing top-10 research-result contract: semantic S primary, lexical L only as objective availability fallback/rollback.
 
-The D-016 staging implementation plan and follow-up were independently accepted. The implementation code range `d3acdb67a1b9677cf16508af804950fbbc1312f0 -> aeeafd735b9d977c67f4cdc4b95c307fc69c92d9` has now received independent code/diff review: `ACCEPTED`.
+The D-016 staging implementation plan and follow-up were independently accepted. The implementation code range `d3acdb67a1b9677cf16508af804950fbbc1312f0 -> aeeafd735b9d977c67f4cdc4b95c307fc69c92d9` received independent code/diff review: `ACCEPTED`.
 
 The reviewer authorized only staging deployment with `RESEARCH_SEMANTIC_PRIMARY_ENABLED=false` and baseline mechanical smoke verification. Semantic-primary staging enablement and broad production enablement remain unauthorized.
 
@@ -26,13 +26,36 @@ Main-thread CI evidence:
 
 Reviewer independently inspected the implementation and critical test logic but could not rerun the suite in the review sandbox because of an environment-specific npm/arborist failure. That verification-depth limitation is preserved in the canonical review record.
 
-## Deployment state
+## Deployment state — FAILED BEFORE PUBLISH
 
 The reviewed implementation has **not yet been successfully deployed to staging**.
 
-An earlier automatic `Deploy Workers` run `34532061034` was triggered at intermediate commit `9f168194c0b9a3dc21eb41e291701ae9f3a44344`, before the later test updates were present. Its quality job failed on the then-stale hashed-cache test, so both staging and production deploy jobs were skipped. Later CI at the completed code head passed all tests and the Wrangler staging dry-run, but the later commits did not create a successful staging deployment of the reviewed head.
+Authorized staging deploy run `34534642824` at commit `4dc809efc9e8636d3af95e9e6a0e8c9422be257d` completed with overall `failure`:
 
-Therefore the next deployment must explicitly deploy the current staging branch through the existing `Deploy Workers` workflow with target `staging`; the semantic flag remains false.
+- `Quality gate`: PASS;
+- `Deploy backend to staging`: FAIL at `npx wrangler deploy --env staging`;
+- `Deploy backend to production`: SKIPPED.
+
+The Cloudflare API rejected creation of the `OPENALEX_SEMANTIC_PACER` Durable Object binding because class `OpenAlexSemanticPacer` was not provisioned through a recognized Durable Object lifecycle declaration. Wrangler `4.86.0` reported error code `10061`, requested a `new_sqlite_classes` migration, and also warned that the current top-level `[exports.OpenAlexSemanticPacer]` field is unexpected for that executable.
+
+No new staging Worker version was published by this failed deployment. Semantic-primary remained OFF and production was untouched.
+
+Canonical failure/correction record: `docs/reviews/2026-09-11-d016-staging-deploy-failure.md`.
+
+## Proposed deployment-config correction — NOT YET COMMITTED TO `wrangler.toml`
+
+The exact proposed correction is intentionally uncommitted because `wrangler.toml` is watched by the staging deployment workflow and committing it would itself start a deployment attempt.
+
+Proposed correction:
+
+- remove unsupported `[exports.OpenAlexSemanticPacer]` declarative lifecycle block;
+- add one top-level legacy migration compatible with the repository's current Wrangler executable:
+  - `tag = "v1-openalex-semantic-pacer"`;
+  - `new_sqlite_classes = ["OpenAlexSemanticPacer"]`.
+
+No runtime JavaScript, D-016 behavior, feature flag, fallback rule, pacing interval, privacy rule, cache policy or production rollout rule changes.
+
+This correction requires independent review before commit/redeploy.
 
 ## Accepted implementation properties
 
@@ -67,21 +90,22 @@ Therefore the next deployment must explicitly deploy the current staging branch 
 
 ## NEXT
 
-1. Run the existing `Deploy Workers` workflow manually against the current `staging` branch, target environment `staging`, backend deploy enabled.
-2. Verify workflow quality/deploy jobs and actual deployed revision with semantic-primary still OFF.
-3. Perform baseline mechanical smoke verification of the staging API/legacy lexical behavior without enabling S.
-4. Record the baseline deployment/smoke evidence and obtain the next independent authorization before controlled semantic-primary staging enablement.
-5. Broad production enablement remains a separate later decision after capacity/rollout controls.
+1. Independent reviewer inspects `docs/reviews/2026-09-11-d016-staging-deploy-failure.md`, the actual failed run/log, and current `wrangler.toml`.
+2. Reviewer accepts/modifies/rejects the exact proposed lifecycle correction.
+3. Only after acceptance may the exact `wrangler.toml` correction be committed; that commit will trigger the next staging deploy attempt.
+4. Verify quality/deploy jobs and actual deployed revision with semantic-primary still OFF.
+5. Perform baseline mechanical smoke verification without enabling S.
+6. Controlled semantic-primary staging enablement remains a later separately authorized step.
+7. Broad production enablement remains a separate later decision after capacity/rollout controls.
 
 ## Canonical records
 
 - Decisions: `docs/decisions.md`
 - Locked architecture: `docs/architecture/p05-production-retrieval-decision.md`
 - Implementation plan: `docs/architecture/p05-production-retrieval-implementation-plan.md`
-- Pre-implementation review: `docs/reviews/2026-09-11-d016-preimplementation-review.md`
-- Pre-implementation follow-up acceptance: `docs/reviews/2026-09-11-d016-preimplementation-followup-review.md`
 - Implementation record: `docs/architecture/p05-production-retrieval-implementation.md`
 - Code review: `docs/reviews/2026-09-11-d016-code-review.md`
+- Deploy failure / proposed correction: `docs/reviews/2026-09-11-d016-staging-deploy-failure.md`
 - Reviewer packet checklist: `docs/reviewer-packet-checklist.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
