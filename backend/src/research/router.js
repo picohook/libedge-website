@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../auth/middleware.js';
 import { checkProtectedRateLimit } from '../auth/rate-limit.js';
+import { checkOpenAlexSoftBudget, recordOpenAlexCost } from './budget.js';
 import { deduplicateResearchWorks, mergeCrossrefEnrichment } from './deduplicate.js';
 import { selectCrossrefEnrichmentCandidates } from './policy.js';
 import { searchOpenAlex } from './providers/openalex.js';
-import { fetchCrossrefByDoi } from './providers/crossref.js';
+import { fetchCrossrefByDoi, searchCrossref } from './providers/crossref.js';
 
 const app = new Hono();
 const DEFAULT_CACHE_TTL_SECONDS = 600;
@@ -54,8 +55,15 @@ async function writeCache(env, key, value) {
 }
 
 function providerStatusFromError(error) {
+  if (error?.code?.includes('BUDGET')) return 'budget_exhausted';
   if (error?.code?.includes('RATE_LIMITED')) return 'rate_limited';
   return 'unavailable';
+}
+
+function budgetError() {
+  const error = new Error('OPENALEX_BUDGET_EXHAUSTED');
+  error.code = 'OPENALEX_BUDGET_EXHAUSTED';
+  return error;
 }
 
 async function enrichWithCrossref(works, env) {
@@ -88,6 +96,27 @@ async function enrichWithCrossref(works, env) {
   return { results, status };
 }
 
+async function crossrefFallback(query, env, perPage, openAlexError) {
+  try {
+    const crossref = await searchCrossref(query, env, { perPage });
+    return {
+      response: {
+        results: deduplicateResearchWorks(crossref.results),
+        meta: {
+          partial: true,
+          cached: false,
+          providers: {
+            openalex: { status: providerStatusFromError(openAlexError) },
+            crossref: { status: 'ok' }
+          }
+        }
+      }
+    };
+  } catch (crossrefError) {
+    return { error: crossrefError };
+  }
+}
+
 app.get('/api/research/search', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
@@ -115,22 +144,38 @@ app.get('/api/research/search', async (c) => {
     });
   }
 
-  let openAlex;
-  try {
-    openAlex = await searchOpenAlex(query, c.env, { perPage });
-  } catch (error) {
+  const budget = await checkOpenAlexSoftBudget(c.env);
+  let openAlex = null;
+  let openAlexError = budget.allowed ? null : budgetError();
+
+  if (budget.allowed) {
+    try {
+      openAlex = await searchOpenAlex(query, c.env, { perPage });
+      await recordOpenAlexCost(c.env, openAlex.telemetry?.requestCostUsd);
+    } catch (error) {
+      openAlexError = error;
+    }
+  }
+
+  if (!openAlex) {
+    const fallback = await crossrefFallback(query, c.env, perPage, openAlexError);
+    if (fallback.response) {
+      await writeCache(c.env, cacheKey, fallback.response);
+      return c.json(fallback.response);
+    }
+
     return c.json({
       error: 'Akademik veri sağlayıcılarına şu anda ulaşılamıyor',
-      code: error?.code === 'OPENALEX_RATE_LIMITED' ? 'RESEARCH_PROVIDER_RATE_LIMITED' : 'RESEARCH_PROVIDERS_UNAVAILABLE',
+      code: 'RESEARCH_PROVIDERS_UNAVAILABLE',
       meta: {
         partial: false,
         cached: false,
         providers: {
-          openalex: { status: providerStatusFromError(error) },
-          crossref: { status: 'skipped' }
+          openalex: { status: providerStatusFromError(openAlexError) },
+          crossref: { status: providerStatusFromError(fallback.error) }
         }
       }
-    }, error?.code === 'OPENALEX_RATE_LIMITED' ? 429 : 503);
+    }, 503);
   }
 
   const baseResults = deduplicateResearchWorks(openAlex.results);
