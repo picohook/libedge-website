@@ -12,7 +12,7 @@ export function needsCrossrefEnrichment(work, options = {}) {
   if (!work?.doi) return false;
 
   const requireAbstract = options.requireAbstract !== false;
-  const requireLicense = options.requireLicense !== false;
+  const requireLicense = options.requireLicense === true;
 
   if (requireAbstract && !hasUsefulAbstract(work)) return true;
   if (requireLicense && !hasLicenseObservation(work)) return true;
@@ -29,13 +29,22 @@ export function selectCrossrefEnrichmentCandidates(works, options = {}) {
 
   const selected = [];
   const seenDois = new Set();
+  const candidates = works
+    .filter((work) => work?.doi)
+    .map((work, index) => ({
+      work,
+      index,
+      missingAbstract: !hasUsefulAbstract(work),
+      missingLicense: !hasLicenseObservation(work)
+    }))
+    .filter(({ work }) => needsCrossrefEnrichment(work, options))
+    .sort((a, b) => Number(b.missingAbstract) - Number(a.missingAbstract) || a.index - b.index);
 
-  for (const work of works) {
-    if (!needsCrossrefEnrichment(work, options)) continue;
-    const doi = String(work.doi || '').trim().toLowerCase();
+  for (const candidate of candidates) {
+    const doi = String(candidate.work.doi || '').trim().toLowerCase();
     if (!doi || seenDois.has(doi)) continue;
     seenDois.add(doi);
-    selected.push(work);
+    selected.push(candidate.work);
     if (selected.length >= max) break;
   }
 
