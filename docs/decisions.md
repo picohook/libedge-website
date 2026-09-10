@@ -264,4 +264,14 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Provenance: governance findings G-03/G-04 in `docs/reviews/2026-09-10-governance-red-team.md`.
 - Canonical record: this file.
 
+## D-017
+
+- Type: `process-rule`
+- Status: `LOCKED`
+- Decision: A derived experimental artifact must not enter a new irreversible/frozen stage until the immediately upstream artifact has completed its required reviewer packet and received `ACCEPTED` or `ACCEPTED WITH MODIFICATION`. Parallel construction is permitted only if the derived artifact is explicitly marked `PROVISIONAL — pending upstream review`; it may not be promoted to `FROZEN`, have a mapping treated as sealed for evaluator use, or be delivered to a blind rater until the upstream review is accepted.
+- Reason: The P0.5 evaluator bundle was constructed and frozen before the retrieval-execution review completed. No harm occurred because retrieval was subsequently accepted without correction, but the ordering could have forced regeneration of an already-frozen derived artifact if an execution correction had been required.
+- Provenance: OUT-OF-SCOPE FINDING from the P0.5 retrieval/bundle sequencing review returned to the main engineering thread on 2026-09-10.
+- Canonical record: this file.
+- Triage: `OPEN -> RESOLVED BY PROCESS CONTROL`; applies prospectively. Existing P0.5 bundle remains valid because its upstream retrieval artifact was later independently `ACCEPTED` with no execution correction.
+
 Last updated: 2026-09-10
