@@ -157,27 +157,44 @@ Primary relevance metric: `Relevant@10`, where only `R` counts positive.
 
 Secondary diagnostic metric: `(R+M)@10`; it is descriptive and cannot override a failed primary gate.
 
-## BLIND EVALUATION
+## BLIND TWO-RATER EVALUATION
 
-The evaluator must operate in a physically separate fresh conversation/context.
+The fresh 40-query Gate A/Gate B evaluation uses two independent blind raters. Each rater must operate in a physically separate fresh conversation/context and must not see the other rater's labels, reasoning, or gate results before locking their own labels.
 
-The evaluator receives:
+Each rater receives:
 - anonymous query ID,
 - intent text,
 - randomized anonymous result lists,
 - frozen relevance rubric,
 - only the bibliographic/evidence fields defined in the frozen evaluator bundle.
 
-The evaluator must NOT receive:
+Each rater must NOT receive:
 - L/S/H mapping,
 - provider/ranking-arm identity,
 - previous P0.5-A labels or results,
 - A1/A2/A5/A6/A7 diagnostic history,
 - expected winner,
 - gate calculations,
-- implementation discussion.
+- implementation discussion,
+- the other rater's labels or conclusions.
 
-Arm mapping is opened only after labels are locked.
+The same frozen randomized bundle and rubric are used for both primary raters. Arm mapping is opened only after both primary raters have locked all labels.
+
+### Per-rater gate calculation
+
+Gate A, Gate B, and S-vs-L diagnostic metrics are calculated separately for each rater using that rater's labels. `N_eff` is determined mechanically from retrieval coverage and therefore is the same for both raters for a given pairwise comparison; all count thresholds use the preregistered `ceil(fraction * N_eff)` rule.
+
+Do not average R/M/N labels across raters before gate calculation and do not reconcile individual labels post hoc merely to force agreement.
+
+### Rater reconciliation
+
+- If both primary raters produce the same PASS/FAIL result for Gate A **and** the same PASS/FAIL result for Gate B, the H gate outcome is `RATER-ROBUST` for this experiment. Component metrics for both raters remain reported separately.
+- If the two primary raters disagree on Gate A or Gate B, obtain a third blind evaluator in a new fresh context using the same frozen bundle and rubric and no access to prior rater outputs.
+- With three raters, each gate is resolved independently by majority gate-level PASS/FAIL (at least 2 of 3 raters). Component metrics from all three raters remain separately reported.
+- A third rater is not used to rewrite or negotiate earlier labels.
+- If a rater cannot complete the frozen bundle or a procedural contamination occurs, that rater is invalidated for procedural reasons before mapping/gate interpretation and must be replaced by a fresh blind rater; do not selectively invalidate a rater because of an unfavorable result.
+
+The S-vs-L comparison remains diagnostic and is reported per rater; it does not independently create an H PASS.
 
 ## PRIMARY COMPARISONS
 
@@ -188,6 +205,8 @@ Primary adoption comparison: `H vs L`.
 Mandatory non-inferiority architecture guardrail: `H vs S`.
 
 Secondary architecture diagnostic: `S vs L`.
+
+`S vs L` is **not** an adoption gate in this experiment. It is mandatory architecture evidence used to interpret whether semantic retrieval alone is the simpler promising alternative when H is not preferred.
 
 The experiment must report all three. H cannot be adopted merely because it beats L if it is materially worse than S, and S beating L does not by itself imply that H should be adopted.
 
@@ -202,9 +221,11 @@ H passes Gate A only if ALL conditions hold:
 3. Strong-improvement queries (`delta >= +20pp`) >= ceil(0.25 * N_eff).
 4. No domain mean regression worse than -5pp.
 5. No single-query regression worse than -20pp.
-6. Conjunctive-intent slice mean regression is not below 0pp.
-7. Lexical-ambiguity slice mean regression is not below 0pp.
+6. Conjunctive-intent slice mean H-L >= -3pp.
+7. Lexical-ambiguity slice mean H-L >= -3pp.
 8. No baseline-relative coverage regression pattern that violates the mechanical validity rule above.
+
+The `-3pp` slice floor is a preregistered tolerance for small evaluator/granularity variation; it is stricter than the `-5pp` domain floor and must not be changed after holdout generation.
 
 Failure of any condition means H does not pass Gate A.
 
@@ -218,29 +239,38 @@ H passes Gate B only if ALL conditions hold:
 2. Non-worse queries (`delta >= 0`) >= ceil(0.60 * N_eff).
 3. No domain mean regression worse than -5pp.
 4. No single-query regression worse than -20pp.
-5. Conjunctive-intent slice mean regression is not below 0pp.
-6. Lexical-ambiguity slice mean regression is not below 0pp.
+5. Conjunctive-intent slice mean H-S >= -3pp.
+6. Lexical-ambiguity slice mean H-S >= -3pp.
 7. No baseline-relative coverage regression pattern that violates the mechanical validity rule above.
+
+The same preregistered `-3pp` slice floor applies to Gate B and must not be changed after holdout generation.
 
 Gate B is a non-inferiority guardrail, not a requirement that H materially outperform S. If H fails Gate B, H cannot be the preferred architecture even if it passes H-vs-L Gate A.
 
 ## S VS L DIAGNOSTIC
 
-S vs L is evaluated with the same reported metrics used above, but it is architecture evidence rather than an automatic production-adoption decision.
+S vs L is evaluated with the same reported component metrics used above, including mean Relevant@10 delta, non-worse rate/count, domain deltas, worst single-query delta, declared-slice deltas, and coverage. It has no PASS/FAIL adoption status in this preregistration.
 
-This distinguishes whether gains come from semantic retrieval itself or from hybrid fusion.
+This distinguishes whether gains come from semantic retrieval itself or from hybrid fusion and informs the next architecture decision when H is rejected or merely eligible for consideration.
 
-## ADOPTION LOGIC
+## PREDECLARED A/B DECISION MATRIX
 
-- H is eligible for architecture consideration only if both Gate A (H vs L) and Gate B (H vs S) PASS.
-- If H fails Gate A, H is rejected for this experiment regardless of Gate B.
-- If H passes Gate A but fails Gate B, prefer further consideration of S over H; do not adopt the more complex hybrid merely because it beats L.
-- If S materially outperforms H, record that result explicitly as evidence in favor of semantic-only simplicity.
-- Passing both gates still does not automatically deploy H to production; production adoption remains a separate architecture decision.
+Final H disposition is determined from the reconciled Gate A and Gate B results before inspecting the seen harm-regression slice:
+
+| Gate A: H vs L | Gate B: H vs S | H disposition | Architecture consequence |
+| --- | --- | --- | --- |
+| PASS | PASS | `H ELIGIBLE` | H may advance to a separate production-architecture decision; compare complexity/cost against S-vs-L diagnostic evidence. No automatic deployment. |
+| PASS | FAIL | `H REJECTED` | H improves on L but is inferior to simpler S; do not adopt H. Use S-vs-L diagnostic evidence to decide whether S merits separate architecture consideration. |
+| FAIL | PASS | `H REJECTED` | H is not materially better than L even though non-inferior to S. Do not adopt H. Use S-vs-L diagnostic evidence to decide whether S merits separate architecture consideration; otherwise retain L. |
+| FAIL | FAIL | `H REJECTED` | H fails both requirements. Use S-vs-L diagnostic evidence to determine whether S remains a candidate; if S is also not compelling, retain L and open a new hypothesis only on new evidence. Vectorize is not automatically triggered. |
+
+The matrix is exhaustive for H in this experiment. No post-hoc fifth category may be invented after results are observed.
+
+A separate production architecture decision is required even for `H ELIGIBLE`.
 
 ## SEEN HARM-REGRESSION SLICE
 
-After the fresh gate is fully evaluated and mappings are locked/opened, run A1/A2/A5/A6/A7 through **all three arms L, S, and H** using the same frozen retrieval, deduplication, fusion, and ranking rules.
+After the fresh gate is fully evaluated, primary rater labels are locked, any required third-rater reconciliation is complete, and mappings are opened, run A1/A2/A5/A6/A7 through **all three arms L, S, and H** using the same frozen retrieval, deduplication, fusion, and ranking rules.
 
 Purpose: detect recurrence of previously observed harm patterns.
 
@@ -250,6 +280,8 @@ These five queries:
 - cannot rescue a failed fresh gate,
 - cannot create a PASS,
 - must be reported even if results are unfavorable.
+
+The seen harm-regression slice may influence the later separate production-architecture decision as risk evidence, but it may not retroactively change the preregistered fresh-holdout Gate A/Gate B result.
 
 ## ECONOMIC / OPERATIONAL RECORD
 
@@ -296,11 +328,13 @@ Raw measurement evidence must be preserved in `docs/architecture/research-retrie
 4. Mark this preregistration `FROZEN`.
 5. Generate/freeze the fresh 40-query holdout and slice tags.
 6. Execute L/S/H retrieval without tuning.
-7. Prepare randomized blind evaluator bundle.
-8. Obtain and lock blind labels.
-9. Open arm mapping and calculate Gate A, Gate B, and S-vs-L diagnostics.
-10. Run/report seen harm-regression slice.
-11. Record final outcome and architecture consequence.
+7. Prepare one frozen randomized blind evaluator bundle.
+8. Obtain and lock two independent blind-rater label sets in separate fresh contexts.
+9. Open arm mapping only after both primary label sets are locked; calculate Gate A, Gate B, and S-vs-L diagnostic separately for each rater.
+10. If Gate A or Gate B differs between primary raters, obtain a third fresh blind-rater label set and apply the preregistered majority gate rule.
+11. Apply the predeclared A/B decision matrix.
+12. Run/report the seen A1/A2/A5/A6/A7 harm-regression slice.
+13. Record final experiment outcome and architecture consequence.
 
 ## AMENDMENT HISTORY
 
