@@ -25,26 +25,29 @@ P0.5 — Frozen fresh-holdout retrieval preparation/execution under FROZEN prere
 - P0.5 Hybrid Semantic Retrieval preregistration — FROZEN 2026-09-10 before fresh gate holdout generation.
 - Pre-holdout economic amendment — CLOSED before holdout generation/results: total provider budget corrected to include both L and S calls.
 - Fresh 40-query holdout construction/tagging — CLOSED / FROZEN before retrieval. Canonical holdout: `docs/experiments/p05-hybrid-semantic-holdout.md`.
+- Pre-retrieval governance cleanup — CLOSED: D-007 now LOCKED for experiment execution only; production adoption separated into D-016 PROPOSED.
+- Pre-retrieval retry/failure clarification — CLOSED before any fresh L/S result: one initial request + at most two objective transport/provider retries per query/arm; persistent failure is recorded and mechanically excluded for affected pairwise aggregate relevance metrics.
 
 ## ACTIVE
 
 - Frozen holdout contains exactly 40 unseen intents: 10 Materials/Energy, 10 Biomedical, 10 Social Science, 10 Humanities.
 - Frozen slices: conjunctive 17, lexical ambiguity 15, technical/jargon 16; overlap permitted.
-- No L/S/H retrieval result was inspected during holdout construction/tagging/audit.
+- No L/S/H retrieval result was inspected during holdout construction/tagging/audit or the pre-retrieval governance/retry clarifications.
 - Candidate architecture under test:
   - L: OpenAlex lexical top-100 baseline.
   - S: OpenAlex semantic top-50 retrieval.
   - H: L/S union -> canonical deduplication -> RRF `k=60` -> deterministic tie-break -> top 10; no additional provider call.
 - OpenAlex semantic-search operational constraint: <=1 request/second.
+- Per query/arm retry rule: one initial request + maximum two retries, only after objective transport/provider failure (timeout/network failure, HTTP 429, HTTP 5xx). Successful responses are never retried for result quality/count/ranking. Persistent failure becomes `retrieval-failure`; no query replacement/rewrite.
 - P0.5 frozen economic assumption: measured `$0.001 / provider call` for both semantic observations and lexical control. Base plan: 45 lexical + 45 semantic = 90 provider calls / `$0.090`. Operational cap: 120 charged provider calls / `$0.120`, allowing 30 retry calls across L+S.
 - Passive charged-cost/credit monitoring is ACTIVE for the upcoming 40-query batch and later 5-query harm slice. Cost monitoring stores no query/topic/user research-interest content.
-- Production semantic/hybrid retrieval remains NOT ADOPTED pending fresh-holdout evidence and a later architecture decision.
+- Production semantic/hybrid retrieval remains NOT ADOPTED; D-016 is PROPOSED pending fresh-holdout evidence and a later architecture decision.
 
 ## NEXT
 
-1. Execute exactly one L and one S provider retrieval per frozen holdout intent with passive cost telemetry; H reuses those pools.
-2. Preserve raw candidate pools and mechanical coverage counts without relevance judgments or tuning.
-3. Compute H strictly with frozen dedup/RRF/tie-break rules.
+1. Execute exactly one initial L and one initial S provider retrieval per frozen holdout intent with passive cost telemetry; use only the frozen objective retry rule on transport/provider failure. H reuses successful L/S pools.
+2. Preserve raw candidate pools, attempt/failure records, charged-cost telemetry, and mechanical coverage counts without relevance judgments or tuning.
+3. Compute H strictly with frozen dedup/RRF/tie-break rules for mechanically valid retrievals.
 4. Prepare/freeze randomized evaluator bundle and bibliographic/evidence fields.
 5. Obtain two independent blind-rater label sets in separate fresh lineages; third rater only for Gate A/B disagreement.
 6. Report all component vectors per rater and apply frozen A/B matrix.
