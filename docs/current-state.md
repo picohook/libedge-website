@@ -8,7 +8,7 @@ Status: `ACTIVE`
 
 ## Current phase
 
-P0.5 — Fresh 40-query retrieval COMPLETE; frozen blind two-rater evaluation READY / mapping SEALED.
+P0.5 — Fresh 40-query retrieval COMPLETE and independently mechanically ACCEPTED; frozen blind two-rater evaluation READY / mapping SEALED.
 
 ## CLOSED
 
@@ -29,6 +29,7 @@ P0.5 — Fresh 40-query retrieval COMPLETE; frozen blind two-rater evaluation RE
 - Pre-retrieval retry/failure clarification — CLOSED before any fresh L/S result: one initial request + at most two objective transport/provider retries per query/arm; persistent failure is recorded and mechanically excluded for affected pairwise aggregate relevance metrics.
 - Fresh 40-query L/S retrieval — CLOSED / EXECUTED 2026-09-10. Exactly 80 provider attempts = 40 L + 40 S; no retries, no retrieval failures; H mechanically available for 40/40 queries. Observed charge `$0.080`; no D-013 pricing anomaly. Canonical execution record: `docs/experiments/p05-hybrid-semantic-retrieval.md`.
 - Retrieval mechanical audit — CLOSED: all 40 H top-10 lists independently recomputed under frozen RRF/tie-break with exact agreement; semantic pacing compliant; no low-corpus pairs. Frozen coverage rule reports H-v-L 0/40 regressions, H-v-S 0/40, S-v-L 40/40; the latter is reported without rule reinterpretation.
+- Independent P0.5 retrieval-execution review — CLOSED / ACCEPTED. Reviewer freshly inspected the complete raw artifact and relevant diffs, independently recomputed all 40 H top-10 lists with 400/400 positional agreement, and found no execution correction required. Canonical review: `docs/reviews/2026-09-10-p05-retrieval-execution-review.md`.
 - Fresh blind evaluator bundle construction — CLOSED / FROZEN 2026-09-10 before any relevance labels. Public bundle SHA-256 `a39f172b249dd8fd1b1b97598257fb936a81e3da40e77bc21af9609373330624`; private mapping sealed. Canonical freeze record: `docs/experiments/p05-hybrid-semantic-evaluator-bundle.md`.
 
 ## ACTIVE
@@ -43,6 +44,8 @@ P0.5 — Fresh 40-query retrieval COMPLETE; frozen blind two-rater evaluation RE
 - Fresh retrieval result: L success 40/40, S success 40/40, H available 40/40; all provider calls succeeded on initial attempt. Charged responses 80 / observed total `$0.080`; every recorded request reported `$0.001`, body/header cost evidence agreed, and no D-013 anomaly was detected.
 - Frozen public evaluator bundle artifact: run `34499706628`, artifact ID `10161315961`, bundle-file SHA-256 `a39f172b249dd8fd1b1b97598257fb936a81e3da40e77bc21af9609373330624`. It contains 40 anonymous queries × 3 anonymous A/B/C lists × 10 results using one frozen bibliographic/evidence field set.
 - Private evaluator mapping artifact ID `10161316449`, mapping-file SHA-256 `defd6b39361dff452a826966769b680254d2bc43924143a52cfe2af7ed0b6b0c`; seed commitment `388813fddbb0d2519baafa62cbc28af7e82f3a0cd665314c61ed4c1ddf801bd1`. Mapping MUST remain sealed until BOTH primary blind raters lock all labels.
+- Reviewer OOS-01 is `ACKNOWLEDGED / DEFERRED`: DOI/title dedup fallback branches were not exercised by this OpenAlex-native artifact. Revisit before an OpenAlex-external or ID-less ingestion path depends on fallback identity behavior.
+- Reviewer OOS-02 is `ACKNOWLEDGED / DEFERRED`: S-vs-L coverage regression `40/40` is structurally induced by frozen depth asymmetry (L=100, S<=50). Any final evaluation/architecture summary must keep this caveat adjacent to the statistic and must not present it as a standalone relevance conclusion.
 - No relevance labels, Gate A/B result, S-vs-L relevance conclusion, or production architecture decision exists yet.
 - P0.5 frozen economic assumption remains measured `$0.001 / provider call`. Fresh retrieval consumed 80 of the base experiment's 90 planned calls; later 5-query harm slice still requires 10 base calls. Global experiment cap remains 120 charged provider calls / `$0.120`.
 - Passive charged-cost/credit monitoring remains ACTIVE for the later 5-query harm slice. Cost monitoring stores no query/topic/user research-interest content.
@@ -96,6 +99,7 @@ P0.5 — Fresh 40-query retrieval COMPLETE; frozen blind two-rater evaluation RE
 - P0.5 frozen fresh holdout: `docs/experiments/p05-hybrid-semantic-holdout.md`
 - P0.5 fresh retrieval execution record: `docs/experiments/p05-hybrid-semantic-retrieval.md`
 - P0.5 frozen blind evaluator bundle record: `docs/experiments/p05-hybrid-semantic-evaluator-bundle.md`
+- P0.5 retrieval execution review: `docs/reviews/2026-09-10-p05-retrieval-execution-review.md`
 - D-013 live reconciliation: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`
 - Research privacy/evidence invariants: `docs/privacy/research-privacy.md`
 - Reviewer packet completeness control: `docs/reviewer-packet-checklist.md`
