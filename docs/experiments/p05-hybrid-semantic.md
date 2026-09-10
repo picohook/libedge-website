@@ -102,6 +102,8 @@ A pairwise coverage regression occurs if comparator baseline count >=8 and compa
 
 If either arm in a pair returns fewer than 8 unique normalized candidates, that pair/query is `low-corpus`, excluded from aggregate pairwise relevance metrics, and still reported. Sparse queries are never silently replaced. Coverage is reported per arm, pair, domain, and declared slice.
 
+A permanent retrieval failure in either L or S invalidates H for that query because H structurally requires both frozen candidate pools. Therefore, if either provider arm is `retrieval-failure`, all H-involving pairwise comparisons for that query are excluded from aggregate relevance metrics and reported as mechanically invalid; S-vs-L remains valid only when both L and S succeeded.
+
 ## RELEVANCE RUBRIC
 
 Labels:
@@ -201,11 +203,13 @@ At the measured `$0.001/call`, base planned provider charge is `$0.090`.
 
 Transport/provider retries are counted in actual call/cost totals. Result-dependent retries are prohibited. Operational headroom is frozen at 30 additional charged provider calls across lexical+semantic, for a maximum of `120` charged provider calls and `$0.120` before mandatory investigation. The semantic-specific pacing rule remains <=1 semantic request/second. Exceeding the cap stops automated execution for investigation; it does not authorize query/result replacement.
 
-### Pre-retrieval retry/failure clarification
+### Per-query retry/failure policy — PRE-RETRIEVAL CLARIFICATION
 
-For each query/arm, make the initial provider request plus at most two retries, and retry only after an objective transport/provider failure such as timeout/network failure, HTTP 429, or HTTP 5xx. A successful provider response must never be retried because of candidate count, ranking, content, or apparent relevance; all attempts count toward the global 120-call/$0.120 operational cap.
+For each query/arm, execute one initial provider request and permit at most two retries, only after an objective transport/provider failure such as timeout, network error, HTTP 429, or HTTP 5xx. A successful response must never be retried because of candidate count, ranking, content, or apparent relevance.
 
-If a query/arm still has no successful response after the initial attempt plus two permitted retries, record that arm/query as `retrieval-failure`, preserve the failure in the raw execution record, and treat the affected pair/query as mechanically invalid/excluded from aggregate pairwise relevance metrics while still reporting it. Do not replace or rewrite the intent and do not issue additional result-seeking retries.
+If no successful response is obtained after the initial attempt plus two permitted retries, record that arm/query as `retrieval-failure`; do not replace or alter the query and do not issue further result-seeking retries. The failed arm/query is mechanically invalid for downstream pairwise relevance aggregation and remains explicitly reported. The global 120-call / `$0.120` operational cap remains controlling and may stop execution earlier.
+
+Because H requires both L and S candidate pools, any `retrieval-failure` in either provider arm also makes H unavailable for that query; H must not be synthesized from a single surviving arm.
 
 ### Passive D-013 reopen observation — ACTIVE DURING THIS EXPERIMENT
 
@@ -240,6 +244,6 @@ Append-only from this frozen version onward. No amendment may retroactively alte
 
 - `2026-09-10 — FREEZE`: initial frozen preregistration. D-013 price fixed for semantic planning at `$0.001/call`; initial economic paragraph counted semantic calls only. No fresh gate holdout existed at freeze time.
 - `2026-09-10 — PRE-HOLDOUT BUDGET CORRECTION`: before any fresh holdout was generated or retrieval results observed, corrected the operational budget to count both required provider arms: 45 lexical + 45 semantic = 90 base calls / `$0.090`; cap = 120 total charged calls / `$0.120`, allowing 30 retry calls. Explicitly confirmed passive charged-cost/credit monitoring is active during the 40-query fresh batch and later 5-query harm slice. Retrieval, fusion, relevance, gate, holdout-construction and rater rules are unchanged.
-- `2026-09-10 — PRE-RETRIEVAL RETRY/FAILURE CLARIFICATION`: before any fresh L/S retrieval result was observed, fixed per-query/arm retry handling at one initial request plus at most two retries after objective transport/provider failure only. Persistent failure is recorded as `retrieval-failure` and mechanically excluded for affected pairwise aggregate relevance metrics; no intent replacement/rewrite or result-dependent retry is permitted. Global 120-call/$0.120 cap and all retrieval/fusion/relevance/gate parameters are unchanged.
+- `2026-09-10 — PRE-RETRIEVAL RETRY/FAILURE CLARIFICATION`: before any fresh holdout retrieval was executed, fixed per-query/arm failure handling at one initial request plus at most two retries after objective transport/provider failure only. After three unsuccessful attempts the arm/query is recorded as `retrieval-failure`, is not replaced or result-seeking retried, and is excluded from affected aggregate pairwise relevance metrics while remaining reported. Clarified that H requires both L and S pools, so failure of either provider arm makes H unavailable for that query. No retrieval, fusion, relevance, gate, holdout, slice, or rater rule was changed.
 
 Last updated: 2026-09-10
