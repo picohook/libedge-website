@@ -81,6 +81,19 @@ Frozen holdout: `docs/experiments/p05-hybrid-semantic-holdout.md`
 | HU09 | 100 | 45 | 141 | 1 | 1 |
 | HU10 | 100 | 48 | 144 | 1 | 1 |
 
+## Post-retrieval execution correction control
+
+The frozen raw retrieval artifact is immutable. After retrieval has been observed, a correction is permitted only for an objectively demonstrable mechanical computation or recording defect and only when the correction can be derived from the already-frozen raw artifact without changing a query, provider candidate pool, retrieval/fusion parameter, relevance rubric, gate, or label.
+
+Any such correction MUST be recorded append-only as `EXECUTION CORRECTION`, identify the defect and affected query/field, preserve the original artifact/hash, state the deterministic correction procedure, record before/after derived-artifact hashes where applicable, and state whether evaluator-visible material is affected. Provider retrieval MUST NOT be silently re-run to repair a post-retrieval defect. If the defect cannot be corrected solely from the frozen raw artifact, the affected query/arm is marked mechanically invalid pending explicit governance review rather than replaced or re-retrieved.
+
+No execution correction may be justified by apparent relevance quality, expected gate direction, evaluator labels, or production preference.
+
+## Execution history
+
+- `2026-09-10 — RETRIEVAL FREEZE`: workflow run `34498804224`; raw artifact ID `10161068719`; SHA-256 `79241e3b530649d53845c4220c91c8f53dd77e561d9d5ccdd7fe9f5e988e33c8`.
+- `2026-09-10 — EXECUTION CORRECTION CONTROL`: before any relevance labels were collected, defined the append-only mechanism for correcting objectively demonstrable mechanical computation/recording defects from the immutable frozen raw artifact. No retrieval result, candidate pool, RRF parameter, holdout item/tag, relevance rule, gate, or evaluator label was changed.
+
 ## Interpretation boundary
 
 This record contains retrieval execution and mechanical validity/coverage only. It makes no claim about relevance quality, Gate A, Gate B, S-vs-L merit, or production adoption. Those remain pending the frozen blind-evaluator protocol.
