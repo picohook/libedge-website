@@ -66,6 +66,8 @@ A trigger observation closes a conflict only when it is unambiguous and sufficie
 
 Reviewer packets must include both a concise implementer summary and access/references to raw materials. A packet that asks the reviewer to treat raw materials as authoritative but does not actually provide accessible raw materials is incomplete and must not be represented as a full red-team review.
 
+Before sending any full Reviewer Packet, the main engineering thread must pass the mandatory checklist in `docs/reviewer-packet-checklist.md`. If any listed raw material is absent, stale, partial while labeled full, or inaccessible, the packet is `INCOMPLETE — DO NOT SEND AS FULL REVIEW PACKET`.
+
 Required reviewer output categories:
 
 - `ACCEPTED` — implementer proposal accepted as stated
@@ -181,5 +183,15 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Reason: Prevent transcription drift, orphaned reviewer findings, and false reconciliation.
 - Provenance: reviewer governance review, 2026-09-10.
 - Canonical record: this file.
+
+## D-011
+
+- Type: `process-rule`
+- Status: `LOCKED`
+- Decision: A full Reviewer Packet may not be sent until every listed RAW MATERIALS item passes an explicit completeness check for presence/accessibility, currency, and full-vs-excerpt labeling.
+- Reason: Two consecutive packets claimed that raw canonical files were attached/pasted when they were not; a declarative rule alone did not prevent recurrence.
+- Provenance: `OUT-OF-SCOPE FINDING — Reviewer Packet oluşturma sürecinde tamlık kontrolü yok`, reviewer feedback, 2026-09-10.
+- Canonical reference: `docs/reviewer-packet-checklist.md`
+- Triage: `OPEN -> RESOLVED BY PROCESS CONTROL` through mandatory pre-send checklist implementation.
 
 Last updated: 2026-09-10
