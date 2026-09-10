@@ -13,7 +13,7 @@ This experiment evaluates retrieval, not production deployment. A winning arm do
 
 ## FREEZE CONDITIONS — SATISFIED
 
-1. D-013 is CLOSED by live authenticated telemetry at `$0.001 / semantic call` (`$1 / 1,000`).
+1. D-013 is CLOSED by live authenticated telemetry at `$0.001 / call` for both measured lexical and semantic search (`$1 / 1,000`).
 2. Independent reviewer reviewed the preregistration and canonical evidence and reported no remaining methodological FREEZE blocker.
 3. Accepted reviewer modifications were incorporated before holdout construction.
 4. No fresh gate holdout was generated or inspected before this freeze.
@@ -188,43 +188,51 @@ Use the same frozen R/M/N rubric and two-rater blind-independence standard with 
 
 ## ECONOMIC / OPERATIONAL RECORD — FROZEN
 
-Governing D-013 price: `$0.001 / semantic call` (`$1 / 1,000`), reconciled by 3/3 authenticated live observations on 2026-09-10. Canonical raw evidence: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`.
+Governing measured price: both the authenticated semantic calls and the same-intent lexical control in D-013 returned `$0.001 / call` (`$1 / 1,000`). Canonical raw evidence: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`.
 
-The prior `$0.01/call` conservative interim assumption is historical only and is NOT used for this frozen experiment's budget/capacity calculation.
+The prior `$0.01/call` conservative interim semantic assumption is historical only and is NOT used for this frozen experiment's budget/capacity calculation.
 
-Planned semantic calls for fresh retrieval: 40 S calls. H reuses the same frozen L/S candidate sets and does not issue an additional semantic request. Seen harm slice adds 5 S calls after gate reconciliation. Base planned semantic-call count: 45. Base planned semantic charge: `$0.045`.
+Every query requires one lexical L request and one semantic S request. H is computed client-side from those already-fetched candidate pools and adds no provider request.
 
-Transport/provider retries are counted in actual cost. Result-dependent retries are prohibited. For operational headroom, maximum planned semantic charge before manual investigation is frozen at `$0.060` (60 charged semantic calls total, allowing at most 15 transport/provider retry calls across the experiment). Exceeding this cap stops automated execution for investigation; it does not authorize query/result replacement.
+Fresh holdout: `40 L + 40 S = 80` provider calls.
+Seen harm slice: `5 L + 5 S = 10` provider calls.
+Base experiment total: `45 lexical + 45 semantic = 90` provider calls.
+At the measured `$0.001/call`, base planned provider charge is `$0.090`.
 
-Semantic pacing remains <=1 request/second.
+Transport/provider retries are counted in actual call/cost totals. Result-dependent retries are prohibited. Operational headroom is frozen at 30 additional charged provider calls across lexical+semantic, for a maximum of `120` charged provider calls and `$0.120` before mandatory investigation. The semantic-specific pacing rule remains <=1 semantic request/second. Exceeding the cap stops automated execution for investigation; it does not authorize query/result replacement.
 
-### Passive D-013 reopen observation
+### Passive D-013 reopen observation — ACTIVE DURING THIS EXPERIMENT
 
-Existing provider telemetry extraction already captures `requestCostUsd` from `X-RateLimit-Cost-USD` or `meta.cost_usd` and `requestCredits` from `X-RateLimit-Credits-Used`. During P0.5 execution and any later production semantic operation, preserve these fields in operational telemetry at aggregate/request-cost level without storing user query text or research-interest content.
+The detector applies to the 40-query fresh retrieval batch and the later 5-query harm-regression batch, not only to future production traffic.
 
-If an authenticated semantic call reports a materially different charge from `$0.001`, or body/header cost telemetry conflicts, flag D-013 for review rather than silently accepting the new price. This passive observation is a reopen detector, not permission to change the frozen experiment's pricing assumption mid-run.
+Existing provider telemetry extraction captures `requestCostUsd` from `X-RateLimit-Cost-USD` or `meta.cost_usd` and `requestCredits` from `X-RateLimit-Credits-Used`. The experiment executor must preserve charged-cost/credit telemetry for every authenticated L and S provider response, at request-cost/aggregate level, without storing user query text or research-interest content in the cost-monitoring record.
+
+For S calls, if authenticated telemetry reports a materially different charge from `$0.001`, or body/header cost telemetry conflicts, flag D-013 for review rather than silently accepting the new price. For L calls, materially different charged-cost telemetry is likewise recorded as a provider-pricing anomaly and included in the same operational review because the frozen total-cost budget assumes the measured `$0.001` lexical tier.
+
+This passive observation is a reopen/anomaly detector, not permission to change the frozen experiment's pricing assumption mid-run. If a pricing anomaly affects the operational cap or evidence integrity, pause execution for governance review.
 
 ## D-013 RECONCILIATION — CLOSED BEFORE FREEZE
 
-Three authenticated `search.semantic` calls returned `meta.cost_usd=0.001`, `X-RateLimit-Cost-USD=0.001`, and `X-RateLimit-Credits-Used=10` on 3/3 observations. A lexical control on the same intent returned a distinct leading Work-ID set, verifying semantic mode. D-013 is LOCKED at the observed `$1/1,000` P0.5 planning price; materially different authenticated telemetry is the reopen trigger.
+Three authenticated `search.semantic` calls returned `meta.cost_usd=0.001`, `X-RateLimit-Cost-USD=0.001`, and `X-RateLimit-Credits-Used=10` on 3/3 observations. A lexical control on the same intent also returned `meta.cost_usd=0.001` and a distinct leading Work-ID set, verifying semantic mode and the measured lexical tier. D-013 remains LOCKED at the observed `$1/1,000` semantic planning price; materially different authenticated semantic telemetry is the reopen trigger.
 
 ## EXECUTION ORDER
 
 1. **FROZEN preregistration — completed 2026-09-10.**
 2. Generate/freeze the fresh 40-query holdout and slice tags.
-3. Execute L/S/H retrieval without tuning; H reuses L/S candidate sets.
+3. Execute L/S/H retrieval without tuning; H reuses L/S candidate sets; passive cost/credit telemetry monitoring is active on the L/S calls.
 4. Prepare one frozen randomized blind evaluator bundle and freeze its bibliographic/evidence fields.
 5. Obtain/lock two independent blind-rater label sets in separate fresh lineages.
 6. Open mapping only after both lock; calculate Gate A, Gate B, S-vs-L separately per rater.
 7. If Gate A or B differs, obtain third fresh blind rater and apply only 2-of-3 binary gate majority.
 8. Apply predeclared A/B matrix.
-9. Run/report A1/A2/A5/A6/A7 harm-regression slice under its own two-rater blind diagnostic protocol.
+9. Run/report A1/A2/A5/A6/A7 harm-regression slice under its own two-rater blind diagnostic protocol with the same passive provider-cost monitoring.
 10. Record final experiment outcome and architecture consequence.
 
 ## AMENDMENT HISTORY
 
 Append-only from this frozen version onward. No amendment may retroactively alter observed gate data or labels.
 
-- `2026-09-10 — FREEZE`: initial frozen preregistration. D-013 price fixed for this experiment at `$0.001/call`; base semantic-call budget fixed at 45 calls / `$0.045`, operational cap 60 calls / `$0.060`; passive cost-telemetry reopen detector specified. No fresh gate holdout existed at freeze time.
+- `2026-09-10 — FREEZE`: initial frozen preregistration. D-013 price fixed for semantic planning at `$0.001/call`; initial economic paragraph counted semantic calls only. No fresh gate holdout existed at freeze time.
+- `2026-09-10 — PRE-HOLDOUT BUDGET CORRECTION`: before any fresh holdout was generated or retrieval results observed, corrected the operational budget to count both required provider arms: 45 lexical + 45 semantic = 90 base calls / `$0.090`; cap = 120 total charged calls / `$0.120`, allowing 30 retry calls. Explicitly confirmed passive charged-cost/credit monitoring is active during the 40-query fresh batch and later 5-query harm slice. Retrieval, fusion, relevance, gate, holdout-construction and rater rules are unchanged.
 
 Last updated: 2026-09-10
