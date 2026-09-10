@@ -1,11 +1,7 @@
 name: P0.5 Frozen Hybrid Retrieval
 
 on:
-  push:
-    branches:
-      - staging
-    paths:
-      - '.github/workflows/p05-hybrid-retrieval.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
