@@ -8,7 +8,7 @@ Status: `ACTIVE`
 
 ## Current phase
 
-P0.5 — Frozen fresh-holdout retrieval preparation/execution under FROZEN preregistration.
+P0.5 — Fresh 40-query retrieval COMPLETE; frozen blind two-rater evaluation READY / mapping SEALED.
 
 ## CLOSED
 
@@ -27,30 +27,35 @@ P0.5 — Frozen fresh-holdout retrieval preparation/execution under FROZEN prere
 - Fresh 40-query holdout construction/tagging — CLOSED / FROZEN before retrieval. Canonical holdout: `docs/experiments/p05-hybrid-semantic-holdout.md`.
 - Pre-retrieval governance cleanup — CLOSED: D-007 now LOCKED for experiment execution only; production adoption separated into D-016 PROPOSED.
 - Pre-retrieval retry/failure clarification — CLOSED before any fresh L/S result: one initial request + at most two objective transport/provider retries per query/arm; persistent failure is recorded and mechanically excluded for affected pairwise aggregate relevance metrics.
+- Fresh 40-query L/S retrieval — CLOSED / EXECUTED 2026-09-10. Exactly 80 provider attempts = 40 L + 40 S; no retries, no retrieval failures; H mechanically available for 40/40 queries. Observed charge `$0.080`; no D-013 pricing anomaly. Canonical execution record: `docs/experiments/p05-hybrid-semantic-retrieval.md`.
+- Retrieval mechanical audit — CLOSED: all 40 H top-10 lists independently recomputed under frozen RRF/tie-break with exact agreement; semantic pacing compliant; no low-corpus pairs. Frozen coverage rule reports H-v-L 0/40 regressions, H-v-S 0/40, S-v-L 40/40; the latter is reported without rule reinterpretation.
+- Fresh blind evaluator bundle construction — CLOSED / FROZEN 2026-09-10 before any relevance labels. Public bundle SHA-256 `a39f172b249dd8fd1b1b97598257fb936a81e3da40e77bc21af9609373330624`; private mapping sealed. Canonical freeze record: `docs/experiments/p05-hybrid-semantic-evaluator-bundle.md`.
 
 ## ACTIVE
 
 - Frozen holdout contains exactly 40 unseen intents: 10 Materials/Energy, 10 Biomedical, 10 Social Science, 10 Humanities.
 - Frozen slices: conjunctive 17, lexical ambiguity 15, technical/jargon 16; overlap permitted.
-- No L/S/H retrieval result was inspected during holdout construction/tagging/audit or the pre-retrieval governance/retry clarifications.
-- Candidate architecture under test:
+- Candidate architecture under test remains unchanged:
   - L: OpenAlex lexical top-100 baseline.
   - S: OpenAlex semantic top-50 retrieval.
   - H: L/S union -> canonical deduplication -> RRF `k=60` -> deterministic tie-break -> top 10; no additional provider call.
-- OpenAlex semantic-search operational constraint: <=1 request/second.
-- Per query/arm retry rule: one initial request + maximum two retries, only after objective transport/provider failure (timeout/network failure, HTTP 429, HTTP 5xx). Successful responses are never retried for result quality/count/ranking. Persistent failure becomes `retrieval-failure`; no query replacement/rewrite.
-- P0.5 frozen economic assumption: measured `$0.001 / provider call` for both semantic observations and lexical control. Base plan: 45 lexical + 45 semantic = 90 provider calls / `$0.090`. Operational cap: 120 charged provider calls / `$0.120`, allowing 30 retry calls across L+S.
-- Passive charged-cost/credit monitoring is ACTIVE for the upcoming 40-query batch and later 5-query harm slice. Cost monitoring stores no query/topic/user research-interest content.
+- Fresh retrieval raw artifact is frozen at workflow run `34498804224`, artifact ID `10161068719`, SHA-256 `79241e3b530649d53845c4220c91c8f53dd77e561d9d5ccdd7fe9f5e988e33c8`.
+- Fresh retrieval result: L success 40/40, S success 40/40, H available 40/40; all provider calls succeeded on initial attempt. Charged responses 80 / observed total `$0.080`; every recorded request reported `$0.001`, body/header cost evidence agreed, and no D-013 anomaly was detected.
+- Frozen public evaluator bundle artifact: run `34499706628`, artifact ID `10161315961`, bundle-file SHA-256 `a39f172b249dd8fd1b1b97598257fb936a81e3da40e77bc21af9609373330624`. It contains 40 anonymous queries × 3 anonymous A/B/C lists × 10 results using one frozen bibliographic/evidence field set.
+- Private evaluator mapping artifact ID `10161316449`, mapping-file SHA-256 `defd6b39361dff452a826966769b680254d2bc43924143a52cfe2af7ed0b6b0c`; seed commitment `388813fddbb0d2519baafa62cbc28af7e82f3a0cd665314c61ed4c1ddf801bd1`. Mapping MUST remain sealed until BOTH primary blind raters lock all labels.
+- No relevance labels, Gate A/B result, S-vs-L relevance conclusion, or production architecture decision exists yet.
+- P0.5 frozen economic assumption remains measured `$0.001 / provider call`. Fresh retrieval consumed 80 of the base experiment's 90 planned calls; later 5-query harm slice still requires 10 base calls. Global experiment cap remains 120 charged provider calls / `$0.120`.
+- Passive charged-cost/credit monitoring remains ACTIVE for the later 5-query harm slice. Cost monitoring stores no query/topic/user research-interest content.
 - Production semantic/hybrid retrieval remains NOT ADOPTED; D-016 is PROPOSED pending fresh-holdout evidence and a later architecture decision.
 
 ## NEXT
 
-1. Execute exactly one initial L and one initial S provider retrieval per frozen holdout intent with passive cost telemetry; use only the frozen objective retry rule on transport/provider failure. H reuses successful L/S pools.
-2. Preserve raw candidate pools, attempt/failure records, charged-cost telemetry, and mechanical coverage counts without relevance judgments or tuning.
-3. Compute H strictly with frozen dedup/RRF/tie-break rules for mechanically valid retrievals.
-4. Prepare/freeze randomized evaluator bundle and bibliographic/evidence fields.
-5. Obtain two independent blind-rater label sets in separate fresh lineages; third rater only for Gate A/B disagreement.
-6. Report all component vectors per rater and apply frozen A/B matrix.
+1. Deliver the exact frozen public evaluator bundle to primary blind rater 1 in a fresh independent context lineage.
+2. Deliver the exact same frozen public evaluator bundle to primary blind rater 2 in a separate fresh independent context lineage. Neither rater receives the private mapping, provider identity, prior labels/gate results, P0.5-A history, expected winner, or implementation discussion.
+3. Collect and lock both complete R/M/N label sets before opening the private mapping.
+4. Only after both primary label sets are locked, open the frozen mapping and calculate Gate A, Gate B and S-vs-L component vectors separately per rater under the preregistered mechanical-validity rules.
+5. If either Gate A or Gate B binary disposition differs between primary raters, obtain a third blind evaluator in a third fresh lineage and apply only the preregistered 2-of-3 gate-level majority. S-vs-L disagreement alone does not trigger a third rater.
+6. Apply the predeclared A/B decision matrix; no production adoption is automatic.
 7. Only after fresh-gate reconciliation run A1/A2/A5/A6/A7 two-rater harm diagnostic with the same provider-cost monitoring.
 
 ## DO NOT REOPEN WITHOUT NEW EVIDENCE
@@ -62,14 +67,17 @@ P0.5 — Frozen fresh-holdout retrieval preparation/execution under FROZEN prere
 - Vectorize before evidence shows OpenAlex semantic/hybrid retrieval is insufficient.
 - D-013 pricing unless materially different authenticated charged-cost telemetry appears.
 - Frozen P0.5 retrieval/fusion/gate parameters in response to observed holdout results.
-- Frozen holdout wording/domain/slice tags after retrieval begins.
+- Frozen holdout wording/domain/slice tags after retrieval began.
+- Frozen evaluator-visible field set, randomized anonymous bundle, or mapping in response to labels/results.
 
 ## Evaluation invariants
 
 - Conjunctive-intent rule: R only if available evaluation evidence directly covers all essential explicitly stated components; one essential component only is M; indirect/topic-adjacent is N.
 - Seen diagnostic data and fresh gate data remain physically/procedurally separated.
 - Reviewer receives summary plus raw materials and may challenge implementer framing.
-- Blind evaluator receives only frozen evaluation materials/rubric; no mapping, prior labels, gate metrics, or discussion history.
+- Blind evaluator receives only the frozen public evaluation bundle/rubric; no mapping, prior labels, gate metrics, provider identity, or discussion history.
+- Both primary raters receive the exact same frozen public bundle but operate in physically separate fresh lineages.
+- Mapping opens only after both primary raters lock all labels.
 - Numeric rater metrics remain per-rater; only preregistered binary Gate A/B dispositions may use third-rater 2-of-3 rule.
 
 ## Privacy invariants
@@ -86,6 +94,8 @@ P0.5 — Frozen fresh-holdout retrieval preparation/execution under FROZEN prere
 - Retrieval architecture: `docs/architecture/research-retrieval.md`
 - P0.5 frozen preregistration: `docs/experiments/p05-hybrid-semantic.md`
 - P0.5 frozen fresh holdout: `docs/experiments/p05-hybrid-semantic-holdout.md`
+- P0.5 fresh retrieval execution record: `docs/experiments/p05-hybrid-semantic-retrieval.md`
+- P0.5 frozen blind evaluator bundle record: `docs/experiments/p05-hybrid-semantic-evaluator-bundle.md`
 - D-013 live reconciliation: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`
 - Research privacy/evidence invariants: `docs/privacy/research-privacy.md`
 - Reviewer packet completeness control: `docs/reviewer-packet-checklist.md`
