@@ -58,19 +58,21 @@ describe('Crossref enrichment policy', () => {
     licenses: []
   };
 
-  it('requires DOI and concrete metadata gaps', () => {
+  it('requires DOI and prioritizes abstract gaps by default', () => {
     expect(needsCrossrefEnrichment(base)).toBe(true);
     expect(needsCrossrefEnrichment({ ...base, doi: null })).toBe(false);
-    expect(needsCrossrefEnrichment({ ...base, abstract: 'Present', licenses: [{ source: 'openalex' }] })).toBe(false);
+    expect(needsCrossrefEnrichment({ ...base, abstract: 'Present', licenses: [] })).toBe(false);
+    expect(needsCrossrefEnrichment({ ...base, abstract: 'Present', licenses: [] }, { requireLicense: true })).toBe(true);
   });
 
-  it('caps enrichment candidates and deduplicates DOI requests', () => {
+  it('caps enrichment candidates, deduplicates DOI requests, and gives abstract-missing works priority', () => {
     const works = [
-      { ...base, id: 'a' },
-      { ...base, id: 'b' },
-      { ...base, id: 'c', doi: '10.1000/second' }
+      { ...base, id: 'license-only', abstract: 'Present', doi: '10.1000/license' },
+      { ...base, id: 'abstract-gap', doi: '10.1000/abstract' },
+      { ...base, id: 'duplicate', doi: '10.1000/abstract' }
     ];
-    expect(selectCrossrefEnrichmentCandidates(works, { max: 2 }).map((work) => work.id)).toEqual(['a', 'c']);
+    expect(selectCrossrefEnrichmentCandidates(works, { max: 2, requireLicense: true }).map((work) => work.id))
+      .toEqual(['abstract-gap', 'license-only']);
   });
 });
 
