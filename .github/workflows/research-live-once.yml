@@ -25,4 +25,5 @@ jobs:
           LIBEDGE_SMOKE_BASE_URL: 'https://staging.libedge-website.pages.dev'
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_RESEARCH_SMOKE_QUERY: 'CRISPR base editing sickle cell'
         run: npm run smoke:research
