@@ -89,9 +89,12 @@ for (const test of CASES) {
   const phrase = await runQuery(phraseQuery);
   const prediction = heuristic(test.q);
   const selected = prediction.apply ? phrase : baseline;
-  if (selected.count < GATE_B.minResultsPerQuery) throw new Error(`${test.id} selected result count ${selected.count}`);
-  rows.push({ test, baseline, phrase, prediction, phraseQuery });
+  rows.push({ test, baseline, phrase, prediction, selected, phraseQuery });
 }
+
+const countFailures = rows
+  .filter(({ selected }) => selected.count < GATE_B.minResultsPerQuery)
+  .map(({ test, selected, prediction }) => ({ id:test.id, count:selected.count, heuristicApply:prediction.apply }));
 
 const blindBundle = rows.map(({test, baseline, phrase}, index) => {
   const phraseFirst = stableBit(`p05a:${test.id}:${index}`) === 1;
@@ -104,15 +107,19 @@ const blindBundle = rows.map(({test, baseline, phrase}, index) => {
     Y:(phraseFirst ? baseline : phrase).titles
   };
 });
-const mapping = rows.map(({test, prediction, phraseQuery}, index) => ({
+const mapping = rows.map(({test, prediction, phraseQuery, baseline, phrase, selected}, index) => ({
   id:test.id,
   phraseLabel:stableBit(`p05a:${test.id}:${index}`) === 1 ? 'X' : 'Y',
   heuristicApply:prediction.apply,
   heuristicReason:prediction.reason,
-  phraseQuery
+  phraseQuery,
+  baselineCount:baseline.count,
+  phraseCount:phrase.count,
+  selectedCount:selected.count
 }));
 
 console.log('P05A_PREREGISTERED', JSON.stringify({holdout:{total:30, ambiguity:10, jargon:10, neutral:10}, gateA:GATE_A, gateB:GATE_B, precedence:'jargon-veto-overrides-allow', onePhraseMax:true}));
+console.log('P05A_COUNT_FAILURES', JSON.stringify(countFailures));
 console.log('P05A_BLIND_BUNDLE', JSON.stringify(blindBundle));
 console.log('P05A_MAPPING', JSON.stringify(mapping));
 
