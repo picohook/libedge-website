@@ -13,32 +13,13 @@ P0.5 retrieval architecture is under experiment; no production semantic/hybrid r
 
 Evaluate three retrieval arms before any production implementation:
 
-- `L` — OpenAlex lexical retrieval baseline.
-- `S` — OpenAlex corpus-level semantic retrieval.
-- `H` — lexical + semantic candidate union -> deduplication -> **preregistered deterministic fusion/ranking** -> top 10.
+- `L` — OpenAlex lexical retrieval baseline, top 100 candidates.
+- `S` — OpenAlex corpus-level semantic retrieval, top 50 candidates (provider-constrained maximum).
+- `H` — lexical + semantic candidate union -> canonical deduplication -> Reciprocal Rank Fusion (`k=60`) -> deterministic tie-break -> top 10.
+
+The full frozen experiment specification, evaluator protocol, gates and amendment history belong in `docs/experiments/p05-hybrid-semantic.md`.
 
 The existing user-facing research endpoint contract remains unchanged during feasibility work.
-
-This proposal spans two canonical dimensions:
-- architecture rationale and consequences live in this file;
-- preregistration, frozen protocol, amendments, and gate results will live in `docs/experiments/p05-hybrid-semantic.md` once created.
-
-Neither dimension substitutes for the other.
-
-### H-arm unresolved prerequisite
-
-The H-arm fusion/ranking algorithm is **NOT YET DEFINED**.
-
-Before H can be executed, the preregistration must explicitly freeze:
-- lexical candidate depth,
-- semantic candidate depth,
-- deduplication identity rule,
-- fusion/ranking algorithm,
-- score normalization if any,
-- tie-breaking,
-- final truncation rule.
-
-The phrase `deterministic fusion/ranking` is a requirement, not evidence that an algorithm is already locked.
 
 ## REJECTED PRIOR PROPOSAL
 
@@ -46,7 +27,7 @@ The phrase `deterministic fusion/ranking` is a requirement, not evidence that an
 
 Decision status: `REJECTED`, not `SUPERSEDED`.
 
-Reason: the idea was considered but never adopted as governing/production architecture. Provider-level diagnostics later found that semantic retrieval returns many strong intent-relevant works absent from lexical top-100 pools. A reranker restricted to lexical candidates cannot recover missing documents.
+Reason: the idea was considered but never adopted as governing/production architecture. Provider-level diagnostics found that semantic retrieval returns many strong intent-relevant works absent from lexical top-100 pools. A reranker restricted to lexical candidates cannot recover missing documents.
 
 ## Diagnostic evidence
 
@@ -90,31 +71,77 @@ OpenAlex official Semantic Search documentation.
 Checked:
 2026-09-10.
 
+Conflict status:
+None currently.
+
+Reconciliation trigger:
+Reopen only if current official provider behavior/documentation materially changes.
+
 Consequence:
 P0.5 experiment execution must pace semantic calls at <=1 request/second even though the general API documentation describes a higher overall request ceiling.
 
 ### Semantic pricing
 
-Status: `OPEN CONFLICT — CONSERVATIVE ASSUMPTION ACTIVE`
+Status: `RECONCILED — LIVE AUTHENTICATED TELEMETRY`
 
 Claim:
-The current semantic-search unit price cannot be reconciled from documentation alone. Use $10 per 1,000 semantic-search calls as the conservative P0.5 planning assumption until live authenticated telemetry resolves the conflict.
+For the authenticated OpenAlex account measured on 2026-09-10, successful `search.semantic` calls were charged `$0.001` per call, equivalent to `$1 / 1,000 semantic calls`.
 
 Source(s):
 - OpenAlex `Authentication & Pricing` pricing table: semantic search `$1` per 1,000 calls.
-- The same official page's `/rate-limit` example: `endpoint_costs_usd.semantic = 0.01`, equivalent to `$10` per 1,000 calls.
+- Same official page's contradictory `/rate-limit` example: `endpoint_costs_usd.semantic = 0.01`, equivalent to `$10` per 1,000 calls.
+- Live authenticated GitHub Actions telemetry: run `34483422756`, job `102891595357`, trigger commit `67c3974e7d8aa46ea240dc79db0630f5f2848aef`.
+- Canonical raw reconciliation record: `docs/reviews/2026-09-10-d013-pricing-reconciliation.md`.
 
 Checked:
 2026-09-10.
 
+Raw live observations:
+
+Semantic call 1:
+- UTC `2026-09-10T13:33:56.204708+00:00`
+- redacted URL `https://api.openalex.org/works?search.semantic=digital+divide+rural+education&per-page=5&api_key=REDACTED`
+- HTTP `200`
+- `meta.cost_usd = 0.001`
+- `X-RateLimit-Credits-Used = 10`
+- `X-RateLimit-Cost-USD = 0.001`
+
+Semantic call 2:
+- UTC `2026-09-10T13:33:59.021673+00:00`
+- same redacted semantic request shape
+- HTTP `200`
+- `meta.cost_usd = 0.001`
+- `X-RateLimit-Credits-Used = 10`
+- `X-RateLimit-Cost-USD = 0.001`
+
+Semantic call 3:
+- UTC `2026-09-10T13:34:01.395540+00:00`
+- same redacted semantic request shape
+- HTTP `200`
+- `meta.cost_usd = 0.001`
+- `X-RateLimit-Credits-Used = 10`
+- `X-RateLimit-Cost-USD = 0.001`
+
+Lexical control:
+- UTC `2026-09-10T13:34:03.834682+00:00`
+- redacted URL `https://api.openalex.org/works?search=digital+divide+rural+education&per-page=5&api_key=REDACTED`
+- HTTP `200`
+- leading Work IDs differed from the semantic result set.
+
+Semantic first five IDs:
+`W3215746815`, `W2088183499`, `W2911768226`, `W2731622968`, `W3156172847`.
+
+Lexical-control first five IDs:
+`W2991538617`, `W2040484355`, `W2168637053`, `W2343437055`, `W4252846263`.
+
 Conflict status:
-`OPEN`. The conflict is current and internal to the same official documentation page; it is not merely historical.
+`CLOSED`. Three consecutive authenticated semantic calls gave identical body and header cost telemetry. The request explicitly used `search.semantic`, and the lexical control returned a distinct leading result set, so silent lexical fallback is not a plausible explanation for the measured semantic charge.
 
 Reconciliation trigger:
-Run one or more live authenticated `search.semantic` calls and inspect returned `meta.cost_usd` and/or rate-limit credit telemetry. Close the conflict only if the observed charged unit cost is unambiguous. If observations are mixed, incomplete, or inconsistent, keep the conflict OPEN and retain the $10/1,000 conservative planning assumption.
+Reopen D-013 only if later authenticated semantic calls show a materially different charged cost or internally inconsistent body/header cost telemetry.
 
 Consequence:
-Do not freeze the P0.5 hybrid preregistration's economic/budget assumptions using $1/1,000. Until telemetry resolves the conflict, budget semantic calls at $10/1,000.
+P0.5 may freeze `$0.001 per semantic call` (`$1 / 1,000`) as its economic assumption. The contradictory documentation example is retained as historical evidence rather than erased.
 
 ## Constraints
 
@@ -123,8 +150,9 @@ Do not freeze the P0.5 hybrid preregistration's economic/budget assumptions usin
 - Do not assume dense semantic similarity guarantees conjunctive-intent satisfaction.
 - Fresh holdout must include a predeclared conjunctive-intent slice.
 - Production changes require preregistered experiment evidence first.
-- Do not execute H until its fusion specification is frozen as required by D-014.
-- Do not freeze P0.5 economic assumptions until D-013 is reconciled by live authenticated semantic-search telemetry; use $10/1,000 conservatively in the interim.
+- H execution must use the exact fusion/dedup/tie-break specification frozen in `docs/experiments/p05-hybrid-semantic.md`.
+- Semantic calls must be paced at <=1 request/second.
+- P0.5 economic calculations use the reconciled `$1 / 1,000` semantic-call charge; materially different future authenticated telemetry reopens D-013 rather than silently rewriting this record.
 
 ## Source record — semantic retrieval availability
 
@@ -134,6 +162,7 @@ OpenAlex exposes corpus-level semantic work search separately from lexical searc
 Source(s):
 - OpenAlex official semantic-search documentation.
 - Live provider responses captured in the P0.5 semantic-gap diagnostic run.
+- D-013 semantic-vs-lexical control telemetry recorded above.
 
 Checked:
 2026-09-10.
@@ -145,6 +174,6 @@ Reconciliation trigger:
 If production/experiment calls materially diverge from documented behavior, open a new operational conflict record rather than silently rewriting this one.
 
 Consequence:
-Reranking-only is rejected; L/S/H feasibility must be preregistered and tested before choosing production retrieval architecture.
+Reranking-only is rejected; L/S/H feasibility is tested under the preregistered fresh-holdout protocol before choosing production retrieval architecture.
 
 Last updated: 2026-09-10
