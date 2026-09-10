@@ -2,6 +2,11 @@ const BASE_URL = normalizeBaseUrl(process.env.LIBEDGE_SMOKE_BASE_URL || 'https:/
 const USER_EMAIL = process.env.LIBEDGE_SMOKE_EMAIL;
 const USER_PASSWORD = process.env.LIBEDGE_SMOKE_PASSWORD;
 const QUERY = process.env.LIBEDGE_RESEARCH_SMOKE_QUERY || 'PEM water electrolysis low iridium catalyst';
+const REQUIRE_OPENALEX = String(process.env.LIBEDGE_RESEARCH_REQUIRE_OPENALEX || '').toLowerCase() === 'true';
+const EXPECT_TERMS = String(process.env.LIBEDGE_RESEARCH_EXPECT_TERMS || '')
+  .split(',')
+  .map((term) => term.trim().toLowerCase())
+  .filter(Boolean);
 
 if (!USER_EMAIL || !USER_PASSWORD) {
   console.error('Missing LIBEDGE_SMOKE_EMAIL or LIBEDGE_SMOKE_PASSWORD.');
@@ -31,30 +36,54 @@ await step('login for research smoke', async () => {
 });
 
 let firstPayload = null;
-await step('research search returns normalized provider-independent results', async () => {
-  const response = await authenticatedGet(`/api/research/search?q=${encodeURIComponent(QUERY)}&per_page=3`);
+await step('research search returns meaningful normalized results', async () => {
+  const nonce = REQUIRE_OPENALEX ? `&gate_nonce=${Date.now()}` : '';
+  const response = await authenticatedGet(`/api/research/search?q=${encodeURIComponent(QUERY)}&per_page=3${nonce}`);
   const text = await response.text();
   let payload;
   try { payload = JSON.parse(text); } catch { throw new Error(`research response is not JSON: ${text.slice(0, 200)}`); }
   assert(response.status === 200, `research expected 200, got ${response.status}: ${text.slice(0, 300)}`);
   assert(Array.isArray(payload?.results), 'results array missing');
+  assert(payload.results.length > 0, 'research returned an empty result set');
   assert(payload?.meta?.providers?.openalex || payload?.meta?.providers?.crossref, 'provider status missing');
+
   for (const work of payload.results) {
-    assert(typeof work?.title === 'string' && work.title.length > 0, 'normalized title missing');
+    assert(typeof work?.title === 'string' && work.title.trim().length > 0, 'normalized title missing');
     assert(work?.identifiers && typeof work.identifiers === 'object', 'identifiers missing');
     assert(['FULL_TEXT', 'ABSTRACT', 'METADATA_ONLY'].includes(work?.evidence?.level), 'invalid evidence level');
     assert(Array.isArray(work?.provenance), 'provenance missing');
   }
+
+  if (REQUIRE_OPENALEX) {
+    const openAlex = payload?.meta?.providers?.openalex;
+    assert(openAlex?.status === 'ok', `OpenAlex primary path not healthy: ${JSON.stringify(openAlex)}`);
+    assert(payload.results.some((work) => work.provenance?.some((entry) => entry.provider === 'openalex')), 'no OpenAlex-provenance work returned');
+    assert(payload.results.some((work) => work.evidence?.sources?.some((entry) => entry.provider === 'openalex' && entry.kind === 'abstract')), 'no real OpenAlex abstract evidence observed');
+
+    const telemetry = openAlex.telemetry || {};
+    const positiveRemaining = [telemetry.remaining, telemetry.prepaidRemainingUsd]
+      .some((value) => Number.isFinite(Number(value)) && Number(value) > 0);
+    assert(positiveRemaining, `OpenAlex remaining/budget signal is not positive: ${JSON.stringify(telemetry)}`);
+  }
+
+  if (EXPECT_TERMS.length) {
+    const firstText = `${payload.results[0]?.title || ''} ${payload.results[0]?.abstract || ''}`.toLowerCase();
+    assert(EXPECT_TERMS.some((term) => firstText.includes(term)), `top result failed coarse relevance sanity check; expected one of: ${EXPECT_TERMS.join(', ')}`);
+  }
+
   firstPayload = payload;
   console.log('RESEARCH_PROVIDER_STATUS', JSON.stringify(payload.meta.providers));
   console.log('RESEARCH_RESULT_COUNT', payload.results.length);
+  console.log('RESEARCH_TOP_TITLE', payload.results[0]?.title || '');
 });
 
 await step('repeated research query is cacheable', async () => {
   const response = await authenticatedGet(`/api/research/search?q=${encodeURIComponent(QUERY)}&per_page=3`);
   const payload = await response.json();
   assert(response.status === 200, `repeat research expected 200, got ${response.status}`);
-  assert(payload?.meta?.cached === true, 'expected repeated query to be served from cache');
+  if (!REQUIRE_OPENALEX) {
+    assert(payload?.meta?.cached === true, 'expected repeated query to be served from cache');
+  }
   assert(Array.isArray(firstPayload?.results), 'first payload unavailable');
 });
 
