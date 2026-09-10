@@ -60,6 +60,13 @@ function providerStatusFromError(error) {
   return 'unavailable';
 }
 
+function openAlexProviderMeta(error) {
+  return {
+    status: providerStatusFromError(error),
+    ...(error?.telemetry ? { telemetry: error.telemetry } : {})
+  };
+}
+
 function budgetError() {
   const error = new Error('OPENALEX_BUDGET_EXHAUSTED');
   error.code = 'OPENALEX_BUDGET_EXHAUSTED';
@@ -106,7 +113,7 @@ async function crossrefFallback(query, env, perPage, openAlexError) {
           partial: true,
           cached: false,
           providers: {
-            openalex: { status: providerStatusFromError(openAlexError) },
+            openalex: openAlexProviderMeta(openAlexError),
             crossref: { status: 'ok' }
           }
         }
@@ -171,7 +178,7 @@ app.get('/api/research/search', async (c) => {
         partial: false,
         cached: false,
         providers: {
-          openalex: { status: providerStatusFromError(openAlexError) },
+          openalex: openAlexProviderMeta(openAlexError),
           crossref: { status: providerStatusFromError(fallback.error) }
         }
       }
