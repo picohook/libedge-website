@@ -196,7 +196,7 @@ Do not average R/M/N labels across raters before gate calculation and do not rec
 - A third rater is not used to rewrite or negotiate earlier labels.
 - If a rater cannot complete the frozen bundle or a procedural contamination occurs, that rater is invalidated for procedural reasons before mapping/gate interpretation and must be replaced by a fresh blind rater with a distinct new lineage; do not selectively invalidate a rater because of an unfavorable result.
 
-The S-vs-L comparison remains diagnostic and is reported per rater; it does not independently create an H PASS.
+The S-vs-L comparison remains diagnostic and is reported per rater; it does not independently create an H PASS. **Disagreement between raters on the magnitude or direction of S-vs-L does not trigger a third rater by itself.** All valid S-vs-L rater-specific metrics are retained separately, and any downstream architecture decision that relies on S-vs-L must explicitly record the disagreement rather than collapsing it into a synthetic consensus.
 
 ## COMPONENT-LEVEL REPORTING REQUIREMENT
 
@@ -305,6 +305,8 @@ These five queries:
 - cannot create a PASS,
 - must be reported even if results are unfavorable.
 
+**Evaluation protocol for the seen harm-regression slice:** use the same frozen R/M/N rubric and the same two-rater blind-independence standard as the fresh holdout, with a separate randomized anonymous harm-slice bundle. Each of the two harm-slice raters must operate in a distinct fresh session/context lineage, independent of the implementation thread and of the other harm-slice rater, and must not see L/S/H mapping or the other rater's labels before locking. Because this slice is diagnostic and has no adoption gate, rater disagreement does not trigger a third rater; both rater-specific component results are preserved and reported separately. No synthetic consensus labels or metrics are created.
+
 The seen harm-regression slice may influence the later separate production-architecture decision as risk evidence, but it may not retroactively change the preregistered fresh-holdout Gate A/Gate B result.
 
 ## ECONOMIC / OPERATIONAL RECORD
@@ -357,7 +359,7 @@ Raw measurement evidence must be preserved in `docs/architecture/research-retrie
 9. Open arm mapping only after both primary label sets are locked; calculate Gate A, Gate B, and S-vs-L diagnostic separately for each rater and record all component metrics.
 10. If Gate A or Gate B differs between primary raters, obtain a third blind-rater label set in a third independent fresh lineage; report all three component vectors and apply only the preregistered 2-of-3 gate-level majority rule.
 11. Apply the predeclared A/B decision matrix.
-12. Run/report the seen A1/A2/A5/A6/A7 harm-regression slice.
+12. Run/report the seen A1/A2/A5/A6/A7 harm-regression slice under its own two-rater blind diagnostic protocol.
 13. Record final experiment outcome and architecture consequence.
 
 ## AMENDMENT HISTORY
