@@ -66,10 +66,19 @@ The reviewer freshly inspected the complete raw artifact, verified the query/sou
 
 This audit establishes only mechanical execution integrity. It does not assess relevance, harm, system superiority, or production suitability.
 
-Under D-017, this upstream artifact is now accepted. A derived evaluator bundle may be built and reviewed, but no provisional bundle may be delivered to blind raters until the exact reviewed bundle is promoted to FROZEN.
+Under D-017, this upstream artifact is accepted. A derived evaluator bundle may be built and reviewed, but no provisional bundle may be delivered to blind raters until the exact reviewed bundle is promoted to FROZEN.
 
 ## Trigger cleanup follow-up
 
-The trigger-only pre-execution reviewer identified an OUT-OF-SCOPE operational risk: path-scoped `push` triggers can fire again if the workflow file is edited in the future. Triage: `OPEN` pending removal/neutralization of automatic provider-call triggers after this execution artifact is secured. This finding does not alter the frozen retrieval result.
+The trigger-only pre-execution reviewer identified an OUT-OF-SCOPE operational risk: path-scoped `push` triggers could fire again if provider-call workflow files were edited later.
+
+Triage: `OPEN -> RESOLVED BY OPERATIONAL CLEANUP`.
+
+After the accepted harm retrieval artifact was secured, automatic path-scoped `push` triggers were removed from both provider-call retrieval workflows:
+
+- `.github/workflows/p05-harm-regression-retrieval.yml` — cleanup commit `2f56e4d523302fbb86ad5c1e305d8e1507202f32`
+- `.github/workflows/p05-hybrid-retrieval.yml` — cleanup commit `63cdbdce28c57d96bb4b95825350389668fe0560`
+
+Both now retain only `workflow_dispatch`, preventing future file edits from silently issuing provider calls. This cleanup did not modify the accepted retrieval artifact.
 
 Last updated: 2026-09-10
