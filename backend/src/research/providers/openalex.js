@@ -13,8 +13,20 @@ function readHeaderNumber(headers, names) {
   return null;
 }
 
+function detectHeaderFamily(headers) {
+  const hasUsd = ['X-RateLimit-Limit-USD', 'X-RateLimit-Remaining-USD', 'X-RateLimit-Cost-USD', 'X-RateLimit-Prepaid-Remaining-USD']
+    .some((name) => headers.has(name));
+  const hasCredits = ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Credits-Used', 'X-RateLimit-Reset']
+    .some((name) => headers.has(name));
+  if (hasUsd && hasCredits) return 'mixed';
+  if (hasUsd) return 'usd';
+  if (hasCredits) return 'credits';
+  return null;
+}
+
 export function extractOpenAlexTelemetry(response, payload = null) {
   return {
+    headerFamily: detectHeaderFamily(response.headers),
     limit: readHeaderNumber(response.headers, ['X-RateLimit-Limit', 'X-RateLimit-Limit-USD']),
     remaining: readHeaderNumber(response.headers, ['X-RateLimit-Remaining', 'X-RateLimit-Remaining-USD']),
     requestCredits: readHeaderNumber(response.headers, ['X-RateLimit-Credits-Used']),
@@ -119,10 +131,11 @@ export function normalizeOpenAlexWork(record, retrievedAt = new Date().toISOStri
   return parseResearchWork(work);
 }
 
-function providerError(status, code) {
+function providerError(status, code, telemetry = null) {
   const error = new Error(code);
   error.status = status;
   error.code = code;
+  error.telemetry = telemetry;
   return error;
 }
 
@@ -142,8 +155,9 @@ export async function searchOpenAlex(query, env, options = {}) {
   }
 
   if (!response.ok) {
-    if (response.status === 429) throw providerError(429, 'OPENALEX_RATE_LIMITED');
-    throw providerError(response.status, 'OPENALEX_UNAVAILABLE');
+    const telemetry = extractOpenAlexTelemetry(response);
+    if (response.status === 429) throw providerError(429, 'OPENALEX_RATE_LIMITED', telemetry);
+    throw providerError(response.status, 'OPENALEX_UNAVAILABLE', telemetry);
   }
 
   const payload = await response.json();
