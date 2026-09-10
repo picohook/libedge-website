@@ -49,6 +49,7 @@ crons = ["*/5 * * * *"]
 [env.staging.vars]
 ENVIRONMENT = "staging"
 WORKER_NAME = "libedge-api-staging"
+RESEARCH_USER_RATE_LIMIT = "100"
 
 [[env.staging.d1_databases]]
 binding = "DB"
