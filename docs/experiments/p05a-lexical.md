@@ -1,6 +1,7 @@
 # P0.5-A — Conditional Lexical Feasibility
 
-Status: `ACTIVE CANONICAL RECORD — EXPERIMENT CLOSED / OUTCOME REJECTED`
+Status: `HISTORICAL`
+Qualifier: `CANONICAL RECORD — EXPERIMENT CLOSED / OUTCOME REJECTED`
 Canonical decision: `docs/decisions.md` D-005
 Supersession rule: this historical experiment record remains canonical for P0.5-A even after later experiments supersede its product direction; if the record itself is replaced, mark it `SUPERSEDED` and name the replacement explicitly.
 
@@ -141,6 +142,10 @@ For empirical Gate A2, only `beneficial` counts as positive. Weak-positive, neut
 ### A-008 — Rater reconciliation lock
 
 Before mapping open, the two-rating-set reconciliation rule was locked, including the requirement that gate-pattern agreement, not ship-level agreement alone, determines rater-definition robustness.
+
+### A-009 — Missed-veto separation
+
+Before final interpretation, `missed veto` cases (`veto=false` with harmful treatment outcome) were explicitly separated from the false-veto confusion-matrix metric. False-veto measures only erroneous veto/non-application behavior among jargon-veto cases; missed-veto is a distinct safety diagnostic and must not be folded into that denominator or relabeled as a false-veto event. This clarification does not alter the final Gate A2/B metrics reported above.
 
 ## FINAL INTERPRETATION
 
