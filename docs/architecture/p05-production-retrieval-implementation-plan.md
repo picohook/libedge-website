@@ -1,8 +1,9 @@
 # D-016 — Semantic-Primary Retrieval Staging Implementation Plan
 
-Status: `ACTIVE — PRE-IMPLEMENTATION / PENDING INDEPENDENT REVIEW`
+Status: `ACTIVE — MODIFIED AFTER INDEPENDENT PRE-IMPLEMENTATION REVIEW / PENDING FOLLOW-UP ACCEPTANCE`
 Governing decision: `docs/decisions.md` D-016 (`LOCKED`)
 Locked architecture: `docs/architecture/p05-production-retrieval-decision.md`
+Review provenance: `docs/reviews/2026-09-11-d016-preimplementation-review.md`
 Scope: staging/feature-flag implementation only; broad production enablement is not authorized by this plan.
 
 ## Purpose
@@ -163,6 +164,19 @@ With semantic-primary enabled:
 
 OpenAlex soft-budget behavior must be defined explicitly during implementation: budget exhaustion prevents a charged OpenAlex attempt and therefore follows the existing provider-contingency path to Crossref; it must not be represented as evidence that semantic relevance failed.
 
+#### Dual OpenAlex failure provenance
+
+The current `crossrefFallback(query, env, perPage, openAlexError)` helper accepts one OpenAlex error. Under S -> L -> Crossref, two distinct OpenAlex failures may exist.
+
+Implementation must not arbitrarily collapse them into one misleading provider status. When both S and L fail, the router must retain structured, privacy-safe failure provenance sufficient to distinguish at least:
+
+- semantic failure status/reason category; and
+- lexical fallback failure status/reason category.
+
+No raw provider error body, query text, user identity, or result content may be exposed or persisted for this purpose.
+
+The external response may represent these as separate nested statuses or as one explicit OpenAlex-path summary with separate semantic/lexical subfields, but code review must verify that the final representation cannot falsely imply that only one arm was attempted or that one failure represents the whole path.
+
 ### 7. Semantic <=1 request/second pacing
 
 A process-local timer is not sufficient because Cloudflare Worker isolates/PoPs can execute concurrently while the OpenAlex semantic limit is provider/account-wide.
@@ -182,17 +196,41 @@ Fail-closed rule: if the semantic pacing gate itself is unavailable while semant
 
 The exact Durable Object implementation/binding diff must be reviewed before staging semantic-primary is enabled.
 
-### 8. Cache identity
+### 8. Cache identity and actual-result provenance
 
 Current cache keys hash `{v:1, query, perPage}`. That key would allow a lexical-primary cached response to be served after semantic-primary is enabled.
 
-Therefore bump/partition the cache key by retrieval architecture mode, for example:
+A feature-flag/request-mode partition alone is also insufficient. If semantic-primary is enabled but S fails objectively and L succeeds, caching that response under a generic `semantic-primary` key would allow a transient lexical fallback result to masquerade as semantic output for the cache TTL.
 
-`{ v:2, retrievalMode:'lexical'|'semantic-primary', query:lowercaseQuery, perPage }`
+Therefore cache identity must reflect the **actual OpenAlex arm that produced the cached result**, not merely the feature-flag state.
 
-The key remains SHA-256 hashed before KV storage. Raw query text must never appear in the KV key.
+Required cache provenance classes:
 
-No cached lexical result may masquerade as a semantic-primary result after the feature flag changes.
+- `semantic` — only a valid S result, including valid-empty/valid-short S;
+- `lexical` — only a valid L result, whether lexical-primary or objective semantic fallback;
+- `crossref` — only a Crossref search-contingency result when no valid OpenAlex path exists, if such responses remain cacheable.
+
+The key remains SHA-256 hashed before KV storage and must include the actual source class, e.g.:
+
+`{ v:2, retrievalSource:'semantic'|'lexical'|'crossref', query:lowercaseQuery, perPage }`
+
+#### Read policy under semantic-primary
+
+A semantic-primary request may read only a `semantic` cache entry as a direct success.
+
+It MUST NOT treat a cached `lexical` fallback entry as if S had succeeded. Therefore an L fallback result produced during a prior transient S failure cannot suppress a future semantic attempt merely because that lexical entry is still within TTL.
+
+If the current request's S attempt fails objectively, the router may then use an eligible cached `lexical` entry for the L fallback stage instead of issuing a new lexical provider call, provided the response metadata still records that the current path was semantic failure -> lexical fallback and does not represent the cached lexical result as semantic.
+
+Likewise, Crossref contingency cache may be consulted only after no valid OpenAlex path remains; it cannot short-circuit a fresh semantic-primary request.
+
+#### Read policy with semantic-primary disabled
+
+A lexical-primary request may read only the `lexical` cache partition as its primary retrieval cache. It must not serve a `semantic` entry as if lexical-primary had produced it.
+
+Raw query text must never appear in the KV key; the complete cache-identity object remains hashed.
+
+This policy prevents both stale lexical-primary contamination after flag enablement and transient lexical-fallback contamination during semantic-primary operation.
 
 ### 9. Privacy-safe operational telemetry
 
@@ -216,6 +254,8 @@ Add aggregate counters only. Suggested KV key family contains date/window plus m
 No query text, normalized query, DOI/title, topic, research-interest content, user ID, email, token, or result payload is stored in these telemetry records.
 
 Existing response-level provider telemetry may remain in the authenticated private/no-store response only if it preserves the current contract/security posture; production monitoring persistence must be aggregate-only.
+
+Implementation should reuse the existing `budget.js` pattern where practical: date/window-scoped KV keys, aggregate numeric values, and bounded TTLs rather than introducing a separate privacy model.
 
 ### 10. D-013 checkpoint support
 
@@ -255,7 +295,8 @@ If the threshold is exceeded or cannot be estimated, broad enablement remains bl
 - S-primary orchestration;
 - objective S->L fallback classifier/use;
 - preserve Crossref fallback only after no valid OpenAlex path;
-- mode-partitioned hashed cache key;
+- cache read/write partitioned by actual retrieval source, not flag state;
+- dual S/L OpenAlex failure provenance for the final Crossref contingency path;
 - valid-empty no-fallback behavior;
 - aggregate operational telemetry hooks.
 
@@ -301,13 +342,20 @@ Required cases:
 12. Crossref enrichment still enriches DOI candidates after either valid S or valid L;
 13. Crossref search fallback occurs only after no valid OpenAlex path;
 14. query string sent to S and L remains the same normalized user query; no rewrite/injection;
-15. cache is partitioned by retrieval mode and keys contain no raw query text.
+15. semantic-primary cache read cannot be satisfied by a lexical fallback cache entry;
+16. after a fresh objective S failure, an eligible lexical cache entry may satisfy only the L fallback stage and is still reported as lexical fallback;
+17. flag-off lexical-primary reads lexical cache only;
+18. semantic and lexical valid results write to their actual-source partitions;
+19. Crossref contingency does not short-circuit semantic-primary;
+20. cache keys contain no raw query text;
+21. dual S/L failure metadata remains distinguishable when Crossref contingency is used.
 
 `test/backend/research-fallback.test.js`
 
 - update old OpenAlex->Crossref assumptions to cover S->L->Crossref explicitly under semantic-primary;
 - retain legacy lexical-primary behavior when feature flag is off;
-- budget-exhaustion semantics remain explicit and tested.
+- budget-exhaustion semantics remain explicit and tested;
+- when S and L both fail, final response/provider metadata does not collapse the two attempts into one misleading error.
 
 Add pacing tests, likely `test/backend/research-semantic-pacing.test.js`:
 
@@ -334,6 +382,8 @@ Then enable only in controlled staging and verify mechanically:
 - a known valid-empty mocked/integration path does not call L;
 - forced timeout/429/5xx/malformed conditions use L and never merge outputs;
 - normal S success makes exactly one retrieval call before optional Crossref DOI enrichment;
+- a prior lexical fallback cache entry never suppresses a later semantic-primary attempt;
+- dual S/L failure provenance remains distinguishable if Crossref contingency is reached;
 - provider cost/credit telemetry is observed and aggregate-only persistence contains no research-interest data;
 - rollback by disabling the feature flag restores lexical-primary behavior without cache contamination.
 
@@ -341,7 +391,7 @@ Do not use P0.5 holdouts as rollout relevance tests.
 
 ## Implementation sequencing
 
-1. Independent reviewer accepts/modifies/rejects this plan.
+1. Focused independent reviewer accepts/modifies/rejects these pre-code plan corrections.
 2. Implement code with feature flag default/off and no broad production enablement.
 3. Run unit/integration tests.
 4. Independent code/diff review before semantic-primary staging enablement.
@@ -361,17 +411,11 @@ Do not use P0.5 holdouts as rollout relevance tests.
 - no storage of user research interests for monitoring;
 - no broad production enablement in this implementation stage.
 
-## Pre-implementation reviewer questions
+## Focused pre-implementation follow-up questions
 
-1. Does the proposed S->L->Crossref orchestration preserve D-016 without conflating OpenAlex lexical fallback and Crossref contingency?
-2. Is valid-empty behavior mechanically unambiguous?
-3. Does explicit provider mode reuse the existing normalization/telemetry code path rather than fork it?
-4. Is mode-partitioning the hashed cache required/sufficient to prevent stale lexical results from masquerading as semantic results?
-5. Is a single named Durable Object an appropriate global serialization primitive for the provider-wide <=1 request/second semantic constraint?
-6. Is pacing-gate failure correctly treated as objective S-path unavailability rather than bypassed?
-7. Are fallback categories narrow enough to prevent relevance/result-dependent routing?
-8. Does the telemetry plan satisfy D-013/capacity needs without storing research-interest data?
-9. Is the feature-flag sequencing safe against accidental broad enablement?
-10. Is any additional implementation blocker present before code changes begin?
+1. Does actual-result-source cache partitioning prevent a transient lexical fallback from masquerading as semantic output or suppressing future S attempts?
+2. Is the staged cache read policy compatible with D-016 objective-only fallback semantics?
+3. Does the dual-failure provenance requirement correctly address S+L failure before Crossref contingency without exposing raw errors/research-interest data?
+4. With these corrections, may implementation begin?
 
 Last updated: 2026-09-11
