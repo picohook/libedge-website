@@ -95,26 +95,26 @@ P0.5 experiment execution must pace semantic calls at <=1 request/second even th
 
 ### Semantic pricing
 
-Status: `CURRENT ASSUMPTION — OFFICIAL SOURCES CONVERGED ON CHECK DATE`
+Status: `OPEN CONFLICT — CONSERVATIVE ASSUMPTION ACTIVE`
 
 Claim:
-Use $1 per 1,000 semantic-search calls for current P0.5 planning.
+The current semantic-search unit price cannot be reconciled from documentation alone. Use $10 per 1,000 semantic-search calls as the conservative P0.5 planning assumption until live authenticated telemetry resolves the conflict.
 
 Source(s):
-- OpenAlex official Example Costs page: semantic search $1/1,000 calls.
-- OpenAlex official Semantic Search page: pricing delegated to pricing-by-endpoint documentation.
+- OpenAlex `Authentication & Pricing` pricing table: semantic search `$1` per 1,000 calls.
+- The same official page's `/rate-limit` example: `endpoint_costs_usd.semantic = 0.01`, equivalent to `$10` per 1,000 calls.
 
 Checked:
 2026-09-10.
 
 Conflict status:
-A reviewer previously reported an official-source discrepancy of $1 vs $10 per 1,000 semantic calls. On the current check date, the authoritative pages inspected do not reproduce the $10 semantic-search price. Therefore the discrepancy is preserved as **historical conflict evidence**, not treated as an active current conflict/fact.
+`OPEN`. The conflict is current and internal to the same official documentation page; it is not merely historical.
 
-Reconciliation/reopen trigger:
-Reopen the pricing conflict if an official OpenAlex page, billing metadata, API usage metadata, or invoice again shows a semantic-search rate inconsistent with $1/1,000.
+Reconciliation trigger:
+Run one or more live authenticated `search.semantic` calls and inspect returned `meta.cost_usd` and/or rate-limit credit telemetry. Close the conflict only if the observed charged unit cost is unambiguous. If observations are mixed, incomplete, or inconsistent, keep the conflict OPEN and retain the $10/1,000 conservative planning assumption.
 
 Consequence:
-Budget P0.5 using $1/1,000 semantic calls today, but do not erase the historical discrepancy.
+Do not freeze the P0.5 hybrid preregistration's economic/budget assumptions using $1/1,000. Until telemetry resolves the conflict, budget semantic calls at $10/1,000.
 
 ## Constraints
 
@@ -124,6 +124,7 @@ Budget P0.5 using $1/1,000 semantic calls today, but do not erase the historical
 - Fresh holdout must include a predeclared conjunctive-intent slice.
 - Production changes require preregistered experiment evidence first.
 - Do not execute H until its fusion specification is frozen as required by D-014.
+- Do not freeze P0.5 economic assumptions until D-013 is reconciled by live authenticated semantic-search telemetry; use $10/1,000 conservatively in the interim.
 
 ## Source record — semantic retrieval availability
 
