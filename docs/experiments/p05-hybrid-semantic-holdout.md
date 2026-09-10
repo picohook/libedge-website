@@ -7,13 +7,13 @@ Parent protocol: `docs/experiments/p05-hybrid-semantic.md`
 
 ## Construction integrity
 
-This holdout was constructed only after the parent preregistration was FROZEN. No L/S/H retrieval result was inspected while constructing, tagging, balancing, or freezing these intents.
+This holdout was constructed only after the parent preregistration was FROZEN. No L/S/H retrieval result was inspected while constructing, tagging, balancing, auditing, or freezing these intents.
 
 Exactly 40 previously unseen intents are included: 10 Materials/Energy, 10 Biomedical, 10 Social Science, and 10 Humanities.
 
-Frozen slice counts:
-- Conjunctive-intent (`C`): 16
-- Lexical-ambiguity (`A`): 12
+Frozen slice counts after the pre-retrieval arithmetic audit:
+- Conjunctive-intent (`C`): 17
+- Lexical-ambiguity (`A`): 15
 - Technical/jargon (`T`): 16
 
 Slice tags may overlap. Untagged intents are valid straightforward/broad-conceptual cases and remain part of the gate.
@@ -67,31 +67,16 @@ From this freeze onward, no intent, wording, domain, or slice tag may be replace
 
 ## Frozen tag audit
 
-### Conjunctive-intent — 16
+### Conjunctive-intent — 17
 ME01, ME02, ME03, ME06, ME09, BM01, BM02, BM03, BM06, BM08, SS01, SS02, SS04, HU01, HU02, HU06, HU07.
 
-Audit correction: the explicit list above contains 17 IDs. Therefore the canonical frozen conjunctive count is **17**, not 16. This arithmetic correction was made during construction before any retrieval. The table is authoritative.
-
-### Lexical-ambiguity — 12
+### Lexical-ambiguity — 15
 ME05, ME07, ME08, ME10, BM07, BM09, BM10, SS01, SS02, SS06, SS10, HU01, HU02, HU09, HU10.
-
-Audit correction: the explicit list contains 15 IDs. Therefore the canonical frozen lexical-ambiguity count is **15**, not 12. This arithmetic correction was made before any retrieval. The table is authoritative.
 
 ### Technical/jargon — 16
 ME01, ME02, ME03, ME05, ME07, BM01, BM02, BM03, BM06, BM07, BM09, HU03, HU06, HU07, HU08, HU09.
 
-Canonical technical/jargon count: **16**.
-
-## Canonical counts after pre-retrieval audit
-
-- Total: 40
-- Materials/Energy: 10
-- Biomedical: 10
-- Social Science: 10
-- Humanities: 10
-- Conjunctive-intent: 17 (minimum required 12)
-- Lexical-ambiguity: 15 (minimum required 8)
-- Technical/jargon: 16 (minimum required 8)
+All three required slice minima are exceeded before retrieval begins.
 
 ## Next permitted operation
 
