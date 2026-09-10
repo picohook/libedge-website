@@ -30,7 +30,6 @@ const TECHNICAL_MARKERS = [
 ];
 
 const CASES = [
-  // lexical ambiguity / wrong-sense risk (10)
   { id:'A1', group:'ambiguity', discipline:'social-science', intent:'Research on remote learning and student engagement.', q:'remote learning student engagement', probePhrase:'remote learning' },
   { id:'A2', group:'ambiguity', discipline:'social-science', intent:'Research on the digital divide in rural education.', q:'digital divide rural education', probePhrase:'digital divide' },
   { id:'A3', group:'ambiguity', discipline:'social-science', intent:'Research on labor-market polarization associated with automation.', q:'labor market polarization automation', probePhrase:'labor market' },
@@ -42,7 +41,6 @@ const CASES = [
   { id:'A9', group:'ambiguity', discipline:'social-science', intent:'Research on open science and research assessment.', q:'open science research assessment', probePhrase:'open science' },
   { id:'A10', group:'ambiguity', discipline:'humanities', intent:'Scholarship on public history and museum interpretation.', q:'public history museum interpretation', probePhrase:'public history' },
 
-  // jargon-heavy / technical compound (10)
   { id:'J1', group:'jargon', discipline:'materials-energy', intent:'PEM water-electrolyzer research on IrO2 OER stability.', q:'PEM water electrolyzer IrO2 OER stability', probePhrase:'water electrolyzer' },
   { id:'J2', group:'jargon', discipline:'materials-energy', intent:'AEMWE membrane degradation under alkaline operation.', q:'AEMWE membrane degradation alkaline', probePhrase:'membrane degradation' },
   { id:'J3', group:'jargon', discipline:'materials-energy', intent:'Pt/C ORR graphene studies for PEM fuel cells.', q:'Pt/C ORR graphene PEMFC', probePhrase:'ORR graphene' },
@@ -54,7 +52,6 @@ const CASES = [
   { id:'J9', group:'jargon', discipline:'social-science', intent:'Difference-in-differences research on minimum-wage employment effects.', q:'difference-in-differences minimum wage employment', probePhrase:'minimum wage' },
   { id:'J10', group:'jargon', discipline:'social-science', intent:'Instrumental-variable studies of education returns.', q:'instrumental variable education returns', probePhrase:'education returns' },
 
-  // neutral controls (10)
   { id:'N1', group:'neutral', discipline:'materials-energy', intent:'Research on renewable-energy investment policy.', q:'renewable energy investment policy', probePhrase:'renewable energy' },
   { id:'N2', group:'neutral', discipline:'social-science', intent:'Research on workplace flexibility and employee satisfaction.', q:'workplace flexibility employee satisfaction', probePhrase:'workplace flexibility' },
   { id:'N3', group:'neutral', discipline:'biomedical', intent:'Research on adolescent sleep and academic performance.', q:'adolescent sleep academic performance', probePhrase:'adolescent sleep' },
@@ -71,7 +68,7 @@ function normalize(s) { return String(s || '').toLowerCase(); }
 function heuristic(query) {
   const text = normalize(query);
   const markerHits = TECHNICAL_MARKERS.filter((m) => text.includes(m));
-  const acronymLike = String(query).split(/\s+/).filter((t) => /^[A-Z0-9][A-Z0-9\-\/\.]{2,}$/.test(t)).length;
+  const acronymLike = String(query).split(/\s+/).filter((t) => /^[A-Z0-9][A-Z0-9./-]{2,}$/.test(t)).length;
   const jargonVeto = markerHits.length >= 1 || acronymLike >= 2;
   const phraseHits = ALLOW_PHRASES.filter((p) => text.includes(p));
   if (jargonVeto) return { apply:false, reason:'jargon-veto', markerHits, phraseHits };
