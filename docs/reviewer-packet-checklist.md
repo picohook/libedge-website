@@ -48,6 +48,15 @@ For each item listed under `RAW MATERIALS` in the packet:
 - [ ] If a canonical file is cited, its branch/ref or commit context is clear enough to identify the exact version reviewed.
 - [ ] No listed raw-material item is missing.
 
+### Commit-based raw-material verification
+
+A commit hash may stand in for an embedded diff only when the repository and commit are actually accessible to the reviewer and the packet gives enough version context to reproduce the exact change.
+
+- [ ] When a commit hash is used as RAW MATERIAL, the packet identifies both ends of the change (`base -> head`) or otherwise names the exact parent/base needed for comparison.
+- [ ] The packet explicitly instructs the reviewer to refresh the repository state and verify the exact committed diff, not merely confirm that the commit exists. For a local git workflow, the minimum instruction is equivalent to `git fetch`, checkout/switch to the intended branch or commit, then diff/compare `base -> head`.
+- [ ] A reviewer verification statement must distinguish `commit exists` from `fresh contents/diff inspected`; the latter is required before the change is treated as independently verified.
+- [ ] For small surgical changes, prefer embedding the exact diff in the packet in addition to the commit hash. If repository/tool access is unavailable or uncertain, the exact diff or full changed material MUST be embedded; a bare hash is insufficient RAW MATERIAL.
+
 ### Consistency check
 
 - [ ] The packet does not say `attached`, `pasted below`, `included`, or equivalent unless that statement is literally true.
