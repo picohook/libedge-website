@@ -1,0 +1,53 @@
+name: P0.5 Frozen Hybrid Retrieval
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '.github/workflows/p05-hybrid-retrieval.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  retrieve:
+    name: Execute frozen 40-query L/S retrieval
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate executor syntax
+        run: node --check scripts/p05-hybrid-retrieval.mjs
+
+      - name: Require OpenAlex API key
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+        run: |
+          if [ -z "$OPENALEX_API_KEY" ]; then
+            echo "OPENALEX_API_KEY is not configured for the staging environment" >&2
+            exit 1
+          fi
+
+      - name: Execute frozen retrieval
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+        run: node scripts/p05-hybrid-retrieval.mjs
+
+      - name: Upload raw retrieval artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p05-hybrid-semantic-retrieval
+          path: docs/experiments/p05-hybrid-semantic-retrieval/
+          if-no-files-found: warn
+          retention-days: 30
