@@ -1,6 +1,6 @@
 # P0.5 Harm-Regression Retrieval Execution
 
-Status: `ACTIVE — RETRIEVAL EXECUTED / PENDING INDEPENDENT REVIEW`
+Status: `HISTORICAL — RETRIEVAL EXECUTED / INDEPENDENTLY ACCEPTED`
 
 ## Scope
 
@@ -54,11 +54,19 @@ Implementer mechanical audit only; no relevance judgement was performed.
 - H union sizes by case: A1=145, A2=150, A5=135, A6=111, A7=144.
 - Independent implementer recomputation found no H union, RRF (`k=60`), rank-field, deterministic tie-break, or H-order mismatch in any of the five raw records.
 
+## Independent review
+
+Canonical review: `docs/reviews/2026-09-10-p05-harm-retrieval-execution-review.md`.
+
+Classification: `ACCEPTED`.
+
+The reviewer freshly inspected the complete raw artifact, verified the query/source identity and telemetry, and independently reconstructed all five H top-10 lists with zero mismatch. No execution correction was required.
+
 ## Interpretation boundary
 
 This audit establishes only mechanical execution integrity. It does not assess relevance, harm, system superiority, or production suitability.
 
-Under D-017, no derived harm evaluator bundle may be promoted to FROZEN and no blind rater may receive a bundle until this retrieval execution receives the required independent reviewer acceptance.
+Under D-017, this upstream artifact is now accepted. A derived evaluator bundle may be built and reviewed, but no provisional bundle may be delivered to blind raters until the exact reviewed bundle is promoted to FROZEN.
 
 ## Trigger cleanup follow-up
 
