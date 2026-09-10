@@ -43,5 +43,8 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Validate staging Wrangler config (dry-run only)
+        run: npx wrangler deploy --dry-run --env staging --outdir /tmp/wrangler-dry-run
+
       - name: Build CSS
         run: npm run build
