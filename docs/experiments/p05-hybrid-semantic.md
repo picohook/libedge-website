@@ -159,7 +159,7 @@ Secondary diagnostic metric: `(R+M)@10`; it is descriptive and cannot override a
 
 ## BLIND TWO-RATER EVALUATION
 
-The fresh 40-query Gate A/Gate B evaluation uses two independent blind raters. Each rater must operate in a physically separate fresh conversation/context and must not see the other rater's labels, reasoning, or gate results before locking their own labels.
+The fresh 40-query Gate A/Gate B evaluation uses two independent blind raters. Each rater must operate in a physically separate fresh conversation/context with a distinct session/context lineage and must not see the other rater's labels, reasoning, or gate results before locking their own labels.
 
 Each rater receives:
 - anonymous query ID,
@@ -182,19 +182,43 @@ The same frozen randomized bundle and rubric are used for both primary raters. A
 
 ### Per-rater gate calculation
 
-Gate A, Gate B, and S-vs-L diagnostic metrics are calculated separately for each rater using that rater's labels. `N_eff` is determined mechanically from retrieval coverage and therefore is the same for both raters for a given pairwise comparison; all count thresholds use the preregistered `ceil(fraction * N_eff)` rule.
+Gate A, Gate B, and S-vs-L diagnostic metrics are calculated separately for each rater using that rater's labels. `N_eff` is determined mechanically from retrieval coverage and therefore is the same for all valid raters for a given pairwise comparison; all count thresholds use the preregistered `ceil(fraction * N_eff)` rule.
 
 Do not average R/M/N labels across raters before gate calculation and do not reconcile individual labels post hoc merely to force agreement.
 
 ### Rater reconciliation
 
-- If both primary raters produce the same PASS/FAIL result for Gate A **and** the same PASS/FAIL result for Gate B, the H gate outcome is `RATER-ROBUST` for this experiment. Component metrics for both raters remain reported separately.
-- If the two primary raters disagree on Gate A or Gate B, obtain a third blind evaluator in a new fresh context using the same frozen bundle and rubric and no access to prior rater outputs.
-- With three raters, each gate is resolved independently by majority gate-level PASS/FAIL (at least 2 of 3 raters). Component metrics from all three raters remain separately reported.
+- If both primary raters produce the same PASS/FAIL result for Gate A **and** the same PASS/FAIL result for Gate B, the H gate outcome is `RATER-ROBUST` for this experiment.
+- If the two primary raters disagree on Gate A or Gate B, obtain a third blind evaluator in a **third physically separate fresh session/context lineage**, independent of both primary raters and with no access to either prior rater output, using the exact same frozen bundle and rubric.
+- With three raters, each disputed gate is resolved independently by majority gate-level PASS/FAIL: at least 2 of 3 raters must return the same gate outcome.
+- Majority applies only to the binary gate disposition. **No synthetic or consensus numeric metric is created.** Mean deltas, non-worse counts/rates, strong-improvement counts/rates, domain deltas, slice deltas, worst-query deltas, and coverage results remain official only as per-rater component metrics.
+- Do not average only the two raters on the majority side, do not discard the minority rater from component reporting, and do not create item-level majority R/M/N labels for gate recomputation.
 - A third rater is not used to rewrite or negotiate earlier labels.
-- If a rater cannot complete the frozen bundle or a procedural contamination occurs, that rater is invalidated for procedural reasons before mapping/gate interpretation and must be replaced by a fresh blind rater; do not selectively invalidate a rater because of an unfavorable result.
+- If a rater cannot complete the frozen bundle or a procedural contamination occurs, that rater is invalidated for procedural reasons before mapping/gate interpretation and must be replaced by a fresh blind rater with a distinct new lineage; do not selectively invalidate a rater because of an unfavorable result.
 
 The S-vs-L comparison remains diagnostic and is reported per rater; it does not independently create an H PASS.
+
+## COMPONENT-LEVEL REPORTING REQUIREMENT
+
+Gate-level PASS/FAIL never substitutes for component reporting.
+
+For **every valid rater**, report separately for Gate A, Gate B, and the S-vs-L diagnostic:
+- `N_eff`,
+- mean Relevant@10 delta,
+- non-worse count and rate,
+- strong-improvement count and rate where defined,
+- each domain mean delta,
+- worst single-query delta and query ID,
+- conjunctive-intent slice mean delta and effective slice N,
+- lexical-ambiguity slice mean delta and effective slice N,
+- coverage-regression count/rate and affected query IDs,
+- every gate component's individual PASS/FAIL status where the comparison has a gate.
+
+If a gate fails, identify **all** failed components, not only the first failing condition. If two or three raters reach the same gate outcome through different failed/passed components, that divergence must be preserved explicitly in the final experiment record.
+
+If a third rater is required, the final record must show all three full component vectors side by side and then state the separate 2-of-3 gate-level majority result. No aggregate component vector may replace the individual vectors.
+
+This requirement is diagnostic evidence for any later retrieval/fusion hypothesis; it does not authorize post-hoc tuning within this frozen experiment.
 
 ## PRIMARY COMPARISONS
 
@@ -329,9 +353,9 @@ Raw measurement evidence must be preserved in `docs/architecture/research-retrie
 5. Generate/freeze the fresh 40-query holdout and slice tags.
 6. Execute L/S/H retrieval without tuning.
 7. Prepare one frozen randomized blind evaluator bundle.
-8. Obtain and lock two independent blind-rater label sets in separate fresh contexts.
-9. Open arm mapping only after both primary label sets are locked; calculate Gate A, Gate B, and S-vs-L diagnostic separately for each rater.
-10. If Gate A or Gate B differs between primary raters, obtain a third fresh blind-rater label set and apply the preregistered majority gate rule.
+8. Obtain and lock two independent blind-rater label sets in separate fresh session/context lineages.
+9. Open arm mapping only after both primary label sets are locked; calculate Gate A, Gate B, and S-vs-L diagnostic separately for each rater and record all component metrics.
+10. If Gate A or Gate B differs between primary raters, obtain a third blind-rater label set in a third independent fresh lineage; report all three component vectors and apply only the preregistered 2-of-3 gate-level majority rule.
 11. Apply the predeclared A/B decision matrix.
 12. Run/report the seen A1/A2/A5/A6/A7 harm-regression slice.
 13. Record final experiment outcome and architecture consequence.
