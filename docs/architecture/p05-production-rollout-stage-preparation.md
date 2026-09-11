@@ -45,17 +45,20 @@ This is an operational capacity condition, not a relevance gate.
 
 ### Evidence standard
 
-The evidence source must be able to support a defensible peak-rate statement.
+The evidence source must be able to support a defensible peak-rate statement without smoothing away short bursts.
 
 Acceptable evidence is one of:
 
-1. privacy-safe production request telemetry with per-request timestamps or sufficiently fine-grained time buckets to calculate the highest observed eligible research-request rate;
-2. Cloudflare/native operational analytics that can isolate the eligible research endpoint without exposing query text, user identity, research topic, result content, DOI/title, or raw request bodies;
-3. another independently reviewable operational source with equivalent temporal resolution and privacy guarantees.
+1. privacy-safe production request telemetry with per-request timestamps;
+2. privacy-safe time buckets no coarser than **2 seconds** that can isolate eligible research requests;
+3. Cloudflare/native operational analytics that can isolate the eligible research endpoint at per-request or <=2-second temporal resolution without exposing query text, user identity, research topic, result content, DOI/title, or raw request bodies;
+4. another independently reviewable operational source with equivalent temporal resolution and privacy guarantees.
 
-Daily totals or daily averages alone are **not sufficient** to establish the locked peak-rate guardrail.
+Any evidence source coarser than 2-second buckets is insufficient to support a peak-rate claim against the locked `<=0.5 req/s` guardrail because it may smooth materially bursty traffic.
 
-If the available source cannot support a credible peak calculation, the correct result is:
+Daily totals, daily averages, minute-level averages, or other coarse aggregates alone are **not sufficient** to establish the locked peak-rate guardrail.
+
+If the available source cannot support a credible peak calculation at per-request or <=2-second resolution, the correct result is:
 
 `INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`.
 
@@ -73,6 +76,8 @@ Any capacity evidence record must state:
 - missing-data caveats;
 - privacy boundary;
 - conclusion against the `<=0.5 req/s` guardrail.
+
+If bucketed data are used, the record must also state the bucket width explicitly and show that it is `<=2 seconds`.
 
 ### No silent extrapolation
 
@@ -133,7 +138,7 @@ Successful production telemetry migration does **not** authorize:
 
 The two tracks are logically independent, but a practical measurement dependency may exist:
 
-- if existing production operational analytics already provide sufficiently fine-grained, privacy-safe eligible research-request timing, Track A can proceed without production D1 telemetry;
+- if existing production operational analytics already provide privacy-safe eligible research-request timing at per-request or `<=2-second` resolution, Track A can proceed without production D1 telemetry;
 - if no such source exists, production D1 migration may become a prerequisite for a separately reviewed privacy-safe rate-measurement implementation.
 
 That dependency must be demonstrated, not assumed.
@@ -157,8 +162,9 @@ Before any production semantic-primary enablement:
 The independent reviewer should assess:
 
 1. whether the capacity evidence standard is strong enough to support the locked `<=0.5 req/s` guardrail;
-2. whether daily aggregate telemetry is correctly rejected as insufficient for peak-rate evidence;
-3. whether the production migration prechecks are conservative enough;
-4. whether unexpected pending migrations should be a hard STOP;
-5. whether Track A and Track B are sufficiently separated to prevent migration acceptance from being misread as production semantic enablement;
-6. whether an additional blocker should be added before either track begins.
+2. whether the explicit per-request / `<=2-second` minimum temporal resolution is conservative enough to preserve burst evidence;
+3. whether daily/minute/coarser aggregate telemetry is correctly rejected as insufficient for peak-rate evidence;
+4. whether the production migration prechecks are conservative enough;
+5. whether unexpected pending migrations should be a hard STOP;
+6. whether Track A and Track B are sufficiently separated to prevent migration acceptance from being misread as production semantic enablement;
+7. whether an additional blocker should be added before either track begins.
