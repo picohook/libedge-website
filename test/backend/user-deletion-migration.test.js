@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
 
 const migrationUrl = new URL('../../migrations/0047_user_deletion_integrity.sql', import.meta.url);
+const followupMigrationUrl = new URL('../../migrations/0049_user_notifications_deletion_policy.sql', import.meta.url);
 const backendUrl = new URL('../../backend/src/index.js', import.meta.url);
 
 describe('user deletion privacy migration', () => {
@@ -73,5 +74,22 @@ describe('user deletion privacy migration', () => {
     expect(auditPos).toBeGreaterThan(-1);
     expect(deleteUserPos).toBeGreaterThan(-1);
     expect(auditPos).toBeLessThan(deleteUserPos);
+  });
+
+  it('0049 preserves the privacy trigger and explicitly deletes user_notifications', async () => {
+    const sql = await readFile(followupMigrationUrl, 'utf8');
+
+    expect(sql).toContain('DROP TRIGGER IF EXISTS trg_users_privacy_cleanup');
+    expect(sql).toContain('CREATE TRIGGER trg_users_privacy_cleanup');
+    expect(sql).toContain('BEFORE DELETE ON users');
+    expect(sql).toContain('DELETE FROM user_notifications WHERE user_id = OLD.id');
+
+    // Guard key 0047 semantics against accidental narrowing in the replacement.
+    expect(sql).toContain('DELETE FROM notifications WHERE user_id = OLD.id');
+    expect(sql).toContain('DELETE FROM ai_usage_logs WHERE user_id = OLD.id');
+    expect(sql).toContain('UPDATE product_requests SET user_id = NULL');
+    expect(sql).toContain('privacy_r2_purge_queue');
+    expect(sql).toContain("entity_type = 'support_ticket'");
+    expect(sql).toContain("entity_type = 'user'");
   });
 });
