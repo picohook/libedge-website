@@ -57,52 +57,41 @@ Merge commit:
 
 `a47669de451b3ca0997f607b71cb4d914634e825`
 
-Source defect status:
+Current state:
 
-`FIX MERGED TO STAGING / LIVE BEHAVIOR NOT YET PROVEN`.
+`STRUCTURALLY CORRECTED IN STAGING / BEHAVIORAL CLOSURE PENDING`.
 
-No live user deletion has been executed.
+No live staging deletion has yet been executed.
 
-### 0047-SCOPE-01 — live staging divergence confirmed
+### 0047-SCOPE-01
 
-Reviewer discovery correctly identified `user_notifications` as an active per-user table absent from the explicit 0047 trigger.
+Reviewer discovery identified `user_notifications` as an active per-user table omitted from the original explicit 0047 trigger.
 
-Static repository inspection found that canonical migration `0008_user_notifications.sql` declares:
+Live staging schema inspection proved that, despite canonical migration 0008 declaring a cascade FK, actual staging `user_notifications` has no FK and therefore no cascade behavior to rely on.
 
-`user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE`
+A forward-only trigger replacement was prepared as:
 
-However, a read-only inspection of the actual remote staging D1 database disproved that cascade assumption.
+`migrations/0049_user_notifications_deletion_policy.sql`
 
-Workflow run:
+PR #38 was independently ACCEPTED and merged to staging. Migration 0049 was then separately reviewed and applied exactly once to remote staging under locked pre/post guardrails.
 
-`34601127734`
+Controlled apply run:
 
-Remote staging D1:
+`34606916660`
 
-- `libedge-db`
-- `207d80d6-7e6b-4e10-aacf-b218970dbaf8`
+Result:
 
-Live result:
+`SUCCESS`
 
-`PRAGMA foreign_key_list(user_notifications)` returned an empty result set.
+Post-apply live trigger semantically matches reviewed 0049 and explicitly contains:
 
-Therefore the actual staging table has **no FK** on `user_id` and no `ON DELETE CASCADE` behavior to rely on.
+`DELETE FROM user_notifications WHERE user_id = OLD.id;`
 
-The expected indexes are present, including:
-
-`idx_user_notifications_user(user_id, is_read)`.
+`user_notifications` itself was not rebuilt or otherwise changed; it remains FK-less and retains the reviewed indexes.
 
 Current finding state:
 
-`OPEN / LIVE FK CASCADE ABSENT / EXPLICIT DELETION POLICY REQUIRED / BLOCKS STAGING EXECUTION`.
-
-Canonical evidence:
-
-`docs/reviews/2026-09-11-0047-scope-01-live-staging-schema-evidence.md`
-
-The static "cascade already covers this table" hypothesis is closed as false for live staging.
-
-Migration-history rule remains: do not mutate already-applied `0008` or `0047` in place. A separately reviewed forward migration proposal is now required after fresh migration-number verification and one more complete active user-linked inventory pass.
+`STRUCTURALLY CORRECTED IN STAGING / BEHAVIORAL CLOSURE PENDING`.
 
 ### Controlled staging deletion packet
 
@@ -110,12 +99,22 @@ Canonical packet:
 
 `docs/reviews/2026-09-11-0047-controlled-staging-deletion-packet.md`
 
-The packet remains BLOCKED. No disposable account has been created, no fixture has been seeded, and no deletion has been run.
+The packet has been refreshed to use the live 0049 explicit trigger policy rather than the disproven FK-cascade assumption.
 
-The eventual deletion-policy surface remains 30 domains:
+Fresh review request:
 
-- 29 current trigger-touched domains;
-- `user_notifications` as the newly confirmed uncovered domain requiring an explicit forward-policy fix.
+`docs/reviews/2026-09-11-0047-controlled-staging-deletion-preexecution-review-request.md`
+
+Current state:
+
+`PRE-EXECUTION REVIEW PENDING / NO SYNTHETIC ACCOUNT CREATION OR DELETION AUTHORIZED`.
+
+No disposable account has been created, no fixture has been seeded, and no deletion has been run.
+
+The deletion-policy surface remains 30 domains:
+
+- the original 29 trigger-touched domains;
+- `user_notifications`, now explicitly covered by the live 0049 trigger.
 
 ## Finding status
 
@@ -133,9 +132,8 @@ The eventual deletion-policy surface remains 30 domains:
 ### OPEN / OUTSIDE D-016
 
 6. Production D1 migration backlog `0042`-`0047`.
-7. `0047-SCOPE-01` — live staging `user_notifications` has no FK cascade and remains outside the current trigger; forward migration design/review is required before controlled staging deletion.
-
-`0047-PRIVACY-01` source-order defect is fixed in staging code, but behavioral closure still requires the eventual controlled staging deletion execution after `0047-SCOPE-01` is resolved.
+7. `0047-PRIVACY-01` — structurally corrected, behavioral live closure pending.
+8. `0047-SCOPE-01` — structurally corrected through live staging 0049 trigger, behavioral live closure pending.
 
 ## Locked rollout constraints still active
 
@@ -152,14 +150,12 @@ The eventual deletion-policy surface remains 30 domains:
 
 ## NEXT
 
-1. Keep the controlled 0047 staging deletion packet blocked.
-2. Re-run/confirm the complete active user-linked deletion-policy inventory.
-3. Freshly verify the next migration number.
-4. Prepare a forward trigger-replacement migration proposal that preserves the reviewed 0047 policy and explicitly deletes `user_notifications` rows by `user_id`.
-5. Independently review the migration proposal and amended 30-domain staging execution packet before applying anything.
-6. Do not create/delete staging test accounts until those reviews are ACCEPTED.
-7. Keep D-016 Track B paused; do not bulk-apply `0042`-`0048`.
-8. Do not enable semantic-primary, apply production migrations, perform another semantic retry, adopt H/RRF, or introduce Vectorize without separate authorization.
+1. Obtain independent review of the refreshed controlled staging deletion packet.
+2. Do not create synthetic accounts, seed fixtures, or delete any staging user before an ACCEPTED decision.
+3. If ACCEPTED, require fresh human confirmation that the staging execution window contains only controlled test traffic before starting the one authorized execution.
+4. Preserve the packet's 30-domain assertions, locked stress volumes, timing thresholds, hard STOP, and no-retry rule.
+5. Keep D-016 Track B paused; do not bulk-apply production `0042`-`0048`.
+6. Do not enable semantic-primary, apply production migrations, perform another semantic retry, adopt H/RRF, or introduce Vectorize without separate authorization.
 
 ## Canonical records
 
@@ -172,9 +168,8 @@ The eventual deletion-policy surface remains 30 domains:
 - 0047 dedicated production review: `docs/reviews/2026-09-11-0047-user-deletion-integrity-production-review.md`
 - 0047 read-only analysis: `docs/reviews/2026-09-11-0047-read-only-schema-code-analysis.md`
 - 0047 controlled staging packet: `docs/reviews/2026-09-11-0047-controlled-staging-deletion-packet.md`
-- 0047 scope triage: `docs/reviews/2026-09-11-0047-scope-01-user-notifications-triage.md`
-- 0047 scope live staging evidence: `docs/reviews/2026-09-11-0047-scope-01-live-staging-schema-evidence.md`
-- 0047 scope follow-up: `docs/reviews/2026-09-11-0047-scope-01-followup-plan.md`
+- 0047 fresh pre-execution review request: `docs/reviews/2026-09-11-0047-controlled-staging-deletion-preexecution-review-request.md`
+- 0049 staging apply evidence: `docs/reviews/2026-09-11-0049-staging-migration-apply-evidence.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
 Last updated: 2026-09-11
