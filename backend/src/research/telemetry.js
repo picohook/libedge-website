@@ -1,3 +1,4 @@
+// Exact research telemetry counters are backed by D1 migration 0048.
 const ALLOWED_METRICS = new Set([
   'research_requests',
   'semantic_attempts',
