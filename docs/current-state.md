@@ -14,7 +14,9 @@ The first controlled semantic-primary staging smoke exposed a live semantic `429
 
 A later separately authorized controlled retry returned two uncached semantic HTTP `200` responses, but the telemetry counters were internally impossible (`semantic_successes` increased by two while `semantic_attempts` increased by one). That retry is **NOT PASS**. The semantic-primary flag is OFF in staging and production.
 
-The telemetry lost-update defect has now been corrected in code using D1 atomic counters, with the staging schema migrated first. Full CI is green and the corrected runtime is deployed to staging **with semantic-primary OFF**. The project is now at an **independent telemetry code/diff review gate only**. No new semantic retry is authorized.
+The KV lost-update telemetry defect was corrected with D1 atomic counters and deployed to staging with semantic-primary OFF. Independent code/diff review has now classified that correction **ACCEPTED WITH MODIFICATION**. The required modification is a live, semantic-OFF staging D1 concurrency verification using near-concurrent lexical requests before any future semantic retry may be authorized.
+
+The project is therefore now at a **flag-OFF live D1 concurrency verification** gate. No semantic retry is authorized.
 
 ## Controlled semantic smoke / retry history
 
@@ -69,7 +71,7 @@ POST telemetry included:
 
 The impossible cross-metric state proved the previous KV telemetry writer was not exact under concurrency. No relevance judgment was made.
 
-## Telemetry atomicity correction — IMPLEMENTED / REVIEW PENDING
+## Telemetry atomicity correction — IMPLEMENTED / ACCEPTED WITH MODIFICATION
 
 Canonical architecture decision:
 
@@ -83,18 +85,45 @@ Canonical implementation record:
 
 `docs/architecture/p05-research-telemetry-atomicity-implementation.md`
 
-Selected design:
+Independent code/diff acceptance record:
+
+`docs/reviews/2026-09-11-d016-telemetry-atomicity-code-review-acceptance.md`
+
+Reviewer classification: **ACCEPTED WITH MODIFICATION**.
+
+Accepted implementation properties:
 
 - exact telemetry counters moved from non-atomic KV read-modify-write to D1;
 - dedicated table: `research_telemetry_counters` on existing `env.DB`;
 - atomic SQL UPSERT per metric;
 - `recordResearchMetrics(...)` batches multiple counters describing one terminal event;
 - `RESEARCH_TELEMETRY_METRICS` remains the single allowlist;
+- semantic success/failure and lexical fallback accounting preserves `semantic_successes <= semantic_attempts` by code structure;
+- telemetry remains best-effort and does not alter retrieval/fallback behavior;
 - no global telemetry Durable Object;
 - if a telemetry DO is ever reconsidered, it must remain separate from `OpenAlexSemanticPacer`;
 - a dedicated telemetry D1 database/binding remains a pre-broad-enable architecture revisit if load/latency/contention evidence warrants separation from core D1.
 
-### Staging migration
+### Reviewer-required live verification
+
+The reviewer identified one methodological limitation: Test I uses a synchronous in-memory fake D1 and therefore validates event-accounting logic but cannot reproduce real D1 transaction scheduling under concurrent requests.
+
+Before any semantic-primary flag enablement, staging must therefore pass a real D1 concurrency check while semantic-primary remains OFF:
+
+- capture super-admin D1 telemetry immediately before;
+- issue five distinct ordinary non-sensitive authenticated lexical requests near-concurrently with `Promise.all` or equivalent;
+- capture telemetry immediately after;
+- require `research_requests` delta to equal exactly `5`;
+- require all responses to remain lexical and successful;
+- require no semantic-counter increase caused by this step;
+- make no relevance judgment;
+- if exact delta is not observed, STOP / INVESTIGATE and do not proceed to semantic retry authorization.
+
+Canonical retry-preparation record containing this requirement:
+
+`docs/architecture/p05-production-retrieval-retry-preparation.md`
+
+## Staging migration / runtime evidence
 
 Migration:
 
@@ -106,49 +135,7 @@ Staging migration run `34569103893`:
 - apply staging migrations: PASS;
 - verify `research_telemetry_counters` table: PASS.
 
-The temporary one-shot migration workflow was removed immediately after success.
-
 Production migration was **not** applied.
-
-### Runtime implementation
-
-`backend/src/research/telemetry.js`:
-
-- D1 atomic UPSERTs replace KV exact-counter writes;
-- exact current-day snapshot reads from D1;
-- unsupported metrics are filtered by the existing shared allowlist;
-- scheduled retention pruning preserves the intended eight UTC-day buckets;
-- telemetry failures remain best-effort and cannot alter otherwise valid research retrieval/fallback behavior.
-
-`backend/src/research/router.js`:
-
-- semantic success terminal events batch attempt + success + pacing wait + provider latency + applicable valid-empty/cost/credit counters;
-- semantic failure terminal events batch attempt + applicable wait/latency + exactly the applicable failure category;
-- successful lexical fallback batches attempt + success;
-- failed lexical fallback records attempt only;
-- no relevance/routing/cache/fallback policy changed.
-
-`backend/src/worker.js`:
-
-- scheduled telemetry pruning runs alongside the existing privacy purge task.
-
-### Tests A-I
-
-Required test coverage is implemented:
-
-- A: concurrent same-metric exact increment;
-- B: concurrent mixed positive deltas;
-- C: allowlist-only persistence/read surface;
-- D: privacy/content exclusion;
-- E: UTC-day isolation;
-- F: existing system-health auth/exact-allowlist/privacy regression;
-- G: existing `1499/1500 ms` pacing regression;
-- H: full quality gate;
-- I: concurrent cross-metric invariant (`semantic_successes <= semantic_attempts`, all-success case exactly `N/N`).
-
-Retention pruning is also tested.
-
-### CI / flag-OFF deploy evidence
 
 CI run `34569559519`:
 
@@ -160,9 +147,9 @@ CI run `34569559519`:
 - dry-run explicitly showed `RESEARCH_SEMANTIC_PRIMARY_ENABLED="false"`;
 - build PASS.
 
-A later comment-only deploy-trigger commit `1fe5c50945e17038059e0926a1a59e5320232364` changed no runtime behavior beyond the already-tested implementation. CI run `34569629908`: SUCCESS.
+Later CI run `34569629908`: SUCCESS.
 
-Deploy Workers run `34569629970`, head `1fe5c50945e17038059e0926a1a59e5320232364`:
+Deploy Workers run `34569629970`:
 
 - Quality gate: PASS;
 - Deploy backend to staging: PASS;
@@ -199,18 +186,19 @@ It does not store or expose query text, normalized query, user ID/email, topic, 
 
 1. `OOS-D016-CODE-01` — grant-time vs provider-fetch timing / account-wide rate-limit interaction: `OPEN`; pacing correction exists but closure still requires a valid future controlled retry.
 2. `OOS-D016-CODE-02` — pre-existing non-atomic cache read/write stampede risk: `ACKNOWLEDGED / DEFERRED`.
-3. `OOS-D016-TELEMETRY-01` — previous KV telemetry lost-update race: `OPEN / IMPLEMENTATION COMPLETE / BLOCKS SEMANTIC RETRY UNTIL INDEPENDENT CODE-DIFF ACCEPTANCE`; D1 correction is implemented and flag-OFF deployed, but not yet independently accepted.
+3. `OOS-D016-TELEMETRY-01` — previous KV telemetry lost-update race: `OPEN / D1 CODE ACCEPTED WITH MODIFICATION`; closure/progression requires successful flag-OFF live D1 concurrency verification before semantic retry authorization.
 4. Shared-core-D1 telemetry failure-domain coupling: `ACKNOWLEDGED / DEFERRED`; revisit before broad enablement if measured write QPS/latency/contention suggests material impact.
 5. Wrangler declarative `exports` migration path: `ACKNOWLEDGED / DEFERRED` until deliberate toolchain upgrade.
 
 ## NEXT
 
-1. Obtain independent full code/diff review of the D1 telemetry correction and staging migration/deployment evidence.
-2. Do not run another semantic request pair during that review.
-3. If the code/diff is `ACCEPTED`, record the acceptance in the main engineering thread.
-4. Only then prepare a new, separately reviewed retry authorization packet.
-5. Any future retry still requires fresh human controlled-traffic confirmation, a D1-backed telemetry baseline, at most one authorized near-concurrent pair, and the previously locked mechanical success/stop criteria.
-6. Production D1 migration and production semantic enablement remain separate later decisions.
+1. With staging semantic-primary still OFF, capture a super-admin D1 telemetry baseline.
+2. From the authenticated staging browser session, issue exactly five distinct ordinary non-sensitive lexical requests near-concurrently using `Promise.all` or equivalent.
+3. Capture the post-burst D1 telemetry snapshot and require exact `research_requests +5` with no semantic-counter increase caused by the step.
+4. If the lexical D1 verification is not exact, STOP / INVESTIGATE; do not request semantic retry authorization.
+5. If it passes, record the evidence and prepare a separate reviewer/main-thread semantic retry authorization packet.
+6. Do not enable staging semantic-primary until that separate authorization is accepted and a fresh human controlled-traffic confirmation is obtained.
+7. Production D1 migration and production semantic enablement remain separate later decisions.
 
 ## Canonical records
 
@@ -226,6 +214,7 @@ It does not store or expose query text, normalized query, user ID/email, topic, 
 - Telemetry atomicity architecture: `docs/architecture/p05-research-telemetry-atomicity-correction.md`
 - Telemetry atomicity reviewer follow-up: `docs/reviews/2026-09-11-d016-telemetry-atomicity-review.md`
 - Telemetry atomicity implementation: `docs/architecture/p05-research-telemetry-atomicity-implementation.md`
+- Telemetry atomicity code-review acceptance: `docs/reviews/2026-09-11-d016-telemetry-atomicity-code-review-acceptance.md`
 - Reviewer packet checklist: `docs/reviewer-packet-checklist.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
