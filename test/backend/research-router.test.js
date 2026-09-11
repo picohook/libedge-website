@@ -11,6 +11,32 @@ function createKv() {
   };
 }
 
+function createTelemetryDb() {
+  const rows = new Map();
+  function statement(sql, args = []) {
+    return {
+      bind(...nextArgs) { return statement(sql, nextArgs); },
+      async run() {
+        if (sql.includes('INSERT INTO research_telemetry_counters')) {
+          const [date, metric, amount] = args;
+          const key = `${date}|${metric}`;
+          rows.set(key, (rows.get(key) || 0) + Number(amount));
+        }
+        return { success: true };
+      },
+      async all() { return { results: [] }; }
+    };
+  }
+  return {
+    rows,
+    prepare(sql) { return statement(sql); },
+    async batch(statements) {
+      for (const item of statements) await item.run();
+      return [];
+    }
+  };
+}
+
 function createPacer() {
   const calls = [];
   return {
@@ -34,6 +60,7 @@ function createEnv(overrides = {}) {
   return {
     JWT_SECRET: 'test-secret',
     ENVIRONMENT: 'staging',
+    DB: createTelemetryDb(),
     RATE_LIMIT_KV: createKv(),
     CROSSREF_MAILTO: 'research@example.test',
     RESEARCH_SEMANTIC_PRIMARY_ENABLED: 'false',
@@ -160,7 +187,7 @@ describe('research search endpoint', () => {
     expect(body.results).toEqual([]);
     expect(body.meta.retrievalSource).toBe('semantic');
     expect(providerFetch).toHaveBeenCalledTimes(1);
-    expect([...env.RATE_LIMIT_KV.store.keys()].some((key) => key.endsWith(':semantic_valid_empty'))).toBe(true);
+    expect([...env.DB.rows.keys()].some((key) => key.endsWith('|semantic_valid_empty'))).toBe(true);
   });
 
   it('falls back to lexical only after an objective semantic failure and never merges outputs', async () => {
