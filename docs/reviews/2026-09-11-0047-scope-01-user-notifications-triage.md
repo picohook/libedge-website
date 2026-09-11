@@ -1,6 +1,6 @@
 # 0047-SCOPE-01 — `user_notifications` deletion-scope review
 
-Status: `TRIAGED / CANONICAL FK CASCADE COVERS TABLE / LIVE STAGING CONFIRMATION REQUIRED`
+Status: `OPEN / LIVE FK CASCADE ABSENT / EXPLICIT DELETION POLICY REQUIRED / BLOCKS STAGING EXECUTION`
 
 Date: 2026-09-11
 
@@ -10,13 +10,9 @@ The controlled 0047 staging-deletion packet accurately covered all 29 tables exp
 
 The application actively inserts per-user rows containing notification title/body content, so the table must be part of the account-deletion privacy surface.
 
-## Read-only correction
+## Static repository evidence
 
-Repository-level schema-source inspection found that the authoritative migration is:
-
-`migrations/0008_user_notifications.sql`
-
-It defines:
+Canonical migration `migrations/0008_user_notifications.sql` declares:
 
 ```sql
 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
@@ -29,70 +25,82 @@ CREATE INDEX IF NOT EXISTS idx_user_notifications_user
   ON user_notifications(user_id, is_read);
 ```
 
-Therefore the preliminary statement that there is no FK/cascade policy was too broad. Under the canonical migrated schema, `user_notifications` is already deleted with the parent `users` row by SQLite/D1 FK cascade even though migration 0047 does not contain an explicit `DELETE FROM user_notifications ...` statement.
+This initially suggested that the table might already be covered by schema-level FK cascade.
 
-The runtime-DDL fallback in application code omits this FK, but `shouldRunRuntimeDdl(...)` is disabled for strict runtime environments (`staging` and `production`). That fallback is therefore not the expected authoritative staging/production schema.
+## Live staging evidence — decisive result
 
-## Application-path result
+A read-only inspection of the actual remote staging D1 database was executed in workflow run:
 
-The current staging backend contains an active institution send-to-users write path using:
+`34601127734`
 
-`INSERT OR IGNORE INTO user_notifications (...)`
+against:
 
-No intentional post-account-deletion retention requirement for these per-user notification records was identified in the read-only repository pass.
+- database name: `libedge-db`
+- database id: `207d80d6-7e6b-4e10-aacf-b218970dbaf8`
 
-Intended privacy disposition remains:
+The live results were:
+
+### Table columns
+
+`PRAGMA table_info(user_notifications)` confirmed the expected column shape.
+
+### Foreign keys
+
+`PRAGMA foreign_key_list(user_notifications)` returned an empty result set:
+
+```text
+[]
+```
+
+Therefore the live staging table has **no foreign-key constraint** on `user_id` and no `ON DELETE CASCADE` behavior to rely on.
+
+### Indexes
+
+Live staging contains:
+
+- `idx_user_notifications_user(user_id, is_read)`
+- `idx_user_notifications_type(type)`
+
+So an explicit delete by `user_id` is index-supported.
+
+## Triage decision
+
+The static cascade hypothesis is rejected for live staging.
+
+Current finding state:
+
+`OPEN / LIVE FK CASCADE ABSENT / EXPLICIT DELETION POLICY REQUIRED / BLOCKS STAGING EXECUTION`.
+
+`user_notifications` is an active per-user delivery table. Its expected privacy disposition remains:
 
 `DELETE with the account`.
 
-## Index / performance result
+Because the live staging schema does not supply the canonical cascade, the existing 0047 trigger leaves this domain uncovered.
 
-`idx_user_notifications_user(user_id, is_read)` has `user_id` as its leading column. Repository schema evidence therefore does not justify adding a new deletion index.
+## Migration-history rule
 
-The existing stress pair remains unchanged:
+Do not rewrite already-applied migration `0008` or `0047` in place.
 
-- `25,000 ai_usage_logs`;
-- `25,000 notifications`.
+The schema divergence must be addressed through a separately reviewed forward migration proposal after migration-number verification.
 
-## Corrected triage decision
+The previously discussed semantic trigger action remains the narrow expected policy:
 
-A trigger-replacement migration (for example 0049) is **not currently justified** merely because `user_notifications` is absent from the 0047 trigger.
+```sql
+DELETE FROM user_notifications WHERE user_id = OLD.id;
+```
 
-The finding is now:
-
-`TRIAGED / CANONICAL SCHEMA CASCADE-COVERS USER_NOTIFICATIONS / LIVE STAGING FK CONFIRMATION REQUIRED`.
-
-Before any controlled staging deletion, fresh read-only staging evidence must confirm:
-
-1. `PRAGMA table_info(user_notifications)` matches the expected columns;
-2. `PRAGMA foreign_key_list(user_notifications)` contains `users(id)` with `ON DELETE CASCADE`;
-3. `PRAGMA index_list(user_notifications)` / index details confirm the reviewed user index;
-4. no material staging schema divergence exists.
-
-If live staging matches migration 0008, no follow-up trigger migration is required for `0047-SCOPE-01`.
-
-If live staging does **not** match migration 0008, execution remains STOPPED and the discrepancy returns for separate migration design/review.
+No migration SQL is authorized by this triage record itself.
 
 ## Controlled packet effect
 
-The controlled deletion packet must include `user_notifications` as a **30th deletion-policy domain**, while preserving the distinction:
+The controlled staging deletion packet remains **BLOCKED BEFORE EXECUTION**.
 
-- 29 domains are explicitly touched by the 0047 trigger;
-- `user_notifications` is expected to be removed by schema-level FK cascade.
+The eventual deletion-policy surface is 30 domains:
 
-Required fixture/assertions:
+- 29 current trigger-touched domains;
+- `user_notifications` as the newly confirmed uncovered domain requiring an explicit forward-policy fix.
 
-- seed at least one target `user_notifications` row for each target path;
-- target rows must disappear after account deletion;
-- `U_CONTROL` `user_notifications` rows must remain unchanged;
-- PRE/POST counts must be recorded;
-- live FK/index evidence must be preserved in the execution record.
-
-## Execution boundary
-
-Controlled staging deletion remains **BLOCKED BEFORE EXECUTION** until the amended packet and this corrected triage are independently reviewed and the required live read-only staging schema confirmation is obtained.
-
-No synthetic account may be created, no fixture may be seeded, and no deletion may be run yet.
+No synthetic account may be created, no fixture may be seeded, and no deletion may be run until the forward migration proposal and amended execution packet are independently reviewed and accepted.
 
 ## Production / D-016 boundary
 
@@ -104,6 +112,6 @@ Unchanged:
 - semantic-primary remains OFF;
 - this finding remains outside D-016.
 
-Supporting discovery record:
+Supporting live evidence:
 
-`docs/reviews/2026-09-11-0047-scope-01-read-only-discovery.md`
+`docs/reviews/2026-09-11-0047-scope-01-live-staging-schema-evidence.md`
