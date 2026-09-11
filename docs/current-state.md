@@ -17,9 +17,14 @@ Current semantic-primary flags:
 - staging: `OFF`;
 - production: `OFF`.
 
-The reviewer has now classified the next rollout-stage preparation **ACCEPTED WITH MODIFICATION**. The required Track A modification has been incorporated: production peak-rate evidence must use **per-request timestamps or privacy-safe buckets no coarser than 2 seconds**. Coarser evidence is insufficient for the locked `<=0.5 requests/second` broad-enablement guardrail.
+The reviewer has classified next rollout-stage preparation **ACCEPTED WITH MODIFICATION**. Track A now has two explicit evidence-quality requirements:
 
-The project is now authorized only for two preparation/evidence tracks that do not change production behavior:
+1. temporal resolution must be per-request or no coarser than `2 seconds`;
+2. the source must be complete/unsampled enough that the observed peak cannot be understated. For Cloudflare Workers Logs, effective `head_sampling_rate = 1.0` must be verified, unless equivalent complete unsampled capture is independently proven.
+
+Any source that is coarser, sampled below 100%, has unknown sampling, or has otherwise unquantified incompleteness is insufficient for the locked `<=0.5 requests/second` broad-enablement guardrail.
+
+The project is authorized only for two preparation/evidence tracks that do not change production behavior:
 
 1. **Track A — production traffic/capacity evidence-source discovery and evidence collection**;
 2. **Track B — production D1 migration execution planning and reviewer-packet preparation**.
@@ -72,12 +77,13 @@ Locked broad-enablement condition:
 
 Accepted evidence standard:
 
-- per-request timestamps; or
-- privacy-safe time buckets no coarser than `2 seconds`;
+- per-request timestamps; or privacy-safe time buckets no coarser than `2 seconds`;
+- complete/unsampled capture sufficient to avoid understating the peak;
+- for Cloudflare Workers Logs, effective `head_sampling_rate = 1.0`, unless equivalent complete capture is independently demonstrated;
 - source must isolate eligible research requests;
 - no query text, user identity, research topic, result content, DOI/title, or raw request body may be exposed or persisted for this purpose.
 
-Daily totals, daily averages, minute-level averages, or any source coarser than 2-second buckets do **not** support the peak-rate claim.
+Daily totals, daily averages, minute-level averages, other sources coarser than 2-second buckets, sampled sources below 100%, unknown sampling states, or unquantified incomplete sources do **not** support the peak-rate claim.
 
 If no acceptable source exists, the required conclusion is:
 
@@ -87,9 +93,19 @@ Canonical preparation record:
 
 `docs/architecture/p05-production-rollout-stage-preparation.md`
 
+Evidence-source discovery:
+
+`docs/architecture/p05-production-capacity-evidence-discovery.md`
+
 Reviewer follow-up:
 
 `docs/reviews/2026-09-11-d016-next-rollout-stage-preparation-followup.md`
+
+Current discovery result:
+
+- existing D1 daily telemetry: `INSUFFICIENT`;
+- repository-proven Analytics Engine source: none;
+- Cloudflare Workers Logs/native invocation logs: candidate only; production account state, temporal resolution, endpoint isolation, and effective sampling/completeness remain to be verified.
 
 ## Track B — production D1 telemetry migration preparation
 
@@ -117,7 +133,7 @@ Successful migration alone would not authorize semantic-primary production enabl
 2. Valid empty/short S does not trigger L.
 3. L fallback remains objective-only; no content/count/relevance/topic routing.
 4. Semantic request starts remain globally paced through the dedicated pacing Durable Object at `1500 ms` minimum spacing.
-5. Broad enablement remains blocked unless peak eligible research-query rate is documented `<=0.5 requests/second` using the accepted temporal-resolution standard.
+5. Broad enablement remains blocked unless peak eligible research-query rate is documented `<=0.5 requests/second` using the accepted temporal-resolution and completeness standard.
 6. D-013 checkpoint remains first `1,000` charged semantic responses or `7 days`, whichever occurs first.
 7. Capacity/cost/availability telemetry stores no query text, topics, research interests or user IDs.
 8. P0.5 holdouts/labels are not reused for rollout relevance retuning.
@@ -129,7 +145,7 @@ Successful migration alone would not authorize semantic-primary production enabl
 
 Proceed in parallel only with non-behavior-changing preparation:
 
-1. **Track A:** discover whether an existing production operational source can provide eligible research-request timing at per-request or `<=2-second` resolution without content leakage. Do not add production instrumentation yet unless separately reviewed.
+1. **Track A:** verify whether the production Worker already has an existing operational source that provides eligible research-request timing at per-request or `<=2-second` resolution and complete/unsampled capture. For Workers Logs, verify effective `head_sampling_rate = 1.0`; do not infer dashboard-side state from repository configuration.
 2. **Track A:** if a suitable existing source exists, prepare an independently reviewable capacity evidence record. If not, record `INSUFFICIENT EVIDENCE` and identify what separately reviewed instrumentation would be needed.
 3. **Track B:** inspect the production D1 binding and migration state without applying changes; prepare a full reviewer packet for migration execution only.
 4. Do not apply production migration, enable semantic-primary, or perform another semantic retry without separate authorization.
@@ -139,6 +155,7 @@ Proceed in parallel only with non-behavior-changing preparation:
 - Decisions: `docs/decisions.md`
 - Locked architecture: `docs/architecture/p05-production-retrieval-decision.md`
 - Production rollout-stage preparation: `docs/architecture/p05-production-rollout-stage-preparation.md`
+- Capacity evidence-source discovery: `docs/architecture/p05-production-capacity-evidence-discovery.md`
 - Rollout-stage reviewer follow-up: `docs/reviews/2026-09-11-d016-next-rollout-stage-preparation-followup.md`
 - Controlled semantic retry PASS: `docs/reviews/2026-09-11-d016-controlled-semantic-retry-pass.md`
 - Controlled semantic retry closure acceptance: `docs/reviews/2026-09-11-d016-controlled-semantic-retry-closure-acceptance.md`
