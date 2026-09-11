@@ -63,11 +63,45 @@ Before any production apply command may be authorized:
 7. document the exact production apply command and verification commands before execution;
 8. verify that no semantic-primary flag change is included in the migration commit/workflow/action.
 
+## Read-only production inspection — completed
+
+Inspection run:
+
+`34583816393`
+
+Only the read-only command below was executed:
+
+`npx wrangler d1 migrations list DB --env production --remote`
+
+Observed production pending migrations:
+
+1. `0042_tunnel_alert_tracking.sql`
+2. `0043_products_ra_cookie_mode.sql`
+3. `0044_wiley_stable_host.sql`
+4. `0045_add_clinicalkey_uptodate.sql`
+5. `0046_add_ai_product_cards.sql`
+6. `0047_user_deletion_integrity.sql`
+7. `0048_research_telemetry_counters.sql`
+
+This satisfies the hard-STOP condition in step 6 above.
+
+Current classification:
+
+`STOP — DO NOT APPLY PRODUCTION D1 MIGRATIONS`.
+
+The earlier backlog is outside D-016 and is recorded separately in:
+
+`docs/reviews/2026-09-11-production-d1-pending-migration-audit.md`
+
+No bulk application of `0042`-`0047` is authorized merely to reach `0048`.
+
 ## Recovery expectations
 
-The migration is additive (`CREATE TABLE IF NOT EXISTS`) and does not alter existing application tables.
+The intended `0048` migration is additive (`CREATE TABLE IF NOT EXISTS`) and does not alter existing application tables.
 
-The planned recovery model is therefore:
+However, recovery planning for `0048` is not currently actionable because production migration execution is blocked upstream by `0042`-`0047`.
+
+If Track B later resumes:
 
 - do not attempt an automatic destructive rollback;
 - if apply fails, stop and inspect the migration state before any retry;
@@ -76,7 +110,7 @@ The planned recovery model is therefore:
 
 ## Post-apply verification — only after separate execution authorization
 
-A separately authorized production migration would verify only:
+A future separately authorized production migration would verify only:
 
 1. migration command completed successfully;
 2. `research_telemetry_counters` exists in the intended production D1 database;
@@ -99,6 +133,6 @@ Migration success would **not** authorize:
 
 ## Current blocker to execution packet
 
-The production pending-migration list has not yet been read and therefore the exact production migration state is not yet independently known.
+Track B is paused until the separate production D1 pending-migration audit has explicit dispositions for `0042`-`0047`.
 
-The next allowed Track B action is a read-only production migration-state inspection. Applying migrations remains prohibited until that result is packaged and independently reviewed.
+Only after that backlog is resolved may Track B obtain a fresh read-only production pending-migration list and return for a new execution review.
