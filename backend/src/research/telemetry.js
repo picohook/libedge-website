@@ -48,6 +48,22 @@ export async function recordResearchMetric(env, metric, amount = 1, now = new Da
   }
 }
 
+export async function readResearchTelemetrySnapshot(env, now = new Date()) {
+  if (!env.RATE_LIMIT_KV) return null;
+
+  const metrics = {};
+  await Promise.all([...ALLOWED_METRICS].map(async (metric) => {
+    const raw = await env.RATE_LIMIT_KV.get(metricKey(metric, now));
+    const numeric = Number(raw || 0);
+    metrics[metric] = Number.isFinite(numeric) && numeric >= 0 ? numeric : 0;
+  }));
+
+  return {
+    date_utc: utcDateKey(now),
+    metrics
+  };
+}
+
 export async function recordSemanticTelemetry(env, telemetry = {}, now = new Date()) {
   const calls = [];
   if (Number.isFinite(Number(telemetry.requestCostUsd)) && Number(telemetry.requestCostUsd) > 0) {
