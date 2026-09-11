@@ -45,20 +45,28 @@ This is an operational capacity condition, not a relevance gate.
 
 ### Evidence standard
 
-The evidence source must be able to support a defensible peak-rate statement without smoothing away short bursts.
+The evidence source must be able to support a defensible peak-rate statement without smoothing away short bursts or understating them through incomplete sampling.
 
 Acceptable evidence is one of:
 
-1. privacy-safe production request telemetry with per-request timestamps;
-2. privacy-safe time buckets no coarser than **2 seconds** that can isolate eligible research requests;
-3. Cloudflare/native operational analytics that can isolate the eligible research endpoint at per-request or <=2-second temporal resolution without exposing query text, user identity, research topic, result content, DOI/title, or raw request bodies;
-4. another independently reviewable operational source with equivalent temporal resolution and privacy guarantees.
+1. privacy-safe production request telemetry with per-request timestamps and complete/unsampled capture;
+2. privacy-safe time buckets no coarser than **2 seconds** that can isolate eligible research requests and are based on complete/unsampled capture;
+3. Cloudflare/native operational analytics that can isolate the eligible research endpoint at per-request or <=2-second temporal resolution without exposing query text, user identity, research topic, result content, DOI/title, or raw request bodies, and whose effective sampling/completeness is independently verified;
+4. another independently reviewable operational source with equivalent temporal resolution, completeness, and privacy guarantees.
 
 Any evidence source coarser than 2-second buckets is insufficient to support a peak-rate claim against the locked `<=0.5 req/s` guardrail because it may smooth materially bursty traffic.
 
+Any sampled or incomplete source whose missing requests could reduce the observed peak is also insufficient. For Cloudflare Workers Logs specifically, account/environment state must demonstrate `head_sampling_rate = 1.0` (100% head sampling), or an equivalently complete unsampled capture must be independently proven.
+
+A source with `head_sampling_rate < 1.0`, unknown sampling state, or otherwise unquantified incompleteness must be classified:
+
+`INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`.
+
 Daily totals, daily averages, minute-level averages, or other coarse aggregates alone are **not sufficient** to establish the locked peak-rate guardrail.
 
-If the available source cannot support a credible peak calculation at per-request or <=2-second resolution, the correct result is:
+No silent correction factor or extrapolation from a sampled subset may be used to claim the upper guardrail is satisfied unless a separately reviewed method can defensibly establish a true upper bound.
+
+If the available source cannot support a credible peak calculation at per-request or <=2-second resolution with complete/unsampled coverage, the correct result is:
 
 `INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`.
 
@@ -70,6 +78,8 @@ Any capacity evidence record must state:
 - exact observation window;
 - whether data are observed or estimated;
 - temporal resolution;
+- sampling/completeness state;
+- effective `head_sampling_rate` when Workers Logs is used;
 - eligible-request definition;
 - total eligible requests;
 - maximum observed rate and the calculation method;
@@ -79,6 +89,8 @@ Any capacity evidence record must state:
 
 If bucketed data are used, the record must also state the bucket width explicitly and show that it is `<=2 seconds`.
 
+If Workers Logs is used, the record must show that effective `head_sampling_rate = 1.0` for the production Worker/environment and relevant observation window, unless equivalent complete capture is independently demonstrated.
+
 ### No silent extrapolation
 
 Low staging traffic is not evidence of low production traffic.
@@ -86,6 +98,8 @@ Low staging traffic is not evidence of low production traffic.
 The successful controlled retry does not satisfy the production capacity guardrail.
 
 The P0.5 experiment request rate does not satisfy the production capacity guardrail.
+
+Sampled production traffic is not evidence of a safe upper bound unless completeness is independently established.
 
 ## Track B — Production D1 telemetry migration proposal
 
@@ -138,7 +152,7 @@ Successful production telemetry migration does **not** authorize:
 
 The two tracks are logically independent, but a practical measurement dependency may exist:
 
-- if existing production operational analytics already provide privacy-safe eligible research-request timing at per-request or `<=2-second` resolution, Track A can proceed without production D1 telemetry;
+- if existing production operational analytics already provide privacy-safe eligible research-request timing at per-request or `<=2-second` resolution with complete/unsampled coverage, Track A can proceed without production D1 telemetry;
 - if no such source exists, production D1 migration may become a prerequisite for a separately reviewed privacy-safe rate-measurement implementation.
 
 That dependency must be demonstrated, not assumed.
@@ -163,8 +177,9 @@ The independent reviewer should assess:
 
 1. whether the capacity evidence standard is strong enough to support the locked `<=0.5 req/s` guardrail;
 2. whether the explicit per-request / `<=2-second` minimum temporal resolution is conservative enough to preserve burst evidence;
-3. whether daily/minute/coarser aggregate telemetry is correctly rejected as insufficient for peak-rate evidence;
-4. whether the production migration prechecks are conservative enough;
-5. whether unexpected pending migrations should be a hard STOP;
-6. whether Track A and Track B are sufficiently separated to prevent migration acceptance from being misread as production semantic enablement;
-7. whether an additional blocker should be added before either track begins.
+3. whether complete/unsampled capture, including `head_sampling_rate = 1.0` for Workers Logs, is required to avoid false-safe peak estimates;
+4. whether daily/minute/coarser aggregate telemetry is correctly rejected as insufficient for peak-rate evidence;
+5. whether the production migration prechecks are conservative enough;
+6. whether unexpected pending migrations should be a hard STOP;
+7. whether Track A and Track B are sufficiently separated to prevent migration acceptance from being misread as production semantic enablement;
+8. whether an additional blocker should be added before either track begins.
