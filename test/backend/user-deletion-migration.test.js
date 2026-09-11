@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
 
 const migrationUrl = new URL('../../migrations/0047_user_deletion_integrity.sql', import.meta.url);
+const backendUrl = new URL('../../backend/src/index.js', import.meta.url);
 
 describe('user deletion privacy migration', () => {
   it('centralizes cleanup for sensitive, retained and shared user data', async () => {
@@ -55,5 +56,22 @@ describe('user deletion privacy migration', () => {
   it('does not null ai_usage_logs user_id because that can violate its CHECK constraint', async () => {
     const sql = await readFile(migrationUrl, 'utf8');
     expect(sql).not.toContain('UPDATE ai_usage_logs SET user_id = NULL');
+  });
+
+  it('writes the admin deletion audit row before deleting users so 0047 can redact it', async () => {
+    const source = await readFile(backendUrl, 'utf8');
+    const start = source.indexOf("app.delete('/api/admin/user/:id'");
+    const end = source.indexOf("app.post('/api/admin/set-role/:id'", start);
+
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+
+    const block = source.slice(start, end);
+    const auditPos = block.indexOf('createAdminActionLogStmt(db, {');
+    const deleteUserPos = block.indexOf('DELETE FROM users WHERE id=?');
+
+    expect(auditPos).toBeGreaterThan(-1);
+    expect(deleteUserPos).toBeGreaterThan(-1);
+    expect(auditPos).toBeLessThan(deleteUserPos);
   });
 });

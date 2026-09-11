@@ -3314,9 +3314,8 @@ app.delete('/api/admin/user/:id', async (c) => {
 
   const actor = await getTokenPayloadFromCookie(c);
   await db.batch([
-    db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(id),
-    db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id),
-    db.prepare(`DELETE FROM users WHERE id=?`).bind(id),
+    // Write the deletion audit row before deleting the user so the 0047
+    // BEFORE DELETE trigger can redact its user snapshot in the same transaction.
     createAdminActionLogStmt(db, {
       id: crypto.randomUUID(),
       actor,
@@ -3325,6 +3324,9 @@ app.delete('/api/admin/user/:id', async (c) => {
       action: 'delete',
       before: sanitizeUserForAudit(userRow),
     }),
+    db.prepare(`DELETE FROM newsletter_subscriptions WHERE user_id = ?`).bind(id),
+    db.prepare(`DELETE FROM subscriptions WHERE user_id=?`).bind(id),
+    db.prepare(`DELETE FROM users WHERE id=?`).bind(id),
   ]);
 
   if (userRow?.avatar_url) await deleteManagedR2Object(c.env, userRow.avatar_url);
