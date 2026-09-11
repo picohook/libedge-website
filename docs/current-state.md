@@ -10,52 +10,48 @@ Status: `ACTIVE`
 
 P0.5 experimental sequence is **CLOSED / independently verified**. H is rejected. D-016 is **LOCKED** for the existing top-10 research-result contract: semantic S primary, lexical L only as objective availability fallback/rollback.
 
-The D-016 staging implementation plan and follow-up were independently accepted. The implementation code range `d3acdb67a1b9677cf16508af804950fbbc1312f0 -> aeeafd735b9d977c67f4cdc4b95c307fc69c92d9` received independent code/diff review: `ACCEPTED`.
+The D-016 staging implementation plan, follow-up, code/diff review, and Durable Object migration correction were independently accepted. The reviewed implementation is now **successfully deployed to staging with semantic-primary still OFF**.
 
-The reviewer authorized only staging deployment with `RESEARCH_SEMANTIC_PRIMARY_ENABLED=false` and baseline mechanical smoke verification. Semantic-primary staging enablement and broad production enablement remain unauthorized.
+Semantic-primary staging enablement and broad production enablement remain unauthorized pending baseline authenticated smoke and the next independent authorization.
 
-## Implementation / code-review status
+## Successful staging baseline deployment
 
-Canonical implementation record: `docs/architecture/p05-production-retrieval-implementation.md`.
-Canonical code review: `docs/reviews/2026-09-11-d016-code-review.md`.
+Canonical deployment record: `docs/reviews/2026-09-11-d016-staging-deploy-success.md`.
 
-Main-thread CI evidence:
-
-- run `34532191233`: lint/build PASS; `22` test files / `90` tests PASS;
-- run `34532297687`: PASS including `npx wrangler deploy --dry-run --env staging`.
-
-Reviewer independently inspected the implementation and critical test logic but could not rerun the suite in the review sandbox because of an environment-specific npm/arborist failure. That verification-depth limitation is preserved in the canonical review record.
-
-## Deployment state — FAILED BEFORE PUBLISH
-
-The reviewed implementation has **not yet been successfully deployed to staging**.
-
-Authorized staging deploy run `34534642824` at commit `4dc809efc9e8636d3af95e9e6a0e8c9422be257d` completed with overall `failure`:
+Deployment run `34536345675` at commit `90ef63239343188f57937fbc444b0b0b978d9bde`:
 
 - `Quality gate`: PASS;
-- `Deploy backend to staging`: FAIL at `npx wrangler deploy --env staging`;
+- `Deploy backend to staging`: PASS;
 - `Deploy backend to production`: SKIPPED.
 
-The Cloudflare API rejected creation of the `OPENALEX_SEMANTIC_PACER` Durable Object binding because class `OpenAlexSemanticPacer` was not provisioned through a recognized Durable Object lifecycle declaration. Wrangler `4.86.0` reported error code `10061`, requested a `new_sqlite_classes` migration, and also warned that the current top-level `[exports.OpenAlexSemanticPacer]` field is unexpected for that executable.
+Cloudflare deployment evidence:
 
-No new staging Worker version was published by this failed deployment. Semantic-primary remained OFF and production was untouched.
+- Worker: `libedge-api-staging`;
+- URL: `https://libedge-api-staging.agursel.workers.dev`;
+- Worker version ID: `7940f171-aad9-4ab9-aea8-55aac5ecb80f`;
+- Durable Object binding `OPENALEX_SEMANTIC_PACER (OpenAlexSemanticPacer)` present;
+- `RESEARCH_SEMANTIC_PRIMARY_ENABLED="false"`;
+- `RESEARCH_SEMANTIC_CANDIDATE_DEPTH="50"`.
 
-Canonical failure/correction record: `docs/reviews/2026-09-11-d016-staging-deploy-failure.md`.
+Same-commit CI run `34536345702` also PASS. The actual CI log lists `22` test files / `90` tests PASS, including research router/fallback/semantic-pacing/telemetry suites, and staging Wrangler dry-run PASS.
 
-## Proposed deployment-config correction — NOT YET COMMITTED TO `wrangler.toml`
+## Cache-version expectation
 
-The exact proposed correction is intentionally uncommitted because `wrangler.toml` is watched by the staging deployment workflow and committing it would itself start a deployment attempt.
+The implementation uses research cache v2 actual-source partitions. Existing v1 cache entries are intentionally orphaned from reads and may expire naturally under the prior TTL. No destructive cache migration is required. A temporary full cache-miss wave after deployment is expected behavior, not cache corruption.
 
-Proposed correction:
+## Authenticated baseline smoke — PENDING
 
-- remove unsupported `[exports.OpenAlexSemanticPacer]` declarative lifecycle block;
-- add one top-level legacy migration compatible with the repository's current Wrangler executable:
-  - `tag = "v1-openalex-semantic-pacer"`;
-  - `new_sqlite_classes = ["OpenAlexSemanticPacer"]`.
+The remaining baseline smoke must use a real authenticated staging browser/session because `/api/research/search` is protected by `requireAuth` and the main engineering session does not possess or retrieve user auth cookies/JWTs.
 
-No runtime JavaScript, D-016 behavior, feature flag, fallback rule, pacing interval, privacy rule, cache policy or production rollout rule changes.
+Required observation while the flag remains OFF:
 
-This correction requires independent review before commit/redeploy.
+1. HTTP 200 from a real staging research request;
+2. `meta.retrievalSource === "lexical"`;
+3. non-error response with plausible research results (or a valid provider-level empty result if naturally returned);
+4. no semantic-primary claim/path;
+5. no newly observed runtime exception attributable to the deployment.
+
+A browser-context fetch through the authenticated staging site is acceptable evidence. The exact query is operational smoke only and is not reused as relevance evaluation.
 
 ## Accepted implementation properties
 
@@ -75,10 +71,11 @@ This correction requires independent review before commit/redeploy.
 
 1. `OOS-D016-CODE-01` — DO grant-time vs actual provider-fetch start-time gap: `ACKNOWLEDGED / DEFERRED`. Revisit if measured operation or higher-capacity needs show insufficient pacing margin.
 2. `OOS-D016-CODE-02` — pre-existing non-atomic cache read/write stampede risk: `ACKNOWLEDGED / DEFERRED`. Revisit if telemetry shows material cost/queue/capacity impact.
+3. Wrangler declarative `exports` migration path may be revisited after a deliberate toolchain upgrade; current migration syntax is the accepted compatibility path for Wrangler 4.86.0. `ACKNOWLEDGED / DEFERRED`.
 
 ## Locked rollout constraints still active
 
-1. Semantic-primary remains OFF during the authorized baseline deployment/smoke stage.
+1. Semantic-primary remains OFF during baseline smoke.
 2. Valid empty/short S does not trigger L.
 3. L fallback remains objective-only; no content/count/relevance/topic routing.
 4. Semantic request starts remain constrained to <=1 request/second through the shared pacing gate.
@@ -90,13 +87,11 @@ This correction requires independent review before commit/redeploy.
 
 ## NEXT
 
-1. Independent reviewer inspects `docs/reviews/2026-09-11-d016-staging-deploy-failure.md`, the actual failed run/log, and current `wrangler.toml`.
-2. Reviewer accepts/modifies/rejects the exact proposed lifecycle correction.
-3. Only after acceptance may the exact `wrangler.toml` correction be committed; that commit will trigger the next staging deploy attempt.
-4. Verify quality/deploy jobs and actual deployed revision with semantic-primary still OFF.
-5. Perform baseline mechanical smoke verification without enabling S.
-6. Controlled semantic-primary staging enablement remains a later separately authorized step.
-7. Broad production enablement remains a separate later decision after capacity/rollout controls.
+1. Run one authenticated staging baseline research smoke with semantic-primary still OFF.
+2. Record HTTP/result/meta evidence and any runtime observations.
+3. Prepare a formal reviewer packet covering successful deploy + CI + baseline smoke.
+4. Only after independent acceptance request controlled semantic-primary staging enablement.
+5. Broad production enablement remains a separate later decision after capacity/rollout controls.
 
 ## Canonical records
 
@@ -105,7 +100,8 @@ This correction requires independent review before commit/redeploy.
 - Implementation plan: `docs/architecture/p05-production-retrieval-implementation-plan.md`
 - Implementation record: `docs/architecture/p05-production-retrieval-implementation.md`
 - Code review: `docs/reviews/2026-09-11-d016-code-review.md`
-- Deploy failure / proposed correction: `docs/reviews/2026-09-11-d016-staging-deploy-failure.md`
+- Deploy failure / correction: `docs/reviews/2026-09-11-d016-staging-deploy-failure.md`
+- Successful staging deploy: `docs/reviews/2026-09-11-d016-staging-deploy-success.md`
 - Reviewer packet checklist: `docs/reviewer-packet-checklist.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
