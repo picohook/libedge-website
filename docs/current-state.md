@@ -10,11 +10,11 @@ Status: `ACTIVE`
 
 P0.5 experimental sequence is **CLOSED / independently verified**. H is rejected. D-016 is **LOCKED** for the existing top-10 research-result contract: semantic S primary, lexical L only as objective availability fallback/rollback.
 
-A controlled semantic-primary staging smoke exposed one live semantic `429` during a near-concurrent pair. The flag was immediately rolled back to OFF and rollback deployment succeeded.
+The first controlled semantic-primary staging smoke exposed one live semantic `429`. The pacing correction (`1500 ms`) and aggregate telemetry read surface were implemented and independently accepted.
 
-The pacing/observability correction has now passed independent code/diff review with classification **ACCEPTED**. Correction code is deployed to staging with semantic-primary OFF. The project is now at a **retry-preparation gate only**: the next live semantic retry still requires separate explicit authorization plus fresh human confirmation that the staging window contains controlled test traffic only.
+A separately authorized controlled retry then returned **two uncached semantic HTTP 200 responses**, but the before/after aggregate telemetry was internally impossible: `semantic_successes` increased by two while `semantic_attempts` increased by only one. The retry is therefore **NOT PASS**. The semantic-primary staging flag is OFF again; production remains OFF.
 
-No semantic retry is currently authorized.
+Root cause is the current KV telemetry read-modify-write sequence, which permits concurrent lost updates. The project is now at a **telemetry atomicity correction** gate. No new semantic retry is authorized.
 
 ## Controlled semantic smoke incident
 
@@ -26,29 +26,13 @@ Enablement commit:
 
 `acb418c47ae190cf6cb587c3d4903a92c92a4a0b`
 
-Enablement deploy run `34563626451`:
-
-- `Quality gate`: PASS;
-- `Deploy backend to staging`: PASS;
-- `Deploy backend to production`: SKIPPED.
-
 Observed live near-concurrent pair:
 
 - one HTTP `200` response with `retrievalSource="semantic"`;
 - one HTTP `200` response with `retrievalSource="lexical"` after semantic stage `rate_limited` and lexical stage `ok`;
 - no relevance comparison/judgment was performed.
 
-This proves live semantic reachability and correct objective `429 -> L` fallback, but **does not** prove successful live pacing enforcement.
-
-## Rollback — COMPLETE
-
-Rollback commit:
-
-`b99843654614c326e390a3f42e5108210e66d7c2`
-
-Rollback deploy run `34564642518`: SUCCESS.
-
-Current production semantic flag remains OFF and untouched. Staging semantic-primary is also OFF pending separate retry authorization.
+This proved live semantic reachability and correct objective `429 -> L` fallback, but did not prove successful live pacing enforcement.
 
 ## Pacing / observability correction — IMPLEMENTED AND ACCEPTED
 
@@ -69,112 +53,115 @@ Accepted changes:
 - `backend/src/research/semantic-pacer.js`: minimum grant interval `1000 -> 1500 ms`;
 - `backend/src/research/telemetry.js`: read-only current-day aggregate telemetry snapshot using the existing shared metric allowlist;
 - `backend/src/system-health.js`: super-admin-only `research_telemetry` section using that shared snapshot;
-- `test/backend/research-semantic-pacing.test.js`: deterministic `1499/1500 ms` boundary test;
-- `test/backend/system-health-research-telemetry.test.js`: auth, exact shared-allowlist and privacy-surface tests.
-
-The independent reviewer classified the correction code/diff `ACCEPTED` and authorized **retry preparation only**.
+- deterministic `1499/1500 ms` pacing boundary test;
+- system-health auth, exact shared-allowlist and privacy-surface tests.
 
 No result-dependent routing, cache policy, relevance behavior, H/RRF, Vectorize or production flag behavior changed.
 
-## Shared-key alternative-cause check
+## Controlled semantic retry — EXECUTED / NOT PASS
 
-Both repository P0.5 retrieval workflows that use the staging `OPENALEX_API_KEY` are `workflow_dispatch`-only. GitHub Actions staging history showed no repository workflow-dispatch retrieval run during the 2026-09-11 semantic smoke window.
+Fresh human traffic-isolation confirmation was obtained before execution.
 
-Therefore there is no evidence that a repository GitHub Actions P0.5 retrieval job competed for the semantic 1 req/s account limit during the incident.
+PRE telemetry:
 
-This does **not** prove exclusive account/key use: secret values cannot be inspected and non-GitHub/external consumers cannot be excluded. Grant-to-fetch boundary sensitivity remains a plausible cause, not a uniquely proven cause.
+- `semantic_attempts = 1`
+- `semantic_successes = 1`
+- `semantic_429 = 1`
+- `semantic_pacing_wait_ms_total = 1000`
+- `semantic_charged_responses = 1`
+- `semantic_cost_microusd_total = 1000`
+- `semantic_credits_total = 10`
+- `lexical_fallback_attempts = 1`
+- `lexical_fallback_successes = 1`
 
-## Correction CI / deployment evidence
+Near-concurrent retry responses:
 
-CI run `34565285661`, head `08edd0d85d1d041ab36065a4827ba2d247557509`: PASS.
+- request 1: HTTP `200`, `retrievalSource="semantic"`, uncached, 10 results;
+- request 2: HTTP `200`, `retrievalSource="semantic"`, uncached, 10 results.
 
-Actual CI log:
+POST telemetry included:
 
-- `23` test files PASS;
-- `93` tests PASS;
-- updated semantic pacing suite: PASS;
-- new system-health research telemetry suite: `3` PASS;
-- lint/syntax/build: PASS;
-- staging Wrangler dry-run: PASS;
-- dry-run flag evidence: `RESEARCH_SEMANTIC_PRIMARY_ENABLED="false"`.
+- `semantic_attempts = 2`
+- `semantic_successes = 3`
+- `semantic_429 = 1`.
 
-Flag-OFF staging deploy run `34565273515`: PASS.
+Because two live semantic successes produced only one additional semantic-attempt count, the preregistered telemetry-integrity condition failed. No relevance judgment was made.
 
-- Quality gate: PASS;
-- Deploy backend to staging: PASS;
-- Deploy backend to production: SKIPPED;
-- deployed flag remained `RESEARCH_SEMANTIC_PRIMARY_ENABLED="false"`;
-- Worker version: `12b8a9e1-f3f3-487e-b556-59333c34b304`.
+## Telemetry atomicity correction — ACTIVE
 
-## Retry preparation — ACTIVE / EXECUTION NOT AUTHORIZED
+Canonical architecture record:
 
-Canonical preparation record:
+`docs/architecture/p05-research-telemetry-atomicity-correction.md`
 
-`docs/architecture/p05-production-retrieval-retry-preparation.md`
+Independent reviewer follow-up:
 
-A future retry must, before any semantic flag change:
+`docs/reviews/2026-09-11-d016-telemetry-atomicity-review.md`
 
-1. receive separate explicit retry authorization;
-2. receive fresh human gatekeeper confirmation that the staging window contains controlled test traffic only and no ordinary real end-user research traffic is expected;
-3. capture a super-admin aggregate telemetry baseline immediately before the pair;
-4. keep production semantic-primary OFF;
-5. use two distinct ordinary non-sensitive non-holdout queries fired near-concurrently/programmatically back-to-back;
-6. avoid all relevance scoring/comparison/retuning.
+Reviewer classification: **ACCEPTED WITH MODIFICATION**.
 
-Required success criteria for the separately authorized retry:
+Required reviewer modifications have been resolved in the canonical architecture record:
 
-- `semantic_pacing_wait_ms_total` delta `> 0`;
-- `semantic_429` delta `= 0`;
-- semantic attempt/success/cost/credit aggregates internally consistent;
-- no privacy leakage in telemetry;
-- no browser/runtime blocker.
+1. explicit KV vs global DO vs D1 comparison;
+2. explicit cross-metric invariant Test I.
 
-Any new semantic 429, zero pacing-wait delta, telemetry failure or loss of staging traffic isolation is `STOP / INVESTIGATE`; it does not authorize an immediate second retry.
+Selected design for the immediate correction:
 
-## Pacing finding — OPEN / BLOCKS RETRY EXECUTION
+- D1 atomic counter updates;
+- dedicated `research_telemetry_counters` table on existing `env.DB`;
+- no KV read-modify-write for exact telemetry counters;
+- no global telemetry Durable Object;
+- if DO is ever revisited, it must remain separate from `OpenAlexSemanticPacer`;
+- dedicated telemetry D1 binding/database remains a pre-broad-enable revisit if load/latency evidence shows meaningful coupling to the core DB.
 
-`OOS-D016-CODE-01` remains `OPEN / BLOCKS SEMANTIC RETRY EXECUTION`.
+Migration added:
 
-The correction implementation and independent code review do not themselves close the finding. Closure requires a separately authorized live retry demonstrating privacy-safe pacing wait `>0` and no new semantic 429 during the controlled pair.
+`migrations/0048_research_telemetry_counters.sql`
 
-The 1500 ms setting is a conservative operational margin against OpenAlex semantic search's hard 1 request/second limit. It is not treated as proof that grant-to-fetch jitter was the sole cause of the incident.
+Implementation order is migration-first: apply migration to staging before switching the telemetry writer/reader to D1.
 
 ## Telemetry privacy boundary
 
-The super-admin health surface reads only names from the existing `RESEARCH_TELEMETRY_METRICS` allowlist and numeric aggregate values from `RATE_LIMIT_KV` for the current UTC day.
+The telemetry correction preserves the existing single allowlist (`RESEARCH_TELEMETRY_METRICS`). Persisted telemetry is restricted to allowlisted metric name, non-negative numeric aggregate, UTC date and non-content operational timestamp.
 
-It does not expose or store query text, normalized query, user ID/email, topic, DOI/title, result body, raw provider error body, or research-interest content.
+It must not store or expose query text, normalized query, user ID/email, topic, DOI/title, result body, raw provider error body, or research-interest content.
 
-Future additions to the shared telemetry allowlist automatically become visible on the super-admin health surface; such additions therefore require conscious privacy review at the time they are introduced.
+Telemetry failure remains best-effort and cannot change retrieval result, fallback choice, relevance behavior, or otherwise valid research HTTP semantics.
+
+## Shared-key alternative-cause check
+
+Repository P0.5 retrieval workflows that use the staging `OPENALEX_API_KEY` are workflow-dispatch-only. GitHub Actions history showed no repository workflow-dispatch retrieval run during the original semantic smoke window.
+
+This narrows but does not eliminate account-wide key contention as an alternative cause; secret equality and non-GitHub/external consumers cannot be proven from the repository.
 
 ## Locked rollout constraints still active
 
-1. Semantic-primary remains OFF until separate retry authorization and fresh controlled-traffic confirmation.
+1. Semantic-primary remains OFF until a future, separately authorized retry.
 2. Valid empty/short S does not trigger L.
 3. L fallback remains objective-only; no content/count/relevance/topic routing.
-4. Semantic request starts remain globally paced through the shared Durable Object; corrected grant spacing is `1500 ms`.
+4. Semantic request starts remain globally paced through the dedicated pacing Durable Object at `1500 ms` minimum spacing.
 5. Broad enablement remains blocked unless peak eligible research-query rate is documented `<=0.5 requests/second`.
 6. D-013 checkpoint remains first `1,000` charged semantic responses or `7 days`, whichever occurs first.
 7. Capacity/cost/availability telemetry stores no query text, topics, research interests or user IDs.
 8. P0.5 holdouts/labels are not reused for rollout relevance retuning.
 9. Top-10 scope only; no deep-pagination/exhaustive-recall superiority claim.
 
-## Open non-blocking / blocking findings
+## Open findings
 
-1. `OOS-D016-CODE-01` — grant-time vs provider-fetch timing / account-wide rate-limit interaction: `OPEN / BLOCKS SEMANTIC RETRY EXECUTION`.
+1. `OOS-D016-CODE-01` — grant-time vs provider-fetch timing / account-wide rate-limit interaction: `OPEN`; pacing correction exists but closure still requires a valid future controlled retry.
 2. `OOS-D016-CODE-02` — pre-existing non-atomic cache read/write stampede risk: `ACKNOWLEDGED / DEFERRED`.
-3. Wrangler declarative `exports` migration path: `ACKNOWLEDGED / DEFERRED` until deliberate toolchain upgrade.
+3. `OOS-D016-TELEMETRY-01` — KV telemetry lost-update race: `OPEN / BLOCKS SEMANTIC RETRY EXECUTION`; D1 correction implementation authorized, migration-first.
+4. Wrangler declarative `exports` migration path: `ACKNOWLEDGED / DEFERRED` until deliberate toolchain upgrade.
 
 ## NEXT
 
-1. Retry preparation is complete and canonicalized.
-2. Before retry execution, obtain separate explicit reviewer/main-thread authorization for the exact controlled retry procedure.
-3. Immediately before flag ON, human gatekeeper must freshly confirm controlled-test-only staging traffic.
-4. Capture super-admin aggregate telemetry baseline.
-5. Only then may staging semantic-primary be enabled for the minimal controlled pair; production remains OFF.
-6. Capture post-pair telemetry and evaluate only the locked mechanical criteria (`pacing wait >0`, `semantic_429 delta=0`, operational/privacy consistency).
-7. Any stop condition requires rollback/investigation and a new authorization before another attempt.
-8. Broad production enablement remains a separate later decision.
+1. Apply `0048_research_telemetry_counters.sql` to the **staging D1 database only** using the existing D1 migration workflow.
+2. After staging schema exists, implement the D1-backed telemetry writer/reader and scheduled retention prune with semantic-primary OFF.
+3. Add/execute Tests A-I, including the exact concurrent cross-metric invariant that failed live.
+4. Run full CI and flag-OFF staging deploy.
+5. Obtain independent code/diff review.
+6. Only after accepted code review may a new retry-preparation authorization be requested.
+7. Any future retry still requires fresh controlled-traffic human confirmation and at most one authorized near-concurrent pair.
+8. Production migration/enablement remains a separate later decision.
 
 ## Canonical records
 
@@ -187,6 +174,8 @@ Future additions to the shared telemetry allowlist automatically become visible 
 - Pacing correction code-review acceptance: `docs/reviews/2026-09-11-d016-pacing-correction-code-review-acceptance.md`
 - Retry preparation: `docs/architecture/p05-production-retrieval-retry-preparation.md`
 - Controlled semantic smoke incident: `docs/reviews/2026-09-11-d016-staging-semantic-smoke-incident.md`
+- Telemetry atomicity correction: `docs/architecture/p05-research-telemetry-atomicity-correction.md`
+- Telemetry atomicity reviewer follow-up: `docs/reviews/2026-09-11-d016-telemetry-atomicity-review.md`
 - Reviewer packet checklist: `docs/reviewer-packet-checklist.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
