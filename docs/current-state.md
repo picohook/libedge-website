@@ -17,19 +17,92 @@ Current semantic-primary flags:
 - staging: `OFF`;
 - production: `OFF`.
 
-The reviewer has classified next rollout-stage preparation **ACCEPTED WITH MODIFICATION**. Track A now has two explicit evidence-quality requirements:
+No production semantic enablement or production D1 migration is authorized.
 
-1. temporal resolution must be per-request or no coarser than `2 seconds`;
-2. the source must be complete/unsampled enough that the observed peak cannot be understated. For Cloudflare Workers Logs, effective `head_sampling_rate = 1.0` must be verified, unless equivalent complete unsampled capture is independently proven.
+## Track A — production traffic / capacity evidence
 
-Any source that is coarser, sampled below 100%, has unknown sampling, or has otherwise unquantified incompleteness is insufficient for the locked `<=0.5 requests/second` broad-enablement guardrail.
+Locked broad-enablement condition:
 
-The project is authorized only for two preparation/evidence tracks that do not change production behavior:
+`peak eligible research-query rate <= 0.5 requests/second`.
 
-1. **Track A — production traffic/capacity evidence-source discovery and evidence collection**;
-2. **Track B — production D1 migration execution planning and reviewer-packet preparation**.
+Accepted evidence standard:
 
-No production migration or production semantic enablement is authorized.
+- per-request timestamps; or privacy-safe time buckets no coarser than `2 seconds`;
+- complete/unsampled capture sufficient to avoid understating the peak;
+- for Cloudflare Workers Logs, effective `head_sampling_rate = 1.0`, unless equivalent complete capture is independently demonstrated;
+- source must isolate eligible research requests;
+- no query text, user identity, research topic, result content, DOI/title, or raw request body may be exposed or persisted for this purpose.
+
+Human account-state inspection established that **Workers Observability is disabled** for the production Worker. Therefore no existing Workers Logs history can currently provide the required per-request / <=2-second unsampled production traffic evidence.
+
+Current Track A result:
+
+`INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`.
+
+This is not a relevance failure; it is an operational capacity-evidence blocker.
+
+Canonical preparation record:
+
+`docs/architecture/p05-production-rollout-stage-preparation.md`
+
+Evidence-source discovery:
+
+`docs/architecture/p05-production-capacity-evidence-discovery.md`
+
+Reviewer follow-up:
+
+`docs/reviews/2026-09-11-d016-next-rollout-stage-preparation-followup.md`
+
+## Track B — production D1 telemetry migration preparation
+
+Intended D-016 migration:
+
+`migrations/0048_research_telemetry_counters.sql`
+
+A read-only production inspection was completed against:
+
+- binding: `DB`
+- database_name: `libedge-db-production`
+- database_id: `64e57edf-8163-4495-8874-fec00485b2ff`
+
+Inspection run:
+
+`34583816393`
+
+Only `wrangler d1 migrations list DB --env production --remote` was executed. No migration apply command ran.
+
+The production pending list is:
+
+1. `0042_tunnel_alert_tracking.sql`
+2. `0043_products_ra_cookie_mode.sql`
+3. `0044_wiley_stable_host.sql`
+4. `0045_add_clinicalkey_uptodate.sql`
+5. `0046_add_ai_product_cards.sql`
+6. `0047_user_deletion_integrity.sql`
+7. `0048_research_telemetry_counters.sql`
+
+This triggered the locked hard-STOP rule because `0042`-`0047` are unrelated earlier migrations that were not part of the D-016 telemetry migration proposal.
+
+Current Track B result:
+
+`STOP — DO NOT APPLY PRODUCTION D1 MIGRATIONS`.
+
+The backlog has been separated into its own audit rather than being folded into D-016:
+
+`docs/reviews/2026-09-11-production-d1-pending-migration-audit.md`
+
+Preliminary audit classification:
+
+- `0042`: additive tunnel-alert schema; feature-state review required;
+- `0043`: additive proxy cookie-mode schema; feature-state review required;
+- `0044`: direct Wiley delivery-mode data/behavior change; separate production review required;
+- `0045`: ClinicalKey/UpToDate product + RA/access configuration change; separate production review required;
+- `0046`: user-visible AI product catalog change; separate product-scope production review required;
+- `0047`: high-risk privacy/integrity deletion trigger touching many tables; dedicated privacy/integrity review required.
+
+No assumption is made that these migrations are invalid. They are blocked from bulk application because their production context has not been independently established in this workstream.
+
+The one-shot read-only inspection workflow was removed after successful use so it cannot be accidentally rerun as an operational control surface.
 
 ## Independently verified controlled semantic retry — PASS / ACCEPTED
 
@@ -54,8 +127,6 @@ Observed mechanical deltas:
 - `lexical_fallback_attempts +0`;
 - `lexical_fallback_successes +0`.
 
-The single-retry boundary was respected. Staging was disabled immediately afterward. Production was never enabled.
-
 ## Finding status
 
 ### CLOSED
@@ -69,63 +140,9 @@ The single-retry boundary was respected. Staging was disabled immediately afterw
 4. Shared-core-D1 telemetry failure-domain coupling — revisit before broad enablement if measured write QPS/latency/contention suggests material impact.
 5. Wrangler declarative `exports` migration path — revisit only during a deliberate toolchain upgrade.
 
-## Track A — production traffic / capacity evidence
+### OPEN / OUTSIDE D-016
 
-Locked broad-enablement condition:
-
-`peak eligible research-query rate <= 0.5 requests/second`.
-
-Accepted evidence standard:
-
-- per-request timestamps; or privacy-safe time buckets no coarser than `2 seconds`;
-- complete/unsampled capture sufficient to avoid understating the peak;
-- for Cloudflare Workers Logs, effective `head_sampling_rate = 1.0`, unless equivalent complete capture is independently demonstrated;
-- source must isolate eligible research requests;
-- no query text, user identity, research topic, result content, DOI/title, or raw request body may be exposed or persisted for this purpose.
-
-Daily totals, daily averages, minute-level averages, other sources coarser than 2-second buckets, sampled sources below 100%, unknown sampling states, or unquantified incomplete sources do **not** support the peak-rate claim.
-
-If no acceptable source exists, the required conclusion is:
-
-`INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`.
-
-Canonical preparation record:
-
-`docs/architecture/p05-production-rollout-stage-preparation.md`
-
-Evidence-source discovery:
-
-`docs/architecture/p05-production-capacity-evidence-discovery.md`
-
-Reviewer follow-up:
-
-`docs/reviews/2026-09-11-d016-next-rollout-stage-preparation-followup.md`
-
-Current discovery result:
-
-- existing D1 daily telemetry: `INSUFFICIENT`;
-- repository-proven Analytics Engine source: none;
-- Cloudflare Workers Logs/native invocation logs: candidate only; production account state, temporal resolution, endpoint isolation, and effective sampling/completeness remain to be verified.
-
-## Track B — production D1 telemetry migration preparation
-
-Migration under consideration:
-
-`migrations/0048_research_telemetry_counters.sql`
-
-No production migration has been applied.
-
-Before any execution request, the planning packet must independently demonstrate:
-
-1. production semantic-primary remains OFF;
-2. the intended production D1 binding is confirmed;
-3. migration file is byte-identical to the staging-reviewed migration;
-4. pending production migrations are listed before apply;
-5. any unexpected pending migration is a hard STOP;
-6. no semantic enablement is bundled with migration;
-7. recovery/verification expectations are documented in advance.
-
-Successful migration alone would not authorize semantic-primary production enablement.
+6. Production D1 migration backlog `0042`-`0047` — separate audit required before D-016 Track B can resume.
 
 ## Locked rollout constraints still active
 
@@ -143,12 +160,12 @@ Successful migration alone would not authorize semantic-primary production enabl
 
 ## NEXT
 
-Proceed in parallel only with non-behavior-changing preparation:
-
-1. **Track A:** verify whether the production Worker already has an existing operational source that provides eligible research-request timing at per-request or `<=2-second` resolution and complete/unsampled capture. For Workers Logs, verify effective `head_sampling_rate = 1.0`; do not infer dashboard-side state from repository configuration.
-2. **Track A:** if a suitable existing source exists, prepare an independently reviewable capacity evidence record. If not, record `INSUFFICIENT EVIDENCE` and identify what separately reviewed instrumentation would be needed.
-3. **Track B:** inspect the production D1 binding and migration state without applying changes; prepare a full reviewer packet for migration execution only.
-4. Do not apply production migration, enable semantic-primary, or perform another semantic retry without separate authorization.
+1. Keep D-016 Track B paused.
+2. Review `0042`-`0047` in the separate production D1 pending-migration audit; do not bulk-apply them merely to reach `0048`.
+3. Establish owner/feature context, production runtime/schema preconditions, desired production state, verification and recovery expectations for each earlier migration.
+4. Only after those earlier migrations have explicit dispositions, return to D-016 Track B and obtain a fresh read-only pending-migration list.
+5. Track A remains blocked by insufficient production peak-rate evidence unless separately reviewed instrumentation/evidence is introduced.
+6. Do not enable semantic-primary, apply production migrations, perform another semantic retry, retune relevance, adopt H/RRF, or introduce Vectorize without separate authorization.
 
 ## Canonical records
 
@@ -156,11 +173,10 @@ Proceed in parallel only with non-behavior-changing preparation:
 - Locked architecture: `docs/architecture/p05-production-retrieval-decision.md`
 - Production rollout-stage preparation: `docs/architecture/p05-production-rollout-stage-preparation.md`
 - Capacity evidence-source discovery: `docs/architecture/p05-production-capacity-evidence-discovery.md`
-- Rollout-stage reviewer follow-up: `docs/reviews/2026-09-11-d016-next-rollout-stage-preparation-followup.md`
+- Production D1 telemetry migration preparation: `docs/architecture/p05-production-d1-migration-preparation.md`
+- Production pending-migration audit: `docs/reviews/2026-09-11-production-d1-pending-migration-audit.md`
 - Controlled semantic retry PASS: `docs/reviews/2026-09-11-d016-controlled-semantic-retry-pass.md`
 - Controlled semantic retry closure acceptance: `docs/reviews/2026-09-11-d016-controlled-semantic-retry-closure-acceptance.md`
-- Telemetry atomicity architecture: `docs/architecture/p05-research-telemetry-atomicity-correction.md`
-- Telemetry atomicity implementation: `docs/architecture/p05-research-telemetry-atomicity-implementation.md`
 - Reviewer packet checklist: `docs/reviewer-packet-checklist.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
