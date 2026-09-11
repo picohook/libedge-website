@@ -76,6 +76,22 @@ Workers Metrics / coarse time-series analytics must not be treated as sufficient
 - the accepted per-request / <=2-second temporal-resolution requirement; and
 - the complete/unsampled evidence requirement above.
 
+## Human account-state observation — 2026-09-11
+
+The human gatekeeper inspected the production Worker in the Cloudflare dashboard and reported:
+
+`Workers Observability is Disabled`.
+
+This means the candidate Workers Logs path cannot provide an already-existing observation window for Track A. Because observability is disabled, there is no pre-existing complete invocation-log source whose `head_sampling_rate` can be relied upon for the required production peak-rate evidence.
+
+This is not a process failure. It is a genuine evidence-availability limitation.
+
+Current Track A classification:
+
+`INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`.
+
+Enabling new production observability/instrumentation would change production configuration and therefore requires a separate proposal and independent review before any such change is made.
+
 ## Privacy condition
 
 Any candidate source used for final capacity evidence must avoid recording or exporting:
@@ -96,24 +112,20 @@ At this point:
 
 - existing repo-controlled D1 telemetry: **INSUFFICIENT**;
 - repository-proven Analytics Engine source: **NONE**;
-- Cloudflare Workers Logs/native invocation logs: **CANDIDATE — ACCOUNT STATE AND SAMPLING NOT YET VERIFIED**.
+- production Workers Observability / Workers Logs: **DISABLED** by direct human dashboard observation.
 
-Therefore Track A is not yet satisfied.
+Therefore Track A is not satisfied and broad enablement remains blocked.
 
-The next non-behavior-changing step is to verify whether the production Worker already has a Cloudflare-native log/observability source that:
+The next Track A action, if desired, is not to infer or extrapolate from existing data. It is to prepare a separately reviewed production observability/instrumentation proposal that can provide:
 
-1. covers the intended observation window;
-2. is complete enough for a peak-rate statement;
-3. provides per-request or <=2-second timing;
-4. for Workers Logs, has effective `head_sampling_rate = 1.0` (or an independently proven equivalent complete capture);
-5. can isolate the eligible research endpoint;
-6. can be queried/exported without content-bearing fields.
+1. per-request or <=2-second timing;
+2. complete/unsampled capture or another defensible upper-bound method;
+3. eligible-endpoint isolation;
+4. the existing privacy boundary.
 
-If any of these properties cannot be verified, the correct Track A outcome remains:
+Until such a proposal is reviewed and deployed, the required Track A conclusion remains:
 
-`INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`
-
-and any new instrumentation must be separately proposed and reviewed before deployment.
+`INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`.
 
 ## External source check
 
@@ -123,4 +135,4 @@ Cloudflare Workers documentation rechecked 2026-09-11:
 - Workers observability configuration supports `head_sampling_rate`; sampling below 1.0 can omit invocations from the log stream.
 - Workers observability documentation identifies Workers Logs, real-time logs, Tail Workers, and Logpush as available observability mechanisms.
 
-These sources establish product capability only; they do not establish this account's current production configuration, effective sampling rate, or evidence completeness.
+These sources establish product capability only; the human account-state observation establishes that Workers Observability is currently disabled for the production Worker.
