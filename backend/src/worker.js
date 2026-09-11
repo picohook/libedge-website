@@ -2,6 +2,7 @@ import worker from './index.js';
 import { purgePrivacyR2Queue } from './privacy/r2-purge.js';
 import { handleSystemHealthRequest } from './system-health.js';
 import { handleResearchRequest } from './research/router.js';
+import { pruneResearchTelemetry } from './research/telemetry.js';
 export { OpenAlexSemanticPacer } from './research/semantic-pacer.js';
 
 // Research metadata may be cached server-side in KV using hashed, user-independent
@@ -34,5 +35,6 @@ export default {
       worker.scheduled(event, env, ctx);
     }
     ctx.waitUntil(purgePrivacyR2Queue(env));
+    ctx.waitUntil(pruneResearchTelemetry(env));
   },
 };
