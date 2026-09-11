@@ -1,0 +1,134 @@
+name: Apply 0047 Baseline Order Fix
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - .github/workflows/0047-fix-baseline-order.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: Apply exact baseline-order patch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/0047-controlled-staging-deletion.yml')
+          source = path.read_text()
+
+          old = '''          try {
+            const adminTargetPre = targetPre(adminId);
+
+            assert(
+              adminTargetPre.notifications === 25000,
+              `Admin stress notifications expected 25000, got ${adminTargetPre.notifications}`
+            );
+
+            assert(
+              adminTargetPre.ai_usage_logs === 25000,
+              `Admin stress ai_usage_logs expected 25000, got ${adminTargetPre.ai_usage_logs}`
+            );
+
+            assert(
+              adminTargetPre.user_notifications >= 1,
+              'Admin target missing user_notifications PRE row'
+            );
+
+            const controlBefore = controlPureSnapshot(controlId);
+            const totalsBeforeAdmin = totals();
+
+            evidence.phases.adminPre = {
+              target: adminTargetPre,
+              control: controlBefore,
+              totals: totalsBeforeAdmin,
+            };
+            save();
+
+            // Login occurs only after the complete PRE DB capture.
+            const adminJar = await login(
+              process.env.STAGING_ADMIN_EMAIL,
+              process.env.STAGING_ADMIN_PASSWORD
+            );
+
+            const selfJar = await login(
+              process.env.TARGET_SELF_EMAIL,
+              process.env.TEST_PASSWORD
+            );
+'''
+
+          new = '''          try {
+            // Establish all login/session side effects before the PRE baseline.
+            // Login writes refresh_tokens, so taking totals first would make the
+            // later global-delta assertion count unrelated session creation.
+            const adminJar = await login(
+              process.env.STAGING_ADMIN_EMAIL,
+              process.env.STAGING_ADMIN_PASSWORD
+            );
+
+            const selfJar = await login(
+              process.env.TARGET_SELF_EMAIL,
+              process.env.TEST_PASSWORD
+            );
+
+            const adminTargetPre = targetPre(adminId);
+
+            assert(
+              adminTargetPre.notifications === 25000,
+              `Admin stress notifications expected 25000, got ${adminTargetPre.notifications}`
+            );
+
+            assert(
+              adminTargetPre.ai_usage_logs === 25000,
+              `Admin stress ai_usage_logs expected 25000, got ${adminTargetPre.ai_usage_logs}`
+            );
+
+            assert(
+              adminTargetPre.user_notifications >= 1,
+              'Admin target missing user_notifications PRE row'
+            );
+
+            const controlBefore = controlPureSnapshot(controlId);
+            const totalsBeforeAdmin = totals();
+
+            evidence.phases.adminPre = {
+              target: adminTargetPre,
+              control: controlBefore,
+              totals: totalsBeforeAdmin,
+            };
+            save();
+'''
+
+          if source.count(old) != 1:
+              raise SystemExit(f'Expected exact old block once, found {source.count(old)}')
+
+          updated = source.replace(old, new, 1)
+          path.write_text(updated)
+          PY
+
+          git diff --check
+          git diff -- .github/workflows/0047-controlled-staging-deletion.yml
+
+      - name: Commit patch and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm .github/workflows/0047-fix-baseline-order.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/0047-controlled-staging-deletion.yml .github/workflows/0047-fix-baseline-order.yml
+          git commit -m "fix: take 0047 deletion baseline after login side effects"
+          git push origin HEAD:staging
