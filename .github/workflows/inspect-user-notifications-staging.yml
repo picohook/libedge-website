@@ -1,0 +1,41 @@
+name: Inspect staging user_notifications schema
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '.github/workflows/inspect-user-notifications-staging.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    name: Read-only D1 schema inspection
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Read user_notifications schema
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          echo '=== table_info(user_notifications) ==='
+          npx wrangler d1 execute libedge-db-staging --env staging --remote --command "PRAGMA table_info(user_notifications);"
+          echo '=== foreign_key_list(user_notifications) ==='
+          npx wrangler d1 execute libedge-db-staging --env staging --remote --command "PRAGMA foreign_key_list(user_notifications);"
+          echo '=== index_list(user_notifications) ==='
+          npx wrangler d1 execute libedge-db-staging --env staging --remote --command "PRAGMA index_list(user_notifications);"
+          echo '=== sqlite_master indexes ==='
+          npx wrangler d1 execute libedge-db-staging --env staging --remote --command "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='user_notifications' ORDER BY name;"
