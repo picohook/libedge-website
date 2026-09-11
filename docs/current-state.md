@@ -104,6 +104,41 @@ No assumption is made that these migrations are invalid. They are blocked from b
 
 The one-shot read-only inspection workflow was removed after successful use so it cannot be accidentally rerun as an operational control surface.
 
+## 0047 dedicated privacy/integrity review
+
+Read-only schema/code analysis found `0047-PRIVACY-01`: the admin user-deletion endpoint inserted a PII-bearing `admin_action_logs` deletion snapshot after `DELETE FROM users`, so the 0047 `BEFORE DELETE` trigger could not redact that newly-created row.
+
+Status:
+
+`FIX PREPARED / CODE REVIEW PENDING / NO LIVE DELETION AUTHORIZED`.
+
+Draft PR:
+
+`#37 — fix/0047-admin-delete-audit-order -> staging`
+
+Base/head:
+
+- base: `96880256f8c6e10db3e7c1106998fa14be660fff`
+- head: `824b40a0224886e106a4697b9deeb0abc080d312`
+
+The narrow fix only reorders the existing admin deletion batch so the deletion audit row is inserted before `DELETE FROM users`; migration 0047 itself is unchanged. A static regression guard was added.
+
+PR CI run `34590565540` completed successfully:
+
+- syntax/lint: PASS;
+- unit tests: `23 files / 99 tests PASS`;
+- `user-deletion-migration.test.js`: `3 tests PASS`;
+- staging Wrangler dry-run: PASS;
+- build: PASS.
+
+One-time bot commit `bcc7ab518c7fe65144259ce34690ef7b38dcf181` is expected provenance from the controlled path-scoped patch workflow; the workflow removed itself and is absent from the final PR diff.
+
+Canonical code-review packet:
+
+`docs/reviews/2026-09-11-0047-privacy-01-code-review-request.md`
+
+No PR merge, disposable staging account creation, live staging deletion, 0047 migration apply, production migration, or D-016 Track B resumption is authorized yet.
+
 ## Independently verified controlled semantic retry — PASS / ACCEPTED
 
 Canonical PASS record:
@@ -143,6 +178,7 @@ Observed mechanical deltas:
 ### OPEN / OUTSIDE D-016
 
 6. Production D1 migration backlog `0042`-`0047` — separate audit required before D-016 Track B can resume.
+7. `0047-PRIVACY-01` — source-order privacy defect; narrow fix prepared in PR #37 and awaiting independent code-review disposition before merge.
 
 ## Locked rollout constraints still active
 
@@ -160,12 +196,13 @@ Observed mechanical deltas:
 
 ## NEXT
 
-1. Keep D-016 Track B paused.
-2. Review `0042`-`0047` in the separate production D1 pending-migration audit; do not bulk-apply them merely to reach `0048`.
-3. Establish owner/feature context, production runtime/schema preconditions, desired production state, verification and recovery expectations for each earlier migration.
-4. Only after those earlier migrations have explicit dispositions, return to D-016 Track B and obtain a fresh read-only pending-migration list.
-5. Track A remains blocked by insufficient production peak-rate evidence unless separately reviewed instrumentation/evidence is introduced.
-6. Do not enable semantic-primary, apply production migrations, perform another semantic retry, retune relevance, adopt H/RRF, or introduce Vectorize without separate authorization.
+1. Obtain independent code-review disposition for PR #37 using `docs/reviews/2026-09-11-0047-privacy-01-code-review-request.md`.
+2. Do not merge PR #37 until that review is accepted.
+3. If accepted, merge only the narrow source/test/doc fix into `staging`; this still does not authorize a live deletion test.
+4. Prepare a separate controlled staging deletion packet with production-equivalent schema confirmation, explicit synthetic fixtures, privacy post-state assertions, R2 queue checks, and predeclared performance/lock thresholds.
+5. Keep D-016 Track B paused; do not bulk-apply `0042`-`0048`.
+6. Track A remains blocked by insufficient production peak-rate evidence unless separately reviewed instrumentation/evidence is introduced.
+7. Do not enable semantic-primary, apply production migrations, perform another semantic retry, retune relevance, adopt H/RRF, or introduce Vectorize without separate authorization.
 
 ## Canonical records
 
@@ -175,6 +212,9 @@ Observed mechanical deltas:
 - Capacity evidence-source discovery: `docs/architecture/p05-production-capacity-evidence-discovery.md`
 - Production D1 telemetry migration preparation: `docs/architecture/p05-production-d1-migration-preparation.md`
 - Production pending-migration audit: `docs/reviews/2026-09-11-production-d1-pending-migration-audit.md`
+- 0047 dedicated production review: `docs/reviews/2026-09-11-0047-user-deletion-integrity-production-review.md`
+- 0047 read-only schema/code analysis: `docs/reviews/2026-09-11-0047-read-only-schema-code-analysis.md`
+- 0047 narrow fix code-review packet: `docs/reviews/2026-09-11-0047-privacy-01-code-review-request.md`
 - Controlled semantic retry PASS: `docs/reviews/2026-09-11-d016-controlled-semantic-retry-pass.md`
 - Controlled semantic retry closure acceptance: `docs/reviews/2026-09-11-d016-controlled-semantic-retry-closure-acceptance.md`
 - Reviewer packet checklist: `docs/reviewer-packet-checklist.md`
