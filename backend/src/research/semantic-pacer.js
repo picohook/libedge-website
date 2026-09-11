@@ -1,4 +1,4 @@
-const MIN_START_INTERVAL_MS = 1000;
+const MIN_START_INTERVAL_MS = 1500;
 const GLOBAL_PACER_NAME = 'openalex-semantic-global';
 
 function sleep(ms) {
