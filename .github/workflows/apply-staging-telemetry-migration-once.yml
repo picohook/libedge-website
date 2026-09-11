@@ -1,0 +1,38 @@
+name: Apply staging telemetry migration once
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '.github/workflows/apply-staging-telemetry-migration-once.yml'
+
+concurrency:
+  group: apply-staging-telemetry-migration-once
+  cancel-in-progress: false
+
+jobs:
+  apply-staging:
+    name: Apply staging D1 migration
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: List pending staging migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations list libedge-db --remote --env staging
+      - name: Apply staging migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply libedge-db --remote --env staging
+      - name: Verify telemetry counter table
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 execute libedge-db --remote --env staging --command "SELECT name FROM sqlite_master WHERE type='table' AND name='research_telemetry_counters';"
