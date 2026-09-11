@@ -1,6 +1,6 @@
 # P0.5 Production Retrieval — Privacy-Safe Capacity Observability Proposal
 
-Status: `PROPOSED / REVIEW REQUIRED / NOT DEPLOYED`
+Status: `ACCEPTED WITH MODIFICATION / EXECUTION PLAN REQUIRED / NOT DEPLOYED`
 
 Date: 2026-09-12
 
@@ -34,34 +34,35 @@ Therefore enabling Workers Logs without query-string redaction would risk persis
 
 Any approved Workers Logs configuration for this purpose MUST explicitly enable query-string redaction. It is not sufficient to rely on an assumed/default dashboard state.
 
+The independent review also identified a second mandatory privacy verification: effective invocation logs must be checked to confirm that `Authorization` and `Cookie` header values are not exposed in clear text. A promise not to add custom application logging is not sufficient to establish this platform-level property.
+
 ## Proposed evidence source
 
 Use Cloudflare Workers Logs for the production Worker `libedge-api-prod`, limited to a separately approved observation window, with all of the following properties independently verified after deployment:
 
 1. observability/logging enabled for production;
-2. invocation logs enabled;
+2. invocation logs available through the enabled Workers observability surface;
 3. effective log `head_sampling_rate = 1.0`;
 4. query strings redacted from request URLs/logs (`redact_query_string = true` or the effective Cloudflare equivalent);
 5. no new custom logging of query text, normalized query, user identity, research interests, result content, DOI/title, request bodies, or authorization/cookie material;
-6. timestamps precise enough to support per-request or <=2-second counting;
-7. the eligible endpoint can be isolated using the redacted path, without needing the query-string value.
+6. effective invocation logs do not expose `Authorization` or `Cookie` header values in clear text;
+7. timestamps precise enough to support per-request or <=2-second counting;
+8. the eligible endpoint can be isolated using the redacted path, without needing the query-string value.
 
 The production semantic-primary flag must remain `false` before, during, and after this observation change.
 
-## Proposed repository configuration shape
+## Reviewed repository configuration shape
 
-The reviewer should validate the exact syntax against the repository's active Wrangler version before deployment. The intended semantic configuration is production-only and equivalent to:
+The independent review corrected the proposed Wrangler shape. The production-only configuration to be used as the basis of the separate execution plan is:
 
 ```toml
 [env.production.observability]
 enabled = true
-
-[env.production.observability.logs]
-enabled = true
-invocation_logs = true
 head_sampling_rate = 1.0
 redact_query_string = true
 ```
+
+The prior nested `[env.production.observability.logs]` proposal and separate `invocation_logs` key are not part of the approved shape. The execution plan must still verify this syntax against the repository's active Wrangler version immediately before any production deployment.
 
 No staging/default observability change is required by this proposal.
 
@@ -74,13 +75,14 @@ Before any production configuration change, a fresh reviewer must verify:
 1. production semantic-primary is still `false`;
 2. the target Worker is exactly `libedge-api-prod` / production environment;
 3. current production observability state is recorded before change;
-4. exact Wrangler syntax is supported by the repository's installed Wrangler version;
+4. the flat `[env.production.observability]` syntax and all three intended keys are supported by the repository's installed Wrangler version;
 5. configuration is scoped only to `env.production`;
 6. `head_sampling_rate` is explicitly `1.0`, not inferred from a default;
 7. query-string redaction is explicitly enabled;
 8. no traces, Logpush destination, third-party export, or custom request logging is bundled unless separately reviewed;
 9. no D1 migration, semantic enablement, retrieval change, or unrelated production change is bundled;
-10. rollback is simply restoration of the previously recorded observability configuration if the deployment itself causes an operational problem.
+10. the post-deployment privacy probe is prepared to check both query-string redaction and absence of clear-text `Authorization`/`Cookie` header values;
+11. rollback is simply restoration of the previously recorded observability configuration if the deployment itself causes an operational problem.
 
 Any mismatch is a hard STOP.
 
@@ -93,9 +95,10 @@ After a separately authorized deployment, verify before using any collected data
 3. effective `head_sampling_rate = 1.0`;
 4. effective query-string redaction is enabled;
 5. a research invocation log exposes only the endpoint/path needed for classification and does not expose the `q` value;
-6. timestamps are available at per-request resolution;
-7. production semantic-primary remains `false`;
-8. no evidence of unintended request-body, query, identity, or credential logging appears.
+6. the inspected invocation-log representation does not expose `Authorization` or `Cookie` header values in clear text;
+7. timestamps are available at per-request resolution;
+8. production semantic-primary remains `false`;
+9. no evidence of unintended request-body, query, identity, credential, or other sensitive request-material logging appears.
 
 If completeness or privacy cannot be proven, classify:
 
@@ -109,6 +112,7 @@ After post-deployment verification passes, collect a defined production observat
 - effective production Worker/environment;
 - effective sampling state (`1.0`);
 - query-string redaction state;
+- authorization/cookie exposure check result;
 - eligible endpoint definition;
 - total eligible requests;
 - per-request timestamps or <=2-second bucket counts;
@@ -139,9 +143,11 @@ The following are not sufficient:
 
 ## Decision boundary
 
-Acceptance of this proposal would authorize only preparation of the exact production observability configuration change and its own deployment review.
+The independent proposal review classified this design `ACCEPTED WITH MODIFICATION`. The two required modifications — flat production observability syntax and explicit Authorization/Cookie exposure verification — are incorporated in this document.
 
-It would NOT authorize:
+This acceptance authorizes only preparation of a separate production observability execution plan and its own review.
+
+It does NOT authorize:
 
 - deploying the configuration without a fresh execution review;
 - production semantic-primary;
@@ -151,14 +157,6 @@ It would NOT authorize:
 - H/RRF or Vectorize changes;
 - weakening privacy, pacing, fallback, or capacity gates.
 
-## Reviewer questions
+## Next review
 
-The independent reviewer should determine:
-
-1. whether Workers Logs with 100% head sampling can provide the required complete per-request timing;
-2. whether explicit query-string redaction adequately protects the `q` research query from invocation-log URL persistence;
-3. whether endpoint isolation remains possible after query-string redaction;
-4. whether any additional Cloudflare field/log surface must be disabled or reviewed to preserve the privacy boundary;
-5. whether the proposed pre/post deployment gates are sufficient;
-6. whether the final observation-window duration needs a locked minimum before deployment;
-7. whether this proposal is ready for a separate production configuration execution plan.
+The next artifact must be a separate production observability execution plan. It must lock the exact proposed configuration change, pre/post verification commands or observations, privacy probes, rollback, evidence capture, STOP conditions, and the observation-window handling without silently authorizing semantic rollout.
