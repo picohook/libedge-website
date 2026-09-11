@@ -21,6 +21,23 @@ Following independent reviewer modification, a source is acceptable only if it p
 
 Any source coarser than 2 seconds is insufficient for the peak-rate claim because burst traffic may be smoothed away.
 
+## Completeness / sampling standard
+
+Temporal resolution alone is not sufficient. The evidence source must also be complete enough that the observed peak cannot be understated by sampling.
+
+For Cloudflare Workers Logs or any equivalent sampled invocation source, account/environment state must independently demonstrate:
+
+- logging/observability is enabled for the intended production Worker and observation window; and
+- `head_sampling_rate = 1.0` (100% head sampling), or an equivalently complete unsampled capture can be proven.
+
+A source with `head_sampling_rate < 1.0`, an unknown sampling rate, or otherwise unquantified sampling/incompleteness is **not acceptable** for proving the `<=0.5 requests/second` upper guardrail. Missing sampled requests could hide a true burst above the threshold.
+
+Such a source must be classified:
+
+`INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`.
+
+No correction factor or silent extrapolation from a sampled subset may be used to claim the guardrail is satisfied unless a separately reviewed method can defensibly establish a true upper bound.
+
 ## Existing repo-controlled research telemetry
 
 Current D1 research telemetry stores counters keyed by:
@@ -41,15 +58,23 @@ No attempt should be made to infer peak rate from the daily counter.
 
 The current repository configuration contains no explicit Workers Analytics Engine binding and no explicit production Workers Logs/observability configuration in `wrangler.toml`.
 
-Therefore the repository itself does not prove that a pre-existing production source with per-request or <=2-second resolution is available.
+Therefore the repository itself does not prove that a pre-existing production source with per-request or <=2-second resolution is available, and it does not prove the production account's effective `head_sampling_rate`.
 
 ## Cloudflare-native candidate source
 
-Current Cloudflare Workers documentation identifies Workers Logs as a native source containing invocation logs with timestamps and request metadata, and supports environment-specific observability configuration. This is a plausible Track A source **only if account-level production state confirms that the production Worker is already collecting unsampled or otherwise complete invocation logs sufficient to isolate the eligible research endpoint**.
+Current Cloudflare Workers documentation identifies Workers Logs as a native source containing invocation logs with timestamps and request metadata, and supports environment-specific observability configuration. This is a plausible Track A source **only if account-level production state confirms that the production Worker is already collecting complete invocation logs sufficient to isolate the eligible research endpoint**.
 
-This discovery record does not assume that production observability is currently enabled, complete, or unsampled.
+For Workers Logs specifically, the account-state check must verify both:
 
-Workers Metrics / coarse time-series analytics must not be treated as sufficient unless the actual queried source demonstrably meets the accepted per-request / <=2-second resolution requirement.
+1. production observability/logging is actually enabled for the intended Worker and observation window; and
+2. effective `head_sampling_rate` is exactly `1.0` for that production source, unless another independently reviewable mechanism proves equivalent complete capture.
+
+This discovery record does not assume that production observability is currently enabled, complete, or unsampled. Dashboard-side configuration must not be inferred from the absence or presence of repo configuration alone.
+
+Workers Metrics / coarse time-series analytics must not be treated as sufficient unless the actual queried source demonstrably meets both:
+
+- the accepted per-request / <=2-second temporal-resolution requirement; and
+- the complete/unsampled evidence requirement above.
 
 ## Privacy condition
 
@@ -71,7 +96,7 @@ At this point:
 
 - existing repo-controlled D1 telemetry: **INSUFFICIENT**;
 - repository-proven Analytics Engine source: **NONE**;
-- Cloudflare Workers Logs/native invocation logs: **CANDIDATE — ACCOUNT STATE NOT YET VERIFIED**.
+- Cloudflare Workers Logs/native invocation logs: **CANDIDATE — ACCOUNT STATE AND SAMPLING NOT YET VERIFIED**.
 
 Therefore Track A is not yet satisfied.
 
@@ -80,10 +105,11 @@ The next non-behavior-changing step is to verify whether the production Worker a
 1. covers the intended observation window;
 2. is complete enough for a peak-rate statement;
 3. provides per-request or <=2-second timing;
-4. can isolate the eligible research endpoint;
-5. can be queried/exported without content-bearing fields.
+4. for Workers Logs, has effective `head_sampling_rate = 1.0` (or an independently proven equivalent complete capture);
+5. can isolate the eligible research endpoint;
+6. can be queried/exported without content-bearing fields.
 
-If no such existing source can be verified, the correct Track A outcome remains:
+If any of these properties cannot be verified, the correct Track A outcome remains:
 
 `INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`
 
@@ -94,6 +120,7 @@ and any new instrumentation must be separately proposed and reviewed before depl
 Cloudflare Workers documentation rechecked 2026-09-11:
 
 - Workers Logs: invocation logs include request/response metadata and are presented with timestamps; environment-specific observability can be configured.
+- Workers observability configuration supports `head_sampling_rate`; sampling below 1.0 can omit invocations from the log stream.
 - Workers observability documentation identifies Workers Logs, real-time logs, Tail Workers, and Logpush as available observability mechanisms.
 
-These sources establish product capability only; they do not establish this account's current production configuration.
+These sources establish product capability only; they do not establish this account's current production configuration, effective sampling rate, or evidence completeness.
