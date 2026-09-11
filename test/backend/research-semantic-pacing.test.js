@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 describe('OpenAlex semantic pacing', () => {
-  it('serializes grants with at least 1000ms spacing using stored last-start state', async () => {
+  it('serializes grants with at least 1500ms spacing using stored last-start state', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-11T00:00:00.000Z'));
     const storage = createStorage();
@@ -26,7 +26,7 @@ describe('OpenAlex semantic pacing', () => {
     expect(first.status).toBe(200);
 
     const secondPromise = pacer.fetch(new Request('https://semantic-pacer/gate', { method: 'POST' }));
-    await vi.advanceTimersByTimeAsync(999);
+    await vi.advanceTimersByTimeAsync(1499);
     let settled = false;
     secondPromise.then(() => { settled = true; });
     await Promise.resolve();
@@ -36,7 +36,8 @@ describe('OpenAlex semantic pacing', () => {
     const second = await secondPromise;
     const secondBody = await second.json();
     expect(second.status).toBe(200);
-    expect(secondBody.grantedAtMs - firstBody.grantedAtMs).toBeGreaterThanOrEqual(1000);
+    expect(secondBody.grantedAtMs - firstBody.grantedAtMs).toBeGreaterThanOrEqual(1500);
+    expect(secondBody.waitMs).toBeGreaterThanOrEqual(1500);
     expect(storage.store.get('last_start_ms')).toBe(secondBody.grantedAtMs);
   });
 
