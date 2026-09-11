@@ -32,10 +32,10 @@ jobs:
         run: |
           set -euo pipefail
           echo '=== table_info(user_notifications) ==='
-          npx wrangler d1 execute libedge-db-staging --env staging --remote --command "PRAGMA table_info(user_notifications);"
+          npx wrangler d1 execute libedge-db --env staging --remote --command "PRAGMA table_info(user_notifications);"
           echo '=== foreign_key_list(user_notifications) ==='
-          npx wrangler d1 execute libedge-db-staging --env staging --remote --command "PRAGMA foreign_key_list(user_notifications);"
+          npx wrangler d1 execute libedge-db --env staging --remote --command "PRAGMA foreign_key_list(user_notifications);"
           echo '=== index_list(user_notifications) ==='
-          npx wrangler d1 execute libedge-db-staging --env staging --remote --command "PRAGMA index_list(user_notifications);"
+          npx wrangler d1 execute libedge-db --env staging --remote --command "PRAGMA index_list(user_notifications);"
           echo '=== sqlite_master indexes ==='
-          npx wrangler d1 execute libedge-db-staging --env staging --remote --command "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='user_notifications' ORDER BY name;"
+          npx wrangler d1 execute libedge-db --env staging --remote --command "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='user_notifications' ORDER BY name;"
