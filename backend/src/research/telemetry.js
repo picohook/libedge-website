@@ -1,4 +1,3 @@
-const PREFIX = 'research:telemetry:v1';
 const ALLOWED_METRICS = new Set([
   'research_requests',
   'semantic_attempts',
@@ -19,44 +18,94 @@ const ALLOWED_METRICS = new Set([
   'semantic_credits_total'
 ]);
 
+const INCREMENT_SQL = `
+INSERT INTO research_telemetry_counters (date_utc, metric, value, updated_at)
+VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+ON CONFLICT(date_utc, metric)
+DO UPDATE SET
+  value = research_telemetry_counters.value + excluded.value,
+  updated_at = CURRENT_TIMESTAMP
+`;
+
 function utcDateKey(now = new Date()) {
   return now.toISOString().slice(0, 10);
 }
 
-function metricKey(metric, now = new Date()) {
-  return `${PREFIX}:${utcDateKey(now)}:${metric}`;
+function normalizeEntries(entries = []) {
+  const totals = new Map();
+  for (const [metric, amount] of entries) {
+    if (!ALLOWED_METRICS.has(metric)) continue;
+    const numeric = Number(amount);
+    if (!Number.isFinite(numeric) || numeric <= 0) continue;
+    totals.set(metric, (totals.get(metric) || 0) + numeric);
+  }
+  return [...totals.entries()];
 }
 
-function ttlSeconds(now = new Date()) {
-  const expiry = Date.parse(`${utcDateKey(new Date(now.getTime() + 8 * 86400000))}T00:00:00.000Z`);
-  return Math.max(3600, Math.ceil((expiry - now.getTime()) / 1000));
+export function semanticTelemetryEntries(telemetry = {}) {
+  const entries = [];
+  const cost = Number(telemetry.requestCostUsd);
+  const credits = Number(telemetry.requestCredits);
+
+  if (Number.isFinite(cost) && cost > 0) {
+    entries.push(['semantic_charged_responses', 1]);
+    entries.push(['semantic_cost_microusd_total', Math.round(cost * 1_000_000)]);
+  }
+  if (Number.isFinite(credits) && credits >= 0) {
+    entries.push(['semantic_credits_total', credits]);
+  }
+  return entries;
 }
 
-export async function recordResearchMetric(env, metric, amount = 1, now = new Date()) {
-  if (!ALLOWED_METRICS.has(metric)) return;
-  const numeric = Number(amount);
-  if (!Number.isFinite(numeric) || numeric < 0 || !env.RATE_LIMIT_KV) return;
+export async function recordResearchMetrics(env, entries = [], now = new Date()) {
+  if (!env.DB) return false;
+  const normalized = normalizeEntries(entries);
+  if (!normalized.length) return true;
 
-  const key = metricKey(metric, now);
+  const dateUtc = utcDateKey(now);
   try {
-    const raw = await env.RATE_LIMIT_KV.get(key);
-    const current = Number(raw || 0);
-    const next = (Number.isFinite(current) ? current : 0) + numeric;
-    await env.RATE_LIMIT_KV.put(key, String(next), { expirationTtl: ttlSeconds(now) });
+    const statements = normalized.map(([metric, amount]) => (
+      env.DB.prepare(INCREMENT_SQL).bind(dateUtc, metric, amount)
+    ));
+
+    if (typeof env.DB.batch === 'function') {
+      await env.DB.batch(statements);
+    } else {
+      for (const statement of statements) await statement.run();
+    }
+    return true;
   } catch (error) {
     console.warn('research telemetry write failed', error);
+    return false;
   }
 }
 
-export async function readResearchTelemetrySnapshot(env, now = new Date()) {
-  if (!env.RATE_LIMIT_KV) return null;
+export async function recordResearchMetric(env, metric, amount = 1, now = new Date()) {
+  return recordResearchMetrics(env, [[metric, amount]], now);
+}
 
-  const metrics = {};
-  await Promise.all([...ALLOWED_METRICS].map(async (metric) => {
-    const raw = await env.RATE_LIMIT_KV.get(metricKey(metric, now));
-    const numeric = Number(raw || 0);
-    metrics[metric] = Number.isFinite(numeric) && numeric >= 0 ? numeric : 0;
-  }));
+export async function recordSemanticTelemetry(env, telemetry = {}, now = new Date()) {
+  return recordResearchMetrics(env, semanticTelemetryEntries(telemetry), now);
+}
+
+export async function readResearchTelemetrySnapshot(env, now = new Date()) {
+  if (!env.DB) return null;
+
+  const metrics = Object.fromEntries([...ALLOWED_METRICS].map((metric) => [metric, 0]));
+  try {
+    const result = await env.DB.prepare(
+      'SELECT metric, value FROM research_telemetry_counters WHERE date_utc = ?'
+    ).bind(utcDateKey(now)).all();
+
+    for (const row of result?.results || []) {
+      if (!ALLOWED_METRICS.has(row.metric)) continue;
+      const numeric = Number(row.value);
+      if (Number.isFinite(numeric) && numeric >= 0) metrics[row.metric] = numeric;
+    }
+  } catch (error) {
+    console.warn('research telemetry read failed', error);
+    return null;
+  }
 
   return {
     date_utc: utcDateKey(now),
@@ -64,16 +113,18 @@ export async function readResearchTelemetrySnapshot(env, now = new Date()) {
   };
 }
 
-export async function recordSemanticTelemetry(env, telemetry = {}, now = new Date()) {
-  const calls = [];
-  if (Number.isFinite(Number(telemetry.requestCostUsd)) && Number(telemetry.requestCostUsd) > 0) {
-    calls.push(recordResearchMetric(env, 'semantic_charged_responses', 1, now));
-    calls.push(recordResearchMetric(env, 'semantic_cost_microusd_total', Math.round(Number(telemetry.requestCostUsd) * 1_000_000), now));
+export async function pruneResearchTelemetry(env, now = new Date()) {
+  if (!env.DB) return false;
+  const cutoff = utcDateKey(new Date(now.getTime() - 7 * 86400000));
+  try {
+    await env.DB.prepare(
+      'DELETE FROM research_telemetry_counters WHERE date_utc < ?'
+    ).bind(cutoff).run();
+    return true;
+  } catch (error) {
+    console.warn('research telemetry prune failed', error);
+    return false;
   }
-  if (Number.isFinite(Number(telemetry.requestCredits)) && Number(telemetry.requestCredits) >= 0) {
-    calls.push(recordResearchMetric(env, 'semantic_credits_total', Number(telemetry.requestCredits), now));
-  }
-  await Promise.all(calls);
 }
 
-export { ALLOWED_METRICS as RESEARCH_TELEMETRY_METRICS, metricKey as researchTelemetryMetricKey };
+export { ALLOWED_METRICS as RESEARCH_TELEMETRY_METRICS, utcDateKey as researchTelemetryDateKey };
