@@ -1,79 +1,87 @@
 # 0047-SCOPE-01 — Follow-up plan before controlled staging deletion
 
-Status: `READ-ONLY LIVE SCHEMA CONFIRMATION PENDING / NO MIGRATION APPLY / NO LIVE DELETION AUTHORIZED`
+Status: `LIVE SCHEMA DIVERGENCE CONFIRMED / RETURN TO MIGRATION DESIGN REVIEW / NO APPLY / NO LIVE DELETION`
 
 Date: 2026-09-11
 
-## Corrected decision
+## Decision
 
-`user_notifications` remains part of the user-deletion privacy surface, but repository schema inspection found that canonical migration `0008_user_notifications.sql` already defines:
+Live staging read-only evidence has now resolved the earlier uncertainty.
+
+Canonical migration `0008_user_notifications.sql` declares `user_id -> users(id) ON DELETE CASCADE`, but the actual staging D1 table does **not** contain any foreign-key constraint.
+
+Therefore `user_notifications` is not currently protected by schema-level cascade in staging and remains outside the explicit 0047 trigger cleanup.
+
+## Decisive live evidence
+
+Workflow run:
+
+`34601127734`
+
+Remote staging D1:
+
+- `libedge-db`
+- `207d80d6-7e6b-4e10-aacf-b218970dbaf8`
+
+Results:
+
+- expected columns present;
+- `PRAGMA foreign_key_list(user_notifications)` -> empty result set;
+- `idx_user_notifications_user(user_id, is_read)` present;
+- `idx_user_notifications_type(type)` present.
+
+Canonical evidence record:
+
+`docs/reviews/2026-09-11-0047-scope-01-live-staging-schema-evidence.md`
+
+## Privacy policy
+
+Expected disposition remains:
+
+`DELETE user_notifications rows with the deleted account`.
+
+The narrow intended trigger semantics remain:
 
 ```sql
-user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+DELETE FROM user_notifications WHERE user_id = OLD.id;
 ```
 
-with:
-
-```sql
-idx_user_notifications_user(user_id, is_read)
-```
-
-Therefore a new trigger-replacement migration is **not** the default next step. It is needed only if fresh live staging schema evidence shows material divergence from migration 0008.
-
-## Why the original scope concern still matters
-
-`user_notifications` is an active per-user delivery table containing a required `user_id` and notification title/body content. It must disappear with the deleted account.
-
-The important correction is that deletion may be provided by the existing schema-level FK cascade rather than by an explicit statement inside `trg_users_privacy_cleanup`.
-
-## Required live read-only staging prechecks
-
-Before any fixture or account is created, obtain actual staging evidence for:
-
-1. `PRAGMA table_info(user_notifications)`;
-2. `PRAGMA foreign_key_list(user_notifications)`;
-3. `PRAGMA index_list(user_notifications)` and index details as needed;
-4. FK target `users(id)` with `ON DELETE CASCADE`;
-5. `idx_user_notifications_user` with `user_id` as leading column;
-6. no material schema drift from migration 0008.
-
-Any mismatch is a hard STOP and returns the finding for migration design/review.
-
-## Application-path / retention result
-
-Repository-level inspection confirms the active institution send-to-users path inserts per-user `user_notifications` rows.
-
-No intentional retention requirement after account deletion was identified in this pass. Expected disposition is still `DELETE with account`.
+The supporting live index means this predicate is index-supported.
 
 ## Migration strategy
 
-Do not create migration 0049 unless live staging schema evidence demonstrates that the expected cascade is missing or otherwise unsafe.
+Do not mutate migration `0008` or `0047` in place.
 
-Do not mutate migration 0047 or migration 0008 in place.
+The next step is now to prepare a **forward migration proposal** that makes the live deletion policy explicit, after freshly verifying the migration directory / next migration number.
 
-If staging matches migration 0008, no new migration is required for `0047-SCOPE-01`.
+Because `0048_research_telemetry_counters.sql` currently exists, `0049` remains the natural candidate subject to fresh verification.
 
-## Controlled staging packet amendment
+The proposal should replace/recreate `trg_users_privacy_cleanup` using the reviewed 0047 body plus the explicit `user_notifications` delete.
 
-Amend the packet to treat the deletion-policy surface as 30 domains:
+Any migration SQL must be independently byte-reviewed before staging apply.
 
-- 29 trigger-touched domains;
-- 1 FK-cascade domain: `user_notifications`.
+## Required inventory check
 
-Required additions:
+Before finalizing the migration proposal, re-run the active user-linked table inventory and distinguish:
 
-- schema precheck includes live `user_notifications` FK/index evidence;
-- target fixture includes at least one `user_notifications` row per target user;
-- positive assertion: target rows disappear after deletion;
-- negative assertion: `U_CONTROL` rows remain unchanged;
-- PRE/POST evidence includes exact row counts;
-- execution record states whether deletion occurred by confirmed FK cascade.
+- explicit trigger cleanup;
+- verified FK cascade;
+- application-level cleanup;
+- uncovered direct user links.
 
-The trigger SQL itself remains the reviewed 0047 trigger if the live cascade is confirmed.
+If another uncovered active user-linked domain appears, STOP and return to scope review rather than preparing a piecemeal migration.
 
-## Active user-linked inventory
+## Controlled staging packet
 
-Re-run the complete active user-linked table inventory before execution, distinguishing explicit trigger cleanup from schema-level cascades. A table absent from the trigger is not automatically a privacy omission if an independently verified FK cascade provides the intended deletion policy.
+The controlled deletion packet remains blocked.
+
+After an independently accepted forward migration is applied to staging under separate authorization, the execution packet must cover 30 deletion-policy domains, including:
+
+- target `user_notifications` row(s) seeded;
+- target rows deleted;
+- `U_CONTROL` rows unchanged;
+- exact PRE/POST counts;
+- fresh trigger SQL evidence matching the accepted forward migration.
 
 ## Existing stress fixture
 
@@ -82,30 +90,21 @@ Do not change the reviewed stress pair silently:
 - `25,000 ai_usage_logs`;
 - `25,000 notifications`.
 
-The canonical `user_notifications` index does not create a repository-level reason to add it as a third stress store.
-
-## Timing-threshold sanity check
-
-The existing `2.0 s` ordinary / `5.0 s` stress / `2.0 s` unrelated-write thresholds remain well below Cloudflare Worker platform execution ceilings. The actual browser/application caller must still be checked for a shorter explicit timeout or `AbortController` before execution.
+The live `user_notifications` index does not itself justify changing the predeclared stress pair.
 
 ## Authorization boundary
 
 This plan authorizes only:
 
-- read-only live staging schema confirmation;
 - repository/code inventory work;
-- amendment and independent review of the controlled staging packet.
+- preparation of a forward migration proposal;
+- independent review preparation.
 
 It does NOT authorize:
 
-- creation or application of migration 0049;
 - applying any migration to staging or production;
 - creating staging disposable accounts;
 - seeding fixtures;
 - deleting staging users;
 - resuming D-016 Track B;
 - enabling semantic-primary.
-
-Supporting discovery:
-
-`docs/reviews/2026-09-11-0047-scope-01-read-only-discovery.md`
