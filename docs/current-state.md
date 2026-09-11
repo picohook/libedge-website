@@ -10,13 +10,14 @@ Status: `ACTIVE`
 
 P0.5 experimental sequence is **CLOSED / independently verified**. H is rejected. D-016 is **LOCKED** for the existing top-10 research-result contract: semantic S primary, lexical L only as objective availability fallback/rollback.
 
-The D-016 staging implementation plan, follow-up, code/diff review, and Durable Object migration correction were independently accepted. The reviewed implementation is now **successfully deployed to staging with semantic-primary still OFF**.
+The D-016 staging implementation plan, follow-up, code/diff review, Durable Object migration correction, successful staging deployment and authenticated flag-OFF baseline smoke are complete.
 
-Semantic-primary staging enablement and broad production enablement remain unauthorized pending baseline authenticated smoke and the next independent authorization.
+Semantic-primary staging enablement and broad production enablement remain unauthorized pending the next independent review.
 
 ## Successful staging baseline deployment
 
 Canonical deployment record: `docs/reviews/2026-09-11-d016-staging-deploy-success.md`.
+Canonical baseline smoke record: `docs/reviews/2026-09-11-d016-staging-baseline-smoke.md`.
 
 Deployment run `34536345675` at commit `90ef63239343188f57937fbc444b0b0b978d9bde`:
 
@@ -33,25 +34,34 @@ Cloudflare deployment evidence:
 - `RESEARCH_SEMANTIC_PRIMARY_ENABLED="false"`;
 - `RESEARCH_SEMANTIC_CANDIDATE_DEPTH="50"`.
 
-Same-commit CI run `34536345702` also PASS. The actual CI log lists `22` test files / `90` tests PASS, including research router/fallback/semantic-pacing/telemetry suites, and staging Wrangler dry-run PASS.
+Same-commit CI run `34536345702` PASS. The actual CI log lists `22` test files / `90` tests PASS, including research router/fallback/semantic-pacing/telemetry suites, and staging Wrangler dry-run PASS.
+
+## Authenticated baseline smoke — COMPLETE
+
+A real authenticated staging browser session issued one `/api/research/search` request with `per_page=10` while semantic-primary remained OFF.
+
+Observed summary:
+
+- HTTP `200`;
+- `meta.retrievalSource === "lexical"`;
+- `meta.cached === false`;
+- result count `10`;
+- provider metadata present;
+- no browser-visible API/runtime error.
+
+The exact query text is intentionally omitted from canonical operational records under the research-privacy invariant.
+
+This proves the deployed flag-OFF request path remains lexical in the live authenticated staging environment.
 
 ## Cache-version expectation
 
-The implementation uses research cache v2 actual-source partitions. Existing v1 cache entries are intentionally orphaned from reads and may expire naturally under the prior TTL. No destructive cache migration is required. A temporary full cache-miss wave after deployment is expected behavior, not cache corruption.
+The implementation uses research cache v2 actual-source partitions. Existing v1 cache entries are intentionally orphaned from reads and may expire naturally under the prior TTL. The observed first smoke `cached:false` is expected after this version transition. No destructive cache migration is required.
 
-## Authenticated baseline smoke — PENDING
+## Durable Object verification boundary
 
-The remaining baseline smoke must use a real authenticated staging browser/session because `/api/research/search` is protected by `requireAuth` and the main engineering session does not possess or retrieve user auth cookies/JWTs.
+The successful deploy log proves Cloudflare accepted the Durable Object migration/binding and deployed `OPENALEX_SEMANTIC_PACER` with the Worker. Because semantic-primary remains OFF, baseline traffic intentionally does not invoke the pacing object.
 
-Required observation while the flag remains OFF:
-
-1. HTTP 200 from a real staging research request;
-2. `meta.retrievalSource === "lexical"`;
-3. non-error response with plausible research results (or a valid provider-level empty result if naturally returned);
-4. no semantic-primary claim/path;
-5. no newly observed runtime exception attributable to the deployment.
-
-A browser-context fetch through the authenticated staging site is acceptable evidence. The exact query is operational smoke only and is not reused as relevance evaluation.
+No claim is made that a live pacing-gate invocation has occurred yet. The first separately authorized controlled semantic-primary staging call must verify the live gate→semantic-provider path end to end.
 
 ## Accepted implementation properties
 
@@ -75,7 +85,7 @@ A browser-context fetch through the authenticated staging site is acceptable evi
 
 ## Locked rollout constraints still active
 
-1. Semantic-primary remains OFF during baseline smoke.
+1. Semantic-primary remains OFF until the next independent authorization.
 2. Valid empty/short S does not trigger L.
 3. L fallback remains objective-only; no content/count/relevance/topic routing.
 4. Semantic request starts remain constrained to <=1 request/second through the shared pacing gate.
@@ -87,10 +97,10 @@ A browser-context fetch through the authenticated staging site is acceptable evi
 
 ## NEXT
 
-1. Run one authenticated staging baseline research smoke with semantic-primary still OFF.
-2. Record HTTP/result/meta evidence and any runtime observations.
-3. Prepare a formal reviewer packet covering successful deploy + CI + baseline smoke.
-4. Only after independent acceptance request controlled semantic-primary staging enablement.
+1. Independent reviewer verifies deploy run `34536345675`, CI run `34536345702`, and `docs/reviews/2026-09-11-d016-staging-baseline-smoke.md`.
+2. Reviewer accepts/modifies/rejects a narrowly scoped controlled semantic-primary staging enablement proposal.
+3. Only after acceptance may the staging feature flag be changed to true for controlled operational verification.
+4. The first authorized semantic call must verify the live pacing-gate path, semantic retrieval source, cost/credit telemetry and privacy-safe operational behavior.
 5. Broad production enablement remains a separate later decision after capacity/rollout controls.
 
 ## Canonical records
@@ -102,6 +112,7 @@ A browser-context fetch through the authenticated staging site is acceptable evi
 - Code review: `docs/reviews/2026-09-11-d016-code-review.md`
 - Deploy failure / correction: `docs/reviews/2026-09-11-d016-staging-deploy-failure.md`
 - Successful staging deploy: `docs/reviews/2026-09-11-d016-staging-deploy-success.md`
+- Authenticated baseline smoke: `docs/reviews/2026-09-11-d016-staging-baseline-smoke.md`
 - Reviewer packet checklist: `docs/reviewer-packet-checklist.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
