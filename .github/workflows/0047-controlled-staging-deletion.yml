@@ -1,0 +1,3162 @@
+name: 0047 Controlled Staging Deletion
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: >-
+          Type exactly CONTROLLED-STAGING-0047-ONE-SHOT to authorize the
+          already-reviewed single synthetic staging execution.
+        required: true
+        type: string
+      base_url:
+        description: Staging application base URL
+        required: true
+        type: string
+        default: https://staging.libedge-website.pages.dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: 0047-controlled-staging-deletion
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    name: Controlled synthetic staging deletion
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 25
+
+    env:
+      BASE_URL: ${{ inputs.base_url }}
+      RUN_MARKER: 0047-test-${{ github.run_id }}
+
+      TARGET_ADMIN_EMAIL: 0047-test-admin-${{ github.run_id }}@example.invalid
+      TARGET_SELF_EMAIL: 0047-test-self-${{ github.run_id }}@example.invalid
+      CONTROL_EMAIL: 0047-test-control-${{ github.run_id }}@example.invalid
+
+      TEST_PASSWORD: 0047-Test-${{ github.run_id }}-Aa9!
+
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      STAGING_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+      STAGING_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+
+    steps:
+      - name: Enforce one-shot human confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ inputs.confirmation }}" != "CONTROLLED-STAGING-0047-ONE-SHOT" ]; then
+            echo "::error::Exact human confirmation string was not supplied."
+            exit 1
+          fi
+
+          case "$BASE_URL" in
+            https://staging.libedge-website.pages.dev)
+              ;;
+            *)
+              echo "::error::Only the canonical staging URL is permitted."
+              exit 1
+              ;;
+          esac
+
+          echo "Human confirmation gate: PASS"
+          echo "Target environment: staging"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # -----------------------------------------------------------------------
+      # READ-ONLY PRECHECK
+      # Absolutely no fixture/user write may occur before this step passes.
+      # -----------------------------------------------------------------------
+
+      - name: Fresh read-only staging precheck
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== migration state ==="
+          MIGRATIONS="$(
+            npx wrangler d1 migrations list libedge-db \
+              --env staging \
+              --remote
+          )"
+
+          printf '%s\n' "$MIGRATIONS"
+
+          if ! grep -q "No migrations to apply" <<<"$MIGRATIONS"; then
+            echo "::error::Unexpected pending staging migration."
+            exit 1
+          fi
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+
+          function fail(message) {
+            throw new Error(message);
+          }
+
+          function d1(sql) {
+            let stdout;
+            try {
+              stdout = execFileSync(
+                'npx',
+                [
+                  'wrangler',
+                  'd1',
+                  'execute',
+                  'libedge-db',
+                  '--env',
+                  'staging',
+                  '--remote',
+                  '--command',
+                  sql,
+                  '--json',
+                ],
+                {
+                  encoding: 'utf8',
+                  env: process.env,
+                  stdio: ['ignore', 'pipe', 'pipe'],
+                }
+              );
+            } catch (err) {
+              const stderr = String(err?.stderr || '');
+              throw new Error(`D1 read-only precheck failed: ${stderr}`);
+            }
+
+            const payload = JSON.parse(stdout);
+            const result = Array.isArray(payload) ? payload[0] : payload;
+
+            if (!result?.success) {
+              fail(`D1 query reported failure: ${stdout}`);
+            }
+
+            return result.results || [];
+          }
+
+          const requiredTables = [
+            'subscriptions',
+            'newsletter_subscriptions',
+            'user_profile_links',
+            'refresh_tokens',
+            'password_resets',
+            'ra_user_credentials',
+            'announcement_reactions',
+            'announcement_comments',
+            'notifications',
+            'user_notifications',
+            'share_recipients',
+            'user_collection_files',
+            'user_collections',
+            'file_shares',
+            'ticket_replies',
+            'support_tickets',
+            'product_requests',
+            'ai_usage_logs',
+            'affiliate_clicks',
+            'ra_link_audit_findings',
+            'form_submissions',
+            'files',
+            'collections',
+            'collection_files',
+            'institution_folders',
+            'institution_files',
+            'announcements',
+            'institution_subscriptions',
+            'admin_action_logs',
+            'privacy_r2_purge_queue',
+          ];
+
+          for (const table of requiredTables) {
+            const rows = d1(
+              `SELECT name FROM sqlite_master ` +
+              `WHERE type='table' AND name='${table}'`
+            );
+
+            if (rows.length !== 1) {
+              fail(`Required table missing: ${table}`);
+            }
+          }
+
+          const triggerRows = d1(`
+            SELECT sql
+            FROM sqlite_master
+            WHERE type = 'trigger'
+              AND name = 'trg_users_privacy_cleanup'
+          `);
+
+          if (triggerRows.length !== 1) {
+            fail('trg_users_privacy_cleanup is missing');
+          }
+
+          const triggerSql = String(triggerRows[0].sql || '');
+
+          if (!/BEFORE\s+DELETE\s+ON\s+users/i.test(triggerSql)) {
+            fail('Privacy trigger is not BEFORE DELETE ON users');
+          }
+
+          if (
+            !triggerSql.includes(
+              'DELETE FROM user_notifications WHERE user_id = OLD.id'
+            )
+          ) {
+            fail('0049 user_notifications cleanup is missing');
+          }
+
+          const userNotificationFk = d1(
+            'PRAGMA foreign_key_list(user_notifications)'
+          );
+
+          if (userNotificationFk.length !== 0) {
+            fail(
+              'Live user_notifications unexpectedly gained a foreign key; ' +
+              'review assumptions changed'
+            );
+          }
+
+          const userNotificationIndexes = d1(
+            'PRAGMA index_list(user_notifications)'
+          ).map((row) => row.name);
+
+          for (const expected of [
+            'idx_user_notifications_user',
+            'idx_user_notifications_type',
+          ]) {
+            if (!userNotificationIndexes.includes(expected)) {
+              fail(`Missing user_notifications index: ${expected}`);
+            }
+          }
+
+          const source = fs.readFileSync(
+            'backend/src/index.js',
+            'utf8'
+          );
+
+          const routeStart = source.indexOf(
+            "app.delete('/api/admin/user/:id'"
+          );
+
+          if (routeStart < 0) {
+            fail('Admin deletion endpoint not found in staging source');
+          }
+
+          const routeEnd = source.indexOf(
+            "app.post('/api/admin/set-role/:id'",
+            routeStart
+          );
+
+          const route = source.slice(
+            routeStart,
+            routeEnd > routeStart ? routeEnd : undefined
+          );
+
+          const auditIndex = route.indexOf(
+            'createAdminActionLogStmt'
+          );
+
+          const deleteIndex = route.indexOf(
+            'DELETE FROM users WHERE id=?'
+          );
+
+          if (
+            auditIndex < 0 ||
+            deleteIndex < 0 ||
+            auditIndex >= deleteIndex
+          ) {
+            fail(
+              'Merged admin audit-order fix is not present in expected order'
+            );
+          }
+
+          console.log(
+            `PRECHECK_PASS required_objects=${requiredTables.length}`
+          );
+          NODE
+
+      # -----------------------------------------------------------------------
+      # FIXTURE PREPARATION
+      # From this point forward the authorized execution is considered started.
+      # Any failure is STOP / NO AUTOMATIC RETRY.
+      # -----------------------------------------------------------------------
+
+      - name: Generate synthetic password hash
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node --input-type=module <<'NODE' >> "$GITHUB_ENV"
+          import { hashPassword } from './backend/src/auth/security.js';
+
+          const password = process.env.TEST_PASSWORD;
+          const hash = await hashPassword(password);
+
+          console.log(`TEST_PASSWORD_HASH=${hash}`);
+          NODE
+
+      - name: Assert synthetic fixture namespace is unused
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+
+          function d1(sql) {
+            const stdout = execFileSync(
+              'npx',
+              [
+                'wrangler',
+                'd1',
+                'execute',
+                'libedge-db',
+                '--env',
+                'staging',
+                '--remote',
+                '--command',
+                sql,
+                '--json',
+              ],
+              {
+                encoding: 'utf8',
+                env: process.env,
+              }
+            );
+
+            const payload = JSON.parse(stdout);
+            const result = Array.isArray(payload) ? payload[0] : payload;
+
+            if (!result?.success) {
+              throw new Error(stdout);
+            }
+
+            return result.results || [];
+          }
+
+          const marker = process.env.RUN_MARKER.replaceAll("'", "''");
+          const emails = [
+            process.env.TARGET_ADMIN_EMAIL,
+            process.env.TARGET_SELF_EMAIL,
+            process.env.CONTROL_EMAIL,
+          ].map((x) => `'${x.replaceAll("'", "''")}'`).join(',');
+
+          const users = d1(
+            `SELECT id,email FROM users WHERE email IN (${emails})`
+          );
+
+          if (users.length !== 0) {
+            throw new Error('Synthetic user namespace already exists');
+          }
+
+          const institution = d1(
+            `SELECT id FROM institutions WHERE name='${marker}-institution'`
+          );
+
+          if (institution.length !== 0) {
+            throw new Error('Synthetic institution namespace already exists');
+          }
+
+          const purge = d1(
+            `SELECT COUNT(*) AS n ` +
+            `FROM privacy_r2_purge_queue ` +
+            `WHERE object_url LIKE '%${marker}%'`
+          );
+
+          if (Number(purge[0]?.n || 0) !== 0) {
+            throw new Error('Synthetic purge-queue namespace already exists');
+          }
+
+          console.log('SYNTHETIC_NAMESPACE_PASS');
+          NODE
+
+      - name: Build synthetic 30-domain fixture SQL
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > "$RUNNER_TEMP/0047-fixture.sql" <<SQL
+          INSERT INTO institutions (
+            name, domain, status
+          )
+          VALUES (
+            '${RUN_MARKER}-institution',
+            '${RUN_MARKER}.example.invalid',
+            'Active'
+          );
+
+          INSERT INTO users (
+            email,
+            password_hash,
+            full_name,
+            first_name,
+            last_name,
+            institution,
+            institution_id,
+            role
+          )
+          VALUES
+          (
+            '${TARGET_ADMIN_EMAIL}',
+            '${TEST_PASSWORD_HASH}',
+            '${RUN_MARKER} Target Admin',
+            '0047',
+            'TargetAdmin',
+            '${RUN_MARKER}-institution',
+            (SELECT id FROM institutions WHERE name='${RUN_MARKER}-institution'),
+            'user'
+          ),
+          (
+            '${TARGET_SELF_EMAIL}',
+            '${TEST_PASSWORD_HASH}',
+            '${RUN_MARKER} Target Self',
+            '0047',
+            'TargetSelf',
+            '${RUN_MARKER}-institution',
+            (SELECT id FROM institutions WHERE name='${RUN_MARKER}-institution'),
+            'user'
+          ),
+          (
+            '${CONTROL_EMAIL}',
+            '${TEST_PASSWORD_HASH}',
+            '${RUN_MARKER} Control',
+            '0047',
+            'Control',
+            '${RUN_MARKER}-institution',
+            (SELECT id FROM institutions WHERE name='${RUN_MARKER}-institution'),
+            'user'
+          );
+
+          -- ------------------------------------------------------------------
+          -- Security / auth material
+          -- ------------------------------------------------------------------
+
+          INSERT INTO subscriptions (
+            user_id, product_slug, status
+          )
+          SELECT id, '${RUN_MARKER}-product-admin', 'trial'
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO subscriptions (
+            user_id, product_slug, status
+          )
+          SELECT id, '${RUN_MARKER}-product-self', 'trial'
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO subscriptions (
+            user_id, product_slug, status
+          )
+          SELECT id, '${RUN_MARKER}-product-control', 'trial'
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO newsletter_subscriptions (
+            user_id, email, status, source
+          )
+          SELECT id, email, 'active', '0047-test'
+          FROM users
+          WHERE email IN (
+            '${TARGET_ADMIN_EMAIL}',
+            '${TARGET_SELF_EMAIL}',
+            '${CONTROL_EMAIL}'
+          );
+
+          INSERT INTO user_profile_links (
+            user_id, link_type, label, url, display_order
+          )
+          SELECT id, 'website', '${RUN_MARKER}', 'https://example.invalid/${RUN_MARKER}', 10
+          FROM users
+          WHERE email IN (
+            '${TARGET_ADMIN_EMAIL}',
+            '${TARGET_SELF_EMAIL}',
+            '${CONTROL_EMAIL}'
+          );
+
+          INSERT INTO refresh_tokens (
+            user_id,
+            token_hash,
+            issued_at,
+            expires_at,
+            created_at
+          )
+          SELECT
+            id,
+            '${RUN_MARKER}-refresh-' || id,
+            unixepoch(),
+            unixepoch() + 3600,
+            datetime('now')
+          FROM users
+          WHERE email IN (
+            '${TARGET_ADMIN_EMAIL}',
+            '${TARGET_SELF_EMAIL}',
+            '${CONTROL_EMAIL}'
+          );
+
+          INSERT INTO password_resets (
+            user_id,
+            token_hash,
+            expires_at,
+            created_at
+          )
+          SELECT
+            id,
+            '${RUN_MARKER}-reset-' || id,
+            unixepoch() + 3600,
+            unixepoch()
+          FROM users
+          WHERE email IN (
+            '${TARGET_ADMIN_EMAIL}',
+            '${TARGET_SELF_EMAIL}',
+            '${CONTROL_EMAIL}'
+          );
+
+          INSERT INTO ra_user_credentials (
+            user_id,
+            product_slug,
+            credential_enc,
+            created_at
+          )
+          SELECT
+            id,
+            '${RUN_MARKER}-ra',
+            '${RUN_MARKER}-synthetic-credential',
+            unixepoch()
+          FROM users
+          WHERE email IN (
+            '${TARGET_ADMIN_EMAIL}',
+            '${TARGET_SELF_EMAIL}',
+            '${CONTROL_EMAIL}'
+          );
+
+          -- ------------------------------------------------------------------
+          -- Announcements / engagement
+          -- ------------------------------------------------------------------
+
+          INSERT INTO announcements (
+            title,
+            summary,
+            full_content,
+            category,
+            created_by
+          )
+          SELECT
+            '${RUN_MARKER}-announcement-admin',
+            '${RUN_MARKER}',
+            '${RUN_MARKER}',
+            'general',
+            id
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO announcements (
+            title,
+            summary,
+            full_content,
+            category,
+            created_by
+          )
+          SELECT
+            '${RUN_MARKER}-announcement-self',
+            '${RUN_MARKER}',
+            '${RUN_MARKER}',
+            'general',
+            id
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO announcements (
+            title,
+            summary,
+            full_content,
+            category,
+            created_by
+          )
+          SELECT
+            '${RUN_MARKER}-announcement-control',
+            '${RUN_MARKER}',
+            '${RUN_MARKER}',
+            'general',
+            id
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO announcement_reactions (
+            announcement_id,
+            user_id,
+            reaction
+          )
+          SELECT
+            (SELECT id FROM announcements
+              WHERE title='${RUN_MARKER}-announcement-control'),
+            id,
+            'like'
+          FROM users
+          WHERE email IN (
+            '${TARGET_ADMIN_EMAIL}',
+            '${TARGET_SELF_EMAIL}',
+            '${CONTROL_EMAIL}'
+          );
+
+          INSERT INTO announcement_comments (
+            announcement_id,
+            user_id,
+            body
+          )
+          SELECT
+            (SELECT id FROM announcements
+              WHERE title='${RUN_MARKER}-announcement-control'),
+            id,
+            '${RUN_MARKER}-admin-owned-comment'
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO announcement_comments (
+            announcement_id,
+            user_id,
+            body
+          )
+          SELECT
+            (SELECT id FROM announcements
+              WHERE title='${RUN_MARKER}-announcement-control'),
+            id,
+            '${RUN_MARKER}-self-owned-comment'
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO announcement_comments (
+            announcement_id,
+            user_id,
+            body
+          )
+          SELECT
+            (SELECT id FROM announcements
+              WHERE title='${RUN_MARKER}-announcement-control'),
+            id,
+            '${RUN_MARKER}-control-pure-comment'
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO announcement_comments (
+            announcement_id,
+            user_id,
+            body,
+            deleted_by,
+            deleted_at,
+            is_deleted
+          )
+          SELECT
+            (SELECT id FROM announcements
+              WHERE title='${RUN_MARKER}-announcement-control'),
+            control.id,
+            '${RUN_MARKER}-control-moderated-by-admin',
+            target.id,
+            datetime('now'),
+            1
+          FROM
+            users control,
+            users target
+          WHERE
+            control.email='${CONTROL_EMAIL}'
+            AND target.email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO announcement_comments (
+            announcement_id,
+            user_id,
+            body,
+            deleted_by,
+            deleted_at,
+            is_deleted
+          )
+          SELECT
+            (SELECT id FROM announcements
+              WHERE title='${RUN_MARKER}-announcement-control'),
+            control.id,
+            '${RUN_MARKER}-control-moderated-by-self',
+            target.id,
+            datetime('now'),
+            1
+          FROM
+            users control,
+            users target
+          WHERE
+            control.email='${CONTROL_EMAIL}'
+            AND target.email='${TARGET_SELF_EMAIL}';
+
+          -- ------------------------------------------------------------------
+          -- Notifications
+          --
+          -- U_TARGET_ADMIN gets exactly 25,000 notifications.
+          -- ------------------------------------------------------------------
+
+          WITH
+          digit(v) AS (
+            VALUES(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)
+          ),
+          nums(n) AS (
+            SELECT
+              a.v
+              + 10*b.v
+              + 100*c.v
+              + 1000*d.v
+              + 10000*e.v
+              + 1
+            FROM digit a
+            CROSS JOIN digit b
+            CROSS JOIN digit c
+            CROSS JOIN digit d
+            CROSS JOIN digit e
+            LIMIT 25000
+          )
+          INSERT INTO notifications (
+            user_id,
+            type,
+            title,
+            content,
+            data
+          )
+          SELECT
+            (SELECT id FROM users WHERE email='${TARGET_ADMIN_EMAIL}'),
+            '0047-test',
+            '${RUN_MARKER}-stress-' || n,
+            '${RUN_MARKER}',
+            '{}'
+          FROM nums;
+
+          INSERT INTO notifications (
+            user_id, type, title, content, data
+          )
+          SELECT
+            id, '0047-test', '${RUN_MARKER}-self-notification',
+            '${RUN_MARKER}', '{}'
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO notifications (
+            user_id, type, title, content, data
+          )
+          SELECT
+            id, '0047-test', '${RUN_MARKER}-control-notification',
+            '${RUN_MARKER}', '{}'
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO user_notifications (
+            user_id,
+            type,
+            title,
+            body,
+            ref_type
+          )
+          SELECT
+            id,
+            'system',
+            '${RUN_MARKER}-user-notification',
+            '${RUN_MARKER}',
+            '0047-test'
+          FROM users
+          WHERE email IN (
+            '${TARGET_ADMIN_EMAIL}',
+            '${TARGET_SELF_EMAIL}',
+            '${CONTROL_EMAIL}'
+          );
+
+          -- ------------------------------------------------------------------
+          -- Central file metadata / collections
+          -- No R2 object is created by this fixture.
+          -- ------------------------------------------------------------------
+
+          INSERT INTO files (
+            hash,
+            file_key,
+            original_name,
+            file_size,
+            mime_type,
+            extension,
+            uploaded_by
+          )
+          SELECT
+            '${RUN_MARKER}-hash-admin',
+            'synthetic/${RUN_MARKER}/admin.txt',
+            '${RUN_MARKER}-admin.txt',
+            1,
+            'text/plain',
+            'txt',
+            id
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO files (
+            hash,
+            file_key,
+            original_name,
+            file_size,
+            mime_type,
+            extension,
+            uploaded_by
+          )
+          SELECT
+            '${RUN_MARKER}-hash-self',
+            'synthetic/${RUN_MARKER}/self.txt',
+            '${RUN_MARKER}-self.txt',
+            1,
+            'text/plain',
+            'txt',
+            id
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO files (
+            hash,
+            file_key,
+            original_name,
+            file_size,
+            mime_type,
+            extension,
+            uploaded_by
+          )
+          SELECT
+            '${RUN_MARKER}-hash-control',
+            'synthetic/${RUN_MARKER}/control.txt',
+            '${RUN_MARKER}-control.txt',
+            1,
+            'text/plain',
+            'txt',
+            id
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO collections (
+            parent_id,
+            name,
+            scope_type,
+            scope_id,
+            kind,
+            is_public,
+            is_active,
+            sort_order,
+            created_by
+          )
+          SELECT
+            NULL,
+            '${RUN_MARKER}-central-admin',
+            'system',
+            id,
+            'folder',
+            0,
+            1,
+            10,
+            id
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO collections (
+            parent_id,
+            name,
+            scope_type,
+            scope_id,
+            kind,
+            is_public,
+            is_active,
+            sort_order,
+            created_by
+          )
+          SELECT
+            NULL,
+            '${RUN_MARKER}-central-self',
+            'system',
+            id,
+            'folder',
+            0,
+            1,
+            20,
+            id
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO collections (
+            parent_id,
+            name,
+            scope_type,
+            scope_id,
+            kind,
+            is_public,
+            is_active,
+            sort_order,
+            created_by
+          )
+          SELECT
+            NULL,
+            '${RUN_MARKER}-central-control',
+            'system',
+            id,
+            'folder',
+            0,
+            1,
+            30,
+            id
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO collection_files (
+            collection_id,
+            file_id,
+            display_name,
+            category,
+            added_by
+          )
+          SELECT
+            c.id,
+            f.id,
+            '${RUN_MARKER}-admin-central-file',
+            'other',
+            u.id
+          FROM
+            collections c,
+            files f,
+            users u
+          WHERE
+            c.name='${RUN_MARKER}-central-admin'
+            AND f.file_key='synthetic/${RUN_MARKER}/admin.txt'
+            AND u.email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO collection_files (
+            collection_id,
+            file_id,
+            display_name,
+            category,
+            added_by
+          )
+          SELECT
+            c.id,
+            f.id,
+            '${RUN_MARKER}-self-central-file',
+            'other',
+            u.id
+          FROM
+            collections c,
+            files f,
+            users u
+          WHERE
+            c.name='${RUN_MARKER}-central-self'
+            AND f.file_key='synthetic/${RUN_MARKER}/self.txt'
+            AND u.email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO collection_files (
+            collection_id,
+            file_id,
+            display_name,
+            category,
+            added_by
+          )
+          SELECT
+            c.id,
+            f.id,
+            '${RUN_MARKER}-control-central-file',
+            'other',
+            u.id
+          FROM
+            collections c,
+            files f,
+            users u
+          WHERE
+            c.name='${RUN_MARKER}-central-control'
+            AND f.file_key='synthetic/${RUN_MARKER}/control.txt'
+            AND u.email='${CONTROL_EMAIL}';
+
+          -- ------------------------------------------------------------------
+          -- Legacy personal collections / sharing
+          -- ------------------------------------------------------------------
+
+          INSERT INTO user_collections (
+            user_id, name, sort_order
+          )
+          SELECT id, '${RUN_MARKER}-personal-admin', 10
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO user_collections (
+            user_id, name, sort_order
+          )
+          SELECT id, '${RUN_MARKER}-personal-self', 20
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO user_collections (
+            user_id, name, sort_order
+          )
+          SELECT id, '${RUN_MARKER}-personal-control', 30
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO user_collection_files (
+            collection_id,
+            file_id,
+            display_name
+          )
+          SELECT
+            c.id,
+            f.id,
+            '${RUN_MARKER}-ucf-admin'
+          FROM user_collections c
+          JOIN files f
+            ON f.file_key='synthetic/${RUN_MARKER}/admin.txt'
+          WHERE c.name='${RUN_MARKER}-personal-admin';
+
+          INSERT INTO user_collection_files (
+            collection_id,
+            file_id,
+            display_name
+          )
+          SELECT
+            c.id,
+            f.id,
+            '${RUN_MARKER}-ucf-self'
+          FROM user_collections c
+          JOIN files f
+            ON f.file_key='synthetic/${RUN_MARKER}/self.txt'
+          WHERE c.name='${RUN_MARKER}-personal-self';
+
+          INSERT INTO user_collection_files (
+            collection_id,
+            file_id,
+            display_name
+          )
+          SELECT
+            c.id,
+            f.id,
+            '${RUN_MARKER}-ucf-control'
+          FROM user_collections c
+          JOIN files f
+            ON f.file_key='synthetic/${RUN_MARKER}/control.txt'
+          WHERE c.name='${RUN_MARKER}-personal-control';
+
+          INSERT INTO file_shares (
+            file_id, from_user_id, message
+          )
+          SELECT
+            f.id,
+            u.id,
+            '${RUN_MARKER}-share-admin'
+          FROM files f, users u
+          WHERE
+            f.file_key='synthetic/${RUN_MARKER}/admin.txt'
+            AND u.email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO file_shares (
+            file_id, from_user_id, message
+          )
+          SELECT
+            f.id,
+            u.id,
+            '${RUN_MARKER}-share-self'
+          FROM files f, users u
+          WHERE
+            f.file_key='synthetic/${RUN_MARKER}/self.txt'
+            AND u.email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO file_shares (
+            file_id, from_user_id, message
+          )
+          SELECT
+            f.id,
+            u.id,
+            '${RUN_MARKER}-share-control'
+          FROM files f, users u
+          WHERE
+            f.file_key='synthetic/${RUN_MARKER}/control.txt'
+            AND u.email='${CONTROL_EMAIL}';
+
+          -- Target is recipient of somebody else's share.
+          INSERT INTO share_recipients (
+            share_id, user_id
+          )
+          SELECT s.id, u.id
+          FROM file_shares s, users u
+          WHERE
+            s.message='${RUN_MARKER}-share-control'
+            AND u.email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO share_recipients (
+            share_id, user_id
+          )
+          SELECT s.id, u.id
+          FROM file_shares s, users u
+          WHERE
+            s.message='${RUN_MARKER}-share-control'
+            AND u.email='${TARGET_SELF_EMAIL}';
+
+          -- Control is recipient of each target-owned share.
+          INSERT INTO share_recipients (
+            share_id, user_id
+          )
+          SELECT s.id, u.id
+          FROM file_shares s, users u
+          WHERE
+            s.message='${RUN_MARKER}-share-admin'
+            AND u.email='${CONTROL_EMAIL}';
+
+          INSERT INTO share_recipients (
+            share_id, user_id
+          )
+          SELECT s.id, u.id
+          FROM file_shares s, users u
+          WHERE
+            s.message='${RUN_MARKER}-share-self'
+            AND u.email='${CONTROL_EMAIL}';
+
+          -- Pure control relationship used by negative assertions.
+          INSERT INTO share_recipients (
+            share_id, user_id
+          )
+          SELECT s.id, u.id
+          FROM file_shares s, users u
+          WHERE
+            s.message='${RUN_MARKER}-share-control'
+            AND u.email='${CONTROL_EMAIL}';
+
+          -- ------------------------------------------------------------------
+          -- Support domain
+          -- ------------------------------------------------------------------
+
+          INSERT INTO support_tickets (
+            user_id,
+            institution_id,
+            subject,
+            message,
+            status,
+            priority
+          )
+          SELECT
+            u.id,
+            u.institution_id,
+            '${RUN_MARKER}-ticket-admin',
+            '${RUN_MARKER}',
+            'open',
+            'normal'
+          FROM users u WHERE u.email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO support_tickets (
+            user_id,
+            institution_id,
+            subject,
+            message,
+            status,
+            priority
+          )
+          SELECT
+            u.id,
+            u.institution_id,
+            '${RUN_MARKER}-ticket-self',
+            '${RUN_MARKER}',
+            'open',
+            'normal'
+          FROM users u WHERE u.email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO support_tickets (
+            user_id,
+            institution_id,
+            subject,
+            message,
+            status,
+            priority
+          )
+          SELECT
+            u.id,
+            u.institution_id,
+            '${RUN_MARKER}-ticket-control',
+            '${RUN_MARKER}',
+            'open',
+            'normal'
+          FROM users u WHERE u.email='${CONTROL_EMAIL}';
+
+          -- Target-owned admin ticket: one managed-looking synthetic key and
+          -- one unmanaged URL. No real R2 object exists.
+          INSERT INTO ticket_replies (
+            ticket_id,
+            user_id,
+            message,
+            attachment_url
+          )
+          SELECT
+            t.id,
+            u.id,
+            '${RUN_MARKER}-admin-managed-reply',
+            'ticket-attachments/${RUN_MARKER}/managed.txt'
+          FROM support_tickets t, users u
+          WHERE
+            t.subject='${RUN_MARKER}-ticket-admin'
+            AND u.email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO ticket_replies (
+            ticket_id,
+            user_id,
+            message,
+            attachment_url
+          )
+          SELECT
+            t.id,
+            u.id,
+            '${RUN_MARKER}-admin-unmanaged-reply',
+            'https://example.invalid/${RUN_MARKER}/unmanaged.txt'
+          FROM support_tickets t, users u
+          WHERE
+            t.subject='${RUN_MARKER}-ticket-admin'
+            AND u.email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO ticket_replies (
+            ticket_id,
+            user_id,
+            message,
+            attachment_url
+          )
+          SELECT
+            t.id,
+            u.id,
+            '${RUN_MARKER}-self-managed-reply',
+            'ticket-attachments/${RUN_MARKER}/self-managed.txt'
+          FROM support_tickets t, users u
+          WHERE
+            t.subject='${RUN_MARKER}-ticket-self'
+            AND u.email='${TARGET_SELF_EMAIL}';
+
+          -- Pure control managed-looking attachment must never be queued by
+          -- deletion of either target.
+          INSERT INTO ticket_replies (
+            ticket_id,
+            user_id,
+            message,
+            attachment_url
+          )
+          SELECT
+            t.id,
+            u.id,
+            '${RUN_MARKER}-control-own-reply',
+            'ticket-attachments/${RUN_MARKER}/control.txt'
+          FROM support_tickets t, users u
+          WHERE
+            t.subject='${RUN_MARKER}-ticket-control'
+            AND u.email='${CONTROL_EMAIL}';
+
+          -- Replies authored by targets on another user's ticket must survive
+          -- but be unlinked.
+          INSERT INTO ticket_replies (
+            ticket_id,
+            user_id,
+            message
+          )
+          SELECT
+            t.id,
+            u.id,
+            '${RUN_MARKER}-admin-external-reply'
+          FROM support_tickets t, users u
+          WHERE
+            t.subject='${RUN_MARKER}-ticket-control'
+            AND u.email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO ticket_replies (
+            ticket_id,
+            user_id,
+            message
+          )
+          SELECT
+            t.id,
+            u.id,
+            '${RUN_MARKER}-self-external-reply'
+          FROM support_tickets t, users u
+          WHERE
+            t.subject='${RUN_MARKER}-ticket-control'
+            AND u.email='${TARGET_SELF_EMAIL}';
+
+          -- ------------------------------------------------------------------
+          -- AI usage stress fixture: exactly 25,000 rows for admin target.
+          -- ------------------------------------------------------------------
+
+          WITH
+          digit(v) AS (
+            VALUES(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)
+          ),
+          nums(n) AS (
+            SELECT
+              a.v
+              + 10*b.v
+              + 100*c.v
+              + 1000*d.v
+              + 10000*e.v
+              + 1
+            FROM digit a
+            CROSS JOIN digit b
+            CROSS JOIN digit c
+            CROSS JOIN digit d
+            CROSS JOIN digit e
+            LIMIT 25000
+          )
+          INSERT INTO ai_usage_logs (
+            user_id,
+            institution_id,
+            tool,
+            model,
+            input_hash,
+            output_hash,
+            tokens_estimate
+          )
+          SELECT
+            (SELECT id FROM users WHERE email='${TARGET_ADMIN_EMAIL}'),
+            (SELECT institution_id FROM users
+              WHERE email='${TARGET_ADMIN_EMAIL}'),
+            '0047-test',
+            'synthetic',
+            '${RUN_MARKER}-input-' || n,
+            '${RUN_MARKER}-output-' || n,
+            1
+          FROM nums;
+
+          INSERT INTO ai_usage_logs (
+            user_id,
+            institution_id,
+            tool,
+            model,
+            input_hash,
+            output_hash,
+            tokens_estimate
+          )
+          SELECT
+            id,
+            institution_id,
+            '0047-test',
+            'synthetic',
+            '${RUN_MARKER}-self-input',
+            '${RUN_MARKER}-self-output',
+            1
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO ai_usage_logs (
+            user_id,
+            institution_id,
+            tool,
+            model,
+            input_hash,
+            output_hash,
+            tokens_estimate
+          )
+          SELECT
+            id,
+            institution_id,
+            '0047-test',
+            'synthetic',
+            '${RUN_MARKER}-control-input',
+            '${RUN_MARKER}-control-output',
+            1
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          -- ------------------------------------------------------------------
+          -- Retained / unlinked / redacted operational rows
+          -- ------------------------------------------------------------------
+
+          INSERT INTO product_requests (
+            product_slug,
+            institution_id,
+            user_id,
+            reason,
+            use_case,
+            urgency,
+            status
+          )
+          SELECT
+            '${RUN_MARKER}-request-admin',
+            institution_id,
+            id,
+            '${RUN_MARKER}',
+            '${RUN_MARKER}',
+            'normal',
+            'new'
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO product_requests (
+            product_slug,
+            institution_id,
+            user_id,
+            reason,
+            use_case,
+            urgency,
+            status
+          )
+          SELECT
+            '${RUN_MARKER}-request-self',
+            institution_id,
+            id,
+            '${RUN_MARKER}',
+            '${RUN_MARKER}',
+            'normal',
+            'new'
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO product_requests (
+            product_slug,
+            institution_id,
+            user_id,
+            reason,
+            use_case,
+            urgency,
+            status
+          )
+          SELECT
+            '${RUN_MARKER}-request-control',
+            institution_id,
+            id,
+            '${RUN_MARKER}',
+            '${RUN_MARKER}',
+            'normal',
+            'new'
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO affiliate_clicks (
+            tool_slug,
+            user_id,
+            source,
+            referer,
+            user_agent
+          )
+          SELECT
+            'scite',
+            id,
+            '${RUN_MARKER}-admin',
+            'https://example.invalid/${RUN_MARKER}/admin',
+            '${RUN_MARKER}-ua'
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO affiliate_clicks (
+            tool_slug,
+            user_id,
+            source,
+            referer,
+            user_agent
+          )
+          SELECT
+            'scite',
+            id,
+            '${RUN_MARKER}-self',
+            'https://example.invalid/${RUN_MARKER}/self',
+            '${RUN_MARKER}-ua'
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO affiliate_clicks (
+            tool_slug,
+            user_id,
+            source,
+            referer,
+            user_agent
+          )
+          SELECT
+            'scite',
+            id,
+            '${RUN_MARKER}-control',
+            'https://example.invalid/${RUN_MARKER}/control',
+            '${RUN_MARKER}-ua'
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO form_submissions (
+            form_type,
+            name,
+            email,
+            institution,
+            product,
+            subject,
+            message,
+            user_id,
+            admin_note
+          )
+          SELECT
+            'contact',
+            '${RUN_MARKER} Admin',
+            email,
+            '${RUN_MARKER}',
+            '${RUN_MARKER}-form-admin',
+            '${RUN_MARKER}-subject',
+            '${RUN_MARKER}-message',
+            id,
+            '${RUN_MARKER}-note'
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO form_submissions (
+            form_type,
+            name,
+            email,
+            institution,
+            product,
+            subject,
+            message,
+            user_id,
+            admin_note
+          )
+          SELECT
+            'contact',
+            '${RUN_MARKER} Self',
+            email,
+            '${RUN_MARKER}',
+            '${RUN_MARKER}-form-self',
+            '${RUN_MARKER}-subject',
+            '${RUN_MARKER}-message',
+            id,
+            '${RUN_MARKER}-note'
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO form_submissions (
+            form_type,
+            name,
+            email,
+            institution,
+            product,
+            subject,
+            message,
+            user_id,
+            admin_note
+          )
+          SELECT
+            'contact',
+            '${RUN_MARKER} Control',
+            email,
+            '${RUN_MARKER}',
+            '${RUN_MARKER}-form-control',
+            '${RUN_MARKER}-subject',
+            '${RUN_MARKER}-message',
+            id,
+            '${RUN_MARKER}-note'
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO ra_link_audit_findings (
+            key_hash,
+            product_slug,
+            institution_id,
+            user_id,
+            session_id,
+            source_host,
+            source_path,
+            source_url,
+            found_host,
+            found_url,
+            element,
+            attr,
+            classification,
+            reason,
+            sample_text,
+            count,
+            first_seen,
+            last_seen
+          )
+          SELECT
+            '${RUN_MARKER}-ra-admin',
+            'synthetic',
+            institution_id,
+            id,
+            '${RUN_MARKER}',
+            'example.invalid',
+            '/',
+            'https://example.invalid/',
+            'example.invalid',
+            'https://example.invalid/',
+            'a',
+            'href',
+            'synthetic',
+            '${RUN_MARKER}',
+            '${RUN_MARKER}',
+            1,
+            unixepoch(),
+            unixepoch()
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO ra_link_audit_findings (
+            key_hash,
+            product_slug,
+            institution_id,
+            user_id,
+            session_id,
+            source_host,
+            source_path,
+            source_url,
+            found_host,
+            found_url,
+            element,
+            attr,
+            classification,
+            reason,
+            sample_text,
+            count,
+            first_seen,
+            last_seen
+          )
+          SELECT
+            '${RUN_MARKER}-ra-self',
+            'synthetic',
+            institution_id,
+            id,
+            '${RUN_MARKER}',
+            'example.invalid',
+            '/',
+            'https://example.invalid/',
+            'example.invalid',
+            'https://example.invalid/',
+            'a',
+            'href',
+            'synthetic',
+            '${RUN_MARKER}',
+            '${RUN_MARKER}',
+            1,
+            unixepoch(),
+            unixepoch()
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO ra_link_audit_findings (
+            key_hash,
+            product_slug,
+            institution_id,
+            user_id,
+            session_id,
+            source_host,
+            source_path,
+            source_url,
+            found_host,
+            found_url,
+            element,
+            attr,
+            classification,
+            reason,
+            sample_text,
+            count,
+            first_seen,
+            last_seen
+          )
+          SELECT
+            '${RUN_MARKER}-ra-control',
+            'synthetic',
+            institution_id,
+            id,
+            '${RUN_MARKER}',
+            'example.invalid',
+            '/',
+            'https://example.invalid/',
+            'example.invalid',
+            'https://example.invalid/',
+            'a',
+            'href',
+            'synthetic',
+            '${RUN_MARKER}',
+            '${RUN_MARKER}',
+            1,
+            unixepoch(),
+            unixepoch()
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          -- ------------------------------------------------------------------
+          -- Institutional/shared rows that survive but lose creator/uploader
+          -- ------------------------------------------------------------------
+
+          INSERT INTO institution_folders (
+            institution_id,
+            folder_name,
+            is_public,
+            created_by
+          )
+          SELECT
+            CAST(institution_id AS TEXT),
+            '${RUN_MARKER}-folder-admin',
+            0,
+            id
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO institution_folders (
+            institution_id,
+            folder_name,
+            is_public,
+            created_by
+          )
+          SELECT
+            CAST(institution_id AS TEXT),
+            '${RUN_MARKER}-folder-self',
+            0,
+            id
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO institution_folders (
+            institution_id,
+            folder_name,
+            is_public,
+            created_by
+          )
+          SELECT
+            CAST(institution_id AS TEXT),
+            '${RUN_MARKER}-folder-control',
+            0,
+            id
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO institution_files (
+            institution_id,
+            file_name,
+            file_url,
+            file_type,
+            is_public,
+            is_active,
+            uploaded_by
+          )
+          SELECT
+            CAST(institution_id AS TEXT),
+            '${RUN_MARKER}-institution-file-admin',
+            'https://example.invalid/${RUN_MARKER}/institution-admin',
+            'txt',
+            0,
+            1,
+            id
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO institution_files (
+            institution_id,
+            file_name,
+            file_url,
+            file_type,
+            is_public,
+            is_active,
+            uploaded_by
+          )
+          SELECT
+            CAST(institution_id AS TEXT),
+            '${RUN_MARKER}-institution-file-self',
+            'https://example.invalid/${RUN_MARKER}/institution-self',
+            'txt',
+            0,
+            1,
+            id
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO institution_files (
+            institution_id,
+            file_name,
+            file_url,
+            file_type,
+            is_public,
+            is_active,
+            uploaded_by
+          )
+          SELECT
+            CAST(institution_id AS TEXT),
+            '${RUN_MARKER}-institution-file-control',
+            'https://example.invalid/${RUN_MARKER}/institution-control',
+            'txt',
+            0,
+            1,
+            id
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO institution_subscriptions (
+            institution_id,
+            product_slug,
+            status,
+            created_by
+          )
+          SELECT
+            institution_id,
+            '${RUN_MARKER}-institution-sub-admin',
+            'active',
+            id
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO institution_subscriptions (
+            institution_id,
+            product_slug,
+            status,
+            created_by
+          )
+          SELECT
+            institution_id,
+            '${RUN_MARKER}-institution-sub-self',
+            'active',
+            id
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO institution_subscriptions (
+            institution_id,
+            product_slug,
+            status,
+            created_by
+          )
+          SELECT
+            institution_id,
+            '${RUN_MARKER}-institution-sub-control',
+            'active',
+            id
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          -- ------------------------------------------------------------------
+          -- Audit rows
+          -- ------------------------------------------------------------------
+
+          INSERT INTO admin_action_logs (
+            id,
+            actor_user_id,
+            entity_type,
+            entity_id,
+            action,
+            before_json,
+            after_json
+          )
+          SELECT
+            '${RUN_MARKER}-audit-admin-actor',
+            id,
+            'synthetic',
+            '${RUN_MARKER}',
+            'update',
+            '{"synthetic":"${RUN_MARKER}"}',
+            '{"synthetic":"${RUN_MARKER}"}'
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO admin_action_logs (
+            id,
+            actor_user_id,
+            entity_type,
+            entity_id,
+            action,
+            before_json,
+            after_json
+          )
+          SELECT
+            '${RUN_MARKER}-audit-self-actor',
+            id,
+            'synthetic',
+            '${RUN_MARKER}',
+            'update',
+            '{"synthetic":"${RUN_MARKER}"}',
+            '{"synthetic":"${RUN_MARKER}"}'
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO admin_action_logs (
+            id,
+            actor_user_id,
+            entity_type,
+            entity_id,
+            action,
+            before_json,
+            after_json
+          )
+          SELECT
+            '${RUN_MARKER}-audit-control-actor',
+            id,
+            'synthetic',
+            '${RUN_MARKER}',
+            'update',
+            '{"synthetic":"${RUN_MARKER}"}',
+            '{"synthetic":"${RUN_MARKER}"}'
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO admin_action_logs (
+            id,
+            entity_type,
+            entity_id,
+            action,
+            before_json,
+            after_json
+          )
+          SELECT
+            '${RUN_MARKER}-audit-admin-entity',
+            'user',
+            CAST(id AS TEXT),
+            'update',
+            '{"email":"${TARGET_ADMIN_EMAIL}"}',
+            '{"email":"${TARGET_ADMIN_EMAIL}"}'
+          FROM users WHERE email='${TARGET_ADMIN_EMAIL}';
+
+          INSERT INTO admin_action_logs (
+            id,
+            entity_type,
+            entity_id,
+            action,
+            before_json,
+            after_json
+          )
+          SELECT
+            '${RUN_MARKER}-audit-self-entity',
+            'user',
+            CAST(id AS TEXT),
+            'update',
+            '{"email":"${TARGET_SELF_EMAIL}"}',
+            '{"email":"${TARGET_SELF_EMAIL}"}'
+          FROM users WHERE email='${TARGET_SELF_EMAIL}';
+
+          INSERT INTO admin_action_logs (
+            id,
+            entity_type,
+            entity_id,
+            action,
+            before_json,
+            after_json
+          )
+          SELECT
+            '${RUN_MARKER}-audit-control-entity',
+            'user',
+            CAST(id AS TEXT),
+            'update',
+            '{"email":"${CONTROL_EMAIL}"}',
+            '{"email":"${CONTROL_EMAIL}"}'
+          FROM users WHERE email='${CONTROL_EMAIL}';
+
+          INSERT INTO admin_action_logs (
+            id,
+            entity_type,
+            entity_id,
+            action,
+            before_json,
+            after_json
+          )
+          SELECT
+            '${RUN_MARKER}-audit-admin-ticket',
+            'support_ticket',
+            CAST(id AS TEXT),
+            'update',
+            '{"subject":"${RUN_MARKER}-ticket-admin"}',
+            '{"subject":"${RUN_MARKER}-ticket-admin"}'
+          FROM support_tickets
+          WHERE subject='${RUN_MARKER}-ticket-admin';
+
+          INSERT INTO admin_action_logs (
+            id,
+            entity_type,
+            entity_id,
+            action,
+            before_json,
+            after_json
+          )
+          SELECT
+            '${RUN_MARKER}-audit-self-ticket',
+            'support_ticket',
+            CAST(id AS TEXT),
+            'update',
+            '{"subject":"${RUN_MARKER}-ticket-self"}',
+            '{"subject":"${RUN_MARKER}-ticket-self"}'
+          FROM support_tickets
+          WHERE subject='${RUN_MARKER}-ticket-self';
+          SQL
+
+      - name: Seed synthetic fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npx wrangler d1 execute libedge-db \
+            --env staging \
+            --remote \
+            --file "$RUNNER_TEMP/0047-fixture.sql"
+
+          echo "FIXTURE_SEED_COMPLETE"
+
+      # -----------------------------------------------------------------------
+      # REAL ENDPOINT EXECUTION + MECHANICAL ASSERTIONS
+      # -----------------------------------------------------------------------
+
+      - name: Execute accepted one-shot deletion packet
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          import { performance } from 'node:perf_hooks';
+
+          const evidencePath =
+            process.env.RUNNER_TEMP + '/0047-execution-evidence.json';
+
+          const evidence = {
+            classification: 'STOP',
+            runMarker: process.env.RUN_MARKER,
+            githubRunId: process.env.GITHUB_RUN_ID,
+            githubSha: process.env.GITHUB_SHA,
+            githubRef: process.env.GITHUB_REF,
+            baseUrl: process.env.BASE_URL,
+            realUserDataUsed: false,
+            r2ConsumerExecuted: false,
+            automaticRetryExecuted: false,
+            phases: {},
+          };
+
+          function save() {
+            fs.writeFileSync(
+              evidencePath,
+              JSON.stringify(evidence, null, 2)
+            );
+          }
+
+          function assert(condition, message) {
+            if (!condition) {
+              throw new Error(message);
+            }
+          }
+
+          function esc(value) {
+            return String(value).replaceAll("'", "''");
+          }
+
+          function d1(sql) {
+            let stdout;
+
+            try {
+              stdout = execFileSync(
+                'npx',
+                [
+                  'wrangler',
+                  'd1',
+                  'execute',
+                  'libedge-db',
+                  '--env',
+                  'staging',
+                  '--remote',
+                  '--command',
+                  sql,
+                  '--json',
+                ],
+                {
+                  encoding: 'utf8',
+                  env: process.env,
+                  stdio: ['ignore', 'pipe', 'pipe'],
+                }
+              );
+            } catch (err) {
+              throw new Error(
+                'D1 command failed: ' +
+                String(err?.stderr || err?.message || err)
+              );
+            }
+
+            const payload = JSON.parse(stdout);
+            const result = Array.isArray(payload) ? payload[0] : payload;
+
+            if (!result?.success) {
+              throw new Error(`D1 query failed: ${stdout}`);
+            }
+
+            return result.results || [];
+          }
+
+          function row(sql) {
+            const rows = d1(sql);
+            assert(rows.length === 1, `Expected one row: ${sql}`);
+            return rows[0];
+          }
+
+          function scalar(sql) {
+            const r = row(sql);
+            return Object.values(r)[0];
+          }
+
+          function numericObject(input) {
+            return Object.fromEntries(
+              Object.entries(input).map(([k, v]) => [
+                k,
+                Number(v),
+              ])
+            );
+          }
+
+          function getUserId(email) {
+            const rows = d1(
+              `SELECT id FROM users WHERE email='${esc(email)}'`
+            );
+
+            assert(
+              rows.length === 1,
+              `Synthetic user lookup failed: ${email}`
+            );
+
+            return Number(rows[0].id);
+          }
+
+          function totals() {
+            return numericObject(row(`
+              SELECT
+                (SELECT COUNT(*) FROM users) AS users,
+                (SELECT COUNT(*) FROM subscriptions) AS subscriptions,
+                (SELECT COUNT(*) FROM newsletter_subscriptions) AS newsletter_subscriptions,
+                (SELECT COUNT(*) FROM user_profile_links) AS user_profile_links,
+                (SELECT COUNT(*) FROM refresh_tokens) AS refresh_tokens,
+                (SELECT COUNT(*) FROM password_resets) AS password_resets,
+                (SELECT COUNT(*) FROM ra_user_credentials) AS ra_user_credentials,
+                (SELECT COUNT(*) FROM announcement_reactions) AS announcement_reactions,
+                (SELECT COUNT(*) FROM announcement_comments) AS announcement_comments,
+                (SELECT COUNT(*) FROM notifications) AS notifications,
+                (SELECT COUNT(*) FROM user_notifications) AS user_notifications,
+                (SELECT COUNT(*) FROM share_recipients) AS share_recipients,
+                (SELECT COUNT(*) FROM user_collection_files) AS user_collection_files,
+                (SELECT COUNT(*) FROM user_collections) AS user_collections,
+                (SELECT COUNT(*) FROM file_shares) AS file_shares,
+                (SELECT COUNT(*) FROM ticket_replies) AS ticket_replies,
+                (SELECT COUNT(*) FROM support_tickets) AS support_tickets,
+                (SELECT COUNT(*) FROM product_requests) AS product_requests,
+                (SELECT COUNT(*) FROM ai_usage_logs) AS ai_usage_logs,
+                (SELECT COUNT(*) FROM affiliate_clicks) AS affiliate_clicks,
+                (SELECT COUNT(*) FROM ra_link_audit_findings) AS ra_link_audit_findings,
+                (SELECT COUNT(*) FROM form_submissions) AS form_submissions,
+                (SELECT COUNT(*) FROM files) AS files,
+                (SELECT COUNT(*) FROM collections) AS collections,
+                (SELECT COUNT(*) FROM collection_files) AS collection_files,
+                (SELECT COUNT(*) FROM institution_folders) AS institution_folders,
+                (SELECT COUNT(*) FROM institution_files) AS institution_files,
+                (SELECT COUNT(*) FROM announcements) AS announcements,
+                (SELECT COUNT(*) FROM institution_subscriptions) AS institution_subscriptions,
+                (SELECT COUNT(*) FROM admin_action_logs) AS admin_action_logs,
+                (SELECT COUNT(*) FROM privacy_r2_purge_queue) AS privacy_r2_purge_queue
+            `));
+          }
+
+          function targetPre(uid) {
+            return numericObject(row(`
+              SELECT
+                (SELECT COUNT(*) FROM users WHERE id=${uid}) AS users,
+                (SELECT COUNT(*) FROM subscriptions WHERE user_id=${uid}) AS subscriptions,
+                (SELECT COUNT(*) FROM newsletter_subscriptions WHERE user_id=${uid}) AS newsletter_subscriptions,
+                (SELECT COUNT(*) FROM user_profile_links WHERE user_id=${uid}) AS user_profile_links,
+                (SELECT COUNT(*) FROM refresh_tokens WHERE user_id=${uid}) AS refresh_tokens,
+                (SELECT COUNT(*) FROM password_resets WHERE user_id=${uid}) AS password_resets,
+                (SELECT COUNT(*) FROM ra_user_credentials WHERE user_id=${uid}) AS ra_user_credentials,
+                (SELECT COUNT(*) FROM announcement_reactions WHERE user_id=${uid}) AS announcement_reactions,
+                (SELECT COUNT(*) FROM announcement_comments WHERE user_id=${uid}) AS announcement_comments_owned,
+                (SELECT COUNT(*) FROM notifications WHERE user_id=${uid}) AS notifications,
+                (SELECT COUNT(*) FROM user_notifications WHERE user_id=${uid}) AS user_notifications,
+                (SELECT COUNT(*) FROM share_recipients WHERE user_id=${uid}) AS share_recipients_direct,
+                (
+                  SELECT COUNT(*)
+                  FROM share_recipients
+                  WHERE share_id IN (
+                    SELECT id FROM file_shares WHERE from_user_id=${uid}
+                  )
+                ) AS share_recipients_owned_share,
+                (
+                  SELECT COUNT(*)
+                  FROM user_collection_files
+                  WHERE collection_id IN (
+                    SELECT id FROM user_collections WHERE user_id=${uid}
+                  )
+                ) AS user_collection_files,
+                (SELECT COUNT(*) FROM user_collections WHERE user_id=${uid}) AS user_collections,
+                (SELECT COUNT(*) FROM file_shares WHERE from_user_id=${uid}) AS file_shares,
+                (
+                  SELECT COUNT(*)
+                  FROM ticket_replies
+                  WHERE ticket_id IN (
+                    SELECT id FROM support_tickets WHERE user_id=${uid}
+                  )
+                ) AS ticket_replies_owned_ticket,
+                (
+                  SELECT COUNT(*)
+                  FROM ticket_replies
+                  WHERE ticket_id IN (
+                    SELECT id FROM support_tickets WHERE user_id=${uid}
+                  )
+                    AND attachment_url IS NOT NULL
+                    AND TRIM(attachment_url) <> ''
+                ) AS queue_attachments,
+                (SELECT COUNT(*) FROM support_tickets WHERE user_id=${uid}) AS support_tickets,
+                (SELECT COUNT(*) FROM ai_usage_logs WHERE user_id=${uid}) AS ai_usage_logs,
+                (SELECT COUNT(*) FROM ra_link_audit_findings WHERE user_id=${uid}) AS ra_link_audit_findings
+            `));
+          }
+
+          function retainedState(tag, uid) {
+            const m = esc(process.env.RUN_MARKER);
+
+            return row(`
+              SELECT
+                (
+                  SELECT user_id IS NULL
+                  FROM product_requests
+                  WHERE product_slug='${m}-request-${tag}'
+                ) AS product_request_unlinked,
+
+                (
+                  SELECT user_id IS NULL
+                  FROM ticket_replies
+                  WHERE message='${m}-${tag}-external-reply'
+                ) AS external_reply_unlinked,
+
+                (
+                  SELECT
+                    user_id IS NULL
+                    AND referer IS NULL
+                    AND user_agent IS NULL
+                  FROM affiliate_clicks
+                  WHERE source='${m}-${tag}'
+                ) AS affiliate_redacted,
+
+                (
+                  SELECT
+                    user_id IS NULL
+                    AND name IS NULL
+                    AND email IS NULL
+                    AND subject IS NULL
+                    AND message IS NULL
+                    AND admin_note IS NULL
+                  FROM form_submissions
+                  WHERE product='${m}-form-${tag}'
+                ) AS form_redacted,
+
+                (
+                  SELECT uploaded_by IS NULL
+                  FROM files
+                  WHERE file_key='synthetic/${m}/${tag}.txt'
+                ) AS file_unlinked,
+
+                (
+                  SELECT created_by IS NULL
+                  FROM collections
+                  WHERE name='${m}-central-${tag}'
+                ) AS collection_unlinked,
+
+                (
+                  SELECT cf.added_by IS NULL
+                  FROM collection_files cf
+                  JOIN collections c ON c.id=cf.collection_id
+                  WHERE c.name='${m}-central-${tag}'
+                ) AS collection_file_unlinked,
+
+                (
+                  SELECT created_by IS NULL
+                  FROM institution_folders
+                  WHERE folder_name='${m}-folder-${tag}'
+                ) AS institution_folder_unlinked,
+
+                (
+                  SELECT uploaded_by IS NULL
+                  FROM institution_files
+                  WHERE file_name='${m}-institution-file-${tag}'
+                ) AS institution_file_unlinked,
+
+                (
+                  SELECT created_by IS NULL
+                  FROM announcements
+                  WHERE title='${m}-announcement-${tag}'
+                ) AS announcement_unlinked,
+
+                (
+                  SELECT created_by IS NULL
+                  FROM institution_subscriptions
+                  WHERE product_slug='${m}-institution-sub-${tag}'
+                ) AS institution_subscription_unlinked,
+
+                (
+                  SELECT actor_user_id IS NULL
+                  FROM admin_action_logs
+                  WHERE id='${m}-audit-${tag}-actor'
+                ) AS audit_actor_unlinked,
+
+                (
+                  SELECT before_json IS NULL AND after_json IS NULL
+                  FROM admin_action_logs
+                  WHERE id='${m}-audit-${tag}-entity'
+                ) AS audit_entity_redacted,
+
+                (
+                  SELECT before_json IS NULL AND after_json IS NULL
+                  FROM admin_action_logs
+                  WHERE id='${m}-audit-${tag}-ticket'
+                ) AS support_audit_redacted
+            `);
+          }
+
+          function assertAllTrue(object, label) {
+            for (const [key, value] of Object.entries(object)) {
+              assert(
+                Number(value) === 1,
+                `${label}: expected true for ${key}, got ${value}`
+              );
+            }
+          }
+
+          function controlPureSnapshot(controlId) {
+            const m = esc(process.env.RUN_MARKER);
+
+            return row(`
+              SELECT
+                (SELECT COUNT(*) FROM users WHERE id=${controlId}) AS user_exists,
+                (SELECT COUNT(*) FROM subscriptions WHERE user_id=${controlId}) AS subscription_count,
+                (SELECT COUNT(*) FROM newsletter_subscriptions WHERE user_id=${controlId}) AS newsletter_count,
+                (SELECT COUNT(*) FROM user_profile_links WHERE user_id=${controlId}) AS profile_link_count,
+                (SELECT COUNT(*) FROM refresh_tokens WHERE user_id=${controlId}) AS refresh_count,
+                (SELECT COUNT(*) FROM password_resets WHERE user_id=${controlId}) AS reset_count,
+                (SELECT COUNT(*) FROM ra_user_credentials WHERE user_id=${controlId}) AS ra_credential_count,
+                (SELECT COUNT(*) FROM announcement_reactions WHERE user_id=${controlId}) AS reaction_count,
+                (
+                  SELECT COUNT(*)
+                  FROM announcement_comments
+                  WHERE user_id=${controlId}
+                    AND body='${m}-control-pure-comment'
+                    AND deleted_by IS NULL
+                ) AS pure_comment_count,
+                (SELECT COUNT(*) FROM notifications WHERE user_id=${controlId}) AS notification_count,
+                (SELECT COUNT(*) FROM user_notifications WHERE user_id=${controlId}) AS user_notification_count,
+                (
+                  SELECT COUNT(*)
+                  FROM share_recipients sr
+                  JOIN file_shares fs ON fs.id=sr.share_id
+                  WHERE sr.user_id=${controlId}
+                    AND fs.message='${m}-share-control'
+                ) AS pure_share_recipient_count,
+                (SELECT COUNT(*) FROM user_collections WHERE user_id=${controlId}) AS user_collection_count,
+                (
+                  SELECT COUNT(*)
+                  FROM user_collection_files
+                  WHERE collection_id IN (
+                    SELECT id FROM user_collections
+                    WHERE user_id=${controlId}
+                  )
+                ) AS user_collection_file_count,
+                (SELECT COUNT(*) FROM file_shares WHERE from_user_id=${controlId}) AS file_share_count,
+                (SELECT COUNT(*) FROM support_tickets WHERE user_id=${controlId}) AS support_ticket_count,
+                (
+                  SELECT COUNT(*)
+                  FROM ticket_replies
+                  WHERE user_id=${controlId}
+                    AND message='${m}-control-own-reply'
+                    AND attachment_url='ticket-attachments/${m}/control.txt'
+                ) AS control_reply_count,
+                (
+                  SELECT COUNT(*)
+                  FROM product_requests
+                  WHERE user_id=${controlId}
+                    AND product_slug='${m}-request-control'
+                ) AS product_request_count,
+                (SELECT COUNT(*) FROM ai_usage_logs WHERE user_id=${controlId}) AS ai_usage_count,
+                (
+                  SELECT COUNT(*)
+                  FROM affiliate_clicks
+                  WHERE user_id=${controlId}
+                    AND source='${m}-control'
+                    AND referer='https://example.invalid/${m}/control'
+                    AND user_agent='${m}-ua'
+                ) AS affiliate_count,
+                (
+                  SELECT COUNT(*)
+                  FROM ra_link_audit_findings
+                  WHERE user_id=${controlId}
+                    AND key_hash='${m}-ra-control'
+                ) AS ra_finding_count,
+                (
+                  SELECT COUNT(*)
+                  FROM form_submissions
+                  WHERE user_id=${controlId}
+                    AND product='${m}-form-control'
+                    AND name='${m} Control'
+                    AND email='${esc(process.env.CONTROL_EMAIL)}'
+                ) AS form_count,
+                (
+                  SELECT COUNT(*)
+                  FROM files
+                  WHERE uploaded_by=${controlId}
+                    AND file_key='synthetic/${m}/control.txt'
+                ) AS file_count,
+                (
+                  SELECT COUNT(*)
+                  FROM collections
+                  WHERE created_by=${controlId}
+                    AND name='${m}-central-control'
+                ) AS collection_count,
+                (
+                  SELECT COUNT(*)
+                  FROM collection_files cf
+                  JOIN collections c ON c.id=cf.collection_id
+                  WHERE c.name='${m}-central-control'
+                    AND cf.added_by=${controlId}
+                ) AS collection_file_count,
+                (
+                  SELECT COUNT(*)
+                  FROM institution_folders
+                  WHERE created_by=${controlId}
+                    AND folder_name='${m}-folder-control'
+                ) AS institution_folder_count,
+                (
+                  SELECT COUNT(*)
+                  FROM institution_files
+                  WHERE uploaded_by=${controlId}
+                    AND file_name='${m}-institution-file-control'
+                ) AS institution_file_count,
+                (
+                  SELECT COUNT(*)
+                  FROM announcements
+                  WHERE created_by=${controlId}
+                    AND title='${m}-announcement-control'
+                ) AS announcement_count,
+                (
+                  SELECT COUNT(*)
+                  FROM institution_subscriptions
+                  WHERE created_by=${controlId}
+                    AND product_slug='${m}-institution-sub-control'
+                ) AS institution_subscription_count,
+                (
+                  SELECT COUNT(*)
+                  FROM admin_action_logs
+                  WHERE id='${m}-audit-control-actor'
+                    AND actor_user_id=${controlId}
+                ) AS audit_actor_count,
+                (
+                  SELECT COUNT(*)
+                  FROM admin_action_logs
+                  WHERE id='${m}-audit-control-entity'
+                    AND before_json IS NOT NULL
+                    AND after_json IS NOT NULL
+                ) AS audit_entity_count,
+                (
+                  SELECT COUNT(*)
+                  FROM privacy_r2_purge_queue
+                  WHERE object_url='ticket-attachments/${m}/control.txt'
+                ) AS control_queue_count
+            `);
+          }
+
+          function assertSame(a, b, label) {
+            const aj = JSON.stringify(a);
+            const bj = JSON.stringify(b);
+
+            assert(
+              aj === bj,
+              `${label} changed unexpectedly.\nPRE=${aj}\nPOST=${bj}`
+            );
+          }
+
+          function assertTotalsDelta(before, after, deltas, label) {
+            for (const [table, expectedDelta] of Object.entries(deltas)) {
+              const actual =
+                Number(after[table]) - Number(before[table]);
+
+              assert(
+                actual === expectedDelta,
+                `${label}: ${table} delta expected ${expectedDelta}, got ${actual}`
+              );
+            }
+          }
+
+          class CookieJar {
+            constructor() {
+              this.cookies = new Map();
+            }
+
+            header() {
+              return [...this.cookies.entries()]
+                .filter(([, value]) => value)
+                .map(([name, value]) => `${name}=${value}`)
+                .join('; ');
+            }
+
+            get(name) {
+              return this.cookies.get(name) || '';
+            }
+
+            apply(res) {
+              let cookies = [];
+
+              if (typeof res.headers.getSetCookie === 'function') {
+                cookies = res.headers.getSetCookie();
+              } else {
+                const raw = res.headers.get('set-cookie');
+                if (raw) {
+                  cookies = raw
+                    .split(/,(?=\s*[^=;,\s]+=)/g)
+                    .map((x) => x.trim());
+                }
+              }
+
+              for (const cookie of cookies) {
+                const match = /^([^=;\s]+)=([^;]*)/.exec(cookie);
+                if (!match) continue;
+
+                const [, name, value] = match;
+
+                if (
+                  !value ||
+                  /;\s*Max-Age=0(?:;|$)/i.test(cookie)
+                ) {
+                  this.cookies.delete(name);
+                } else {
+                  this.cookies.set(name, value);
+                }
+              }
+            }
+          }
+
+          async function request(
+            path,
+            {
+              method = 'GET',
+              json,
+              jar,
+            } = {}
+          ) {
+            const headers = new Headers();
+
+            if (json !== undefined) {
+              headers.set('content-type', 'application/json');
+            }
+
+            const cookie = jar?.header();
+            if (cookie) {
+              headers.set('cookie', cookie);
+            }
+
+            const url = process.env.BASE_URL + path;
+            const start = performance.now();
+
+            const res = await fetch(url, {
+              method,
+              headers,
+              body:
+                json === undefined
+                  ? undefined
+                  : JSON.stringify(json),
+              redirect: 'manual',
+            });
+
+            jar?.apply(res);
+
+            const text = await res.text();
+
+            let body = null;
+            try {
+              body = text ? JSON.parse(text) : null;
+            } catch {
+              body = null;
+            }
+
+            const end = performance.now();
+
+            return {
+              status: res.status,
+              body,
+              text,
+              start,
+              end,
+              elapsedMs: end - start,
+            };
+          }
+
+          async function login(email, password) {
+            const jar = new CookieJar();
+
+            const response = await request(
+              '/api/auth/login',
+              {
+                method: 'POST',
+                json: {
+                  email,
+                  password,
+                },
+                jar,
+              }
+            );
+
+            assert(
+              response.status === 200,
+              `Login failed for ${email}: HTTP ${response.status}`
+            );
+
+            assert(
+              jar.get('authToken'),
+              `authToken missing for ${email}`
+            );
+
+            return jar;
+          }
+
+          const marker = process.env.RUN_MARKER;
+          const adminId = getUserId(process.env.TARGET_ADMIN_EMAIL);
+          const selfId = getUserId(process.env.TARGET_SELF_EMAIL);
+          const controlId = getUserId(process.env.CONTROL_EMAIL);
+
+          try {
+            const adminTargetPre = targetPre(adminId);
+
+            assert(
+              adminTargetPre.notifications === 25000,
+              `Admin stress notifications expected 25000, got ${adminTargetPre.notifications}`
+            );
+
+            assert(
+              adminTargetPre.ai_usage_logs === 25000,
+              `Admin stress ai_usage_logs expected 25000, got ${adminTargetPre.ai_usage_logs}`
+            );
+
+            assert(
+              adminTargetPre.user_notifications >= 1,
+              'Admin target missing user_notifications PRE row'
+            );
+
+            const controlBefore = controlPureSnapshot(controlId);
+            const totalsBeforeAdmin = totals();
+
+            evidence.phases.adminPre = {
+              target: adminTargetPre,
+              control: controlBefore,
+              totals: totalsBeforeAdmin,
+            };
+            save();
+
+            // Login occurs only after the complete PRE DB capture.
+            const adminJar = await login(
+              process.env.STAGING_ADMIN_EMAIL,
+              process.env.STAGING_ADMIN_PASSWORD
+            );
+
+            const selfJar = await login(
+              process.env.TARGET_SELF_EMAIL,
+              process.env.TEST_PASSWORD
+            );
+
+            // Run the real admin deletion and the predeclared unrelated write
+            // probe concurrently. The probe uses existing application behavior
+            // on U_TARGET_SELF, not a new write path.
+            const deletePromise = request(
+              `/api/admin/user/${adminId}`,
+              {
+                method: 'DELETE',
+                jar: adminJar,
+              }
+            );
+
+            const probePromise = request(
+              '/api/user/profile-links',
+              {
+                method: 'PUT',
+                jar: selfJar,
+                json: {
+                  links: [
+                    {
+                      link_type: 'website',
+                      label: marker,
+                      url: `https://example.invalid/${marker}/probe`,
+                      display_order: 10,
+                    },
+                  ],
+                },
+              }
+            );
+
+            const [adminDelete, probe] =
+              await Promise.all([
+                deletePromise,
+                probePromise,
+              ]);
+
+            evidence.phases.adminHttp = {
+              deletionStatus: adminDelete.status,
+              deletionElapsedMs: adminDelete.elapsedMs,
+              probeStatus: probe.status,
+              probeElapsedMs: probe.elapsedMs,
+              intervalsOverlap:
+                probe.start <= adminDelete.end &&
+                adminDelete.start <= probe.end,
+            };
+            save();
+
+            assert(
+              adminDelete.status >= 200 &&
+              adminDelete.status < 300,
+              `Admin deletion returned HTTP ${adminDelete.status}`
+            );
+
+            assert(
+              probe.status >= 200 &&
+              probe.status < 300,
+              `Unrelated-write probe returned HTTP ${probe.status}`
+            );
+
+            assert(
+              adminDelete.elapsedMs <= 5000,
+              `Stress admin deletion exceeded 5.0s: ${adminDelete.elapsedMs}ms`
+            );
+
+            assert(
+              probe.elapsedMs <= 2000,
+              `Unrelated-write probe exceeded 2.0s: ${probe.elapsedMs}ms`
+            );
+
+            assert(
+              evidence.phases.adminHttp.intervalsOverlap,
+              'Unrelated-write probe did not overlap the admin deletion interval'
+            );
+
+            const totalsAfterAdmin = totals();
+            const controlAfterAdmin =
+              controlPureSnapshot(controlId);
+
+            const adminDeltas = {
+              users: -1,
+              subscriptions: -adminTargetPre.subscriptions,
+              newsletter_subscriptions:
+                -adminTargetPre.newsletter_subscriptions,
+              user_profile_links:
+                -adminTargetPre.user_profile_links,
+              refresh_tokens:
+                -adminTargetPre.refresh_tokens,
+              password_resets:
+                -adminTargetPre.password_resets,
+              ra_user_credentials:
+                -adminTargetPre.ra_user_credentials,
+              announcement_reactions:
+                -adminTargetPre.announcement_reactions,
+              announcement_comments:
+                -adminTargetPre.announcement_comments_owned,
+              notifications:
+                -adminTargetPre.notifications,
+              user_notifications:
+                -adminTargetPre.user_notifications,
+              share_recipients:
+                -(
+                  adminTargetPre.share_recipients_direct +
+                  adminTargetPre.share_recipients_owned_share
+                ),
+              user_collection_files:
+                -adminTargetPre.user_collection_files,
+              user_collections:
+                -adminTargetPre.user_collections,
+              file_shares:
+                -adminTargetPre.file_shares,
+              ticket_replies:
+                -adminTargetPre.ticket_replies_owned_ticket,
+              support_tickets:
+                -adminTargetPre.support_tickets,
+              product_requests: 0,
+              ai_usage_logs:
+                -adminTargetPre.ai_usage_logs,
+              affiliate_clicks: 0,
+              ra_link_audit_findings:
+                -adminTargetPre.ra_link_audit_findings,
+              form_submissions: 0,
+              files: 0,
+              collections: 0,
+              collection_files: 0,
+              institution_folders: 0,
+              institution_files: 0,
+              announcements: 0,
+              institution_subscriptions: 0,
+              admin_action_logs: 1,
+              privacy_r2_purge_queue:
+                adminTargetPre.queue_attachments,
+            };
+
+            assertTotalsDelta(
+              totalsBeforeAdmin,
+              totalsAfterAdmin,
+              adminDeltas,
+              'Admin deletion'
+            );
+
+            assertSame(
+              controlBefore,
+              controlAfterAdmin,
+              'Pure control fixture after admin deletion'
+            );
+
+            assert(
+              Number(
+                scalar(
+                  `SELECT COUNT(*) FROM users WHERE id=${adminId}`
+                )
+              ) === 0,
+              'Admin target user row survived'
+            );
+
+            assert(
+              Number(
+                scalar(
+                  `SELECT COUNT(*) FROM user_notifications WHERE user_id=${adminId}`
+                )
+              ) === 0,
+              'Admin target user_notifications survived'
+            );
+
+            assertAllTrue(
+              retainedState('admin', adminId),
+              'Admin retained-state assertion'
+            );
+
+            const moderatedByAdmin = row(`
+              SELECT deleted_by IS NULL AS ok
+              FROM announcement_comments
+              WHERE body='${esc(marker)}-control-moderated-by-admin'
+            `);
+
+            assertAllTrue(
+              moderatedByAdmin,
+              'Admin deleted_by unlink'
+            );
+
+            const adminDeleteAudit = d1(`
+              SELECT
+                action,
+                entity_type,
+                entity_id,
+                before_json,
+                after_json
+              FROM admin_action_logs
+              WHERE action='delete'
+                AND entity_type='user'
+                AND entity_id='${adminId}'
+            `);
+
+            assert(
+              adminDeleteAudit.length === 1,
+              `Expected exactly one endpoint-created admin delete audit row, got ${adminDeleteAudit.length}`
+            );
+
+            assert(
+              adminDeleteAudit[0].before_json === null &&
+              adminDeleteAudit[0].after_json === null,
+              '0047-PRIVACY-01: admin deletion audit snapshot retained PII'
+            );
+
+            const managedAdminQueue = Number(
+              scalar(`
+                SELECT COUNT(*)
+                FROM privacy_r2_purge_queue
+                WHERE object_url='ticket-attachments/${esc(marker)}/managed.txt'
+                  AND reason='user_deletion'
+              `)
+            );
+
+            const unmanagedAdminQueue = Number(
+              scalar(`
+                SELECT COUNT(*)
+                FROM privacy_r2_purge_queue
+                WHERE object_url='https://example.invalid/${esc(marker)}/unmanaged.txt'
+                  AND reason='user_deletion'
+              `)
+            );
+
+            const controlQueue = Number(
+              scalar(`
+                SELECT COUNT(*)
+                FROM privacy_r2_purge_queue
+                WHERE object_url='ticket-attachments/${esc(marker)}/control.txt'
+              `)
+            );
+
+            assert(
+              managedAdminQueue === 1,
+              'Managed synthetic admin attachment was not queued exactly once'
+            );
+
+            assert(
+              unmanagedAdminQueue === 1,
+              'Unmanaged synthetic URL queue evidence was not preserved exactly once'
+            );
+
+            assert(
+              controlQueue === 0,
+              'Control attachment was unexpectedly queued'
+            );
+
+            evidence.phases.adminPost = {
+              totals: totalsAfterAdmin,
+              control: controlAfterAdmin,
+              adminDeleteAudit,
+              queue: {
+                managedAdminQueue,
+                unmanagedAdminQueue,
+                controlQueue,
+              },
+            };
+            save();
+
+            // ---------------------------------------------------------------
+            // SELF-SERVICE PATH
+            //
+            // The profile-link concurrency probe has completed. Capture the
+            // self target PRE immediately before its own deletion.
+            // ---------------------------------------------------------------
+
+            const selfTargetPre = targetPre(selfId);
+            const totalsBeforeSelf = totals();
+            const controlBeforeSelf =
+              controlPureSnapshot(controlId);
+
+            assert(
+              selfTargetPre.user_notifications >= 1,
+              'Self target missing user_notifications PRE row'
+            );
+
+            evidence.phases.selfPre = {
+              target: selfTargetPre,
+              control: controlBeforeSelf,
+              totals: totalsBeforeSelf,
+            };
+            save();
+
+            const selfDelete = await request(
+              '/api/user/delete',
+              {
+                method: 'DELETE',
+                jar: selfJar,
+              }
+            );
+
+            evidence.phases.selfHttp = {
+              status: selfDelete.status,
+              elapsedMs: selfDelete.elapsedMs,
+              authCookieAfter: Boolean(
+                selfJar.get('authToken')
+              ),
+              refreshCookieAfter: Boolean(
+                selfJar.get('refreshToken')
+              ),
+            };
+            save();
+
+            assert(
+              selfDelete.status >= 200 &&
+              selfDelete.status < 300,
+              `Self-service deletion returned HTTP ${selfDelete.status}`
+            );
+
+            assert(
+              selfDelete.elapsedMs <= 2000,
+              `Ordinary self deletion exceeded 2.0s: ${selfDelete.elapsedMs}ms`
+            );
+
+            assert(
+              !selfJar.get('authToken') &&
+              !selfJar.get('refreshToken'),
+              'Self-service deletion did not clear session cookies'
+            );
+
+            const totalsAfterSelf = totals();
+            const controlAfterSelf =
+              controlPureSnapshot(controlId);
+
+            const selfDeltas = {
+              users: -1,
+              subscriptions: -selfTargetPre.subscriptions,
+              newsletter_subscriptions:
+                -selfTargetPre.newsletter_subscriptions,
+              user_profile_links:
+                -selfTargetPre.user_profile_links,
+              refresh_tokens:
+                -selfTargetPre.refresh_tokens,
+              password_resets:
+                -selfTargetPre.password_resets,
+              ra_user_credentials:
+                -selfTargetPre.ra_user_credentials,
+              announcement_reactions:
+                -selfTargetPre.announcement_reactions,
+              announcement_comments:
+                -selfTargetPre.announcement_comments_owned,
+              notifications:
+                -selfTargetPre.notifications,
+              user_notifications:
+                -selfTargetPre.user_notifications,
+              share_recipients:
+                -(
+                  selfTargetPre.share_recipients_direct +
+                  selfTargetPre.share_recipients_owned_share
+                ),
+              user_collection_files:
+                -selfTargetPre.user_collection_files,
+              user_collections:
+                -selfTargetPre.user_collections,
+              file_shares:
+                -selfTargetPre.file_shares,
+              ticket_replies:
+                -selfTargetPre.ticket_replies_owned_ticket,
+              support_tickets:
+                -selfTargetPre.support_tickets,
+              product_requests: 0,
+              ai_usage_logs:
+                -selfTargetPre.ai_usage_logs,
+              affiliate_clicks: 0,
+              ra_link_audit_findings:
+                -selfTargetPre.ra_link_audit_findings,
+              form_submissions: 0,
+              files: 0,
+              collections: 0,
+              collection_files: 0,
+              institution_folders: 0,
+              institution_files: 0,
+              announcements: 0,
+              institution_subscriptions: 0,
+              admin_action_logs: 0,
+              privacy_r2_purge_queue:
+                selfTargetPre.queue_attachments,
+            };
+
+            assertTotalsDelta(
+              totalsBeforeSelf,
+              totalsAfterSelf,
+              selfDeltas,
+              'Self-service deletion'
+            );
+
+            assertSame(
+              controlBeforeSelf,
+              controlAfterSelf,
+              'Pure control fixture after self deletion'
+            );
+
+            assert(
+              Number(
+                scalar(
+                  `SELECT COUNT(*) FROM users WHERE id=${selfId}`
+                )
+              ) === 0,
+              'Self target user row survived'
+            );
+
+            assert(
+              Number(
+                scalar(
+                  `SELECT COUNT(*) FROM user_notifications WHERE user_id=${selfId}`
+                )
+              ) === 0,
+              'Self target user_notifications survived'
+            );
+
+            assertAllTrue(
+              retainedState('self', selfId),
+              'Self retained-state assertion'
+            );
+
+            const moderatedBySelf = row(`
+              SELECT deleted_by IS NULL AS ok
+              FROM announcement_comments
+              WHERE body='${esc(marker)}-control-moderated-by-self'
+            `);
+
+            assertAllTrue(
+              moderatedBySelf,
+              'Self deleted_by unlink'
+            );
+
+            const selfManagedQueue = Number(
+              scalar(`
+                SELECT COUNT(*)
+                FROM privacy_r2_purge_queue
+                WHERE object_url='ticket-attachments/${esc(marker)}/self-managed.txt'
+                  AND reason='user_deletion'
+              `)
+            );
+
+            const finalControlQueue = Number(
+              scalar(`
+                SELECT COUNT(*)
+                FROM privacy_r2_purge_queue
+                WHERE object_url='ticket-attachments/${esc(marker)}/control.txt'
+              `)
+            );
+
+            assert(
+              selfManagedQueue === 1,
+              'Self managed synthetic attachment was not queued exactly once'
+            );
+
+            assert(
+              finalControlQueue === 0,
+              'Control attachment was unexpectedly queued'
+            );
+
+            const liveTrigger = String(
+              scalar(`
+                SELECT sql
+                FROM sqlite_master
+                WHERE type='trigger'
+                  AND name='trg_users_privacy_cleanup'
+              `)
+            );
+
+            assert(
+              liveTrigger.includes(
+                'DELETE FROM user_notifications WHERE user_id = OLD.id'
+              ),
+              '0049 user_notifications trigger statement disappeared during execution'
+            );
+
+            evidence.phases.selfPost = {
+              totals: totalsAfterSelf,
+              control: controlAfterSelf,
+              queue: {
+                selfManagedQueue,
+                controlQueue: finalControlQueue,
+              },
+              live0049UserNotificationsStatement: true,
+            };
+
+            evidence.performance = {
+              stressAdminDeletionMs:
+                evidence.phases.adminHttp.deletionElapsedMs,
+              unrelatedWriteProbeMs:
+                evidence.phases.adminHttp.probeElapsedMs,
+              ordinarySelfDeletionMs:
+                evidence.phases.selfHttp.elapsedMs,
+              limitsMs: {
+                stressAdminDeletion: 5000,
+                unrelatedWriteProbe: 2000,
+                ordinaryDeletion: 2000,
+              },
+            };
+
+            evidence.r2 = {
+              consumerExecuted: false,
+              realObjectCreatedByFixture: false,
+              controlAttachmentQueued: false,
+              note:
+                'This execution proves DB purge-queue behavior only. ' +
+                'No R2 consumer or object deletion is authorized here.',
+            };
+
+            evidence.classification = 'PASS';
+            save();
+
+            console.log(
+              JSON.stringify(
+                {
+                  classification: evidence.classification,
+                  stressAdminDeletionMs:
+                    evidence.performance.stressAdminDeletionMs,
+                  unrelatedWriteProbeMs:
+                    evidence.performance.unrelatedWriteProbeMs,
+                  ordinarySelfDeletionMs:
+                    evidence.performance.ordinarySelfDeletionMs,
+                  privacy01:
+                    'admin delete audit retained with before_json/after_json NULL',
+                  scope01:
+                    'admin/self user_notifications PRE->POST zero; control preserved',
+                  r2ConsumerExecuted: false,
+                },
+                null,
+                2
+              )
+            );
+          } catch (error) {
+            evidence.classification = 'STOP';
+            evidence.error = {
+              name: error?.name || 'Error',
+              message: String(
+                error?.message || error
+              ),
+            };
+            save();
+
+            console.error(
+              'CONTROLLED_EXECUTION_STOP:',
+              evidence.error.message
+            );
+
+            throw error;
+          }
+          NODE
+
+      - name: Copy evidence to workspace
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -f "$RUNNER_TEMP/0047-execution-evidence.json" ]; then
+            cp \
+              "$RUNNER_TEMP/0047-execution-evidence.json" \
+              ./0047-execution-evidence.json
+          fi
+
+      - name: Upload controlled execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 0047-controlled-staging-deletion-evidence-${{ github.run_id }}
+          path: 0047-execution-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
