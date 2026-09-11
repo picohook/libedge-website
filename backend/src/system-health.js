@@ -1,5 +1,6 @@
 // Read-only super-admin infrastructure health summary. Never return secret, token, PII, or raw provider errors.
 import { verify } from 'hono/jwt';
+import { readResearchTelemetrySnapshot } from './research/telemetry.js';
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -72,6 +73,12 @@ export async function handleSystemHealthRequest(request, env) {
       })
     : { status: 'error' };
 
+  const researchTelemetry = env.RATE_LIMIT_KV
+    ? await safeCheck(async () => ({
+        snapshot: await readResearchTelemetrySnapshot(env),
+      }))
+    : { status: 'error', snapshot: null };
+
   const privacyQueue = env.DB
     ? await safeCheck(async () => ({
         pending_r2_purge: await scalar(
@@ -92,7 +99,7 @@ export async function handleSystemHealthRequest(request, env) {
       }))
     : { status: 'error', actions_24h: null };
 
-  const checks = [database, objectStorage, rateLimitStore, privacyQueue, adminActivity];
+  const checks = [database, objectStorage, rateLimitStore, researchTelemetry, privacyQueue, adminActivity];
   const overall = checks.every((item) => item.status === 'ok') ? 'healthy' : 'degraded';
 
   return json({
@@ -107,5 +114,6 @@ export async function handleSystemHealthRequest(request, env) {
     },
     privacy: privacyQueue,
     activity: adminActivity,
+    research_telemetry: researchTelemetry,
   });
 }
