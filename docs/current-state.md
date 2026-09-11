@@ -10,17 +10,21 @@ Status: `ACTIVE`
 
 P0.5 experimental sequence is **CLOSED / independently verified**. H is rejected. D-016 is **LOCKED** for the existing top-10 research-result contract: semantic S primary, lexical L only as objective availability fallback/rollback.
 
-The first controlled semantic-primary staging smoke exposed a live semantic `429`; pacing was corrected from `1000 ms` to `1500 ms` and independently accepted.
+The controlled staging semantic retry v2 **PASSED** and was independently **ACCEPTED**. Live pacing enforcement was observed (`semantic_pacing_wait_ms_total +1500`), no new semantic `429` occurred, D1 telemetry remained internally exact under the controlled pair, and the staging flag was immediately returned to OFF.
 
-A later controlled retry returned two uncached semantic HTTP `200` responses but exposed a non-atomic KV telemetry lost-update defect. That retry was **NOT PASS**.
+Current semantic-primary flags:
 
-The telemetry defect was corrected with D1 atomic counters, migration-first sequencing was followed, code/diff review returned **ACCEPTED WITH MODIFICATION**, and the reviewer-required live semantic-OFF D1 concurrency verification then **PASSED** with an exact `research_requests +5` under five near-concurrent lexical requests and no semantic-counter movement.
+- staging: `OFF`;
+- production: `OFF`.
 
-A subsequent separately authorized single controlled semantic retry has now **PASSED** and been independently **ACCEPTED**.
+The reviewer has now classified the next rollout-stage preparation **ACCEPTED WITH MODIFICATION**. The required Track A modification has been incorporated: production peak-rate evidence must use **per-request timestamps or privacy-safe buckets no coarser than 2 seconds**. Coarser evidence is insufficient for the locked `<=0.5 requests/second` broad-enablement guardrail.
 
-The semantic-primary flag is currently OFF in both staging and production.
+The project is now authorized only for two preparation/evidence tracks that do not change production behavior:
 
-The project is now at a **next rollout-stage preparation** gate only. No production D1 migration, production semantic enablement, broad rollout, or further semantic retry is authorized.
+1. **Track A — production traffic/capacity evidence-source discovery and evidence collection**;
+2. **Track B — production D1 migration execution planning and reviewer-packet preparation**.
+
+No production migration or production semantic enablement is authorized.
 
 ## Independently verified controlled semantic retry — PASS / ACCEPTED
 
@@ -32,131 +36,27 @@ Canonical closure acceptance:
 
 `docs/reviews/2026-09-11-d016-controlled-semantic-retry-closure-acceptance.md`
 
-PRE D1 telemetry:
+Observed mechanical deltas:
 
-- `research_requests = 5`
-- `semantic_attempts = 0`
-- `semantic_successes = 0`
-- `semantic_429 = 0`
-- `semantic_pacing_wait_ms_total = 0`
-- `semantic_charged_responses = 0`
-- `semantic_cost_microusd_total = 0`
-- `semantic_credits_total = 0`
-- `lexical_fallback_attempts = 0`
-- `lexical_fallback_successes = 0`
-
-Controlled near-concurrent pair:
-
-- request 1: HTTP `200`, `retrievalSource="semantic"`, uncached, 10 results;
-- request 2: HTTP `200`, `retrievalSource="semantic"`, uncached, 10 results.
-
-POST D1 telemetry:
-
-- `research_requests = 7`
-- `semantic_attempts = 2`
-- `semantic_successes = 2`
-- `semantic_429 = 0`
-- `semantic_pacing_wait_ms_total = 1500`
-- `semantic_charged_responses = 2`
-- `semantic_cost_microusd_total = 2000`
-- `semantic_credits_total = 20`
-- `lexical_fallback_attempts = 0`
-- `lexical_fallback_successes = 0`.
-
-Mechanical deltas:
-
-- `research_requests +2`
-- `semantic_attempts +2`
-- `semantic_successes +2`
-- `semantic_429 +0`
-- `semantic_pacing_wait_ms_total +1500`
-- `semantic_charged_responses +2`
-- `semantic_cost_microusd_total +2000`
-- `semantic_credits_total +20`
-- `lexical_fallback_attempts +0`
+- `research_requests +2`;
+- `semantic_attempts +2`;
+- `semantic_successes +2`;
+- `semantic_429 +0`;
+- `semantic_pacing_wait_ms_total +1500`;
+- `semantic_charged_responses +2`;
+- `semantic_cost_microusd_total +2000`;
+- `semantic_credits_total +20`;
+- `lexical_fallback_attempts +0`;
 - `lexical_fallback_successes +0`.
 
-Independent reviewer conclusion:
-
-- pacing was live-enforced for the controlled pair;
-- no new semantic `429` occurred;
-- corrected D1 telemetry did not reproduce the prior lost-update defect;
-- attempts/successes/cost/credits were internally consistent;
-- the single-retry authorization boundary was respected.
-
-No relevance judgment was made.
-
-## Post-retry safety state
-
-The single authorized retry was followed by immediate staging disable.
-
-Enable commit:
-
-`dbdc8c4cc0469d481e80f594c4ad992673081f81`
-
-Enable deploy:
-
-- CI `34574860041`: SUCCESS;
-- Deploy Workers `34574859960`: SUCCESS;
-- staging deploy: SUCCESS;
-- production deploy: SKIPPED.
-
-Disable commit:
-
-`ba64615aa1958f4c378dcddcb3c32ed98bf4dff5`
-
-Disable deploy:
-
-- CI `34575618103`: SUCCESS;
-- Deploy Workers `34575618051`: SUCCESS;
-- staging deploy: SUCCESS;
-- production deploy: SKIPPED.
-
-Current flags:
-
-- staging semantic-primary: OFF;
-- production semantic-primary: OFF.
-
-## Telemetry atomicity correction — COMPLETE / ACCEPTED
-
-Canonical architecture:
-
-`docs/architecture/p05-research-telemetry-atomicity-correction.md`
-
-Canonical implementation:
-
-`docs/architecture/p05-research-telemetry-atomicity-implementation.md`
-
-Independent code/diff acceptance:
-
-`docs/reviews/2026-09-11-d016-telemetry-atomicity-code-review-acceptance.md`
-
-Accepted properties:
-
-- exact counters moved from KV read-modify-write to D1 atomic UPSERTs;
-- dedicated `research_telemetry_counters` table on existing staging `env.DB`;
-- single shared `RESEARCH_TELEMETRY_METRICS` allowlist;
-- semantic success/failure and lexical fallback accounting structurally preserves `semantic_successes <= semantic_attempts`;
-- telemetry remains best-effort and does not alter retrieval/fallback behavior;
-- no global telemetry Durable Object;
-- production migration not applied.
-
-Reviewer-required real-D1 concurrency verification also passed before the successful semantic retry:
-
-- PRE `research_requests = 0`;
-- five near-concurrent lexical requests, all HTTP `200` / lexical / uncached;
-- POST `research_requests = 5` exactly;
-- semantic counters remained zero.
+The single-retry boundary was respected. Staging was disabled immediately afterward. Production was never enabled.
 
 ## Finding status
 
 ### CLOSED
 
 1. `OOS-D016-CODE-01` — grant-time vs provider-fetch timing / account-wide rate-limit interaction.
-   - Closed by independent reviewer after the controlled retry produced `semantic_pacing_wait_ms_total +1500` and `semantic_429 +0`.
-
 2. `OOS-D016-TELEMETRY-01` — previous KV telemetry lost-update race.
-   - Closed by independent reviewer after both the flag-OFF real-D1 concurrency verification and the successful semantic retry showed exact, internally consistent D1-backed counters.
 
 ### ACKNOWLEDGED / DEFERRED
 
@@ -164,13 +64,60 @@ Reviewer-required real-D1 concurrency verification also passed before the succes
 4. Shared-core-D1 telemetry failure-domain coupling — revisit before broad enablement if measured write QPS/latency/contention suggests material impact.
 5. Wrangler declarative `exports` migration path — revisit only during a deliberate toolchain upgrade.
 
+## Track A — production traffic / capacity evidence
+
+Locked broad-enablement condition:
+
+`peak eligible research-query rate <= 0.5 requests/second`.
+
+Accepted evidence standard:
+
+- per-request timestamps; or
+- privacy-safe time buckets no coarser than `2 seconds`;
+- source must isolate eligible research requests;
+- no query text, user identity, research topic, result content, DOI/title, or raw request body may be exposed or persisted for this purpose.
+
+Daily totals, daily averages, minute-level averages, or any source coarser than 2-second buckets do **not** support the peak-rate claim.
+
+If no acceptable source exists, the required conclusion is:
+
+`INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`.
+
+Canonical preparation record:
+
+`docs/architecture/p05-production-rollout-stage-preparation.md`
+
+Reviewer follow-up:
+
+`docs/reviews/2026-09-11-d016-next-rollout-stage-preparation-followup.md`
+
+## Track B — production D1 telemetry migration preparation
+
+Migration under consideration:
+
+`migrations/0048_research_telemetry_counters.sql`
+
+No production migration has been applied.
+
+Before any execution request, the planning packet must independently demonstrate:
+
+1. production semantic-primary remains OFF;
+2. the intended production D1 binding is confirmed;
+3. migration file is byte-identical to the staging-reviewed migration;
+4. pending production migrations are listed before apply;
+5. any unexpected pending migration is a hard STOP;
+6. no semantic enablement is bundled with migration;
+7. recovery/verification expectations are documented in advance.
+
+Successful migration alone would not authorize semantic-primary production enablement.
+
 ## Locked rollout constraints still active
 
 1. Semantic-primary remains OFF until a separately reviewed rollout decision.
 2. Valid empty/short S does not trigger L.
 3. L fallback remains objective-only; no content/count/relevance/topic routing.
 4. Semantic request starts remain globally paced through the dedicated pacing Durable Object at `1500 ms` minimum spacing.
-5. Broad enablement remains blocked unless peak eligible research-query rate is documented `<=0.5 requests/second`.
+5. Broad enablement remains blocked unless peak eligible research-query rate is documented `<=0.5 requests/second` using the accepted temporal-resolution standard.
 6. D-013 checkpoint remains first `1,000` charged semantic responses or `7 days`, whichever occurs first.
 7. Capacity/cost/availability telemetry stores no query text, topics, research interests or user IDs.
 8. P0.5 holdouts/labels are not reused for rollout relevance retuning.
@@ -180,38 +127,23 @@ Reviewer-required real-D1 concurrency verification also passed before the succes
 
 ## NEXT
 
-Two independent preparation tracks are now required before any broad/production enablement decision:
+Proceed in parallel only with non-behavior-changing preparation:
 
-1. **Traffic/capacity guardrail evidence**
-   - obtain real or defensibly estimated peak eligible research-query rate;
-   - document the measurement window/source/method;
-   - compare the peak against the locked `<=0.5 requests/second` broad-enablement guardrail;
-   - if the rate cannot be credibly established at or below the guardrail, broad enablement remains blocked.
-
-2. **Production D1 migration proposal**
-   - prepare a separate production migration-first proposal for `research_telemetry_counters`;
-   - do not apply the migration until that proposal receives independent review acceptance;
-   - migration acceptance does not itself authorize production semantic-primary enablement.
-
-These two tracks must remain independent. Neither one authorizes the other and neither authorizes production rollout by itself.
+1. **Track A:** discover whether an existing production operational source can provide eligible research-request timing at per-request or `<=2-second` resolution without content leakage. Do not add production instrumentation yet unless separately reviewed.
+2. **Track A:** if a suitable existing source exists, prepare an independently reviewable capacity evidence record. If not, record `INSUFFICIENT EVIDENCE` and identify what separately reviewed instrumentation would be needed.
+3. **Track B:** inspect the production D1 binding and migration state without applying changes; prepare a full reviewer packet for migration execution only.
+4. Do not apply production migration, enable semantic-primary, or perform another semantic retry without separate authorization.
 
 ## Canonical records
 
 - Decisions: `docs/decisions.md`
 - Locked architecture: `docs/architecture/p05-production-retrieval-decision.md`
-- Production implementation plan: `docs/architecture/p05-production-retrieval-implementation-plan.md`
-- Production implementation record: `docs/architecture/p05-production-retrieval-implementation.md`
-- Pacing correction review: `docs/reviews/2026-09-11-d016-pacing-correction-review.md`
-- Pacing correction implementation: `docs/architecture/p05-production-retrieval-pacing-correction.md`
-- Pacing correction code-review acceptance: `docs/reviews/2026-09-11-d016-pacing-correction-code-review-acceptance.md`
-- Retry preparation: `docs/architecture/p05-production-retrieval-retry-preparation.md`
-- Controlled semantic smoke incident: `docs/reviews/2026-09-11-d016-staging-semantic-smoke-incident.md`
-- Telemetry atomicity architecture: `docs/architecture/p05-research-telemetry-atomicity-correction.md`
-- Telemetry atomicity reviewer follow-up: `docs/reviews/2026-09-11-d016-telemetry-atomicity-review.md`
-- Telemetry atomicity implementation: `docs/architecture/p05-research-telemetry-atomicity-implementation.md`
-- Telemetry atomicity code-review acceptance: `docs/reviews/2026-09-11-d016-telemetry-atomicity-code-review-acceptance.md`
+- Production rollout-stage preparation: `docs/architecture/p05-production-rollout-stage-preparation.md`
+- Rollout-stage reviewer follow-up: `docs/reviews/2026-09-11-d016-next-rollout-stage-preparation-followup.md`
 - Controlled semantic retry PASS: `docs/reviews/2026-09-11-d016-controlled-semantic-retry-pass.md`
 - Controlled semantic retry closure acceptance: `docs/reviews/2026-09-11-d016-controlled-semantic-retry-closure-acceptance.md`
+- Telemetry atomicity architecture: `docs/architecture/p05-research-telemetry-atomicity-correction.md`
+- Telemetry atomicity implementation: `docs/architecture/p05-research-telemetry-atomicity-implementation.md`
 - Reviewer packet checklist: `docs/reviewer-packet-checklist.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
