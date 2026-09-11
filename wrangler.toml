@@ -62,7 +62,7 @@ crons = ["*/5 * * * *"]
 [env.staging.vars]
 ENVIRONMENT = "staging"
 WORKER_NAME = "libedge-api-staging"
-RESEARCH_SEMANTIC_PRIMARY_ENABLED = "false"
+RESEARCH_SEMANTIC_PRIMARY_ENABLED = "true"
 RESEARCH_SEMANTIC_CANDIDATE_DEPTH = "50"
 
 [[env.staging.d1_databases]]
