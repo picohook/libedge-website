@@ -1,0 +1,38 @@
+name: Inspect staging user-linked FK assumptions
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '.github/workflows/inspect-user-fk-assumptions-staging.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    name: Read-only D1 FK inspection
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Read live FK/index facts
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          for table in user_notifications notifications ai_usage_logs product_requests; do
+            echo "=== ${table}: foreign_key_list ==="
+            npx wrangler d1 execute libedge-db --env staging --remote --command "PRAGMA foreign_key_list(${table});"
+            echo "=== ${table}: index_list ==="
+            npx wrangler d1 execute libedge-db --env staging --remote --command "PRAGMA index_list(${table});"
+            echo "=== ${table}: sqlite_master table SQL ==="
+            npx wrangler d1 execute libedge-db --env staging --remote --command "SELECT sql FROM sqlite_master WHERE type='table' AND name='${table}';"
+          done
