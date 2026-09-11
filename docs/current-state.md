@@ -12,7 +12,7 @@ P0.5 experimental sequence is **CLOSED / independently verified**. H is rejected
 
 The D-016 staging implementation plan, follow-up, code/diff review, Durable Object migration correction, successful staging deployment and authenticated flag-OFF baseline smoke are complete.
 
-Semantic-primary staging enablement and broad production enablement remain unauthorized pending the next independent review.
+The controlled semantic-primary staging enablement proposal received independent `ACCEPTED WITH MODIFICATION`. Semantic-primary remains OFF pending focused follow-up acceptance of the two added operational controls below.
 
 ## Successful staging baseline deployment
 
@@ -61,7 +61,19 @@ The implementation uses research cache v2 actual-source partitions. Existing v1 
 
 The successful deploy log proves Cloudflare accepted the Durable Object migration/binding and deployed `OPENALEX_SEMANTIC_PACER` with the Worker. Because semantic-primary remains OFF, baseline traffic intentionally does not invoke the pacing object.
 
-No claim is made that a live pacing-gate invocation has occurred yet. The first separately authorized controlled semantic-primary staging call must verify the live gate→semantic-provider path end to end.
+No claim is made that a live pacing-gate invocation has occurred yet.
+
+The first separately authorized controlled semantic-primary staging smoke must now prove pacing enforcement, not merely DO availability: two distinct authenticated semantic requests must be triggered near-concurrently/programmatically back-to-back, and privacy-safe aggregate telemetry must show `semantic_pacing_wait_ms_total` increased by `>0` across the pair. Two successful responses without measurable pacing wait are insufficient to claim live pacing verification.
+
+## Staging traffic isolation precondition
+
+The public staging URL alone does not prove whether ordinary real-user traffic may be present. The control plane therefore does not assert an unverified zero-user condition.
+
+Immediately before staging semantic-primary is enabled, the human gatekeeper must explicitly confirm that the enablement window is restricted to controlled test traffic and that no ordinary real end-user research traffic is expected during that window. If that cannot be confirmed, the flag remains OFF pending explicit review of user-traffic treatment.
+
+This is an operational scope control, not a relevance gate.
+
+Canonical enablement review: `docs/reviews/2026-09-11-d016-staging-enablement-review.md`.
 
 ## Accepted implementation properties
 
@@ -85,7 +97,7 @@ No claim is made that a live pacing-gate invocation has occurred yet. The first 
 
 ## Locked rollout constraints still active
 
-1. Semantic-primary remains OFF until the next independent authorization.
+1. Semantic-primary remains OFF until focused follow-up acceptance and the staging-traffic-isolation confirmation.
 2. Valid empty/short S does not trigger L.
 3. L fallback remains objective-only; no content/count/relevance/topic routing.
 4. Semantic request starts remain constrained to <=1 request/second through the shared pacing gate.
@@ -97,11 +109,12 @@ No claim is made that a live pacing-gate invocation has occurred yet. The first 
 
 ## NEXT
 
-1. Independent reviewer verifies deploy run `34536345675`, CI run `34536345702`, and `docs/reviews/2026-09-11-d016-staging-baseline-smoke.md`.
-2. Reviewer accepts/modifies/rejects a narrowly scoped controlled semantic-primary staging enablement proposal.
-3. Only after acceptance may the staging feature flag be changed to true for controlled operational verification.
-4. The first authorized semantic call must verify the live pacing-gate path, semantic retrieval source, cost/credit telemetry and privacy-safe operational behavior.
-5. Broad production enablement remains a separate later decision after capacity/rollout controls.
+1. Focused reviewer verifies the two requested modifications in `docs/reviews/2026-09-11-d016-staging-enablement-review.md` and this current-state record.
+2. Reviewer accepts/modifies/rejects the revised controlled semantic-primary staging enablement plan.
+3. Only after acceptance, and only after the human gatekeeper explicitly confirms the staging window contains controlled test traffic only, may the staging feature flag be changed to true.
+4. Controlled smoke must use two distinct near-concurrent authenticated semantic requests and show `semantic_pacing_wait_ms_total > 0` delta, plus semantic retrieval source, cost/credit telemetry and privacy-safe operation.
+5. If the live pacing wait cannot be demonstrated, stop and investigate; do not claim live pacing success.
+6. Broad production enablement remains a separate later decision after capacity/rollout controls.
 
 ## Canonical records
 
@@ -113,6 +126,7 @@ No claim is made that a live pacing-gate invocation has occurred yet. The first 
 - Deploy failure / correction: `docs/reviews/2026-09-11-d016-staging-deploy-failure.md`
 - Successful staging deploy: `docs/reviews/2026-09-11-d016-staging-deploy-success.md`
 - Authenticated baseline smoke: `docs/reviews/2026-09-11-d016-staging-baseline-smoke.md`
+- Controlled staging enablement review: `docs/reviews/2026-09-11-d016-staging-enablement-review.md`
 - Reviewer packet checklist: `docs/reviewer-packet-checklist.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
