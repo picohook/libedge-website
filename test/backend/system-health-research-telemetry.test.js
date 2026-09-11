@@ -1,29 +1,47 @@
 import { describe, expect, it } from 'vitest';
 import { sign } from 'hono/jwt';
 import { handleSystemHealthRequest } from '../../backend/src/system-health.js';
-import { RESEARCH_TELEMETRY_METRICS, researchTelemetryMetricKey } from '../../backend/src/research/telemetry.js';
+import { RESEARCH_TELEMETRY_METRICS } from '../../backend/src/research/telemetry.js';
 
 const JWT_SECRET = 'test-system-health-secret';
 
-function fakeDb() {
+function fakeDb(telemetry = new Map()) {
   return {
     prepare(sql) {
+      let args = [];
       return {
+        bind(...nextArgs) {
+          args = nextArgs;
+          return this;
+        },
         async first() {
           if (sql.includes('privacy_r2_purge_queue')) return { count: 0 };
           if (sql.includes('admin_action_logs')) return { count: 2 };
           return { ok: 1 };
+        },
+        async all() {
+          if (sql.includes('research_telemetry_counters')) {
+            const [dateUtc] = args;
+            return {
+              results: [...telemetry.entries()].map(([metric, value]) => ({
+                date_utc: dateUtc,
+                metric,
+                value
+              }))
+            };
+          }
+          return { results: [] };
         }
       };
     }
   };
 }
 
-function fakeKv(values = new Map()) {
+function fakeKv() {
   return {
     async get(key) {
       if (key === '__libedge_system_health_probe__') return null;
-      return values.has(key) ? String(values.get(key)) : null;
+      return null;
     }
   };
 }
@@ -40,9 +58,9 @@ function envWithTelemetry(values = new Map()) {
     JWT_SECRET,
     ENVIRONMENT: 'staging',
     WORKER_NAME: 'libedge-api-staging',
-    DB: fakeDb(),
+    DB: fakeDb(values),
     FILES_BUCKET: { async list() { return { objects: [] }; } },
-    RATE_LIMIT_KV: fakeKv(values)
+    RATE_LIMIT_KV: fakeKv()
   };
 }
 
@@ -53,11 +71,11 @@ describe('system health research telemetry', () => {
   });
 
   it('returns only the shared telemetry allowlist for super admins', async () => {
-    const now = new Date();
     const values = new Map([
-      [researchTelemetryMetricKey('semantic_attempts', now), 5],
-      [researchTelemetryMetricKey('semantic_pacing_wait_ms_total', now), 1500],
-      [researchTelemetryMetricKey('semantic_429', now), 1]
+      ['semantic_attempts', 5],
+      ['semantic_pacing_wait_ms_total', 1500],
+      ['semantic_429', 1],
+      ['not_allowed_metric', 999]
     ]);
     const response = await handleSystemHealthRequest(await authRequest(), envWithTelemetry(values));
     expect(response.status).toBe(200);
@@ -69,6 +87,7 @@ describe('system health research telemetry', () => {
     expect(metrics.semantic_pacing_wait_ms_total).toBe(1500);
     expect(metrics.semantic_429).toBe(1);
     expect(metrics.semantic_successes).toBe(0);
+    expect(metrics.not_allowed_metric).toBeUndefined();
   });
 
   it('does not expose query, user, topic, or result content in telemetry', async () => {
