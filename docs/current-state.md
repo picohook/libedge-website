@@ -57,13 +57,39 @@ Merge commit:
 
 `a47669de451b3ca0997f607b71cb4d914634e825`
 
-PR CI passed: `23/23` test files, `99/99` tests, syntax/lint, Wrangler staging dry-run, and build.
-
 Source defect status:
 
 `FIX MERGED TO STAGING / LIVE BEHAVIOR NOT YET PROVEN`.
 
 No live user deletion has been executed.
+
+### 0047-SCOPE-01 — corrected triage
+
+Reviewer discovery correctly identified `user_notifications` as an active per-user table absent from the explicit 0047 trigger. Follow-up repository schema inspection then found an important correction:
+
+`migrations/0008_user_notifications.sql` defines:
+
+`user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE`
+
+and creates:
+
+`idx_user_notifications_user(user_id, is_read)`.
+
+Therefore absence from the trigger does **not** by itself imply residual data. Under the canonical migrated schema, `user_notifications` is deleted by FK cascade.
+
+The application runtime-DDL fallback omits this FK, but runtime DDL is disabled in strict `staging` and `production` environments.
+
+Current finding state:
+
+`TRIAGED / CANONICAL FK CASCADE COVERS USER_NOTIFICATIONS / LIVE STAGING CONFIRMATION REQUIRED`.
+
+A new trigger-replacement migration such as 0049 is **not currently justified**. It would be reconsidered only if fresh live staging read-only schema evidence shows the expected cascade is missing or materially divergent.
+
+Canonical records:
+
+- `docs/reviews/2026-09-11-0047-scope-01-user-notifications-triage.md`
+- `docs/reviews/2026-09-11-0047-scope-01-read-only-discovery.md`
+- `docs/reviews/2026-09-11-0047-scope-01-followup-plan.md`
 
 ### Controlled staging deletion packet
 
@@ -71,45 +97,23 @@ Canonical packet:
 
 `docs/reviews/2026-09-11-0047-controlled-staging-deletion-packet.md`
 
-The packet predeclares synthetic fixtures, all current trigger-domain assertions, negative controls, R2 queue checks, and performance/locking thresholds.
+The packet has been amended to cover **30 deletion-policy domains**:
 
-No disposable account has been created, no fixture has been seeded, and no deletion has been run.
+- 29 domains explicitly handled by the 0047 trigger;
+- `user_notifications` as a separately verified FK-cascade domain.
 
-### 0047-SCOPE-01 — NEW BLOCKER
+Before any write, live staging read-only evidence must confirm:
 
-Reviewer systematic schema/runtime-DDL analysis identified an active user-linked table not covered by the current trigger:
+- `user_notifications` columns;
+- `user_id -> users(id) ON DELETE CASCADE`;
+- `idx_user_notifications_user` with `user_id` leading;
+- no material schema drift.
 
-`user_notifications`
-
-The application actively inserts per-user notification rows into this table, including title/body content, while the current 0047 trigger covers only the separate `notifications` table.
-
-Triage decision:
-
-`OPEN / INCLUDE IN DELETION POLICY / BLOCKS STAGING EXECUTION`.
-
-Canonical finding:
-
-`docs/reviews/2026-09-11-0047-scope-01-user-notifications-triage.md`
-
-Follow-up plan:
-
-`docs/reviews/2026-09-11-0047-scope-01-followup-plan.md`
-
-The finding is **not deferred**. The deletion policy must be extended before the controlled staging deletion test runs.
-
-Migration-history rule: do not rewrite already-applied `0047_user_deletion_integrity.sql` in place. Prepare a separately reviewed follow-up trigger-replacement migration after fresh schema checks. Because `0048` already exists, the expected next migration number is `0049`, subject to fresh verification before creation.
-
-Proposed `user_notifications` policy: delete rows for the deleted account.
-
-Before any migration SQL is prepared, read-only staging checks must confirm the actual `user_notifications` schema, FKs/indexes, application paths, and retention semantics, then re-run the active user-linked table inventory.
-
-The controlled staging deletion packet must later be amended from 29 to 30 covered table classes and independently re-reviewed.
+The controlled packet remains `PRE-EXECUTION RE-REVIEW ONLY`. No disposable account has been created, no fixture has been seeded, and no deletion has been run.
 
 ## Performance-threshold sanity check
 
-Cloudflare's current Workers limits indicate incoming HTTP Worker requests have no hard wall-clock duration limit while the client remains connected; paid Worker CPU time defaults to 30 seconds and can be configured higher. The packet's `2.0 s` ordinary / `5.0 s` stress limits are therefore comfortably below the platform's relevant hard execution ceilings.
-
-A separate pre-execution check is still required for any application/browser-side timeout or `AbortController` used by the actual test caller. If a caller-side timeout is at or below a predeclared test threshold, execution must STOP for re-review.
+The packet's `2.0 s` ordinary / `5.0 s` stress / `2.0 s` unrelated-write thresholds remain comfortably below Cloudflare Worker platform execution ceilings. The actual browser/application caller must still be checked for a shorter explicit timeout or `AbortController` before execution.
 
 ## Finding status
 
@@ -127,9 +131,9 @@ A separate pre-execution check is still required for any application/browser-sid
 ### OPEN / OUTSIDE D-016
 
 6. Production D1 migration backlog `0042`-`0047`.
-7. `0047-SCOPE-01` — active `user_notifications` table missing from deletion trigger; blocks staging deletion execution.
+7. `0047-SCOPE-01` — no longer presumed to require a migration; awaiting live staging FK/index confirmation and independent review of the amended 30-domain execution packet.
 
-`0047-PRIVACY-01` source-order defect is fixed in staging code, but its behavioral closure remains dependent on the eventual controlled staging deletion execution after `0047-SCOPE-01` is resolved.
+`0047-PRIVACY-01` source-order defect is fixed in staging code, but behavioral closure still requires the eventual controlled staging deletion execution.
 
 ## Locked rollout constraints still active
 
@@ -146,12 +150,12 @@ A separate pre-execution check is still required for any application/browser-sid
 
 ## NEXT
 
-1. Keep the controlled 0047 staging deletion packet blocked.
-2. Perform only the read-only `user_notifications` schema/FK/index/application-path/retention checks authorized by the `0047-SCOPE-01` follow-up plan.
-3. Re-run the active user-linked table inventory.
-4. Prepare a follow-up trigger-replacement migration proposal only after those checks; do not mutate migration 0047 history.
-5. Independently review any proposed follow-up migration and the amended 30-table staging execution packet before applying anything.
-6. Do not create/delete staging test accounts until that review is ACCEPTED.
+1. Keep the controlled 0047 staging deletion packet blocked pending re-review.
+2. Obtain fresh **read-only live staging** `user_notifications` table/FK/index evidence.
+3. Re-run/confirm the active user-linked deletion-policy inventory with trigger-vs-cascade mechanisms distinguished.
+4. Do **not** prepare 0049 unless live staging schema proves the canonical cascade is absent or unsafe.
+5. Submit the amended 30-domain controlled staging packet for independent review.
+6. Do not create/delete staging test accounts until that review is ACCEPTED and the live read-only precheck passes.
 7. Keep D-016 Track B paused; do not bulk-apply `0042`-`0048`.
 8. Do not enable semantic-primary, apply production migrations, perform another semantic retry, adopt H/RRF, or introduce Vectorize without separate authorization.
 
@@ -166,8 +170,9 @@ A separate pre-execution check is still required for any application/browser-sid
 - 0047 dedicated production review: `docs/reviews/2026-09-11-0047-user-deletion-integrity-production-review.md`
 - 0047 read-only analysis: `docs/reviews/2026-09-11-0047-read-only-schema-code-analysis.md`
 - 0047 controlled staging packet: `docs/reviews/2026-09-11-0047-controlled-staging-deletion-packet.md`
-- 0047 scope finding: `docs/reviews/2026-09-11-0047-scope-01-user-notifications-triage.md`
-- 0047 scope follow-up plan: `docs/reviews/2026-09-11-0047-scope-01-followup-plan.md`
+- 0047 scope triage: `docs/reviews/2026-09-11-0047-scope-01-user-notifications-triage.md`
+- 0047 scope discovery: `docs/reviews/2026-09-11-0047-scope-01-read-only-discovery.md`
+- 0047 scope follow-up: `docs/reviews/2026-09-11-0047-scope-01-followup-plan.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
 Last updated: 2026-09-11
