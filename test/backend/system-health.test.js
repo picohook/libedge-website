@@ -5,13 +5,19 @@ import { handleSystemHealthRequest } from '../../backend/src/system-health.js';
 function createDb({ pending = 0, actions = 0 } = {}) {
   return {
     prepare(sql) {
-      return {
+      const statement = {
+        bind() { return statement; },
         async first() {
           if (sql.includes('privacy_r2_purge_queue')) return { count: pending };
           if (sql.includes('admin_action_logs')) return { count: actions };
           return { ok: 1 };
         },
+        async all() {
+          if (sql.includes('research_telemetry_counters')) return { results: [] };
+          return { results: [] };
+        },
       };
+      return statement;
     },
   };
 }
