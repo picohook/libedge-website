@@ -2561,6 +2561,19 @@ jobs:
           const controlId = getUserId(process.env.CONTROL_EMAIL);
 
           try {
+            // Establish all login/session side effects before the PRE baseline.
+            // Login writes refresh_tokens, so taking totals first would make the
+            // later global-delta assertion count unrelated session creation.
+            const adminJar = await login(
+              process.env.STAGING_ADMIN_EMAIL,
+              process.env.STAGING_ADMIN_PASSWORD
+            );
+
+            const selfJar = await login(
+              process.env.TARGET_SELF_EMAIL,
+              process.env.TEST_PASSWORD
+            );
+
             const adminTargetPre = targetPre(adminId);
 
             assert(
@@ -2588,16 +2601,6 @@ jobs:
             };
             save();
 
-            // Login occurs only after the complete PRE DB capture.
-            const adminJar = await login(
-              process.env.STAGING_ADMIN_EMAIL,
-              process.env.STAGING_ADMIN_PASSWORD
-            );
-
-            const selfJar = await login(
-              process.env.TARGET_SELF_EMAIL,
-              process.env.TEST_PASSWORD
-            );
 
             // Run the real admin deletion and the predeclared unrelated write
             // probe concurrently. The probe uses existing application behavior
