@@ -106,11 +106,13 @@ For each path, record:
 
 The trigger and endpoint logic must form one coherent policy rather than two independently drifting policies.
 
-### D. Staging live deletion evidence
+### D. Staging live deletion evidence, including performance / lock duration
 
 Before production authorization, obtain a real staging execution record using a disposable synthetic test account on a staging schema containing 0047.
 
 The test must seed representative dependent rows across the material trigger domains and then exercise the actual deletion path rather than executing only migration SQL.
+
+The fixture must include both ordinary low-volume rows and a deliberately higher-volume synthetic load in at least two realistically accumulating user-scoped tables. At minimum, the execution packet must include a documented stress-scale fixture for `ai_usage_logs` and `notifications`, or explain with repository/operational evidence why another pair is more representative. The exact row counts must be fixed in the execution packet before the test; they must be large enough to expose obviously pathological trigger behavior rather than only proving one-row correctness.
 
 Minimum success evidence:
 
@@ -122,9 +124,14 @@ Minimum success evidence:
 - audit snapshots are redacted where required;
 - no unintended unrelated rows are changed;
 - no FK/trigger error aborts the deletion transaction;
-- post-delete R2 queue consumer behavior is separately verified for the queued test object.
+- post-delete R2 queue consumer behavior is separately verified for the queued test object;
+- end-to-end deletion elapsed time is measured for both the ordinary fixture and the stress-scale fixture;
+- no timeout, `SQLITE_BUSY`/lock error, or material concurrent-write degradation is observed during the controlled stress-scale deletion;
+- the execution packet defines a maximum acceptable deletion/lock-duration threshold **before** execution, tied to the staging request/runtime budget or an explicitly justified operational SLO; the observed stress-scale result must remain within that predeclared threshold.
 
-The exact seeded fixture and expected post-state must be documented before executing the test.
+A trigger that is logically correct but exceeds the predeclared latency/lock threshold is **not** production-ready.
+
+The exact seeded fixture, expected post-state, stress volumes, concurrency probe (if any), timing measurement method and acceptance threshold must be documented and reviewer-approved before executing the test.
 
 ### E. Privacy/retention semantic review
 
@@ -152,7 +159,7 @@ At minimum:
 
 ## Required staging-test invariants
 
-The eventual staging test must include both positive and negative checks.
+The eventual staging test must include positive, negative and performance/locking checks.
 
 Positive checks:
 
@@ -168,6 +175,13 @@ Negative checks:
 - no unmanaged R2 key is deleted;
 - no personally identifying snapshot intended for redaction remains in the seeded audit rows.
 
+Performance/locking checks:
+
+- ordinary and stress-scale deletion elapsed times are recorded;
+- the stress-scale deletion remains below the predeclared maximum duration;
+- no timeout or lock/busy failure occurs;
+- any concurrency probe defined in the execution packet shows no unacceptable blocking of an unrelated staging write.
+
 ## Reviewer questions before staging execution
 
 1. Is the schema compatibility matrix complete enough to exercise every trigger statement?
@@ -177,8 +191,9 @@ Negative checks:
 5. Are expected post-delete states explicit enough to detect both over-deletion and under-deletion?
 6. Is the R2 queue/consumer path covered end-to-end?
 7. Are privacy/retention semantics reviewed separately from SQL correctness?
-8. Is recovery defined before any production apply request?
-9. Does any unresolved point require 0047 to remain STOPPED?
+8. Is the stress-scale fixture realistic enough to expose performance/locking problems, and are timing/lock acceptance thresholds fixed before execution?
+9. Is recovery defined before any production apply request?
+10. Does any unresolved point require 0047 to remain STOPPED?
 
 ## Decision boundary
 
