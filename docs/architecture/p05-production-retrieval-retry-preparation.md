@@ -20,58 +20,67 @@ This document is preparation-only. It does not change D-016 and does not authori
 - Tests A-I, CI and staging Wrangler dry-run passed;
 - corrected runtime is deployed to staging with semantic-primary OFF;
 - independent telemetry correction code/diff review classified the implementation `ACCEPTED WITH MODIFICATION`;
-- the required modification is a live semantic-OFF staging D1 concurrency verification before semantic retry authorization.
+- the reviewer-required live semantic-OFF staging D1 concurrency verification has now PASSED.
 
 Independent acceptance record:
 
 `docs/reviews/2026-09-11-d016-telemetry-atomicity-code-review-acceptance.md`
 
-## Required flag-OFF live D1 concurrency verification
+## Flag-OFF live D1 concurrency verification — PASS
 
-Before any semantic-primary flag change, verify the real staging D1 counter path under near-concurrent authenticated lexical traffic.
+A real staging D1 concurrency check was executed with semantic-primary OFF, using one authenticated staging browser session and five distinct ordinary non-sensitive research queries fired programmatically near-concurrently with `Promise.all`.
 
-This step is explicitly **not a semantic retry**. Semantic-primary must remain OFF throughout.
+No relevance judgment or result-quality comparison was performed.
 
-### Preconditions
+### PRE snapshot
 
-1. staging `RESEARCH_SEMANTIC_PRIMARY_ENABLED` is confirmed `false`;
-2. production semantic-primary remains OFF and production is untouched;
-3. staging window is controlled test traffic only, with no ordinary real end-user research traffic expected during the short measurement window;
-4. a super-admin D1 telemetry snapshot is captured immediately before the lexical burst;
-5. test queries are distinct, ordinary, non-sensitive, and are not P0.5 frozen holdout queries;
-6. no relevance judgment or result-quality comparison will be performed.
+- date: `2026-09-11`
+- `research_requests = 0`
+- `semantic_attempts = 0`
+- `semantic_successes = 0`
+- `semantic_429 = 0`
 
-### Execution shape
+### Five-request burst
 
-From one authenticated staging browser session, issue **five** distinct ordinary lexical research requests programmatically near-concurrently using `Promise.all` or an equivalent back-to-back dispatch.
+All five responses were:
 
-Use five requests so the expected exact `research_requests` delta is unambiguous while keeping the verification small and within the existing protected user rate limit.
+- HTTP `200`;
+- `meta.retrievalSource = "lexical"`;
+- `cached = false`;
+- `resultCount = 10`.
 
-Immediately after all five requests settle, capture the same super-admin D1 telemetry snapshot again.
+Observed browser elapsed times were approximately:
 
-### Mechanical success criteria
+- 2421 ms
+- 2724 ms
+- 2008 ms
+- 2356 ms
+- 2105 ms
 
-The flag-OFF D1 concurrency verification passes only if all are true:
+### POST snapshot
 
-1. all five requests complete with HTTP success;
-2. each response reports `meta.retrievalSource === "lexical"`;
-3. each request is uncached, or otherwise the exact request count still increments `research_requests` because that counter is recorded before cache lookup;
-4. `research_requests` increases by **exactly 5** between the immediately-before and immediately-after snapshots;
-5. semantic counters do not increase as a consequence of this lexical-only step;
-6. no query/user/topic/result content appears in telemetry;
-7. no browser/runtime/system-health error occurs.
+- date: `2026-09-11`
+- `research_requests = 5`
+- `semantic_attempts = 0`
+- `semantic_successes = 0`
+- `semantic_429 = 0`
 
-If `research_requests` delta is not exactly `5`, classify the verification **NOT PASS / STOP AND INVESTIGATE**. Do not enable semantic-primary and do not request semantic retry execution authorization until the discrepancy is resolved and independently reviewed as needed.
+### Mechanical result
 
-### Evidence boundary
+- `research_requests` delta = **+5 exactly**;
+- semantic counters remained unchanged;
+- all responses remained lexical and successful;
+- no telemetry/runtime/browser error was observed.
 
-This lexical-only check is designed to fill the methodological gap identified by the independent reviewer: the in-memory fake D1 used in unit tests cannot reproduce real D1 concurrency scheduling.
+Classification of this prerequisite: **PASS**.
 
-A PASS here provides live evidence that the deployed staging D1-backed exact counter path does not lose increments under a small near-concurrent request burst. It does not prove unlimited throughput, does not authorize production load, and does not test semantic relevance or provider behavior.
+This fills the methodological gap identified by the independent reviewer: the unit-test fake D1 could validate accounting logic but not real D1 concurrency scheduling. This live check provides small-scale staging evidence that the deployed D1-backed counter path did not lose increments under a near-concurrent lexical burst.
+
+This PASS does not authorize semantic-primary enablement by itself and does not establish production-scale throughput.
 
 ## Preconditions still required before semantic retry execution
 
-After the flag-OFF D1 concurrency verification has passed, a separate semantic retry authorization must explicitly confirm all of the following immediately before any flag change:
+A separate semantic retry authorization must explicitly confirm all of the following immediately before any flag change:
 
 1. the lexical-only live D1 concurrency verification above is recorded PASS;
 2. human gatekeeper confirms the staging window contains controlled test traffic only and no ordinary real end-user research traffic is expected;
@@ -127,7 +136,6 @@ The retry is considered a successful live pacing verification only if all are tr
 
 Any of the following means **STOP / INVESTIGATE** and no semantic success claim:
 
-- required flag-OFF lexical D1 concurrency verification has not passed;
 - `semantic_pacing_wait_ms_total` delta is `0`;
 - `semantic_429` delta is `> 0`;
 - pacing gate is unavailable;
@@ -150,7 +158,7 @@ No cache destruction or data migration is required.
 
 ## Privacy / relevance invariants
 
-Both the lexical D1 concurrency verification and any later semantic retry are purely mechanical/operational.
+Both the completed lexical D1 concurrency verification and any later semantic retry are purely mechanical/operational.
 
 They must not:
 
@@ -163,11 +171,11 @@ They must not:
 
 ## Authorization boundary
 
-This preparation record authorizes only the required **flag-OFF lexical D1 concurrency verification** described above.
+The reviewer-required flag-OFF lexical D1 concurrency verification is complete and PASS.
 
-It authorizes **no live semantic traffic**.
+This preparation record still authorizes **no live semantic traffic**.
 
-A separate reviewer/main-thread gate is still required before:
+A separate reviewer/main-thread gate is required before:
 
 - staging semantic flag ON;
 - semantic retry execution;
