@@ -1,0 +1,155 @@
+name: 0047 Post-STOP Read-Only Evidence
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - .github/workflows/0047-post-stop-readonly.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      RUN_MARKER: 0047-test-34636987403
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Read-only D1 post-state check
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+
+          function d1(sql) {
+            const stdout = execFileSync(
+              'npx',
+              [
+                'wrangler', 'd1', 'execute', 'libedge-db',
+                '--env', 'staging', '--remote',
+                '--command', sql, '--json'
+              ],
+              { encoding: 'utf8', env: process.env }
+            );
+            const payload = JSON.parse(stdout);
+            const result = Array.isArray(payload) ? payload[0] : payload;
+            if (!result?.success) throw new Error(stdout);
+            return result.results || [];
+          }
+
+          const marker = process.env.RUN_MARKER.replaceAll("'", "''");
+
+          const identity = d1(`
+            SELECT id, entity_id, actor_user_id, before_json, after_json
+            FROM admin_action_logs
+            WHERE id='${marker}-audit-admin-entity'
+          `);
+
+          if (identity.length !== 1) {
+            throw new Error('Cannot recover deleted admin target id from synthetic audit fixture');
+          }
+
+          const adminId = Number(identity[0].entity_id);
+          if (!Number.isFinite(adminId)) {
+            throw new Error('Recovered admin target id is not numeric');
+          }
+
+          const deleteAudit = d1(`
+            SELECT id, action, entity_type, entity_id, actor_user_id,
+                   before_json, after_json, created_at
+            FROM admin_action_logs
+            WHERE action='delete'
+              AND entity_type='user'
+              AND entity_id='${adminId}'
+            ORDER BY created_at DESC
+          `);
+
+          const post = d1(`
+            SELECT
+              (SELECT COUNT(*) FROM users WHERE id=${adminId}) AS users,
+              (SELECT COUNT(*) FROM subscriptions WHERE user_id=${adminId}) AS subscriptions,
+              (SELECT COUNT(*) FROM newsletter_subscriptions WHERE user_id=${adminId}) AS newsletter_subscriptions,
+              (SELECT COUNT(*) FROM user_profile_links WHERE user_id=${adminId}) AS user_profile_links,
+              (SELECT COUNT(*) FROM refresh_tokens WHERE user_id=${adminId}) AS refresh_tokens,
+              (SELECT COUNT(*) FROM password_resets WHERE user_id=${adminId}) AS password_resets,
+              (SELECT COUNT(*) FROM ra_user_credentials WHERE user_id=${adminId}) AS ra_user_credentials,
+              (SELECT COUNT(*) FROM announcement_reactions WHERE user_id=${adminId}) AS announcement_reactions,
+              (SELECT COUNT(*) FROM announcement_comments WHERE user_id=${adminId}) AS announcement_comments_owned,
+              (SELECT COUNT(*) FROM notifications WHERE user_id=${adminId}) AS notifications,
+              (SELECT COUNT(*) FROM user_notifications WHERE user_id=${adminId}) AS user_notifications,
+              (SELECT COUNT(*) FROM share_recipients WHERE user_id=${adminId}) AS share_recipients_direct,
+              (SELECT COUNT(*) FROM user_collections WHERE user_id=${adminId}) AS user_collections,
+              (SELECT COUNT(*) FROM file_shares WHERE from_user_id=${adminId}) AS file_shares,
+              (SELECT COUNT(*) FROM support_tickets WHERE user_id=${adminId}) AS support_tickets,
+              (SELECT COUNT(*) FROM ai_usage_logs WHERE user_id=${adminId}) AS ai_usage_logs,
+              (SELECT COUNT(*) FROM ra_link_audit_findings WHERE user_id=${adminId}) AS ra_link_audit_findings,
+              (SELECT COUNT(*) FROM product_requests WHERE user_id=${adminId}) AS product_requests_linked,
+              (SELECT COUNT(*) FROM affiliate_clicks WHERE user_id=${adminId}) AS affiliate_clicks_linked,
+              (SELECT COUNT(*) FROM form_submissions WHERE user_id=${adminId}) AS form_submissions_linked,
+              (SELECT COUNT(*) FROM files WHERE uploaded_by=${adminId}) AS files_linked,
+              (SELECT COUNT(*) FROM collections WHERE created_by=${adminId}) AS collections_linked,
+              (SELECT COUNT(*) FROM collection_files WHERE added_by=${adminId}) AS collection_files_linked,
+              (SELECT COUNT(*) FROM institution_folders WHERE created_by=${adminId}) AS institution_folders_linked,
+              (SELECT COUNT(*) FROM institution_files WHERE uploaded_by=${adminId}) AS institution_files_linked,
+              (SELECT COUNT(*) FROM announcements WHERE created_by=${adminId}) AS announcements_linked,
+              (SELECT COUNT(*) FROM institution_subscriptions WHERE created_by=${adminId}) AS institution_subscriptions_linked,
+              (SELECT COUNT(*) FROM admin_action_logs WHERE actor_user_id=${adminId}) AS admin_action_logs_actor_linked
+          `)[0];
+
+          const queue = d1(`
+            SELECT object_url, reason
+            FROM privacy_r2_purge_queue
+            WHERE object_url LIKE '%${marker}%'
+            ORDER BY object_url
+          `);
+
+          const output = {
+            classification: 'READ_ONLY_POST_STOP_EVIDENCE',
+            runMarker: process.env.RUN_MARKER,
+            d1ReadSucceeded: true,
+            recoveredAdminTargetId: adminId,
+            privacy01: {
+              deleteAuditCount: deleteAudit.length,
+              rows: deleteAudit,
+              passes:
+                deleteAudit.length === 1 &&
+                deleteAudit[0].before_json === null &&
+                deleteAudit[0].after_json === null
+            },
+            scope01AdminPath: {
+              userNotificationsRemaining: Number(post.user_notifications),
+              passes: Number(post.user_notifications) === 0
+            },
+            adminTargetPostState: post,
+            purgeQueueRowsForRunMarker: queue
+          };
+
+          fs.writeFileSync('0047-post-stop-readonly.json', JSON.stringify(output, null, 2));
+          console.log(JSON.stringify(output, null, 2));
+          NODE
+
+      - name: Upload read-only evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: 0047-post-stop-readonly-${{ github.run_id }}
+          path: 0047-post-stop-readonly.json
+          if-no-files-found: error
+          retention-days: 30
