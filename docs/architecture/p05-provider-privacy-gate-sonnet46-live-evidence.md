@@ -14,6 +14,8 @@ AWS Bedrock `anthropic.claude-sonnet-4-6` via the `us.anthropic.claude-sonnet-4-
 
 The intended Bedrock control plane in `us-east-1` was verified with account data-retention mode `none` on 2026-09-12. A live `bedrock-runtime` invocation of the Sonnet 4.6 US inference profile on 2026-09-13 then completed successfully without a retention-policy rejection.
 
+This verification was performed against a LibEdge-owned AWS account, not a personal/individual account. If production deployment uses this same account, no re-verification is required solely on account-ownership grounds. If a separate AWS account is later provisioned for production isolation, this evidence must be re-confirmed against that account.
+
 No credentials, bearer tokens, account identifiers, prompts, or model outputs are recorded here.
 
 ## Official-source reconciliation
