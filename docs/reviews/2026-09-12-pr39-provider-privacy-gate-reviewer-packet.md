@@ -44,13 +44,13 @@ Verify independently from raw sources and diff that:
 ## REVIEWER PACKET COMPLETENESS ATTESTATION
 
 Packet ID: `P05-PROVIDER-PRIVACY-GATE-01`
-Branch/ref/commit: `docs/provider-privacy-gate` / `59c35addce318affb40a7f6b7b584039278288ae`
-Base: `staging`
+Branch/ref: `docs/provider-privacy-gate` (reviewer must fetch the current PR #39 head at review start)
+Base commit: `fac66c70dcd7051935813e174697807a0f38578e` (`staging` at PR creation)
 
 RAW MATERIALS
-[x] PR diff — accessible in PR #39 — current intended version
-[x] `docs/architecture/p05-provider-privacy-gate.md` — full file in PR — current intended version
-[x] `docs/architecture/p05-ai-assistant-architecture-v0.1.md` — accessible on `staging` — governing parent architecture
+[x] Exact `base -> current PR head` diff — obtainable from git even if PR metadata is unavailable
+[x] `docs/architecture/p05-provider-privacy-gate.md` — full file on the PR branch — current intended version
+[x] `docs/architecture/p05-ai-assistant-architecture-v0.1.md` — governing parent architecture on the base
 [x] Official provider sources — direct URLs embedded in gate record
 
 CONSISTENCY
@@ -64,4 +64,4 @@ RESULT: COMPLETE
 
 ## Access fallback
 
-If GitHub PR metadata or the PR description is temporarily unavailable because of API/rate-limit failure, this file is the authoritative reviewer-packet framing for PR #39. The reviewer must still inspect the exact branch diff and raw canonical files from git; this file does not substitute for the diff.
+If GitHub PR metadata or the PR description is temporarily unavailable because of API/rate-limit failure, this file is the authoritative reviewer-packet framing for PR #39. The reviewer must still fetch the current `docs/provider-privacy-gate` head and inspect the exact `fac66c70dcd7051935813e174697807a0f38578e -> current head` diff plus the raw canonical files. This file does not substitute for the diff.
