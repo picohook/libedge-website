@@ -108,7 +108,7 @@ Claims supported by current official AWS sources:
 - AWS documentation gives Claude Opus 4.8 as an example that can permit `none`.
 - Claude Fable 5 and Claude Fable 5.1 currently require human review and list `allowed_modes: ["aws_review", "provider_data_share"]`.
 - Under `aws_review`, inputs/outputs may be retained within AWS for up to 30 days and may be reviewed by AWS; content is not shared with the model provider.
-- `provider_data_share` is now documented as a legacy compatibility mode. Current AWS documentation explicitly says Bedrock does not share content with model providers today; for Fable 5/5.1 it results in the same practical handling as `aws_review`.
+- `provider_data_share` is now documented as a legacy mode. Current AWS documentation explicitly says Bedrock does not share content with model providers today; for Fable 5/5.1 it results in the same practical handling as `aws_review`.
 - Bedrock customer prompts/completions are not used to train/improve base models.
 - Claude Fable 5.1 is the current Fable route under review and is available on Bedrock as of September 2026.
 
@@ -117,23 +117,21 @@ Sources:
 - https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html
 - https://docs.aws.amazon.com/bedrock/latest/userguide/abuse-detection.html
 - https://docs.aws.amazon.com/bedrock/latest/userguide/data-protection.html
-- https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-fable-5.html
-- https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-fable-5-1.html
+- https://aws.amazon.com/blogs/security/enforce-zero-data-retention-on-amazon-bedrock-with-bedrock-projects-and-service-control-policies/
+- https://aws.amazon.com/blogs/aws/anthropic-claude-fable-5-on-aws-mythos-class-capabilities-with-built-in-safeguards-now-available/
+- https://aws.amazon.com/blogs/aws/aws-weekly-roundup-claude-fable-5-1-on-aws-amazon-linux-2027-preview-aws-certified-ai-business-strategist-and-more-september-7-2026/
 
-#### Source conflict recorded from reviewer follow-up
+#### Provider-data-share timeline reconciliation
 
-Reviewer follow-up requested a historical/current split stating that older Claude Fable 5 used `provider_data_share` with content actually reaching Anthropic, while current Claude Fable 5.1 uses `aws_review` and keeps content within AWS.
+The reviewer and implementer had apparently conflicting readings because the official AWS source set itself contains a **time-dependent policy change**.
 
-That historical sharing claim is **not supported by the current official AWS documentation checked on 2026-09-12**. AWS now states that `provider_data_share` is a legacy permission mode and that Bedrock does not share customer content with model providers today; it also lists both Fable 5 and Fable 5.1 as requiring human review through `aws_review` or the legacy-compatible `provider_data_share` setting.
+- **Historical Fable 5 behavior:** AWS's July 7, 2026 Security Blog describes `provider_data_share` as data being shared with the model provider and retained for up to 30 days, and uses Claude Fable 5 as the concrete example requiring that mode. This supports the reviewer's historical claim that the original Fable 5 access path permitted actual provider sharing.
+- **Current behavior:** AWS documentation and AWS's September 2, 2026 update introduce `aws_review`, mark `provider_data_share` as legacy, and state that content sharing with model providers is no longer supported. Both Claude Fable 5 and Claude Fable 5.1 now require human review through `aws_review` (or the more-permissive legacy setting), with retained content staying inside the AWS boundary.
+- **Current Fable candidate:** Claude Fable 5.1 is therefore evaluated under the current `aws_review` mechanism, not by projecting the historical Fable 5 provider-sharing behavior onto the newer route.
 
-Conflict status: `OPEN — historical behavior not established by current source set`.
+Conflict status: `RESOLVED — documentation changed over time; historical provider sharing and current AWS-only review are both supported when dated correctly.`
 
-Conservative consequence: do not assert historical provider sharing as fact in the gate record. The privacy verdict does not become less strict: the standard Fable 5.1 route remains `FAIL` because up-to-30-day AWS retention and possible AWS human review conflict with the locked LibEdge research-interest privacy invariant.
-
-Reconciliation trigger for the historical claim:
-
-- locate an archived official AWS/Anthropic source or dated service term that explicitly establishes actual provider sharing for Fable 5 under the legacy mode; or
-- obtain a provider/account record that unambiguously distinguishes the historical handling from today's documented behavior.
+The privacy verdict remains unchanged: the standard Fable 5.1 route is `FAIL` because up-to-30-day retention and possible AWS human review conflict with the locked LibEdge research-interest privacy invariant. The historical provider-sharing fact is recorded for audit accuracy but is not needed to reach that verdict.
 
 Reconciliation trigger before any Bedrock PASS:
 
@@ -146,7 +144,7 @@ Reconciliation trigger before any Bedrock PASS:
 1. **No candidate is PASS yet.** Public documentation establishes potential eligibility but does not establish the LibEdge account/project's contractual or runtime ZDR state.
 2. OpenAI first-party `gpt-5.6-sol` + Responses, Anthropic first-party `claude-opus-5`, and Bedrock `claude-opus-4-8` remain candidate routes, but are blocked pending exact account/contract/configuration verification.
 3. Bedrock `claude-fable-5.1` demonstrates why provider-level approval is invalid: its standard retention/human-review requirement differs materially from models on the same Bedrock platform that permit `none`.
-4. The reviewer-requested historical `provider_data_share -> Anthropic` claim remains unresolved because it conflicts with current official AWS documentation; it is not used to justify the verdict.
+4. The Fable record is time-sensitive: original Fable 5 documentation permitted `provider_data_share`, while current Fable 5/5.1 documentation uses AWS-only `aws_review`; neither standard route satisfies the LibEdge privacy invariant.
 5. The privacy gate therefore remains open. **Capability, cost, latency, and product-quality comparison must not begin as a model-selection exercise until at least one exact route receives PASS.**
 
 ## Decision boundary
