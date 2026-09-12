@@ -13,6 +13,28 @@ Before a Reviewer Packet is handed to an independent reviewer, the main engineer
 
 A separate checklist file is not sufficient evidence of completion. Every full Reviewer Packet must carry a completed attestation block showing the actual materials and checks for that packet.
 
+## PR-centered review handoff
+
+For ordinary LibEdge reviewer handoffs, prefer a GitHub Pull Request as the durable review surface so that the diff, packet, discussion, and reviewer result remain together.
+
+The human gatekeeper should not be required to copy review materials between AI threads. The minimum handoff message is:
+
+`Kontrol et: #<PR number>`
+
+The PR number is intentionally retained. A content-free instruction such as `Kontrol et.` is insufficient when multiple workstreams or reviewable PRs may exist, because the reviewer must not guess which PR is intended.
+
+The reviewer must use the supplied PR number to read the PR description, changed files/diff, canonical records, and relevant repository content directly from GitHub. The reviewer must treat repository raw material as authoritative over any implementer summary.
+
+If GitHub/API access fails or is rate-limited, the reviewer must report the access failure against the supplied PR number rather than guessing another PR, selecting the most recent PR, or asking the human gatekeeper to copy the repository contents into the conversation. The review remains incomplete until the referenced raw material can actually be inspected.
+
+The PR description must contain the full reviewer packet required by this checklist, including scope, exact version context, raw-material references, and a decision boundary that explicitly states what the review/change does **not** authorize. This packet must be written for the actual PR and must not be reduced to unexamined boilerplate.
+
+Reviewer results should remain attached to the PR discussion/review surface when tooling permits. Before the main engineering thread proceeds from a reviewer result, the human gatekeeper should have an opportunity to see the verdict. In particular, `REJECTED` and `ACCEPTED WITH MODIFICATION` must not be silently converted into an implementer continuation without human visibility and main-thread reconciliation.
+
+A plain `ACCEPTED` result may proceed after the human gatekeeper has seen the result and says to continue; this preserves human gatekeeper awareness without requiring copy/paste of the reviewer output.
+
+This PR-centered handoff protocol changes the transport of review material, not reviewer independence, decision authority, or the existing single-writer/control-plane rules.
+
 ## Required embedded attestation block
 
 Every full Reviewer Packet must contain a block equivalent to:
@@ -86,4 +108,4 @@ If an incomplete packet is nevertheless sent:
 3. correct the packet before requesting a full red-team conclusion;
 4. do not reuse conclusions that depended on falsely claimed raw-material completeness as if they came from a complete packet.
 
-Last updated: 2026-09-10
+Last updated: 2026-09-12
