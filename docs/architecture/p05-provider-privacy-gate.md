@@ -2,7 +2,7 @@
 
 Status: `PROPOSED / EVIDENCE REVIEW`
 
-Checked: 2026-09-12
+Checked: 2026-09-13
 
 ## Purpose
 
@@ -24,7 +24,7 @@ A provider-wide privacy statement is insufficient where model, endpoint, feature
 
 - `PASS` — the exact route is verified to satisfy the LibEdge privacy invariant for the intended configuration.
 - `FAIL` — verified behavior conflicts with the invariant.
-- `UNVERIFIED / BLOCKED` — public evidence suggests the route may be eligible, but required account-, contract-, model-, endpoint-, region-, or configuration-level verification is still missing. It must not enter the model-selection pool.
+- `UNVERIFIED / BLOCKED` — public evidence suggests the route may be eligible, but required account-, contract-, model-, endpoint-, region-, or configuration-level verification is still missing or internally inconsistent. It must not enter the model-selection pool.
 
 Public documentation alone does not prove that the LibEdge account/project has an approved ZDR configuration. Account/project verification is therefore required before a candidate can receive `PASS` where the control is approval- or configuration-dependent.
 
@@ -39,7 +39,7 @@ For every candidate, verify:
 5. region and data-residency behavior;
 6. exact model/endpoint eligibility for ZDR or an equivalent contractual control.
 
-The gate fails closed: ambiguity or missing required evidence is `UNVERIFIED / BLOCKED`, not PASS.
+The gate fails closed: ambiguity, conflicting live evidence, or missing required evidence is `UNVERIFIED / BLOCKED`, not PASS.
 
 ## Candidate matrix
 
@@ -47,7 +47,7 @@ The gate fails closed: ambiguity or missing required evidence is `UNVERIFIED / B
 |---|---|---|---|---|---|---|---|
 | OpenAI `gpt-5.6-sol` + `/v1/responses` + first-party OpenAI API | Default API abuse-monitoring may retain customer content up to 30 days. Approved ZDR excludes customer content from abuse-monitoring logs; for Responses, `store` is forced false under ZDR. | API data is not used to train/improve OpenAI models by default unless the customer explicitly opts in. | Under OpenAI ZDR, customer content is stated not to be available to OpenAI personnel for review. | First-party OpenAI API; third-party tools/MCP would create separate data paths and are outside this route. Exact current subprocessor list must be checked during contractual/account verification. | Data residency is project-configured; non-US regions have additional approval/ZDR-amendment requirements. | `/v1/responses` is ZDR-eligible, and `gpt-5.6-sol` supports Responses. Actual LibEdge org/project ZDR approval is not yet verified. | `UNVERIFIED / BLOCKED` |
 | Anthropic `claude-opus-5` + first-party Anthropic API / Messages | Standard Anthropic API inputs/outputs are deleted within 30 days, subject to policy/legal exceptions. Some approved enterprise API customers may obtain ZDR arrangements. | Anthropic states commercial-customer data is not used to train generative models. | ZDR documentation still preserves limited safety/legal exceptions; the exact LibEdge agreement and operational access terms must be verified. | First-party Anthropic API; Anthropic uses multiple cloud service providers documented in its subprocessor list. | By default processing may occur across multiple geographic regions; storage is US-only unless otherwise agreed. US-only processing can be contractually requested. | ZDR applies only to the Anthropic API / products using the commercial organization API key, not beta products, Workbench, Claude for Work, or other products unless explicitly agreed. Actual LibEdge ZDR agreement is not verified. | `UNVERIFIED / BLOCKED` |
-| AWS Bedrock `anthropic.claude-opus-4-8` + Bedrock inference route | AWS documents that models whose `allowed_modes` include `none` can operate with zero data retention. Bedrock documentation gives Claude Opus 4.8 as an example that permits `none`. | AWS states Bedrock customer inputs/outputs are not used to train or improve base foundation models. | Under `none`, request/response data is not durably stored; AWS documentation describes Bedrock's default model as zero operator access, subject to model-specific abuse-detection exceptions. | Inference remains within AWS-operated Bedrock deployment accounts; AWS states third-party model providers do not have access to customer prompts/completions. | Cross-region inference can process data in destination regions; exact route/region configuration must be fixed and verified. | Public documentation indicates this model can permit `none`, but the actual LibEdge account/project effective mode and model `allowed_modes` have not been read live. | `UNVERIFIED / BLOCKED` |
+| AWS Bedrock `anthropic.claude-opus-4-8` + Bedrock inference route | AWS documents that this model permits `none`. Live Bedrock control-plane evidence for the intended `us-east-1` account shows account mode `none`; however, the same bearer-token session against Mantle returns account mode `inherit` and the model's effective mode as `default` from `model_default`. | AWS states Bedrock customer inputs/outputs are not used to train or improve base foundation models. | Under verified `none`, request/response data would not be retained or reviewed. The current Mantle route has not demonstrated that effective mode. | Bedrock inference remains within AWS-operated infrastructure; AWS states third-party model providers do not receive prompts/completions under current Bedrock handling. | Intended region is `us-east-1`; cross-region behavior remains to be pinned before any PASS. | Live model metadata confirms `allowed_modes` contains `none`, but the same live Mantle surface reports `status: unavailable`, `mode: default`, `source: model_default`. This conflicts with the control-plane account `none` reading and must be reconciled before PASS. | `UNVERIFIED / BLOCKED` |
 | AWS Bedrock `anthropic.claude-fable-5.1` + Bedrock inference route | Current AWS documentation requires `aws_review`; prompts/completions may be retained within the AWS boundary for up to 30 days. | AWS states Bedrock inputs/outputs are not used to train base foundation models. | `aws_review` permits AWS human review where required by the model provider's access condition. | Under the current mechanism, content remains within the AWS boundary and is not shared with Anthropic. | If cross-region inference is enabled, retained inputs/outputs are stored in destination regions. | Current public docs list Fable 5.1 as requiring human review with `allowed_modes: ["aws_review", "provider_data_share"]`; `none` is not part of the standard route. | `FAIL` for the standard route |
 
 ## Evidence record
@@ -104,13 +104,13 @@ Reconciliation trigger before PASS:
 Claims supported by current official AWS sources:
 
 - Bedrock supports explicit data-retention modes, including `none` for zero data retention where the model permits it.
+- Effective mode is documented as the first non-`inherit` value in `project -> account -> model default` order.
 - A model's `allowed_modes` determines whether `none` is available; the control is model-specific.
-- AWS documentation gives Claude Opus 4.8 as an example that can permit `none`.
+- AWS documentation gives Claude Opus 4.8 as an example that permits `none`.
 - Claude Fable 5 and Claude Fable 5.1 currently require human review and list `allowed_modes: ["aws_review", "provider_data_share"]`.
 - Under `aws_review`, inputs/outputs may be retained within AWS for up to 30 days and may be reviewed by AWS; content is not shared with the model provider.
 - `provider_data_share` is now documented as a legacy mode. Current AWS documentation explicitly says Bedrock does not share content with model providers today; for Fable 5/5.1 it results in the same practical handling as `aws_review`.
 - Bedrock customer prompts/completions are not used to train/improve base models.
-- Claude Fable 5.1 is the current Fable route under review and is available on Bedrock as of September 2026.
 
 Sources:
 
@@ -125,27 +125,50 @@ Sources:
 
 The reviewer and implementer had apparently conflicting readings because the official AWS source set itself contains a **time-dependent policy change**.
 
-- **Historical Fable 5 behavior:** AWS's July 7, 2026 Security Blog describes `provider_data_share` as data being shared with the model provider and retained for up to 30 days, and uses Claude Fable 5 as the concrete example requiring that mode. This supports the reviewer's historical claim that the original Fable 5 access path permitted actual provider sharing.
-- **Current behavior:** AWS documentation and AWS's September 2, 2026 update introduce `aws_review`, mark `provider_data_share` as legacy, and state that content sharing with model providers is no longer supported. Both Claude Fable 5 and Claude Fable 5.1 now require human review through `aws_review` (or the more-permissive legacy setting), with retained content staying inside the AWS boundary.
+- **Historical Fable 5 behavior:** AWS's July 7, 2026 Security Blog describes `provider_data_share` as data being shared with the model provider and retained for up to 30 days, and uses Claude Fable 5 as the concrete example requiring that mode.
+- **Current behavior:** current AWS documentation marks `provider_data_share` as legacy and states that content sharing with model providers is no longer supported. Both Claude Fable 5 and Claude Fable 5.1 now require human review through `aws_review` (or the more-permissive legacy setting), with retained content staying inside the AWS boundary.
 - **Current Fable candidate:** Claude Fable 5.1 is therefore evaluated under the current `aws_review` mechanism, not by projecting the historical Fable 5 provider-sharing behavior onto the newer route.
 
 Conflict status: `RESOLVED — documentation changed over time; historical provider sharing and current AWS-only review are both supported when dated correctly.`
 
-The privacy verdict remains unchanged: the standard Fable 5.1 route is `FAIL` because up-to-30-day retention and possible AWS human review conflict with the locked LibEdge research-interest privacy invariant. The historical provider-sharing fact is recorded for audit accuracy but is not needed to reach that verdict.
+The privacy verdict remains unchanged: the standard Fable 5.1 route is `FAIL` because up-to-30-day retention and possible AWS human review conflict with the locked LibEdge research-interest privacy invariant.
+
+#### Live account/model verification — 2026-09-13
+
+Read-only verification was performed against the intended `us-east-1` Bedrock context. No credentials or bearer tokens are recorded in this repository.
+
+Observed control-plane evidence:
+
+- `aws bedrock get-account-data-retention --region us-east-1` -> `mode: none`, updated at `2026-09-12T21:42:53.317Z`;
+- `aws bedrock get-foundation-model-availability --model-id anthropic.claude-opus-4-8 --region us-east-1` -> `authorizationStatus: AUTHORIZED`, `entitlementAvailability: AVAILABLE`, `regionAvailability: AVAILABLE`;
+- `aws bedrock get-foundation-model --model-identifier anthropic.claude-opus-4-8 --region us-east-1` -> model `ACTIVE`.
+
+Observed Mantle evidence using a fresh short-term bearer token derived from the same CLI credential context and `us-east-1` region:
+
+- `GET https://bedrock-mantle.us-east-1.api.aws/v1/data_retention` -> `mode: inherit`;
+- `GET https://bedrock-mantle.us-east-1.api.aws/v1/models/anthropic.claude-opus-4-8` -> `allowed_modes` includes `none`, but `mode: default`, `source: model_default`, `status: unavailable`;
+- the same bearer token against Bedrock control-plane `GET https://bedrock.us-east-1.amazonaws.com/data-retention` -> `mode: none` with the same account update timestamp as the CLI control-plane result.
+
+Conflict status: `OPEN — live provider-surface inconsistency`.
+
+Why this blocks PASS:
+
+AWS documents `effective mode = first non-inherit value of (project -> account -> model default)`. Under that rule, an account-level `none` combined with a project-level `inherit` should resolve to `none`, not `model_default/default`. The current live Mantle result therefore does not reconcile with the control-plane account setting. Because the exact inference-facing surface does not yet demonstrate the expected effective `none` mode and reports the model unavailable, the route remains `UNVERIFIED / BLOCKED` despite `allowed_modes` containing `none`.
 
 Reconciliation trigger before any Bedrock PASS:
 
-- live-read the intended Bedrock account/project data-retention configuration;
-- live-read the exact model's effective mode / `allowed_modes`;
-- pin the intended AWS region or cross-region inference profile and record resulting residency behavior.
+- obtain an AWS explanation or provider-side correction that reconciles control-plane account `none` with Mantle account `inherit` / model `default` for the same credential/region context; or
+- obtain a later live Mantle observation for the intended route showing effective `mode: none`, with the source attributable to the applicable account/project scope, and `status: available`;
+- pin the exact inference region/profile and confirm no project-level override weakens the effective mode.
 
 ## Findings
 
-1. **No candidate is PASS yet.** Public documentation establishes potential eligibility but does not establish the LibEdge account/project's contractual or runtime ZDR state.
-2. OpenAI first-party `gpt-5.6-sol` + Responses, Anthropic first-party `claude-opus-5`, and Bedrock `claude-opus-4-8` remain candidate routes, but are blocked pending exact account/contract/configuration verification.
-3. Bedrock `claude-fable-5.1` demonstrates why provider-level approval is invalid: its standard retention/human-review requirement differs materially from models on the same Bedrock platform that permit `none`.
-4. The Fable record is time-sensitive: original Fable 5 documentation permitted `provider_data_share`, while current Fable 5/5.1 documentation uses AWS-only `aws_review`; neither standard route satisfies the LibEdge privacy invariant.
-5. The privacy gate therefore remains open. **Capability, cost, latency, and product-quality comparison must not begin as a model-selection exercise until at least one exact route receives PASS.**
+1. **No candidate is PASS yet.**
+2. OpenAI first-party `gpt-5.6-sol` + Responses and Anthropic first-party `claude-opus-5` remain blocked pending exact account/contract verification.
+3. Bedrock `anthropic.claude-opus-4-8` has stronger live evidence than before: the account control plane is `none`, the model is authorized/available in the control plane, and live model metadata confirms `allowed_modes` includes `none`. However, Mantle currently reports account `inherit`, model effective `default/model_default`, and model `unavailable`. This unresolved provider-surface inconsistency blocks PASS.
+4. Bedrock `claude-fable-5.1` remains `FAIL` on the standard route because it requires AWS retention/human review.
+5. The Fable record remains time-sensitive: original Fable 5 documentation permitted `provider_data_share`, while current Fable 5/5.1 documentation uses AWS-only `aws_review`.
+6. The privacy gate therefore remains open. **Capability, cost, latency, and product-quality comparison must not begin as a model-selection exercise until at least one exact route receives PASS.**
 
 ## Decision boundary
 
@@ -161,4 +184,4 @@ This record does **not**:
 
 ## Next verification step
 
-For each route that is to remain under consideration, obtain account-/contract-/configuration-level evidence required by its reconciliation trigger. Promote a candidate to `PASS` only after that exact route is verified; only PASS routes may enter the later capability/cost/latency selection stage.
+Resolve the Bedrock control-plane/Mantle inconsistency or verify another candidate's exact account/contract configuration. Promote a candidate to `PASS` only after the exact inference route is internally consistent and verified; only PASS routes may enter the later capability/cost/latency selection stage.
