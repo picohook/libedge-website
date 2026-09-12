@@ -26,6 +26,8 @@ The research-answering path is therefore designed as:
 
 Each item admitted to the Evidence Pack receives an immutable `evidence_id`. Every factual research claim produced by the AI layer must cite one or more of those evidence IDs. A claim without an evidence ID must not be rendered to the user as a factual research synthesis.
 
+`ResearchWork.id` and `evidence_id` are intentionally distinct. `ResearchWork.id` is a bibliographic/work identity that may recur across requests or Evidence Packs, while `evidence_id` is an immutable reference assigned within a specific Evidence Pack for claim grounding. The AI grounding contract must not treat the bibliographic work ID as the pack-local evidence reference.
+
 A citation reference alone is not sufficient: the cited evidence must actually support the claim. The grounding validator is the response boundary responsible for rejecting, weakening, or omitting unsupported claims.
 
 Locked rule:
@@ -69,6 +71,8 @@ Its retrieval contract is:
 
 `Discover(query) -> ResearchWork[] -> EvidencePack`
 
+The current DISCOVER implementation places authentication, rate limiting, caching, retrieval-policy selection, provider calls, enrichment, telemetry, and HTTP response construction in the research router. Before AI orchestration is implemented, the retrieval operation consumed by the AI layer must be exposed behind a service boundary that returns `ResearchWork[]`. The AI layer must not call provider-specific or retrieval-mode-specific branches directly.
+
 Lexical/semantic/hybrid identity remains below this interface. The AI orchestration layer must not embed lexical-specific assumptions such as lexical score semantics, ranking mechanics, or a fixed result behavior.
 
 Semantic-primary may therefore be enabled later through its separate Track A/B process without requiring a redesign of the AI Assistant architecture. Only retrieval policy changes; the AI-facing evidence contract remains stable.
@@ -87,6 +91,8 @@ Do not send unnecessary user/account context to the LLM, including:
 
 Raw research query text, complete prompts, model responses, and other research-interest-bearing payloads must not be written to application logs or telemetry.
 
+The current DISCOVER HTTP surface carries the raw research query in the `q` query-string parameter. Response-side `Cache-Control: private, no-store` does not by itself prevent request URLs from appearing in infrastructure or observability logs. Protection of that request-log surface is a shared responsibility with the existing D-016 Track A observability work, which plans query-string redaction; this AI Assistant architecture relies on that privacy control rather than defining a duplicate observability mechanism.
+
 Existing privacy-safe aggregate telemetry remains a separate concern and must not be expanded to contain query text, topics, research interests, or user identifiers.
 
 ## Fail-closed behavior
@@ -99,10 +105,20 @@ If the available Evidence Pack cannot support a reliable synthesis, LibEdge must
 
 The system must prefer an explicit evidence limitation over an unsupported answer.
 
+## Reconciliation result
+
+The current LibEdge/DISCOVER code is compatible with this architecture, with the explicit interface details recorded above:
+
+1. expose DISCOVER retrieval to the AI layer through a retrieval-independent `ResearchWork[]` service boundary rather than router/provider internals;
+2. keep pack-local immutable `evidence_id` distinct from bibliographic `ResearchWork.id`;
+3. treat raw-query request-log protection as a shared privacy responsibility with the existing Track A observability/query-string-redaction work.
+
+These clarifications do not reopen or modify the two P0 invariants, D-016, or the closed 0047/0049 privacy work.
+
 ## Next step
 
 No AI Assistant implementation code has been authorized or started by this architecture record.
 
-The next step is to compare these architecture boundaries with the current LibEdge/DISCOVER code and refine this document only where the existing implementation requires explicit interface detail. No new architecture decision should be introduced silently during that reconciliation.
+Architecture-to-code reconciliation is complete at the boundary level described above. No new architecture decision was introduced by that reconciliation.
 
-After that reconciliation, the first real gate is Provider Privacy Gate evaluation and provider/model/endpoint selection.
+The first real gate after this reconciliation is Provider Privacy Gate evaluation and provider/model/endpoint selection.
