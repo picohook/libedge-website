@@ -98,6 +98,11 @@ RESEARCH_SEMANTIC_PRIMARY_ENABLED = "false"
 RESEARCH_SEMANTIC_CANDIDATE_DEPTH = "50"
 RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS = "UNVERIFIED"
 
+[env.production.observability]
+enabled = true
+head_sampling_rate = 1.0
+redact_query_string = true
+
 # Production deploys fail closed when core application secrets are missing.
 # Secret values remain encrypted in Cloudflare and are never stored here.
 [env.production.secrets]
