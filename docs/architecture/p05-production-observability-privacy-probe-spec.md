@@ -2,257 +2,280 @@
 
 Status: `PROPOSED / SEPARATE REVIEW REQUIRED / NOT EXECUTED`
 
-Date: 2026-09-12
+Date: 2026-09-13
 
 ## Purpose
 
-Lock the exact synthetic privacy-probe shape that must be independently accepted **before** any production observability execution authorization is requested.
+Lock the exact authenticated synthetic privacy-probe shape that must be independently accepted **before** any production observability execution authorization.
 
 This probe exists only to verify the effective Cloudflare Workers Logs privacy surface after the separately reviewed observability configuration is deployed.
 
 This document does **not** authorize deployment or probe execution.
 
-## Why this probe shape is intentionally non-authenticating
+## Exact production target
 
-The privacy check must test whether Cloudflare invocation logs expose:
-
-- URL query-string content;
-- `Authorization` header content;
-- `Cookie` header content;
-- unexpected request metadata fields.
-
-Using a real authenticated research request would unnecessarily expose a real credential/session to the probe itself and could execute application research behavior or telemetry writes.
-
-The preferred probe therefore uses a synthetic **CORS preflight `OPTIONS` request** to the real research endpoint path. The repository's top-level CORS middleware handles `OPTIONS` and permits `OPTIONS` in its configured method list, so this shape is intended to exercise the same production Worker/request-log surface without invoking the research handler's normal GET behavior.
-
-## Exact production endpoint
-
-Proposed exact URL:
-
-`https://www.libedge.com/api/research/search?q=LIBEDGE_OBS_Q_20260912_A1`
-
-Before execution authorization, the reviewer/human gatekeeper must confirm that this exact public production route currently reaches the intended production Worker:
+Worker identity:
 
 `libedge-api-prod`
 
-If that mapping cannot be independently confirmed, this probe specification is **not executable**. Do not silently substitute another hostname; return to review with the effective production URL/route.
+Direct production Worker URL, confirmed from the repository's production Pages proxy mapping:
 
-## Exact HTTP request shape
+`https://libedge-api-prod.agursel.workers.dev`
 
-Method:
-
-`OPTIONS`
-
-Path:
+Exact path:
 
 `/api/research/search`
 
-Exact query string:
+Exact method:
 
-`q=LIBEDGE_OBS_Q_20260912_A1`
+`GET`
 
-Exact request headers:
+The Worker is called directly, rather than through Pages, so the inspected invocation record corresponds to the production Worker whose observability is being enabled.
+
+## Exact query-string sentinel
+
+The query is deliberately invalid by length so authentication succeeds but request handling stops at the existing 2–300 character query-validation boundary before rate limiting, research telemetry, provider retrieval, or research-cache writes.
+
+Exact `q` value: 301 characters.
 
 ```text
-Origin: https://www.libedge.com
-Access-Control-Request-Method: GET
-Access-Control-Request-Headers: authorization
-Authorization: Bearer LIBEDGE_OBS_AUTH_20260912_A1
-Cookie: obs_probe=LIBEDGE_OBS_COOKIE_20260912_A1
+LIBEDGE_OBS_QS_20260913_A7F3_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
-Request body:
+Exact request URL:
 
-`NONE`
+```text
+https://libedge-api-prod.agursel.workers.dev/api/research/search?q=LIBEDGE_OBS_QS_20260913_A7F3_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
 
-No real access token, JWT, refresh token, session cookie, user ID, email, research topic, DOI/title, or customer data may be used.
+## Synthetic authentication
 
-The three sentinel values are deliberately non-secret and unique:
+The probe must be authenticated, but must not use a real user account or a persistent real-user session.
 
-- query sentinel: `LIBEDGE_OBS_Q_20260912_A1`
-- authorization sentinel: `LIBEDGE_OBS_AUTH_20260912_A1`
-- cookie sentinel: `LIBEDGE_OBS_COOKIE_20260912_A1`
+Immediately before the single request, generate a short-lived HS256 JWT using the existing production `JWT_SECRET` with this synthetic payload shape:
 
-Any change to these values or the request shape requires fresh probe-spec review.
+```json
+{
+  "sub": "libedge-observability-probe",
+  "role": "probe",
+  "exp": "NOW_PLUS_120_SECONDS"
+}
+```
+
+Requirements:
+
+- `exp` is exactly 120 seconds after issuance;
+- payload contains no email, real user ID, institution ID, name, research topic, DOI/title, or other customer/personal data;
+- token is used once for this probe only;
+- token is never committed or included in reviewer-visible evidence;
+- evidence inspection/reporting occurs only after the token has expired.
+
+The token is sent as the `authToken` cookie. Current `requireAuth()` uses a Bearer token only when the `Authorization` header begins with `Bearer `; otherwise it falls back to the `authToken` cookie.
+
+## Exact request headers
+
+The single request must contain exactly these privacy-relevant headers in addition to ordinary transport headers added by the client/platform:
+
+```text
+Authorization: LibEdgeProbe LIBEDGE_OBS_AUTHZ_20260913_A7F3
+Cookie: authToken=<EPHEMERAL_120_SECOND_SYNTHETIC_JWT>; libedge_probe=LIBEDGE_OBS_COOKIE_20260913_A7F3
+User-Agent: LibEdge-Observability-Probe/2026-09-13
+Accept: application/json
+```
+
+`Authorization: LibEdgeProbe ...` is intentionally non-Bearer. Under the current middleware it is ignored for authentication and the valid short-lived cookie JWT is used instead. This lets the same authenticated invocation carry a non-secret Authorization sentinel.
+
+`libedge_probe` is a non-secret synthetic cookie sentinel used only for the log privacy check.
+
+## Request body
+
+No request body is sent.
+
+The method is `GET`; do not attach a body or `Content-Type` header.
 
 ## Expected application response
 
-Expected response status:
+Expected status:
 
-`204 No Content`
+`400 Bad Request`
 
-The response body should be empty because the request is a CORS preflight rather than a research execution.
+Expected JSON code:
 
-A materially different response means the probe did not exercise the reviewed path as expected. Treat that as:
+`RESEARCH_QUERY_INVALID`
 
-`STOP — PROBE SHAPE/ROUTING NOT CONFIRMED`
+A `401` means synthetic authentication failed and is a hard STOP. Do not silently retry with a different token/request shape.
 
-Do not automatically retry with a modified request.
+A response that reaches provider/retrieval behavior instead of the query-validation error is also a hard STOP.
 
-## Expected application-side effects
+## Why the 301-character invalid query is intentional
 
-The probe must not:
+The current research route performs:
 
-- authenticate a real user;
-- execute a real research search;
-- create a research result;
-- mutate customer-visible application state;
-- invoke semantic-primary;
-- change D1 schema or application records;
-- write R2/KV/DO state intentionally;
-- carry a real secret or credential.
+1. `requireAuth()`;
+2. query normalization/validation;
+3. only after valid query: protected rate-limit, telemetry, and discovery/provider logic.
 
-The unavoidable side effect is the invocation/observability record created by the separately reviewed Workers Logs configuration.
+Therefore a 301-character synthetic query:
 
-If execution evidence suggests that the research GET handler or another mutating application path ran, STOP and return to review.
+- proves the request is authenticated;
+- exercises the exact `/api/research/search?q=...` query-string privacy risk;
+- stops before OpenAlex/Crossref;
+- stops before research cache writes;
+- stops before research request telemetry;
+- creates no customer-visible application state;
+- contains no real research interest or user data.
 
-## Exact invocation-log verification
+## Exact execution count
 
-After the single probe invocation, inspect the matching invocation record before any capacity observation window begins.
+Execute this exact request once.
 
-### A. Required visible classification data
+No automatic retry is authorized. Any failed setup/authentication/routing attempt requires return to review before another production probe.
 
-The log must preserve enough non-sensitive information to establish that the path was:
+## Mandatory post-probe log verification
+
+Locate the single invocation record by UTC timestamp, Worker identity, method, path, and expected 400 response. Inspect the **complete available invocation record**, not only the obvious request URL field.
+
+### A. Path/classification check
+
+The path needed for later Track A classification must remain visible:
 
 `/api/research/search`
 
-The query value is not needed for classification and must not be visible.
+The query value is not needed and must not be visible.
 
 ### B. Exact sentinel non-disclosure checks
 
-Search the **entire invocation record**, not only the obvious URL/header fields, for each exact sentinel.
-
-The following strings must have zero occurrences:
+The following strings must have zero occurrences anywhere in the complete invocation record:
 
 ```text
-LIBEDGE_OBS_Q_20260912_A1
-LIBEDGE_OBS_AUTH_20260912_A1
-LIBEDGE_OBS_COOKIE_20260912_A1
+LIBEDGE_OBS_QS_20260913_A7F3_
+LIBEDGE_OBS_AUTHZ_20260913_A7F3
+LIBEDGE_OBS_COOKIE_20260913_A7F3
 ```
 
-Also verify that the raw query representation is not present as:
+Also verify that no raw `q=` representation or URL variant contains the 301-character query.
 
-```text
-q=LIBEDGE_OBS_Q_20260912_A1
-```
+### C. Credential/header checks
 
-Any occurrence anywhere in the inspected record is a hard STOP.
+All must pass:
 
-### C. Request-body check
+1. no clear-text Authorization sentinel/value appears;
+2. no clear-text cookie sentinel/value appears;
+3. the ephemeral `authToken` JWT is not exposed in clear text;
+4. no decoded JWT payload value (`libedge-observability-probe` or role `probe`) is surfaced due to header/cookie decoding or platform enrichment.
 
-The record must contain no request body because the probe sends no body.
+Reviewer-visible evidence must state only PASS/FAIL for the ephemeral JWT exposure check; it must never reproduce the JWT.
 
-Any unexpected body/payload field containing request content is a hard STOP pending review.
+### D. Request-body check
 
-### D. Open-ended full-field inventory
+The probe sends no body. Verify that no request body/content field is persisted.
 
-Enumerate the complete observed field/key tree for the matching invocation record, including nested request, response, network, trace, and metadata objects if present.
+A size/absence indicator is acceptable; stored raw request content is not.
 
-For every observed field/key, record:
+### E. Open-ended full-field inventory — mandatory
+
+Enumerate every top-level and nested key/field available in at least one complete matching invocation record.
+
+For each field record:
 
 - field/key name;
-- example value shape with sensitive values redacted as necessary;
-- classification: `EXPECTED/NEEDED`, `OPERATIONAL/NONESSENTIAL`, or `UNEXPECTED/REVIEW REQUIRED`;
+- redacted example value shape where useful;
+- classification: `EXPECTED / NEEDED`, `OPERATIONAL / NONESSENTIAL`, or `UNEXPECTED / REQUIRES REVIEW`;
 - privacy note.
 
-The inventory must explicitly consider, if present:
+Explicitly inspect, where present:
 
 - full/raw URL variants;
 - query/query-string fields;
-- headers or header collections;
+- method/path/host;
+- request and response headers or header-derived fields;
+- cookies/cookie-derived fields;
 - `Referer`;
 - `User-Agent`;
 - client IP/network/geolocation metadata;
-- cookies;
-- authorization metadata;
-- request/response body fields;
-- tracing/span/request identifiers;
-- account/zone/route metadata;
-- platform-added custom fields.
+- status code;
+- request/response sizes;
+- timestamps/durations;
+- trace/request/ray identifiers;
+- Worker/script/environment/account/zone/route metadata;
+- exception/log-message fields;
+- body/body-size/body-derived fields;
+- any platform-added metadata not anticipated above.
 
-A field that is sensitive or not sufficiently understood is not silently accepted. Classify:
+A sensitive or insufficiently understood unexpected field is a hard STOP pending independent review.
 
-`STOP — UNEXPECTED LOG FIELD REQUIRES REVIEW`
+### F. Timestamp/completeness check
 
-### E. Timestamp/completeness check
+The matching invocation record must expose timestamp precision sufficient for per-request or <=2-second counting.
 
-The matching invocation record must expose a timestamp precise enough for per-request or <=2-second counting.
+Effective production state must independently confirm:
 
-The effective production observability state must independently show:
-
+- observability enabled;
 - `head_sampling_rate = 1.0`;
-- query-string redaction enabled.
+- query-string redaction enabled;
+- semantic-primary remains `false`.
 
-The probe itself does not establish observation-window representativeness; it only verifies the log surface.
+## Evidence handling
 
-## Single-execution rule
+The post-probe evidence packet may include a redacted raw invocation-log example, but must remove or replace:
 
-Exactly one probe invocation may be executed after separate production observability deployment authorization and successful structural post-deploy checks.
+- the ephemeral JWT;
+- any real client IP or user-linked identifier if present;
+- unnecessary account/platform identifiers;
+- any unrelated production-request value.
 
-No automatic retry is authorized.
-
-If the probe fails, differs from this specification, or cannot be matched to a single invocation log record, STOP and return to independent review.
-
-## Evidence required
-
-The probe evidence packet must include:
-
-- execution authorization reference;
-- confirmation that `https://www.libedge.com/api/research/search` routes to `libedge-api-prod` at execution time;
-- exact request command or equivalent request representation;
-- exact UTC execution timestamp;
-- response status and headers sufficient to confirm CORS preflight behavior;
-- matching invocation-record timestamp/identifier;
-- proof of zero occurrences for all three exact sentinels;
-- proof that `/api/research/search` remains classifiable;
-- complete field/key inventory and classifications;
-- timestamp-resolution result;
-- effective `head_sampling_rate` and query-redaction state;
-- explicit statement that no real credentials or user/customer data were used;
-- PASS/STOP classification.
+The packet must still preserve the complete field/key structure needed for independent review.
 
 ## PASS criterion
 
-Classify the privacy probe as PASS only if all of the following are true:
+PASS requires all of the following:
 
-1. exact reviewed request shape was used once;
-2. production route maps to `libedge-api-prod`;
-3. expected CORS preflight response is observed;
+1. exact reviewed request shape used once;
+2. target is `libedge-api-prod` direct Worker URL;
+3. synthetic auth succeeds and application returns `400 / RESEARCH_QUERY_INVALID`;
 4. `/api/research/search` remains visible/classifiable;
-5. all three sentinel values are absent everywhere in the invocation record;
-6. no request body or prohibited application content is logged;
-7. open-ended full-field inventory contains no unresolved sensitive/unexpected field;
-8. timestamp precision is sufficient;
-9. effective sampling remains exactly `1.0`;
-10. production semantic-primary remains `false`.
+5. query sentinel is absent everywhere;
+6. Authorization sentinel is absent everywhere;
+7. cookie sentinel and ephemeral JWT are absent everywhere;
+8. no request body is persisted;
+9. no decoded synthetic JWT identity fields are exposed;
+10. full-field inventory contains no unresolved sensitive/unexpected field;
+11. timestamp precision is sufficient;
+12. effective sampling remains exactly `1.0`;
+13. query-string redaction remains enabled;
+14. production semantic-primary remains `false`.
 
-Otherwise:
+Otherwise classify:
 
-`PRIVACY PROBE STOP — TRACK A REMAINS BLOCKED`
+`PRIVACY OR COMPLETENESS VERIFICATION FAILED — TRACK A REMAINS BLOCKED`.
 
 ## Decision boundary
 
-Acceptance of this probe specification would only lock the probe shape for a later production observability execution-authorization review.
+Acceptance of this probe specification only locks the exact probe shape for the later production observability execution-authorization review.
 
-It would **not** authorize:
+It does **not** authorize:
 
-- the production observability deployment;
-- the probe execution itself;
+- production observability deployment;
+- probe execution by itself;
+- a changed endpoint/method/sentinel/header/body shape;
+- use of a real user credential;
+- repeated probing;
 - a capacity observation window;
 - production D1 migration;
-- production semantic-primary;
+- semantic-primary;
 - D-016 broad enablement;
-- H/RRF or Vectorize.
+- H/RRF or Vectorize;
+- a final capacity conclusion.
+
+Any material change requires fresh probe-spec review.
 
 ## Reviewer questions
 
-The independent reviewer should determine:
-
-1. whether `OPTIONS /api/research/search` is sufficiently non-mutating while still exercising the relevant Worker log surface;
-2. whether the exact production hostname/path must be changed before acceptance;
-3. whether the three synthetic sentinels are appropriate and non-sensitive;
-4. whether expected `204 No Content` is the correct response criterion for the repository's CORS middleware;
-5. whether the full-record sentinel search is strong enough;
-6. whether the open-ended full-field inventory is sufficient;
-7. whether any additional field or response check is required;
-8. whether this probe specification can be accepted as the mandatory prerequisite for the later production execution-authorization review.
+1. Is the exact direct production Worker target correct?
+2. Does authenticated `GET /api/research/search` with a 301-character query stop before rate-limit/telemetry/provider/cache side effects under the current router order?
+3. Is the 120-second synthetic JWT sufficiently isolated from real customer identity and safe for this one-time privacy probe?
+4. Does the non-Bearer Authorization sentinel correctly preserve cookie-based authentication under current `requireAuth()` behavior?
+5. Are query, Authorization, Cookie, JWT, body, and decoded-payload checks explicit enough?
+6. Is the open-ended complete field inventory broad enough to detect unexpected privacy exposure?
+7. Is the single-execution/no-silent-retry rule appropriate?
+8. Is this probe ready to be the mandatory accepted probe reference for production observability execution authorization?
