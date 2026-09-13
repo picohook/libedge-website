@@ -2,6 +2,7 @@ import worker from './index.js';
 import { purgePrivacyR2Queue } from './privacy/r2-purge.js';
 import { handleSystemHealthRequest } from './system-health.js';
 import { handleResearchRequest } from './research/router.js';
+import { handleAssistantRequest } from './assistant/router.js';
 import { pruneResearchTelemetry } from './research/telemetry.js';
 export { OpenAlexSemanticPacer } from './research/semantic-pacer.js';
 
@@ -26,6 +27,9 @@ export default {
     }
     if (url.pathname === '/api/research/search' && request.method === 'GET') {
       return privateNoStore(await handleResearchRequest(request, env, ctx));
+    }
+    if (url.pathname === '/api/assistant/ask' && request.method === 'POST') {
+      return privateNoStore(await handleAssistantRequest(request, env, ctx));
     }
     return worker.fetch(request, env, ctx);
   },

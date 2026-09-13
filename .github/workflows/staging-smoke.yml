@@ -28,6 +28,11 @@ on:
         required: true
         type: boolean
         default: true
+      run_assistant:
+        description: 'Run assistant provider-gate smoke'
+        required: true
+        type: boolean
+        default: true
       run_frontend:
         description: 'Run frontend browser smoke'
         required: true
@@ -67,6 +72,7 @@ jobs:
           RUN_AUTH: ${{ inputs.run_auth }}
           RUN_FILES: ${{ inputs.run_files }}
           RUN_RESEARCH: ${{ inputs.run_research }}
+          RUN_ASSISTANT: ${{ inputs.run_assistant }}
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
           LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
@@ -81,7 +87,7 @@ jobs:
             fi
           }
 
-          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_RESEARCH" = "true" ]; then
+          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_RESEARCH" = "true" ] || [ "$RUN_ASSISTANT" = "true" ]; then
             require_secret LIBEDGE_SMOKE_EMAIL
             require_secret LIBEDGE_SMOKE_PASSWORD
           fi
@@ -122,6 +128,14 @@ jobs:
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
         run: npm run smoke:research
+
+      - name: Run assistant gate smoke
+        if: inputs.run_assistant
+        env:
+          LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+        run: npm run smoke:assistant
 
       - name: Run frontend browser smoke
         if: inputs.run_frontend
