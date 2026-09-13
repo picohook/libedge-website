@@ -119,6 +119,7 @@ export async function orchestrateResearchAnswer({
     ok: true,
     code: 'OK',
     claims: grounding.acceptedClaims,
-    evidence_pack_id: evidencePack.pack_id
+    evidence_pack_id: evidencePack.pack_id,
+    evidence: evidencePack.evidence
   };
 }

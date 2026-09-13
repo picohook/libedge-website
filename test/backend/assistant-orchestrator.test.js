@@ -51,6 +51,7 @@ describe('assistant orchestration boundary', () => {
     expect(discover).toHaveBeenCalledOnce();
     expect(generateClaims).not.toHaveBeenCalled();
     expect(result).toMatchObject({ ok: false, code: 'PROVIDER_PRIVACY_GATE_REQUIRED', claims: [] });
+    expect(result).not.toHaveProperty('evidence');
   });
 
   it('passes only the research task and EvidencePack to the provider-neutral model adapter', async () => {
@@ -88,6 +89,7 @@ describe('assistant orchestration boundary', () => {
     });
 
     expect(result).toMatchObject({ ok: false, code: 'MODEL_OUTPUT_INVALID', claims: [] });
+    expect(result).not.toHaveProperty('evidence');
   });
 
   it('fails closed when semantic support checking is absent', async () => {
@@ -108,6 +110,7 @@ describe('assistant orchestration boundary', () => {
     expect(result.code).toBe('GROUNDING_REJECTED');
     expect(result.claims).toEqual([]);
     expect(result.rejected_claims[0].code).toBe('SUPPORT_CHECK_REQUIRED');
+    expect(result).not.toHaveProperty('evidence');
   });
 
   it('returns no render-ready claims if even one claim fails grounding', async () => {
@@ -133,9 +136,10 @@ describe('assistant orchestration boundary', () => {
     expect(result.claims).toEqual([]);
     expect(result.rejected_claims).toHaveLength(1);
     expect(result.rejected_claims[0].text).toBe('Unsupported claim');
+    expect(result).not.toHaveProperty('evidence');
   });
 
-  it('returns only grounded structured claims after all gates pass', async () => {
+  it('returns only grounded structured claims and minimized evidence snapshots after all gates pass', async () => {
     const result = await orchestrateResearchAnswer({
       query: 'hydrogen membranes',
       env: {},
@@ -150,11 +154,21 @@ describe('assistant orchestration boundary', () => {
       packOptions
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: true,
       code: 'OK',
       claims: [{ index: 0, text: 'Supported claim', evidence_ids: ['pack-1:e1'] }],
       evidence_pack_id: 'pack-1'
     });
+    expect(result.evidence).toHaveLength(1);
+    expect(result.evidence[0]).toMatchObject({
+      evidence_id: 'pack-1:e1',
+      work_id: 'work-1',
+      title: 'Example work',
+      abstract: 'Evidence text.'
+    });
+    expect(result.evidence[0]).not.toHaveProperty('openAccess');
+    expect(result.evidence[0]).not.toHaveProperty('citations');
+    expect(JSON.stringify(result.evidence)).not.toContain('hydrogen membranes');
   });
 });
