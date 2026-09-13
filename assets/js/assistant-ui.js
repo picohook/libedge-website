@@ -1,28 +1,29 @@
-import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) => {
+Promise.all([
+    import('./assistant-ui-state.js'),
+    import('./assistant-api.js')
+]).then(([{ mapAssistantResult }, { askAssistant }]) => {
     const sourcePanel = document.getElementById('assistantSources');
     const toast = document.getElementById('assistantPrototypeToast');
     const status = document.getElementById('assistantStatus');
     const queryInput = document.getElementById('assistantQuery');
     const answerCard = document.querySelector('.assistant-answer-card');
-    const demoSearchButton = document.getElementById('assistantDemoSearch');
+    const askButton = document.getElementById('assistantDemoSearch');
+    const fixtureNote = document.querySelector('.assistant-fixture-note');
+
+    if (fixtureNote) {
+        fixtureNote.innerHTML = '<i class="fas fa-flask"></i> İlk görünüm fixture; “Araştır / Sor” canlı, gate-korumalı backend endpoint’ini çağırır. Model/provider hâlâ kapalıdır.';
+    }
 
     function showToast(message) {
         if (!toast) return;
         toast.textContent = message;
         toast.hidden = false;
         window.clearTimeout(showToast.timer);
-        showToast.timer = window.setTimeout(() => {
-            toast.hidden = true;
-        }, 2600);
+        showToast.timer = window.setTimeout(() => { toast.hidden = true; }, 2800);
     }
 
-    function openSources() {
-        sourcePanel?.classList.add('is-open');
-    }
-
-    function closeSources() {
-        sourcePanel?.classList.remove('is-open');
-    }
+    function openSources() { sourcePanel?.classList.add('is-open'); }
+    function closeSources() { sourcePanel?.classList.remove('is-open'); }
 
     function setStatus({ title, message, tone = 'info', marker = '' }) {
         if (!status) return;
@@ -46,6 +47,17 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         if (markerNode) markerNode.textContent = marker;
     }
 
+    function renderMappedState(result) {
+        const mapped = mapAssistantResult(result);
+        setStatus({ title: mapped.title, message: mapped.message, tone: mapped.tone, marker: mapped.evidencePackId ? 'EvidencePack hazır' : '' });
+        return mapped;
+    }
+
+    function hideFixtureResult() {
+        if (answerCard) answerCard.hidden = true;
+        if (sourcePanel) sourcePanel.hidden = true;
+    }
+
     function highlightSource(sourceId) {
         const target = document.getElementById(sourceId);
         if (!target) return;
@@ -58,18 +70,7 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         highlightSource.timer = window.setTimeout(() => target.classList.remove('is-highlighted'), 3200);
     }
 
-    function renderMappedState(result) {
-        const mapped = mapAssistantResult(result);
-        setStatus({ title: mapped.title, message: mapped.message, tone: mapped.tone, marker: mapped.evidencePackId ? 'EvidencePack hazır' : '' });
-        if (answerCard) answerCard.style.opacity = mapped.state === 'success' ? '1' : '.58';
-        return mapped;
-    }
-
-    function wait(ms) {
-        return new Promise((resolve) => window.setTimeout(resolve, ms));
-    }
-
-    async function runFixtureLifecycle() {
+    async function runLiveGatedRequest() {
         const query = queryInput?.value?.trim() || '';
         if (query.length < 2 || query.length > 300) {
             renderMappedState({ ok: false, code: 'ASSISTANT_QUERY_INVALID', claims: [] });
@@ -77,41 +78,42 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
             return;
         }
 
-        if (demoSearchButton) demoSearchButton.disabled = true;
-        if (answerCard) answerCard.style.opacity = '.58';
+        hideFixtureResult();
+        if (askButton) askButton.disabled = true;
+        setStatus({ title: 'Araştırma isteği işleniyor', message: 'DISCOVER ve EvidencePack katmanları çalışıyor. Model sağlayıcısına yalnız Provider Privacy Gate PASS olduğunda erişilebilir.', tone: 'loading', marker: 'Canlı backend' });
 
-        for (let index = 0; index < 3; index += 1) {
-            const stage = loadingStage(index);
-            setStatus({ title: stage.title, message: stage.message, tone: 'loading', marker: `Aşama ${index + 1}/3` });
-            await wait(420);
+        try {
+            const result = await askAssistant(query);
+            if (result.ok === true && result.code === 'OK' && !Array.isArray(result.evidence)) {
+                renderMappedState({ ok: false, code: 'EVIDENCE_PAYLOAD_REQUIRED', claims: [], evidence_pack_id: result.evidence_pack_id });
+                return;
+            }
+            const mapped = renderMappedState(result);
+            if (mapped.state === 'auth-required' && typeof window.openLoginModal === 'function') {
+                window.openLoginModal();
+            }
+        } catch (error) {
+            console.error('Assistant request failed:', error);
+            renderMappedState({ ok: false, code: 'ASSISTANT_HTTP_ERROR', claims: [] });
+        } finally {
+            if (askButton) askButton.disabled = false;
         }
-
-        renderMappedState({ ok: true, code: 'OK', claims: [{ text: 'Fixture claim', evidence_ids: ['fixture:e1'] }], evidence_pack_id: 'fixture-pack' });
-        showToast('Fixture lifecycle tamamlandı. Gerçek /api/assistant/ask çağrısı yapılmadı.');
-        if (demoSearchButton) demoSearchButton.disabled = false;
     }
 
-    document.querySelectorAll('.citation-chip[data-source]').forEach((button) => {
-        button.addEventListener('click', () => highlightSource(button.dataset.source));
-    });
+    document.querySelectorAll('.citation-chip[data-source]').forEach((button) => button.addEventListener('click', () => highlightSource(button.dataset.source)));
     document.getElementById('viewSourcesBtn')?.addEventListener('click', openSources);
     document.getElementById('closeSourcesBtn')?.addEventListener('click', closeSources);
     document.querySelectorAll('.assistant-mode').forEach((button) => {
         button.addEventListener('click', () => {
             document.querySelectorAll('.assistant-mode').forEach((item) => item.classList.remove('active'));
             button.classList.add('active');
-            if (button.dataset.mode !== 'ask') showToast('Bu mod prototipte yalnızca görsel olarak gösteriliyor. İlk sürümde “Sor” deneyimini tamamlayacağız.');
+            if (button.dataset.mode !== 'ask') showToast('Bu mod henüz canlı backend akışına bağlanmadı. İlk canlı deneyim “Sor” modudur.');
         });
     });
-    demoSearchButton?.addEventListener('click', runFixtureLifecycle);
-    document.querySelectorAll('.source-action').forEach((button) => button.addEventListener('click', () => showToast('Kaynak detay görünümü sonraki UI iterasyonunda bağlanacak.')));
-    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn)').forEach((button) => {
-        if (!button.disabled) button.addEventListener('click', () => showToast('Bu aksiyon sonraki UI iterasyonunda etkinleştirilecek.'));
-    });
-    document.querySelectorAll('.assistant-filter').forEach((button) => button.addEventListener('click', () => showToast('Filtre kontrolleri prototipte pasif; backend bağlantısı yapılmadı.')));
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closeSources();
-    });
+    askButton?.addEventListener('click', runLiveGatedRequest);
+    document.querySelectorAll('.source-action').forEach((button) => button.addEventListener('click', () => showToast('Fixture kaynak detayları gerçek evidence payload sözleşmesi gelene kadar bağlanmıyor.')));
+    document.querySelectorAll('.assistant-filter').forEach((button) => button.addEventListener('click', () => showToast('Filtreler henüz Assistant endpoint sözleşmesine bağlanmadı.')));
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeSources(); });
 }).catch((error) => {
-    console.error('Assistant UI state module failed to load:', error);
+    console.error('Assistant UI modules failed to load:', error);
 });
