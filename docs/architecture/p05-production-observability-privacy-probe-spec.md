@@ -1,6 +1,6 @@
 # P0.5 Production Retrieval — Production Observability Privacy Probe Specification
 
-Status: `PROPOSED / SEPARATE REVIEW REQUIRED / NOT EXECUTED`
+Status: `ACCEPTED WITH MODIFICATION / EXECUTION-AUTHORIZATION DETAIL REQUIRED / NOT EXECUTED`
 
 Date: 2026-09-13
 
@@ -71,6 +71,21 @@ Requirements:
 - evidence inspection/reporting occurs only after the token has expired.
 
 The token is sent as the `authToken` cookie. Current `requireAuth()` uses a Bearer token only when the `Authorization` header begins with `Bearer `; otherwise it falls back to the `authToken` cookie.
+
+### Execution-authorization requirement: JWT secret handling
+
+The production `JWT_SECRET` must never be printed, copied into reviewer-visible evidence, pasted into a shell transcript, or exposed to the probe operator as plain text merely to construct the token.
+
+The later execution-authorization artifact must lock the exact secure token-generation mechanism. The preferred mechanism is a production-scoped GitHub Actions job (or equivalently controlled production execution surface) in which:
+
+- `JWT_SECRET` is injected from the existing protected production secret store;
+- token generation occurs in-process inside the protected runner/job;
+- the secret itself is never echoed or persisted;
+- the generated JWT is masked from workflow logs and is used only for the single authorized request;
+- the JWT is not uploaded as an artifact and is not copied into the reviewer packet;
+- evidence collection begins only after the 120-second token has expired.
+
+If the chosen execution mechanism would require a human to retrieve or handle the raw production `JWT_SECRET`, execution authorization must STOP and return to review. This probe specification does not authorize direct human secret extraction.
 
 ## Exact request headers
 
@@ -259,6 +274,7 @@ It does **not** authorize:
 - probe execution by itself;
 - a changed endpoint/method/sentinel/header/body shape;
 - use of a real user credential;
+- direct human extraction/handling of the production `JWT_SECRET`;
 - repeated probing;
 - a capacity observation window;
 - production D1 migration;
@@ -278,4 +294,5 @@ Any material change requires fresh probe-spec review.
 5. Are query, Authorization, Cookie, JWT, body, and decoded-payload checks explicit enough?
 6. Is the open-ended complete field inventory broad enough to detect unexpected privacy exposure?
 7. Is the single-execution/no-silent-retry rule appropriate?
-8. Is this probe ready to be the mandatory accepted probe reference for production observability execution authorization?
+8. Is the secure secret-injection/token-generation constraint sufficient for the later execution-authorization artifact?
+9. Is this probe ready to be the mandatory accepted probe reference for production observability execution authorization?
