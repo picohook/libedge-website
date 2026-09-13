@@ -5,7 +5,8 @@
     "type": "module",
     "main": "backend/src/index.js",
     "scripts": {
-        "test": "vitest run",
+        "test": "vitest run --exclude test/backend/assistant-orchestrator-integration.test.js",
+        "test:assistant-integration": "vitest run test/backend/assistant-orchestrator-integration.test.js",
         "test:watch": "vitest",
         "lint": "eslint backend scripts test --max-warnings=0",
         "smoke-checklist": "echo \"Manual smoke checks: homepage, login/logout, profile, announcements, newsletter, admin, institution files\"",
