@@ -35,9 +35,7 @@ export async function orchestrateResearchAnswer({
   packOptions
 } = {}) {
   const task = String(query ?? '').trim();
-  if (!task) {
-    return { ok: false, code: 'ASSISTANT_QUERY_REQUIRED', claims: [] };
-  }
+  if (!task) return { ok: false, code: 'ASSISTANT_QUERY_REQUIRED', claims: [] };
 
   let works;
   try {
@@ -54,55 +52,30 @@ export async function orchestrateResearchAnswer({
   }
 
   if (!gatePassed(providerGate)) {
-    return {
-      ok: false,
-      code: 'PROVIDER_PRIVACY_GATE_REQUIRED',
-      claims: [],
-      evidence_pack_id: evidencePack.pack_id
-    };
+    return { ok: false, code: 'PROVIDER_PRIVACY_GATE_REQUIRED', claims: [], evidence_pack_id: evidencePack.pack_id };
   }
 
   if (!modelAdapter || typeof modelAdapter.generateClaims !== 'function') {
-    return {
-      ok: false,
-      code: 'MODEL_ADAPTER_REQUIRED',
-      claims: [],
-      evidence_pack_id: evidencePack.pack_id
-    };
+    return { ok: false, code: 'MODEL_ADAPTER_REQUIRED', claims: [], evidence_pack_id: evidencePack.pack_id };
   }
 
   let modelResult;
   try {
     modelResult = await modelAdapter.generateClaims({ task, evidencePack });
   } catch {
-    return {
-      ok: false,
-      code: 'MODEL_ADAPTER_FAILED',
-      claims: [],
-      evidence_pack_id: evidencePack.pack_id
-    };
+    return { ok: false, code: 'MODEL_ADAPTER_FAILED', claims: [], evidence_pack_id: evidencePack.pack_id };
   }
 
   const claims = normalizeModelClaims(modelResult);
   if (!claims) {
-    return {
-      ok: false,
-      code: 'MODEL_OUTPUT_INVALID',
-      claims: [],
-      evidence_pack_id: evidencePack.pack_id
-    };
+    return { ok: false, code: 'MODEL_OUTPUT_INVALID', claims: [], evidence_pack_id: evidencePack.pack_id };
   }
 
   let grounding;
   try {
     grounding = await validateGroundedClaims({ claims, evidencePack, supportCheck });
   } catch {
-    return {
-      ok: false,
-      code: 'GROUNDING_VALIDATION_FAILED',
-      claims: [],
-      evidence_pack_id: evidencePack.pack_id
-    };
+    return { ok: false, code: 'GROUNDING_VALIDATION_FAILED', claims: [], evidence_pack_id: evidencePack.pack_id };
   }
 
   if (!grounding.ok) {
@@ -119,6 +92,7 @@ export async function orchestrateResearchAnswer({
     ok: true,
     code: 'OK',
     claims: grounding.acceptedClaims,
-    evidence_pack_id: evidencePack.pack_id
+    evidence_pack_id: evidencePack.pack_id,
+    evidence: evidencePack.evidence
   };
 }
