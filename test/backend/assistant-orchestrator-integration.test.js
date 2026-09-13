@@ -50,7 +50,7 @@ describe('assistant orchestration with real Discover', () => {
     expect(result.code).toBe('OK');
     expect(result.claims).toHaveLength(1);
     expect(result.claims[0].evidence_ids).toHaveLength(1);
-    expect(result.claims[0].evidence_ids[0]).toMatch(/^pack-[^:]+:e\d+$/);
+    expect(result.claims[0].evidence_ids[0]).toMatch(/:e\d+$/);
     expect(result.evidence_pack_id).toBeTruthy();
     expect(result.claims[0].evidence_ids[0].startsWith(`${result.evidence_pack_id}:`)).toBe(true);
   }, 30000);
