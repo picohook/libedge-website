@@ -15,6 +15,7 @@ ENVIRONMENT = "local"
 WORKER_NAME = "libedge-api-local"
 RESEARCH_SEMANTIC_PRIMARY_ENABLED = "false"
 RESEARCH_SEMANTIC_CANDIDATE_DEPTH = "50"
+RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS = "UNVERIFIED"
 
 # D1 Binding (default env) — shares the staging database for `wrangler dev`.
 [[d1_databases]]
@@ -64,6 +65,7 @@ ENVIRONMENT = "staging"
 WORKER_NAME = "libedge-api-staging"
 RESEARCH_SEMANTIC_PRIMARY_ENABLED = "false"
 RESEARCH_SEMANTIC_CANDIDATE_DEPTH = "50"
+RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS = "UNVERIFIED"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -94,6 +96,7 @@ ENVIRONMENT = "production"
 WORKER_NAME = "libedge-api-prod"
 RESEARCH_SEMANTIC_PRIMARY_ENABLED = "false"
 RESEARCH_SEMANTIC_CANDIDATE_DEPTH = "50"
+RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS = "UNVERIFIED"
 
 # Production deploys fail closed when core application secrets are missing.
 # Secret values remain encrypted in Cloudflare and are never stored here.
