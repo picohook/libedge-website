@@ -5,11 +5,10 @@ const html = readFileSync(new URL('../../assistant.html', import.meta.url), 'utf
 const js = readFileSync(new URL('../../assets/js/assistant-ui.js', import.meta.url), 'utf8');
 
 describe('Research Assistant UI prototype boundary', () => {
-    it('does not call the Assistant API or any model/provider endpoint', () => {
-        expect(html).not.toContain('/api/assistant/ask');
-        expect(js).not.toContain('/api/assistant/ask');
+    it('does not perform network calls or load the live Assistant transport', () => {
         expect(js).not.toMatch(/\bfetch\s*\(/);
         expect(js).not.toMatch(/XMLHttpRequest/);
+        expect(js).not.toContain('assistant-api.js');
     });
 
     it('labels fixture evidence as non-bibliographic prototype data', () => {
