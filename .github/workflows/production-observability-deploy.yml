@@ -27,7 +27,6 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
       EXPECTED_BASE_SHA: 663b05280aa4cd89d05a2f725be5afea19a064d2
       WORKER_NAME: libedge-api-prod
       PROBE_URL: https://libedge-api-prod.agursel.workers.dev/api/research/search
@@ -64,7 +63,7 @@ jobs:
 
           for path in "${changed[@]}"; do
             case "$path" in
-              .github/workflows/production-observability-deploy.yml|docs/architecture/p05-production-observability-execution-authorization.md)
+              .github/workflows/production-observability-deploy.yml|docs/architecture/p05-production-observability-execution-authorization.md|docs/architecture/p05-production-observability-privacy-probe-spec.md)
                 ;;
               *)
                 echo "::error::Unreviewed staging change after the dry-run base: $path"
@@ -96,17 +95,14 @@ jobs:
           set -euo pipefail
           npx wrangler deploy --env production
 
-      - name: Step 2 — Run single authenticated privacy probe and inspect persisted invocation log
+      - name: Step 2 — Run single 401 privacy probe and inspect persisted invocation log
         shell: bash
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
-          import crypto from 'node:crypto';
-
           const required = [
             'CLOUDFLARE_API_TOKEN',
             'CLOUDFLARE_ACCOUNT_ID',
-            'JWT_SECRET',
             'WORKER_NAME',
             'PROBE_URL',
             'QUERY_SENTINEL_PREFIX',
@@ -122,7 +118,6 @@ jobs:
           const {
             CLOUDFLARE_API_TOKEN,
             CLOUDFLARE_ACCOUNT_ID,
-            JWT_SECRET,
             WORKER_NAME,
             PROBE_URL,
             QUERY_SENTINEL_PREFIX,
@@ -166,24 +161,6 @@ jobs:
           console.log('Effective observability settings: enabled=true, head_sampling_rate=1.0, redact_query_string=true');
           console.log('Production semantic-primary: false (reviewed wrangler execution-unit guard)');
 
-          function base64url(value) {
-            return Buffer.from(value).toString('base64url');
-          }
-
-          const issued = Math.floor(Date.now() / 1000);
-          const header = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-          const payload = base64url(JSON.stringify({
-            sub: 'libedge-observability-probe',
-            role: 'probe',
-            exp: issued + 120,
-          }));
-          const unsigned = `${header}.${payload}`;
-          const signature = crypto.createHmac('sha256', JWT_SECRET).update(unsigned).digest('base64url');
-          const jwt = `${unsigned}.${signature}`;
-
-          // GitHub masks the ephemeral JWT before any subsequent output can contain it.
-          console.log(`::add-mask::${jwt}`);
-
           const target = new URL(PROBE_URL);
           target.searchParams.set('q', QUERY_SENTINEL);
           const probeStartedMs = Date.now();
@@ -193,27 +170,20 @@ jobs:
             method: 'GET',
             headers: {
               Authorization: `LibEdgeProbe ${AUTHZ_SENTINEL}`,
-              Cookie: `authToken=${jwt}; libedge_probe=${COOKIE_SENTINEL}`,
+              Cookie: `authToken=invalid-probe-token; libedge_probe=${COOKIE_SENTINEL}`,
               'User-Agent': 'LibEdge-Observability-Probe/2026-09-13',
               Accept: 'application/json',
             },
             redirect: 'error',
           });
-          const responseText = await response.text();
-          let responseJson;
-          try { responseJson = JSON.parse(responseText); } catch { responseJson = null; }
+          await response.text();
           const probeCompletedMs = Date.now();
 
-          if (response.status !== 400 || responseJson?.code !== 'RESEARCH_QUERY_INVALID') {
-            throw new Error(`Privacy probe hard STOP: expected 400/RESEARCH_QUERY_INVALID, got ${response.status}/${responseJson?.code || 'non-json'}. No retry is authorized.`);
+          if (response.status !== 401) {
+            throw new Error(`Privacy probe hard STOP: expected 401 from requireAuth(), got ${response.status}. No retry is authorized.`);
           }
-          console.log('Probe response: PASS (400 / RESEARCH_QUERY_INVALID)');
+          console.log('Probe response: PASS (401 / unauthenticated expected)');
           console.log('Probe request count: 1');
-
-          // Evidence inspection is intentionally delayed until the 120-second JWT has expired.
-          const waitMs = Math.max(0, (issued + 125) * 1000 - Date.now());
-          if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
-          console.log('Ephemeral JWT expiry gate: PASS (inspection started after expiry)');
 
           const queryFrom = probeStartedMs - 30_000;
           const queryTo = Date.now() + 1_000;
@@ -255,12 +225,12 @@ jobs:
             const timestamp = Number(event?.timestamp || meta?.timestamp || 0);
             const inWindow = !timestamp || (timestamp >= probeStartedMs - 10_000 && timestamp <= probeCompletedMs + 10_000);
             const serviceMatches = !meta?.service || meta.service === WORKER_NAME;
-            const statusMatches = Number(meta?.statusCode || event?.$workers?.event?.response?.status || 0) === 400;
+            const statusMatches = Number(meta?.statusCode || event?.$workers?.event?.response?.status || 0) === 401;
             return inWindow && serviceMatches && statusMatches && raw.includes('/api/research/search');
           });
 
           if (!candidates.length) {
-            throw new Error('Privacy probe hard STOP: persisted events were found, but none uniquely matched the reviewed 400 research invocation.');
+            throw new Error('Privacy probe hard STOP: persisted events were found, but none uniquely matched the reviewed 401 research invocation.');
           }
 
           candidates.sort((a, b) => {
@@ -276,9 +246,7 @@ jobs:
             QUERY_SENTINEL,
             AUTHZ_SENTINEL,
             COOKIE_SENTINEL,
-            jwt,
-            'libedge-observability-probe',
-            '"role":"probe"',
+            'invalid-probe-token',
           ];
           for (const value of forbidden) {
             if (serialized.includes(value)) {
