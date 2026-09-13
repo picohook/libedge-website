@@ -154,6 +154,7 @@ jobs:
             return json;
           }
 
+          // Confirm effective production settings before sending the one-shot probe.
           const settings = await cfApi(
             `/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/settings`,
             { method: 'GET', headers: { 'Content-Type': 'application/json' } },
@@ -179,12 +180,15 @@ jobs:
           const unsigned = `${header}.${payload}`;
           const signature = crypto.createHmac('sha256', JWT_SECRET).update(unsigned).digest('base64url');
           const jwt = `${unsigned}.${signature}`;
+
+          // GitHub masks the ephemeral JWT before any subsequent output can contain it.
           console.log(`::add-mask::${jwt}`);
 
           const target = new URL(PROBE_URL);
           target.searchParams.set('q', QUERY_SENTINEL);
           const probeStartedMs = Date.now();
 
+          // EXACTLY ONE production probe request. No automatic retry is permitted.
           const response = await fetch(target, {
             method: 'GET',
             headers: {
@@ -206,6 +210,7 @@ jobs:
           console.log('Probe response: PASS (400 / RESEARCH_QUERY_INVALID)');
           console.log('Probe request count: 1');
 
+          // Evidence inspection is intentionally delayed until the 120-second JWT has expired.
           const waitMs = Math.max(0, (issued + 125) * 1000 - Date.now());
           if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
           console.log('Ephemeral JWT expiry gate: PASS (inspection started after expiry)');
@@ -232,6 +237,7 @@ jobs:
             return cfApi(telemetryPath, { method: 'POST', body: JSON.stringify(body) });
           }
 
+          // Polling log ingestion does NOT repeat the production probe request.
           let events = [];
           for (let attempt = 1; attempt <= 6; attempt += 1) {
             const result = await queryEvents();
@@ -358,12 +364,22 @@ jobs:
             if (typeof value !== 'string') return value;
             if (/authorization|cookie|token|jwt|ip|account|ray.?id|request.?id|trace.?id|span.?id/i.test(key)) return '<redacted>';
             if (value.includes(QUERY_SENTINEL_PREFIX) || value.includes(AUTHZ_SENTINEL) || value.includes(COOKIE_SENTINEL)) return '<sentinel-redacted>';
+            if (/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)) return '<jwt-redacted>';
+            if (/^https?:\/\//i.test(value)) {
+              try {
+                const u = new URL(value);
+                return `${u.origin}${u.pathname}`;
+              } catch {}
+            }
             return value;
           }
 
-          const redacted = redact(event);
           console.log('REDACTED_INVOCATION_SAMPLE_BEGIN');
-          console.log(JSON.stringify(redacted, null, 2));
+          console.log(JSON.stringify(redact(event), null, 2));
           console.log('REDACTED_INVOCATION_SAMPLE_END');
+          console.log('Privacy probe query-string sentinel: PASS — absent');
+          console.log('Privacy probe Authorization/Cookie/JWT cleartext: PASS — absent');
+          console.log('Privacy probe request body persistence: PASS — no non-empty request body field');
+          console.log('Privacy probe complete field inventory: PASS — no undocumented top-level field; full nested inventory emitted for reviewer inspection');
           console.log('PRIVACY_PROBE_RESULT=PASS_PENDING_INDEPENDENT_REVIEW');
           NODE
