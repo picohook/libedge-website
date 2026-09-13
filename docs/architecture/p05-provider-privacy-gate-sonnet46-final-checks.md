@@ -83,6 +83,49 @@ Therefore the exact Sonnet 4.6 route remains:
 
 not final `PASS`.
 
+## 4. Follow-up AWS research — 2026-09-13
+
+Additional read-only verification was performed after the prior final-check record. No credentials, bearer tokens, account identifiers, prompts, or model outputs are recorded here.
+
+### 4.1 Mantle route applicability — Sonnet 4.6
+
+A direct `GET /v1/models` query against the Bedrock Mantle model catalog did **not** contain `anthropic.claude-sonnet-4-6`.
+
+For this candidate, Mantle is therefore not an exposed inference route. The reviewed route remains the `us.anthropic.claude-sonnet-4-6` inference profile through `bedrock-runtime`.
+
+**Reconciliation status:** `RESOLVED — ROUTE INAPPLICABLE`.
+
+> Mantle catalog directly confirms `anthropic.claude-sonnet-4-6` is not exposed via `bedrock-mantle`; `bedrock-runtime` is the only relevant route. Primary Mantle confirmation requirement is satisfied by route-inapplicability, not by a positive `allowed_modes` read.
+
+This closes the prior `PENDING PRIMARY MANTLE API CONFIRMATION` item for Sonnet 4.6. It does **not** grant final privacy PASS because the implicit-prompt-caching/ZDR interaction remains unresolved.
+
+### 4.2 Mantle catalog corroboration — Opus 4.8
+
+The same live Mantle catalog query returned `anthropic.claude-opus-4-8` with `allowed_modes` including `none` and `status: available` in the catalog response observed during this research session.
+
+This independently corroborates, at the AWS API level, the canonical AWS `data-retention.html` statement that Opus 4.8 permits `none`. It replaces any need to rely on a third-party tracker for that narrow model-capability fact. This observation does not select Opus 4.8 or change the Sonnet 4.6 verdict.
+
+### 4.3 Canonical retention documentation and the caching gap
+
+The canonical AWS `data-retention.html` page and the July 2026 AWS Security Blog were re-read end-to-end during this session. Neither reviewed source explicitly discusses prompt caching or names a cache/ZDR interaction.
+
+The closest general statement in the canonical retention documentation is that when a model's `allowed_modes` includes `none`, AWS "won't persist anything." That is a strong general signal, but the gate does not treat it as an explicit resolution of the separately documented implicit prompt-cache behavior.
+
+**Caching status remains:** `OPEN / UNVERIFIED`.
+
+An authoritative AWS answer has been requested through an AWS question/support channel. Until that answer or equivalent official evidence explicitly reconciles implicit prompt caching with effective retention mode `none`, no final PASS is granted.
+
+### 4.4 `provider_data_share` current-state corroboration
+
+The current live AWS retention documentation was also re-checked and continues to characterize `provider_data_share` as a legacy mode under which Bedrock does not currently share content with model providers. This provides an additional current-source confirmation of the earlier time-sensitive Fable 5/Fable 5.1 reconciliation in the parent gate.
+
+The historical/current distinction remains unchanged:
+
+- historical Fable 5 documentation described real provider sharing under `provider_data_share`;
+- current AWS documentation describes that mode as legacy, with current content handling remaining within the AWS boundary.
+
+No verdict changes follow from this additional corroboration.
+
 ## Final confirmation trigger
 
 Promote this route to final `PASS` only after one of the following is obtained from AWS official/provider-specific evidence:
@@ -98,11 +141,13 @@ The parent gate should update the Sonnet 4.6 residency field to:
 
 > `us.anthropic.claude-sonnet-4-6` is a US geographic cross-Region profile. From `us-east-1`, AWS may process requests in `us-east-1`, `us-east-2`, or `us-west-2`; the profile does not route to EU/APAC regions.
 
+The Sonnet 4.6 route record should also treat the prior Mantle-confirmation item as closed by route inapplicability: Sonnet 4.6 is not exposed in the live Mantle model catalog, so the relevant reviewed inference surface is `bedrock-runtime`, not Mantle.
+
 The candidate verdict remains:
 
 `PASS CANDIDATE — STRONGEST EVIDENCE / FINAL CONFIRMATION PENDING`
 
-with the remaining blocker narrowed to the documented implicit-prompt-caching/ZDR interaction.
+with the sole remaining blocker narrowed to the documented implicit-prompt-caching/ZDR interaction.
 
 ## Decision boundary
 
