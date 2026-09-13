@@ -22,6 +22,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
+
       - name: Install dependencies
         # Repo does not commit package-lock.json (see .gitignore), so use
         # 'npm install' instead of 'npm ci'.
@@ -58,6 +61,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
