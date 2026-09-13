@@ -296,3 +296,110 @@ Any material change requires fresh probe-spec review.
 7. Is the single-execution/no-silent-retry rule appropriate?
 8. Is the secure secret-injection/token-generation constraint sufficient for the later execution-authorization artifact?
 9. Is this probe ready to be the mandatory accepted probe reference for production observability execution authorization?
+
+---
+
+## Revision v0.2 — 401-based probe without `JWT_SECRET`
+
+Status: `PROPOSED REVISION / REQUIRES INDEPENDENT REVIEW / NOT EXECUTED`
+
+Reason for revision: the first execution attempt successfully deployed production observability but stopped before issuing the probe because production `JWT_SECRET` is available only as a Cloudflare Worker secret. That secret is write-only from the deployment surface and is not present in the GitHub production environment. The v0.2 probe therefore removes JWT generation entirely instead of copying, recovering, rotating, or duplicating the production signing secret.
+
+This revision supersedes the **execution shape** above for the next privacy-probe attempt. The original v0.1 text is retained as historical review context and must not be interpreted as the active execution shape once v0.2 is accepted.
+
+### v0.2 authentication shape
+
+No JWT is generated. `JWT_SECRET` is not required by the workflow and must not be copied into GitHub for this probe.
+
+The request remains intentionally unauthenticated and uses the existing middleware's 401 path:
+
+```text
+Authorization: LibEdgeProbe LIBEDGE_OBS_AUTHZ_20260913_A7F3
+Cookie: authToken=invalid-probe-token; libedge_probe=LIBEDGE_OBS_COOKIE_20260913_A7F3
+User-Agent: LibEdge-Observability-Probe/2026-09-13
+Accept: application/json
+```
+
+The `Authorization` value remains intentionally non-Bearer and continues to serve only as a log-leak sentinel. Because it does not begin with `Bearer `, current `requireAuth()` falls back to the `authToken` cookie. The deliberately invalid `authToken` fails verification and therefore produces HTTP `401` before query validation. The `libedge_probe` cookie remains a separate non-secret cookie sentinel for the persisted-log inspection.
+
+The literal `invalid-probe-token` is also treated as forbidden persisted material: it must have zero occurrences in the matching invocation record.
+
+### v0.2 expected response
+
+Expected status:
+
+`401 Unauthorized`
+
+Only the HTTP status is a gate. The exact localized error body is not relied on by the workflow.
+
+A non-401 response is a hard STOP. The probe must not silently retry with another auth shape.
+
+### v0.2 query-string redaction assumption
+
+This revision explicitly adopts the following execution assumption for review:
+
+> A 401 request that fails authentication and a 400 request that passes authentication but fails query validation are treated as equivalent for the narrow `redact_query_string` test, because query-string redaction is expected to be applied by Cloudflare's observability/edge logging layer independently of the application's authentication outcome.
+
+This is an explicit test-design assumption, not a claim that the 401 and 400 application paths are semantically equivalent. The probe is intended only to test the persisted observability surface for the same method, host, path, query-string sentinel, Authorization sentinel, Cookie sentinel, and no-body request shape.
+
+### v0.2 unchanged privacy checks
+
+The following requirements remain unchanged:
+
+- exact direct production Worker target: `libedge-api-prod`;
+- exact method and path: `GET /api/research/search`;
+- exact 301-character query-string sentinel;
+- Authorization sentinel remains present in the request and must be absent from persisted logs;
+- Cookie sentinel remains present in the request and must be absent from persisted logs;
+- no request body is sent and no non-empty request body may be persisted;
+- full raw query/query-string variants must remain absent;
+- complete top-level and nested field inventory remains mandatory;
+- any sensitive or insufficiently understood unexpected field remains a hard STOP;
+- effective observability must remain enabled;
+- `head_sampling_rate` must remain exactly `1.0`;
+- query-string redaction must remain enabled;
+- production semantic-primary must remain `false`;
+- exactly one probe request is authorized; telemetry-ingestion polling must not repeat the production request;
+- reviewer-visible evidence may include only a redacted invocation sample preserving field structure;
+- final marker remains `PASS_PENDING_INDEPENDENT_REVIEW` until the reviewer inspects the real output.
+
+### v0.2 post-probe matching rule
+
+The persisted invocation record must be located using the same UTC time window, Worker identity, method, and path, but the expected response status is now `401` instead of `400`.
+
+### v0.2 PASS criterion
+
+PASS requires all of the following:
+
+1. the exact reviewed v0.2 request shape is used once;
+2. the target is the direct `libedge-api-prod` Worker URL;
+3. the application returns HTTP `401` as expected from `requireAuth()`;
+4. `/api/research/search` remains visible/classifiable;
+5. the query sentinel is absent everywhere;
+6. the Authorization sentinel is absent everywhere;
+7. the cookie sentinel and `invalid-probe-token` are absent everywhere;
+8. no request body is persisted;
+9. the full-field inventory contains no unresolved sensitive/unexpected field;
+10. timestamp precision remains sufficient for per-request or <=2-second counting;
+11. effective sampling remains exactly `1.0`;
+12. query-string redaction remains enabled;
+13. production semantic-primary remains `false`.
+
+Otherwise classify:
+
+`PRIVACY OR COMPLETENESS VERIFICATION FAILED — TRACK A REMAINS BLOCKED`.
+
+### v0.2 decision boundary
+
+This revision changes only the privacy probe's authentication mechanism and expected application status. It does not change:
+
+- the already-deployed observability configuration;
+- production application behavior;
+- the seven-day / 168-valid-hour observation-window decision;
+- semantic-primary;
+- D-016;
+- migrations;
+- provider selection;
+- any production user credential or session.
+
+Acceptance of v0.2 still does **not** authorize execution by itself. The revised workflow must be independently reviewed before any rerun.
