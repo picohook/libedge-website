@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LibEdge Research Assistant arayüz prototipi">
+    <title>Research Assistant - LibEdge</title>
+    <link rel="stylesheet" href="assets/css/tailwind.css">
+    <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="assets/css/assistant.css">
+    <script src="assets/js/url-safety.js?v=20260508a"></script>
+    <script src="assets/js/auth.js?v=20260508b"></script>
+    <script src="assets/js/header.js?v=20260507a"></script>
+    <script src="assets/js/header-controller.js?v=20260420b"></script>
+    <script src="assets/js/notifications.js?v=20260420b"></script>
+    <script src="assets/js/script.js?v=20260508b"></script>
+</head>
+<body class="bg-gray-50 min-h-screen assistant-page">
+    <div id="site-header"></div>
+
+    <main class="assistant-shell" aria-labelledby="assistant-title">
+        <section class="assistant-intro">
+            <div>
+                <div class="assistant-title-row">
+                    <h1 id="assistant-title">Research Assistant</h1>
+                    <span class="assistant-alpha">ALPHA PROTOTYPE</span>
+                </div>
+                <p>Akademik literatürden kanıta dayalı yanıtlar alın, kaynakları görün ve iddiaların hangi çalışmalara dayandığını takip edin.</p>
+            </div>
+            <div class="assistant-trust-note">
+                <i class="fas fa-shield-halved" aria-hidden="true"></i>
+                <span>Kaynaklı yanıtlar. Görünür kanıt zinciri.</span>
+            </div>
+        </section>
+
+        <section class="assistant-search-card" aria-label="Araştırma sorusu">
+            <label for="assistantQuery">Ne araştırmak istersiniz?</label>
+            <div class="assistant-search-row">
+                <textarea id="assistantQuery" rows="2" maxlength="300">PEM su elektrolizinde ince membranlarda hidrojen crossover nasıl azaltılabilir?</textarea>
+                <button id="assistantDemoSearch" type="button" class="assistant-primary-btn">
+                    <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                    <span>Araştır / Sor</span>
+                </button>
+            </div>
+            <div class="assistant-filter-row" aria-label="Arama filtreleri">
+                <button type="button" class="assistant-filter">2018–2026 <i class="fas fa-chevron-down"></i></button>
+                <button type="button" class="assistant-filter">Tüm yayın türleri <i class="fas fa-chevron-down"></i></button>
+                <button type="button" class="assistant-filter">Açık erişim: Tümü <i class="fas fa-chevron-down"></i></button>
+                <button type="button" class="assistant-filter">10–30 kaynak <i class="fas fa-chevron-down"></i></button>
+                <span class="assistant-fixture-note"><i class="fas fa-flask"></i> Bu ekran fixture verisi kullanır; AI/provider çağrısı yapmaz.</span>
+            </div>
+        </section>
+
+        <nav class="assistant-mode-tabs" aria-label="Araştırma modları">
+            <button class="assistant-mode active" type="button" data-mode="ask"><i class="far fa-comment-dots"></i><span><strong>Sor</strong><small>Kanıta dayalı yanıt</small></span></button>
+            <button class="assistant-mode" type="button" data-mode="compare"><i class="fas fa-scale-balanced"></i><span><strong>Karşılaştır</strong><small>Yaklaşımları karşılaştır</small></span></button>
+            <button class="assistant-mode" type="button" data-mode="summarize"><i class="far fa-file-lines"></i><span><strong>Kanıtı Özetle</strong><small>Literatürü sentezle</small></span></button>
+            <button class="assistant-mode" type="button" data-mode="gaps"><i class="far fa-lightbulb"></i><span><strong>Boşlukları Bul</strong><small>Araştırma açıkları</small></span></button>
+            <button class="assistant-mode" type="button" data-mode="brief"><i class="far fa-clipboard"></i><span><strong>Kısa Rapor</strong><small>Araştırma özeti oluştur</small></span></button>
+        </nav>
+
+        <div class="assistant-workspace">
+            <section class="assistant-answer-panel" aria-label="Research Assistant yanıtı">
+                <div id="assistantStatus" class="assistant-status success" role="status" aria-live="polite">
+                    <div><i class="fas fa-circle-check"></i><strong>Demo yanıt hazır</strong><span>18 araştırma kaynağı · 6 ana bulgu · 2 çelişkili kanıt alanı</span></div>
+                    <span class="assistant-status-time">Fixture</span>
+                </div>
+
+                <article class="assistant-answer-card">
+                    <header>
+                        <p class="assistant-kicker">KANITA DAYALI SENTEZ</p>
+                        <h2>İnce PEM membranlarda hidrojen crossover'ın azaltılması</h2>
+                    </header>
+
+                    <section class="assistant-summary">
+                        <h3>Özet</h3>
+                        <p>İnce proton değişim membranları ohmik direnci azaltarak PEM su elektrolizinde verimliliği artırabilir; ancak membran inceldikçe hidrojen crossover riski artar. Literatür, bu dengeyi yönetmek için rekombinasyon katalizör tabakaları, gradyan/çok katmanlı membran mimarileri, seçici dolgu malzemeleri ve işletme koşullarının optimizasyonunu öne çıkarıyor.
+                            <button class="citation-chip" type="button" data-source="source-1">1</button>
+                            <button class="citation-chip" type="button" data-source="source-2">2</button>
+                            <button class="citation-chip" type="button" data-source="source-3">3</button>
+                        </p>
+                    </section>
+
+                    <section class="assistant-findings" aria-labelledby="findings-title">
+                        <h3 id="findings-title">Ana bulgular</h3>
+                        <div class="finding-item">
+                            <span class="finding-index">1</span>
+                            <div><h4>Membran inceldikçe ohmik kayıp azalır, crossover riski yükselir</h4><p>Özellikle çok ince membranlarda artan hidrojen geçirgenliği güvenlik ve verimlilik açısından ek önlemler gerektirir. <button class="citation-chip" type="button" data-source="source-1">1</button> <button class="citation-chip" type="button" data-source="source-3">3</button></p></div>
+                        </div>
+                        <div class="finding-item">
+                            <span class="finding-index">2</span>
+                            <div><h4>Rekombinasyon katalizör tabakaları etkili bir azaltım stratejisidir</h4><p>Anot tarafında konumlandırılan Pt-tabanlı veya uygun rekombinasyon katalizörleri crossover yapan hidrojeni yeniden suya dönüştürerek riskleri azaltabilir. <button class="citation-chip" type="button" data-source="source-2">2</button> <button class="citation-chip" type="button" data-source="source-4">4</button></p></div>
+                        </div>
+                        <div class="finding-item">
+                            <span class="finding-index">3</span>
+                            <div><h4>Gradyan ve çok katmanlı mimariler direnç–seçicilik dengesini iyileştirebilir</h4><p>Kompozisyon veya yapı boyunca kontrollü gradyanlar, düşük ohmik direnç korunurken gaz geçirgenliğini sınırlama potansiyeli taşır. <button class="citation-chip" type="button" data-source="source-3">3</button></p></div>
+                        </div>
+                        <div class="finding-item">
+                            <span class="finding-index">4</span>
+                            <div><h4>Seçici inorganik dolgular crossover'ı azaltabilir</h4><p>SiO₂ ve TiO₂ gibi dolguların uygun morfoloji ve dağılımla kullanılması, membranın gaz bariyer özelliklerini iyileştirebilir. <button class="citation-chip" type="button" data-source="source-4">4</button></p></div>
+                        </div>
+                    </section>
+
+                    <div class="assistant-insight-grid">
+                        <aside class="insight-card takeaways">
+                            <h3><i class="fas fa-wand-magic-sparkles"></i> Temel çıkarımlar</h3>
+                            <ul><li>İnce membran tek başına çözüm değil; crossover azaltım stratejisiyle birlikte tasarlanmalı.</li><li>Rekombinasyon tabakası ve gradyan mimariler en güçlü adaylar arasında.</li><li>Basınç, sıcaklık ve diferansiyel basınç etkileri tasarımla birlikte değerlendirilmelidir.</li></ul>
+                        </aside>
+                        <aside class="insight-card conflict">
+                            <h3><i class="fas fa-triangle-exclamation"></i> Çelişkili kanıt</h3>
+                            <p>Bazı çalışmalar belirli koşullarda ultra-ince membranlarda kabul edilebilir crossover bildirirken, diğerleri belirgin artış rapor ediyor. Sonuçlar membran kimyası, hücre tasarımı ve test koşullarına duyarlı.</p>
+                        </aside>
+                        <aside class="insight-card gaps">
+                            <h3><i class="fas fa-bullseye"></i> Araştırma boşlukları</h3>
+                            <ul><li>Uzun süreli rekombinasyon tabakası kararlılığı</li><li>Endüstriyel basınçlarda doğrulama</li><li>Kalınlık–dayanıklılık–crossover optimizasyonu</li></ul>
+                        </aside>
+                    </div>
+
+                    <footer class="assistant-answer-actions">
+                        <button type="button" class="assistant-primary-btn small"><i class="far fa-comment-dots"></i> Takip sorusu</button>
+                        <button type="button" class="assistant-secondary-btn"><i class="fas fa-sliders"></i> Aramayı daralt</button>
+                        <button id="viewSourcesBtn" type="button" class="assistant-secondary-btn"><i class="fas fa-list"></i> Tüm kaynaklar</button>
+                        <button type="button" class="assistant-secondary-btn" disabled title="Sonraki sürüm"><i class="fas fa-file-export"></i> Dışa aktar</button>
+                    </footer>
+                </article>
+            </section>
+
+            <aside id="assistantSources" class="assistant-sources-panel" aria-labelledby="sources-title">
+                <div class="sources-panel-header">
+                    <div><h2 id="sources-title">Kaynaklar &amp; Kanıt</h2><span class="source-count">18</span></div>
+                    <button id="closeSourcesBtn" type="button" class="sources-close" aria-label="Kaynak panelini kapat"><i class="fas fa-xmark"></i></button>
+                </div>
+                <p class="sources-intro">Aşağıdaki örnek kayıtlar yalnız arayüz prototipi içindir; bibliyografik doğruluk iddiası taşımaz.</p>
+
+                <article id="source-1" class="source-card" tabindex="-1">
+                    <div class="source-rank">1</div>
+                    <div class="source-content"><h3>Hydrogen crossover in thin PEM membranes for water electrolysis: mechanisms and mitigation strategies</h3><p class="source-meta">S. Park, J. Kim, Y. Lee et al. · 2023 · International Journal of Hydrogen Energy</p><div class="source-badges"><span>Open access</span><span>Journal article</span></div><p>İnce membranlarda hidrojen geçirgenliği ve azaltım stratejilerini değerlendiren örnek fixture kaydı.</p><button class="source-action" type="button">Detayları göster</button></div>
+                </article>
+                <article id="source-2" class="source-card" tabindex="-1">
+                    <div class="source-rank">2</div>
+                    <div class="source-content"><h3>Catalyst layers for hydrogen recombination in PEM electrolysis</h3><p class="source-meta">M. Schalenbach, K. Pinkwart · 2022 · Applied Energy</p><div class="source-badges"><span>Open access</span><span>Journal article</span></div><p>Rekombinasyon katalizör tabakalarının crossover azaltımındaki rolünü temsil eden örnek fixture kaydı.</p><button class="source-action" type="button">Detayları göster</button></div>
+                </article>
+                <article id="source-3" class="source-card" tabindex="-1">
+                    <div class="source-rank">3</div>
+                    <div class="source-content"><h3>Gradient membrane architectures for reduced hydrogen crossover</h3><p class="source-meta">L. Zhang, R. Shi, T. Wang et al. · 2021 · Journal of Membrane Science</p><div class="source-badges"><span>Journal article</span></div><p>Gradyan membran mimarilerinin düşük direnç ve düşük geçirgenlik dengesini temsil eden örnek fixture kaydı.</p><button class="source-action" type="button">Detayları göster</button></div>
+                </article>
+                <article id="source-4" class="source-card" tabindex="-1">
+                    <div class="source-rank">4</div>
+                    <div class="source-content"><h3>Inorganic fillers in PEM membranes for enhanced selectivity</h3><p class="source-meta">A. Ziviani, P. Bifulco, S. Kertész · 2020 · Electrochimica Acta</p><div class="source-badges"><span>Open access</span><span>Journal article</span></div><p>Seçici inorganik dolguların crossover üzerindeki etkisini temsil eden örnek fixture kaydı.</p><button class="source-action" type="button">Detayları göster</button></div>
+                </article>
+            </aside>
+        </div>
+    </main>
+
+    <div id="assistantPrototypeToast" class="assistant-toast" role="status" aria-live="polite" hidden></div>
+    <script src="assets/js/assistant-ui.js?v=20260913a"></script>
+</body>
+</html>
