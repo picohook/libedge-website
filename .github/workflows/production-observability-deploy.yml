@@ -1,0 +1,385 @@
+name: Production Observability Deploy + Privacy Probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: >-
+          Type exactly PRODUCTION-OBSERVABILITY-DEPLOY-PROBE-ONE-SHOT to authorize
+          the reviewed production observability deploy and single privacy probe.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-observability-deploy-probe
+  cancel-in-progress: false
+
+jobs:
+  deploy-and-probe:
+    name: Deploy observability and run one privacy probe
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      EXPECTED_BASE_SHA: 663b05280aa4cd89d05a2f725be5afea19a064d2
+      WORKER_NAME: libedge-api-prod
+      PROBE_URL: https://libedge-api-prod.agursel.workers.dev/api/research/search
+      QUERY_SENTINEL_PREFIX: LIBEDGE_OBS_QS_20260913_A7F3_
+      QUERY_SENTINEL: LIBEDGE_OBS_QS_20260913_A7F3_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      AUTHZ_SENTINEL: LIBEDGE_OBS_AUTHZ_20260913_A7F3
+      COOKIE_SENTINEL: LIBEDGE_OBS_COOKIE_20260913_A7F3
+
+    steps:
+      - name: Enforce one-shot human confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirmation }}" != "PRODUCTION-OBSERVABILITY-DEPLOY-PROBE-ONE-SHOT" ]; then
+            echo "::error::Exact human confirmation string was not supplied."
+            exit 1
+          fi
+          echo "Human confirmation gate: PASS"
+          echo "Execution boundary: production observability deploy + one synthetic privacy probe only"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: Verify reviewed staging execution unit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$EXPECTED_BASE_SHA" HEAD
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE_SHA..HEAD")
+          printf 'Changed since reviewed dry-run base:\n'
+          printf ' - %s\n' "${changed[@]}"
+
+          for path in "${changed[@]}"; do
+            case "$path" in
+              .github/workflows/production-observability-deploy.yml|docs/architecture/p05-production-observability-execution-authorization.md)
+                ;;
+              *)
+                echo "::error::Unreviewed staging change after the dry-run base: $path"
+                exit 1
+                ;;
+            esac
+          done
+
+          grep -Fq '[env.production.observability]' wrangler.toml
+          grep -Fq 'enabled = true' wrangler.toml
+          grep -Fq 'head_sampling_rate = 1.0' wrangler.toml
+          grep -Fq 'redact_query_string = true' wrangler.toml
+          grep -Fq 'RESEARCH_SEMANTIC_PRIMARY_ENABLED = "false"' wrangler.toml
+          echo "Reviewed execution-unit guard: PASS"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Step 1 — Deploy production observability configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --env production
+
+      - name: Step 2 — Run single authenticated privacy probe and inspect persisted invocation log
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+
+          const required = [
+            'CLOUDFLARE_API_TOKEN',
+            'CLOUDFLARE_ACCOUNT_ID',
+            'JWT_SECRET',
+            'WORKER_NAME',
+            'PROBE_URL',
+            'QUERY_SENTINEL_PREFIX',
+            'QUERY_SENTINEL',
+            'AUTHZ_SENTINEL',
+            'COOKIE_SENTINEL',
+          ];
+
+          for (const key of required) {
+            if (!process.env[key]) throw new Error(`Missing protected execution input: ${key}`);
+          }
+
+          const {
+            CLOUDFLARE_API_TOKEN,
+            CLOUDFLARE_ACCOUNT_ID,
+            JWT_SECRET,
+            WORKER_NAME,
+            PROBE_URL,
+            QUERY_SENTINEL_PREFIX,
+            QUERY_SENTINEL,
+            AUTHZ_SENTINEL,
+            COOKIE_SENTINEL,
+          } = process.env;
+
+          if (QUERY_SENTINEL.length !== 301) {
+            throw new Error(`Reviewed query sentinel must be exactly 301 characters; got ${QUERY_SENTINEL.length}`);
+          }
+
+          const cfHeaders = {
+            Authorization: `Bearer ${CLOUDFLARE_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          };
+
+          async function cfApi(path, init = {}) {
+            const res = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
+              ...init,
+              headers: { ...cfHeaders, ...(init.headers || {}) },
+            });
+            const text = await res.text();
+            let json;
+            try { json = JSON.parse(text); } catch { json = null; }
+            if (!res.ok || json?.success === false) {
+              throw new Error(`Cloudflare API request failed (${res.status}) at ${path}; no probe retry is authorized.`);
+            }
+            return json;
+          }
+
+          // Confirm effective production settings before sending the one-shot probe.
+          const settings = await cfApi(
+            `/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/settings`,
+            { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+          );
+          const obs = settings?.result?.observability;
+          if (!obs?.enabled) throw new Error('Effective production observability is not enabled.');
+          if (Number(obs?.head_sampling_rate) !== 1) throw new Error('Effective head_sampling_rate is not 1.0.');
+          if (obs?.redact_query_string !== true) throw new Error('Effective redact_query_string is not true.');
+          console.log('Effective observability settings: enabled=true, head_sampling_rate=1.0, redact_query_string=true');
+          console.log('Production semantic-primary: false (reviewed wrangler execution-unit guard)');
+
+          function base64url(value) {
+            return Buffer.from(value).toString('base64url');
+          }
+
+          const issued = Math.floor(Date.now() / 1000);
+          const header = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+          const payload = base64url(JSON.stringify({
+            sub: 'libedge-observability-probe',
+            role: 'probe',
+            exp: issued + 120,
+          }));
+          const unsigned = `${header}.${payload}`;
+          const signature = crypto.createHmac('sha256', JWT_SECRET).update(unsigned).digest('base64url');
+          const jwt = `${unsigned}.${signature}`;
+
+          // GitHub masks the ephemeral JWT before any subsequent output can contain it.
+          console.log(`::add-mask::${jwt}`);
+
+          const target = new URL(PROBE_URL);
+          target.searchParams.set('q', QUERY_SENTINEL);
+          const probeStartedMs = Date.now();
+
+          // EXACTLY ONE production probe request. No automatic retry is permitted.
+          const response = await fetch(target, {
+            method: 'GET',
+            headers: {
+              Authorization: `LibEdgeProbe ${AUTHZ_SENTINEL}`,
+              Cookie: `authToken=${jwt}; libedge_probe=${COOKIE_SENTINEL}`,
+              'User-Agent': 'LibEdge-Observability-Probe/2026-09-13',
+              Accept: 'application/json',
+            },
+            redirect: 'error',
+          });
+          const responseText = await response.text();
+          let responseJson;
+          try { responseJson = JSON.parse(responseText); } catch { responseJson = null; }
+          const probeCompletedMs = Date.now();
+
+          if (response.status !== 400 || responseJson?.code !== 'RESEARCH_QUERY_INVALID') {
+            throw new Error(`Privacy probe hard STOP: expected 400/RESEARCH_QUERY_INVALID, got ${response.status}/${responseJson?.code || 'non-json'}. No retry is authorized.`);
+          }
+          console.log('Probe response: PASS (400 / RESEARCH_QUERY_INVALID)');
+          console.log('Probe request count: 1');
+
+          // Evidence inspection is intentionally delayed until the 120-second JWT has expired.
+          const waitMs = Math.max(0, (issued + 125) * 1000 - Date.now());
+          if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+          console.log('Ephemeral JWT expiry gate: PASS (inspection started after expiry)');
+
+          const queryFrom = probeStartedMs - 30_000;
+          const queryTo = Date.now() + 1_000;
+          const telemetryPath = `/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/observability/telemetry/query`;
+
+          async function queryEvents() {
+            const body = {
+              queryId: `libedge-observability-probe-${Date.now()}`,
+              timeframe: { from: queryFrom, to: queryTo },
+              view: 'events',
+              limit: 200,
+              parameters: {
+                datasets: [],
+                needle: {
+                  value: '/api/research/search',
+                  isRegex: false,
+                  matchCase: true,
+                },
+              },
+            };
+            return cfApi(telemetryPath, { method: 'POST', body: JSON.stringify(body) });
+          }
+
+          // Polling log ingestion does NOT repeat the production probe request.
+          let events = [];
+          for (let attempt = 1; attempt <= 6; attempt += 1) {
+            const result = await queryEvents();
+            events = result?.result?.events?.events || [];
+            if (events.length) break;
+            if (attempt < 6) await new Promise((resolve) => setTimeout(resolve, 10_000));
+          }
+          if (!events.length) {
+            throw new Error('Privacy probe hard STOP: no matching persisted Workers Observability event found. Probe was not repeated.');
+          }
+
+          const candidates = events.filter((event) => {
+            const meta = event?.$metadata || {};
+            const raw = JSON.stringify(event);
+            const timestamp = Number(event?.timestamp || meta?.timestamp || 0);
+            const inWindow = !timestamp || (timestamp >= probeStartedMs - 10_000 && timestamp <= probeCompletedMs + 10_000);
+            const serviceMatches = !meta?.service || meta.service === WORKER_NAME;
+            const statusMatches = Number(meta?.statusCode || event?.$workers?.event?.response?.status || 0) === 400;
+            return inWindow && serviceMatches && statusMatches && raw.includes('/api/research/search');
+          });
+
+          if (!candidates.length) {
+            throw new Error('Privacy probe hard STOP: persisted events were found, but none uniquely matched the reviewed 400 research invocation.');
+          }
+
+          candidates.sort((a, b) => {
+            const ta = Number(a?.timestamp || a?.$metadata?.timestamp || 0);
+            const tb = Number(b?.timestamp || b?.$metadata?.timestamp || 0);
+            return Math.abs(ta - probeStartedMs) - Math.abs(tb - probeStartedMs);
+          });
+          const event = candidates[0];
+          const serialized = JSON.stringify(event);
+
+          const forbidden = [
+            QUERY_SENTINEL_PREFIX,
+            QUERY_SENTINEL,
+            AUTHZ_SENTINEL,
+            COOKIE_SENTINEL,
+            jwt,
+            'libedge-observability-probe',
+            '"role":"probe"',
+          ];
+          for (const value of forbidden) {
+            if (serialized.includes(value)) {
+              throw new Error('PRIVACY OR COMPLETENESS VERIFICATION FAILED — sensitive probe material is present in the persisted invocation record.');
+            }
+          }
+
+          const metaUrl = event?.$metadata?.url;
+          if (typeof metaUrl === 'string') {
+            const parsed = new URL(metaUrl);
+            if (parsed.search) throw new Error('PRIVACY OR COMPLETENESS VERIFICATION FAILED — persisted metadata URL contains a query string.');
+            if (parsed.pathname !== '/api/research/search') throw new Error(`Unexpected persisted path: ${parsed.pathname}`);
+          }
+
+          function walk(value, prefix = '', rows = []) {
+            if (Array.isArray(value)) {
+              rows.push([prefix || '<root>', 'array']);
+              value.forEach((item, index) => walk(item, `${prefix}[${index}]`, rows));
+              return rows;
+            }
+            if (value && typeof value === 'object') {
+              if (prefix) rows.push([prefix, 'object']);
+              for (const [key, child] of Object.entries(value)) {
+                walk(child, prefix ? `${prefix}.${key}` : key, rows);
+              }
+              return rows;
+            }
+            rows.push([prefix || '<root>', value === null ? 'null' : typeof value]);
+            return rows;
+          }
+
+          function valueAt(root, path) {
+            const normalized = path.replace(/\[(\d+)\]/g, '.$1').split('.');
+            let value = root;
+            for (const part of normalized) {
+              if (!part) continue;
+              value = value?.[part];
+            }
+            return value;
+          }
+
+          const inventory = walk(event);
+          const unexpectedRoots = new Set();
+          const documentedRoots = new Set(['$metadata', '$workers', '$containers', 'dataset', 'source', 'timestamp']);
+          for (const [path] of inventory) {
+            const root = path.split(/[.[]/, 1)[0];
+            if (!documentedRoots.has(root)) unexpectedRoots.add(root);
+          }
+
+          if (unexpectedRoots.size) {
+            throw new Error(`STOP — UNEXPECTED LOG FIELD REQUIRES REVIEW: undocumented roots=${[...unexpectedRoots].join(',')}`);
+          }
+
+          const bodyFindings = inventory.filter(([path]) => /(^|\.)(body|requestBody|request_body)$/i.test(path));
+          for (const [path] of bodyFindings) {
+            const value = valueAt(event, path);
+            const empty = value == null || value === '' || (typeof value === 'object' && Object.keys(value).length === 0);
+            if (!empty) throw new Error(`PRIVACY OR COMPLETENESS VERIFICATION FAILED — persisted request body field is non-empty at ${path}`);
+          }
+
+          function classification(path) {
+            if (/timestamp|statusCode|service|url|trigger|type|eventType|scriptName/i.test(path)) {
+              return ['EXPECTED / NEEDED', 'classification/timing'];
+            }
+            if (/authorization|cookie|token|jwt|headers?|query|body/i.test(path)) {
+              return ['OPERATIONAL / NONESSENTIAL', 'privacy-sensitive surface; sentinel/body checks passed'];
+            }
+            return ['OPERATIONAL / NONESSENTIAL', 'Cloudflare invocation metadata'];
+          }
+
+          console.log('FULL_FIELD_INVENTORY_BEGIN');
+          for (const [path, type] of inventory) {
+            const [klass, note] = classification(path);
+            console.log(`${path}\t${type}\t${klass}\t${note}`);
+          }
+          console.log('FULL_FIELD_INVENTORY_END');
+
+          function redact(value, key = '') {
+            if (Array.isArray(value)) return value.map((item) => redact(item, key));
+            if (value && typeof value === 'object') {
+              return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redact(v, k)]));
+            }
+            if (typeof value !== 'string') return value;
+            if (/authorization|cookie|token|jwt|ip|account|ray.?id|request.?id|trace.?id|span.?id/i.test(key)) return '<redacted>';
+            if (value.includes(QUERY_SENTINEL_PREFIX) || value.includes(AUTHZ_SENTINEL) || value.includes(COOKIE_SENTINEL)) return '<sentinel-redacted>';
+            if (/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)) return '<jwt-redacted>';
+            if (/^https?:\/\//i.test(value)) {
+              try {
+                const u = new URL(value);
+                return `${u.origin}${u.pathname}`;
+              } catch {}
+            }
+            return value;
+          }
+
+          console.log('REDACTED_INVOCATION_SAMPLE_BEGIN');
+          console.log(JSON.stringify(redact(event), null, 2));
+          console.log('REDACTED_INVOCATION_SAMPLE_END');
+          console.log('Privacy probe query-string sentinel: PASS — absent');
+          console.log('Privacy probe Authorization/Cookie/JWT cleartext: PASS — absent');
+          console.log('Privacy probe request body persistence: PASS — no non-empty request body field');
+          console.log('Privacy probe complete field inventory: PASS — no undocumented top-level field; full nested inventory emitted for reviewer inspection');
+          console.log('PRIVACY_PROBE_RESULT=PASS_PENDING_INDEPENDENT_REVIEW');
+          NODE
