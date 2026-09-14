@@ -26,6 +26,7 @@ jobs:
 
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_OBSERVABILITY_TOKEN: ${{ secrets.CLOUDFLARE_OBSERVABILITY_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       EXPECTED_BASE_SHA: 0b2fd37b3be61bb00694c0b07b33a987f552099b
       WORKER_NAME: libedge-api-prod
@@ -102,6 +103,7 @@ jobs:
           node --input-type=module <<'NODE'
           const required = [
             'CLOUDFLARE_API_TOKEN',
+            'CLOUDFLARE_OBSERVABILITY_TOKEN',
             'CLOUDFLARE_ACCOUNT_ID',
             'WORKER_NAME',
             'PROBE_URL',
@@ -117,6 +119,7 @@ jobs:
 
           const {
             CLOUDFLARE_API_TOKEN,
+            CLOUDFLARE_OBSERVABILITY_TOKEN,
             CLOUDFLARE_ACCOUNT_ID,
             WORKER_NAME,
             PROBE_URL,
@@ -130,15 +133,17 @@ jobs:
             throw new Error(`Reviewed query sentinel must be exactly 301 characters; got ${QUERY_SENTINEL.length}`);
           }
 
-          const cfHeaders = {
-            Authorization: `Bearer ${CLOUDFLARE_API_TOKEN}`,
-            'Content-Type': 'application/json',
-          };
+          function cfHeaders(token) {
+            return {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            };
+          }
 
-          async function cfApi(path, init = {}) {
+          async function cfApi(path, init = {}, token = CLOUDFLARE_API_TOKEN) {
             const res = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
               ...init,
-              headers: { ...cfHeaders, ...(init.headers || {}) },
+              headers: { ...cfHeaders(token), ...(init.headers || {}) },
             });
             const text = await res.text();
             let json;
@@ -150,6 +155,7 @@ jobs:
           }
 
           // Confirm effective production settings before sending the one-shot probe.
+          // This read remains on the existing production/deploy credential.
           const settings = await cfApi(
             `/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/settings`,
             { method: 'GET', headers: { 'Content-Type': 'application/json' } },
@@ -204,7 +210,11 @@ jobs:
                 },
               },
             };
-            return cfApi(telemetryPath, { method: 'POST', body: JSON.stringify(body) });
+            return cfApi(
+              telemetryPath,
+              { method: 'POST', body: JSON.stringify(body) },
+              CLOUDFLARE_OBSERVABILITY_TOKEN,
+            );
           }
 
           // Polling log ingestion does NOT repeat the production probe request.
