@@ -1,0 +1,311 @@
+name: Production Minimal Observability Verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: >-
+          Type exactly PRODUCTION-MINIMAL-LOG-VERIFY-ONE-SHOT to authorize
+          the reviewed production deploy and single schema-verification probe.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-minimal-observability-verify
+  cancel-in-progress: false
+
+jobs:
+  deploy-and-verify:
+    name: Deploy minimized logging and verify one persisted custom log
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_OBSERVABILITY_TOKEN: ${{ secrets.CLOUDFLARE_OBSERVABILITY_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      EXPECTED_BASE_SHA: 412e94a2591148ec32be9aeb81fc27008c30c6f9
+      WORKER_NAME: libedge-api-prod
+      PROBE_URL: https://libedge-api-prod.agursel.workers.dev/api/research/search
+      QUERY_SENTINEL_PREFIX: LIBEDGE_MINLOG_QS_20260914_B4E2_
+      QUERY_SENTINEL: LIBEDGE_MINLOG_QS_20260914_B4E2_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      AUTHZ_SENTINEL: LIBEDGE_MINLOG_AUTHZ_20260914_B4E2
+      COOKIE_SENTINEL: LIBEDGE_MINLOG_COOKIE_20260914_B4E2
+
+    steps:
+      - name: Enforce one-shot human confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirmation }}" != "PRODUCTION-MINIMAL-LOG-VERIFY-ONE-SHOT" ]; then
+            echo "::error::Exact human confirmation string was not supplied."
+            exit 1
+          fi
+          echo "Human confirmation gate: PASS"
+          echo "Execution boundary: minimized production logging deploy + one synthetic schema-verification probe only"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: Verify reviewed staging execution unit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$EXPECTED_BASE_SHA" HEAD
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE_SHA..HEAD")
+          printf 'Changed since reviewed minimal-logging base:\n'
+          printf ' - %s\n' "${changed[@]}"
+
+          for path in "${changed[@]}"; do
+            case "$path" in
+              .github/workflows/production-minimal-observability-verify.yml|docs/architecture/p05-production-minimal-observability-execution-authorization.md)
+                ;;
+              *)
+                echo "::error::Unreviewed staging change after the minimal-logging base: $path"
+                exit 1
+                ;;
+            esac
+          done
+
+          grep -Fq '[env.production.observability.logs]' wrangler.toml
+          grep -Fq 'invocation_logs = false' wrangler.toml
+          grep -Fq 'redact_query_string = true' wrangler.toml
+          grep -Fq 'RESEARCH_SEMANTIC_PRIMARY_ENABLED = "false"' wrangler.toml
+          grep -Fq "event: 'research_request_observed'" backend/src/research/router.js
+          echo "Reviewed execution-unit guard: PASS"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify minimized application payload tests
+        run: npx vitest run test/backend/research-observability.test.js
+
+      - name: Step 1 — Deploy reviewed minimized observability configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --env production
+          echo "Waiting 10 seconds for the deployed Worker version to become globally available before the one-shot probe."
+          sleep 10
+
+      - name: Step 2 — Run one 401 probe and inspect persisted custom-log schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const required = [
+            'CLOUDFLARE_API_TOKEN',
+            'CLOUDFLARE_OBSERVABILITY_TOKEN',
+            'CLOUDFLARE_ACCOUNT_ID',
+            'WORKER_NAME',
+            'PROBE_URL',
+            'QUERY_SENTINEL_PREFIX',
+            'QUERY_SENTINEL',
+            'AUTHZ_SENTINEL',
+            'COOKIE_SENTINEL',
+          ];
+          for (const key of required) {
+            if (!process.env[key]) throw new Error(`Missing protected execution input: ${key}`);
+          }
+
+          const {
+            CLOUDFLARE_API_TOKEN,
+            CLOUDFLARE_OBSERVABILITY_TOKEN,
+            CLOUDFLARE_ACCOUNT_ID,
+            WORKER_NAME,
+            PROBE_URL,
+            QUERY_SENTINEL_PREFIX,
+            QUERY_SENTINEL,
+            AUTHZ_SENTINEL,
+            COOKIE_SENTINEL,
+          } = process.env;
+
+          function headers(token) {
+            return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+          }
+
+          async function cfApi(path, init = {}, token = CLOUDFLARE_API_TOKEN) {
+            const res = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
+              ...init,
+              headers: { ...headers(token), ...(init.headers || {}) },
+            });
+            const text = await res.text();
+            let json;
+            try { json = JSON.parse(text); } catch { json = null; }
+            if (!res.ok || json?.success === false) {
+              throw new Error(`Cloudflare API request failed (${res.status}) at ${path}; no probe retry is authorized.`);
+            }
+            return json;
+          }
+
+          const settings = await cfApi(
+            `/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/settings`,
+            { method: 'GET' },
+          );
+          const obs = settings?.result?.observability;
+          if (!obs?.enabled) throw new Error('Effective production observability is not enabled.');
+          if (Number(obs?.head_sampling_rate) !== 1) throw new Error('Effective head_sampling_rate is not 1.0.');
+          if (obs?.redact_query_string !== true) throw new Error('Effective redact_query_string is not true.');
+          if (obs?.logs?.invocation_logs !== false) throw new Error('Effective invocation_logs is not false.');
+          console.log('Effective minimized observability settings: enabled=true, head_sampling_rate=1.0, redact_query_string=true, invocation_logs=false');
+          console.log('Production semantic-primary: false (reviewed execution-unit guard)');
+
+          const target = new URL(PROBE_URL);
+          target.searchParams.set('q', QUERY_SENTINEL);
+          const probeStartedMs = Date.now();
+
+          // EXACTLY ONE production probe. Polling telemetry below never repeats this request.
+          const response = await fetch(target, {
+            method: 'GET',
+            headers: {
+              Authorization: `LibEdgeProbe ${AUTHZ_SENTINEL}`,
+              Cookie: `authToken=invalid-probe-token; libedge_probe=${COOKIE_SENTINEL}`,
+              'User-Agent': 'LibEdge-Minimal-Observability-Probe/2026-09-14',
+              Accept: 'application/json',
+            },
+            redirect: 'error',
+          });
+          await response.text();
+          const probeCompletedMs = Date.now();
+          if (response.status !== 401) {
+            throw new Error(`Schema-verification probe hard STOP: expected 401, got ${response.status}. No retry is authorized.`);
+          }
+          console.log('Probe response: PASS (401 / unauthenticated expected)');
+          console.log('Probe request count: 1');
+
+          const telemetryPath = `/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/observability/telemetry/query`;
+          const queryFrom = probeStartedMs - 30_000;
+          let events = [];
+
+          async function queryEvents() {
+            const body = {
+              queryId: `libedge-minlog-schema-${Date.now()}`,
+              timeframe: { from: queryFrom, to: Date.now() + 1_000 },
+              view: 'events',
+              limit: 200,
+              parameters: {
+                datasets: [],
+                needle: { value: 'research_request_observed', isRegex: false, matchCase: true },
+              },
+            };
+            return cfApi(
+              telemetryPath,
+              { method: 'POST', body: JSON.stringify(body) },
+              CLOUDFLARE_OBSERVABILITY_TOKEN,
+            );
+          }
+
+          for (let attempt = 1; attempt <= 6; attempt += 1) {
+            const result = await queryEvents();
+            events = result?.result?.events?.events || [];
+            if (events.length) break;
+            if (attempt < 6) await new Promise((resolve) => setTimeout(resolve, 10_000));
+          }
+          if (!events.length) {
+            throw new Error('Schema-verification hard STOP: no persisted research_request_observed custom log found. Probe was not repeated.');
+          }
+
+          function findPayloads(value, found = []) {
+            if (!value || typeof value !== 'object') return found;
+            if (!Array.isArray(value) && value.event === 'research_request_observed') found.push(value);
+            for (const child of Object.values(value)) findPayloads(child, found);
+            return found;
+          }
+
+          const candidates = [];
+          for (const event of events) {
+            const timestamp = Number(event?.timestamp || event?.$metadata?.timestamp || 0);
+            const inWindow = !timestamp || (timestamp >= probeStartedMs - 10_000 && timestamp <= probeCompletedMs + 10_000);
+            const serviceMatches = !event?.$metadata?.service || event.$metadata.service === WORKER_NAME;
+            const payloads = findPayloads(event);
+            for (const payload of payloads) {
+              if (inWindow && serviceMatches && payload.status_class === '4xx' && payload.path_class === 'research_search') {
+                candidates.push({ event, payload });
+              }
+            }
+          }
+
+          if (candidates.length !== 1) {
+            throw new Error(`Schema-verification hard STOP: expected exactly one matching custom log, found ${candidates.length}. Probe was not repeated.`);
+          }
+
+          const { event, payload } = candidates[0];
+          const expectedKeys = ['duration_ms', 'event', 'path_class', 'status_class', 'timestamp_bucket'];
+          const actualKeys = Object.keys(payload).sort();
+          if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
+            throw new Error(`Application custom-log payload shape changed: ${actualKeys.join(',')}`);
+          }
+          if (payload.event !== 'research_request_observed' || payload.path_class !== 'research_search' || payload.status_class !== '4xx') {
+            throw new Error('Application custom-log payload values do not match the reviewed schema.');
+          }
+          if (!Number.isInteger(payload.timestamp_bucket) || !Number.isInteger(payload.duration_ms) || payload.duration_ms < 0) {
+            throw new Error('Application custom-log timing fields do not match the reviewed schema.');
+          }
+
+          const serialized = JSON.stringify(event);
+          const forbiddenValues = [QUERY_SENTINEL_PREFIX, QUERY_SENTINEL, AUTHZ_SENTINEL, COOKIE_SENTINEL, 'invalid-probe-token'];
+          for (const value of forbiddenValues) {
+            if (serialized.includes(value)) {
+              throw new Error('PRIVACY VERIFICATION FAILED — synthetic sensitive probe material is present in persisted custom-log data.');
+            }
+          }
+
+          function walk(value, prefix = '', rows = []) {
+            if (Array.isArray(value)) {
+              rows.push([prefix || '<root>', 'array']);
+              value.forEach((item, i) => walk(item, `${prefix}[${i}]`, rows));
+              return rows;
+            }
+            if (value && typeof value === 'object') {
+              if (prefix) rows.push([prefix, 'object']);
+              for (const [key, child] of Object.entries(value)) walk(child, prefix ? `${prefix}.${key}` : key, rows);
+              return rows;
+            }
+            rows.push([prefix || '<root>', value === null ? 'null' : typeof value]);
+            return rows;
+          }
+
+          const inventory = walk(event);
+          const privacySensitivePaths = inventory
+            .map(([path]) => path)
+            .filter((path) => /(^|\.)(request|response|headers?|cookie|authorization|query|body|cf)(\.|$)|geo|latitude|longitude|postal|\basn\b|\btls\b|client.?ip|user.?agent/i.test(path));
+          if (privacySensitivePaths.length) {
+            throw new Error(`PRIVACY VERIFICATION FAILED — platform custom-log envelope contains privacy-sensitive fields: ${privacySensitivePaths.join(',')}`);
+          }
+
+          console.log('CUSTOM_LOG_FULL_FIELD_INVENTORY_BEGIN');
+          for (const [path, type] of inventory) console.log(`${path}\t${type}`);
+          console.log('CUSTOM_LOG_FULL_FIELD_INVENTORY_END');
+
+          function redact(value, key = '') {
+            if (Array.isArray(value)) return value.map((item) => redact(item, key));
+            if (value && typeof value === 'object') {
+              return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redact(v, k)]));
+            }
+            if (typeof value !== 'string') return value;
+            if (/account|ray.?id|request.?id|trace.?id|span.?id/i.test(key)) return '<redacted>';
+            return value;
+          }
+
+          console.log('REDACTED_CUSTOM_LOG_SAMPLE_BEGIN');
+          console.log(JSON.stringify(redact(event), null, 2));
+          console.log('REDACTED_CUSTOM_LOG_SAMPLE_END');
+          console.log('Application custom-log exact five-field schema: PASS');
+          console.log('Synthetic query/auth/cookie values absent from persisted custom log: PASS');
+          console.log('Automatic invocation logs effective setting: PASS — false');
+          console.log('Platform custom-log envelope privacy-sensitive field scan: PASS');
+          console.log('MINIMAL_LOG_SCHEMA_RESULT=PASS_PENDING_INDEPENDENT_REVIEW');
+          NODE
