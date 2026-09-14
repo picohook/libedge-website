@@ -46,6 +46,21 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         if (markerNode) markerNode.textContent = marker;
     }
 
+    function markResearchGapsFixtureOnly() {
+        const gapsCard = document.querySelector('.insight-card.gaps');
+        if (!gapsCard || gapsCard.querySelector('[data-research-gaps-boundary]')) return;
+
+        const note = document.createElement('p');
+        note.dataset.researchGapsBoundary = 'fixture-only';
+        note.setAttribute('role', 'note');
+        note.textContent = 'Fixture-only · Bu araştırma boşlukları live API sonucundan üretilmiyor.';
+        note.style.marginTop = '0.75rem';
+        note.style.fontSize = '0.78rem';
+        note.style.lineHeight = '1.45';
+        note.style.color = '#6b7280';
+        gapsCard.appendChild(note);
+    }
+
     function highlightSource(sourceId) {
         const target = document.getElementById(sourceId);
         if (!target) return;
@@ -91,6 +106,8 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         if (demoSearchButton) demoSearchButton.disabled = false;
     }
 
+    markResearchGapsFixtureOnly();
+
     document.querySelectorAll('.citation-chip[data-source]').forEach((button) => {
         button.addEventListener('click', () => highlightSource(button.dataset.source));
     });
@@ -100,6 +117,10 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         button.addEventListener('click', () => {
             document.querySelectorAll('.assistant-mode').forEach((item) => item.classList.remove('active'));
             button.classList.add('active');
+            if (button.dataset.mode === 'gaps') {
+                showToast('Araştırma boşlukları şimdilik fixture-only. Live gap verisi için ayrı, minimize edilmiş API contract review gereklidir.');
+                return;
+            }
             if (button.dataset.mode !== 'ask') showToast('Bu mod prototipte yalnızca görsel olarak gösteriliyor. İlk sürümde “Sor” deneyimini tamamlayacağız.');
         });
     });
