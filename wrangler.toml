@@ -103,6 +103,9 @@ enabled = true
 head_sampling_rate = 1.0
 redact_query_string = true
 
+[env.production.observability.logs]
+invocation_logs = false
+
 # Production deploys fail closed when core application secrets are missing.
 # Secret values remain encrypted in Cloudflare and are never stored here.
 [env.production.secrets]
