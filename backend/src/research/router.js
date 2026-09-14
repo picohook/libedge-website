@@ -12,6 +12,33 @@ function normalizeQuery(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
+export function buildResearchObservationLog(status, startedMs, completedMs = Date.now()) {
+  const numericStatus = Number(status);
+  const statusClass = Number.isFinite(numericStatus) && numericStatus >= 100 && numericStatus <= 599
+    ? `${Math.floor(numericStatus / 100)}xx`
+    : 'other';
+
+  return {
+    event: 'research_request_observed',
+    timestamp_bucket: Math.floor(Number(completedMs) / 60_000),
+    path_class: 'research_search',
+    status_class: statusClass,
+    duration_ms: Math.max(0, Number(completedMs) - Number(startedMs)),
+  };
+}
+
+app.use('/api/research/search', async (c, next) => {
+  const startedMs = Date.now();
+
+  try {
+    await next();
+  } finally {
+    if (c.env.ENVIRONMENT === 'production') {
+      console.log(buildResearchObservationLog(c.res.status, startedMs));
+    }
+  }
+});
+
 app.get('/api/research/search', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
