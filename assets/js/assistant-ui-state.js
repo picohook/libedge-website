@@ -6,6 +6,7 @@ export const ASSISTANT_UI_STATES = Object.freeze({
   INVALID_QUERY: 'invalid-query',
   RETRIEVAL_ERROR: 'retrieval-error',
   EVIDENCE_ERROR: 'evidence-error',
+  EVIDENCE_PAYLOAD_REQUIRED: 'evidence-payload-required',
   MODEL_ERROR: 'model-error',
   GROUNDING_REJECTED: 'grounding-rejected',
   GENERIC_ERROR: 'generic-error'
@@ -47,6 +48,12 @@ const CODE_MAP = Object.freeze({
     title: 'Kanıt paketi oluşturulamadı',
     message: 'Kaynaklar güvenli yanıt üretimi için hazırlanamadığı için yanıt gösterilmiyor.',
     tone: 'error'
+  },
+  EVIDENCE_PAYLOAD_REQUIRED: {
+    state: ASSISTANT_UI_STATES.EVIDENCE_PAYLOAD_REQUIRED,
+    title: 'Doğrulanmış kaynak verisi bekleniyor',
+    message: 'Başarı yanıtı kaynak payloadı içermediği için fixture kaynaklar gerçek yanıtla karıştırılmıyor ve yanıt gösterilmiyor.',
+    tone: 'warning'
   },
   MODEL_ADAPTER_FAILED: {
     state: ASSISTANT_UI_STATES.MODEL_ERROR,
@@ -103,6 +110,13 @@ export function mapAssistantResult(result) {
     claims: [],
     evidencePackId: result?.evidence_pack_id || null
   };
+}
+
+export function mapLiveAssistantResult(result) {
+  if (result?.ok === true && result?.code === 'OK' && !Array.isArray(result.evidence)) {
+    return mapAssistantResult({ ok: false, code: 'EVIDENCE_PAYLOAD_REQUIRED', claims: [] });
+  }
+  return mapAssistantResult(result);
 }
 
 export function loadingStage(index = 0) {
