@@ -8,177 +8,161 @@ Status: `ACTIVE`
 
 ## Current workstream priority
 
-- `ACTIVE`: **AI Assistant architecture + staging development**.
-- `PAUSED`: **Production/go-live execution**, including the accepted G0-G9 go-live checklist and production migration reconciliation. This work is paused, not cancelled, and resumes from its existing state when the first public-launch decision is made. No production migration or production deployment work is to be executed while paused.
-- `SEPARATE`: **Semantic-primary Track A/B (D-016)**. It remains on its own authorization and rollout chain and is not implicitly enabled or blocked by AI Assistant staging development.
+- `ACTIVE`: **AI Assistant staging development and evidence-first UI**.
+- `ACTIVE / SEPARATE`: **Semantic-primary Track A production observation window (D-016)**. The 168-hour observation window is currently running under the reviewed minimized-logging configuration. Semantic-primary itself remains OFF.
+- `PAUSED`: **Production/go-live execution**, including the accepted G0-G9 go-live checklist and production D1 migration reconciliation. This remains paused except for the separately authorized Track A observability work already executed.
 
-The canonical AI Assistant architecture record is:
+## AI Assistant architecture
 
-`docs/architecture/p05-ai-assistant-architecture-v0.1.md`
+The AI Assistant architecture is no longer pre-implementation only. The staging codebase now contains the reviewed evidence-grounding/orchestration layers, response-contract work, fail-closed UI state mapping, and evidence-first fixture UI.
 
-No AI Assistant implementation code has been authorized or started by that architecture record. No LLM provider has been selected. Provider/model/endpoint privacy evaluation is the first real gate after architecture-to-code reconciliation.
+Two P0 invariants remain governing:
 
-## Current phase
+1. **Evidence grounding** — no unsupported claim is rendered as grounded output; grounding remains all-or-nothing for the current live contract.
+2. **Research-interest privacy** — no provider/model route may receive research-interest-bearing content until the Provider Privacy Gate passes for the exact model + endpoint + hosting route.
 
-P0.5 experimental sequence is **CLOSED / independently verified**. H is rejected. D-016 is **LOCKED** for the existing top-10 research-result contract: semantic S primary, lexical L only as objective availability fallback/rollback.
+Canonical records:
 
-Current semantic-primary flags:
+- `docs/architecture/p05-ai-assistant-architecture-v0.1.md`
+- `docs/architecture/p05-assistant-response-contract-v0.1.md`
+- `docs/architecture/p05-assistant-research-gaps-ui-boundary.md`
+- `docs/architecture/p05-provider-privacy-gate.md`
 
-- staging: `OFF`;
-- production: `OFF`.
+### Current live-provider state
 
-No production semantic enablement or production D1 migration is authorized.
+No provider/model has received final production authorization.
+
+The strongest candidate remains AWS Bedrock Claude Sonnet 4.6, but its gate is still fail-closed:
+
+`PASS CANDIDATE — STRONGEST EVIDENCE / FINAL CONFIRMATION PENDING`
+
+Open blocker:
+
+`Sonnet 4.6 implicit prompt-cache/KV state under effective data_retention_mode: none — ZDR scope remains OPEN / UNVERIFIED.`
+
+AWS Support has confirmed that no documented account/project-level opt-out exists for implicit caching. A written escalation asking whether the transient cache state is retained Customer Data and how it is isolated remains the final confirmation path. Anthropic support has stated that Bedrock-side retention/caching is AWS-controlled; Anthropic is not a separate authority for that Bedrock configuration.
+
+Until the gate passes, live `/api/assistant/ask` behavior must remain fail-closed. UI work may continue only without silently bypassing that boundary.
+
+## Assistant UI / product state
+
+The staging UI is an **evidence-first prototype**. Fixture content is explicitly labeled as fixture/prototype data and must not be confused with live provider output.
+
+Current UI boundaries:
+
+- `PROVIDER_PRIVACY_GATE_REQUIRED`, `MODEL_ADAPTER_REQUIRED`, and `EVIDENCE_PAYLOAD_REQUIRED` remain explicit non-success states.
+- A live `OK` response without an `evidence` array is fail-closed.
+- `Research Gaps` remains fixture/conceptual only. No `rejected_claims` or partial-grounding API exposure is authorized.
+- The current grounding contract remains all-or-nothing.
+- Live transport is not to be silently recreated merely to support fixture UX.
+
+Current active UI work is fixture-only evidence interaction, source-panel behavior, loading/error polish, and accessibility.
+
+## D-016 semantic-primary status
+
+P0.5 is closed and D-016 remains `LOCKED` for the existing top-10 research-result contract:
+
+- semantic S primary;
+- lexical L only as objective availability fallback/rollback;
+- valid empty/short semantic results do not trigger lexical fallback;
+- H is not adopted;
+- semantic-primary remains OFF until separately authorized.
+
+Current flags:
+
+- staging semantic-primary: `OFF`;
+- production semantic-primary: `OFF`.
+
+No production D1 migration is authorized by the current Track A work.
 
 ## Track A — production traffic / capacity evidence
 
-Track A is `SEPARATE` from AI Assistant staging development.
+Track A is currently in its **168-hour production observation window**.
 
 Locked broad-enablement condition:
 
 `peak eligible research-query rate <= 0.5 requests/second`.
 
-Accepted evidence requires per-request timestamps or privacy-safe buckets no coarser than `2 seconds`, plus complete/unsampled capture. Human account-state inspection established that Workers Observability is disabled for the production Worker, so no existing Workers Logs history can satisfy this evidence standard.
+The earlier observability design was revised after real persisted logs revealed excessive Cloudflare invocation metadata. The production configuration now uses minimized custom logging with automatic invocation logs disabled.
 
-Current Track A result:
+Verified application payload fields are limited to:
 
-`INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED`.
+- `event`;
+- `timestamp_bucket`;
+- `path_class`;
+- `status_class`;
+- `duration_ms`.
+
+Independent read-only inspection established:
+
+`PASS WITH RESIDUAL PLATFORM METADATA — ACCEPTED`.
+
+Residual Cloudflare platform metadata includes fixed-route request method/path/redacted URL plus operational IDs such as request/ray/trace/span identifiers. This acceptance is **endpoint-specific** to the fixed `/api/research/search` route and must not be generalized to parameterized/user-content-bearing paths. Operational IDs carry a low, non-zero correlation risk if joined with richer logs elsewhere.
+
+The decision not to move to `persist:false` + external OTEL is reversible. Reopen if policy becomes stricter, B2C becomes a concrete roadmap item, residual metadata expands, or correlation risk changes.
+
+The observation window may be interrupted/restarted only through explicit review if production observability/logging behavior materially changes.
+
+Canonical record:
+
+`docs/architecture/p05-production-observability-metadata-minimization.md`
 
 ## Track B — production D1 telemetry migration preparation
 
-Track B is `SEPARATE` from AI Assistant staging development, while production migration execution itself remains `PAUSED` under the go-live workstream.
+Track B remains `SEPARATE` and production migration execution remains `PAUSED`.
 
 Intended D-016 migration:
 
 `migrations/0048_research_telemetry_counters.sql`
 
-Read-only production inspection found a pending production migration backlog beginning at `0042`. Supported D1 migration application does not provide a normal skip mechanism for arbitrary pending files, so production reconciliation remains a gating item for eventual semantic-primary production enablement.
+Production has a pending migration backlog beginning at `0042`; arbitrary pending migrations cannot be skipped through the normal D1 migration mechanism. Reconciliation therefore remains a separate gate before any eventual production migration execution.
 
-Current Track B execution result:
-
-`PAUSED — DO NOT APPLY PRODUCTION D1 MIGRATIONS`.
-
-The backlog is tracked separately in:
+Canonical audit:
 
 `docs/reviews/2026-09-11-production-d1-pending-migration-audit.md`
 
 ## 0047 / 0049 privacy and deletion-policy closure
 
-The staging deletion-policy work is **CLOSED** and is not to be reopened without new contradictory evidence.
+The staging deletion-policy work remains `CLOSED — BEHAVIORAL PASS` and is not reopened without contradictory evidence.
 
-### 0047-PRIVACY-01
+- PR #37 fixed source-order behavior around the 0047 deletion audit path.
+- PR #38 / migration 0049 added the explicit `user_notifications` deletion policy.
+- Controlled staging deletion verification covered both admin and self paths.
 
-The admin deletion endpoint previously inserted a PII-bearing deletion audit snapshot after `DELETE FROM users`, so the 0047 `BEFORE DELETE` trigger could not redact that newly inserted row.
+## Locked constraints still active
 
-The narrow source-order fix was independently ACCEPTED and merged to staging through PR #37.
-
-Merge commit:
-
-`a47669de451b3ca0997f607b71cb4d914634e825`
-
-Final state:
-
-`CLOSED — BEHAVIORAL PASS`.
-
-### 0047-SCOPE-01 / 0049
-
-Reviewer discovery identified `user_notifications` as an active per-user table omitted from the original explicit 0047 trigger. Live staging inspection proved that the table could not rely on the previously assumed cascade behavior.
-
-The forward-only trigger replacement is:
-
-`migrations/0049_user_notifications_deletion_policy.sql`
-
-PR #38 was independently ACCEPTED and merged to staging. Migration 0049 was separately reviewed and applied exactly once to remote staging under locked pre/post guardrails.
-
-Controlled apply run:
-
-`34606916660`
-
-The controlled 30-domain staging deletion workflow was subsequently corrected for the login/refresh-token baseline side effect and executed successfully against the reviewed staging commit.
-
-Successful controlled deletion run:
-
-`34700067535` is **not** the deletion run; it is the later staging smoke run. The canonical deletion evidence remains in the dedicated review/evidence records and must be used rather than inferring deletion status from unrelated workflow IDs.
-
-Final finding state:
-
-`CLOSED — BEHAVIORAL PASS (ADMIN + SELF PATHS)`.
-
-The deletion-policy surface remains 30 domains, including `user_notifications` through the explicit 0049 trigger.
-
-## Staging release-candidate status
-
-The current staging product has passed the existing technical smoke suite for:
-
-- authentication;
-- files;
-- lexical research;
-- frontend Chromium behavior.
-
-Staging smoke run:
-
-`34700067535`
-
-Result:
-
-`SUCCESS`.
-
-No new launch-blocking issue was identified in the subsequent fast-mode launch-readiness review. This does not authorize production deployment.
-
-## Finding status
-
-### CLOSED
-
-1. `OOS-D016-CODE-01` — semantic pacing/account-wide 429 interaction.
-2. `OOS-D016-TELEMETRY-01` — previous KV telemetry lost-update race.
-3. `0047-PRIVACY-01` — behavioral PASS in staging.
-4. `0047-SCOPE-01` — behavioral PASS in staging, including explicit 0049 `user_notifications` policy.
-
-### ACKNOWLEDGED / DEFERRED
-
-5. `OOS-D016-CODE-02` — pre-existing non-atomic cache read/write stampede risk.
-6. Shared-core-D1 telemetry failure-domain coupling.
-7. Wrangler declarative `exports` migration path.
-
-### PAUSED / SEPARATE
-
-8. Production D1 migration reconciliation/backlog — paused until go-live workstream resumes; remains an eventual production gate.
-9. Semantic-primary Track A/B — separate rollout chain; semantic-primary remains OFF.
-
-## Locked rollout constraints still active
-
-1. Semantic-primary remains OFF until separately reviewed rollout authorization.
-2. Valid empty/short semantic results do not trigger lexical fallback.
-3. Lexical fallback remains objective-only.
-4. Semantic requests remain globally paced at `1500 ms` minimum spacing.
-5. Broad enablement remains blocked without accepted `<=0.5 req/s` peak evidence.
-6. D-013 checkpoint remains first `1,000` charged semantic responses or `7 days`, whichever occurs first.
-7. Capacity/cost/availability telemetry stores no query text, topics, research interests or user IDs.
-8. P0.5 holdouts/labels are not reused for rollout relevance retuning.
-9. Top-10 scope only.
-10. Production D1 migration and production semantic enablement remain separate decisions.
+1. Provider Privacy Gate precedes capability/cost/latency comparison and model selection.
+2. Research-interest privacy and evidence grounding remain P0 invariants.
+3. Semantic-primary remains OFF until separately reviewed rollout authorization.
+4. Broad semantic enablement remains blocked without accepted `<=0.5 req/s` production evidence.
+5. D-013 checkpoint remains first `1,000` charged semantic responses or `7 days`, whichever occurs first.
+6. Capacity/cost/availability telemetry stores no query text, topics, research interests or user IDs.
+7. Production D1 migration and semantic-primary enablement remain separate decisions.
+8. Research Gaps live data exposure requires a separate minimized contract review; fixture UI is not authorization to expose rejected claims.
+9. Production observability metadata acceptance is endpoint-specific and reversible.
+10. No active Track A logging/config change is allowed during the 168-hour window without explicit review.
 
 ## NEXT
 
-1. Reconcile `docs/architecture/p05-ai-assistant-architecture-v0.1.md` against the current LibEdge/DISCOVER code without starting AI Assistant implementation.
-2. Preserve the two P0 AI Assistant invariants: evidence grounding and research-interest privacy.
-3. Evaluate candidate LLM providers/models/endpoints through the Provider Privacy Gate before selecting any provider.
-4. Keep production/go-live execution paused until the first public-launch decision explicitly resumes the accepted G0-G9 checklist.
-5. Keep semantic-primary Track A/B separate and semantic-primary OFF unless separately authorized.
-6. Do not apply production migrations or deploy production as part of the AI Assistant architecture work.
+1. Preserve the active 168-hour Track A observation window; review anomalies immediately and otherwise evaluate the complete window at closure.
+2. Await the authoritative AWS response on Sonnet 4.6 implicit cache/ZDR scope; do not promote the provider gate early.
+3. Continue low-risk fixture/evidence-first UI work while keeping all live fail-closed states maintained.
+4. Keep `Research Gaps` fixture-only unless a separate minimized rejection-summary contract is reviewed and accepted.
+5. Keep semantic-primary OFF and production D1 migrations paused until their separate authorization chains complete.
+6. Keep this file and `docs/decisions.md` synchronized whenever a material project-state decision changes.
 
 ## Canonical records
 
 - Decisions: `docs/decisions.md`
 - AI Assistant architecture: `docs/architecture/p05-ai-assistant-architecture-v0.1.md`
+- Assistant response contract: `docs/architecture/p05-assistant-response-contract-v0.1.md`
+- Research Gaps UI boundary: `docs/architecture/p05-assistant-research-gaps-ui-boundary.md`
+- Provider Privacy Gate: `docs/architecture/p05-provider-privacy-gate.md`
 - Locked retrieval architecture: `docs/architecture/p05-production-retrieval-decision.md`
-- Production rollout-stage preparation: `docs/architecture/p05-production-rollout-stage-preparation.md`
-- Capacity evidence discovery: `docs/architecture/p05-production-capacity-evidence-discovery.md`
+- Production observability metadata minimization: `docs/architecture/p05-production-observability-metadata-minimization.md`
+- Production capacity evidence: `docs/architecture/p05-production-capacity-evidence-discovery.md`
 - Production D1 migration preparation: `docs/architecture/p05-production-d1-migration-preparation.md`
 - Production pending-migration audit: `docs/reviews/2026-09-11-production-d1-pending-migration-audit.md`
-- 0047 dedicated production review: `docs/reviews/2026-09-11-0047-user-deletion-integrity-production-review.md`
-- 0047 read-only analysis: `docs/reviews/2026-09-11-0047-read-only-schema-code-analysis.md`
-- 0047 controlled staging packet: `docs/reviews/2026-09-11-0047-controlled-staging-deletion-packet.md`
-- 0049 staging apply evidence: `docs/reviews/2026-09-11-0049-staging-migration-apply-evidence.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
-Last updated: 2026-09-12
+Last updated: 2026-09-15

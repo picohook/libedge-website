@@ -275,4 +275,42 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Canonical record: this file.
 - Triage: `OPEN -> RESOLVED BY PROCESS CONTROL`; applies prospectively. Existing P0.5 bundle remains valid because its upstream retrieval artifact was later independently `ACCEPTED` with no execution correction.
 
-Last updated: 2026-09-10
+## D-018
+
+- Types: `architecture`, `privacy/security`
+- Status: `LOCKED`
+- Decision: AI Assistant provider/model evaluation is fail-closed and ordered as `privacy eligibility -> PASS candidate pool -> capability/cost/latency evaluation -> model selection`; the gate unit is the exact model + endpoint + hosting route, not provider brand.
+- Reason: Research-interest privacy is a P0 invariant and must not be weakened after selecting a preferred model.
+- Provenance: Provider Privacy Gate reviews and reviewer reconciliation through PRs #39, #40, #69, #70 and #71.
+- Canonical reference: `docs/architecture/p05-provider-privacy-gate.md`
+
+## D-019
+
+- Types: `privacy/security`, `architecture`
+- Status: `LOCKED`
+- Decision: Accept the current production custom-log design for fixed `/api/research/search` as `PASS WITH RESIDUAL PLATFORM METADATA — ACCEPTED`; the acceptance is endpoint-specific, includes a low non-zero correlation risk for operational IDs, and is reversible if policy/scope changes.
+- Reason: Persisted-schema inspection verified the LibEdge payload is minimized and Cloudflare residual request context is limited to fixed-route method/path/redacted URL plus operational identifiers; richer geo/ASN/TLS/header/body/query content was not present in the inspected record.
+- Provenance: production minimal-observability deploy/inspection reviews and accepted documentation PR #85.
+- Canonical reference: `docs/architecture/p05-production-observability-metadata-minimization.md`
+
+## D-020
+
+- Types: `product-scope`, `architecture`
+- Status: `LOCKED`
+- Decision: `Research Gaps` remains fixture/conceptual UI only; live `rejected_claims`, partial-grounding output, or a minimized rejection-summary schema is not authorized by the current Assistant response contract and requires a separate contract review.
+- Reason: The current grounding invariant is all-or-nothing, while a live Research Gaps view would imply partial/rejected-claim information that the API intentionally does not expose.
+- Provenance: reviewer finding from PR #61 and accepted boundary PR #86.
+- Canonical reference: `docs/architecture/p05-assistant-research-gaps-ui-boundary.md`
+
+## D-021
+
+- Types: `architecture`, `privacy/security`
+- Status: `LOCKED`
+- Decision: During the active 168-hour Track A observation window, the reviewed production observability/logging behavior must remain unchanged unless an anomaly requires explicit reviewed intervention; semantic-primary remains OFF until the window is evaluated and separately authorized.
+- Reason: Capacity evidence is only meaningful if collected under a stable, privacy-reviewed logging configuration.
+- Provenance: explicit reviewer authorization following accepted metadata-minimization decision PR #85.
+- Canonical references:
+  - `docs/architecture/p05-production-observability-metadata-minimization.md`
+  - `docs/architecture/p05-production-retrieval-decision.md`
+
+Last updated: 2026-09-15
