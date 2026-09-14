@@ -126,6 +126,56 @@ The historical/current distinction remains unchanged:
 
 No verdict changes follow from this additional corroboration.
 
+## 5. Reviewer correction — implicit prompt caching — 2026-09-14
+
+A proposed relaxation of the caching blocker was reviewed and rejected after re-reading the current AWS prompt-caching documentation in full.
+
+The rejected interpretation was that Anthropic prompt caching on Bedrock was explicit-only, so a LibEdge architectural rule forbidding `cache_control` / `cachePoint` would prevent any cache state from being created. That interpretation was incorrect.
+
+AWS currently states that Anthropic models supporting prompt caching support both implicit and explicit caching, and that implicit caching "automatically attempts to reuse eligible prompt prefixes without requiring cache controls in your request." The Sonnet 4.6 model documentation also lists implicit and explicit prompt caching support for the reviewed `bedrock-runtime` surface.
+
+The prior live test that returned `cache_creation_input_tokens: 0` and `cache_read_input_tokens: 0` does not establish that caching is disabled. That request contained only 8 input tokens, while the documented Sonnet 4.6 minimum cacheable prompt length is 1,024 tokens. The result therefore shows only that the specific short request did not create/read cache state; it cannot resolve the implicit-caching behavior for realistic evidence-grounded prompts above the eligibility threshold.
+
+Likewise, the production-observability privacy probe is not evidence about Bedrock caching. That probe terminates at the LibEdge Worker authentication path and does not perform a Bedrock model-inference request.
+
+### Reviewer-correction record
+
+The earlier reviewer interpretation — including the inference that Nova automatic caching implied Claude caching was explicit-only — is explicitly withdrawn. The implementer correctly retained the fail-closed gate rather than converting an incomplete inference into final `PASS`.
+
+This correction does not add adverse evidence about AWS handling. It removes an invalid proposed route for closing the blocker.
+
+### Narrowed open question
+
+The sole remaining caching question is now:
+
+> Under effective Bedrock data-retention mode `none`, for the exact Sonnet 4.6 `bedrock-runtime` route, is implicit prompt-cache state covered by the ZDR guarantee / otherwise prevented from retaining research-interest-bearing content beyond the permitted ZDR boundary?
+
+A rule merely forbidding explicit cache controls is not sufficient to answer this question because implicit caching does not require those controls.
+
+**Caching status remains:** `OPEN / UNVERIFIED`.
+
+## 6. Anthropic support-channel scope clarification — 2026-09-14
+
+An Anthropic support agent stated that, for deployments through Amazon Bedrock:
+
+- AWS is the sole data processor for the Bedrock deployment path;
+- Anthropic's own Zero Data Retention program, including its explicit-caching-override provision, does not apply to Bedrock;
+- Anthropic does not separately track or approve per-model retention configuration for Bedrock deployments.
+
+This is a **support-channel response, not a formal written compliance confirmation**. It is therefore recorded only as scope-narrowing context and is not treated as primary evidence resolving the substantive caching/ZDR question.
+
+### Effect on reconciliation path
+
+The prior possibility of resolving the remaining blocker by asking AWS and Anthropic as separate owners is narrowed. On the basis of this support-channel response, Anthropic reports no visibility into or authority over the Bedrock-side implicit-caching / retention-mode interaction.
+
+Accordingly, the **"ask Anthropic separately" branch is closed for this reconciliation trigger**. AWS Support / AWS official provider-specific evidence is now the sole remaining channel for resolving the open Bedrock-side question.
+
+This does **not** establish whether implicit cache state is covered by Bedrock retention mode `none`, nor whether such state is prevented, exempted, or otherwise handled within the ZDR boundary.
+
+**No new substantive caching/ZDR evidence is claimed.**
+
+**Caching status remains:** `OPEN / UNVERIFIED`.
+
 ## Final confirmation trigger
 
 Promote this route to final `PASS` only after one of the following is obtained from AWS official/provider-specific evidence:
@@ -147,7 +197,7 @@ The candidate verdict remains:
 
 `PASS CANDIDATE — STRONGEST EVIDENCE / FINAL CONFIRMATION PENDING`
 
-with the sole remaining blocker narrowed to the documented implicit-prompt-caching/ZDR interaction.
+with the sole remaining blocker narrowed to the documented implicit-prompt-caching/ZDR interaction. Anthropic support-channel context further narrows the resolution owner: AWS is the remaining authoritative channel for the Bedrock-side question.
 
 ## Decision boundary
 
