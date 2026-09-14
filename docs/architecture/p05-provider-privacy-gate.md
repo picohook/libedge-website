@@ -2,7 +2,7 @@
 
 Status: `PROPOSED / EVIDENCE REVIEW`
 
-Checked: 2026-09-13
+Checked: 2026-09-14
 
 ## Purpose
 
@@ -117,6 +117,8 @@ Sources:
 - https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html
 - https://docs.aws.amazon.com/bedrock/latest/userguide/abuse-detection.html
 - https://docs.aws.amazon.com/bedrock/latest/userguide/data-protection.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-sonnet-4-6.html
 - https://aws.amazon.com/blogs/security/enforce-zero-data-retention-on-amazon-bedrock-with-bedrock-projects-and-service-control-policies/
 - https://aws.amazon.com/blogs/aws/anthropic-claude-fable-5-on-aws-mythos-class-capabilities-with-built-in-safeguards-now-available/
 - https://aws.amazon.com/blogs/aws/aws-weekly-roundup-claude-fable-5-1-on-aws-amazon-linux-2027-preview-aws-certified-ai-business-strategist-and-more-september-7-2026/
@@ -132,6 +134,39 @@ The reviewer and implementer had apparently conflicting readings because the off
 Conflict status: `RESOLVED — documentation changed over time; historical provider sharing and current AWS-only review are both supported when dated correctly.`
 
 The privacy verdict remains unchanged: the standard Fable 5.1 route is `FAIL` because up-to-30-day retention and possible AWS human review conflict with the locked LibEdge research-interest privacy invariant.
+
+#### Sonnet 4.6 implicit prompt-caching correction — 2026-09-14
+
+A proposed relaxation of the Sonnet 4.6 privacy blocker was independently re-checked and **rejected** because it relied on an incorrect premise: that Anthropic prompt caching on Bedrock is explicit-only and therefore absent whenever the caller omits `cache_control` / `cachePoint`.
+
+Current AWS documentation states the opposite for Anthropic models that support prompt caching. AWS distinguishes **Implicit Prompt Caching** from **Explicit Prompt Caching** and says implicit caching "automatically attempts to reuse eligible prompt prefixes without requiring cache controls in your request." AWS also states that prompt caching is enabled by default for `InvokeModel`. The Sonnet 4.6 model documentation lists prompt-caching support for the reviewed Bedrock runtime route.
+
+The earlier no-cache-control probe with a very short `"hi"` request does **not** establish that implicit caching is disabled. The observed response contained:
+
+- `input_tokens: 8`;
+- `cache_creation_input_tokens: 0`;
+- `cache_read_input_tokens: 0`.
+
+However, AWS documents a **1,024-token minimum prompt size** for Sonnet 4.6 prompt caching. An 8-token request is therefore below the eligibility threshold and would not create a cache entry even if implicit caching were fully active. The zero cache counters are valid evidence only for that individual short request, not evidence that the route has caching disabled.
+
+The separate production-observability privacy probe is also **not prompt-caching evidence** because it was not a Bedrock model-inference call.
+
+Reviewer-correction record:
+
+- the prior claim that Claude caching is purely opt-in / explicit is withdrawn;
+- the Nova-vs-Claude contrast previously used to support that claim is withdrawn because current AWS documentation describes implicit caching for both model families where supported;
+- the proposal to close the blocker merely by forbidding `cache_control` / `cachePoint` is rejected;
+- the gate remains fail-closed.
+
+**Caching status for `us.anthropic.claude-sonnet-4-6` on `bedrock-runtime`: `OPEN / UNVERIFIED`.**
+
+The unresolved question is now narrowly defined:
+
+> Under effective Bedrock data-retention mode `none`, for the exact Sonnet 4.6 `bedrock-runtime` route, is implicit prompt-cache state covered by the ZDR guarantee such that research-interest-bearing prompt content is not retained outside the permitted zero-retention boundary?
+
+A final `PASS` must not be granted from general statements about non-durable storage, from omission of explicit cache controls, or from below-threshold probes. The blocker may be closed only by authoritative route/model-specific evidence, an AWS-supported control that demonstrably disables implicit caching for the exact route, or equivalent live evidence that resolves the cache/ZDR interaction.
+
+Conflict status: `RESOLVED AS TO WHETHER IMPLICIT CACHING EXISTS; OPEN AS TO ZDR INTERACTION`.
 
 #### Live account/model verification — 2026-09-13
 
@@ -159,7 +194,8 @@ Reconciliation trigger before any Bedrock PASS:
 
 - obtain an AWS explanation or provider-side correction that reconciles control-plane account `none` with Mantle account `inherit` / model `default` for the same credential/region context; or
 - obtain a later live Mantle observation for the intended route showing effective `mode: none`, with the source attributable to the applicable account/project scope, and `status: available`;
-- pin the exact inference region/profile and confirm no project-level override weakens the effective mode.
+- pin the exact inference region/profile and confirm no project-level override weakens the effective mode;
+- for Sonnet 4.6 specifically, obtain authoritative confirmation of how implicit prompt-cache state is handled under effective mode `none`, or an AWS-supported route control that demonstrably disables implicit caching.
 
 ## Findings
 
@@ -168,7 +204,8 @@ Reconciliation trigger before any Bedrock PASS:
 3. Bedrock `anthropic.claude-opus-4-8` has stronger live evidence than before: the account control plane is `none`, the model is authorized/available in the control plane, and live model metadata confirms `allowed_modes` includes `none`. However, Mantle currently reports account `inherit`, model effective `default/model_default`, and model `unavailable`. This unresolved provider-surface inconsistency blocks PASS.
 4. Bedrock `claude-fable-5.1` remains `FAIL` on the standard route because it requires AWS retention/human review.
 5. The Fable record remains time-sensitive: original Fable 5 documentation permitted `provider_data_share`, while current Fable 5/5.1 documentation uses AWS-only `aws_review`.
-6. The privacy gate therefore remains open. **Capability, cost, latency, and product-quality comparison must not begin as a model-selection exercise until at least one exact route receives PASS.**
+6. For Sonnet 4.6, current AWS documentation confirms implicit prompt caching can operate without caller-supplied cache controls. The earlier 8-token probe cannot establish that caching is disabled because it is below the documented 1,024-token eligibility threshold. The cache/ZDR interaction therefore remains `OPEN / UNVERIFIED`.
+7. The privacy gate therefore remains open. **Capability, cost, latency, and product-quality comparison must not begin as a model-selection exercise until at least one exact route receives PASS.**
 
 ## Decision boundary
 
@@ -184,4 +221,4 @@ This record does **not**:
 
 ## Next verification step
 
-Resolve the Bedrock control-plane/Mantle inconsistency or verify another candidate's exact account/contract configuration. Promote a candidate to `PASS` only after the exact inference route is internally consistent and verified; only PASS routes may enter the later capability/cost/latency selection stage.
+Resolve the Bedrock control-plane/Mantle inconsistency or verify another candidate's exact account/contract configuration. For Sonnet 4.6, request authoritative AWS/provider-specific clarification of the exact `bedrock-runtime` + effective `none` interaction with implicit prompt caching. Promote a candidate to `PASS` only after the exact inference route is internally consistent and verified; only PASS routes may enter the later capability/cost/latency selection stage.
