@@ -65,6 +65,32 @@
     font-size: .66rem;
 }
 
+.finding-item[role="button"] {
+    cursor: pointer;
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.finding-item[role="button"]:hover {
+    border-color: #bfdbfe;
+    background: #f8fbff;
+}
+
+.finding-item[role="button"]:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, .2);
+    outline-offset: 2px;
+}
+
+.finding-item.is-evidence-active {
+    border-color: #60a5fa;
+    background: #eff6ff;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, .08), 0 8px 22px rgba(30, 64, 175, .08);
+}
+
+.finding-item.is-evidence-active .finding-index {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
 .citation-chip {
     width: auto;
     min-width: 27px;
@@ -124,11 +150,63 @@
 .source-card {
     padding-top: 17px;
     padding-bottom: 17px;
+    transition: border-color .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+
+.source-card.is-related {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, .08);
+}
+
+.source-card.is-highlighted {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, .12), 0 10px 26px rgba(30, 64, 175, .12);
+}
+
+.source-card:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, .2);
+    outline-offset: 2px;
 }
 
 .source-badges span:nth-child(3) {
     background: #eef2ff;
     color: #4338ca;
+}
+
+.assistant-answer-card.is-loading {
+    pointer-events: none;
+    filter: saturate(.82);
+}
+
+.assistant-answer-card.is-unavailable {
+    filter: saturate(.65);
+}
+
+#assistantStatus[aria-busy="true"] .assistant-status-time::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
+    border-radius: 999px;
+    background: currentColor;
+    animation: assistant-state-pulse 1s ease-in-out infinite;
+}
+
+@keyframes assistant-state-pulse {
+    0%, 100% { opacity: .35; transform: scale(.8); }
+    50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .finding-item[role="button"],
+    .source-card {
+        transition: none;
+    }
+
+    #assistantStatus[aria-busy="true"] .assistant-status-time::before {
+        animation: none;
+    }
 }
 
 @media (max-width: 1150px) {
