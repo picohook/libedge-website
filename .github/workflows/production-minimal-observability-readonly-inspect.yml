@@ -1,0 +1,199 @@
+name: Production Minimal Observability Read-Only Inspect
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: >-
+          Type exactly READ-ONLY-MINLOG-INSPECT to authorize inspection of the
+          already-persisted 2026-09-14 custom-log event. No deploy or probe occurs.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-minimal-observability-readonly-inspect
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Inspect existing persisted custom-log envelope only
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+
+    env:
+      CLOUDFLARE_OBSERVABILITY_TOKEN: ${{ secrets.CLOUDFLARE_OBSERVABILITY_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKER_NAME: libedge-api-prod
+      WINDOW_FROM_MS: '1789413344000'
+      WINDOW_TO_MS: '1789413404000'
+
+    steps:
+      - name: Enforce read-only human confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirmation }}" != "READ-ONLY-MINLOG-INSPECT" ]; then
+            echo "::error::Exact read-only confirmation string was not supplied."
+            exit 1
+          fi
+          echo "Human confirmation gate: PASS"
+          echo "Execution boundary: telemetry query only; no checkout, deploy, Worker request, or probe"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Inspect previously persisted custom log
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const required = [
+            'CLOUDFLARE_OBSERVABILITY_TOKEN',
+            'CLOUDFLARE_ACCOUNT_ID',
+            'WORKER_NAME',
+            'WINDOW_FROM_MS',
+            'WINDOW_TO_MS',
+          ];
+          for (const key of required) {
+            if (!process.env[key]) throw new Error(`Missing protected read-only input: ${key}`);
+          }
+
+          const {
+            CLOUDFLARE_OBSERVABILITY_TOKEN,
+            CLOUDFLARE_ACCOUNT_ID,
+            WORKER_NAME,
+            WINDOW_FROM_MS,
+            WINDOW_TO_MS,
+          } = process.env;
+
+          const telemetryPath = `/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/observability/telemetry/query`;
+          const body = {
+            queryId: `libedge-minlog-readonly-${Date.now()}`,
+            timeframe: {
+              from: Number(WINDOW_FROM_MS),
+              to: Number(WINDOW_TO_MS),
+            },
+            view: 'events',
+            limit: 200,
+            parameters: {
+              datasets: [],
+              needle: {
+                value: 'research_request_observed',
+                isRegex: false,
+                matchCase: true,
+              },
+            },
+          };
+
+          const response = await fetch(`https://api.cloudflare.com/client/v4${telemetryPath}`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${CLOUDFLARE_OBSERVABILITY_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const text = await response.text();
+          let json;
+          try { json = JSON.parse(text); } catch { json = null; }
+          if (!response.ok || json?.success === false) {
+            throw new Error(`Read-only telemetry query failed (${response.status}). No deploy or probe occurred.`);
+          }
+
+          const events = json?.result?.events?.events || [];
+          if (!events.length) {
+            throw new Error('Read-only inspection STOP: no existing research_request_observed event found in the fixed historical window.');
+          }
+
+          function findPayloads(value, found = []) {
+            if (!value || typeof value !== 'object') return found;
+            if (!Array.isArray(value) && value.event === 'research_request_observed') found.push(value);
+            for (const child of Object.values(value)) findPayloads(child, found);
+            return found;
+          }
+
+          const candidates = [];
+          for (const event of events) {
+            const serviceMatches = !event?.$metadata?.service || event.$metadata.service === WORKER_NAME;
+            for (const payload of findPayloads(event)) {
+              if (serviceMatches && payload.path_class === 'research_search' && payload.status_class === '4xx') {
+                candidates.push({ event, payload });
+              }
+            }
+          }
+
+          if (candidates.length !== 1) {
+            throw new Error(`Read-only inspection STOP: expected exactly one historical matching custom log, found ${candidates.length}.`);
+          }
+
+          const { event, payload } = candidates[0];
+          const expectedPayloadKeys = ['duration_ms', 'event', 'path_class', 'status_class', 'timestamp_bucket'];
+          const payloadKeys = Object.keys(payload).sort();
+          if (JSON.stringify(payloadKeys) !== JSON.stringify(expectedPayloadKeys)) {
+            throw new Error(`Historical application payload shape differs from reviewed five-field schema: ${payloadKeys.join(',')}`);
+          }
+
+          function walk(value, prefix = '', rows = []) {
+            if (Array.isArray(value)) {
+              rows.push([prefix || '<root>', 'array']);
+              value.forEach((item, index) => walk(item, `${prefix}[${index}]`, rows));
+              return rows;
+            }
+            if (value && typeof value === 'object') {
+              if (prefix) rows.push([prefix, 'object']);
+              for (const [key, child] of Object.entries(value)) {
+                walk(child, prefix ? `${prefix}.${key}` : key, rows);
+              }
+              return rows;
+            }
+            rows.push([prefix || '<root>', value === null ? 'null' : typeof value]);
+            return rows;
+          }
+
+          const inventory = walk(event);
+          const paths = inventory.map(([path]) => path);
+          const privacySensitivePaths = paths.filter((path) =>
+            /(^|\.)(request|response|headers?|cookie|authorization|query|body|cf)(\.|$)|geo|latitude|longitude|postal|\basn\b|\btls\b|client.?ip|user.?agent/i.test(path),
+          );
+
+          console.log('READ_ONLY_INSPECTION_SOURCE_WINDOW=2026-09-14T19:15:44Z..2026-09-14T19:16:44Z');
+          console.log('READ_ONLY_INSPECTION_EVENT_COUNT=1');
+          console.log('CUSTOM_LOG_FULL_FIELD_INVENTORY_BEGIN');
+          for (const [path, type] of inventory) console.log(`${path}\t${type}`);
+          console.log('CUSTOM_LOG_FULL_FIELD_INVENTORY_END');
+
+          console.log('CUSTOM_LOG_PRIVACY_SENSITIVE_PATHS_BEGIN');
+          if (privacySensitivePaths.length === 0) {
+            console.log('<none>');
+          } else {
+            for (const path of privacySensitivePaths) console.log(path);
+          }
+          console.log('CUSTOM_LOG_PRIVACY_SENSITIVE_PATHS_END');
+
+          const sensitiveKey = /request|response|headers?|cookie|authorization|query|body|(^|_)cf($|_)|geo|latitude|longitude|postal|\basn\b|\btls\b|client.?ip|user.?agent|account|ray.?id|request.?id|trace.?id|span.?id/i;
+          function redact(value, key = '') {
+            if (sensitiveKey.test(key)) {
+              if (value && typeof value === 'object') {
+                if (Array.isArray(value)) return value.map(() => '<redacted>');
+                return Object.fromEntries(Object.keys(value).map((childKey) => [childKey, '<redacted>']));
+              }
+              return '<redacted>';
+            }
+            if (Array.isArray(value)) return value.map((item) => redact(item, key));
+            if (value && typeof value === 'object') {
+              return Object.fromEntries(Object.entries(value).map(([childKey, child]) => [childKey, redact(child, childKey)]));
+            }
+            return value;
+          }
+
+          console.log('REDACTED_CUSTOM_LOG_SAMPLE_BEGIN');
+          console.log(JSON.stringify(redact(event), null, 2));
+          console.log('REDACTED_CUSTOM_LOG_SAMPLE_END');
+          console.log(`READ_ONLY_INSPECTION_PRIVACY_SENSITIVE_PATH_COUNT=${privacySensitivePaths.length}`);
+          console.log('READ_ONLY_INSPECTION_RESULT=INVENTORY_EMITTED_FOR_INDEPENDENT_REVIEW');
+          NODE
