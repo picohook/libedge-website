@@ -168,3 +168,54 @@ It does **not** authorize:
 7. Is the emitted full-field inventory plus redacted sample sufficient for manual independent review?
 8. Is the 7-day / 168-valid-hour weekday+weekend observation decision acceptable?
 9. Is the workflow safe to expose on `main` only after this staging PR is independently accepted?
+
+---
+
+## 2026-09-14 execution addendum — 401 probe and telemetry credential split
+
+This addendum preserves the original execution-authorization record above as historical context and records the reviewed evolution of the probe design and the latest execution result. Where this addendum conflicts with the original JWT/authenticated-probe text above, this addendum is the current execution candidate.
+
+### Current probe shape
+
+Following the accepted JWT-less revision, the current probe is intentionally unauthenticated:
+
+- no `JWT_SECRET` is read or copied into GitHub;
+- Cookie contains `authToken=invalid-probe-token` plus the synthetic cookie sentinel;
+- the non-Bearer Authorization sentinel remains present only as a log-leak canary;
+- the expected application result is HTTP `401` from `requireAuth()`;
+- the exact 301-character query-string sentinel, no-body requirement, one-shot/no-retry rule, full-field inventory, redacted sample, and privacy checks remain unchanged.
+
+### 2026-09-14 production execution result
+
+The reviewed production workflow was executed after the execution-unit baseline was synchronized. The following portions completed successfully:
+
+1. human confirmation gate: `PASS`;
+2. reviewed staging execution-unit guard: `PASS`;
+3. production observability deployment: `PASS`;
+4. effective production settings read-back: `enabled=true`, `head_sampling_rate=1.0`, `redact_query_string=true`;
+5. production semantic-primary guard remained `false`;
+6. exactly one synthetic privacy probe was issued;
+7. that probe returned the expected HTTP `401`.
+
+The run then stopped **before persisted-log inspection**. The Workers Observability telemetry query returned HTTP `403` because the existing production/deploy API token did not carry the permission required by that Cloudflare telemetry-query endpoint.
+
+No automatic or silent probe retry was performed. Because the persisted invocation record was not retrieved, this run establishes **no privacy PASS or privacy FAIL** for the log contents. In particular, the query-string, Authorization/Cookie, request-body, and complete-field-inventory checks remain unexecuted for this run.
+
+### Minimum-privilege credential correction
+
+The current execution candidate separates credentials by purpose:
+
+- `CLOUDFLARE_API_TOKEN`: existing protected production credential used for `wrangler deploy` and the effective Worker-settings read;
+- `CLOUDFLARE_OBSERVABILITY_TOKEN`: new protected production Environment secret used **only** for `/workers/observability/telemetry/query`.
+
+The observability token must be separately created with the minimum Cloudflare permission required for the telemetry query (`Workers Observability Write`) and must not be granted Worker deploy/edit permissions merely for convenience.
+
+The workflow fails closed if `CLOUDFLARE_OBSERVABILITY_TOKEN` is absent. Adding the secret does not itself authorize a new probe run; the revised workflow must first receive independent review, and any new probe execution must be separately manually authorized through the existing confirmation gate.
+
+### Updated decision boundary
+
+This addendum does not authorize semantic-primary, D-016 activation, provider/model usage, migrations, or a privacy verdict. It only:
+
+- records the successful deploy + one-shot 401 probe evidence already obtained;
+- records that persisted-log inspection was blocked by credential scope rather than application/probe failure;
+- adopts a separate minimum-privilege telemetry-query token for the next independently authorized execution.
