@@ -176,12 +176,67 @@ This does **not** establish whether implicit cache state is covered by Bedrock r
 
 **Caching status remains:** `OPEN / UNVERIFIED`.
 
+## 7. AWS Support response — opt-out path closed; escalation requested — 2026-09-14
+
+AWS Support investigated the reviewed environment and responded specifically to the remaining Sonnet 4.6 caching/ZDR question. The response is useful but does **not** provide the authoritative ZDR-scope confirmation required for final `PASS`.
+
+### New support-channel findings
+
+AWS Support stated that:
+
+- the reviewed Sonnet 4.6 deployment is active and invocations are functioning;
+- Bedrock logging/delivery configuration is not the source of the concern;
+- implicit prompt caching operates as an infrastructure-layer, in-memory or ephemeral compute-side optimization rather than conventional durable storage;
+- the available AWS documentation does not explicitly establish whether that transient KV/cache state is classified as retained data within the ZDR `none` guarantee;
+- the available documentation does **not describe a console-, API-, account-, or project-level control that explicitly disables implicit prompt caching** for the reviewed `bedrock-runtime` / `InvokeModel` route.
+
+The support response therefore closes a real technical escape path: the gate no longer treats discovery of a documented account/model implicit-cache opt-out as a presently available route to final confirmation.
+
+This support-channel response is not treated as a formal contractual/compliance determination that ephemeral cache state is inside or outside ZDR. In particular, the description of the cache as ephemeral or non-durable is positive technical context, but it is **not** promoted into an inference that the privacy invariant is satisfied.
+
+### Effect on final-confirmation paths
+
+The prior final-confirmation trigger had two alternatives:
+
+1. authoritative AWS evidence that implicit prompt caching under effective retention mode `none` is compatible with the required ZDR boundary; or
+2. a demonstrable account/model control that disables implicit caching for the exact reviewed route.
+
+Following the AWS Support response, path 2 is **closed as a documented mitigation path**. No supported account/project-level opt-out has been identified or documented by AWS Support.
+
+Path 1 remains open and is now the **sole remaining final-confirmation path**.
+
+### Escalation request
+
+The support case is being kept open and an escalation is being requested to an AWS authority able to address the contractual/operational boundary directly (for example, the Bedrock service team or AWS security/privacy/compliance function).
+
+The escalation asks about the exact reviewed combination:
+
+- model: `anthropic.claude-sonnet-4-6`;
+- route: Amazon Bedrock `bedrock-runtime` / `InvokeModel`;
+- inference profile: US geographic profile originating from `us-east-1`;
+- effective data-retention mode: `none`;
+- implicit prompt caching with no explicit cache controls supplied.
+
+The requested written clarification asks whether transient implicit prompt-cache/KV state:
+
+1. may exist after completion of an inference request for reuse by later requests;
+2. contains or represents customer prompt content;
+3. is considered retained Customer Data/request data under AWS's contractual and operational interpretation of ZDR; and
+4. remains isolated to the customer's AWS account and inaccessible to other customers, AWS personnel, or the model provider.
+
+No answer to those four questions is assumed by this record. The escalation is a pending verification action, not evidence.
+
+**Caching status remains:** `OPEN / UNVERIFIED`.
+
+The Sonnet 4.6 candidate verdict remains:
+
+`PASS CANDIDATE — STRONGEST EVIDENCE / FINAL CONFIRMATION PENDING`.
+
 ## Final confirmation trigger
 
-Promote this route to final `PASS` only after one of the following is obtained from AWS official/provider-specific evidence:
+Promote this route to final `PASS` only after AWS official/provider-specific evidence provides an authoritative written clarification that the reviewed implicit prompt-cache behavior under effective data-retention mode `none` satisfies the required ZDR/privacy boundary.
 
-1. an explicit statement that implicit prompt caching under Bedrock data-retention mode `none` is compatible with ZDR and does not retain research-interest-bearing content beyond the permitted ZDR boundary; or
-2. an account/model configuration or API control that demonstrably disables implicit prompt caching for the exact Sonnet 4.6 `bedrock-runtime` route, followed by a live verification of that configuration.
+The previously listed alternative of finding and verifying an account/model implicit-cache disable control is no longer treated as an available final-confirmation route, based on the 2026-09-14 AWS Support response that no such documented control is described for the reviewed route.
 
 The evidence should be dated because AWS retention/caching behavior has changed during this project.
 
@@ -197,7 +252,7 @@ The candidate verdict remains:
 
 `PASS CANDIDATE — STRONGEST EVIDENCE / FINAL CONFIRMATION PENDING`
 
-with the sole remaining blocker narrowed to the documented implicit-prompt-caching/ZDR interaction. Anthropic support-channel context further narrows the resolution owner: AWS is the remaining authoritative channel for the Bedrock-side question.
+with the sole remaining blocker narrowed to the documented implicit-prompt-caching/ZDR interaction. Anthropic support-channel context further narrows the resolution owner: AWS is the remaining authoritative channel for the Bedrock-side question. The 2026-09-14 AWS Support response also closes the documented opt-out mitigation path, leaving authoritative AWS ZDR-scope clarification as the sole remaining final-confirmation route.
 
 ## Decision boundary
 
