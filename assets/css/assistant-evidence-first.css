@@ -298,6 +298,62 @@
     animation: assistant-state-pulse 1s ease-in-out infinite;
 }
 
+/* Research Gaps remains explicitly fixture-only until a separate API-contract review exists. */
+.insight-card.gaps {
+    position: relative;
+    border: 1px solid #cbd5e1;
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.insight-card.gaps h3 {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #334155;
+}
+
+.insight-card.gaps h3::after {
+    content: 'FIXTURE-ONLY';
+    margin-left: auto;
+    padding: 4px 7px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: .56rem;
+    font-weight: 850;
+    letter-spacing: .055em;
+}
+
+.insight-card.gaps li {
+    color: #475569;
+}
+
+.insight-card.gaps [data-research-gaps-boundary] {
+    margin: 12px 0 0 !important;
+    padding: 9px 10px;
+    border: 1px dashed #94a3b8;
+    border-radius: 9px;
+    background: #f8fafc;
+    color: #475569 !important;
+    font-size: .72rem !important;
+    font-weight: 650;
+    line-height: 1.5 !important;
+}
+
+.assistant-mode[data-mode="gaps"]::after {
+    content: 'Fixture';
+    align-self: center;
+    margin-left: auto;
+    padding: 3px 6px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: .54rem;
+    font-weight: 800;
+    letter-spacing: .03em;
+}
+
 @keyframes assistant-state-pulse {
     0%, 100% { opacity: .35; transform: scale(.8); }
     50% { opacity: 1; transform: scale(1); }
