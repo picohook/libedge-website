@@ -16,28 +16,18 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         }, 2600);
     }
 
-    function openSources() {
-        sourcePanel?.classList.add('is-open');
-    }
-
-    function closeSources() {
-        sourcePanel?.classList.remove('is-open');
-    }
+    function openSources() { sourcePanel?.classList.add('is-open'); }
+    function closeSources() { sourcePanel?.classList.remove('is-open'); }
 
     function setStatus({ title, message, tone = 'info', marker = '', state = '' }) {
         if (!status) return;
         const tones = {
-            success: ['#f0fdf4', '#bbf7d0', '#166534'],
-            loading: ['#eff6ff', '#bfdbfe', '#1d4ed8'],
-            notice: ['#f5f3ff', '#ddd6fe', '#6d28d9'],
-            warning: ['#fffbeb', '#fde68a', '#92400e'],
-            error: ['#fef2f2', '#fecaca', '#b91c1c'],
-            info: ['#eff6ff', '#bfdbfe', '#1d4ed8']
+            success: ['#f0fdf4', '#bbf7d0', '#166534'], loading: ['#eff6ff', '#bfdbfe', '#1d4ed8'],
+            notice: ['#f5f3ff', '#ddd6fe', '#6d28d9'], warning: ['#fffbeb', '#fde68a', '#92400e'],
+            error: ['#fef2f2', '#fecaca', '#b91c1c'], info: ['#eff6ff', '#bfdbfe', '#1d4ed8']
         };
         const [background, border, color] = tones[tone] || tones.info;
-        status.style.background = background;
-        status.style.borderColor = border;
-        status.style.color = color;
+        status.style.background = background; status.style.borderColor = border; status.style.color = color;
         status.dataset.state = state;
         status.setAttribute('aria-busy', tone === 'loading' ? 'true' : 'false');
         const titleNode = status.querySelector('strong');
@@ -51,34 +41,36 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
     function markResearchGapsFixtureOnly() {
         const gapsCard = document.querySelector('.insight-card.gaps');
         if (!gapsCard || gapsCard.querySelector('[data-research-gaps-boundary]')) return;
-
         const note = document.createElement('p');
-        note.dataset.researchGapsBoundary = 'fixture-only';
-        note.setAttribute('role', 'note');
+        note.dataset.researchGapsBoundary = 'fixture-only'; note.setAttribute('role', 'note');
         note.textContent = 'Fixture-only · Bu araştırma boşlukları live API sonucundan üretilmiyor.';
-        note.style.marginTop = '0.75rem';
-        note.style.fontSize = '0.78rem';
-        note.style.lineHeight = '1.45';
-        note.style.color = '#6b7280';
+        note.style.marginTop = '0.75rem'; note.style.fontSize = '0.78rem'; note.style.lineHeight = '1.45'; note.style.color = '#6b7280';
         gapsCard.appendChild(note);
     }
 
     function clearEvidenceFocus() {
-        document.querySelectorAll('.source-card.is-highlighted, .source-card.is-related').forEach((card) => {
-            card.classList.remove('is-highlighted', 'is-related');
-        });
+        document.querySelectorAll('.source-card.is-highlighted, .source-card.is-related').forEach((card) => card.classList.remove('is-highlighted', 'is-related'));
         document.querySelectorAll('.finding-item.is-evidence-active').forEach((finding) => {
-            finding.classList.remove('is-evidence-active');
-            finding.setAttribute('aria-pressed', 'false');
+            finding.classList.remove('is-evidence-active'); finding.setAttribute('aria-pressed', 'false');
         });
     }
 
+    function relatedFindingsForSource(sourceId) {
+        return [...document.querySelectorAll('.finding-item')].filter((finding) => finding.querySelector(`.citation-chip[data-source="${sourceId}"]`));
+    }
+
     function sourceFindingLabels(sourceCard) {
-        if (!sourceCard?.id) return [];
-        return [...document.querySelectorAll('.finding-item')]
-            .filter((finding) => finding.querySelector(`.citation-chip[data-source="${sourceCard.id}"]`))
+        return relatedFindingsForSource(sourceCard?.id)
             .map((finding) => finding.querySelector('.finding-index')?.textContent?.trim())
             .filter(Boolean);
+    }
+
+    function appendDetailField(detail, label, value) {
+        const row = document.createElement('div');
+        const term = document.createElement('dt');
+        const description = document.createElement('dd');
+        term.textContent = label; description.textContent = value;
+        row.append(term, description); detail.appendChild(row);
     }
 
     function ensureSourceDetail(sourceCard, button) {
@@ -88,21 +80,20 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         if (!content) return null;
 
         detail = document.createElement('section');
-        detail.dataset.sourceDetail = 'fixture-only';
-        detail.id = `${sourceCard.id}-detail`;
-        detail.hidden = true;
-        detail.setAttribute('aria-label', 'Fixture kanıt ayrıntısı');
-        detail.style.marginTop = '12px';
-        detail.style.padding = '12px';
-        detail.style.border = '1px solid #dbeafe';
-        detail.style.borderRadius = '10px';
-        detail.style.background = '#f8fbff';
+        detail.className = 'source-detail'; detail.dataset.sourceDetail = 'fixture-only';
+        detail.id = `${sourceCard.id}-detail`; detail.hidden = true; detail.setAttribute('aria-label', 'Fixture kanıt ayrıntısı');
 
+        const boundary = document.createElement('p');
+        boundary.className = 'source-detail-boundary';
+        boundary.textContent = 'Fixture-only · Yeni kaynak verisi getirmez ve bibliyografik doğrulama yapmaz.';
+        const list = document.createElement('dl');
+        list.className = 'source-detail-list';
         const labels = sourceFindingLabels(sourceCard);
-        const relation = sourceCard.querySelector('.evidence-relation')?.textContent?.trim() || 'İlişkili bulgu belirtilmedi';
-        const meta = sourceCard.querySelector('.source-meta')?.textContent?.trim() || 'Fixture metadata';
-        detail.innerHTML = `<p style="margin:0 0 8px;font-size:.7rem;color:#475569"><strong>Fixture-only ayrıntı.</strong> Yeni kaynak verisi getirmez ve bibliyografik doğrulama yapmaz.</p><dl style="display:grid;gap:6px;margin:0;font-size:.68rem;color:#475569"><div><dt style="font-weight:800">Bulgu bağı</dt><dd style="margin:0">${labels.length ? labels.join(', ') : 'Özet'}</dd></div><div><dt style="font-weight:800">Kanıt ilişkisi</dt><dd style="margin:0">${relation}</dd></div><div><dt style="font-weight:800">Fixture künyesi</dt><dd style="margin:0">${meta}</dd></div></dl>`;
-        content.appendChild(detail);
+        appendDetailField(list, 'Bulgu bağı', labels.length ? labels.join(', ') : 'Özet');
+        appendDetailField(list, 'Kanıt ilişkisi', sourceCard.querySelector('.evidence-relation')?.textContent?.trim() || 'İlişki belirtilmedi.');
+        appendDetailField(list, 'Fixture künyesi', sourceCard.querySelector('.source-meta')?.textContent?.trim() || 'Metadata belirtilmedi.');
+        appendDetailField(list, 'Kanıt sınıflaması', [...sourceCard.querySelectorAll('.source-badges span')].map((badge) => badge.textContent?.trim()).filter(Boolean).join(' · ') || 'Sınıflama belirtilmedi.');
+        detail.append(boundary, list); content.appendChild(detail);
         button.setAttribute('aria-controls', detail.id);
         return detail;
     }
@@ -111,8 +102,26 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         document.querySelectorAll('[data-source-detail]').forEach((detail) => {
             if (detail === except) return;
             detail.hidden = true;
-            detail.closest('.source-card')?.querySelector('.source-action')?.setAttribute('aria-expanded', 'false');
+            const owner = detail.closest('.source-card');
+            owner?.classList.remove('is-detail-open');
+            owner?.querySelector('.source-action')?.setAttribute('aria-expanded', 'false');
         });
+    }
+
+    function markRelatedFindings(sourceId) {
+        relatedFindingsForSource(sourceId).forEach((finding) => {
+            finding.classList.add('is-evidence-active'); finding.setAttribute('aria-pressed', 'true');
+        });
+    }
+
+    function highlightSource(sourceId, { preserveRelated = false } = {}) {
+        const target = document.getElementById(sourceId);
+        if (!target) return;
+        if (!preserveRelated) clearEvidenceFocus();
+        target.classList.add('is-highlighted', 'is-related'); markRelatedFindings(sourceId); openSources();
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' }); target.focus({ preventScroll: true });
+        window.clearTimeout(highlightSource.timer);
+        highlightSource.timer = window.setTimeout(() => target.classList.remove('is-highlighted'), 3200);
     }
 
     function toggleSourceDetail(button) {
@@ -124,170 +133,83 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         closeSourceDetails(opening ? detail : null);
         detail.hidden = !opening;
         button.setAttribute('aria-expanded', opening ? 'true' : 'false');
+        sourceCard.classList.toggle('is-detail-open', opening);
         if (opening) {
             highlightSource(sourceCard.id);
-            showToast('Fixture kanıt ayrıntısı açıldı; yeni kaynak verisi getirilmedi.');
+            showToast('Fixture kanıt ayrıntısı açıldı; live kaynak verisi kullanılmıyor.');
         }
     }
 
-    function relatedFindingsForSource(sourceId) {
-        return [...document.querySelectorAll('.finding-item')].filter((finding) =>
-            finding.querySelector(`.citation-chip[data-source="${sourceId}"]`)
-        );
-    }
-
-    function markRelatedFindings(sourceId) {
-        relatedFindingsForSource(sourceId).forEach((finding) => {
-            finding.classList.add('is-evidence-active');
-            finding.setAttribute('aria-pressed', 'true');
-        });
-    }
-
-    function highlightSource(sourceId, { preserveRelated = false } = {}) {
-        const target = document.getElementById(sourceId);
-        if (!target) return;
-        if (!preserveRelated) clearEvidenceFocus();
-        target.classList.add('is-highlighted', 'is-related');
-        markRelatedFindings(sourceId);
-        openSources();
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        target.focus({ preventScroll: true });
-        window.clearTimeout(highlightSource.timer);
-        highlightSource.timer = window.setTimeout(() => target.classList.remove('is-highlighted'), 3200);
-    }
-
     function focusFindingEvidence(finding) {
-        const sourceIds = [...finding.querySelectorAll('.citation-chip[data-source]')]
-            .map((chip) => chip.dataset.source)
+        const sourceIds = [...finding.querySelectorAll('.citation-chip[data-source]')].map((chip) => chip.dataset.source)
             .filter((sourceId, index, all) => sourceId && all.indexOf(sourceId) === index);
         if (!sourceIds.length) return;
-
-        clearEvidenceFocus();
-        finding.classList.add('is-evidence-active');
-        finding.setAttribute('aria-pressed', 'true');
-        sourceIds.forEach((sourceId) => document.getElementById(sourceId)?.classList.add('is-related'));
-        openSources();
-
+        clearEvidenceFocus(); finding.classList.add('is-evidence-active'); finding.setAttribute('aria-pressed', 'true');
+        sourceIds.forEach((sourceId) => document.getElementById(sourceId)?.classList.add('is-related')); openSources();
         const firstSource = document.getElementById(sourceIds[0]);
-        firstSource?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        firstSource?.focus({ preventScroll: true });
+        firstSource?.scrollIntoView({ behavior: 'smooth', block: 'center' }); firstSource?.focus({ preventScroll: true });
         showToast(`${sourceIds.length} kanıt kaydı bu bulguyla ilişkilendirildi.`);
     }
 
     function setLoadingUi(isLoading) {
-        if (demoSearchButton) {
-            demoSearchButton.disabled = isLoading;
-            demoSearchButton.setAttribute('aria-busy', isLoading ? 'true' : 'false');
-        }
+        if (demoSearchButton) { demoSearchButton.disabled = isLoading; demoSearchButton.setAttribute('aria-busy', isLoading ? 'true' : 'false'); }
         if (queryInput) queryInput.readOnly = isLoading;
         answerCard?.classList.toggle('is-loading', isLoading);
     }
 
     function renderMappedState(result) {
         const mapped = mapAssistantResult(result);
-        setStatus({
-            title: mapped.title,
-            message: mapped.message,
-            tone: mapped.tone,
-            marker: mapped.evidencePackId ? 'EvidencePack hazır' : '',
-            state: mapped.state
-        });
+        setStatus({ title: mapped.title, message: mapped.message, tone: mapped.tone, marker: mapped.evidencePackId ? 'EvidencePack hazır' : '', state: mapped.state });
         const isSuccess = mapped.state === 'success';
         answerCard?.classList.toggle('is-unavailable', !isSuccess);
         if (answerCard) answerCard.style.opacity = isSuccess ? '1' : '.58';
-        if (!isSuccess) {
-            clearEvidenceFocus();
-            closeSourceDetails();
-            closeSources();
-        }
+        if (!isSuccess) { clearEvidenceFocus(); closeSourceDetails(); closeSources(); }
         return mapped;
     }
 
-    function wait(ms) {
-        return new Promise((resolve) => window.setTimeout(resolve, ms));
-    }
+    function wait(ms) { return new Promise((resolve) => window.setTimeout(resolve, ms)); }
 
     async function runFixtureLifecycle() {
         const query = queryInput?.value?.trim() || '';
-        if (query.length < 2 || query.length > 300) {
-            renderMappedState({ ok: false, code: 'ASSISTANT_QUERY_INVALID', claims: [] });
-            queryInput?.focus();
-            return;
-        }
-
-        setLoadingUi(true);
-        clearEvidenceFocus();
-        closeSourceDetails();
-        closeSources();
+        if (query.length < 2 || query.length > 300) { renderMappedState({ ok: false, code: 'ASSISTANT_QUERY_INVALID', claims: [] }); queryInput?.focus(); return; }
+        setLoadingUi(true); clearEvidenceFocus(); closeSourceDetails(); closeSources();
         if (answerCard) answerCard.style.opacity = '.58';
-
         try {
             for (let index = 0; index < 3; index += 1) {
                 const stage = loadingStage(index);
-                setStatus({
-                    title: stage.title,
-                    message: stage.message,
-                    tone: 'loading',
-                    marker: `Aşama ${index + 1}/3`,
-                    state: `loading-${index + 1}`
-                });
+                setStatus({ title: stage.title, message: stage.message, tone: 'loading', marker: `Aşama ${index + 1}/3`, state: `loading-${index + 1}` });
                 await wait(420);
             }
-
-            renderMappedState({
-                ok: true,
-                code: 'OK',
-                claims: [{ text: 'Fixture claim', evidence_ids: ['fixture:e1'] }],
-                evidence_pack_id: 'fixture-pack'
-            });
+            renderMappedState({ ok: true, code: 'OK', claims: [{ text: 'Fixture claim', evidence_ids: ['fixture:e1'] }], evidence_pack_id: 'fixture-pack' });
             showToast('Fixture lifecycle tamamlandı. Gerçek /api/assistant/ask çağrısı yapılmadı.');
         } catch (error) {
             console.error('Assistant fixture lifecycle failed:', error);
             renderMappedState({ ok: false, code: 'UI_RENDER_FAILED', claims: [] });
-        } finally {
-            setLoadingUi(false);
-        }
+        } finally { setLoadingUi(false); }
     }
 
     function bindFindingEvidenceInteractions() {
         document.querySelectorAll('.finding-item').forEach((finding) => {
             const sourceCount = finding.querySelectorAll('.citation-chip[data-source]').length;
             if (!sourceCount) return;
-            finding.tabIndex = 0;
-            finding.setAttribute('role', 'button');
-            finding.setAttribute('aria-pressed', 'false');
+            finding.tabIndex = 0; finding.setAttribute('role', 'button'); finding.setAttribute('aria-pressed', 'false');
             finding.setAttribute('aria-label', `Bulgu için ${sourceCount} ilişkili kanıt kaydını göster`);
-            finding.addEventListener('click', (event) => {
-                if (event.target.closest('.citation-chip')) return;
-                focusFindingEvidence(finding);
-            });
+            finding.addEventListener('click', (event) => { if (!event.target.closest('.citation-chip')) focusFindingEvidence(finding); });
             finding.addEventListener('keydown', (event) => {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
-                event.preventDefault();
-                focusFindingEvidence(finding);
+                event.preventDefault(); focusFindingEvidence(finding);
             });
         });
     }
 
-    markResearchGapsFixtureOnly();
-    bindFindingEvidenceInteractions();
-
-    document.querySelectorAll('.citation-chip[data-source]').forEach((button) => {
-        button.addEventListener('click', () => highlightSource(button.dataset.source));
-    });
+    markResearchGapsFixtureOnly(); bindFindingEvidenceInteractions();
+    document.querySelectorAll('.citation-chip[data-source]').forEach((button) => button.addEventListener('click', () => highlightSource(button.dataset.source)));
     document.getElementById('viewSourcesBtn')?.addEventListener('click', openSources);
-    document.getElementById('closeSourcesBtn')?.addEventListener('click', () => {
-        closeSourceDetails();
-        closeSources();
-    });
+    document.getElementById('closeSourcesBtn')?.addEventListener('click', () => { closeSourceDetails(); closeSources(); });
     document.querySelectorAll('.assistant-mode').forEach((button) => {
         button.addEventListener('click', () => {
-            document.querySelectorAll('.assistant-mode').forEach((item) => item.classList.remove('active'));
-            button.classList.add('active');
-            if (button.dataset.mode === 'gaps') {
-                showToast('Araştırma boşlukları şimdilik fixture-only. Live gap verisi için ayrı, minimize edilmiş API contract review gereklidir.');
-                return;
-            }
+            document.querySelectorAll('.assistant-mode').forEach((item) => item.classList.remove('active')); button.classList.add('active');
+            if (button.dataset.mode === 'gaps') { showToast('Araştırma boşlukları şimdilik fixture-only. Live gap verisi için ayrı, minimize edilmiş API contract review gereklidir.'); return; }
             if (button.dataset.mode !== 'ask') showToast('Bu mod prototipte yalnızca görsel olarak gösteriliyor. İlk sürümde “Sor” deneyimini tamamlayacağız.');
         });
     });
@@ -301,12 +223,6 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
     });
     document.querySelectorAll('.assistant-filter').forEach((button) => button.addEventListener('click', () => showToast('Filtre kontrolleri prototipte pasif; backend bağlantısı yapılmadı.')));
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            clearEvidenceFocus();
-            closeSourceDetails();
-            closeSources();
-        }
+        if (event.key === 'Escape') { clearEvidenceFocus(); closeSourceDetails(); closeSources(); }
     });
-}).catch((error) => {
-    console.error('Assistant UI state module failed to load:', error);
-});
+}).catch((error) => { console.error('Assistant UI state module failed to load:', error); });
