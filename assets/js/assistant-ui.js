@@ -151,6 +151,17 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         showToast(`${sourceIds.length} kanıt kaydı bu bulguyla ilişkilendirildi.`);
     }
 
+    function beginFixtureFollowUp() {
+        if (!queryInput) return;
+        clearEvidenceFocus(); closeSourceDetails(); closeSources();
+        queryInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        queryInput.focus({ preventScroll: true });
+        queryInput.setSelectionRange(queryInput.value.length, queryInput.value.length);
+        queryInput.dataset.followUp = 'fixture-only';
+        queryInput.setAttribute('aria-describedby', 'assistantPrototypeToast');
+        showToast('Takip sorunuzu yukarıdaki alana yazın. Çalıştırma yalnız fixture lifecycle kullanır; live API çağrısı yapılmaz.');
+    }
+
     function setLoadingUi(isLoading) {
         if (demoSearchButton) { demoSearchButton.disabled = isLoading; demoSearchButton.setAttribute('aria-busy', isLoading ? 'true' : 'false'); }
         if (queryInput) queryInput.readOnly = isLoading;
@@ -181,6 +192,7 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
                 await wait(420);
             }
             renderMappedState({ ok: true, code: 'OK', claims: [{ text: 'Fixture claim', evidence_ids: ['fixture:e1'] }], evidence_pack_id: 'fixture-pack' });
+            if (queryInput) delete queryInput.dataset.followUp;
             showToast('Fixture lifecycle tamamlandı. Gerçek /api/assistant/ask çağrısı yapılmadı.');
         } catch (error) {
             console.error('Assistant fixture lifecycle failed:', error);
@@ -218,7 +230,9 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         button.setAttribute('aria-expanded', 'false');
         button.addEventListener('click', () => toggleSourceDetail(button));
     });
-    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn)').forEach((button) => {
+    const followUpButton = document.querySelector('.assistant-answer-actions .assistant-primary-btn');
+    followUpButton?.addEventListener('click', beginFixtureFollowUp);
+    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(.assistant-primary-btn)').forEach((button) => {
         if (!button.disabled) button.addEventListener('click', () => showToast('Bu aksiyon sonraki UI iterasyonunda etkinleştirilecek.'));
     });
     document.querySelectorAll('.assistant-filter').forEach((button) => button.addEventListener('click', () => showToast('Filtre kontrolleri prototipte pasif; backend bağlantısı yapılmadı.')));
