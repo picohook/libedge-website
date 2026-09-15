@@ -18,12 +18,9 @@ describe('Research Assistant UI prototype boundary', () => {
     });
 
     it('keeps every citation chip linked to an existing source card', () => {
-        const citationIds = [...html.matchAll(/class="citation-chip"[^>]*data-source="([^"]+)"/g)]
-            .map((match) => match[1]);
+        const citationIds = [...html.matchAll(/class="citation-chip"[^>]*data-source="([^"]+)"/g)].map((match) => match[1]);
         expect(citationIds.length).toBeGreaterThan(0);
-        for (const sourceId of citationIds) {
-            expect(html).toContain(`id="${sourceId}"`);
-        }
+        for (const sourceId of citationIds) expect(html).toContain(`id="${sourceId}"`);
     });
 
     it('keeps finding-to-evidence interaction fixture-only and keyboard accessible', () => {
@@ -35,10 +32,21 @@ describe('Research Assistant UI prototype boundary', () => {
         expect(css).toContain('.source-card.is-related');
     });
 
+    it('keeps source detail disclosure fixture-only and local to existing DOM evidence', () => {
+        expect(js).toContain('function ensureSourceDetail');
+        expect(js).toContain("detail.dataset.sourceDetail = 'fixture-only'");
+        expect(js).toContain('Yeni kaynak verisi getirmez ve bibliyografik doğrulama yapmaz');
+        expect(js).toContain("button.setAttribute('aria-expanded', 'false')");
+        expect(js).toContain("button.setAttribute('aria-controls', detail.id)");
+        expect(js).toContain('sourceFindingLabels(sourceCard)');
+        expect(js).not.toMatch(/\bfetch\s*\(/);
+    });
+
     it('keeps loading and non-success presentation explicit without adding transport', () => {
         expect(js).toContain("status.setAttribute('aria-busy', tone === 'loading' ? 'true' : 'false')");
         expect(js).toContain("answerCard?.classList.toggle('is-unavailable', !isSuccess)");
         expect(js).toContain('clearEvidenceFocus();');
+        expect(js).toContain('closeSourceDetails();');
         expect(js).toContain('closeSources();');
         expect(css).toContain('.assistant-answer-card.is-unavailable');
         expect(css).toContain('#assistantStatus[aria-busy="true"]');
