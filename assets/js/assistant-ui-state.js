@@ -15,14 +15,14 @@ export const ASSISTANT_UI_STATES = Object.freeze({
 const CODE_MAP = Object.freeze({
   PROVIDER_PRIVACY_GATE_REQUIRED: {
     state: ASSISTANT_UI_STATES.GATE_BLOCKED,
-    title: 'Research Assistant henüz kullanıma açılmadı',
-    message: 'Model sağlayıcısı gizlilik doğrulaması tamamlanana kadar AI yanıt üretimi güvenli biçimde kapalı tutuluyor.',
+    title: 'Gizlilik doğrulaması tamamlanmayı bekliyor',
+    message: 'Model sağlayıcısı için gerekli gizlilik doğrulaması tamamlanmadan AI yanıt üretimi etkinleştirilmiyor.',
     tone: 'notice'
   },
   MODEL_ADAPTER_REQUIRED: {
     state: ASSISTANT_UI_STATES.ADAPTER_MISSING,
-    title: 'AI yanıt katmanı henüz bağlı değil',
-    message: 'Araştırma altyapısı hazır, ancak doğrulanmış model bağlantısı henüz etkinleştirilmedi.',
+    title: 'Doğrulanmış model bağlantısı henüz hazır değil',
+    message: 'Araştırma altyapısı mevcut, ancak kullanılacak model bağlantısı doğrulanıp etkinleştirilmeden AI yanıtı gösterilmiyor.',
     tone: 'notice'
   },
   ASSISTANT_QUERY_INVALID: {
@@ -51,8 +51,8 @@ const CODE_MAP = Object.freeze({
   },
   EVIDENCE_PAYLOAD_REQUIRED: {
     state: ASSISTANT_UI_STATES.EVIDENCE_PAYLOAD_REQUIRED,
-    title: 'Doğrulanmış kaynak verisi bekleniyor',
-    message: 'Başarı yanıtı kaynak payloadı içermediği için fixture kaynaklar gerçek yanıtla karıştırılmıyor ve yanıt gösterilmiyor.',
+    title: 'Yanıt için gerekli kanıt verisi eksik',
+    message: 'Başarılı görünen sonuç beklenen kanıt payloadını içermediği için yanıt gösterilmiyor. Bu bir gizlilik doğrulaması değil, veri bütünlüğü korumasıdır.',
     tone: 'warning'
   },
   MODEL_ADAPTER_FAILED: {
