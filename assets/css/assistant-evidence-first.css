@@ -40,6 +40,44 @@
 
 .evidence-overview p i { color: #2563eb; }
 
+/* Shared visual language: synthesis -> claim -> evidence. */
+.assistant-answer-card > header {
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.assistant-answer-card > header h2 {
+    max-width: 780px;
+    letter-spacing: -.018em;
+}
+
+.assistant-summary {
+    margin: 18px 0 22px;
+    padding: 16px 18px;
+    border-left: 3px solid #2563eb;
+    border-radius: 0 12px 12px 0;
+    background: #f8fbff;
+}
+
+.assistant-summary h3 {
+    margin-top: 0;
+    color: #1e3a8a;
+}
+
+.assistant-summary p {
+    margin-bottom: 0;
+    line-height: 1.7;
+}
+
+.assistant-findings {
+    display: grid;
+    gap: 10px;
+}
+
+.assistant-findings .section-heading-row {
+    margin-bottom: 2px;
+}
+
 .section-heading-row {
     display: flex;
     align-items: center;
@@ -57,12 +95,31 @@
     letter-spacing: .02em;
 }
 
+.finding-item {
+    border-left: 3px solid #dbeafe;
+}
+
+.finding-item h4 {
+    color: #172554;
+    line-height: 1.42;
+}
+
+.finding-item p {
+    color: #475569;
+    line-height: 1.58;
+}
+
 .finding-index,
 .source-rank {
     border-radius: 9px;
     width: 34px;
     height: 30px;
     font-size: .66rem;
+}
+
+.finding-index {
+    background: #eff6ff;
+    color: #1d4ed8;
 }
 
 .finding-item[role="button"] {
@@ -95,6 +152,16 @@
     width: auto;
     min-width: 27px;
     padding: 0 6px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 800;
+}
+
+.citation-chip:hover,
+.citation-chip:focus-visible {
+    border-color: #60a5fa;
+    background: #dbeafe;
 }
 
 .evidence-conflict-block {
@@ -136,6 +203,23 @@
     grid-template-columns: 1.15fr .85fr;
 }
 
+.sources-panel-header {
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.sources-panel-header h2 {
+    letter-spacing: -.01em;
+}
+
+.sources-intro {
+    padding: 10px 11px;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #64748b;
+    line-height: 1.5;
+}
+
 .evidence-relation {
     display: inline-flex;
     margin-bottom: 7px;
@@ -150,7 +234,22 @@
 .source-card {
     padding-top: 17px;
     padding-bottom: 17px;
+    border-left: 3px solid #e2e8f0;
     transition: border-color .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+
+.source-card .source-rank {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.source-card h3 {
+    color: #1e293b;
+    line-height: 1.42;
+}
+
+.source-meta {
+    color: #64748b;
 }
 
 .source-card.is-related {
@@ -161,6 +260,12 @@
 .source-card.is-highlighted {
     border-color: #2563eb;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, .12), 0 10px 26px rgba(30, 64, 175, .12);
+}
+
+.source-card.is-related .source-rank,
+.source-card.is-highlighted .source-rank {
+    background: #dbeafe;
+    color: #1d4ed8;
 }
 
 .source-card:focus-visible {
