@@ -49,6 +49,7 @@ The gate fails closed: ambiguity, conflicting live evidence, or missing required
 | Anthropic `claude-opus-5` + first-party Anthropic API / Messages | Standard Anthropic API inputs/outputs are deleted within 30 days, subject to policy/legal exceptions. Some approved enterprise API customers may obtain ZDR arrangements. | Anthropic states commercial-customer data is not used to train generative models. | ZDR documentation still preserves limited safety/legal exceptions; the exact LibEdge agreement and operational access terms must be verified. | First-party Anthropic API; Anthropic uses multiple cloud service providers documented in its subprocessor list. | By default processing may occur across multiple geographic regions; storage is US-only unless otherwise agreed. US-only processing can be contractually requested. | ZDR applies only to the Anthropic API / products using the commercial organization API key, not beta products, Workbench, Claude for Work, or other products unless explicitly agreed. Actual LibEdge ZDR agreement is not verified. | `UNVERIFIED / BLOCKED` |
 | AWS Bedrock `anthropic.claude-opus-4-8` + Bedrock inference route | AWS documents that this model permits `none`. Live Bedrock control-plane evidence for the intended `us-east-1` account shows account mode `none`; however, the same bearer-token session against Mantle returns account mode `inherit` and the model's effective mode as `default` from `model_default`. | AWS states Bedrock customer inputs/outputs are not used to train or improve base foundation models. | Under verified `none`, request/response data would not be retained or reviewed. The current Mantle route has not demonstrated that effective mode. | Bedrock inference remains within AWS-operated infrastructure; AWS states third-party model providers do not receive prompts/completions under current Bedrock handling. | Intended region is `us-east-1`; cross-region behavior remains to be pinned before any PASS. | Live model metadata confirms `allowed_modes` contains `none`, but the same live Mantle surface reports `status: unavailable`, `mode: default`, `source: model_default`. This conflicts with the control-plane account `none` reading and must be reconciled before PASS. | `UNVERIFIED / BLOCKED` |
 | AWS Bedrock `anthropic.claude-fable-5.1` + Bedrock inference route | Current AWS documentation requires `aws_review`; prompts/completions may be retained within the AWS boundary for up to 30 days. | AWS states Bedrock inputs/outputs are not used to train base foundation models. | `aws_review` permits AWS human review where required by the model provider's access condition. | Under the current mechanism, content remains within the AWS boundary and is not shared with Anthropic. | If cross-region inference is enabled, retained inputs/outputs are stored in destination regions. | Current public docs list Fable 5.1 as requiring human review with `allowed_modes: ["aws_review", "provider_data_share"]`; `none` is not part of the standard route. | `FAIL` for the standard route |
+| AWS Bedrock `anthropic.claude-sonnet-4-6` (`us.` inference profile) + `bedrock-runtime` `InvokeModel` | Account control-plane confirmed mode `none`; live invocation succeeded under this configuration. 2026-09-16 AWS Support response (prepared after Bedrock SME consultation) confirms implicit prompt-cache/KV state does not count as retained Customer Data under ZDR `none`; state is ephemeral, TTL-based (5-minute default, resets on cache hit), and held in memory only. | AWS states Bedrock customer inputs/outputs are not used to train or improve base foundation models. | Under confirmed `none`, request/response data is not written to durable storage or shared with the model provider; AWS states the cache remains account-isolated and is not shared with Anthropic. | Bedrock-runtime inference within AWS-operated infrastructure; the model is not exposed via the separate Bedrock Mantle catalog, so that route is confirmed inapplicable rather than unresolved. | `us.` geographic inference profile, invoked from `us-east-1`; cross-region routing remains within US per AWS's geographic inference-profile documentation. | 2026-09-16 AWS Support / Bedrock-SME response directly confirms implicit caching is compatible with ZDR `none` for this exact route, independently corroborated by Anthropic's public prompt-caching documentation (ZDR-eligible, memory-only, 5-minute default TTL). Full record: `p05-provider-privacy-gate-sonnet46-aws-caching-final-evidence.md`. | `PASS` |
 
 ## Evidence record
 
@@ -158,7 +159,7 @@ Reviewer-correction record:
 - the proposal to close the blocker merely by forbidding `cache_control` / `cachePoint` is rejected;
 - the gate remains fail-closed.
 
-**Caching status for `us.anthropic.claude-sonnet-4-6` on `bedrock-runtime`: `OPEN / UNVERIFIED`.**
+**Caching status for `us.anthropic.claude-sonnet-4-6` on `bedrock-runtime`: `RESOLVED 2026-09-16` — see AWS Support / Bedrock-SME response in `p05-provider-privacy-gate-sonnet46-aws-caching-final-evidence.md`.**
 
 The unresolved question is now narrowly defined:
 
@@ -166,7 +167,7 @@ The unresolved question is now narrowly defined:
 
 A final `PASS` must not be granted from general statements about non-durable storage, from omission of explicit cache controls, or from below-threshold probes. The blocker may be closed only by authoritative route/model-specific evidence, an AWS-supported control that demonstrably disables implicit caching for the exact route, or equivalent live evidence that resolves the cache/ZDR interaction.
 
-Conflict status: `RESOLVED AS TO WHETHER IMPLICIT CACHING EXISTS; OPEN AS TO ZDR INTERACTION`.
+Conflict status: `RESOLVED AS TO WHETHER IMPLICIT CACHING EXISTS; RESOLVED AS TO ZDR INTERACTION (2026-09-16, see p05-provider-privacy-gate-sonnet46-aws-caching-final-evidence.md)`.
 
 #### Live account/model verification — 2026-09-13
 
@@ -195,17 +196,17 @@ Reconciliation trigger before any Bedrock PASS:
 - obtain an AWS explanation or provider-side correction that reconciles control-plane account `none` with Mantle account `inherit` / model `default` for the same credential/region context; or
 - obtain a later live Mantle observation for the intended route showing effective `mode: none`, with the source attributable to the applicable account/project scope, and `status: available`;
 - pin the exact inference region/profile and confirm no project-level override weakens the effective mode;
-- for Sonnet 4.6 specifically, obtain authoritative confirmation of how implicit prompt-cache state is handled under effective mode `none`, or an AWS-supported route control that demonstrably disables implicit caching.
+- ~~for Sonnet 4.6 specifically, obtain authoritative confirmation of how implicit prompt-cache state is handled under effective mode `none`~~ — **RESOLVED 2026-09-16**: AWS Support (Bedrock SME-consulted) confirmed implicit prompt-cache state does not count as retained Customer Data under ZDR `none`. See `p05-provider-privacy-gate-sonnet46-aws-caching-final-evidence.md`. This trigger applied only to Sonnet 4.6 and does not affect the remaining Bedrock control-plane/Mantle reconciliation items above, which remain open for `claude-opus-4-8`.
 
 ## Findings
 
-1. **No candidate is PASS yet.**
+1. **One candidate route has reached PASS**: AWS Bedrock `anthropic.claude-sonnet-4-6` (`us.` inference profile, `bedrock-runtime` `InvokeModel`, effective mode `none`). No other candidate has reached PASS.
 2. OpenAI first-party `gpt-5.6-sol` + Responses and Anthropic first-party `claude-opus-5` remain blocked pending exact account/contract verification.
 3. Bedrock `anthropic.claude-opus-4-8` has stronger live evidence than before: the account control plane is `none`, the model is authorized/available in the control plane, and live model metadata confirms `allowed_modes` includes `none`. However, Mantle currently reports account `inherit`, model effective `default/model_default`, and model `unavailable`. This unresolved provider-surface inconsistency blocks PASS.
 4. Bedrock `claude-fable-5.1` remains `FAIL` on the standard route because it requires AWS retention/human review.
 5. The Fable record remains time-sensitive: original Fable 5 documentation permitted `provider_data_share`, while current Fable 5/5.1 documentation uses AWS-only `aws_review`.
-6. For Sonnet 4.6, current AWS documentation confirms implicit prompt caching can operate without caller-supplied cache controls. The earlier 8-token probe cannot establish that caching is disabled because it is below the documented 1,024-token eligibility threshold. The cache/ZDR interaction therefore remains `OPEN / UNVERIFIED`.
-7. The privacy gate therefore remains open. **Capability, cost, latency, and product-quality comparison must not begin as a model-selection exercise until at least one exact route receives PASS.**
+6. For Sonnet 4.6, the earlier 8-token probe remained inconclusive on its own (below the documented 1,024-token eligibility threshold), but the 2026-09-16 AWS Support / Bedrock-SME response directly and separately resolved the cache/ZDR interaction: implicit prompt-cache state is confirmed ephemeral, TTL-based, and not classified as retained Customer Data under ZDR `none`. This item is now **RESOLVED**.
+7. The privacy gate has therefore produced its first PASS route (Sonnet 4.6, as above). **Capability, cost, latency, and product-quality comparison may now begin among PASS routes only. This does not itself constitute model selection or implementation authorization; a separate reviewer/product decision is required before any route is adopted.**
 
 ## Decision boundary
 
@@ -221,4 +222,4 @@ This record does **not**:
 
 ## Next verification step
 
-Resolve the Bedrock control-plane/Mantle inconsistency or verify another candidate's exact account/contract configuration. For Sonnet 4.6, request authoritative AWS/provider-specific clarification of the exact `bedrock-runtime` + effective `none` interaction with implicit prompt caching. Promote a candidate to `PASS` only after the exact inference route is internally consistent and verified; only PASS routes may enter the later capability/cost/latency selection stage.
+Sonnet 4.6 has reached PASS for the reviewed route; that route may now enter capability/cost/latency evaluation. Widening the candidate pool remains optional: resolving the Bedrock control-plane/Mantle inconsistency for `claude-opus-4-8`, or verifying another candidate's exact account/contract configuration, would add further PASS routes but is not required to proceed. Any future change to provider, model, route, or retention-mode configuration re-triggers this gate for the affected route.
