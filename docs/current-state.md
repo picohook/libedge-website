@@ -141,6 +141,7 @@ The staging deletion-policy work remains `CLOSED — BEHAVIORAL PASS` and is not
 8. Research Gaps live data exposure requires a separate minimized contract review; fixture UI is not authorization to expose rejected claims.
 9. Production observability metadata acceptance is endpoint-specific and reversible.
 10. No active Track A logging/config change is allowed during the 168-hour window without explicit review.
+11. Zero-hallucination commitment — see D-022; any production `supportCheck` selection requires a documented, measurable false-positive criterion before authorization.
 
 ## NEXT
 
@@ -165,4 +166,4 @@ The staging deletion-policy work remains `CLOSED — BEHAVIORAL PASS` and is not
 - Production pending-migration audit: `docs/reviews/2026-09-11-production-d1-pending-migration-audit.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
-Last updated: 2026-09-15
+Last updated: 2026-09-16
