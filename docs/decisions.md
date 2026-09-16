@@ -313,4 +313,14 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
   - `docs/architecture/p05-production-observability-metadata-minimization.md`
   - `docs/architecture/p05-production-retrieval-decision.md`
 
-Last updated: 2026-09-15
+## D-022
+
+- Types: `architecture`, `privacy/security`
+- Status: `LOCKED`
+- Decision: LibEdge must not render any research claim to a user as grounded output unless that claim is supported by cited evidence; this zero-hallucination commitment is an architectural requirement, not an aspirational quality target. The current all-or-nothing grounding validator partially enforces the invariant by rejecting claims with missing or unknown `evidence_id` citations and by rejecting grounding when `supportCheck` is absent. Any future production `supportCheck` implementation must be evaluated against an explicit, measurable false-positive criterion — the rate at which unsupported claims are incorrectly accepted as supported — using a preregistered experimental discipline comparable to the P0.5 Gate A/B approach, and no such implementation may enter production before that measurement and its evidence are documented and reviewed.
+- Reason: The existing `grounding-validator.js` structure prevents several classes of unsupported output, but the semantic support decision itself has not yet been validated with a real provider/model or other production-grade checker; current proof is limited to simple hand-written test functions. A production support checker therefore cannot be treated as trustworthy merely because it conforms to the interface. Separately, evidence-consistency is not equivalent to truth: if retrieval supplies an incorrect or irrelevant source, a summary can remain faithful to that source while still misleading the user. Retrieval quality is a separate failure domain and must be evaluated independently rather than folded into the `supportCheck` claim.
+- Provenance: main-thread zero-hallucination design commitment, 2026-09-16; grounded in the existing Assistant all-or-nothing grounding invariant and current `grounding-validator.js` test boundary.
+- Canonical record: this file.
+- Boundary: This decision adds a future production acceptance criterion only. It does not select or authorize a `supportCheck` implementation, provider/model, deployment, Track A change, or semantic-primary rollout.
+
+Last updated: 2026-09-16
