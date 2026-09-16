@@ -73,6 +73,19 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         row.append(term, description); detail.appendChild(row);
     }
 
+    function prepareContextualFixtureFollowUp(prompt, contextLabel) {
+        if (!queryInput) return;
+        clearEvidenceFocus(); closeSourceDetails(); closeSources();
+        queryInput.value = prompt;
+        queryInput.dataset.followUp = 'fixture-only';
+        queryInput.dataset.followUpContext = contextLabel;
+        queryInput.setAttribute('aria-describedby', 'assistantPrototypeToast');
+        queryInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        queryInput.focus({ preventScroll: true });
+        queryInput.setSelectionRange(queryInput.value.length, queryInput.value.length);
+        showToast(`${contextLabel} için fixture-only takip sorusu hazırlandı. Live API çağrısı yapılmadı.`);
+    }
+
     function ensureSourceDetail(sourceCard, button) {
         let detail = sourceCard.querySelector('[data-source-detail]');
         if (detail) return detail;
@@ -93,7 +106,17 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         appendDetailField(list, 'Kanıt ilişkisi', sourceCard.querySelector('.evidence-relation')?.textContent?.trim() || 'İlişki belirtilmedi.');
         appendDetailField(list, 'Fixture künyesi', sourceCard.querySelector('.source-meta')?.textContent?.trim() || 'Metadata belirtilmedi.');
         appendDetailField(list, 'Kanıt sınıflaması', [...sourceCard.querySelectorAll('.source-badges span')].map((badge) => badge.textContent?.trim()).filter(Boolean).join(' · ') || 'Sınıflama belirtilmedi.');
-        detail.append(boundary, list); content.appendChild(detail);
+
+        const followUp = document.createElement('button');
+        followUp.type = 'button'; followUp.className = 'assistant-secondary-btn source-context-followup';
+        followUp.dataset.fixtureOnly = 'true'; followUp.textContent = 'Bu kanıtı daha derin sor';
+        const sourceLabel = sourceCard.querySelector('.source-rank')?.textContent?.trim() || 'Bu kanıt';
+        followUp.setAttribute('aria-label', `${sourceLabel} için fixture-only takip sorusu hazırla`);
+        followUp.addEventListener('click', () => prepareContextualFixtureFollowUp(
+            `${sourceLabel} kanıtının bu bulgularla ilişkisini daha ayrıntılı açıkla.`, sourceLabel
+        ));
+
+        detail.append(boundary, list, followUp); content.appendChild(detail);
         button.setAttribute('aria-controls', detail.id);
         return detail;
     }
@@ -158,8 +181,28 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         queryInput.focus({ preventScroll: true });
         queryInput.setSelectionRange(queryInput.value.length, queryInput.value.length);
         queryInput.dataset.followUp = 'fixture-only';
+        delete queryInput.dataset.followUpContext;
         queryInput.setAttribute('aria-describedby', 'assistantPrototypeToast');
         showToast('Takip sorunuzu yukarıdaki alana yazın. Çalıştırma yalnız fixture lifecycle kullanır; live API çağrısı yapılmaz.');
+    }
+
+    function addFindingContextualFollowUps() {
+        document.querySelectorAll('.finding-item').forEach((finding) => {
+            if (finding.querySelector('[data-context-followup]')) return;
+            const label = finding.querySelector('.finding-index')?.textContent?.trim();
+            const heading = finding.querySelector('h4')?.textContent?.trim();
+            if (!label || !heading) return;
+            const button = document.createElement('button');
+            button.type = 'button'; button.className = 'assistant-secondary-btn finding-context-followup';
+            button.dataset.contextFollowup = 'fixture-only'; button.textContent = 'Derinleştir';
+            button.setAttribute('aria-label', `${label} bulgusu için fixture-only takip sorusu hazırla`);
+            button.addEventListener('click', (event) => {
+                event.stopPropagation();
+                prepareContextualFixtureFollowUp(`${label} bulgusunu daha derin açıkla: ${heading}`, label);
+            });
+            button.addEventListener('keydown', (event) => event.stopPropagation());
+            finding.querySelector('div')?.appendChild(button);
+        });
     }
 
     function setLoadingUi(isLoading) {
@@ -192,7 +235,7 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
                 await wait(420);
             }
             renderMappedState({ ok: true, code: 'OK', claims: [{ text: 'Fixture claim', evidence_ids: ['fixture:e1'] }], evidence_pack_id: 'fixture-pack' });
-            if (queryInput) delete queryInput.dataset.followUp;
+            if (queryInput) { delete queryInput.dataset.followUp; delete queryInput.dataset.followUpContext; }
             showToast('Fixture lifecycle tamamlandı. Gerçek /api/assistant/ask çağrısı yapılmadı.');
         } catch (error) {
             console.error('Assistant fixture lifecycle failed:', error);
@@ -206,7 +249,7 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
             if (!sourceCount) return;
             finding.tabIndex = 0; finding.setAttribute('role', 'button'); finding.setAttribute('aria-pressed', 'false');
             finding.setAttribute('aria-label', `Bulgu için ${sourceCount} ilişkili kanıt kaydını göster`);
-            finding.addEventListener('click', (event) => { if (!event.target.closest('.citation-chip')) focusFindingEvidence(finding); });
+            finding.addEventListener('click', (event) => { if (!event.target.closest('.citation-chip, [data-context-followup]')) focusFindingEvidence(finding); });
             finding.addEventListener('keydown', (event) => {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
                 event.preventDefault(); focusFindingEvidence(finding);
@@ -214,7 +257,7 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         });
     }
 
-    markResearchGapsFixtureOnly(); bindFindingEvidenceInteractions();
+    markResearchGapsFixtureOnly(); addFindingContextualFollowUps(); bindFindingEvidenceInteractions();
     document.querySelectorAll('.citation-chip[data-source]').forEach((button) => button.addEventListener('click', () => highlightSource(button.dataset.source)));
     document.getElementById('viewSourcesBtn')?.addEventListener('click', openSources);
     document.getElementById('closeSourcesBtn')?.addEventListener('click', () => { closeSourceDetails(); closeSources(); });
