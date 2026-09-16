@@ -36,7 +36,7 @@ describe('Assistant UI response contract', () => {
     });
     expect(result.state).toBe('evidence-payload-required');
     expect(result.claims).toEqual([]);
-    expect(result.title).toMatch(/kaynak/i);
+    expect(result.title).toMatch(/kanıt/i);
   });
 
   it('allows a live OK result only when evidence is an array', () => {
