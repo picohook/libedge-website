@@ -18,12 +18,13 @@ describe('profile translation user-content boundary', () => {
   it('marks user-defined profile and social labels while leaving cfg.label fallbacks unmarked', () => {
     const conditionalMarker = "const noTranslateAttr = link.label ? ' data-no-translate' : '';";
     expect(profileSource.split(conditionalMarker)).toHaveLength(3);
-    expect(profileSource).toMatch(/const label = link\.label \|\| cfg\.label;[\s\S]*?const noTranslateAttr = link\.label \? ' data-no-translate' : '';[\s\S]*?title=\\"\$\{escapeHtml\(label\)\}\\"[\s\S]*?\$\{noTranslateAttr\}/);
+    expect(profileSource).toMatch(/const label = link\.label \|\| cfg\.label;[\s\S]*?const noTranslateAttr = link\.label \? ' data-no-translate' : '';[\s\S]*?title="\$\{escapeHtml\(label\)\}"[\s\S]*?\$\{noTranslateAttr\}/);
   });
 
-  it('keeps the profile translator reversible for repeated TR/EN toggles', () => {
+  it('keeps the profile translator reversible for repeated TR/EN applications', () => {
     expect(profileSource).toContain('const profileTranslationsReverse = Object.fromEntries(');
     expect(profileSource).toMatch(/function translateProfileString\(value, toEnglish\)[\s\S]*?toEnglish \? profileTranslations : profileTranslationsReverse/);
-    expect(profileSource).toMatch(/function translateProfilePage\(toEnglish\)[\s\S]*?translateProfileString\(node\.nodeValue, toEnglish\)/);
+    expect(profileSource).toMatch(/function applyProfileLanguageFromStorage\(\)[\s\S]*?const toEnglish = localStorage\.getItem\('language'\) === 'en';[\s\S]*?nodes\.forEach\(node => replaceProfileTextNode\(node, toEnglish\)\)/);
+    expect(profileSource).toMatch(/function replaceProfileTextNode\(node, toEnglish\)[\s\S]*?translateProfileString\(node\.nodeValue, toEnglish\)/);
   });
 });
