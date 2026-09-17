@@ -216,14 +216,24 @@ function initHeaderInteractions() {
     window.addEventListener('scroll', onScroll, { passive: true });
 })();
 
+function loadPageSpecificEnhancements() {
+    if (!/(^|\/)announcements\.html$/.test(window.location.pathname) || document.querySelector('script[data-announcements-i18n]')) return;
+    const script = document.createElement('script');
+    script.src = 'assets/js/announcements-i18n.js?v=20260917a';
+    script.dataset.announcementsI18n = 'true';
+    document.head.appendChild(script);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     initTranslateButtonSync();
     initHeaderInteractions();
+    loadPageSpecificEnhancements();
 });
 
 document.addEventListener('header:ready', function() {
     initTranslateButtonSync();
     initHeaderInteractions();
+    loadPageSpecificEnhancements();
 
     if (window.authInitialized && typeof window.updateAuthUI === 'function') {
         window.updateAuthUI(!!window.currentUser);

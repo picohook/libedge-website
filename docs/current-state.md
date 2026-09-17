@@ -75,6 +75,14 @@ Current UI boundaries:
 
 Current active UI work is fixture-only evidence interaction, source-panel behavior, loading/error polish, and accessibility.
 
+## Frontend translation architecture note
+
+LibEdge currently has more than one translation mechanism. The site-wide attribute-based translation path remains the default, while `profile.html` has a page-local dictionary/walker because it must preserve user-owned values across repeated language toggles.
+
+`announcements.html` is a recorded page-specific exception. Its announcement cards and modal content are rendered by the inline `AnnouncementManager`, and engagement/newsletter UI is created or replaced dynamically after API responses. For that dynamic surface, `assets/js/announcements-i18n.js` extends the existing manager at runtime rather than introducing translation into user-owned comment/name fields or rewriting the working manager implementation. The extension is loaded only on `announcements.html`; its exact-match Turkish source strings are guarded by `test/frontend/announcements-i18n-source-contract.test.js` so source-copy changes fail CI instead of silently losing English localization.
+
+This exception is not a new site-wide translation standard. New pages should continue to use the established site-wide mechanism unless a page-specific dynamic-content constraint is documented and reviewed.
+
 ## Recently closed staging evidence
 
 Two unrelated staging reliability items are closed with real execution evidence:
