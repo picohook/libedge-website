@@ -40,6 +40,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
@@ -63,6 +66,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Deploy Pages
@@ -82,6 +87,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Deploy Pages
