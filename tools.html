@@ -243,25 +243,82 @@
 <main class="tools-shell">
     <section class="tools-top">
         <div>
-            <p class="text-xs font-bold uppercase tracking-wide text-indigo-600">Bireysel katalog</p>
-            <h1 class="tools-title">Akademik çalışma için seçilmiş araçlar</h1>
-            <p class="tools-subtitle">Ücretsiz araçlar ve partner ürünler kurumsal katalogdan ayrı yönetilir. Açılışlar LibEdge yönlendirme katmanından geçer; böylece hangi araçların gerçekten kullanıldığını görebiliriz.</p>
+            <p class="text-xs font-bold uppercase tracking-wide text-indigo-600 translatable" data-tr="Bireysel katalog" data-en="Individual catalog">Bireysel katalog</p>
+            <h1 class="tools-title translatable" data-tr="Akademik çalışma için seçilmiş araçlar" data-en="Selected tools for academic work">Akademik çalışma için seçilmiş araçlar</h1>
+            <p class="tools-subtitle translatable" data-tr="Ücretsiz araçlar ve partner ürünler kurumsal katalogdan ayrı yönetilir. Açılışlar LibEdge yönlendirme katmanından geçer; böylece hangi araçların gerçekten kullanıldığını görebiliriz." data-en="Free tools and partner products are managed separately from the institutional catalog. Opens pass through the LibEdge redirect layer so we can see which tools are actually used.">Ücretsiz araçlar ve partner ürünler kurumsal katalogdan ayrı yönetilir. Açılışlar LibEdge yönlendirme katmanından geçer; böylece hangi araçların gerçekten kullanıldığını görebiliriz.</p>
         </div>
         <label class="tools-search">
             <i class="fas fa-magnifying-glass text-indigo-500"></i>
-            <input id="toolSearch" type="search" autocomplete="off" placeholder="Araç, kategori veya ihtiyaç ara">
+            <input id="toolSearch" type="search" autocomplete="off" placeholder="Araç, kategori veya ihtiyaç ara" data-tr-placeholder="Araç, kategori veya ihtiyaç ara" data-en-placeholder="Search by tool, category, or need">
         </label>
     </section>
 
     <div id="toolFilters" class="tools-filters"></div>
     <section id="toolsGrid" class="tools-grid" aria-live="polite">
-        <div class="tools-empty">Araçlar yükleniyor...</div>
+        <div class="tools-empty translatable" data-tr="Araçlar yükleniyor..." data-en="Loading tools...">Araçlar yükleniyor...</div>
     </section>
 </main>
 
 <script>
 let toolsCatalog = [];
 let activeToolFilter = 'all';
+
+const toolsMessages = {
+    tr: {
+        title: 'Bireysel Araçlar - LibEdge',
+        loadError: 'Bireysel araçlar yüklenemedi.',
+        all: 'Tümü',
+        free: 'Ücretsiz',
+        partner: 'Partner',
+        empty: 'Bu filtreyle eşleşen araç bulunamadı.',
+        toolFallback: 'Araç',
+        categoryFallback: 'Bireysel araç',
+        summaryFallback: 'Akademik iş akışınızı destekleyen seçilmiş araç.',
+        affiliateCta: 'Partnerde İncele',
+        freeCta: 'Ücretsiz Aç',
+        gateTitle: 'Araçlara erişmek için giriş yapın',
+        gateDescription: "LibEdge hesabınızla giriş yaparak 90'dan fazla ücretsiz akademik araca ulaşabilirsiniz.",
+        login: 'Giriş Yap',
+        register: 'Kayıt Ol',
+    },
+    en: {
+        title: 'Individual Tools - LibEdge',
+        loadError: 'Individual tools could not be loaded.',
+        all: 'All',
+        free: 'Free',
+        partner: 'Partner',
+        empty: 'No tools match this filter.',
+        toolFallback: 'Tool',
+        categoryFallback: 'Individual tool',
+        summaryFallback: 'A selected tool to support your academic workflow.',
+        affiliateCta: 'View at Partner',
+        freeCta: 'Open Free',
+        gateTitle: 'Sign in to access tools',
+        gateDescription: 'Sign in with your LibEdge account to access more than 90 free academic tools.',
+        login: 'Sign In',
+        register: 'Register',
+    },
+};
+
+function toolsLanguage() {
+    return localStorage.getItem('language') === 'en' ? 'en' : 'tr';
+}
+
+function toolMessage(key) {
+    return toolsMessages[toolsLanguage()][key];
+}
+
+function applyToolsLanguage() {
+    const lang = toolsLanguage();
+    document.documentElement.lang = lang;
+    document.title = toolsMessages[lang].title;
+    document.querySelectorAll('.translatable').forEach((el) => {
+        const value = el.dataset[lang];
+        if (value !== undefined) el.textContent = value;
+    });
+    const search = document.getElementById('toolSearch');
+    if (search) search.placeholder = lang === 'en' ? search.dataset.enPlaceholder : search.dataset.trPlaceholder;
+}
 
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -280,7 +337,7 @@ async function loadToolsCatalog() {
         renderTools();
     } catch (err) {
         console.error('loadToolsCatalog error:', err);
-        grid.innerHTML = '<div class="tools-empty">Bireysel araçlar yüklenemedi.</div>';
+        grid.innerHTML = `<div class="tools-empty">${escapeHtml(toolMessage('loadError'))}</div>`;
     }
 }
 
@@ -288,9 +345,9 @@ function renderToolFilters() {
     const el = document.getElementById('toolFilters');
     const categories = Array.from(new Set(toolsCatalog.map((tool) => String(tool.category || '').trim()).filter(Boolean)));
     const filters = [
-        { key: 'all', label: 'Tümü' },
-        { key: 'free', label: 'Ücretsiz' },
-        { key: 'affiliate', label: 'Partner' },
+        { key: 'all', label: toolMessage('all') },
+        { key: 'free', label: toolMessage('free') },
+        { key: 'affiliate', label: toolMessage('partner') },
         ...categories.map((category) => ({ key: `category:${category}`, label: category })),
     ];
     el.innerHTML = filters.map((filter) => `
@@ -322,17 +379,19 @@ function renderTools() {
 
     grid.innerHTML = filtered.length
         ? filtered.map(renderToolCard).join('')
-        : '<div class="tools-empty">Bu filtreyle eşleşen araç bulunamadı.</div>';
+        : `<div class="tools-empty">${escapeHtml(toolMessage('empty'))}</div>`;
 }
 
 function renderToolCard(tool) {
     const slug = String(tool.slug || '').trim();
-    const name = tool.name || 'Araç';
-    const category = tool.category || 'Bireysel araç';
-    const summary = tool.summary_tr || 'Akademik iş akışınızı destekleyen seçilmiş araç.';
+    const name = tool.name || toolMessage('toolFallback');
+    const category = tool.category || toolMessage('categoryFallback');
+    // Public /api/individual-tools currently exposes summary_tr only. Keep catalog-owned copy unchanged
+    // rather than inventing English text; use summary_en here once the public API actually exposes it.
+    const summary = tool.summary_tr || toolMessage('summaryFallback');
     const isAffiliate = tool.access_type === 'affiliate';
-    const badgeLabel = isAffiliate ? 'Partner' : 'Ücretsiz';
-    const cta = isAffiliate ? 'Partnerde İncele' : 'Ücretsiz Aç';
+    const badgeLabel = isAffiliate ? toolMessage('partner') : toolMessage('free');
+    const cta = isAffiliate ? toolMessage('affiliateCta') : toolMessage('freeCta');
     const icon = isAffiliate ? 'fa-arrow-up-right-from-square' : 'fa-play';
     const logo = tool.logo_url
         ? `<img src="${escapeHtml(tool.logo_url)}" alt="${escapeHtml(name)} logo" loading="lazy">`
@@ -348,13 +407,13 @@ function renderToolCard(tool) {
                         <p class="tool-category">${escapeHtml(category)}</p>
                     </div>
                 </div>
-                <span class="tool-badge ${isAffiliate ? 'affiliate' : 'free'}">${badgeLabel}</span>
+                <span class="tool-badge ${isAffiliate ? 'affiliate' : 'free'}">${escapeHtml(badgeLabel)}</span>
             </div>
             <p class="tool-summary">${escapeHtml(summary)}</p>
             <div class="tool-card-footer">
                 <span class="tool-slug">${escapeHtml(slug)}</span>
                 <a class="tool-action" href="/api/go/${encodeURIComponent(slug)}?source=tools_catalog" target="_blank" rel="noopener">
-                    <i class="fas ${icon}"></i><span>${cta}</span>
+                    <i class="fas ${icon}"></i><span>${escapeHtml(cta)}</span>
                 </a>
             </div>
         </article>`;
@@ -366,16 +425,17 @@ function showToolsGate() {
     document.getElementById('toolsGrid').innerHTML = `
         <div class="tools-gate">
             <i class="fas fa-lock"></i>
-            <h3>Araçlara erişmek için giriş yapın</h3>
-            <p>LibEdge hesabınızla giriş yaparak 90'dan fazla ücretsiz akademik araca ulaşabilirsiniz.</p>
+            <h3>${escapeHtml(toolMessage('gateTitle'))}</h3>
+            <p>${escapeHtml(toolMessage('gateDescription'))}</p>
             <div class="tools-gate-actions">
-                <button class="tools-gate-btn primary" onclick="window.openLoginModal && window.openLoginModal()">Giriş Yap</button>
-                <button class="tools-gate-btn secondary" onclick="window.openRegisterModal && window.openRegisterModal()">Kayıt Ol</button>
+                <button class="tools-gate-btn primary" onclick="window.openLoginModal && window.openLoginModal()">${escapeHtml(toolMessage('login'))}</button>
+                <button class="tools-gate-btn secondary" onclick="window.openRegisterModal && window.openRegisterModal()">${escapeHtml(toolMessage('register'))}</button>
             </div>
         </div>`;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    applyToolsLanguage();
     const user = await (window.waitForAuth ? window.waitForAuth() : Promise.resolve(null));
     if (!user) {
         showToolsGate();
