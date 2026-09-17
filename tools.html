@@ -14,261 +14,76 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f7f8fb;
-            color: #172033;
-        }
-        .tools-shell {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 42px 18px 72px;
-        }
-        .tools-top {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 18px;
-            align-items: end;
-            margin-bottom: 22px;
-        }
-        .tools-title {
-            font-size: 2rem;
-            line-height: 1.12;
-            font-weight: 800;
-            color: #220f60;
-            letter-spacing: 0;
-        }
-        .tools-subtitle {
-            margin-top: 10px;
-            max-width: 720px;
-            color: #64748b;
-            font-size: 0.98rem;
-            line-height: 1.65;
-        }
-        .tools-search {
-            width: min(360px, 100%);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 11px 13px;
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
-        }
-        .tools-search input {
-            width: 100%;
-            border: 0;
-            outline: 0;
-            color: #172033;
-            font-size: 0.92rem;
-        }
-        .tools-filters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin: 18px 0 24px;
-        }
-        .tools-filter {
-            min-height: 34px;
-            border: 1px solid #e5e7eb;
-            background: #fff;
-            color: #475569;
-            border-radius: 8px;
-            padding: 7px 11px;
-            font-size: 0.82rem;
-            font-weight: 700;
-        }
-        .tools-filter.active {
-            background: #220f60;
-            color: #fff;
-            border-color: #220f60;
-        }
-        .tools-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 16px;
-        }
-        .tool-card {
-            min-height: 250px;
-            display: flex;
-            flex-direction: column;
-            background: #fff;
-            border: 1px solid #e8ecf4;
-            border-radius: 8px;
-            padding: 16px;
-            box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
-        }
-        .tool-card-header {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: flex-start;
-        }
-        .tool-brand {
-            display: flex;
-            gap: 12px;
-            min-width: 0;
-            align-items: center;
-        }
-        .tool-logo {
-            width: 44px;
-            height: 44px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex: 0 0 auto;
-            background: #eff6ff;
-            overflow: hidden;
-            color: #2563eb;
-            font-weight: 800;
-        }
-        .tool-logo img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            padding: 6px;
-        }
-        .tool-name {
-            font-size: 1rem;
-            font-weight: 800;
-            color: #172033;
-            line-height: 1.25;
-        }
-        .tool-category {
-            font-size: 0.78rem;
-            color: #64748b;
-            margin-top: 3px;
-        }
-        .tool-badge {
-            border-radius: 8px;
-            padding: 5px 8px;
-            font-size: 0.72rem;
-            font-weight: 800;
-            white-space: nowrap;
-        }
-        .tool-badge.free {
-            background: #dcfce7;
-            color: #15803d;
-        }
-        .tool-badge.affiliate {
-            background: #fef3c7;
-            color: #b45309;
-        }
-        .tool-summary {
-            margin-top: 16px;
-            color: #475569;
-            font-size: 0.9rem;
-            line-height: 1.6;
-            flex: 1;
-        }
-        .tool-card-footer {
-            margin-top: 18px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-        }
-        .tool-slug {
-            min-width: 0;
-            color: #94a3b8;
-            font-size: 0.72rem;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .tool-action {
-            min-height: 36px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 11px;
-            border-radius: 8px;
-            background: #220f60;
-            color: #fff;
-            font-size: 0.82rem;
-            font-weight: 800;
-            white-space: nowrap;
-        }
-        .tools-empty {
-            border: 1px dashed #cbd5e1;
-            border-radius: 8px;
-            padding: 28px;
-            text-align: center;
-            color: #64748b;
-            background: #fff;
-        }
-        .tools-gate {
-            grid-column: 1 / -1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            padding: 56px 24px;
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-radius: 16px;
-            text-align: center;
-        }
+        body { font-family: 'Inter', sans-serif; background: #f7f8fb; color: #172033; }
+        .tools-shell { max-width: 1180px; margin: 0 auto; padding: 42px 18px 72px; }
+        .tools-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: end; margin-bottom: 22px; }
+        .tools-title { font-size: 2rem; line-height: 1.12; font-weight: 800; color: #220f60; letter-spacing: 0; }
+        .tools-subtitle { margin-top: 10px; max-width: 720px; color: #64748b; font-size: 0.98rem; line-height: 1.65; }
+        .tools-search { width: min(360px, 100%); display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 11px 13px; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06); }
+        .tools-search input { width: 100%; border: 0; outline: 0; color: #172033; font-size: 0.92rem; }
+        .tools-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 24px; }
+        .tools-filter { min-height: 34px; border: 1px solid #e5e7eb; background: #fff; color: #475569; border-radius: 8px; padding: 7px 11px; font-size: 0.82rem; font-weight: 700; }
+        .tools-filter.active { background: #220f60; color: #fff; border-color: #220f60; }
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+        .tool-card { min-height: 250px; display: flex; flex-direction: column; background: #fff; border: 1px solid #e8ecf4; border-radius: 8px; padding: 16px; box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06); }
+        .tool-card-header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+        .tool-brand { display: flex; gap: 12px; min-width: 0; align-items: center; }
+        .tool-logo { width: 44px; height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; background: #eff6ff; overflow: hidden; color: #2563eb; font-weight: 800; }
+        .tool-logo img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
+        .tool-name { font-size: 1rem; font-weight: 800; color: #172033; line-height: 1.25; }
+        .tool-category { font-size: 0.78rem; color: #64748b; margin-top: 3px; }
+        .tool-badge { border-radius: 8px; padding: 5px 8px; font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
+        .tool-badge.free { background: #dcfce7; color: #15803d; }
+        .tool-badge.affiliate { background: #fef3c7; color: #b45309; }
+        .tool-summary { margin-top: 16px; color: #475569; font-size: 0.9rem; line-height: 1.6; flex: 1; }
+        .tool-card-footer { margin-top: 18px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .tool-slug { min-width: 0; color: #94a3b8; font-size: 0.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tool-action { min-height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 8px; background: #220f60; color: #fff; font-size: 0.82rem; font-weight: 800; white-space: nowrap; }
+        .tools-empty { border: 1px dashed #cbd5e1; border-radius: 8px; padding: 28px; text-align: center; color: #64748b; background: #fff; }
+        .tools-gate { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 56px 24px; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; text-align: center; }
         .tools-gate i { font-size: 2.2rem; color: #7c3aed; opacity: 0.7; }
         .tools-gate h3 { font-size: 1.25rem; font-weight: 700; color: #220f60; margin: 0; }
         .tools-gate p { color: #64748b; font-size: 0.95rem; max-width: 420px; margin: 0; line-height: 1.6; }
         .tools-gate-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
-        .tools-gate-btn {
-            padding: 10px 22px; border-radius: 8px; font-size: 0.9rem; font-weight: 700;
-            cursor: pointer; border: none; transition: opacity 0.15s;
-        }
+        .tools-gate-btn { padding: 10px 22px; border-radius: 8px; font-size: 0.9rem; font-weight: 700; cursor: pointer; border: none; transition: opacity 0.15s; }
         .tools-gate-btn:hover { opacity: 0.85; }
         .tools-gate-btn.primary { background: #220f60; color: #fff; }
         .tools-gate-btn.secondary { background: #eef2ff; color: #4338ca; }
-        @media (max-width: 760px) {
-            .tools-top {
-                grid-template-columns: 1fr;
-            }
-            .tools-search {
-                width: 100%;
-            }
-            .tools-title {
-                font-size: 1.65rem;
-            }
-        }
+        @media (max-width: 760px) { .tools-top { grid-template-columns: 1fr; } .tools-search { width: 100%; } .tools-title { font-size: 1.65rem; } }
     </style>
 </head>
 <body>
 <div id="site-header"></div>
-
 <main class="tools-shell">
     <section class="tools-top">
         <div>
-            <p class="text-xs font-bold uppercase tracking-wide text-indigo-600">Bireysel katalog</p>
-            <h1 class="tools-title">Akademik çalışma için seçilmiş araçlar</h1>
-            <p class="tools-subtitle">Ücretsiz araçlar ve partner ürünler kurumsal katalogdan ayrı yönetilir. Açılışlar LibEdge yönlendirme katmanından geçer; böylece hangi araçların gerçekten kullanıldığını görebiliriz.</p>
+            <p class="text-xs font-bold uppercase tracking-wide text-indigo-600 translatable" data-tr="Bireysel katalog" data-en="Individual catalog">Bireysel katalog</p>
+            <h1 class="tools-title translatable" data-tr="Akademik çalışma için seçilmiş araçlar" data-en="Selected tools for academic work">Akademik çalışma için seçilmiş araçlar</h1>
+            <p class="tools-subtitle translatable" data-tr="Ücretsiz araçlar ve partner ürünler kurumsal katalogdan ayrı yönetilir. Açılışlar LibEdge yönlendirme katmanından geçer; böylece hangi araçların gerçekten kullanıldığını görebiliriz." data-en="Free tools and partner products are managed separately from the institutional catalog. Opens pass through the LibEdge redirect layer so we can see which tools are actually used.">Ücretsiz araçlar ve partner ürünler kurumsal katalogdan ayrı yönetilir. Açılışlar LibEdge yönlendirme katmanından geçer; böylece hangi araçların gerçekten kullanıldığını görebiliriz.</p>
         </div>
-        <label class="tools-search">
-            <i class="fas fa-magnifying-glass text-indigo-500"></i>
-            <input id="toolSearch" type="search" autocomplete="off" placeholder="Araç, kategori veya ihtiyaç ara">
-        </label>
+        <label class="tools-search"><i class="fas fa-magnifying-glass text-indigo-500"></i><input id="toolSearch" type="search" autocomplete="off" placeholder="Araç, kategori veya ihtiyaç ara" data-tr-placeholder="Araç, kategori veya ihtiyaç ara" data-en-placeholder="Search by tool, category, or need"></label>
     </section>
-
     <div id="toolFilters" class="tools-filters"></div>
-    <section id="toolsGrid" class="tools-grid" aria-live="polite">
-        <div class="tools-empty">Araçlar yükleniyor...</div>
-    </section>
+    <section id="toolsGrid" class="tools-grid" aria-live="polite"><div class="tools-empty translatable" data-tr="Araçlar yükleniyor..." data-en="Loading tools...">Araçlar yükleniyor...</div></section>
 </main>
-
 <script>
 let toolsCatalog = [];
 let activeToolFilter = 'all';
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = String(text ?? '');
-    return div.innerHTML;
+const toolsMessages = {
+    tr: { title: 'Bireysel Araçlar - LibEdge', loadError: 'Bireysel araçlar yüklenemedi.', all: 'Tümü', free: 'Ücretsiz', partner: 'Partner', empty: 'Bu filtreyle eşleşen araç bulunamadı.', toolFallback: 'Araç', categoryFallback: 'Bireysel araç', summaryFallback: 'Akademik iş akışınızı destekleyen seçilmiş araç.', affiliateCta: 'Partnerde İncele', freeCta: 'Ücretsiz Aç', gateTitle: 'Araçlara erişmek için giriş yapın', gateDescription: "LibEdge hesabınızla giriş yaparak 90'dan fazla ücretsiz akademik araca ulaşabilirsiniz.", login: 'Giriş Yap', register: 'Kayıt Ol' },
+    en: { title: 'Individual Tools - LibEdge', loadError: 'Individual tools could not be loaded.', all: 'All', free: 'Free', partner: 'Partner', empty: 'No tools match this filter.', toolFallback: 'Tool', categoryFallback: 'Individual tool', summaryFallback: 'A selected tool to support your academic workflow.', affiliateCta: 'View at Partner', freeCta: 'Open Free', gateTitle: 'Sign in to access tools', gateDescription: 'Sign in with your LibEdge account to access more than 90 free academic tools.', login: 'Sign In', register: 'Register' }
+};
+function toolsLanguage() { return localStorage.getItem('language') === 'en' ? 'en' : 'tr'; }
+function toolMessage(key) { return toolsMessages[toolsLanguage()][key]; }
+function applyToolsLanguage() {
+    const lang = toolsLanguage();
+    document.documentElement.lang = lang;
+    document.title = toolsMessages[lang].title;
+    document.querySelectorAll('.translatable').forEach((el) => { const value = el.dataset[lang]; if (value !== undefined) el.textContent = value; });
+    const search = document.getElementById('toolSearch');
+    if (search) search.placeholder = lang === 'en' ? search.dataset.enPlaceholder : search.dataset.trPlaceholder;
 }
-
+function escapeHtml(text) { const div = document.createElement('div'); div.textContent = String(text ?? ''); return div.innerHTML; }
 async function loadToolsCatalog() {
     const grid = document.getElementById('toolsGrid');
     try {
@@ -276,111 +91,50 @@ async function loadToolsCatalog() {
         if (!res.ok) throw new Error(`tools ${res.status}`);
         const data = await res.json();
         toolsCatalog = Array.isArray(data.tools) ? data.tools : [];
-        renderToolFilters();
-        renderTools();
-    } catch (err) {
-        console.error('loadToolsCatalog error:', err);
-        grid.innerHTML = '<div class="tools-empty">Bireysel araçlar yüklenemedi.</div>';
-    }
+        renderToolFilters(); renderTools();
+    } catch (err) { console.error('loadToolsCatalog error:', err); grid.innerHTML = `<div class="tools-empty">${escapeHtml(toolMessage('loadError'))}</div>`; }
 }
-
 function renderToolFilters() {
     const el = document.getElementById('toolFilters');
     const categories = Array.from(new Set(toolsCatalog.map((tool) => String(tool.category || '').trim()).filter(Boolean)));
-    const filters = [
-        { key: 'all', label: 'Tümü' },
-        { key: 'free', label: 'Ücretsiz' },
-        { key: 'affiliate', label: 'Partner' },
-        ...categories.map((category) => ({ key: `category:${category}`, label: category })),
-    ];
-    el.innerHTML = filters.map((filter) => `
-        <button type="button" class="tools-filter ${activeToolFilter === filter.key ? 'active' : ''}" data-tool-filter="${escapeHtml(filter.key)}">
-            ${escapeHtml(filter.label)}
-        </button>
-    `).join('');
-    el.querySelectorAll('[data-tool-filter]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            activeToolFilter = btn.dataset.toolFilter || 'all';
-            renderToolFilters();
-            renderTools();
-        });
-    });
+    const filters = [{ key: 'all', label: toolMessage('all') }, { key: 'free', label: toolMessage('free') }, { key: 'affiliate', label: toolMessage('partner') }, ...categories.map((category) => ({ key: `category:${category}`, label: category }))];
+    el.innerHTML = filters.map((filter) => `<button type="button" class="tools-filter ${activeToolFilter === filter.key ? 'active' : ''}" data-tool-filter="${escapeHtml(filter.key)}">${escapeHtml(filter.label)}</button>`).join('');
+    el.querySelectorAll('[data-tool-filter]').forEach((btn) => { btn.addEventListener('click', () => { activeToolFilter = btn.dataset.toolFilter || 'all'; renderToolFilters(); renderTools(); }); });
 }
-
 function renderTools() {
     const grid = document.getElementById('toolsGrid');
     const search = String(document.getElementById('toolSearch')?.value || '').trim().toLowerCase();
     const filtered = toolsCatalog.filter((tool) => {
-        const accessType = String(tool.access_type || '');
-        const category = String(tool.category || '');
+        const accessType = String(tool.access_type || ''); const category = String(tool.category || '');
         const haystack = [tool.name, category, tool.summary_tr, accessType].join(' ').toLowerCase();
-        const filterMatch = activeToolFilter === 'all'
-            || activeToolFilter === accessType
-            || activeToolFilter === `category:${category}`;
+        const filterMatch = activeToolFilter === 'all' || activeToolFilter === accessType || activeToolFilter === `category:${category}`;
         return filterMatch && (!search || haystack.includes(search));
     });
-
-    grid.innerHTML = filtered.length
-        ? filtered.map(renderToolCard).join('')
-        : '<div class="tools-empty">Bu filtreyle eşleşen araç bulunamadı.</div>';
+    grid.innerHTML = filtered.length ? filtered.map(renderToolCard).join('') : `<div class="tools-empty">${escapeHtml(toolMessage('empty'))}</div>`;
 }
-
 function renderToolCard(tool) {
     const slug = String(tool.slug || '').trim();
-    const name = tool.name || 'Araç';
-    const category = tool.category || 'Bireysel araç';
-    const summary = tool.summary_tr || 'Akademik iş akışınızı destekleyen seçilmiş araç.';
+    const name = tool.name || toolMessage('toolFallback');
+    const category = tool.category || toolMessage('categoryFallback');
+    // Public /api/individual-tools currently exposes summary_tr only. Keep catalog-owned copy unchanged
+    // rather than inventing English text; use summary_en here once the public API actually exposes it.
+    const summary = tool.summary_tr || toolMessage('summaryFallback');
     const isAffiliate = tool.access_type === 'affiliate';
-    const badgeLabel = isAffiliate ? 'Partner' : 'Ücretsiz';
-    const cta = isAffiliate ? 'Partnerde İncele' : 'Ücretsiz Aç';
+    const badgeLabel = isAffiliate ? toolMessage('partner') : toolMessage('free');
+    const cta = isAffiliate ? toolMessage('affiliateCta') : toolMessage('freeCta');
     const icon = isAffiliate ? 'fa-arrow-up-right-from-square' : 'fa-play';
-    const logo = tool.logo_url
-        ? `<img src="${escapeHtml(tool.logo_url)}" alt="${escapeHtml(name)} logo" loading="lazy">`
-        : escapeHtml(name.slice(0, 2).toUpperCase());
-
-    return `
-        <article class="tool-card">
-            <div class="tool-card-header">
-                <div class="tool-brand">
-                    <div class="tool-logo">${logo}</div>
-                    <div class="min-w-0">
-                        <h2 class="tool-name">${escapeHtml(name)}</h2>
-                        <p class="tool-category">${escapeHtml(category)}</p>
-                    </div>
-                </div>
-                <span class="tool-badge ${isAffiliate ? 'affiliate' : 'free'}">${badgeLabel}</span>
-            </div>
-            <p class="tool-summary">${escapeHtml(summary)}</p>
-            <div class="tool-card-footer">
-                <span class="tool-slug">${escapeHtml(slug)}</span>
-                <a class="tool-action" href="/api/go/${encodeURIComponent(slug)}?source=tools_catalog" target="_blank" rel="noopener">
-                    <i class="fas ${icon}"></i><span>${cta}</span>
-                </a>
-            </div>
-        </article>`;
+    const logo = tool.logo_url ? `<img src="${escapeHtml(tool.logo_url)}" alt="${escapeHtml(name)} logo" loading="lazy">` : escapeHtml(name.slice(0, 2).toUpperCase());
+    return `<article class="tool-card"><div class="tool-card-header"><div class="tool-brand"><div class="tool-logo">${logo}</div><div class="min-w-0"><h2 class="tool-name">${escapeHtml(name)}</h2><p class="tool-category">${escapeHtml(category)}</p></div></div><span class="tool-badge ${isAffiliate ? 'affiliate' : 'free'}">${escapeHtml(badgeLabel)}</span></div><p class="tool-summary">${escapeHtml(summary)}</p><div class="tool-card-footer"><span class="tool-slug">${escapeHtml(slug)}</span><a class="tool-action" href="/api/go/${encodeURIComponent(slug)}?source=tools_catalog" target="_blank" rel="noopener"><i class="fas ${icon}"></i><span>${escapeHtml(cta)}</span></a></div></article>`;
 }
-
 function showToolsGate() {
     document.getElementById('toolFilters').style.display = 'none';
     document.getElementById('toolSearch').closest('label').style.display = 'none';
-    document.getElementById('toolsGrid').innerHTML = `
-        <div class="tools-gate">
-            <i class="fas fa-lock"></i>
-            <h3>Araçlara erişmek için giriş yapın</h3>
-            <p>LibEdge hesabınızla giriş yaparak 90'dan fazla ücretsiz akademik araca ulaşabilirsiniz.</p>
-            <div class="tools-gate-actions">
-                <button class="tools-gate-btn primary" onclick="window.openLoginModal && window.openLoginModal()">Giriş Yap</button>
-                <button class="tools-gate-btn secondary" onclick="window.openRegisterModal && window.openRegisterModal()">Kayıt Ol</button>
-            </div>
-        </div>`;
+    document.getElementById('toolsGrid').innerHTML = `<div class="tools-gate"><i class="fas fa-lock"></i><h3>${escapeHtml(toolMessage('gateTitle'))}</h3><p>${escapeHtml(toolMessage('gateDescription'))}</p><div class="tools-gate-actions"><button class="tools-gate-btn primary" onclick="window.openLoginModal && window.openLoginModal()">${escapeHtml(toolMessage('login'))}</button><button class="tools-gate-btn secondary" onclick="window.openRegisterModal && window.openRegisterModal()">${escapeHtml(toolMessage('register'))}</button></div></div>`;
 }
-
 document.addEventListener('DOMContentLoaded', async () => {
+    applyToolsLanguage();
     const user = await (window.waitForAuth ? window.waitForAuth() : Promise.resolve(null));
-    if (!user) {
-        showToolsGate();
-        return;
-    }
+    if (!user) { showToolsGate(); return; }
     document.getElementById('toolSearch')?.addEventListener('input', renderTools);
     loadToolsCatalog();
 });
