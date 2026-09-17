@@ -34,39 +34,39 @@
     }
 
     function ui() { return TEXT[language()]; }
+    function setText(el, value) { if (el && el.textContent !== value) el.textContent = value; }
+    function setHtml(el, value) { if (el && el.innerHTML !== value) el.innerHTML = value; }
+    function setAttr(el, name, value) { if (el && el.getAttribute(name) !== value) el.setAttribute(name, value); }
 
     function localizeEngagement() {
         const t = ui();
-        document.title = t.documentTitle;
+        if (document.title !== t.documentTitle) document.title = t.documentTitle;
         const closeIconButton = document.querySelector('#announcementModal button[onclick="closeModal()"]');
-        if (closeIconButton) closeIconButton.setAttribute('aria-label', t.closeModalAria);
+        setAttr(closeIconButton, 'aria-label', t.closeModalAria);
         const bar = document.getElementById('reactionsBar');
         if (bar) {
-            bar.setAttribute('aria-label', t.reactionsAria);
+            setAttr(bar, 'aria-label', t.reactionsAria);
             bar.querySelectorAll('.reaction-btn[data-reaction]').forEach(btn => {
                 const key = btn.dataset.reaction;
                 const label = t.reactionLabels[key] || key;
-                btn.title = label + (btn.disabled ? ` (${t.loginRequired})` : '');
+                setAttr(btn, 'title', label + (btn.disabled ? ` (${t.loginRequired})` : ''));
             });
         }
-        const heading = document.querySelector('.comments-heading h3');
-        if (heading) heading.innerHTML = `<i class="far fa-comments mr-2"></i>${t.comments}`;
+        setHtml(document.querySelector('.comments-heading h3'), `<i class="far fa-comments mr-2"></i>${t.comments}`);
         const count = document.getElementById('commentsCount');
         if (count && /^\d+\s+/.test(count.textContent || '')) {
             const n = Number.parseInt(count.textContent, 10) || 0;
-            count.textContent = `${n} ${n === 1 ? t.commentSingular : t.commentPlural}`;
+            setText(count, `${n} ${n === 1 ? t.commentSingular : t.commentPlural}`);
         }
-        const loginPrompt = document.querySelector('.comment-login-prompt');
-        if (loginPrompt) loginPrompt.innerHTML = `<i class="fas fa-lock mr-1"></i>${t.loginPrefix}<a href="/profile.html">${t.loginLink}</a>${t.loginSuffix}`;
+        setHtml(document.querySelector('.comment-login-prompt'), `<i class="fas fa-lock mr-1"></i>${t.loginPrefix}<a href="/profile.html">${t.loginLink}</a>${t.loginSuffix}`);
         const input = document.getElementById('commentInput');
-        if (input) { input.placeholder = t.commentPlaceholder; input.setAttribute('aria-label', t.commentAria); }
-        const submit = document.querySelector('.comment-submit-btn');
-        if (submit) submit.innerHTML = `<i class="fas fa-paper-plane mr-1"></i>${t.send}`;
-        document.querySelectorAll('.comment-action-btn[data-comment-delete]').forEach(btn => { btn.innerHTML = `<i class="far fa-trash-alt mr-1"></i>${t.delete}`; });
+        if (input) { if (input.placeholder !== t.commentPlaceholder) input.placeholder = t.commentPlaceholder; setAttr(input, 'aria-label', t.commentAria); }
+        setHtml(document.querySelector('.comment-submit-btn'), `<i class="fas fa-paper-plane mr-1"></i>${t.send}`);
+        document.querySelectorAll('.comment-action-btn[data-comment-delete]').forEach(btn => setHtml(btn, `<i class="far fa-trash-alt mr-1"></i>${t.delete}`));
         const empty = document.querySelector('.comment-empty');
         if (empty) {
             const loadingFailed = /Etkileşim yüklenemedi|Engagement could not be loaded/.test(empty.textContent || '');
-            empty.innerHTML = loadingFailed ? t.engagementLoadFailed : `<i class="far fa-comment-dots mr-2"></i>${t.noComments}`;
+            setHtml(empty, loadingFailed ? t.engagementLoadFailed : `<i class="far fa-comment-dots mr-2"></i>${t.noComments}`);
         }
     }
 
@@ -79,12 +79,12 @@
         let state = null;
         try { state = typeof newsletterState !== 'undefined' ? newsletterState : null; } catch (_) {}
         if (state && state.loggedIn) {
-            if (state.subscribed) { status.textContent = t.subscribedStatus(state.email || ''); button.innerHTML = `<i class="fas fa-check mr-2"></i>${t.activeSubscription}`; }
-            else { status.textContent = t.canSubscribeStatus(state.email || ''); button.innerHTML = `<i class="fas fa-bell mr-2"></i>${t.subscribe}`; }
+            if (state.subscribed) { setText(status, t.subscribedStatus(state.email || '')); setHtml(button, `<i class="fas fa-check mr-2"></i>${t.activeSubscription}`); }
+            else { setText(status, t.canSubscribeStatus(state.email || '')); setHtml(button, `<i class="fas fa-bell mr-2"></i>${t.subscribe}`); }
             return;
         }
-        if (/Gönderiliyor|Sending/.test(button.textContent || '')) button.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>${t.sending}`;
-        else button.innerHTML = `<i class="fas fa-bell mr-2"></i>${t.subscribe}`;
+        if (/Gönderiliyor|Sending/.test(button.textContent || '')) setHtml(button, `<i class="fas fa-spinner fa-spin mr-2"></i>${t.sending}`);
+        else setHtml(button, `<i class="fas fa-bell mr-2"></i>${t.subscribe}`);
     }
 
     function localizeDynamicUi() { localizeEngagement(); localizeNewsletter(); }
@@ -124,7 +124,9 @@
         if (!patchManager()) { setTimeout(init, 0); return; }
         localizeDynamicUi();
         const modal = document.getElementById('announcementModal');
-        if (modal) new MutationObserver(() => queueMicrotask(localizeDynamicUi)).observe(modal, { childList: true, subtree: true });
+        if (modal) new MutationObserver(() => queueMicrotask(localizeDynamicUi)).observe(modal, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'title'] });
+        const newsletter = document.querySelector('.newsletter-section');
+        if (newsletter) new MutationObserver(() => queueMicrotask(localizeNewsletter)).observe(newsletter, { childList: true, subtree: true });
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
