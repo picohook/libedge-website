@@ -75,7 +75,7 @@ test.beforeEach(async ({ page }) => {
 test('user-owned profile name and link title survive repeated language toggles byte-for-byte', async ({ page }) => {
   const profileName = page.locator('#profileName');
   const overviewName = page.locator('#overviewName');
-  const userLink = page.locator('#profileLinks a[data-no-translate], #socialLinks a[data-no-translate]').first();
+  const userLink = page.locator('#profileIdentityLinks a[data-no-translate], #profileSocialLinks a[data-no-translate]').first();
 
   await expect(profileName).toHaveAttribute('data-no-translate', '');
   await expect(overviewName).toHaveAttribute('data-no-translate', '');
