@@ -9,17 +9,18 @@ Status: `ACTIVE`
 ## Current workstream priority
 
 - `ACTIVE`: **AI Assistant staging development and evidence-first UI**.
-- `ACTIVE / SEPARATE`: **Semantic-primary Track A production observation window (D-016)**. The 168-hour observation window is currently running under the reviewed minimized-logging configuration. Semantic-primary itself remains OFF.
+- `ACTIVE`: **AI Assistant PASS-route capability/cost/latency evaluation preparation**. Evaluation is downstream of the Provider Privacy Gate and is not model selection or deployment authorization.
+- `ACTIVE / SEPARATE`: **Semantic-primary Track A production observation window (D-016)**. The 168-hour observation window is running under the reviewed minimized-logging configuration. Semantic-primary itself remains OFF.
 - `PAUSED`: **Production/go-live execution**, including the accepted G0-G9 go-live checklist and production D1 migration reconciliation. This remains paused except for the separately authorized Track A observability work already executed.
 
 ## AI Assistant architecture
 
-The AI Assistant architecture is no longer pre-implementation only. The staging codebase now contains the reviewed evidence-grounding/orchestration layers, response-contract work, fail-closed UI state mapping, and evidence-first fixture UI.
+The AI Assistant architecture is implemented at the reviewed staging boundary: evidence-pack/orchestration layers, response-contract work, fail-closed UI state mapping, and evidence-first fixture UI are present in the staging codebase.
 
 Two P0 invariants remain governing:
 
 1. **Evidence grounding** — no unsupported claim is rendered as grounded output; grounding remains all-or-nothing for the current live contract.
-2. **Research-interest privacy** — no provider/model route may receive research-interest-bearing content until the Provider Privacy Gate passes for the exact model + endpoint + hosting route.
+2. **Research-interest privacy** — no provider/model route may receive research-interest-bearing content unless the Provider Privacy Gate has passed for the exact model + endpoint + hosting route.
 
 Canonical records:
 
@@ -30,33 +31,58 @@ Canonical records:
 
 ### Current live-provider state
 
-No provider/model has received final production authorization.
+No provider/model has received final model-selection or production authorization.
 
-The strongest candidate remains AWS Bedrock Claude Sonnet 4.6, but its gate is still fail-closed:
+The exact reviewed AWS Bedrock Claude Sonnet 4.6 route has passed the Provider Privacy Gate:
 
-`PASS CANDIDATE — STRONGEST EVIDENCE / FINAL CONFIRMATION PENDING`
+`PASS`
 
-Open blocker:
+PASS scope is limited to:
 
-`Sonnet 4.6 implicit prompt-cache/KV state under effective data_retention_mode: none — ZDR scope remains OPEN / UNVERIFIED.`
+- model: AWS Bedrock `anthropic.claude-sonnet-4-6`;
+- inference profile: `us.anthropic.claude-sonnet-4-6`;
+- route: `bedrock-runtime` / `InvokeModel`;
+- effective data-retention mode: `none`;
+- baseline implicit prompt caching with no explicit cache controls supplied.
 
-AWS Support has confirmed that no documented account/project-level opt-out exists for implicit caching. A written escalation asking whether the transient cache state is retained Customer Data and how it is isolated remains the final confirmation path. Anthropic support has stated that Bedrock-side retention/caching is AWS-controlled; Anthropic is not a separate authority for that Bedrock configuration.
+The former implicit prompt-cache/KV ZDR blocker is closed. AWS Support / Bedrock-SME evidence dated 2026-09-16 confirms that, for this exact route under effective retention mode `none`, implicit prompt-cache state is ephemeral, memory-only, account-isolated, TTL-based, and does not count as retained Customer Data under the reviewed ZDR boundary. Supplemental AWS Support correspondence also records fail-closed retention enforcement: if the effective retention configuration is incompatible with a model requirement, Bedrock blocks the request rather than silently relaxing the retention mode.
 
-Until the gate passes, live `/api/assistant/ask` behavior must remain fail-closed. UI work may continue only without silently bypassing that boundary.
+This PASS is not provider-wide, does not apply to other Bedrock models/endpoints/inference profiles or optional features, and does not constitute model selection, production deployment authorization, or a general GDPR/HIPAA/FedRAMP claim.
+
+Canonical evidence:
+
+- `docs/architecture/p05-provider-privacy-gate.md`
+- `docs/architecture/p05-provider-privacy-gate-sonnet46-aws-caching-final-evidence.md`
+- `docs/architecture/p05-provider-privacy-gate-sonnet46-aws-support-compliance-followup.md`
+
+The mandatory sequence is now at the next stage:
+
+`privacy eligibility -> PASS candidate pool -> capability/cost/latency evaluation -> model selection`
+
+Only exact routes with `PASS` may enter the evaluation pool.
 
 ## Assistant UI / product state
 
-The staging UI is an **evidence-first prototype**. Fixture content is explicitly labeled as fixture/prototype data and must not be confused with live provider output.
+The staging UI remains an **evidence-first prototype**. Fixture content is explicitly labeled as fixture/prototype data and must not be confused with live provider output.
 
 Current UI boundaries:
 
-- `PROVIDER_PRIVACY_GATE_REQUIRED`, `MODEL_ADAPTER_REQUIRED`, and `EVIDENCE_PAYLOAD_REQUIRED` remain explicit non-success states.
+- `PROVIDER_PRIVACY_GATE_REQUIRED`, `MODEL_ADAPTER_REQUIRED`, and `EVIDENCE_PAYLOAD_REQUIRED` remain valid fail-closed states for routes/configurations where those conditions apply.
 - A live `OK` response without an `evidence` array is fail-closed.
 - `Research Gaps` remains fixture/conceptual only. No `rejected_claims` or partial-grounding API exposure is authorized.
 - The current grounding contract remains all-or-nothing.
-- Live transport is not to be silently recreated merely to support fixture UX.
+- Passing the privacy gate does not by itself authorize live provider transport or model selection.
 
 Current active UI work is fixture-only evidence interaction, source-panel behavior, loading/error polish, and accessibility.
+
+## Recently closed staging evidence
+
+Two unrelated staging reliability items are closed with real execution evidence:
+
+- **Profile translation protection (#102):** user-owned profile name and link labels are protected from UI translation while fallback labels remain translatable. Real Chromium and mobile-Chromium Playwright behavior tests passed on the PR's final content.
+- **Pages deployment pipeline (#107 + #108):** Node 22 plus npm `11.6.0` alignment resolved the deployment workflow failure. On exact staging SHA `687750fe4b553e22e2e45332995ce157f7ed8ef1`, both `Quality gate` and `Deploy Pages to staging` completed successfully.
+
+These closures do not alter the AI privacy/evidence invariants.
 
 ## D-016 semantic-primary status
 
@@ -77,13 +103,11 @@ No production D1 migration is authorized by the current Track A work.
 
 ## Track A — production traffic / capacity evidence
 
-Track A is currently in its **168-hour production observation window**.
+Track A remains in its **168-hour production observation window** under the reviewed minimized-logging configuration.
 
 Locked broad-enablement condition:
 
 `peak eligible research-query rate <= 0.5 requests/second`.
-
-The earlier observability design was revised after real persisted logs revealed excessive Cloudflare invocation metadata. The production configuration now uses minimized custom logging with automatic invocation logs disabled.
 
 Verified application payload fields are limited to:
 
@@ -98,8 +122,6 @@ Independent read-only inspection established:
 `PASS WITH RESIDUAL PLATFORM METADATA — ACCEPTED`.
 
 Residual Cloudflare platform metadata includes fixed-route request method/path/redacted URL plus operational IDs such as request/ray/trace/span identifiers. This acceptance is **endpoint-specific** to the fixed `/api/research/search` route and must not be generalized to parameterized/user-content-bearing paths. Operational IDs carry a low, non-zero correlation risk if joined with richer logs elsewhere.
-
-The decision not to move to `persist:false` + external OTEL is reversible. Reopen if policy becomes stricter, B2C becomes a concrete roadmap item, residual metadata expands, or correlation risk changes.
 
 The observation window may be interrupted/restarted only through explicit review if production observability/logging behavior materially changes.
 
@@ -131,22 +153,23 @@ The staging deletion-policy work remains `CLOSED — BEHAVIORAL PASS` and is not
 
 ## Locked constraints still active
 
-1. Provider Privacy Gate precedes capability/cost/latency comparison and model selection.
-2. Research-interest privacy and evidence grounding remain P0 invariants.
-3. Semantic-primary remains OFF until separately reviewed rollout authorization.
-4. Broad semantic enablement remains blocked without accepted `<=0.5 req/s` production evidence.
-5. D-013 checkpoint remains first `1,000` charged semantic responses or `7 days`, whichever occurs first.
-6. Capacity/cost/availability telemetry stores no query text, topics, research interests or user IDs.
-7. Production D1 migration and semantic-primary enablement remain separate decisions.
-8. Research Gaps live data exposure requires a separate minimized contract review; fixture UI is not authorization to expose rejected claims.
-9. Production observability metadata acceptance is endpoint-specific and reversible.
-10. No active Track A logging/config change is allowed during the 168-hour window without explicit review.
-11. Zero-hallucination commitment — see D-022; any production `supportCheck` selection requires a documented, measurable false-positive criterion before authorization.
+1. Provider Privacy Gate precedes capability/cost/latency comparison and model selection; only exact PASS routes enter that pool.
+2. A Provider Privacy Gate PASS is eligibility only; it is not model selection or deployment authorization.
+3. Research-interest privacy and evidence grounding remain P0 invariants.
+4. Semantic-primary remains OFF until separately reviewed rollout authorization.
+5. Broad semantic enablement remains blocked without accepted `<=0.5 req/s` production evidence.
+6. D-013 checkpoint remains first `1,000` charged semantic responses or `7 days`, whichever occurs first.
+7. Capacity/cost/availability telemetry stores no query text, topics, research interests or user IDs.
+8. Production D1 migration and semantic-primary enablement remain separate decisions.
+9. Research Gaps live data exposure requires a separate minimized contract review; fixture UI is not authorization to expose rejected claims.
+10. Production observability metadata acceptance is endpoint-specific and reversible.
+11. No active Track A logging/config change is allowed during the 168-hour window without explicit review.
+12. Zero-hallucination commitment — see D-022; any production `supportCheck` selection requires a documented, measurable false-positive criterion before authorization.
 
 ## NEXT
 
-1. Preserve the active 168-hour Track A observation window; review anomalies immediately and otherwise evaluate the complete window at closure.
-2. Await the authoritative AWS response on Sonnet 4.6 implicit cache/ZDR scope; do not promote the provider gate early.
+1. Preregister the AI Assistant capability/cost/latency evaluation before observing comparative results. Admit only exact Provider Privacy Gate PASS routes; keep evaluation separate from model selection and deployment authorization.
+2. Preserve the active 168-hour Track A observation window; review anomalies immediately and otherwise evaluate the complete window at closure.
 3. Continue low-risk fixture/evidence-first UI work while keeping all live fail-closed states maintained.
 4. Keep `Research Gaps` fixture-only unless a separate minimized rejection-summary contract is reviewed and accepted.
 5. Keep semantic-primary OFF and production D1 migrations paused until their separate authorization chains complete.
@@ -159,6 +182,8 @@ The staging deletion-policy work remains `CLOSED — BEHAVIORAL PASS` and is not
 - Assistant response contract: `docs/architecture/p05-assistant-response-contract-v0.1.md`
 - Research Gaps UI boundary: `docs/architecture/p05-assistant-research-gaps-ui-boundary.md`
 - Provider Privacy Gate: `docs/architecture/p05-provider-privacy-gate.md`
+- Sonnet 4.6 final caching evidence: `docs/architecture/p05-provider-privacy-gate-sonnet46-aws-caching-final-evidence.md`
+- Sonnet 4.6 AWS Support compliance follow-up: `docs/architecture/p05-provider-privacy-gate-sonnet46-aws-support-compliance-followup.md`
 - Locked retrieval architecture: `docs/architecture/p05-production-retrieval-decision.md`
 - Production observability metadata minimization: `docs/architecture/p05-production-observability-metadata-minimization.md`
 - Production capacity evidence: `docs/architecture/p05-production-capacity-evidence-discovery.md`
@@ -166,4 +191,4 @@ The staging deletion-policy work remains `CLOSED — BEHAVIORAL PASS` and is not
 - Production pending-migration audit: `docs/reviews/2026-09-11-production-d1-pending-migration-audit.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
-Last updated: 2026-09-16
+Last updated: 2026-09-17
