@@ -1,0 +1,40 @@
+import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import { validateOutput } from '../../scripts/assistant-evaluation.mjs';
+
+const cases = JSON.parse(fs.readFileSync('docs/experiments/p05-assistant-evaluation-cases-v0.1.json', 'utf8'));
+
+describe('assistant evaluation frozen harness', () => {
+  it('contains exactly E01-E24 with pack-local unique evidence IDs', () => {
+    expect(cases).toHaveLength(24);
+    expect(cases.map(c => c.case_id)).toEqual(Array.from({ length: 24 }, (_, i) => `E${String(i + 1).padStart(2, '0')}`));
+    for (const c of cases) {
+      expect(c.question.trim()).not.toBe('');
+      expect(c.evidence.length).toBeGreaterThan(0);
+      const ids = c.evidence.map(e => e.evidence_id);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(ids.every(id => id.startsWith(c.case_id + ':e'))).toBe(true);
+    }
+  });
+
+  it('accepts a valid structured grounded response', () => {
+    const allowed = new Set(['E01:e1', 'E01:e2']);
+    expect(validateOutput(JSON.stringify({ claims: [{ text: 'B is higher.', evidence_ids: ['E01:e1', 'E01:e2'] }] }), allowed)).toEqual({
+      schema_valid: true, evidence_ids_valid: true, unknown_ids: [], missing_id_claims: 0,
+    });
+  });
+
+  it('rejects unknown evidence IDs', () => {
+    const result = validateOutput(JSON.stringify({ claims: [{ text: 'Claim.', evidence_ids: ['E01:e9'] }] }), new Set(['E01:e1']));
+    expect(result.schema_valid).toBe(true);
+    expect(result.evidence_ids_valid).toBe(false);
+    expect(result.unknown_ids).toEqual(['E01:e9']);
+  });
+
+  it('rejects malformed or uncited claims', () => {
+    expect(validateOutput('not json', new Set())).toMatchObject({ schema_valid: false, evidence_ids_valid: false });
+    expect(validateOutput(JSON.stringify({ claims: [{ text: 'Claim.', evidence_ids: [] }] }), new Set())).toMatchObject({
+      schema_valid: false, evidence_ids_valid: false, missing_id_claims: 1,
+    });
+  });
+});

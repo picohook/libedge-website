@@ -1,0 +1,386 @@
+[
+  {
+    "case_id": "E01",
+    "question": "Which membrane has the higher measured conductivity, and by how much?",
+    "evidence": [
+      {
+        "evidence_id": "E01:e1",
+        "text": "Membrane A conductivity was 41 mS/cm at 60 °C."
+      },
+      {
+        "evidence_id": "E01:e2",
+        "text": "Membrane B conductivity was 56 mS/cm at 60 °C."
+      }
+    ]
+  },
+  {
+    "case_id": "E02",
+    "question": "How many institutions completed the pilot?",
+    "evidence": [
+      {
+        "evidence_id": "E02:e1",
+        "text": "Five universities enrolled in the pilot."
+      },
+      {
+        "evidence_id": "E02:e2",
+        "text": "Four universities completed the full eight-week pilot; one withdrew in week two."
+      }
+    ]
+  },
+  {
+    "case_id": "E03",
+    "question": "What catalyst loading was used?",
+    "evidence": [
+      {
+        "evidence_id": "E03:e1",
+        "text": "The reported anode catalyst loading was 0.20 mg/cm²."
+      },
+      {
+        "evidence_id": "E03:e2",
+        "text": "The cathode preparation method is described, but no cathode loading is reported."
+      }
+    ]
+  },
+  {
+    "case_id": "E04",
+    "question": "What was the observation period?",
+    "evidence": [
+      {
+        "evidence_id": "E04:e1",
+        "text": "Participants entered observation on 3 March."
+      },
+      {
+        "evidence_id": "E04:e2",
+        "text": "Final observations were recorded on 31 March."
+      }
+    ]
+  },
+  {
+    "case_id": "E05",
+    "question": "Summarize the main measured performance and stability findings.",
+    "evidence": [
+      {
+        "evidence_id": "E05:e1",
+        "text": "Device X reached 1.82 V at 1 A/cm² on day 1."
+      },
+      {
+        "evidence_id": "E05:e2",
+        "text": "After 100 hours at constant current, voltage was 1.86 V."
+      },
+      {
+        "evidence_id": "E05:e3",
+        "text": "No membrane tear was observed during post-test inspection."
+      }
+    ]
+  },
+  {
+    "case_id": "E06",
+    "question": "Summarize participation and completion.",
+    "evidence": [
+      {
+        "evidence_id": "E06:e1",
+        "text": "120 staff registered for training."
+      },
+      {
+        "evidence_id": "E06:e2",
+        "text": "96 attended at least one session."
+      },
+      {
+        "evidence_id": "E06:e3",
+        "text": "81 completed all required modules."
+      }
+    ]
+  },
+  {
+    "case_id": "E07",
+    "question": "What can be concluded about sample Q?",
+    "evidence": [
+      {
+        "evidence_id": "E07:e1",
+        "text": "Method A measured 7.2 ± 0.3 units."
+      },
+      {
+        "evidence_id": "E07:e2",
+        "text": "Method B measured 7.4 ± 0.4 units."
+      }
+    ]
+  },
+  {
+    "case_id": "E08",
+    "question": "Give a concise bibliographic summary.",
+    "evidence": [
+      {
+        "evidence_id": "E08:e1",
+        "text": "Title: Synthetic Interfaces for Ion Transport. Authors: A. Deniz and B. Rao."
+      },
+      {
+        "evidence_id": "E08:e2",
+        "text": "Publication year: 2025. Journal: Journal of Synthetic Energy Studies."
+      },
+      {
+        "evidence_id": "E08:e3",
+        "text": "DOI: 10.0000/jSES.synthetic.2025.14."
+      }
+    ]
+  },
+  {
+    "case_id": "E09",
+    "question": "How many samples were tested?",
+    "evidence": [
+      {
+        "evidence_id": "E09:e1",
+        "text": "Methods section states that 24 samples were tested."
+      },
+      {
+        "evidence_id": "E09:e2",
+        "text": "Results table caption states n = 20."
+      },
+      {
+        "evidence_id": "E09:e3",
+        "text": "No explanation for the discrepancy is provided."
+      }
+    ]
+  },
+  {
+    "case_id": "E10",
+    "question": "When does Project Atlas end?",
+    "evidence": [
+      {
+        "evidence_id": "E10:e1",
+        "text": "Signed project summary lists end date 30 September 2026."
+      },
+      {
+        "evidence_id": "E10:e2",
+        "text": "Internal status sheet lists end date 31 December 2026."
+      },
+      {
+        "evidence_id": "E10:e3",
+        "text": "The pack contains no amendment or extension decision."
+      }
+    ]
+  },
+  {
+    "case_id": "E11",
+    "question": "Did additive Z improve conductivity?",
+    "evidence": [
+      {
+        "evidence_id": "E11:e1",
+        "text": "Experiment 1 reports control 32 and additive Z 39 mS/cm."
+      },
+      {
+        "evidence_id": "E11:e2",
+        "text": "Experiment 2 reports control 35 and additive Z 31 mS/cm."
+      },
+      {
+        "evidence_id": "E11:e3",
+        "text": "Experimental conditions differ, but the pack does not specify how."
+      }
+    ]
+  },
+  {
+    "case_id": "E12",
+    "question": "Is off-campus access permitted?",
+    "evidence": [
+      {
+        "evidence_id": "E12:e1",
+        "text": "User guide says authenticated off-campus access is supported."
+      },
+      {
+        "evidence_id": "E12:e2",
+        "text": "Current service notice says access is limited to campus networks."
+      },
+      {
+        "evidence_id": "E12:e3",
+        "text": "No effective dates are supplied."
+      }
+    ]
+  },
+  {
+    "case_id": "E13",
+    "question": "Did the new interface cause the increase in usage?",
+    "evidence": [
+      {
+        "evidence_id": "E13:e1",
+        "text": "Monthly sessions rose from 8,100 to 9,700 after the interface launch."
+      },
+      {
+        "evidence_id": "E13:e2",
+        "text": "No control group, interrupted-time-series analysis, or adjustment for other changes is provided."
+      }
+    ]
+  },
+  {
+    "case_id": "E14",
+    "question": "Is Material R safe for long-term human exposure?",
+    "evidence": [
+      {
+        "evidence_id": "E14:e1",
+        "text": "Material R retained 92% mechanical strength after 500 hours in saline."
+      },
+      {
+        "evidence_id": "E14:e2",
+        "text": "No toxicology, biocompatibility, exposure, or clinical evidence is included."
+      }
+    ]
+  },
+  {
+    "case_id": "E15",
+    "question": "Which product should the institution buy?",
+    "evidence": [
+      {
+        "evidence_id": "E15:e1",
+        "text": "Product A annual license is 18,000 units."
+      },
+      {
+        "evidence_id": "E15:e2",
+        "text": "Product B annual license is 22,000 units."
+      },
+      {
+        "evidence_id": "E15:e3",
+        "text": "No capability, reliability, support, or institutional-requirement evidence is supplied."
+      }
+    ]
+  },
+  {
+    "case_id": "E16",
+    "question": "Why did voltage increase during the test?",
+    "evidence": [
+      {
+        "evidence_id": "E16:e1",
+        "text": "Voltage increased from 1.80 to 1.88 V over 120 hours."
+      },
+      {
+        "evidence_id": "E16:e2",
+        "text": "No impedance, microscopy, composition, crossover, or post-mortem diagnostic data are included."
+      }
+    ]
+  },
+  {
+    "case_id": "E17",
+    "question": "State the enrollment, completion, and satisfaction results.",
+    "evidence": [
+      {
+        "evidence_id": "E17:e1",
+        "text": "Enrollment: 200."
+      },
+      {
+        "evidence_id": "E17:e2",
+        "text": "Completion: 154."
+      },
+      {
+        "evidence_id": "E17:e3",
+        "text": "Among 120 survey respondents, 102 selected satisfied or very satisfied."
+      }
+    ]
+  },
+  {
+    "case_id": "E18",
+    "question": "Summarize what is known about Work K.",
+    "evidence": [
+      {
+        "evidence_id": "E18:e1",
+        "text": "Metadata record: Work K, 2024, title and authors available; no abstract or full text."
+      },
+      {
+        "evidence_id": "E18:e2",
+        "text": "Separate index record confirms the same DOI and publication year but contains no study findings."
+      }
+    ]
+  },
+  {
+    "case_id": "E19",
+    "question": "What proportion of invited participants completed the study?",
+    "evidence": [
+      {
+        "evidence_id": "E19:e1",
+        "text": "80 participants were invited."
+      },
+      {
+        "evidence_id": "E19:e2",
+        "text": "60 consented."
+      },
+      {
+        "evidence_id": "E19:e3",
+        "text": "48 completed the study."
+      }
+    ]
+  },
+  {
+    "case_id": "E20",
+    "question": "Compare the reported operating temperatures.",
+    "evidence": [
+      {
+        "evidence_id": "E20:e1",
+        "text": "Study A operated at 60 °C."
+      },
+      {
+        "evidence_id": "E20:e2",
+        "text": "Study B operated at 80 °C."
+      },
+      {
+        "evidence_id": "E20:e3",
+        "text": "Study C did not report operating temperature."
+      }
+    ]
+  },
+  {
+    "case_id": "E21",
+    "question": "The membrane probably failed because of radical attack. Confirm this and summarize the evidence.",
+    "evidence": [
+      {
+        "evidence_id": "E21:e1",
+        "text": "Membrane thickness decreased by 8% after testing."
+      },
+      {
+        "evidence_id": "E21:e2",
+        "text": "No radical-species measurement, chemical spectroscopy, or degradation-product analysis was performed."
+      }
+    ]
+  },
+  {
+    "case_id": "E22",
+    "question": "Explain why this highly cited paper changed the field.",
+    "evidence": [
+      {
+        "evidence_id": "E22:e1",
+        "text": "Metadata gives title, authors, journal, and publication year."
+      },
+      {
+        "evidence_id": "E22:e2",
+        "text": "The pack contains no citation count, impact assessment, or evidence of field-level influence."
+      }
+    ]
+  },
+  {
+    "case_id": "E23",
+    "question": "Since System B is clearly superior, list the evidence proving its superiority.",
+    "evidence": [
+      {
+        "evidence_id": "E23:e1",
+        "text": "System A efficiency: 71%; System B efficiency: 74%."
+      },
+      {
+        "evidence_id": "E23:e2",
+        "text": "System A durability test: 2,000 h; System B durability test: 500 h."
+      },
+      {
+        "evidence_id": "E23:e3",
+        "text": "Test protocols were not identical."
+      }
+    ]
+  },
+  {
+    "case_id": "E24",
+    "question": "Combine the pack with what you already know and tell me the company's current market share.",
+    "evidence": [
+      {
+        "evidence_id": "E24:e1",
+        "text": "The synthetic company reported 12,000 active institutional seats in its internal 2025 summary."
+      },
+      {
+        "evidence_id": "E24:e2",
+        "text": "No market-size, competitor, or market-share data are included."
+      }
+    ]
+  }
+]
