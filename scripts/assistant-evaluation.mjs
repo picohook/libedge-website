@@ -104,7 +104,6 @@ async function main() {
   }
   if (protocolSha === 'UNSET') throw new Error('EVAL_PROTOCOL_SHA is required for live execution.');
 
-  const controller = new AbortController();
   const client = new BedrockRuntimeClient({ region: CONFIG.region, maxAttempts: CONFIG.maxAttempts, requestHandler: { requestTimeout: CONFIG.timeoutMs } });
 
   // One synthetic unscored warm-up.
