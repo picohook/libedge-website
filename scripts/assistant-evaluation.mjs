@@ -11,6 +11,7 @@
 
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 import { performance } from 'node:perf_hooks';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 
@@ -135,4 +136,4 @@ async function main() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main().catch(error => { console.error(error); process.exitCode = 1; });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(error => { console.error(error); process.exitCode = 1; });
