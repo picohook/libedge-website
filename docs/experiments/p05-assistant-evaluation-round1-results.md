@@ -112,11 +112,25 @@ Latency is end-to-end for the frozen serial harness and should not be generalize
 
 ## C7 — cost
 
-Status: **UNAVAILABLE under the frozen rule**.
+Status: **AVAILABLE**.
 
-The official AWS model card confirms the evaluated geo inference ID, Bedrock Runtime endpoint family, and Standard pay-per-token service tier. The official Amazon Bedrock pricing page is the locked pricing source. At reporting time, the accessible official pricing representation did not expose an unambiguous Claude Sonnet 4.6 Standard US geo price row that could be captured and tied to this execution without inference.
+The execution-date official Amazon Bedrock Pricing page was checked on 2026-09-18 with provider Anthropic and region **US East (Ohio)** selected. The applicable **Claude Sonnet 4.6** Standard/on-demand row lists:
 
-The preregistration explicitly requires C7 to be marked UNAVAILABLE when the applicable official execution-date price row is ambiguous. No third-party price, adjacent-model price, or inferred price is substituted.
+- input: **$3.00 per 1M tokens**
+- output: **$15.00 per 1M tokens**
+- batch input/output: $1.50 / $7.50 per 1M tokens
+- 5-minute cache write: $3.75 per 1M input tokens
+- 1-hour cache write: $6.00 per 1M input tokens
+- cache read: $0.30 per 1M input tokens
+
+Round 1 used normal measured input/output tokens and recorded zero cache-read and zero cache-creation tokens, so the Standard input/output columns apply to the measured token accounting:
+
+- measured input: 12,102 × $3.00 / 1,000,000 = **$0.036306**
+- measured output: 12,058 × $15.00 / 1,000,000 = **$0.180870**
+- measured Round 1 total = **$0.217176** (about **$0.2172**)
+- mean measured cost per request = **$0.0030163** across 72 measured requests
+
+The unscored warm-up is excluded, consistently with the other Round 1 measured metrics. This is a benchmark execution cost, not a production cost forecast.
 
 Official sources checked on 2026-09-18:
 - Amazon Bedrock Pricing: https://aws.amazon.com/bedrock/pricing/
