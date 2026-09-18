@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
 import { validateOutput } from '../../scripts/assistant-evaluation.mjs';
 
 const cases = JSON.parse(fs.readFileSync('docs/experiments/p05-assistant-evaluation-cases-v0.1.json', 'utf8'));
 
 describe('assistant evaluation frozen harness', () => {
+  it('normalizes Windows-style entry paths through file URLs', () => {
+    const winPath = 'C:\\Users\\OWNER\\Documents\\GitHub\\libedge-website\\scripts\\assistant-evaluation.mjs';
+    expect(pathToFileURL(winPath).href).toContain('assistant-evaluation.mjs');
+    expect(pathToFileURL(path.resolve('scripts/assistant-evaluation.mjs')).protocol).toBe('file:');
+  });
   it('contains exactly E01-E24 with pack-local unique evidence IDs', () => {
     expect(cases).toHaveLength(24);
     expect(cases.map(c => c.case_id)).toEqual(Array.from({ length: 24 }, (_, i) => `E${String(i + 1).padStart(2, '0')}`));
