@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { validateOutput } from '../../scripts/assistant-evaluation.mjs';
+import { STRUCTURED_OUTPUT_SCHEMA, validateOutput } from '../../scripts/assistant-evaluation.mjs';
 
 const cases = JSON.parse(fs.readFileSync('docs/experiments/p05-assistant-evaluation-cases-v0.1.json', 'utf8'));
 
@@ -22,6 +22,19 @@ describe('assistant evaluation frozen harness', () => {
       expect(new Set(ids).size).toBe(ids.length);
       expect(ids.every(id => id.startsWith(c.case_id + ':e'))).toBe(true);
     }
+  });
+
+  it('freezes the Round 2 structured-output schema without case-specific evidence IDs', () => {
+    expect(STRUCTURED_OUTPUT_SCHEMA.required).toEqual(['claims']);
+    expect(STRUCTURED_OUTPUT_SCHEMA.additionalProperties).toBe(false);
+    const serialized = JSON.stringify(STRUCTURED_OUTPUT_SCHEMA);
+    expect(serialized).not.toMatch(/E\\d{2}:e\\d+/);
+  });
+
+  it('keeps strict raw-JSON parsing with no markdown-fence repair', () => {
+    const allowed = new Set(['E01:e1']);
+    const fenced = '\`\`\`json\\n{"claims":[{"text":"Claim.","evidence_ids":["E01:e1"]}]}\\n\`\`\`';
+    expect(validateOutput(fenced, allowed)).toMatchObject({ schema_valid: false, evidence_ids_valid: false });
   });
 
   it('accepts a valid structured grounded response', () => {
