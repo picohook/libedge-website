@@ -28,6 +28,28 @@ const CONFIG = Object.freeze({
   streaming: false,
   explicitCacheControls: false,
   tools: false,
+  structuredOutput: true,
+});
+
+export const STRUCTURED_OUTPUT_SCHEMA = Object.freeze({
+  type: 'object',
+  properties: {
+    claims: {
+      type: 'array',
+      minItems: 1,
+      items: {
+        type: 'object',
+        properties: {
+          text: { type: 'string' },
+          evidence_ids: { type: 'array', minItems: 1, items: { type: 'string' } },
+        },
+        required: ['text', 'evidence_ids'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['claims'],
+  additionalProperties: false,
 });
 
 const SYSTEM = 'Use only the supplied question and EvidencePack. Do not use or claim outside knowledge. Return JSON only as {"claims":[{"text":"factual claim","evidence_ids":["CASE:e1"]}]}. Every factual claim must cite one or more pack-local evidence IDs. If evidence is insufficient or materially conflicting, say so rather than resolving the gap by inference.';
@@ -70,6 +92,7 @@ async function invoke(client, caseData) {
     max_tokens: CONFIG.maxTokens,
     temperature: CONFIG.temperature,
     system: SYSTEM,
+    output_config: { format: { type: 'json_schema', schema: STRUCTURED_OUTPUT_SCHEMA } },
     messages: [{ role: 'user', content: [{ type: 'text', text: `Question: ${caseData.question}\n\nEvidencePack:\n${caseData.evidence.map(e => `- ${e.evidence_id}: ${e.text}`).join('\n')}` }] }],
   });
   const started = performance.now();
