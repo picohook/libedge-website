@@ -110,7 +110,7 @@ InvokeModel request addition:
 }
 ```
 
-The implementation PR must verify the exact AWS request shape against current official Bedrock documentation before freeze. If the API requires a syntactic wrapper/name field around this schema, that exact provider-required wrapper may be recorded in the Round 2 execution freeze **before any measured call**; the logical schema above must not change.
+The exact request shape is frozen as shown above. AWS's current official InvokeModel example for Anthropic Claude uses `output_config.format.type = "json_schema"` with the JSON Schema object directly in `output_config.format.schema`. No provider-specific name/wrapper field is added. If AWS changes this contract before execution such that this exact request is no longer accepted, stop Round 2 and amend/re-review the protocol rather than adapting the measured request ad hoc.
 
 Do not enumerate case-specific evidence IDs inside the provider schema. Evidence-ID membership remains a deterministic local C2 check. This keeps one schema identical across all 24 cases and avoids per-case grammar compilation as a confound.
 
