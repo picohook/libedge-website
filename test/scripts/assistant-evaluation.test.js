@@ -33,7 +33,7 @@ describe('assistant evaluation frozen harness', () => {
 
   it('keeps strict raw-JSON parsing with no markdown-fence repair', () => {
     const allowed = new Set(['E01:e1']);
-    const fenced = '\`\`\`json\\n{"claims":[{"text":"Claim.","evidence_ids":["E01:e1"]}]}\\n\`\`\`';
+    const fenced = '```json\\n{"claims":[{"text":"Claim.","evidence_ids":["E01:e1"]}]}\\n```';
     expect(validateOutput(fenced, allowed)).toMatchObject({ schema_valid: false, evidence_ids_valid: false });
   });
 
