@@ -25,11 +25,15 @@ Exact schema:
 `{"record_version":"D022-H2-H1-RATER-ID-V1","r1":{"model_family":"...","model_identity_version":"...","attested_by":"...","attested_at":"..."},"r2":{"model_family":"...","model_identity_version":"...","attested_by":"...","attested_at":"..."},"status":"FINAL / LOCKED"}`
 
 Rules:
+- the attester must be an operator with direct access to the relevant session/account execution record; an H1/H2 rater, H2 author, inventory/taxonomy constructor or reviewer, auditor, checker implementer, or validator reviewer may not attest;
+- the attestation receives independent review and is merged before the H2 freeze-manifest gate;
 - values come from operator/session records, not inference from writing style;
 - unknown values are literal `"UNKNOWN"`, never guessed;
 - SHA-256 of canonical UTF-8/NFC/compact-JSON/LF bytes is recorded in the H2 manifest;
-- if either model identity/version is UNKNOWN, that unknown identity cannot be used as an H2 primary rater unless independent evidence first resolves the identity and a new reviewed attestation version is frozen;
-- a model identity/version recorded for H1 is excluded from H2 primary rating even in a new session;
+- if the H1 **family is known but identity/version is UNKNOWN**, the entire known family is excluded from H2 primary rating;
+- if the H1 **family is UNKNOWN**, H2 cannot proceed until independent evidence resolves at least the family and a new reviewed attestation version is frozen;
+- `model_family` means the provider-independent model lineage named by the operator record (for example, a ChatGPT/GPT lineage versus a Claude lineage), not a free-form string chosen for H2; the rating manifest must record the evidence used for family assignment and reviewers must verify that R1/R2 are different lineages;
+- a known H1 model identity/version is excluded from H2 primary rating even in a new session;
 - any person/model instance with H1 claim-level exposure is separately excluded regardless of identity string.
 
 ## Prerequisite B — reviewer-owned H1 structural inventory
@@ -44,36 +48,89 @@ The inventory:
 - is canonical JSONL, independently reviewed, SHA-256 hashed and merged;
 - is FINAL / LOCKED before any H2 template taxonomy or record is authored.
 
-The inventory reviewer may not be an H1 primary rater, may not have inspected H1 claim-level consensus, and may not later author/audit/rate H2 or implement the H2 candidate checker.
+Completeness/granularity gate:
+- exactly all 720 H1 claim IDs must map to **one and only one** inventory transformation; missing or multiply mapped IDs fail mechanically;
+- transformations must be abstracted at the evidence→claim operation level: changing only topic/entity/nouns/numbers/domain/stratum does not create a new transformation;
+- entries that differ only by those surface substitutions must be merged;
+- the inventory validator reports 720/720 coverage, uniqueness, per-template counts and cross-stratum membership.
+
+The **inventory constructor** and **inventory reviewer** are separate eligible roles. The constructor produces the inventory; the reviewer independently checks the abstraction rule, complete mapping, and validator output before freeze. Neither may be an H1 primary rater, may not have inspected H1 claim-level consensus, and may not later author/audit/rate H2 or implement the H2 candidate checker.
 
 Direct or renamed structural equivalents of inventory transformations are forbidden in H2.
 
 ## Role-separation matrix
 
-For this H2 round the following roles are mutually exclusive in **either direction and regardless of chronological order**:
+For this H2 round the following substantive roles are mutually exclusive in **either direction and regardless of chronological order**:
+- H1 inventory constructor;
+- H1 inventory reviewer;
+- H2 taxonomy author;
+- H2 taxonomy reviewer;
 - H2 author;
 - H2 construction/template auditor;
 - H2 primary rater R1;
 - H2 primary rater R2;
-- H2 candidate-checker implementer/tuner.
+- H2 candidate-checker implementer/tuner;
+- H2 construction/rating validator author;
+- independent validator/test reviewer;
+- H1 identity-manifest attester;
+- rater operator/conduit who executes prompts.
 
-No person, AI model instance/session, or agent may hold more than one of those roles. A model identity may be reused across author/auditor/checker roles only in a future separately preregistered round; not H2. H1 exclusions add to, rather than replace, this matrix.
+No person or AI model **identity/version** may hold more than one substantive role above in H2; a new session does not reset this separation. R1 and R2 must additionally be different model families. Pure mechanical CI execution is not a substantive role if it has no discretion over content or results. H1 exclusions add to, rather than replace, this matrix.
 
-Parallel checker development is permitted only by an isolated checker implementer who receives no H1 artifact and no H2 holdout text, author_intent, QA metadata, audit material, labels, consensus, or subset membership.
+Parallel checker development is permitted only if isolation is mechanically or attestably established **before any H2 pool artifact is committed to a location accessible to the checker implementer**. Choose exactly one mechanism in the freeze manifest:
+1. **checker-first freeze:** checker code/configuration/prompt and dependency hashes are committed and independently reviewed before any H2 pool/QA text is committed to an accessible repository; or
+2. **workspace exclusion:** an independently reviewed attestation identifies a workspace/account that cannot access the LibEdge repository or H1/H2 artifacts and records the checker freeze hash before access is later broadened.
+
+The checker implementer may receive only the aggregate methodology statistics explicitly quoted in the closed H1 intake report; that report is the sole H1 exception. No H1 pool, construction, rating, consensus, or derived artifact may be accessed.
 
 ## H2 reasoning-template taxonomy freeze
 
 Before H2 claim authorship, create a closed taxonomy file with immutable IDs `H2T001...`. Each entry must contain:
 - `template_id`;
+- exactly one `target_pool` from `U1,U2,U3,U4,U5,U6,SUPPORTED,PARTIAL`;
 - topic-independent evidence condition;
 - topic-independent claim transformation;
 - bright-line inclusion rule;
 - bright-line exclusion rule;
 - explicit statement of non-equivalence to every potentially adjacent H1 structural-inventory entry.
 
-The taxonomy is independently reviewed, canonicalized, hashed and merged before H2 authorship. No template may be added, split, merged, renamed, or redefined after H2 authorship begins.
+The taxonomy is independently reviewed, canonicalized, hashed and merged before H2 authorship. No template may be added, split, merged, renamed, moved between target pools, or redefined after H2 authorship begins. If the closed taxonomy cannot satisfy the frozen >=12-template and concentration caps during construction, H2 construction fails; the taxonomy may not be expanded to rescue the round.
 
 The accepted preregistration caps remain binding: >=12 distinct templates in every U1-U6 stratum and in supported/partial pools; <=12/120 per negative stratum; <=10% of supported and partial pools per template.
+
+## Freeze chronology and single gate manifest
+
+Private or unpublished H2 record drafting before the gate is prohibited and is treated as contamination. "Authorship begins" means creation of the first H2 scenario/evidence/claim text in any workspace.
+
+Prerequisites are frozen in this order on the protected `staging` ancestry:
+1. this operational specification;
+2. H1 identity attestation;
+3. H1 structural inventory + validator/review;
+4. H2 template taxonomy + pairwise-distinctness review;
+5. H2 rating instrument/identity/batching manifest + prompt/schema/validator/config hashes;
+6. construction/rating validators and tests.
+
+Then create one canonical `d022-h2-freeze-manifest.json` containing the SHA-256 and merge commit of every prerequisite plus the selected checker-isolation mechanism/evidence. Independent review verifies every referenced commit is an ancestor of the manifest merge commit. **The merge commit of this freeze manifest is the authorship gate:** it must be an ancestor of the first commit containing any H2 authored record. This ancestry rule, not timestamps, establishes chronology.
+
+## Audit snapshot definition
+
+An audit snapshot is a canonical manifest whose hash commits to **every artifact the audit can read or whose mutation could affect an audit decision**:
+- canonical candidate pool;
+- scenario/domain metadata;
+- reasoning_template_id assignments;
+- U1 proposition-pair declarations;
+- supported entailment traces;
+- partial boundary traces;
+- construction QA metadata;
+- validator version/hash and its machine-readable QA output.
+
+Each component SHA-256 is listed in lexicographic path order; `snapshot_sha256` is SHA-256 of the canonical snapshot-manifest bytes. After seed reveal none of these components may change under that snapshot.
+
+Chronology is by protected-`staging` commit ancestry only: the seed-commitment merge commit must be an ancestor of the candidate-snapshot merge commit, which must be an ancestor of the seed-reveal/ranking commit. Git author/committer timestamps are not evidence of order.
+
+The deterministic validator—not the auditor—computes and commits the complete ranking and selected IDs immediately after valid reveal and **before the auditor receives selected content**.
+
+If the auditor does not reveal the nonce within the frozen reveal window of **72 hours after the candidate-snapshot merge**, H2 construction stops; no replacement auditor/nonce is allowed for that snapshot. A successor version is required.
 
 ## Audit seed — commit/reveal only
 
@@ -116,7 +173,7 @@ Ranking input is exactly:
 
 Rank ascending by lowercase hexadecimal SHA-256 digest; ties break lexicographically by claim ID.
 
-Every template-assignment class selects exactly 12 claims from exactly 12 distinct scenarios. The prior phrase "where possible" is removed: failure to obtain 12 distinct scenarios is construction failure.
+Selection walk for every audit class: traverse the ranked list from first to last; select a claim only if its scenario has not yet been selected for that class; stop at the class quota. Rubric quotas are 24/24/12 as preregistered; every template-assignment class selects exactly 12 claims from exactly 12 distinct scenarios. The prior phrase "where possible" is removed: failure to obtain 12 distinct scenarios is construction failure.
 
 ## Audit decision and revision
 
@@ -124,7 +181,9 @@ The independent auditor is sole defect decision-maker for the construction scree
 
 No informal semantic feedback from the auditor is permitted before the first snapshot.
 
-A rubric-boundary or template-assignment defect requires class-wide/template-wide remediation, not sampled-item-only repair. Revisions may be made **only against rules already frozen before the first snapshot**; no rule, taxonomy, template definition, audit criterion, intended label, or sampling algorithm may change during remediation.
+A rubric-boundary or template-assignment defect requires **defect-pattern-wide remediation across every record to which the same frozen rule/template defect applies**, not sampled-item-only repair; "class-wide" never means blindly editing every member of an audit class. Revisions may be made **only against rules already frozen before the first snapshot**; no rule, taxonomy, template definition, audit criterion, intended label, or sampling algorithm may change during remediation.
+
+The revision log must list each defect, the frozen rule violated, the mechanically identified affected-record set, and the before/after hashes. A deterministic diff-scope validator fails if a revision changes any record outside those logged affected sets or changes any frozen rule/taxonomy/audit artifact.
 
 Exactly one revision cycle is allowed. A second-audit defect closes H2 and requires a successor version.
 
@@ -150,27 +209,35 @@ Canonical record schema and byte serialization are inherited unchanged except `h
 
 ## Primary-rater identity and instrument freeze
 
-Before H2 authorship, freeze a rating manifest that names:
-- R1 model family and exact model identity/version;
-- R2 model family and exact model identity/version;
-- proof they are different model families;
-- proof neither matches an excluded H1 identity/version;
-- role/exposure attestations showing neither participated in H2 authorship, inventory, construction audit, checker implementation, nor had H1 claim-level exposure.
+Before H2 authorship, freeze a **rating manifest** that names and hashes:
+- R1/R2 model family and exact model identity/version, with evidence for family assignment and proof of different lineages;
+- proof neither matches an excluded H1 identity/version/family rule;
+- role/exposure attestations;
+- exact evaluator prompt + rubric bytes and SHA-256;
+- exact output JSON Schema and SHA-256;
+- rating validator + tests and SHA-256;
+- interface/provider endpoint and model configuration: temperature, max output tokens, thinking/reasoning mode, tools disabled, system/developer-message policy, and any other generation parameter exposed by the interface;
+- blind-bundle construction algorithm and ordering algorithm;
+- batch-file hashes after bundle construction, recorded before rating.
 
-If a planned rater identity changes after authorship begins, H2 stops and requires a new successor version. This prevents post-authorship rater selection.
+**Rubric semantics are frozen to H1.** H2 evaluator instructions may change only for format/transport/batching mechanics required by this spec. Every textual delta from the H1 semantic rubric must be enumerated with a reviewer finding that it is format-only and does not alter SUPPORTED/PARTIALLY_SUPPORTED/UNSUPPORTED semantics.
+
+If a planned rater identity, prompt semantic text, schema, validator, interface, or generation configuration changes after authorship begins, H2 stops and requires a successor version.
 
 Both raters receive identical rubric/instructions and byte-identical blind content; only `rater_id` differs.
 
-## Deterministic batching
+Before H2 authorship, each chosen rater identity/version must also pass a **non-holdout format qualification** using synthetic items that are not H1/H2 records or derivatives. Qualification tests exact JSON/schema compliance, 90-item completion under the frozen max-output configuration, and tools-off behavior; semantic accuracy is not scored. Failure disqualifies that planned rater identity/configuration before authorship rather than consuming an H2 attempt.
 
-Freeze exactly **12 batches of 90 items** each.
+## Blind-bundle identity, ordering and deterministic batching
 
-After the blind bundle is deterministically ordered by opaque `item_id`, batches are contiguous:
-- batch 01 = items 0001-0090;
+Opaque item IDs are assigned **independently of author-controlled text, scenario IDs, claim IDs, strata, domains, or templates**. After the canonical pool is frozen, compute `pool_sha256`; derive a deterministic permutation by sorting claim IDs on SHA-256(`"D022-H2-BLIND:" + pool_sha256 + ":" + claim_id`), tie-breaking by claim ID. Assign sequential opaque IDs `B0001` through `B1080` in that permutation. The blind bundle exposes only `item_id, question, evidence_pack, claim_text`; it strips claim/scenario/stratum/template/domain/author_intent/QA metadata.
+
+Freeze exactly **12 batch input files of 90 items**:
+- `D022-H2-RATING-B01` = B0001-B0090;
 - ...
-- batch 12 = items 0991-1080.
+- `D022-H2-RATING-B12` = B0991-B1080.
 
-Both raters receive identical batch boundaries and order. No adaptive rebatching is permitted.
+Both raters receive byte-identical batch input bytes for a given batch. Each canonical batch file SHA-256 is recorded in the rating manifest amendment produced from the already-frozen bundle; this amendment may add only derived hashes/IDs and may not alter the pre-authorship instrument/configuration.
 
 Each batch output schema contains:
 `holdout_version,bundle_sha256,rater_id,batch_id,first_item_id,last_item_id,ratings,status`
@@ -179,12 +246,15 @@ Each batch output schema contains:
 
 ## Raw output, validation, retry and stop policy
 
+An **attempt begins when the request is submitted to the rater interface**. A transport failure, timeout, empty response, or other no-response outcome after submission counts as an attempt and is preserved/logged as provenance to the extent the interface permits.
+
 Every first-attempt raw batch is preserved byte-for-byte where the interface permits and hashed before derivation.
 
 A first attempt is invalid if it is truncated, incomplete, malformed, contains wrong/missing/duplicate IDs, invalid labels, wrong metadata/status, or violates the frozen exact-output contract.
 
 **Exactly one whole-batch retry is allowed** for an invalid first attempt:
 - identical blind input, prompt, model identity/version and configuration;
+- a **fresh isolated session/context** with no prior batch or attempt transcript; first attempts also use fresh isolated sessions;
 - same complete 90-item batch;
 - no partial continuation;
 - no selective item re-query;
@@ -196,7 +266,7 @@ The invalid first attempt remains immutable provenance and contributes **zero** 
 
 The retry must itself validate as a complete batch. **Any invalid retry immediately closes D022-H2.** No third attempt, alternate model, manual completion, extraction invented after the fact, or selective salvage is allowed.
 
-A pre-frozen deterministic extraction may be applied only if the exact extraction algorithm and its acceptance conditions are included in the rating validator before authorship. Otherwise any surrounding prose makes the attempt invalid.
+**Deterministic extraction is not permitted in H2.** The response must itself satisfy the exact frozen JSON-only schema; surrounding prose, fences, truncation, or extra text makes the attempt invalid. This removes post-hoc extraction discretion.
 
 H2 stop conditions therefore explicitly include: `second attempt for any rater batch is invalid`.
 
