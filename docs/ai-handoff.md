@@ -83,6 +83,18 @@ For every review:
 - Keep code/config review separate from authorization to execute production deploys, probes, reruns, or observation windows.
 - At material milestone closure, check whether `docs/current-state.md` / `docs/decisions.md` require synchronization.
 
+## Risk-tiered review discipline
+
+Review depth must follow the risk and scope of the current head rather than mechanically repeating a full repository review.
+
+- **Full review** is required for new or changed methodology, frozen evaluation artifacts, architecture/privacy/security invariants, production behavior, deployment authorization, or other material state changes.
+- **Patch-only re-review** is preferred when a previously accepted PR head changes only by a narrowly scoped corrective patch. The reviewer verifies the exact delta from the previously accepted head, confirms that previously accepted frozen artifacts and methodology are byte/content unchanged as applicable, and verifies the current-head checks. Unchanged content is not re-reviewed from scratch.
+- **Mechanical verification first:** hashes, schemas, deterministic validators, CI, changed-file lists, and exact-head status should be checked mechanically before asking a reviewer for semantic judgment. Do not spend reviewer context re-deriving machine-checkable facts.
+- The implementer should provide a compact evidence package: previous accepted head, current head, exact changed files/diff scope, relevant hashes, CI/status results, and any remaining semantic question.
+- Reviewer output should be concise: classification plus only the evidence/reasoning needed to support it. Brevity does not relax evidence requirements.
+- Patch-only review must escalate to full review if the delta changes semantics, frozen bytes, methodology, scope, invariants, or if the claimed narrow scope cannot be independently verified.
+- Exact-head discipline remains mandatory: an acceptance applies only to the reviewed head. Any subsequent head change requires at least a new delta review before merge.
+
 ## Progress reporting discipline
 
 - Do not imply asynchronous or background progress. A status update must distinguish work actually performed in the current turn from work not yet started.
