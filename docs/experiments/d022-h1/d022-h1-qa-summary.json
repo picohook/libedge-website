@@ -47,22 +47,106 @@
     "negative_domains_at_least_6": 12
   },
   "pairwise": {
-    "U1_NEAR_MISS": {"pair_count":3160,"max_jaccard":0.5555555555555556,"max_pair":["D022-H1-S011-C01","D022-H1-S047-C01"],"ge_0_50":4,"ge_0_60":0,"ge_0_70":0,"pass":true},
-    "U2_SCOPE_SHIFT": {"pair_count":3160,"max_jaccard":0.6082474226804123,"max_pair":["D022-H1-S010-C02","D022-H1-S070-C02"],"ge_0_50":13,"ge_0_60":2,"ge_0_70":0,"pass":true},
-    "U3_CAUSAL_MECHANISTIC": {"pair_count":3160,"max_jaccard":0.5454545454545454,"max_pair":["D022-H1-S040-C03","D022-H1-S068-C03"],"ge_0_50":27,"ge_0_60":0,"ge_0_70":0,"pass":true},
-    "U4_TEMPORAL_GENERALIZATION": {"pair_count":3160,"max_jaccard":0.5737704918032787,"max_pair":["D022-H1-S011-C04","D022-H1-S047-C04"],"ge_0_50":1,"ge_0_60":0,"ge_0_70":0,"pass":true},
-    "U5_CONFLICT_SIDE": {"pair_count":3160,"max_jaccard":0.6206896551724138,"max_pair":["D022-H1-S010-C05","D022-H1-S058-C05"],"ge_0_50":56,"ge_0_60":2,"ge_0_70":0,"pass":true},
-    "U6_CITATION_SEMANTIC_MISMATCH": {"pair_count":3160,"max_jaccard":0.5777777777777777,"max_pair":["D022-H1-S010-C06","D022-H1-S034-C06"],"ge_0_50":38,"ge_0_60":0,"ge_0_70":0,"pass":true},
-    "S_SUPPORTED": {"pair_count":10800,"max_jaccard":0.6545454545454545,"max_pair":["D022-H1-S082-C06","D022-H1-S094-C06"],"ge_0_50":379,"ge_0_60":6,"ge_0_70":0,"pass":true},
-    "P_PARTIAL_EXTENSION": {"pair_count":3780,"max_jaccard":0.6923076923076923,"max_pair":["D022-H1-S106-C06","D022-H1-S118-C06"],"ge_0_50":113,"ge_0_60":91,"ge_0_70":0,"pass":true}
+    "U1_NEAR_MISS": {
+      "pair_count": 3160,
+      "max_jaccard": 0.5555555555555556,
+      "max_pair": ["D022-H1-S011-C01", "D022-H1-S047-C01"],
+      "ge_0_50": 4,
+      "ge_0_60": 0,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "U2_SCOPE_SHIFT": {
+      "pair_count": 3160,
+      "max_jaccard": 0.6082474226804123,
+      "max_pair": ["D022-H1-S010-C02", "D022-H1-S070-C02"],
+      "ge_0_50": 13,
+      "ge_0_60": 2,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "U3_CAUSAL_MECHANISTIC": {
+      "pair_count": 3160,
+      "max_jaccard": 0.5454545454545454,
+      "max_pair": ["D022-H1-S040-C03", "D022-H1-S068-C03"],
+      "ge_0_50": 27,
+      "ge_0_60": 0,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "U4_TEMPORAL_GENERALIZATION": {
+      "pair_count": 3160,
+      "max_jaccard": 0.5737704918032787,
+      "max_pair": ["D022-H1-S011-C04", "D022-H1-S047-C04"],
+      "ge_0_50": 1,
+      "ge_0_60": 0,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "U5_CONFLICT_SIDE": {
+      "pair_count": 3160,
+      "max_jaccard": 0.6206896551724138,
+      "max_pair": ["D022-H1-S010-C05", "D022-H1-S058-C05"],
+      "ge_0_50": 56,
+      "ge_0_60": 2,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "U6_CITATION_SEMANTIC_MISMATCH": {
+      "pair_count": 3160,
+      "max_jaccard": 0.5777777777777777,
+      "max_pair": ["D022-H1-S010-C06", "D022-H1-S034-C06"],
+      "ge_0_50": 38,
+      "ge_0_60": 0,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "S_SUPPORTED": {
+      "pair_count": 10800,
+      "max_jaccard": 0.6545454545454545,
+      "max_pair": ["D022-H1-S082-C06", "D022-H1-S094-C06"],
+      "ge_0_50": 379,
+      "ge_0_60": 6,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "P_PARTIAL_EXTENSION": {
+      "pair_count": 3780,
+      "max_jaccard": 0.6923076923076923,
+      "max_pair": ["D022-H1-S106-C06", "D022-H1-S118-C06"],
+      "ge_0_50": 113,
+      "ge_0_60": 91,
+      "ge_0_70": 0,
+      "pass": true
+    }
   },
-  "exact_duplicates": {"claim_text":0,"evidence_text":0,"comparison_text":0},
-  "scenario_checks": {"pass":true,"failures":0},
+  "exact_duplicates": {
+    "claim_text": 0,
+    "evidence_text": 0,
+    "comparison_text": 0
+  },
+  "scenario_checks": {
+    "pass": true,
+    "failures": 0
+  },
   "construction_qa": {
-    "record_count":720,
-    "all_record_checks_pass":true,
-    "supported_feature_counts":{"numeric_bounded":100,"multi_evidence":50,"uncertainty_limitation":75,"explicit_absence":50,"conflict_aware":25},
-    "partial_subtype_counts":{"scope":15,"mechanism":15,"temporal":15,"conflict":15,"evaluative_strengthening":15,"denominator_generalization":15}
+    "record_count": 720,
+    "all_record_checks_pass": true,
+    "supported_feature_counts": {
+      "numeric_bounded": 100,
+      "multi_evidence": 50,
+      "uncertainty_limitation": 75,
+      "explicit_absence": 50,
+      "conflict_aware": 25
+    },
+    "partial_subtype_counts": {
+      "scope": 15,
+      "mechanism": 15,
+      "temporal": 15,
+      "conflict": 15,
+      "evaluative_strengthening": 15,
+      "denominator_generalization": 15
+    }
   },
-  "pool_sha256":"8e191f4d728467a788a55f24725ada21e4a563323dd5f72252b78d93b0ab47cb"
+  "pool_sha256": "8e191f4d728467a788a55f24725ada21e4a563323dd5f72252b78d93b0ab47cb"
 }
