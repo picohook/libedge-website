@@ -1,0 +1,176 @@
+{
+  "overall_pass": true,
+  "errors": [],
+  "record_count": 720,
+  "scenario_count": 120,
+  "stratum_counts": {
+    "U1_NEAR_MISS": 80,
+    "U2_SCOPE_SHIFT": 80,
+    "U3_CAUSAL_MECHANISTIC": 80,
+    "U4_TEMPORAL_GENERALIZATION": 80,
+    "U5_CONFLICT_SIDE": 80,
+    "U6_CITATION_SEMANTIC_MISMATCH": 80,
+    "S_SUPPORTED": 150,
+    "P_PARTIAL_EXTENSION": 90
+  },
+  "domain_gate": {
+    "pass": true,
+    "negative_counts": {
+      "D01_MATERIALS_ENERGY": 7,
+      "D02_BIOMEDICAL_CLINICAL": 7,
+      "D03_EDUCATION_SURVEY": 7,
+      "D04_SOFTWARE_SYSTEMS": 7,
+      "D05_BUSINESS_OPERATIONS": 7,
+      "D06_ENVIRONMENT_AGRICULTURE": 7,
+      "D07_ENGINEERING_MANUFACTURING": 7,
+      "D08_PUBLIC_SERVICES_TRANSPORT": 7,
+      "D09_LIBRARY_RESEARCH_METADATA": 6,
+      "D10_CONSUMER_PRODUCT_TESTING": 6,
+      "D11_SOCIAL_BEHAVIORAL_STUDIES": 6,
+      "D12_HISTORICAL_ARCHIVAL_RECORDS": 6
+    },
+    "all_counts": {
+      "D01_MATERIALS_ENERGY": 10,
+      "D02_BIOMEDICAL_CLINICAL": 10,
+      "D03_EDUCATION_SURVEY": 10,
+      "D04_SOFTWARE_SYSTEMS": 10,
+      "D05_BUSINESS_OPERATIONS": 10,
+      "D06_ENVIRONMENT_AGRICULTURE": 10,
+      "D07_ENGINEERING_MANUFACTURING": 10,
+      "D08_PUBLIC_SERVICES_TRANSPORT": 10,
+      "D09_LIBRARY_RESEARCH_METADATA": 10,
+      "D10_CONSUMER_PRODUCT_TESTING": 10,
+      "D11_SOCIAL_BEHAVIORAL_STUDIES": 10,
+      "D12_HISTORICAL_ARCHIVAL_RECORDS": 10
+    },
+    "negative_domains_represented": 12,
+    "negative_domains_at_least_6": 12
+  },
+  "pairwise": {
+    "U1_NEAR_MISS": {
+      "pair_count": 3160,
+      "max_jaccard": 0.5555555555555556,
+      "max_pair": [
+        "D022-H1-S011-C01",
+        "D022-H1-S047-C01"
+      ],
+      "ge_0_50": 4,
+      "ge_0_60": 0,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "U2_SCOPE_SHIFT": {
+      "pair_count": 3160,
+      "max_jaccard": 0.6082474226804123,
+      "max_pair": [
+        "D022-H1-S010-C02",
+        "D022-H1-S070-C02"
+      ],
+      "ge_0_50": 13,
+      "ge_0_60": 2,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "U3_CAUSAL_MECHANISTIC": {
+      "pair_count": 3160,
+      "max_jaccard": 0.5454545454545454,
+      "max_pair": [
+        "D022-H1-S040-C03",
+        "D022-H1-S068-C03"
+      ],
+      "ge_0_50": 27,
+      "ge_0_60": 0,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "U4_TEMPORAL_GENERALIZATION": {
+      "pair_count": 3160,
+      "max_jaccard": 0.5737704918032787,
+      "max_pair": [
+        "D022-H1-S011-C04",
+        "D022-H1-S047-C04"
+      ],
+      "ge_0_50": 1,
+      "ge_0_60": 0,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "U5_CONFLICT_SIDE": {
+      "pair_count": 3160,
+      "max_jaccard": 0.6206896551724138,
+      "max_pair": [
+        "D022-H1-S010-C05",
+        "D022-H1-S058-C05"
+      ],
+      "ge_0_50": 56,
+      "ge_0_60": 2,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "U6_CITATION_SEMANTIC_MISMATCH": {
+      "pair_count": 3160,
+      "max_jaccard": 0.5777777777777777,
+      "max_pair": [
+        "D022-H1-S010-C06",
+        "D022-H1-S034-C06"
+      ],
+      "ge_0_50": 38,
+      "ge_0_60": 0,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "S_SUPPORTED": {
+      "pair_count": 10800,
+      "max_jaccard": 0.6545454545454545,
+      "max_pair": [
+        "D022-H1-S082-C06",
+        "D022-H1-S094-C06"
+      ],
+      "ge_0_50": 379,
+      "ge_0_60": 6,
+      "ge_0_70": 0,
+      "pass": true
+    },
+    "P_PARTIAL_EXTENSION": {
+      "pair_count": 3780,
+      "max_jaccard": 0.6923076923076923,
+      "max_pair": [
+        "D022-H1-S106-C06",
+        "D022-H1-S118-C06"
+      ],
+      "ge_0_50": 113,
+      "ge_0_60": 91,
+      "ge_0_70": 0,
+      "pass": true
+    }
+  },
+  "exact_duplicates": {
+    "claim_text": 0,
+    "evidence_text": 0,
+    "comparison_text": 0
+  },
+  "scenario_checks": {
+    "pass": true,
+    "failures": 0
+  },
+  "construction_qa": {
+    "record_count": 720,
+    "all_record_checks_pass": true,
+    "supported_feature_counts": {
+      "numeric_bounded": 100,
+      "multi_evidence": 50,
+      "uncertainty_limitation": 75,
+      "explicit_absence": 50,
+      "conflict_aware": 25
+    },
+    "partial_subtype_counts": {
+      "scope": 15,
+      "mechanism": 15,
+      "temporal": 15,
+      "conflict": 15,
+      "evaluative_strengthening": 15,
+      "denominator_generalization": 15
+    }
+  },
+  "pool_sha256": "8e191f4d728467a788a55f24725ada21e4a563323dd5f72252b78d93b0ab47cb"
+}
