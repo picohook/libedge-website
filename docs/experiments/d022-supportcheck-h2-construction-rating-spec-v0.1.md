@@ -29,7 +29,7 @@ Rules:
 - the attestation receives independent review and is merged before the H2 freeze-manifest gate;
 - values come from operator/session records, not inference from writing style;
 - unknown values are literal `"UNKNOWN"`, never guessed;
-- SHA-256 of canonical UTF-8/NFC/compact-JSON/LF bytes is recorded in the H2 manifest;
+- SHA-256 of canonical UTF-8/NFC/compact-JSON/LF bytes is recorded in the **freeze manifest**;
 - if the H1 **family is known but identity/version is UNKNOWN**, the entire known family is excluded from H2 primary rating;
 - if the H1 **family is UNKNOWN**, H2 cannot proceed until independent evidence resolves at least the family and a new reviewed attestation version is frozen;
 - `model_family` means the provider-independent model lineage named by the operator record (for example, a ChatGPT/GPT lineage versus a Claude lineage), not a free-form string chosen for H2; the rating manifest must record the evidence used for family assignment and reviewers must verify that R1/R2 are different lineages;
@@ -75,10 +75,16 @@ For this H2 round the following substantive roles are mutually exclusive in **ei
 - H1 identity-manifest attester;
 - rater operator/conduit who executes prompts.
 
-No person or AI model **identity/version** may hold more than one substantive role above in H2; a new session does not reset this separation. R1 and R2 must additionally be different model families. Pure mechanical CI execution is not a substantive role if it has no discretion over content or results. H1 exclusions add to, rather than replace, this matrix.
+No person or AI model **identity/version** may hold more than one substantive role above in H2; a new session does not reset this separation. R1 and R2 must additionally be different model families. Also freeze two independent governance roles: **identity-attestation reviewer** and **freeze-manifest reviewer**. They may not hold any substantive role above and may not be the attester whose artifact they review.
+
+The freeze manifest contains a **role roster** naming, for every substantive/governance role, the human/operator identifier where applicable, AI model family + exact identity/version where applicable, and role-specific H1-exposure attestation. H2 author and construction auditor must explicitly attest whether they have seen H1 pool text, author_intent, ratings, or consensus; any exposure prohibited by the accepted preregistration disqualifies them. The roster must also record the candidate checker's runtime model lineage (or `NON_MODEL`); any lineage overlap with a primary rater is reported as a correlated-error limitation in the final report.
+
+No roster substitution, identity/version change, or newly discovered prohibited H1 exposure is permitted after the freeze-manifest gate; any such change stops H2 and requires a successor version.
+
+Pure mechanical CI execution is not a substantive role if it has no discretion over content or results. H1 exclusions add to, rather than replace, this matrix.
 
 Parallel checker development is permitted only if isolation is mechanically or attestably established **before any H2 pool artifact is committed to a location accessible to the checker implementer**. Choose exactly one mechanism in the freeze manifest:
-1. **checker-first freeze:** checker code/configuration/prompt and dependency hashes are committed and independently reviewed before any H2 pool/QA text is committed to an accessible repository; or
+1. **checker-first freeze:** checker code/configuration/prompt and dependency hashes are committed and independently reviewed before any H2 pool/QA text is committed to an accessible repository; the checker implementer also provides an independently reviewed H1 non-access attestation, except for the permitted aggregate H1 intake statistics; or
 2. **workspace exclusion:** an independently reviewed attestation identifies a workspace/account that cannot access the LibEdge repository or H1/H2 artifacts and records the checker freeze hash before access is later broadened.
 
 The checker implementer may receive only the aggregate methodology statistics explicitly quoted in the closed H1 intake report; that report is the sole H1 exception. No H1 pool, construction, rating, consensus, or derived artifact may be accessed.
@@ -110,7 +116,7 @@ Prerequisites are frozen in this order on the protected `staging` ancestry:
 5. H2 rating instrument/identity/batching manifest + prompt/schema/validator/config hashes;
 6. construction/rating validators and tests.
 
-Then create one canonical `d022-h2-freeze-manifest.json` containing the SHA-256 and merge commit of every prerequisite plus the selected checker-isolation mechanism/evidence. Independent review verifies every referenced commit is an ancestor of the manifest merge commit. **The merge commit of this freeze manifest is the authorship gate:** it must be an ancestor of the first commit containing any H2 authored record. This ancestry rule, not timestamps, establishes chronology.
+Then create one canonical `d022-h2-freeze-manifest.json` containing the SHA-256 and merge commit of every prerequisite, the complete role roster/exposure attestations, the selected checker-isolation mechanism/evidence, and recorded repository-control evidence that the protected `staging` history rejects force-push/non-fast-forward rewriting. Independent review verifies every referenced commit is an ancestor of the manifest merge commit. **The merge commit of this freeze manifest is the authorship gate:** it must be an ancestor of the first commit containing any H2 authored record. This ancestry rule, not timestamps, establishes chronology. No prerequisite artifact referenced by the gate may change after the gate; any change requires a successor holdout version and a new gate.
 
 ## Audit snapshot definition
 
@@ -122,7 +128,8 @@ An audit snapshot is a canonical manifest whose hash commits to **every artifact
 - supported entailment traces;
 - partial boundary traces;
 - construction QA metadata;
-- validator version/hash and its machine-readable QA output.
+- validator version/hash and its machine-readable QA output;
+- the accepted freeze-manifest SHA-256.
 
 Each component SHA-256 is listed in lexicographic path order; `snapshot_sha256` is SHA-256 of the canonical snapshot-manifest bytes. After seed reveal none of these components may change under that snapshot.
 
@@ -136,16 +143,16 @@ If the auditor does not reveal the nonce within the frozen reveal window of **72
 
 H2 uses **reviewer commit-then-reveal nonce**, not reviewer-chosen plaintext after seeing the snapshot and not an external beacon.
 
-Before seeing the candidate snapshot hash or contents, the eligible construction auditor:
-1. generates an unpredictable 32-byte nonce;
-2. publishes/commits `SHA256(nonce)` as the seed commitment.
+Before any candidate snapshot is pushed to **any ref, PR, branch, workspace, or artifact store visible to the construction auditor**, the eligible construction auditor:
+1. generates an unpredictable raw 32-byte nonce;
+2. publishes/merges `SHA256(raw_nonce_bytes)` as the seed commitment on protected `staging`. The commitment stores the lowercase hexadecimal digest only.
 
-After authors commit the immutable candidate snapshot:
+Only after that commitment merge is an ancestor may authors push the candidate snapshot to an auditor-visible ref. After the immutable candidate snapshot is merged to protected `staging`:
 3. auditor reveals the nonce;
 4. validator verifies the reveal hashes to the pre-snapshot commitment;
 5. `audit_seed = lowercase hex nonce`.
 
-The commitment timestamp/commit must precede the candidate-snapshot commit. Any mismatch, premature reveal, replacement commitment, or evidence that the auditor saw the candidate snapshot before commitment fails H2 construction.
+The **commitment merge commit ancestry** must precede the candidate-snapshot merge commit; timestamps are never used. Any mismatch, premature reveal, replacement commitment, or evidence that the auditor saw the candidate snapshot before commitment fails H2 construction.
 
 For the single permitted revision cycle, the auditor must create a **new** nonce commitment before seeing the revised snapshot. The first nonce cannot be reused.
 
@@ -181,9 +188,9 @@ The independent auditor is sole defect decision-maker for the construction scree
 
 No informal semantic feedback from the auditor is permitted before the first snapshot.
 
-A rubric-boundary or template-assignment defect requires **defect-pattern-wide remediation across every record to which the same frozen rule/template defect applies**, not sampled-item-only repair; "class-wide" never means blindly editing every member of an audit class. Revisions may be made **only against rules already frozen before the first snapshot**; no rule, taxonomy, template definition, audit criterion, intended label, or sampling algorithm may change during remediation.
+A rubric-boundary or template-assignment defect requires **defect-pattern-wide remediation across every record to which the same frozen rule/template defect applies**, not sampled-item-only repair. The affected set must be derived mechanically when the violated frozen condition has a machine-identifiable key (including `template_id`, target_pool, subtype, domain, or other frozen metadata). For a semantic condition without a mechanical key, the auditor must explicitly approve the complete affected-record set **before any edits occur**. Authors cannot define the set unilaterally. "Class-wide" never means blindly editing every member of an audit class. Revisions may be made **only against rules already frozen before the first snapshot**; no rule, taxonomy, template definition, audit criterion, intended label, or sampling algorithm may change during remediation.
 
-The revision log must list each defect, the frozen rule violated, the mechanically identified affected-record set, and the before/after hashes. A deterministic diff-scope validator fails if a revision changes any record outside those logged affected sets or changes any frozen rule/taxonomy/audit artifact.
+The revision log must list each defect, the frozen rule violated, whether the affected set was mechanically derived or auditor-approved, the complete affected-record set, auditor approval where required, and the before/after hashes. A deterministic diff-scope validator fails if a revision changes any record outside those logged affected sets or changes any frozen rule/taxonomy/audit artifact.
 
 Exactly one revision cycle is allowed. A second-audit defect closes H2 and requires a successor version.
 
@@ -226,11 +233,15 @@ If a planned rater identity, prompt semantic text, schema, validator, interface,
 
 Both raters receive identical rubric/instructions and byte-identical blind content; only `rater_id` differs.
 
-Before H2 authorship, each chosen rater identity/version must also pass a **non-holdout format qualification** using synthetic items that are not H1/H2 records or derivatives. Qualification tests exact JSON/schema compliance, 90-item completion under the frozen max-output configuration, and tools-off behavior; semantic accuracy is not scored. Failure disqualifies that planned rater identity/configuration before authorship rather than consuming an H2 attempt.
+Before H2 authorship, each chosen rater identity/version must also pass a **non-holdout format qualification** using a frozen synthetic set that is not H1/H2 records or derivatives. The synthetic 90-item input, expected structural properties, prompt, schema and configuration are canonicalized and SHA-256 hashed into the freeze manifest.
+
+Run exactly **3 independent fresh-session qualification trials per planned rater** using the same frozen evaluator prompt, schema, max-output-token limit, tools-off setting and generation configuration planned for H2. Pass requires **3/3 structurally valid 90-item JSON-only outputs**; semantic accuracy is not scored. Any qualification failure disqualifies that planned rater identity/configuration before authorship rather than consuming an H2 attempt.
 
 ## Blind-bundle identity, ordering and deterministic batching
 
-Opaque item IDs are assigned **independently of author-controlled text, scenario IDs, claim IDs, strata, domains, or templates**. After the canonical pool is frozen, compute `pool_sha256`; derive a deterministic permutation by sorting claim IDs on SHA-256(`"D022-H2-BLIND:" + pool_sha256 + ":" + claim_id`), tie-breaking by claim ID. Assign sequential opaque IDs `B0001` through `B1080` in that permutation. The blind bundle exposes only `item_id, question, evidence_pack, claim_text`; it strips claim/scenario/stratum/template/domain/author_intent/QA metadata.
+Opaque item IDs are assigned **independently of author-controlled text, scenario IDs, claim IDs, strata, domains, or templates**. After the canonical pool is frozen, compute `pool_sha256`; derive a deterministic permutation by sorting claim IDs on SHA-256(`"D022-H2-BLIND:" + pool_sha256 + ":" + claim_id`), tie-breaking by claim ID. Assign sequential opaque IDs `B0001` through `B1080` in that permutation. Before bundle serialization, every source evidence ID is deterministically remapped **within each blind item** to local IDs `E01,E02,...` in canonical evidence-pack order. Every claim citation/reference to a source evidence ID is rewritten to the corresponding local ID. The blind bundle exposes only `item_id, question, evidence_pack, claim_text`, and evidence entries expose only local `evidence_id,text`; it strips claim/scenario/stratum/template/domain/author_intent/QA metadata and all source evidence IDs.
+
+A blind-leak validator must fail if any serialized blind item contains a source scenario/claim/evidence identifier or stratum marker, including substrings matching `H2-S[0-9]{3}`, `D022-H2-S[0-9]{3}-C[0-9]{2}`, source `:e[0-9]+` identifiers, or frozen stratum IDs. It also verifies every claim citation resolves only to local `E##` IDs.
 
 Freeze exactly **12 batch input files of 90 items**:
 - `D022-H2-RATING-B01` = B0001-B0090;
@@ -246,7 +257,7 @@ Each batch output schema contains:
 
 ## Raw output, validation, retry and stop policy
 
-An **attempt begins when the request is submitted to the rater interface**. A transport failure, timeout, empty response, or other no-response outcome after submission counts as an attempt and is preserved/logged as provenance to the extent the interface permits.
+An **attempt begins only when the provider accepts the request for generation**. A pre-generation rejection with evidence of zero generation (for example an explicit 429/5xx rejection before model execution) is logged but does **not** consume an attempt and may be resubmitted unchanged. Once generation is accepted/started, a timeout, connection loss, empty delivered response, or other missing-output outcome counts as an attempt and is preserved/logged as provenance to the extent the interface permits.
 
 Every first-attempt raw batch is preserved byte-for-byte where the interface permits and hashed before derivation.
 
@@ -266,7 +277,7 @@ The invalid first attempt remains immutable provenance and contributes **zero** 
 
 The retry must itself validate as a complete batch. **Any invalid retry immediately closes D022-H2.** No third attempt, alternate model, manual completion, extraction invented after the fact, or selective salvage is allowed.
 
-**Deterministic extraction is not permitted in H2.** The response must itself satisfy the exact frozen JSON-only schema; surrounding prose, fences, truncation, or extra text makes the attempt invalid. This removes post-hoc extraction discretion.
+**Deterministic extraction is not permitted in H2.** The response bytes must be UTF-8 with **no BOM**; leading/trailing ASCII whitespace is permitted and stripped solely for JSON parsing/hash-of-normalized-payload purposes, but any non-whitespace surrounding prose, fences, truncation, or extra JSON/text makes the attempt invalid. The parsed value must satisfy the exact frozen JSON-only schema. This removes post-hoc extraction discretion.
 
 H2 stop conditions therefore explicitly include: `second attempt for any rater batch is invalid`.
 
@@ -292,7 +303,7 @@ Any H1↔H2 yield comparison is **descriptive only** because construction, rater
 
 The candidate checker must be frozen before receiving H2 holdout text or any H2 construction/rating artifact. Checker implementer identity and role attestation are recorded.
 
-A checker implementer is prohibited from later becoming an H2 author, inventory reviewer, construction auditor, or primary rater, just as those roles are prohibited from later becoming checker implementers.
+Checker role incompatibility is governed exclusively by the symmetric role-separation matrix above; no chronological loophole is permitted.
 
 No H1 artifact may be used for checker training/tuning/tests except aggregate methodology statistics explicitly recorded in the closed H1 intake report.
 
@@ -302,7 +313,10 @@ All #126 and accepted H2 preregistration stop conditions remain active. Addition
 - prerequisite H1 identity attestation or H1 structural inventory is missing/unfrozen;
 - planned H2 rater identities are not frozen before authorship;
 - role separation is violated in either direction;
+- the frozen role roster changes, a role identity/version is substituted, or prohibited H1 exposure is discovered after the gate;
+- protected-`staging` non-rewrite/force-push-block evidence required by the freeze manifest is absent;
 - audit commitment/reveal chronology or hash verification fails;
+- the auditor fails to reveal within the frozen 72-hour window;
 - an audit class cannot supply the required distinct-scenario sample;
 - second audit contains any defect;
 - a revision changes anything outside already-frozen construction rules;
@@ -318,7 +332,8 @@ This specification authorizes **no H2 authorship yet**. H2 authorship becomes el
 3. H1 structural inventory is frozen;
 4. H2 reasoning-template taxonomy is frozen;
 5. H2 primary-rater identity/instrument/batching manifest is frozen;
-6. required validators/tests for these artifacts are independently reviewed.
+6. required validators/tests for these artifacts are independently reviewed;
+7. the canonical freeze manifest, including role roster, checker-isolation evidence, repository non-rewrite evidence and all prerequisite hashes/merge commits, is independently accepted and merged.
 
 Even then, successful H2 construction/rating would not authorize checker deployment or production.
 
