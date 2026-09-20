@@ -12,6 +12,6 @@ For every one of the 720 claim instances, independently assign exactly one label
 
 A claim is not supported merely because its evidence ID exists or its wording overlaps the evidence. Do not repair the claim, import facts, resolve conflicts yourself, or infer missing premises.
 
-Output **exactly one JSON object** conforming to the supplied `d022-h1-rating-output.schema.json`. Do not add markdown fences, prose, headings, or fields outside the schema. Preserve the bundle's claim order. Use your assigned literal rater ID in `rater_id`. Set `holdout_version` and `bundle_sha256` exactly as supplied with the bundle. Every claim must appear exactly once.
+Output **exactly one JSON object** conforming to the supplied `d022-h1-rating-output.schema.json`. Do not add markdown fences, prose, headings, or fields outside the schema. Preserve the bundle's claim order. Use your assigned literal rater ID in `rater_id`. Set `holdout_version` exactly as supplied with the bundle. Compute SHA-256 over the exact UTF-8 bytes of the supplied bundle file and place that lowercase hexadecimal digest in `bundle_sha256`; do not obtain this value from another rater. Every claim must appear exactly once.
 
 The final object must use `status: "FINAL / LOCKED"`. Once emitted, your labels are final: do not revise them after seeing another rater, hidden intent, checker output, or arm/system identity.
