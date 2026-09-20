@@ -1,8 +1,8 @@
 # D-022 H2 — H1 Structural Inventory Prerequisite Freeze v0.1
 
-Status: **PROPOSED / INDEPENDENT REVIEW REQUIRED**
+Status: **FINAL / LOCKED**
 
-This record proposes freezing prerequisite 3 of `d022-supportcheck-h2-construction-rating-spec-v0.1.md`: the H1 structural inventory plus its independent semantic review and independent validator/test review. It does not authorize H2 claim authorship.
+This record freezes prerequisite 3 of `d022-supportcheck-h2-construction-rating-spec-v0.1.md`: the H1 structural inventory plus its independent semantic review and independent validator/test review. It does not authorize H2 claim authorship.
 
 ## Canonical artifacts
 
@@ -27,7 +27,7 @@ The independent validator/test reviewer reproduced validator PASS and 16/16 test
 
 ## Boundary
 
-No H1 rater output, claim-level rating, consensus, semantic outcome label, blind bundle, or blind ID mapping is included in this freeze package. This proposed freeze does not modify the H1 inventory bytes and does not authorize H2 claim authorship until this prerequisite is merged on protected `staging` ancestry and the remaining prerequisites are completed in frozen order.
+No H1 rater output, claim-level rating, consensus, semantic outcome label, blind bundle, or blind ID mapping is included in this freeze package. This freeze does not modify the H1 inventory bytes and does not authorize H2 claim authorship until this prerequisite is merged on protected `staging` ancestry and the remaining prerequisites are completed in frozen order.
 
 ## Evidence classification
 
