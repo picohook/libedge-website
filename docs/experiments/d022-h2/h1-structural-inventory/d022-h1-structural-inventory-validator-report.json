@@ -1,0 +1,322 @@
+{
+  "validator_name": "d022_h1_structural_inventory_validator",
+  "validator_version": "1.0.0",
+  "role": "H1 Structural Inventory Construction Validator / Test Author",
+  "overall_status": "PASS",
+  "checks": {
+    "input_hashes": {
+      "d022-h1-structural-inventory.jsonl": {
+        "sha256": "a08da438f43b023d9eea73cf4378bbb7bc529e450e6fef16afb894d8e8f9a468",
+        "expected_sha256": "a08da438f43b023d9eea73cf4378bbb7bc529e450e6fef16afb894d8e8f9a468",
+        "match": true,
+        "size_bytes": 17816
+      },
+      "d022-h1-pool.jsonl": {
+        "sha256": "8e191f4d728467a788a55f24725ada21e4a563323dd5f72252b78d93b0ab47cb",
+        "expected_sha256": "8e191f4d728467a788a55f24725ada21e4a563323dd5f72252b78d93b0ab47cb",
+        "match": true,
+        "size_bytes": 451229
+      },
+      "d022-h1-domain-metadata.jsonl": {
+        "sha256": "f68cc483f241a9aef914b06c53644ee1a6c96c9d8b080625b4a4ac4784a08d69",
+        "expected_sha256": "f68cc483f241a9aef914b06c53644ee1a6c96c9d8b080625b4a4ac4784a08d69",
+        "match": true,
+        "size_bytes": 7640
+      },
+      "d022-h1-construction-qa.jsonl": {
+        "sha256": "067f8bdf328a5444f913b1e6d0cc661dffc81aa2bb57362f5e7eeb25e809cb32",
+        "expected_sha256": "067f8bdf328a5444f913b1e6d0cc661dffc81aa2bb57362f5e7eeb25e809cb32",
+        "match": true,
+        "size_bytes": 223490
+      },
+      "d022-supportcheck-h2-construction-rating-spec-v0.1.md": {
+        "sha256": "2d5460e57361c2aac9b71418758895c364344420175b8a95ba89159af00c7996",
+        "expected_sha256": "2d5460e57361c2aac9b71418758895c364344420175b8a95ba89159af00c7996",
+        "match": true,
+        "size_bytes": 26207
+      }
+    },
+    "pool_integrity": {
+      "status": "PASS",
+      "total_claims": 720,
+      "expected_total_claims": 720
+    },
+    "inventory_format": {
+      "status": "PASS",
+      "line_count": 30
+    },
+    "bijective_mapping": {
+      "status": "PASS",
+      "total_pool_claims": 720,
+      "total_mapped_instances": 720,
+      "total_unique_mapped_claims": 720,
+      "missing_claims_count": 0,
+      "missing_claims": [],
+      "unknown_claims_count": 0,
+      "unknown_claims": [],
+      "duplicate_mapped_claims_count": 0,
+      "duplicate_mapped_claims": []
+    },
+    "template_invariants": {
+      "status": "PASS",
+      "template_count": 30,
+      "expected_template_count": 30,
+      "canonical_sequential_order": true,
+      "unique_transformations_count": 30
+    }
+  },
+  "summary": {
+    "pool_claims_count": 720,
+    "mapped_claims_count": 720,
+    "templates_count": 30,
+    "total_errors": 0
+  },
+  "per_template_summary": [
+    {
+      "template_id": "H1T001",
+      "transformation": "Apply a subgroup's result to the entire population.",
+      "claim_count": 16,
+      "stratum_counts": {
+        "U2_SCOPE_SHIFT": 16
+      }
+    },
+    {
+      "template_id": "H1T002",
+      "transformation": "Arbitrarily choose the later entry as the correct value to resolve an unadjudicated conflict.",
+      "claim_count": 20,
+      "stratum_counts": {
+        "U5_CONFLICT_SIDE": 20
+      }
+    },
+    {
+      "template_id": "H1T003",
+      "transformation": "Arbitrarily select one source's value to resolve an explicit conflict without reconciliation.",
+      "claim_count": 35,
+      "stratum_counts": {
+        "U5_CONFLICT_SIDE": 20,
+        "P_PARTIAL_EXTENSION": 15
+      }
+    },
+    {
+      "template_id": "H1T004",
+      "transformation": "Assert a dataset is a high-quality benchmark based solely on its record count.",
+      "claim_count": 10,
+      "stratum_counts": {
+        "U6_CITATION_SEMANTIC_MISMATCH": 10
+      }
+    },
+    {
+      "template_id": "H1T005",
+      "transformation": "Assume causal mechanism from a simple pre/post change without causal design.",
+      "claim_count": 35,
+      "stratum_counts": {
+        "U3_CAUSAL_MECHANISTIC": 20,
+        "P_PARTIAL_EXTENSION": 15
+      }
+    },
+    {
+      "template_id": "H1T006",
+      "transformation": "Claim a specific internal mechanism produced a change without any mechanistic measurement.",
+      "claim_count": 20,
+      "stratum_counts": {
+        "U3_CAUSAL_MECHANISTIC": 20
+      }
+    },
+    {
+      "template_id": "H1T007",
+      "transformation": "Compare two distinct conditions and their corresponding metric values.",
+      "claim_count": 25,
+      "stratum_counts": {
+        "S_SUPPORTED": 25
+      }
+    },
+    {
+      "template_id": "H1T008",
+      "transformation": "Conclude an intervention pathway is the sole reason for a change based only on correlation.",
+      "claim_count": 20,
+      "stratum_counts": {
+        "U3_CAUSAL_MECHANISTIC": 20
+      }
+    },
+    {
+      "template_id": "H1T009",
+      "transformation": "Confirm an underlying diagnosis from an abnormal value without diagnostic tests.",
+      "claim_count": 20,
+      "stratum_counts": {
+        "U3_CAUSAL_MECHANISTIC": 20
+      }
+    },
+    {
+      "template_id": "H1T010",
+      "transformation": "Confirm citation counts are unavailable due to an explicit note.",
+      "claim_count": 25,
+      "stratum_counts": {
+        "S_SUPPORTED": 25
+      }
+    },
+    {
+      "template_id": "H1T011",
+      "transformation": "Conflate simple availability with demonstrated effectiveness.",
+      "claim_count": 10,
+      "stratum_counts": {
+        "U6_CITATION_SEMANTIC_MISMATCH": 10
+      }
+    },
+    {
+      "template_id": "H1T012",
+      "transformation": "Conflate the number of respondents with the total number of enrollees who are satisfied.",
+      "claim_count": 15,
+      "stratum_counts": {
+        "P_PARTIAL_EXTENSION": 15
+      }
+    },
+    {
+      "template_id": "H1T013",
+      "transformation": "Declare one protocol conclusively superior based on raw values without equivalence adjustment.",
+      "claim_count": 20,
+      "stratum_counts": {
+        "U5_CONFLICT_SIDE": 20
+      }
+    },
+    {
+      "template_id": "H1T014",
+      "transformation": "Disregard one reviewer's dissenting classification to assert a criterion was definitively met.",
+      "claim_count": 20,
+      "stratum_counts": {
+        "U5_CONFLICT_SIDE": 20
+      }
+    },
+    {
+      "template_id": "H1T015",
+      "transformation": "Establish safety from a non-safety performance measurement.",
+      "claim_count": 10,
+      "stratum_counts": {
+        "U6_CITATION_SEMANTIC_MISMATCH": 10
+      }
+    },
+    {
+      "template_id": "H1T016",
+      "transformation": "Extract metric value for a specific condition from a descriptive scope.",
+      "claim_count": 25,
+      "stratum_counts": {
+        "S_SUPPORTED": 25
+      }
+    },
+    {
+      "template_id": "H1T017",
+      "transformation": "Extrapolate finite observed performance into indefinite long-term persistence.",
+      "claim_count": 95,
+      "stratum_counts": {
+        "U4_TEMPORAL_GENERALIZATION": 80,
+        "P_PARTIAL_EXTENSION": 15
+      }
+    },
+    {
+      "template_id": "H1T018",
+      "transformation": "Falsely assert that all sampled records met a criterion when only a subset did.",
+      "claim_count": 16,
+      "stratum_counts": {
+        "U2_SCOPE_SHIFT": 16
+      }
+    },
+    {
+      "template_id": "H1T019",
+      "transformation": "Falsely claim a measurement applies across all operating conditions when scoped to one.",
+      "claim_count": 95,
+      "stratum_counts": {
+        "U1_NEAR_MISS": 80,
+        "P_PARTIAL_EXTENSION": 15
+      }
+    },
+    {
+      "template_id": "H1T020",
+      "transformation": "Falsely claim an entity is highly cited and field-leading from a catalog record missing citation fields.",
+      "claim_count": 10,
+      "stratum_counts": {
+        "U6_CITATION_SEMANTIC_MISMATCH": 10
+      }
+    },
+    {
+      "template_id": "H1T021",
+      "transformation": "Falsely claim the observation date caused the measured value.",
+      "claim_count": 10,
+      "stratum_counts": {
+        "U6_CITATION_SEMANTIC_MISMATCH": 10
+      }
+    },
+    {
+      "template_id": "H1T022",
+      "transformation": "Falsely show that all completers were satisfied when satisfaction was not reported.",
+      "claim_count": 10,
+      "stratum_counts": {
+        "U6_CITATION_SEMANTIC_MISMATCH": 10
+      }
+    },
+    {
+      "template_id": "H1T023",
+      "transformation": "Identify an unresolved numerical conflict between two sources.",
+      "claim_count": 25,
+      "stratum_counts": {
+        "S_SUPPORTED": 25
+      }
+    },
+    {
+      "template_id": "H1T024",
+      "transformation": "Infer market/industry-leading status from a raw performance metric without comparative/market data.",
+      "claim_count": 25,
+      "stratum_counts": {
+        "U6_CITATION_SEMANTIC_MISMATCH": 10,
+        "P_PARTIAL_EXTENSION": 15
+      }
+    },
+    {
+      "template_id": "H1T025",
+      "transformation": "Misrepresent the completion file count as a 100% completion rate for all intake entries.",
+      "claim_count": 16,
+      "stratum_counts": {
+        "U2_SCOPE_SHIFT": 16
+      }
+    },
+    {
+      "template_id": "H1T026",
+      "transformation": "Present a conditional group's result as the overall cohort result.",
+      "claim_count": 16,
+      "stratum_counts": {
+        "U2_SCOPE_SHIFT": 16
+      }
+    },
+    {
+      "template_id": "H1T027",
+      "transformation": "Prove an item was peer-reviewed and of high quality despite missing status.",
+      "claim_count": 10,
+      "stratum_counts": {
+        "U6_CITATION_SEMANTIC_MISMATCH": 10
+      }
+    },
+    {
+      "template_id": "H1T028",
+      "transformation": "Report the total intake and completion counts.",
+      "claim_count": 25,
+      "stratum_counts": {
+        "S_SUPPORTED": 25
+      }
+    },
+    {
+      "template_id": "H1T029",
+      "transformation": "State the end date of observations and absence of later follow-up.",
+      "claim_count": 25,
+      "stratum_counts": {
+        "S_SUPPORTED": 25
+      }
+    },
+    {
+      "template_id": "H1T030",
+      "transformation": "Use the total registered records as the denominator for a satisfaction percentage based on a smaller respondent subset.",
+      "claim_count": 16,
+      "stratum_counts": {
+        "U2_SCOPE_SHIFT": 16
+      }
+    }
+  ],
+  "errors": []
+}
