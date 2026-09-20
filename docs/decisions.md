@@ -323,4 +323,8 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 - Canonical record: this file.
 - Boundary: This decision adds a future production acceptance criterion only. It does not select or authorize a `supportCheck` implementation, provider/model, deployment, Track A change, or semantic-primary rollout.
 
-Last updated: 2026-09-16
+### D-022 evaluation state — H1 closure
+
+D022-H1 is closed after triggering its frozen pre-checker stop conditions: 60 consensus-SUPPORTED (<100 required) and U1_NEAR_MISS 0 consensus-UNSUPPORTED (<50 required), despite 350 consensus-UNSUPPORTED overall. No checker was executed. H1 remains immutable historical evidence; further D-022 checker evaluation requires a separately preregistered successor holdout version rather than top-up, relabeling, adjudication, threshold relaxation, or in-place repair. Canonical evidence: `docs/experiments/d022-h1/rating/d022-h1-primary-rating-intake-report-v0.1.md`.
+
+Last updated: 2026-09-20

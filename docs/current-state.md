@@ -199,4 +199,10 @@ The staging deletion-policy work remains `CLOSED — BEHAVIORAL PASS` and is not
 - Production pending-migration audit: `docs/reviews/2026-09-11-production-d1-pending-migration-audit.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
-Last updated: 2026-09-17
+## D-022 supportCheck evaluation state — H1 closed
+
+D022-H1 is **CLOSED / STOPPED** under the frozen preregistered consensus-yield conditions. Locked primary ratings produced 60 consensus-SUPPORTED, 350 consensus-UNSUPPORTED and 310 challenge/disagreement claims; U1_NEAR_MISS produced 0 consensus-UNSUPPORTED. H1 therefore failed the >=100 consensus-SUPPORTED and >=50 consensus-UNSUPPORTED-per-stratum prerequisites. No checker was run against H1, and H1 may not be topped up, relabeled, adjudicated, or repaired in place. A separately preregistered D022-H2 successor holdout is required before further measured checker evaluation.
+
+Canonical record: `docs/experiments/d022-h1/rating/d022-h1-primary-rating-intake-report-v0.1.md`
+
+Last updated: 2026-09-20
