@@ -50,7 +50,10 @@
     "U1_NEAR_MISS": {
       "pair_count": 3160,
       "max_jaccard": 0.5555555555555556,
-      "max_pair": ["D022-H1-S011-C01", "D022-H1-S047-C01"],
+      "max_pair": [
+        "D022-H1-S011-C01",
+        "D022-H1-S047-C01"
+      ],
       "ge_0_50": 4,
       "ge_0_60": 0,
       "ge_0_70": 0,
@@ -59,7 +62,10 @@
     "U2_SCOPE_SHIFT": {
       "pair_count": 3160,
       "max_jaccard": 0.6082474226804123,
-      "max_pair": ["D022-H1-S010-C02", "D022-H1-S070-C02"],
+      "max_pair": [
+        "D022-H1-S010-C02",
+        "D022-H1-S070-C02"
+      ],
       "ge_0_50": 13,
       "ge_0_60": 2,
       "ge_0_70": 0,
@@ -68,7 +74,10 @@
     "U3_CAUSAL_MECHANISTIC": {
       "pair_count": 3160,
       "max_jaccard": 0.5454545454545454,
-      "max_pair": ["D022-H1-S040-C03", "D022-H1-S068-C03"],
+      "max_pair": [
+        "D022-H1-S040-C03",
+        "D022-H1-S068-C03"
+      ],
       "ge_0_50": 27,
       "ge_0_60": 0,
       "ge_0_70": 0,
@@ -77,7 +86,10 @@
     "U4_TEMPORAL_GENERALIZATION": {
       "pair_count": 3160,
       "max_jaccard": 0.5737704918032787,
-      "max_pair": ["D022-H1-S011-C04", "D022-H1-S047-C04"],
+      "max_pair": [
+        "D022-H1-S011-C04",
+        "D022-H1-S047-C04"
+      ],
       "ge_0_50": 1,
       "ge_0_60": 0,
       "ge_0_70": 0,
@@ -86,7 +98,10 @@
     "U5_CONFLICT_SIDE": {
       "pair_count": 3160,
       "max_jaccard": 0.6206896551724138,
-      "max_pair": ["D022-H1-S010-C05", "D022-H1-S058-C05"],
+      "max_pair": [
+        "D022-H1-S010-C05",
+        "D022-H1-S058-C05"
+      ],
       "ge_0_50": 56,
       "ge_0_60": 2,
       "ge_0_70": 0,
@@ -95,7 +110,10 @@
     "U6_CITATION_SEMANTIC_MISMATCH": {
       "pair_count": 3160,
       "max_jaccard": 0.5777777777777777,
-      "max_pair": ["D022-H1-S010-C06", "D022-H1-S034-C06"],
+      "max_pair": [
+        "D022-H1-S010-C06",
+        "D022-H1-S034-C06"
+      ],
       "ge_0_50": 38,
       "ge_0_60": 0,
       "ge_0_70": 0,
@@ -104,7 +122,10 @@
     "S_SUPPORTED": {
       "pair_count": 10800,
       "max_jaccard": 0.6545454545454545,
-      "max_pair": ["D022-H1-S082-C06", "D022-H1-S094-C06"],
+      "max_pair": [
+        "D022-H1-S082-C06",
+        "D022-H1-S094-C06"
+      ],
       "ge_0_50": 379,
       "ge_0_60": 6,
       "ge_0_70": 0,
@@ -113,7 +134,10 @@
     "P_PARTIAL_EXTENSION": {
       "pair_count": 3780,
       "max_jaccard": 0.6923076923076923,
-      "max_pair": ["D022-H1-S106-C06", "D022-H1-S118-C06"],
+      "max_pair": [
+        "D022-H1-S106-C06",
+        "D022-H1-S118-C06"
+      ],
       "ge_0_50": 113,
       "ge_0_60": 91,
       "ge_0_70": 0,
