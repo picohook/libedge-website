@@ -185,7 +185,7 @@ class TestH1StructuralInventoryValidator(unittest.TestCase):
 
     def test_mutated_frozen_source_hash_mismatch(self):
         """Mutating a frozen source artifact must trigger input_hashes failure."""
-        mutated_pool = self.artifacts["pool"] + b"\\n"
+        mutated_pool = self.artifacts["pool"] + b"\n"
         report = validate_h1_structural_inventory(
             inventory_bytes=self.artifacts["inventory"],
             pool_bytes=mutated_pool,
@@ -209,7 +209,7 @@ class TestH1StructuralInventoryValidator(unittest.TestCase):
 
     def test_malformed_byte_properties_bom(self):
         """UTF-8 BOM must be rejected fail-closed."""
-        mutated_inv = b"\\xef\\xbb\\xbf" + self.artifacts["inventory"]
+        mutated_inv = b"\xef\xbb\xbf" + self.artifacts["inventory"]
         custom_hashes = copy.deepcopy(EXPECTED_HASHES)
         custom_hashes["d022-h1-structural-inventory.jsonl"] = compute_sha256(mutated_inv)
 
@@ -223,7 +223,7 @@ class TestH1StructuralInventoryValidator(unittest.TestCase):
 
     def test_malformed_byte_properties_crlf(self):
         """Carriage return bytes (CRLF) must be rejected fail-closed."""
-        mutated_inv = self.artifacts["inventory"].replace(b"\\n", b"\\r\\n")
+        mutated_inv = self.artifacts["inventory"].replace(b"\n", b"\r\n")
         custom_hashes = copy.deepcopy(EXPECTED_HASHES)
         custom_hashes["d022-h1-structural-inventory.jsonl"] = compute_sha256(mutated_inv)
 
@@ -237,7 +237,7 @@ class TestH1StructuralInventoryValidator(unittest.TestCase):
 
     def test_malformed_byte_properties_trailing_empty_lines(self):
         """Trailing extra empty lines in JSONL must be rejected."""
-        mutated_inv = self.artifacts["inventory"] + b"\\n"
+        mutated_inv = self.artifacts["inventory"] + b"\n"
         custom_hashes = copy.deepcopy(EXPECTED_HASHES)
         custom_hashes["d022-h1-structural-inventory.jsonl"] = compute_sha256(mutated_inv)
 
