@@ -205,4 +205,4 @@ D022-H1 is **CLOSED / STOPPED** under the frozen preregistered consensus-yield c
 
 Canonical record: `docs/experiments/d022-h1/rating/d022-h1-primary-rating-intake-report-v0.1.md`
 
-Last updated: 2026-09-17
+Last updated: 2026-09-20
