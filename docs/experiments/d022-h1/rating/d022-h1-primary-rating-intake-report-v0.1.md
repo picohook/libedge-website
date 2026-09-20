@@ -10,8 +10,8 @@ Status: **H1 STOPPED under the frozen holdout rules.** No checker execution is a
 
 ## Immutable raw rater artifacts and derivation
 
-The exact received texts are preserved in:
-- `results/d022-h1-r1-locked.raw.txt` — SHA-256 `a18a83fb37cb77e70e22a1f0442fec76bef53452f2d72e3062806bbd0b5eb8ef`
+The received rater artifacts are preserved below. R2 is byte-exact; R1 preserves the complete JSON payload and labels but not the original trailing CRLF:
+- `results/d022-h1-r1-locked.raw.txt` — committed-blob SHA-256 `262852fb…0152`. The originally received R1 text hashed to `a18a83fb37cb77e70e22a1f0442fec76bef53452f2d72e3062806bbd0b5eb8ef`; the only byte-level difference is that the committed text representation does not preserve the received trailing CRLF. The JSON payload and all 720 labels are unchanged.
 - `results/d022-h1-r2-locked.raw.txt` — SHA-256 `9511489b10a76ff76d9429064acbd58ad20bbaf02f68e48eb604b3ff33e2b51e`
 
 Deterministic derivation is implemented by `scripts/d022-h1-rating-derive.mjs`. It extracts the first complete JSON object bounded by the first `{` and last `}`, parses it, verifies literal rater ID, `FINAL / LOCKED`, 720 ratings, unique IDs and exact B0001-B0720 order, and writes canonical one-line JSON plus the consensus JSONL. It does not alter any label.
@@ -21,7 +21,7 @@ Derived files:
 - `results/d022-h1-r2-locked.extracted.json`
 - `results/d022-h1-r1-r2-consensus.jsonl`
 
-R1 raw input contains only the JSON payload plus line ending. R2 raw input contains a prose prefix, so the raw R2 artifact violates the frozen “exactly one JSON object; no prose” output-format requirement. The R2 labels remain FINAL / LOCKED; the derived JSON is an extraction, not a rater revision.
+R1 raw input contains only the JSON payload; its originally received trailing CRLF was stripped when committed as text, as documented above. R2 raw input contains a prose prefix, so the raw R2 artifact violates the frozen “exactly one JSON object; no prose” output-format requirement. The R2 labels remain FINAL / LOCKED; the derived JSON is an extraction, not a rater revision.
 
 ## Locked label counts
 
