@@ -83,6 +83,13 @@ For every review:
 - Keep code/config review separate from authorization to execute production deploys, probes, reruns, or observation windows.
 - At material milestone closure, check whether `docs/current-state.md` / `docs/decisions.md` require synchronization.
 
+## Progress reporting discipline
+
+- Do not imply asynchronous or background progress. A status update must distinguish work actually performed in the current turn from work not yet started.
+- Use an evidence-bearing form when tools were actually called: **"This turn I actually called tools; X was completed; evidence: Y."**
+- Otherwise state plainly that work has not started or is waiting for the user's next explicit instruction. Do not say "I am continuing", "already in progress", or equivalent when no current-turn work occurred.
+- Repository state, commits, checks, and PRs are evidence of completed repository work; plans and intentions are not.
+
 ## Suggested new-chat prompts
 
 ### Implementer
