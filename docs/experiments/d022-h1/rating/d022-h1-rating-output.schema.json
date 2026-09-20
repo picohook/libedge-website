@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "d022-h1-rating-output.schema.json",
+  "title": "D022-H1 Primary Blind Rating Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["holdout_version","bundle_sha256","rater_id","ratings","status"],
+  "properties": {
+    "holdout_version": {"const":"D022-H1"},
+    "bundle_sha256": {"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "rater_id": {"type":"string","enum":["R1","R2"]},
+    "ratings": {
+      "type":"array",
+      "minItems":720,
+      "maxItems":720,
+      "items":{
+        "type":"object",
+        "additionalProperties":false,
+        "required":["claim_id","label"],
+        "properties":{
+          "claim_id":{"type":"string","pattern":"^D022-H1-S\\d{3}-C0[1-6]$"},
+          "label":{"type":"string","enum":["SUPPORTED","PARTIALLY_SUPPORTED","UNSUPPORTED"]}
+        }
+      }
+    },
+    "status":{"const":"FINAL / LOCKED"}
+  }
+}
