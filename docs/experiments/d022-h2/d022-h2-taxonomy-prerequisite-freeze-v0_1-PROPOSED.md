@@ -36,14 +36,14 @@ The independent reviewer examined all 98 templates, reported all 98 VALID, consi
 
 No H2 scenario, question, evidence item, evidence passage, claim text, candidate record, `author_intent` value, checker implementation, H1 rater output, H1 claim-level rating, H1 consensus row, H1 semantic outcome label, blind-rater bundle, or blind ID mapping is included in this package.
 
-This proposed prerequisite freeze does **not** authorize H2 authorship. Prerequisites 5 and 6 and the canonical freeze-manifest gate remain outstanding.
+This prerequisite freeze does **not** authorize H2 authorship. Prerequisites 5 and 6 and the canonical freeze-manifest gate remain outstanding.
 
 ## Evidence classification
 
 Artifact bytes, byte counts, hashes, Git/GitHub object state, commit ancestry, and executable mechanical checks are mechanically verifiable evidence. Model identity, prior-role, and exposure statements are operator-provided/attested provenance records rather than cryptographic proof of runtime identity or unseen-session state.
 
-## Proposed disposition
+## Disposition
 
-**PROPOSED / INDEPENDENT GOVERNING REVIEW REQUIRED**
+**FINAL / LOCKED**
 
-Do not change this record to `FINAL / LOCKED` until the governing review accepts the exact proposed bytes/head.
+The independent governing review accepted the exact proposed bytes/head before this status-only lock transition.
