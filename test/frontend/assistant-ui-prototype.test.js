@@ -58,6 +58,12 @@ describe('Research Assistant live boundary', () => {
         expect(js).toContain('setLoadingUi(true);\n        resetLiveResult();');
     });
 
+    it('shows the actual live evidence count instead of the fixture count', () => {
+        expect(js).toContain("sourcePanelBody?.querySelector('.source-count')");
+        expect(js).toContain('sourceCount.textContent = String(result.evidence.length)');
+        expect(js).toContain("answerCard.querySelector('.assistant-answer-meta strong')");
+    });
+
     it('keeps loading and non-success presentation explicit', () => {
         expect(js).toContain("status.setAttribute('aria-busy', tone === 'loading' ? 'true' : 'false')");
         expect(js).toContain("answerCard?.classList.toggle('is-unavailable', !isSuccess)");
