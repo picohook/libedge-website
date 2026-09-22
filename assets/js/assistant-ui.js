@@ -1,4 +1,4 @@
-import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) => {
+import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapLiveAssistantResult }) => {
     const sourcePanel = document.getElementById('assistantSources');
     const toast = document.getElementById('assistantPrototypeToast');
     const status = document.getElementById('assistantStatus');
@@ -151,14 +151,57 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
 
     function wait(ms) { return new Promise((resolve) => window.setTimeout(resolve, ms)); }
 
-    async function runFixtureLifecycle() {
-        const query = queryInput?.value?.trim() || ''; if (query.length < 2 || query.length > 300) { renderMappedState({ ok: false, code: 'ASSISTANT_QUERY_INVALID', claims: [] }); queryInput?.focus(); return; }
-        setLoadingUi(true); clearEvidenceFocus(); closeSourceDetails(); closeSources(); if (answerCard) answerCard.style.opacity = '.58';
+    async function runLiveResearch() {
+        const query = queryInput?.value?.trim() || '';
+        if (query.length < 2 || query.length > 300) {
+            renderMappedState({ ok: false, code: 'ASSISTANT_QUERY_INVALID', claims: [] });
+            queryInput?.focus();
+            return;
+        }
+
+        setLoadingUi(true);
+        clearEvidenceFocus();
+        closeSourceDetails();
+        closeSources();
+        if (answerCard) answerCard.style.opacity = '.58';
+
         try {
-            for (let index = 0; index < 3; index += 1) { const stage = loadingStage(index); setStatus({ title: stage.title, titleEn: stage.titleEn, message: stage.message, messageEn: stage.messageEn, tone: 'loading', marker: `Aşama ${index + 1}/3`, markerEn: `Stage ${index + 1}/3`, state: `loading-${index + 1}` }); await wait(420); }
-            renderMappedState({ ok: true, code: 'OK', claims: [{ text: 'Fixture claim', evidence_ids: ['fixture:e1'] }], evidence_pack_id: 'fixture-pack' }); if (queryInput) { delete queryInput.dataset.followUp; delete queryInput.dataset.followUpContext; }
-            showToast('Fixture lifecycle tamamlandı. Gerçek /api/assistant/ask çağrısı yapılmadı.', 'Fixture lifecycle completed. No real /api/assistant/ask call was made.');
-        } catch (error) { console.error('Assistant fixture lifecycle failed:', error); renderMappedState({ ok: false, code: 'UI_RENDER_FAILED', claims: [] }); } finally { setLoadingUi(false); }
+            const stage = loadingStage(0);
+            setStatus({ title: stage.title, titleEn: stage.titleEn, message: stage.message, messageEn: stage.messageEn, tone: 'loading', marker: 'Live API', markerEn: 'Live API', state: 'loading-live' });
+
+            const response = await fetch('/api/assistant/ask', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ query })
+            });
+
+            let result;
+            try {
+                result = await response.json();
+            } catch {
+                result = { ok: false, code: 'UI_RENDER_FAILED', claims: [] };
+            }
+
+            const mapped = mapLiveAssistantResult(result);
+            renderMappedState(result?.ok === true && result?.code === 'OK' && !Array.isArray(result?.evidence)
+                ? { ok: false, code: 'EVIDENCE_PAYLOAD_REQUIRED', claims: [] }
+                : result);
+
+            if (mapped.state === 'success') {
+                // The current page still contains prototype synthesis markup.
+                // Never present it as the live model result until a reviewed live
+                // claim/evidence renderer replaces the fixture DOM.
+                answerCard?.classList.add('is-unavailable');
+                if (answerCard) answerCard.style.opacity = '.58';
+                showToast('Canlı API yanıtı doğrulandı; live claim/evidence renderer henüz etkin olmadığı için fixture sentez gösterilmiyor.', 'The live API response was validated; fixture synthesis is not shown because the live claim/evidence renderer is not enabled yet.');
+            }
+        } catch (error) {
+            console.error('Assistant live request failed:', error);
+            renderMappedState({ ok: false, code: 'UI_RENDER_FAILED', claims: [] });
+        } finally {
+            setLoadingUi(false);
+        }
     }
 
     function bindFindingEvidenceInteractions() {
@@ -177,7 +220,7 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         if (button.dataset.mode === 'gaps') { showToast('Araştırma boşlukları şimdilik fixture-only. Live gap verisi için ayrı, minimize edilmiş API contract review gereklidir.', 'Research gaps are FIXTURE-ONLY for now. Live gap data requires a separate, minimized API contract review.'); return; }
         if (button.dataset.mode !== 'ask') showToast('Bu mod prototipte yalnızca görsel olarak gösteriliyor. İlk sürümde “Sor” deneyimini tamamlayacağız.', 'This mode is visual-only in the prototype. The first release will complete the “Ask” experience.');
     }));
-    demoSearchButton?.addEventListener('click', runFixtureLifecycle);
+    demoSearchButton?.addEventListener('click', runLiveResearch);
     document.querySelectorAll('.source-action').forEach((button) => { button.setAttribute('aria-expanded', 'false'); button.addEventListener('click', () => toggleSourceDetail(button)); });
     document.querySelector('.assistant-answer-actions .assistant-primary-btn')?.addEventListener('click', beginFixtureFollowUp);
     document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(.assistant-primary-btn)').forEach((button) => { if (!button.disabled) button.addEventListener('click', () => showToast('Bu aksiyon sonraki UI iterasyonunda etkinleştirilecek.', 'This action will be enabled in a later UI iteration.')); });
