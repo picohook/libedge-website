@@ -111,7 +111,7 @@ export function mapAssistantResult(result) {
 }
 
 export function mapLiveAssistantResult(result) {
-  if (result?.ok === true && result?.code === 'OK' && !Array.isArray(result.evidence)) {
+  if (result?.ok === true && result?.code === 'OK' && (!Array.isArray(result.evidence) || !Array.isArray(result.claims))) {
     return mapAssistantResult({ ok: false, code: 'EVIDENCE_PAYLOAD_REQUIRED', claims: [] });
   }
   return mapAssistantResult(result);

@@ -3,11 +3,12 @@ import { readFileSync } from 'node:fs';
 
 const js = readFileSync(new URL('../../assets/js/assistant-ui.js', import.meta.url), 'utf8');
 
-describe('Assistant fixture source detail interaction', () => {
-    it('keeps source detail fixture-only and transport-free', () => {
+describe('Assistant source detail interaction', () => {
+    it('keeps fixture source detail local while live transport stays same-origin', () => {
         expect(js).toContain("detail.dataset.sourceDetail = 'fixture-only'");
         expect(js).toContain('Yeni kaynak verisi getirmez ve bibliyografik doğrulama yapmaz.');
-        expect(js).not.toMatch(/\bfetch\s*\(/);
+        expect(js).toContain("fetch('/api/assistant/ask'");
+        expect(js).not.toMatch(/fetch\s*\(\s*['"]https?:/);
         expect(js).not.toMatch(/XMLHttpRequest/);
         expect(js).not.toContain('assistant-api.js');
     });

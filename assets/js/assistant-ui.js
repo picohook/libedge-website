@@ -1,4 +1,4 @@
-import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) => {
+import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapLiveAssistantResult }) => {
     const sourcePanel = document.getElementById('assistantSources');
     const toast = document.getElementById('assistantPrototypeToast');
     const status = document.getElementById('assistantStatus');
@@ -143,6 +143,110 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
 
     function setLoadingUi(isLoading) { if (demoSearchButton) { demoSearchButton.disabled = isLoading; demoSearchButton.setAttribute('aria-busy', isLoading ? 'true' : 'false'); } if (queryInput) queryInput.readOnly = isLoading; answerCard?.classList.toggle('is-loading', isLoading); }
 
+    function clearLiveContent() {
+        document.querySelector('[data-live-assistant-content]')?.remove();
+    }
+
+    function evidenceLabel(item, index) {
+        return `E${index + 1}`;
+    }
+
+    function renderLiveAssistantResult(result) {
+        if (!answerCard || !Array.isArray(result?.claims) || !Array.isArray(result?.evidence)) return false;
+
+        clearLiveContent();
+        const evidenceById = new Map(result.evidence.map((item, index) => [
+            item.evidence_id,
+            { item, label: evidenceLabel(item, index) }
+        ]));
+
+        const live = document.createElement('section');
+        live.dataset.liveAssistantContent = 'true';
+        live.className = 'assistant-summary';
+
+        const heading = document.createElement('h3');
+        markTranslatable(heading, 'Kanıta dayalı bulgular', 'Evidence-grounded findings');
+        live.appendChild(heading);
+
+        const list = document.createElement('div');
+        list.className = 'assistant-findings';
+
+        result.claims.forEach((claim, index) => {
+            const finding = document.createElement('div');
+            finding.className = 'finding-item';
+
+            const badge = document.createElement('span');
+            badge.className = 'finding-index';
+            badge.textContent = `F${index + 1}`;
+
+            const body = document.createElement('div');
+            const text = document.createElement('p');
+            text.textContent = String(claim?.text || '');
+            body.appendChild(text);
+
+            (claim?.evidence_ids || []).forEach((id) => {
+                const linked = evidenceById.get(id);
+                if (!linked) return;
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'citation-chip';
+                chip.textContent = linked.label;
+                chip.addEventListener('click', () => {
+                    document.getElementById(`live-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    openSources();
+                });
+                body.appendChild(document.createTextNode(' '));
+                body.appendChild(chip);
+            });
+
+            finding.append(badge, body);
+            list.appendChild(finding);
+        });
+
+        live.appendChild(list);
+        answerCard.prepend(live);
+
+        const sourcePanelBody = sourcePanel;
+        sourcePanelBody?.querySelectorAll('[data-live-evidence]').forEach((node) => node.remove());
+        result.evidence.forEach((item, index) => {
+            const card = document.createElement('article');
+            card.className = 'source-card';
+            card.dataset.liveEvidence = 'true';
+            card.id = `live-${item.evidence_id}`;
+
+            const rank = document.createElement('div');
+            rank.className = 'source-rank';
+            rank.textContent = evidenceLabel(item, index);
+
+            const content = document.createElement('div');
+            content.className = 'source-content';
+            const title = document.createElement('h3');
+            title.textContent = item.title || item.work_id || evidenceLabel(item, index);
+            const meta = document.createElement('p');
+            meta.className = 'source-meta';
+            const authors = Array.isArray(item.authors) ? item.authors.map((a) => a?.name).filter(Boolean).join(', ') : '';
+            meta.textContent = [authors, item.publicationYear, item.venue?.name].filter(Boolean).join(' · ');
+            content.append(title, meta);
+            if (item.abstract) {
+                const abstract = document.createElement('p');
+                abstract.textContent = item.abstract;
+                content.appendChild(abstract);
+            }
+            card.append(rank, content);
+            sourcePanelBody?.appendChild(card);
+        });
+
+        document.querySelectorAll('.assistant-answer-card > :not([data-live-assistant-content])').forEach((node) => {
+            node.hidden = true;
+        });
+        document.querySelectorAll('#assistantSources > .source-card:not([data-live-evidence]), #assistantSources > .sources-intro').forEach((node) => {
+            node.hidden = true;
+        });
+        answerCard.classList.remove('is-unavailable');
+        answerCard.style.opacity = '1';
+        return true;
+    }
+
     function renderMappedState(result) {
         const mapped = mapAssistantResult(result);
         setStatus({ title: mapped.title, titleEn: mapped.titleEn, message: mapped.message, messageEn: mapped.messageEn, tone: mapped.tone, marker: mapped.evidencePackId ? 'EvidencePack hazır' : '', markerEn: mapped.evidencePackId ? 'EvidencePack ready' : '', state: mapped.state });
@@ -151,14 +255,56 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
 
     function wait(ms) { return new Promise((resolve) => window.setTimeout(resolve, ms)); }
 
-    async function runFixtureLifecycle() {
-        const query = queryInput?.value?.trim() || ''; if (query.length < 2 || query.length > 300) { renderMappedState({ ok: false, code: 'ASSISTANT_QUERY_INVALID', claims: [] }); queryInput?.focus(); return; }
-        setLoadingUi(true); clearEvidenceFocus(); closeSourceDetails(); closeSources(); if (answerCard) answerCard.style.opacity = '.58';
+    async function runLiveResearch() {
+        const query = queryInput?.value?.trim() || '';
+        if (query.length < 2 || query.length > 300) {
+            renderMappedState({ ok: false, code: 'ASSISTANT_QUERY_INVALID', claims: [] });
+            queryInput?.focus();
+            return;
+        }
+
+        setLoadingUi(true);
+        clearEvidenceFocus();
+        closeSourceDetails();
+        closeSources();
+        if (answerCard) answerCard.style.opacity = '.58';
+
         try {
-            for (let index = 0; index < 3; index += 1) { const stage = loadingStage(index); setStatus({ title: stage.title, titleEn: stage.titleEn, message: stage.message, messageEn: stage.messageEn, tone: 'loading', marker: `Aşama ${index + 1}/3`, markerEn: `Stage ${index + 1}/3`, state: `loading-${index + 1}` }); await wait(420); }
-            renderMappedState({ ok: true, code: 'OK', claims: [{ text: 'Fixture claim', evidence_ids: ['fixture:e1'] }], evidence_pack_id: 'fixture-pack' }); if (queryInput) { delete queryInput.dataset.followUp; delete queryInput.dataset.followUpContext; }
-            showToast('Fixture lifecycle tamamlandı. Gerçek /api/assistant/ask çağrısı yapılmadı.', 'Fixture lifecycle completed. No real /api/assistant/ask call was made.');
-        } catch (error) { console.error('Assistant fixture lifecycle failed:', error); renderMappedState({ ok: false, code: 'UI_RENDER_FAILED', claims: [] }); } finally { setLoadingUi(false); }
+            const stage = loadingStage(0);
+            setStatus({ title: stage.title, titleEn: stage.titleEn, message: stage.message, messageEn: stage.messageEn, tone: 'loading', marker: 'Live API', markerEn: 'Live API', state: 'loading-live' });
+
+            const response = await fetch('/api/assistant/ask', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ query })
+            });
+
+            let result;
+            try {
+                result = await response.json();
+            } catch {
+                result = { ok: false, code: 'UI_RENDER_FAILED', claims: [] };
+            }
+
+            const mapped = mapLiveAssistantResult(result);
+            renderMappedState(result?.ok === true && result?.code === 'OK' && !Array.isArray(result?.evidence)
+                ? { ok: false, code: 'EVIDENCE_PAYLOAD_REQUIRED', claims: [] }
+                : result);
+
+            if (mapped.state === 'success') {
+                if (renderLiveAssistantResult(result)) {
+                    showToast('Canlı iddialar ve bağlı EvidencePack kaynakları gösteriliyor.', 'Live claims and their linked EvidencePack sources are shown.');
+                } else {
+                    renderMappedState({ ok: false, code: 'EVIDENCE_PAYLOAD_REQUIRED', claims: [] });
+                }
+            }
+        } catch (error) {
+            console.error('Assistant live request failed:', error);
+            renderMappedState({ ok: false, code: 'UI_RENDER_FAILED', claims: [] });
+        } finally {
+            setLoadingUi(false);
+        }
     }
 
     function bindFindingEvidenceInteractions() {
@@ -177,7 +323,7 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult }) =>
         if (button.dataset.mode === 'gaps') { showToast('Araştırma boşlukları şimdilik fixture-only. Live gap verisi için ayrı, minimize edilmiş API contract review gereklidir.', 'Research gaps are FIXTURE-ONLY for now. Live gap data requires a separate, minimized API contract review.'); return; }
         if (button.dataset.mode !== 'ask') showToast('Bu mod prototipte yalnızca görsel olarak gösteriliyor. İlk sürümde “Sor” deneyimini tamamlayacağız.', 'This mode is visual-only in the prototype. The first release will complete the “Ask” experience.');
     }));
-    demoSearchButton?.addEventListener('click', runFixtureLifecycle);
+    demoSearchButton?.addEventListener('click', runLiveResearch);
     document.querySelectorAll('.source-action').forEach((button) => { button.setAttribute('aria-expanded', 'false'); button.addEventListener('click', () => toggleSourceDetail(button)); });
     document.querySelector('.assistant-answer-actions .assistant-primary-btn')?.addEventListener('click', beginFixtureFollowUp);
     document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(.assistant-primary-btn)').forEach((button) => { if (!button.disabled) button.addEventListener('click', () => showToast('Bu aksiyon sonraki UI iterasyonunda etkinleştirilecek.', 'This action will be enabled in a later UI iteration.')); });
