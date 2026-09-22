@@ -143,6 +143,110 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
 
     function setLoadingUi(isLoading) { if (demoSearchButton) { demoSearchButton.disabled = isLoading; demoSearchButton.setAttribute('aria-busy', isLoading ? 'true' : 'false'); } if (queryInput) queryInput.readOnly = isLoading; answerCard?.classList.toggle('is-loading', isLoading); }
 
+    function clearLiveContent() {
+        document.querySelector('[data-live-assistant-content]')?.remove();
+    }
+
+    function evidenceLabel(item, index) {
+        return `E${index + 1}`;
+    }
+
+    function renderLiveAssistantResult(result) {
+        if (!answerCard || !Array.isArray(result?.claims) || !Array.isArray(result?.evidence)) return false;
+
+        clearLiveContent();
+        const evidenceById = new Map(result.evidence.map((item, index) => [
+            item.evidence_id,
+            { item, label: evidenceLabel(item, index) }
+        ]));
+
+        const live = document.createElement('section');
+        live.dataset.liveAssistantContent = 'true';
+        live.className = 'assistant-summary';
+
+        const heading = document.createElement('h3');
+        markTranslatable(heading, 'Kanıta dayalı bulgular', 'Evidence-grounded findings');
+        live.appendChild(heading);
+
+        const list = document.createElement('div');
+        list.className = 'assistant-findings';
+
+        result.claims.forEach((claim, index) => {
+            const finding = document.createElement('div');
+            finding.className = 'finding-item';
+
+            const badge = document.createElement('span');
+            badge.className = 'finding-index';
+            badge.textContent = `F${index + 1}`;
+
+            const body = document.createElement('div');
+            const text = document.createElement('p');
+            text.textContent = String(claim?.text || '');
+            body.appendChild(text);
+
+            (claim?.evidence_ids || []).forEach((id) => {
+                const linked = evidenceById.get(id);
+                if (!linked) return;
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'citation-chip';
+                chip.textContent = linked.label;
+                chip.addEventListener('click', () => {
+                    document.getElementById(`live-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    openSources();
+                });
+                body.appendChild(document.createTextNode(' '));
+                body.appendChild(chip);
+            });
+
+            finding.append(badge, body);
+            list.appendChild(finding);
+        });
+
+        live.appendChild(list);
+        answerCard.prepend(live);
+
+        const sourcePanelBody = sourcePanel;
+        sourcePanelBody?.querySelectorAll('[data-live-evidence]').forEach((node) => node.remove());
+        result.evidence.forEach((item, index) => {
+            const card = document.createElement('article');
+            card.className = 'source-card';
+            card.dataset.liveEvidence = 'true';
+            card.id = `live-${item.evidence_id}`;
+
+            const rank = document.createElement('div');
+            rank.className = 'source-rank';
+            rank.textContent = evidenceLabel(item, index);
+
+            const content = document.createElement('div');
+            content.className = 'source-content';
+            const title = document.createElement('h3');
+            title.textContent = item.title || item.work_id || evidenceLabel(item, index);
+            const meta = document.createElement('p');
+            meta.className = 'source-meta';
+            const authors = Array.isArray(item.authors) ? item.authors.map((a) => a?.name).filter(Boolean).join(', ') : '';
+            meta.textContent = [authors, item.publicationYear, item.venue?.name].filter(Boolean).join(' · ');
+            content.append(title, meta);
+            if (item.abstract) {
+                const abstract = document.createElement('p');
+                abstract.textContent = item.abstract;
+                content.appendChild(abstract);
+            }
+            card.append(rank, content);
+            sourcePanelBody?.appendChild(card);
+        });
+
+        document.querySelectorAll('.assistant-answer-card > :not([data-live-assistant-content])').forEach((node) => {
+            node.hidden = true;
+        });
+        document.querySelectorAll('#assistantSources > .source-card:not([data-live-evidence]), #assistantSources > .sources-intro').forEach((node) => {
+            node.hidden = true;
+        });
+        answerCard.classList.remove('is-unavailable');
+        answerCard.style.opacity = '1';
+        return true;
+    }
+
     function renderMappedState(result) {
         const mapped = mapAssistantResult(result);
         setStatus({ title: mapped.title, titleEn: mapped.titleEn, message: mapped.message, messageEn: mapped.messageEn, tone: mapped.tone, marker: mapped.evidencePackId ? 'EvidencePack hazır' : '', markerEn: mapped.evidencePackId ? 'EvidencePack ready' : '', state: mapped.state });
@@ -189,12 +293,11 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
                 : result);
 
             if (mapped.state === 'success') {
-                // The current page still contains prototype synthesis markup.
-                // Never present it as the live model result until a reviewed live
-                // claim/evidence renderer replaces the fixture DOM.
-                answerCard?.classList.add('is-unavailable');
-                if (answerCard) answerCard.style.opacity = '.58';
-                showToast('Canlı API yanıtı doğrulandı; live claim/evidence renderer henüz etkin olmadığı için fixture sentez gösterilmiyor.', 'The live API response was validated; fixture synthesis is not shown because the live claim/evidence renderer is not enabled yet.');
+                if (renderLiveAssistantResult(result)) {
+                    showToast('Canlı iddialar ve bağlı EvidencePack kaynakları gösteriliyor.', 'Live claims and their linked EvidencePack sources are shown.');
+                } else {
+                    renderMappedState({ ok: false, code: 'EVIDENCE_PAYLOAD_REQUIRED', claims: [] });
+                }
             }
         } catch (error) {
             console.error('Assistant live request failed:', error);
