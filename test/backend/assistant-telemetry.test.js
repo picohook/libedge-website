@@ -26,6 +26,9 @@ describe('assistant privacy-safe telemetry', () => {
     });
     expect(JSON.stringify(payload)).not.toContain('private query');
     expect(JSON.stringify(payload)).not.toContain('private evidence');
+    expect(payload).not.toHaveProperty('query');
+    expect(payload).not.toHaveProperty('evidence');
+    expect(payload).not.toHaveProperty('user_id');
     spy.mockRestore();
   });
 });
