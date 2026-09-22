@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../auth/middleware.js';
 import { orchestrateResearchAnswer } from '../research/assistant-orchestrator.js';
+import { createBedrockModelAdapter } from './bedrock-model-adapter.js';
 
 const app = new Hono();
 
@@ -30,12 +31,16 @@ app.post('/api/assistant/ask', async (c) => {
     return c.json({ error: 'Geçerli bir araştırma sorgusu gerekli', code: 'ASSISTANT_QUERY_INVALID' }, 400);
   }
 
+  const providerGate = providerGateFromEnv(c.env);
+  const modelAdapter = providerGate.status === 'PASS'
+    ? createBedrockModelAdapter(c.env)
+    : null;
+
   const result = await orchestrateResearchAnswer({
     query,
     env: c.env,
-    providerGate: providerGateFromEnv(c.env)
-    // Intentionally no modelAdapter. A future provider integration requires a
-    // separate, reviewed change after the Provider Privacy Gate reaches PASS.
+    providerGate,
+    modelAdapter
   });
 
   return c.json(result, 200);
