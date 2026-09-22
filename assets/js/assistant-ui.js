@@ -145,6 +145,17 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
 
     function clearLiveContent() {
         document.querySelector('[data-live-assistant-content]')?.remove();
+        document.querySelectorAll('[data-live-evidence]').forEach((node) => node.remove());
+    }
+
+    function resetLiveResult() {
+        clearLiveContent();
+        document.querySelectorAll('.assistant-answer-card > :not([data-live-assistant-content])').forEach((node) => {
+            node.hidden = false;
+        });
+        document.querySelectorAll('#assistantSources > .source-card:not([data-live-evidence]), #assistantSources > .sources-intro').forEach((node) => {
+            node.hidden = false;
+        });
     }
 
     function evidenceLabel(item, index) {
@@ -250,10 +261,8 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
     function renderMappedState(result) {
         const mapped = mapAssistantResult(result);
         setStatus({ title: mapped.title, titleEn: mapped.titleEn, message: mapped.message, messageEn: mapped.messageEn, tone: mapped.tone, marker: mapped.evidencePackId ? 'EvidencePack hazır' : '', markerEn: mapped.evidencePackId ? 'EvidencePack ready' : '', state: mapped.state });
-        const isSuccess = mapped.state === 'success'; answerCard?.classList.toggle('is-unavailable', !isSuccess); if (answerCard) answerCard.style.opacity = isSuccess ? '1' : '.58'; if (!isSuccess) { clearEvidenceFocus(); closeSourceDetails(); closeSources(); } return mapped;
+        const isSuccess = mapped.state === 'success'; answerCard?.classList.toggle('is-unavailable', !isSuccess); if (answerCard) answerCard.style.opacity = isSuccess ? '1' : '.58'; if (!isSuccess) { resetLiveResult(); clearEvidenceFocus(); closeSourceDetails(); closeSources(); } return mapped;
     }
-
-    function wait(ms) { return new Promise((resolve) => window.setTimeout(resolve, ms)); }
 
     async function runLiveResearch() {
         const query = queryInput?.value?.trim() || '';
@@ -264,6 +273,7 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
         }
 
         setLoadingUi(true);
+        resetLiveResult();
         clearEvidenceFocus();
         closeSourceDetails();
         closeSources();

@@ -51,6 +51,13 @@ describe('Research Assistant live boundary', () => {
         expect(js).toContain('mapLiveAssistantResult(result)');
     });
 
+    it('clears stale live content before a new request and on non-success', () => {
+        expect(js).toContain('function resetLiveResult()');
+        expect(js).toContain("document.querySelectorAll('[data-live-evidence]').forEach((node) => node.remove())");
+        expect(js).toContain('if (!isSuccess) { resetLiveResult();');
+        expect(js).toContain('setLoadingUi(true);\n        resetLiveResult();');
+    });
+
     it('keeps loading and non-success presentation explicit', () => {
         expect(js).toContain("status.setAttribute('aria-busy', tone === 'loading' ? 'true' : 'false')");
         expect(js).toContain("answerCard?.classList.toggle('is-unavailable', !isSuccess)");
