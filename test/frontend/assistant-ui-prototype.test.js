@@ -9,7 +9,7 @@ describe('Research Assistant live boundary', () => {
     it('uses only the reviewed same-origin Assistant endpoint for live research', () => {
         expect(js).toContain("fetch('/api/assistant/ask'");
         expect(js).toContain("credentials: 'same-origin'");
-        expect(js).not.toMatch(/fetch\s*\(\s*['\"]https?:/);
+        expect(js).not.toMatch(/fetch\s*\(\s*['"]https?:/);
         expect(js).not.toMatch(/XMLHttpRequest/);
         expect(js).not.toContain('assistant-api.js');
     });
