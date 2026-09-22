@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../auth/middleware.js';
 import { orchestrateResearchAnswer } from '../research/assistant-orchestrator.js';
 import { createBedrockModelAdapter } from './bedrock-model-adapter.js';
+import { recordAssistantOutcome } from './telemetry.js';
 
 const app = new Hono();
 
@@ -16,6 +17,7 @@ export function providerGateFromEnv(env) {
 }
 
 app.post('/api/assistant/ask', async (c) => {
+  const startedAt = Date.now();
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
 
@@ -43,6 +45,7 @@ app.post('/api/assistant/ask', async (c) => {
     modelAdapter
   });
 
+  recordAssistantOutcome(c.env, { code: result?.code, durationMs: Date.now() - startedAt });
   return c.json(result, 200);
 });
 
