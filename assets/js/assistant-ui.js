@@ -219,6 +219,11 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
 
         const sourcePanelBody = sourcePanel;
         sourcePanelBody?.querySelectorAll('[data-live-evidence]').forEach((node) => node.remove());
+        const sourceCount = sourcePanelBody?.querySelector('.source-count');
+        if (sourceCount) sourceCount.textContent = String(result.evidence.length);
+        const reviewedCount = answerCard.querySelector('.assistant-answer-meta strong');
+        if (reviewedCount) reviewedCount.textContent = String(result.evidence.length);
+
         result.evidence.forEach((item, index) => {
             const card = document.createElement('article');
             card.className = 'source-card';
