@@ -321,9 +321,9 @@ function buildAnnouncementImageUrl(title, summary, env, options = {}) {
   const model = ALLOWED_IMAGE_MODELS.includes(options.model) ? options.model : 'flux';
 
   const url = new URL(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`);
-  const key = `institution-logos/${id}.${ext}`;
-  if (key) {
-    url.searchParams.set('key', key);
+  const apiKey = getPollinationsKey(env);
+  if (apiKey) {
+    url.searchParams.set('key', apiKey);
   }
   url.searchParams.set('model', model);
   url.searchParams.set('width', '1200');
@@ -339,14 +339,14 @@ function buildAnnouncementImageUrl(title, summary, env, options = {}) {
 }
 
 async function callPollinationsText(prompt, env) {
-  const key = `institution-logos/${id}.${ext}`;
+  const apiKey = getPollinationsKey(env);
   const body = {
     model: 'openai',
     messages: [{ role: 'user', content: prompt }],
     jsonMode: true,
     seed: Math.floor(Math.random() * 1e9)
   };
-  if (key) body.key = key;
+  if (apiKey) body.key = apiKey;
 
   const response = await fetch('https://text.pollinations.ai/', {
     method: 'POST',
@@ -928,7 +928,9 @@ async function resolveShareRecipients(db, actor, recipients = []) {
 async function checkRateLimit(kv, endpoint, identifier, maxRequests = 10, windowSeconds = 300) {
   if (!kv) return { isLimited: false, remaining: maxRequests, resetTime: Date.now() + windowSeconds * 1000 };
 
-  const key = `institution-logos/${id}.${ext}`;
+  const safeEndpoint = String(endpoint || 'unknown').trim().toLowerCase();
+  const safeIdentifier = String(identifier || 'anonymous').trim().toLowerCase();
+  const key = `rate:${safeEndpoint}:${safeIdentifier}`;
   const now = Date.now();
 
   const raw = await kv.get(key);
@@ -5193,8 +5195,14 @@ app.get('/api/files/*', async (c) => {
   const bucket = c.env.FILES_BUCKET;
   if (!bucket) return c.json({ error: 'R2 bucket bagli degil' }, 500);
 
-  const key = `institution-logos/${id}.${ext}`;
-  if (!key) return c.json({ error: 'Dosya bulunamadı' }, 404);
+  const rawKey = c.req.path.replace(/^\/api\/files\//, '');
+  if (!rawKey) return c.json({ error: 'Dosya bulunamadı' }, 404);
+  let key;
+  try {
+    key = decodeURIComponent(rawKey);
+  } catch {
+    key = rawKey;
+  }
 
   const db = c.env.DB;
   const stored = await getStoredFileByKey(db, key);
@@ -5337,7 +5345,7 @@ app.post('/api/admin/announcements/upload-cover', async (c) => {
 
   try {
     const ext = (file.name || 'cover').split('.').pop()?.toLowerCase() || 'jpg';
-    const key = `institution-logos/${id}.${ext}`;
+    const key = `announcement-covers/${Date.now()}-${crypto.randomUUID()}.${ext}`;
     const arrayBuffer = await file.arrayBuffer();
     await bucket.put(key, arrayBuffer, {
       httpMetadata: { contentType: file.type || 'image/jpeg' }
@@ -5867,11 +5875,10 @@ app.post('/api/support/tickets/:id/reply', async (c) => {
     const file = fd.get('file');
     if (file && typeof file !== 'string' && bucket) {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
-      const key = `institution-logos/${id}.${ext}`;
-      await bucket.put(key, await file.arrayBuffer(), { 
-    httpMetadata: { contentType: file.type },
-    customMetadata: { 'x-amz-acl': 'public-read' }
-    });
+      const key = `ticket-attachments/${id}-${Date.now()}.${ext}`;
+      await bucket.put(key, await file.arrayBuffer(), {
+        httpMetadata: { contentType: file.type }
+      });
       attachment_url = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : `/api/files/${key}`;
     }
   } else {
@@ -5999,11 +6006,10 @@ app.post('/api/admin/support/tickets/:id/reply', async (c) => {
     const file = fd.get('file');
     if (file && typeof file !== 'string' && bucket) {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
-      const key = `institution-logos/${id}.${ext}`;
-      await bucket.put(key, await file.arrayBuffer(), { 
-    httpMetadata: { contentType: file.type },
-    customMetadata: { 'x-amz-acl': 'public-read' }
-    });
+      const key = `ticket-attachments/${id}-admin-${Date.now()}.${ext}`;
+      await bucket.put(key, await file.arrayBuffer(), {
+        httpMetadata: { contentType: file.type }
+      });
       attachment_url = c.env.R2_PUBLIC_URL ? `${c.env.R2_PUBLIC_URL}/${key}` : `/api/files/${key}`;
     }
   } else {
