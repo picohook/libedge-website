@@ -22,14 +22,14 @@ This worksheet records already-known role assignments and explicit exclusions. I
 | DeepSeek deepseek-v4-pro | Independent H2 validator reviewer | Independent validator-review role already occupied |
 | Gemini 3.5 Flash-Lite | Original H2 R1 candidate; qualification failed | Disqualified for the planned rater role |
 | GPT-5.5 Instant | Replacement H2 R1; 3/3 visible-content qualification PASS | R1 role reserved; raw-response byte evidence disposition remains open |
-| Claude Opus 4.7 | Planned H2 R2; reserved/unexposed | Do not reassign while reserved unless governance explicitly changes |
+| Claude Opus 4.7 | H2 Primary Blind Rater R2; eligibility PASS and 3/3 format qualification PASS | R2 role locked; do not assign another substantive D-022 role |
 | DeepSeek deepseek-flash | H2 R2 candidate; Trial 1 failed | Disqualified for the planned rater role |
 
 The eventual canonical role roster must cite the preserved evidence for each entry and resolve any naming/version ambiguity before freeze. This worksheet itself is not that canonical roster.
 
 ## Current unfilled / unresolved functions
 
-- Qualified H2 R2: OPEN.
+- Qualified H2 R2: CLOSED for format qualification — Claude Opus 4.7, 3/3 fresh-session qualification PASS. Raw trial-output preservation remains part of the evidence package.
 - Candidate semantic `supportCheck` implementer/tuner: NOT APPOINTED here.
 - H2 holdout construction roles permitted by the frozen construction specification: must not be filled until the authorship gate permits construction.
 - Canonical freeze-manifest independent reviewer: must be eligible and independent at the time of review.
