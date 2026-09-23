@@ -24,6 +24,7 @@ This table consolidates model identities known to have been used, attempted, res
 | H2 | Qwen/Qwen3.8-27B via Cerebras | Replacement R1 transport attempt | Cloudflare HTTP 403 before model response; no qualification trial consumed |
 | H2 | Qwen/Qwen3.8-27B via DeepInfra | Replacement R1 candidate | T1 substantive response FAIL bundle hash; DISQUALIFIED; no T2/T3 |
 | H2 | Meta Llama 4 Maverick via OpenRouter | Replacement R1 candidate | eligibility PASS; streaming preflight PASS; T1 substantive response FAIL hash + B0030 field/order; DISQUALIFIED; no T2/T3 |
+| H2 | Nex AGI Nex-N2.5-Pro (`nex-agi/nex-n2.5-pro:free`) via OpenRouter | Primary Rater R1 | QUALIFICATION 3/3 PASS under successor v0.2; locked R1 identity/config; raw artifact hashes recorded |
 | H2 | Claude Opus 4.7 | Primary Rater R2 | visible 3/3 qualification PASS; locked R2; exact raw-output evidence recovery still open |
 | H2 | DeepSeek deepseek-flash | R2 candidate | QUALIFICATION FAILED / DISQUALIFIED |
 | H2 | Claude Opus 5.5 | Independent H2 Methodology Reviewer | OCCUPIED substantive role |
@@ -38,7 +39,7 @@ This table consolidates model identities known to have been used, attempted, res
 
 ## Current gates
 
-- H2 R1: **NOT QUALIFIED**.
+- H2 R1: **QUALIFIED 3/3 PASS** under successor qualification instrument v0.2; exact identity `nex-agi/nex-n2.5-pro:free` via OpenRouter locked for actual H2 R1.
 - H2 R2: **locked by visible 3/3 qualification; exact raw-output evidence package remains incomplete**.
 - H2 holdout authorship: **CLOSED**.
 - Candidate supportCheck: recovered and mechanically tested, but **not H2 evaluated, independently freeze-accepted, or deployment-authorized**.
