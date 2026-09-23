@@ -148,23 +148,26 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
         document.querySelectorAll('[data-live-evidence]').forEach((node) => node.remove());
     }
 
-    function resetLiveResult() {
-        clearLiveContent();
+    function hideFixtureResult() {
         document.querySelectorAll('.assistant-answer-card > :not([data-live-assistant-content])').forEach((node) => {
-            node.hidden = false;
+            node.hidden = true;
         });
         document.querySelectorAll('#assistantSources > .source-card:not([data-live-evidence]), #assistantSources > .sources-intro').forEach((node) => {
-            node.hidden = false;
+            node.hidden = true;
         });
+        const overview = document.querySelector('.evidence-overview');
+        if (overview) overview.hidden = true;
+        const sourceCount = sourcePanel?.querySelector('.source-count');
+        if (sourceCount) sourceCount.textContent = '0';
+    }
+
+    function resetLiveResult() {
+        clearLiveContent();
+        hideFixtureResult();
     }
 
     function setInitialLiveState() {
-        document.querySelectorAll('.assistant-answer-card > *').forEach((node) => {
-            node.hidden = true;
-        });
-        document.querySelectorAll('#assistantSources > .source-card, #assistantSources > .sources-intro').forEach((node) => {
-            node.hidden = true;
-        });
+        hideFixtureResult();
         answerCard?.classList.add('is-unavailable');
         if (answerCard) answerCard.style.opacity = '.58';
         setStatus({
@@ -273,12 +276,16 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
             sourcePanelBody?.appendChild(card);
         });
 
-        document.querySelectorAll('.assistant-answer-card > :not([data-live-assistant-content])').forEach((node) => {
-            node.hidden = true;
-        });
-        document.querySelectorAll('#assistantSources > .source-card:not([data-live-evidence]), #assistantSources > .sources-intro').forEach((node) => {
-            node.hidden = true;
-        });
+        hideFixtureResult();
+        const overview = document.querySelector('.evidence-overview');
+        if (overview) {
+            overview.hidden = false;
+            const metrics = overview.querySelectorAll('div strong');
+            if (metrics[0]) metrics[0].textContent = String(result.evidence.length);
+            if (metrics[1]) metrics[1].textContent = String(result.claims.length);
+            if (metrics[2]) metrics[2].textContent = '0';
+            if (metrics[3]) metrics[3].textContent = '0';
+        }
         answerCard.classList.remove('is-unavailable');
         answerCard.style.opacity = '1';
         return true;
