@@ -70,3 +70,16 @@ This record is an audit/provenance record only and is not a methodology amendmen
 - structural qualification result: `PASS`
 
 This is the first newly preserved exact-byte rerun trial. Two additional fresh-session R1 trials remain required before the rerun qualification set is complete. The earlier unrecoverable trials are not assigned reconstructed hashes.
+
+## R1 Trial 2 — rerun failure preserved 2026-09-23
+
+- raw output filename: `T2.json`
+- exact byte length: `3856`
+- exact SHA-256: `8522d7e9706a23faae9c42146381a949f438f735a5f782b6f22b6cf34d947ffb`
+- emitted bundle SHA-256 field: `866a15b89cccd9b6dd729a4d1c2fb4ef93942f56d4c6700d1946ebbc0843f78f`
+- authoritative qualification input SHA-256: `866a15b89ce7ace64dac4e24e5f7335c1a688f7e1d6d820af70691c8e4e6a0b2`
+- structural qualification result: `FAIL` — bundle identity mismatch
+
+Per the frozen qualification protocol, any qualification failure disqualifies that planned identity/configuration before H2 authorship. No salvage, normalization, correction, or Trial 3 is used to convert this failed three-trial sequence into a pass. The GPT-5.5 Instant R1 rerun configuration is therefore disqualified for this H2 version.
+
+No replacement R1 is recorded by this audit entry. A different eligible rater identity/version could be selected only before the canonical authorship gate and would itself require the full frozen 3/3 qualification; after authorship begins, a rater identity/configuration change requires a successor version.
