@@ -83,3 +83,37 @@ This is the first newly preserved exact-byte rerun trial. Two additional fresh-s
 Per the frozen qualification protocol, any qualification failure disqualifies that planned identity/configuration before H2 authorship. No salvage, normalization, correction, or Trial 3 is used to convert this failed three-trial sequence into a pass. The GPT-5.5 Instant R1 rerun configuration is therefore disqualified for this H2 version.
 
 No replacement R1 is recorded by this audit entry. A different eligible rater identity/version could be selected only before the canonical authorship gate and would itself require the full frozen 3/3 qualification; after authorship begins, a rater identity/configuration change requires a successor version.
+
+
+## Replacement R1 candidate — Qwen3.8-27B / DeepInfra — Trial 1 failure
+
+- model identity: `Qwen/Qwen3.8-27B`
+- provider: `deepinfra`
+- interface: Hugging Face Inference Providers OpenAI-compatible streaming chat completions
+- fixed configuration: stream=true; temperature=1.0; top_p=0.95; max_tokens=12000; reasoning_effort=low; tools=none
+- raw output byte length: `4218`
+- raw output SHA-256: `632375a757ed0b5241bdddc7234a9e4679e5a1756647359fe568d886328f3753`
+- authoritative qualification bundle SHA-256: `866a15b89ce7ace64dac4e24e5f7335c1a688f7e1d6d820af70691c8e4e6a0b2`
+- emitted bundle SHA-256: `3f7a2b8c9d1e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a`
+- structural result: `FAIL` — bundle_sha256 mismatch
+- disposition: configuration disqualified; no Trial 2 or Trial 3
+
+The streaming transport completed successfully. This is a substantive qualification response, not a transport failure.
+
+## Replacement R1 candidate — Meta Llama 4 Maverick / OpenRouter — Trial 1 failure
+
+- model identity: `meta-llama/llama-4-maverick`
+- OpenRouter returned backend provider: `Parasail`
+- interface: OpenRouter OpenAI-compatible streaming chat completions
+- fixed configuration: stream=true; temperature=0; max_tokens=12000; tools=none
+- raw output byte length: `4218`
+- raw output SHA-256: `48b2642ccd0bcd29d013e48202e66de8b6b082b04f360d13a2a25ca5373853da`
+- authoritative qualification bundle SHA-256: `866a15b89ce7ace64dac4e24e5f7335c1a688f7e1d6d820af70691c8e4e6a0b2`
+- emitted bundle SHA-256: `9b2ad55f6c991f5fe3b1c1e9e4d93e1d1f4d7d1e1c1a1d1e1f4d7d1e1c1a1d1e`
+- additional structural defect: B0030 used `B_item_id` instead of `item_id`
+- structural result: `FAIL` — bundle_sha256 mismatch; rating 30 fields mismatch; item IDs/order mismatch
+- disposition: configuration disqualified; no Trial 2 or Trial 3
+
+## Current R1 gate conclusion
+
+No R1 candidate is qualified under the current frozen qualification instrument. H2 holdout authorship remains closed. The repeated exact-hash failures are preserved as evidence; they are not normalized, corrected, or salvaged.
