@@ -48,7 +48,7 @@ The candidate remains byte-frozen while review is pending. This record does not 
 
 ## Remaining hard gates
 
-1. Complete independent checker-freeze/workspace-exclusion review and bind the accepted checker identity/hash.
+1. Independent checker-freeze review — **CLOSED**: Claude Haiku 4.5 ACCEPT / FINAL / LOCKED; exact candidate checker identity/hashes accepted unchanged.
 2. Perform final mechanical reconciliation of the role roster, exposure attestations, prerequisite hashes, and protected-staging repository-control evidence.
 3. Assemble the canonical freeze manifest from evidence only.
 4. Obtain independent canonical freeze-manifest acceptance and merge it on protected staging.
