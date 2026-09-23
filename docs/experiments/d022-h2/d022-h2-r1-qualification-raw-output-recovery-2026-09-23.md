@@ -49,3 +49,24 @@ This conclusion means only that the documented recovery attempt did not find rec
 - H2 holdout authorship remains closed.
 
 This record is an audit/provenance record only and is not a methodology amendment.
+
+## New exact-byte recovery trial
+
+### R1 Trial 1 — rerun preserved 2026-09-23
+
+- raw output filename: `T1.json`
+- exact byte length: `4216`
+- exact SHA-256: `a86b8a696eb4c779a827f299f7e70595425bfdbaa98bcc4cd7ad2cf83182bef0`
+- UTF-8 JSON parse: PASS
+- holdout_version: `D022-H2-QUALIFICATION`
+- qualification bundle SHA-256 field: `866a15b89ce7ace64dac4e24e5f7335c1a688f7e1d6d820af70691c8e4e6a0b2`
+- rater_id: `R1`
+- batch_id: `D022-H2-QUAL-90`
+- first/last item: `B0001` / `B0090`
+- ratings: exactly 90 unique expected IDs in exact order
+- labels: all within the allowed enum
+- top-level and rating-entry fields: no extras
+- status: `FINAL / LOCKED`
+- structural qualification result: `PASS`
+
+This is the first newly preserved exact-byte rerun trial. Two additional fresh-session R1 trials remain required before the rerun qualification set is complete. The earlier unrecoverable trials are not assigned reconstructed hashes.
