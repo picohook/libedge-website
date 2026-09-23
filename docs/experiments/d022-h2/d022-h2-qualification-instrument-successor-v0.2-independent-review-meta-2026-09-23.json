@@ -1,0 +1,13 @@
+{
+  "requested_model": "mistralai/mistral-medium-3-5",
+  "provider_returned": "Mistral",
+  "response_model": "mistralai/mistral-medium-3-5",
+  "temperature": 0,
+  "max_tokens": 1200,
+  "elapsed_seconds": 2.177,
+  "raw_review_bytes": 801,
+  "raw_review_sha256": "63abf5c7497647c58112fd543895b8c56639aa3e1063208cc596f9c1295224ca",
+  "disposition": "ACCEPT",
+  "scope_line_present": true,
+  "final_locked_present": true
+}
