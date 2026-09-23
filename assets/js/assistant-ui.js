@@ -283,8 +283,8 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
             const metrics = overview.querySelectorAll('div strong');
             if (metrics[0]) metrics[0].textContent = String(result.evidence.length);
             if (metrics[1]) metrics[1].textContent = String(result.claims.length);
-            if (metrics[2]) metrics[2].textContent = '0';
-            if (metrics[3]) metrics[3].textContent = '0';
+            if (metrics[2]) metrics[2].closest('div').hidden = true;
+            if (metrics[3]) metrics[3].closest('div').hidden = true;
         }
         answerCard.classList.remove('is-unavailable');
         answerCard.style.opacity = '1';
