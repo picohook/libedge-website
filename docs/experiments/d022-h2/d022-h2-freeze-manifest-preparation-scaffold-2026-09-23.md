@@ -31,7 +31,7 @@ No unresolved field below is pre-filled with `PASS`, `ACCEPTED`, `FINAL`, or `LO
 ## Current blockers to canonical manifest finalization
 
 1. Independent checker-freeze review — **CLOSED**: Claude Haiku 4.5 ACCEPT / FINAL / LOCKED; exact Grok 4.7 candidate bytes accepted unchanged. Canonical manifest must carry the frozen hashes.
-2. The assembled role roster, exposure attestations, prerequisite hashes, and protected-staging repository-control evidence require final mechanical reconciliation.
+2. Exact-byte prerequisite and protected-staging repository-control evidence are **CLOSED**. Complete-role-roster and required governance-review closure remains OPEN.
 3. The eventual canonical freeze manifest requires its own independent review before it can become a gating artifact.
 
 Qualification evidence for R1 and R2 and repository linkage of the independently accepted successor operational specification v0.2 are no longer blockers.
@@ -43,3 +43,7 @@ Do not rename this scaffold to `d022-h2-freeze-manifest.json` and do not convert
 The canonical manifest may be created only when its required evidence is actually present and its fields can be populated from that evidence without inference or retrospective substitution.
 
 Until then, H2 authorship remains closed.
+
+## Repository-control closure
+
+Active GitHub ruleset `Protect staging` targets `refs/heads/staging`, has no bypass actors, restricts deletion, blocks non-fast-forward/force-push rewrite, and requires the pull-request path. Operator-exported ruleset JSON: 927 bytes; SHA-256 `d18288c6a83ab63443d878e60c6f325866d1bae172fe128d520dd2cc7282ecd6`. Evidence merged through PR #175, merge commit `f035d34a6793ba5f6471751ebb7a7011fba26ec8`.
