@@ -25,8 +25,10 @@ describe('Assistant fail-closed UI contract', () => {
     expect(source).toContain('overview.hidden = false');
     expect(source).toContain("metrics[0].textContent = String(result.evidence.length)");
     expect(source).toContain("metrics[1].textContent = String(result.claims.length)");
-    expect(source).toContain("metrics[2].textContent = '0'");
-    expect(source).toContain("metrics[3].textContent = '0'");
+    expect(source).toContain("metrics[2].closest('div').hidden = true");
+    expect(source).toContain("metrics[3].closest('div').hidden = true");
+    expect(source).not.toContain("metrics[2].textContent = '0'");
+    expect(source).not.toContain("metrics[3].textContent = '0'");
   });
 
   it('ships the cache-busted fail-closed Assistant asset', async () => {
