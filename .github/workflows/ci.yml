@@ -72,3 +72,26 @@ jobs:
         env:
           OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
         run: npm run test:assistant-integration
+
+  assistant-staging-smoke:
+    name: Assistant staging fail-closed smoke
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run authenticated Assistant staging smoke
+        env:
+          LIBEDGE_SMOKE_BASE_URL: https://staging.libedge-website.pages.dev
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+        run: |
+          if [ -z "$LIBEDGE_SMOKE_EMAIL" ] || [ -z "$LIBEDGE_SMOKE_PASSWORD" ]; then
+            echo "::notice::Assistant staging smoke skipped because LIBEDGE_SMOKE_EMAIL/LIBEDGE_SMOKE_PASSWORD are not configured."
+            exit 0
+          fi
+          npm run smoke:assistant
