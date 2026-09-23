@@ -61,7 +61,7 @@ Result: independent checker-freeze review is CLOSED. The canonical freeze manife
 
 The canonical `d022-h2-freeze-manifest.json` must not be created/finalized as the authorship gate until all frozen prerequisites are satisfied and independently reviewable. At minimum, the remaining unresolved items are:
 
-1. final mechanical reconciliation of the assembled role roster, exposure attestations, prerequisite artifact identities/hashes, and protected-staging repository-control evidence;
+1. complete the remaining role-roster/exposure/governance-review requirements, including independent review of the H1 identity attestation;
 2. construction of the canonical freeze manifest from evidence only;
 3. independent review of that exact canonical freeze manifest by an eligible reviewer;
 4. merge of the independently accepted canonical freeze manifest on protected staging.
@@ -73,6 +73,10 @@ Until the remaining items are closed, H2 authorship remains CLOSED.
 ## Next evidence actions
 
 - Reconcile the role roster against the currently preserved evidence and remove stale status text without assigning new substantive roles.
-- Reconcile all prerequisite artifact identities/hashes and protected-staging repository-control evidence.
+- Exact-byte prerequisite identities/hashes and protected-staging repository-control evidence are reconciled and closed.
 - Construct the canonical freeze manifest only from preserved evidence.
 - Submit the exact canonical manifest to an eligible independent reviewer and merge it only after acceptance.
+
+## Repository-control closure
+
+Active GitHub ruleset `Protect staging` targets `refs/heads/staging`, has no bypass actors, restricts deletion, blocks non-fast-forward/force-push rewrite, and requires the pull-request path. Operator-exported ruleset JSON: 927 bytes; SHA-256 `d18288c6a83ab63443d878e60c6f325866d1bae172fe128d520dd2cc7282ecd6`. Evidence merged through PR #175, merge commit `f035d34a6793ba5f6471751ebb7a7011fba26ec8`.
