@@ -88,6 +88,11 @@ class_name = "OpenAlexSemanticPacer"
 [env.production]
 name = "libedge-api-prod"
 
+[env.production.observability]
+enabled = true
+head_sampling_rate = 1.0
+redact_query_string = true
+
 [env.production.triggers]
 crons = ["*/5 * * * *"]
 
