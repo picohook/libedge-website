@@ -1,6 +1,6 @@
 # D-022 H2 — Reasoning-Template Taxonomy Prerequisite Freeze v0.1
 
-Status: **PROPOSED / INDEPENDENT GOVERNING REVIEW REQUIRED**
+Status: **FINAL / LOCKED**
 
 This record proposes freezing prerequisite 4 of `d022-supportcheck-h2-construction-rating-spec-v0.1.md`: the closed H2 reasoning-template taxonomy plus its independent pre-authorship taxonomy review. It does not authorize H2 record authorship.
 
