@@ -35,7 +35,7 @@ Recovered conversation evidence establishes an earlier review request at head `f
 
 On 2026-09-23, the same eligible independent reviewer, Claude Opus 5.5 (`claude-opus-5-5`), reviewed the frozen exact final head `cb08182e9b8eb0e574f90a7b415e62d59e2222f0` and returned `CHANGES REQUIRED`, `FINAL / LOCKED`. Two blocking findings were recorded: (1) H1 claim-level consensus/disagreement non-exposure is not extended to the H2 taxonomy author, taxonomy reviewer, and rating-instrument author; and (2) checker-isolation timing is internally inconsistent and can permit access to H2 prerequisite/taxonomy material before checker freeze.
 
-Result: the #133 independent methodology review is now recovered/completed, but the methodology prerequisite remains OPEN / CHANGES REQUIRED. H2 authorship stays CLOSED. A successor operational specification must resolve the blocking findings and receive independent review.
+Result: the #133 v0.1 independent methodology review is CLOSED / CHANGES REQUIRED. A successor operational specification v0.2 was subsequently authored by Claude Opus 4.6 and independently reviewed by Claude Opus 5.5. The exact reviewed v0.2 bytes are 35,848 bytes with SHA-256 `4608338132762a0046f0edb24d80c61f5a13cf8cb7916e6216a50594916e292b`; the independent disposition was ACCEPTED / FINAL / LOCKED with no blocking findings. Exact-byte repository preservation/linkage of that reviewed v0.2 artifact remains a freeze-package preparation item. H2 authorship stays CLOSED until the canonical freeze gate closes.
 
 ## Role-separation status
 
@@ -47,32 +47,33 @@ This status record intentionally does not declare the roster complete or indepen
 
 Before H2 pool commitment/authorship, evidence must establish that the candidate semantic checker implementation/tuning role is isolated from H2 holdout construction, rating, and other mutually exclusive substantive roles required by the frozen specification.
 
-This status record does not identify an implementer, authorize implementation/tuning, or declare checker isolation complete.
+The candidate checker implementer/tuner is Grok 4.7. Eligibility/isolation was established before the four-file allowed-input package was supplied. The recovered candidate implementation is mechanically preserved by `docs/d022-supportcheck-candidate-provenance.md`: four deliverable hashes match the recovered inventory and the deterministic unit-test rerun is 15/15 PASS. This does not close checker isolation: independent checker-freeze review and canonical binding of the accepted checker identity/hash remain OPEN.
 
 ## Rater qualification status
 
 - R1 has a recorded 3/3 visible-content qualification PASS, but exact raw assistant-response byte evidence is not recoverable from presently available evidence. No raw-output hash may be invented.
-- R2 format qualification is complete: Claude Opus 4.7 passed eligibility and 3/3 fresh-session qualification trials on the authoritative 90-item qualification input. Preserve the three raw trial outputs as qualification evidence and keep this model locked to R2.
+- R2 format qualification is complete: Claude Opus 4.7 passed eligibility and 3/3 fresh-session qualification trials on the authoritative 90-item qualification input. The model is locked to R2; preservation/linkage of the three raw trial outputs remains part of the final evidence package.
 - Qualification must satisfy the frozen exact-model/configuration, fresh-session, byte-identical-input, tools-off requirements.
 
 ## Canonical freeze-manifest gate
 
 The canonical `d022-h2-freeze-manifest.json` must not be created/finalized as the authorship gate until all frozen prerequisites are satisfied and independently reviewable. At minimum, unresolved items currently include:
 
-1. #133 successor operational specification resolving the independent review's blocking findings, followed by independent acceptance;
-2. complete role roster and role-separation evidence;
-3. checker-isolation evidence consistent with the accepted successor specification;
-4. acceptable R1 qualification evidence disposition under the frozen rules;
-5. preservation/linkage of the qualified R2 raw trial evidence;
-6. all required prerequisite artifact identities/hashes;
-7. independent review of the canonical freeze manifest itself.
+1. exact-byte repository preservation/linkage of the independently accepted successor operational specification v0.2;
+2. independent checker-freeze review and binding of the accepted checker identity/hash;
+3. acceptable R1 qualification evidence disposition under the frozen rules;
+4. preservation/linkage of the qualified R2 raw trial evidence;
+5. final mechanical reconciliation of the assembled role roster and all required prerequisite artifact identities/hashes;
+6. construction of the canonical freeze manifest from evidence only;
+7. independent review of that exact canonical freeze manifest by an eligible reviewer.
 
 Until those are closed, H2 authorship remains CLOSED.
 
 ## Next evidence actions
 
-- Preserve/link the 2026-09-23 Claude Opus 5.5 independent review as provenance: #132 `ACCEPTED`; #133 `CHANGES REQUIRED` with two blocking findings. Do not treat #133 as accepted until a successor specification resolves those findings and is independently accepted.
-- Assemble the role roster from existing immutable evidence without assigning new substantive roles.
-- Assemble checker-isolation evidence before candidate checker/H2 authorship work begins.
-- Preserve and link the completed Claude Opus 4.7 R2 qualification evidence.
-- Only after the prerequisites are satisfied, construct the canonical freeze manifest and submit that exact artifact for independent review.
+- Preserve/link the exact accepted v0.2 successor specification and its Claude Opus 5.5 ACCEPTED / FINAL / LOCKED review.
+- Preserve the assembled role roster without assigning new substantive roles.
+- Submit the byte-frozen Grok 4.7 candidate checker package and isolation evidence for the required independent checker-freeze verification; do not tune or modify the checker from H2 results.
+- Preserve/link the completed Claude Opus 4.7 R2 qualification evidence.
+- Resolve the R1 raw-output evidence gap without inventing or reconstructing raw-response hashes.
+- Only after those prerequisites are satisfied, construct the canonical freeze manifest and submit that exact artifact for independent review.
