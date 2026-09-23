@@ -21,20 +21,24 @@ This worksheet records already-known role assignments and explicit exclusions. I
 | Grok 4.5 | Successor H2 validator author | Validator authorship role already occupied |
 | DeepSeek deepseek-v4-pro | Independent H2 validator reviewer | Independent validator-review role already occupied |
 | Gemini 3.5 Flash-Lite | Original H2 R1 candidate; qualification failed | Disqualified for the planned rater role |
-| GPT-5.5 Instant | Replacement H2 R1; 3/3 visible-content qualification PASS | R1 role reserved; raw-response byte evidence disposition remains open |
-| Claude Opus 4.7 | H2 Primary Blind Rater R2; eligibility PASS and 3/3 format qualification PASS | R2 role locked; do not assign another substantive D-022 role |
+| GPT-5.5 Instant | Replacement H2 R1 candidate | T1 PASS; T2 bundle-hash FAIL; DISQUALIFIED; do not reuse as R1 |
+| Nex AGI Nex-N2.5-Pro (`nex-agi/nex-n2.5-pro:free`) via OpenRouter | H2 Primary Rater R1; successor-v0.2 qualification 3/3 PASS | R1 role locked; exact raw-output hashes preserved; do not assign another substantive D-022 role |
+| Claude Opus 4.7 | H2 Primary Blind Rater R2; eligibility PASS and 3/3 format qualification PASS | R2 role locked; exact raw-output evidence CLOSED; do not assign another substantive D-022 role |
 | DeepSeek deepseek-flash | H2 R2 candidate; Trial 1 failed | Disqualified for the planned rater role |
 | Claude Opus 5.5 | Independent H2 Methodology Reviewer (#132/#133 and successor v0.2 review) | Independent methodology-review role already occupied |
 | Claude Opus 4.6 | H2 Successor Operational Specification Author | Specification-author role already occupied |
 | Claude Opus 3 | Candidate supportCheck implementer/tuner attempt; eligibility passed, no deliverable after two refusals | Preserve consumed role history; do not silently recycle |
-| Grok 4.7 | Candidate supportCheck Implementer/Tuner; eligibility/isolation PASS; recovered implementation complete | Implementer/tuner role locked; usage unavailable after artifact recovery |
+| Grok 4.7 | Candidate supportCheck Implementer/Tuner; eligibility/isolation PASS; recovered implementation complete | Implementer/tuner role locked; exact candidate accepted unchanged by independent checker-freeze review |
+| Claude Haiku 4.5 | Independent Candidate supportCheck Checker-Freeze Reviewer | ACCEPT / FINAL / LOCKED; role occupied; exact candidate bytes approved unchanged for later H2 evaluation |
 
 The eventual canonical role roster must cite the preserved evidence for each entry and resolve any naming/version ambiguity before freeze. This worksheet itself is not that canonical roster.
 
 ## Current unfilled / unresolved functions
 
-- Qualified H2 R2: CLOSED for format qualification — Claude Opus 4.7, 3/3 fresh-session qualification PASS. Raw trial-output preservation remains part of the evidence package.
-- Candidate semantic `supportCheck` implementer/tuner: CLOSED for implementation — Grok 4.7; recovered exact artifact hashes and 15/15 deterministic unit-test rerun are recorded in `docs/d022-supportcheck-candidate-provenance.md`. Independent checker-freeze review remains OPEN.
+- Qualified H2 R1: CLOSED — Nex AGI Nex-N2.5-Pro, 3/3 successor-v0.2 qualification PASS; exact raw-output hashes preserved.
+- Qualified H2 R2: CLOSED — Claude Opus 4.7, 3/3 fresh-session qualification PASS; exact raw-output evidence CLOSED.
+- Candidate semantic `supportCheck` implementer/tuner: CLOSED for implementation — Grok 4.7; recovered exact artifact hashes and 15/15 deterministic unit-test rerun are recorded in `docs/d022-supportcheck-candidate-provenance.md`.
+- Independent candidate checker-freeze review: CLOSED — Claude Haiku 4.5, ACCEPT / FINAL / LOCKED; exact candidate bytes accepted unchanged.
 - H2 holdout construction roles permitted by the frozen construction specification: must not be filled until the authorship gate permits construction.
 - Canonical freeze-manifest independent reviewer: must be eligible and independent at the time of review.
 
@@ -53,10 +57,10 @@ Before candidate-checker implementation/tuning and before H2 pool commitment, th
 
 ## Current checker-isolation evidence status
 
-The candidate checker implementer/tuner is Grok 4.7. Its eligibility/isolation gate passed before the allowed-input package was supplied, and the recovered implementation provenance is recorded separately. Checker isolation is nevertheless not yet CLOSED: independent checker-freeze review and binding of the accepted checker identity/hash into the canonical freeze manifest remain prerequisites before H2 commitment.
+The candidate checker implementer/tuner is Grok 4.7. Its eligibility/isolation gate passed before the allowed-input package was supplied, and the recovered implementation provenance is recorded separately. Independent checker-freeze review is CLOSED. The accepted checker identity/hashes must now be bound into the canonical freeze manifest before H2 commitment.
 
 The current GPT-5.6 Sol session is already recorded as H1 Primary Blind Rater R1 and is excluded from serving as candidate-checker implementer/tuner, H2 holdout author, H2 rater, or independent H2 methodology reviewer.
 
 ## Freeze-gate consequence
 
-This worksheet may be used as an input to the prerequisite evidence package, but it must not be treated as the canonical `d022-h2-freeze-manifest.json`. H2 authorship remains CLOSED until the frozen prerequisites, including qualified R2 and required independent reviews, are complete.
+This worksheet may be used as an input to the prerequisite evidence package, but it must not be treated as the canonical `d022-h2-freeze-manifest.json`. H2 authorship remains CLOSED until the frozen prerequisites, including canonical binding and required final independent review, are complete.

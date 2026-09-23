@@ -34,7 +34,6 @@ This table consolidates model identities known to have been used, attempted, res
 | H2 | Grok 4.7 | Candidate supportCheck Implementer/Tuner | candidate artifacts recovered; usage exhausted; candidate not H2-evaluated/deployment-authorized |
 | H2 | Kimi K2.5 (`moonshotai/kimi-k2.5`) via SiliconFlow | Qualification Instrument Successor v0.2 Exact Instantiator | OCCUPIED exact-instantiation role; eligibility PASS; exact artifacts mechanically instantiated |
 | H2 | Mistral Medium 3.5 (`mistralai/mistral-medium-3-5`) | Independent Qualification Instrument Successor v0.2 Methodology Reviewer | ACCEPTED / FINAL / LOCKED; OCCUPIED independent review role |
-| Reserved | Claude Haiku 4.5 | Intended final independent canonical freeze/checker-freeze review | RESERVED / UNUSED for substantive D-022 work; successor-author eligibility prompt was declined before any artifact exposure, so no substantive role was consumed |
 | Considered only | Dolphin-Mistral-24B-Venice-Edition | Possible replacement R1 | NOT USED; no shared HF Inference Provider path selected |
 | Considered only | Mistral family alternatives | Possible replacement R1 | NOT USED; no candidate qualified/started |
 
@@ -43,8 +42,8 @@ This table consolidates model identities known to have been used, attempted, res
 - H2 R1: **QUALIFIED 3/3 PASS** under successor qualification instrument v0.2; exact identity `nex-agi/nex-n2.5-pro:free` via OpenRouter locked for actual H2 R1.
 - H2 R2: **QUALIFIED / LOCKED; exact raw-output evidence CLOSED**. T1/T2/T3 operator-saved raw JSON artifacts are byte-identical, 4216 bytes each, SHA-256 `916843547057aa654fa1f2be511b1b80278ed8393182b58dbb8d83850c416629`.
 - H2 holdout authorship: **CLOSED**.
-- Candidate supportCheck: recovered and mechanically tested, but **not H2 evaluated, independently freeze-accepted, or deployment-authorized**.
-- Claude Haiku 4.5 remains reserved and should not be consumed merely to compensate for a knowingly incomplete package.
+- Candidate supportCheck: recovered, mechanically tested, and **independently checker-freeze ACCEPTED / FINAL / LOCKED** by Claude Haiku 4.5; it remains **not H2 evaluated and not deployment-authorized**.
+- Claude Haiku 4.5 has now occupied the independent checker-freeze reviewer role and must not be reused for the independent canonical freeze-manifest review.
 
 ## Qualification-instrument issue identified
 
