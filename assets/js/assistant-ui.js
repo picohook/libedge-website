@@ -158,6 +158,27 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
         });
     }
 
+    function setInitialLiveState() {
+        document.querySelectorAll('.assistant-answer-card > *').forEach((node) => {
+            node.hidden = true;
+        });
+        document.querySelectorAll('#assistantSources > .source-card, #assistantSources > .sources-intro').forEach((node) => {
+            node.hidden = true;
+        });
+        answerCard?.classList.add('is-unavailable');
+        if (answerCard) answerCard.style.opacity = '.58';
+        setStatus({
+            title: 'Araştırmaya hazır',
+            titleEn: 'Ready to research',
+            message: 'Bir araştırma sorusu girin. Doğrulanmış canlı sonuç hazır olduğunda burada gösterilecektir.',
+            messageEn: 'Enter a research question. A verified live result will be shown here when available.',
+            tone: 'info',
+            marker: 'Live API',
+            markerEn: 'Live API',
+            state: 'ready-live'
+        });
+    }
+
     function evidenceLabel(item, index) {
         return `E${index + 1}`;
     }
@@ -329,7 +350,7 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
         });
     }
 
-    markResearchGapsFixtureOnly(); addFindingContextualFollowUps(); bindFindingEvidenceInteractions();
+    markResearchGapsFixtureOnly(); addFindingContextualFollowUps(); bindFindingEvidenceInteractions(); setInitialLiveState();
     document.querySelectorAll('.citation-chip[data-source]').forEach((button) => button.addEventListener('click', () => highlightSource(button.dataset.source)));
     document.getElementById('viewSourcesBtn')?.addEventListener('click', openSources);
     document.getElementById('closeSourcesBtn')?.addEventListener('click', () => { closeSourceDetails(); closeSources(); });

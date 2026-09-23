@@ -64,6 +64,13 @@ describe('Research Assistant live boundary', () => {
         expect(js).toContain("answerCard.querySelector('.assistant-answer-meta strong')");
     });
 
+    it('starts in a neutral live-ready state instead of showing fixture synthesis as current output', () => {
+        expect(js).toContain('function setInitialLiveState()');
+        expect(js).toContain("title: 'Araştırmaya hazır'");
+        expect(js).toContain("state: 'ready-live'");
+        expect(js).toContain('bindFindingEvidenceInteractions(); setInitialLiveState();');
+    });
+
     it('keeps loading and non-success presentation explicit', () => {
         expect(js).toContain("status.setAttribute('aria-busy', tone === 'loading' ? 'true' : 'false')");
         expect(js).toContain("answerCard?.classList.toggle('is-unavailable', !isSuccess)");
