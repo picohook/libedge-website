@@ -19,9 +19,9 @@ This record consolidates already-established prerequisite evidence for the futur
 
 ## Primary-rater evidence
 
-- R1: GPT-5.5 Instant; three fresh-session outputs were observed as structurally valid visible-content PASS. Exact raw-response bytes/hashes are not presently recoverable. Under the qualification manifest, three raw-output hashes/results remain required before Prerequisite 5 can be FINAL / LOCKED.
-- R2: Claude Opus 4.7; eligibility passed and three fresh-session format-qualification outputs were observed as PASS. Exact raw-response bytes/hashes are not presently recoverable. The three raw-output hashes/results therefore remain an evidence-package item.
-- No missing raw-output hash may be reconstructed from visible text, normalized JSON, or assistant memory.
+- R1 successor: Nex AGI Nex-N2.5-Pro (`nex-agi/nex-n2.5-pro:free`) via OpenRouter; successor-v0.2 qualification 3/3 PASS and identity/configuration locked. Exact operator-saved raw artifact linkage is recorded: T1 4,802 bytes / SHA-256 `2898c00be2ba66884010f5737e3a2e5265aee542e72692049d069d0362689fb6`; T2 4,216 bytes / SHA-256 `a86b8a696eb4c779a827f299f7e70595425bfdbaa98bcc4cd7ad2cf83182bef0`; T3 4,216 bytes / same SHA-256 as T2. Evidence merged on staging through PR #169, merge commit `17fe5121f1cdf8ed164346aa46e6c17c4f4c9a3d`.
+- R2: Claude Opus 4.7; eligibility passed, 3/3 qualification PASS, identity locked. Exact operator-saved raw artifacts are byte-identical: each 4,216 bytes / SHA-256 `916843547057aa654fa1f2be511b1b80278ed8393182b58dbb8d83850c416629`. Raw-evidence closure merged on staging through PR #170, merge commit `25104327f44d72b1500ad642d7d348a2f4a92305`.
+- Qualification raw-output evidence gaps for both primary raters are therefore CLOSED. This preparation record does not itself authorize H2 rating.
 
 ## Construction/rating validator
 
@@ -48,13 +48,14 @@ The candidate remains byte-frozen while review is pending. This record does not 
 
 ## Remaining hard gates
 
-1. Preserve three exact raw qualification outputs + SHA-256 hashes for the locked R1 configuration.
-2. Preserve three exact raw qualification outputs + SHA-256 hashes for the locked R2 configuration.
-3. Complete independent checker-freeze/workspace-exclusion review and bind the accepted checker identity/hash.
-4. Assemble the canonical freeze manifest with all prerequisite merge commits, role/exposure attestations, repository-control evidence, and required hashes.
-5. Obtain independent canonical freeze-manifest acceptance and merge it on protected staging.
+1. Complete independent checker-freeze/workspace-exclusion review and bind the accepted checker identity/hash.
+2. Perform final mechanical reconciliation of the role roster, exposure attestations, prerequisite hashes, and protected-staging repository-control evidence.
+3. Assemble the canonical freeze manifest from evidence only.
+4. Obtain independent canonical freeze-manifest acceptance and merge it on protected staging.
 
-Until all five are closed, H2 authorship remains `CLOSED`.
+R1 and R2 qualification raw-output evidence is CLOSED. The exact accepted successor operational specification v0.2 is already preserved on staging by merge `adbc666d2d74cdba2eae6f3f40d94ffec408b7cd`, as recorded above.
+
+Until the remaining gates close, H2 authorship remains `CLOSED`.
 
 ## Reviewer conservation rule
 

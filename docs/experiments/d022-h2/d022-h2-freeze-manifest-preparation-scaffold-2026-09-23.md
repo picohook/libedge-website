@@ -21,21 +21,20 @@ No unresolved field below is pre-filled with `PASS`, `ACCEPTED`, `FINAL`, or `LO
 | H2 reasoning-template taxonomy prerequisite | Locked taxonomy artifacts plus independent review record | SOURCE IDENTIFIED; status-consistency issue closed separately; final manifest value intentionally not asserted here |
 | H2 construction/rating validator prerequisite | Frozen validator package, tests, Stage K/freeze evidence and independent validator review | SOURCE IDENTIFIED; final manifest value intentionally not asserted here |
 | Qualification source artifacts | Four byte-identical repository artifacts merged through PR #151 | SOURCE IDENTIFIED; independent byte verification exists; final manifest value intentionally not asserted here |
-| R1 qualification evidence | Exact planned R1/configuration, 3/3 qualification results, raw-output evidence/hashes as required by frozen spec | **OPEN** — 3/3 visible-content PASS; exact raw-response bytes not recoverable from presently available evidence |
-| R2 qualification evidence | Eligible different-family, unexposed R2 identity/configuration and 3/3 fresh-session qualification evidence | QUALIFICATION CLOSED — Claude Opus 4.7 passed eligibility and 3/3 fresh-session trials; raw trial preservation/linkage remains a final evidence-package item |
-| #132/#133/successor independent-review provenance | Independent review by an identity eligible under the frozen role-separation matrix | #132 ACCEPTED; #133 v0.1 CHANGES REQUIRED; successor v0.2 exact bytes independently ACCEPTED / FINAL / LOCKED; repository preservation/linkage of v0.2 remains |
+| R1 qualification evidence | Exact planned R1/configuration, 3/3 qualification results, raw-output evidence/hashes as required by accepted successor instrument | **CLOSED** — Nex AGI Nex-N2.5-Pro via OpenRouter passed 3/3; exact operator-saved raw hashes recorded and merged through PR #169 |
+| R2 qualification evidence | Eligible different-family, unexposed R2 identity/configuration and 3/3 fresh-session qualification evidence | **CLOSED** — Claude Opus 4.7 passed 3/3; exact operator-saved raw hashes recorded and merged through PR #170 |
+| #132/#133/successor independent-review provenance | Independent review by an identity eligible under the frozen role-separation matrix | #132 ACCEPTED; #133 v0.1 CHANGES REQUIRED; successor v0.2 exact bytes independently ACCEPTED / FINAL / LOCKED and preserved on staging by merge `adbc666d2d74cdba2eae6f3f40d94ffec408b7cd` |
 | Role roster / role separation | Frozen role matrix plus identity/exposure evidence for every required role | ASSEMBLED IN WORKSHEET; final mechanical reconciliation and independent freeze-manifest verification remain |
 | Checker isolation | Evidence required by the accepted successor specification before H2 pool commitment | Grok 4.7 candidate implementation recovered; four artifact hashes verified; 15/15 deterministic tests PASS; independent checker-freeze review and canonical hash binding remain OPEN |
 | Independent freeze-manifest review | Review of the eventual canonical manifest by an eligible independent reviewer | **NOT YET APPLICABLE** — canonical manifest must not be finalized while blockers remain |
 
 ## Current blockers to canonical manifest finalization
 
-1. R1 raw-output evidence disposition remains unresolved at the evidence-completeness level; exact raw bytes must not be reconstructed or assigned invented hashes.
-2. The independently accepted successor operational specification v0.2 must be preserved/linked as the exact reviewed bytes.
-3. The Grok 4.7 checker package requires the accepted successor specification's independent checker-freeze verification and canonical hash binding.
-4. Qualified R2 raw trial evidence must be preserved/linked in the final evidence package.
-5. The assembled role roster and prerequisite hashes require final mechanical reconciliation.
-6. The eventual canonical freeze manifest requires its own independent review before it can become a gating artifact.
+1. The Grok 4.7 checker package requires independent checker-freeze/workspace-exclusion verification and canonical hash binding.
+2. The assembled role roster, exposure attestations, prerequisite hashes, and protected-staging repository-control evidence require final mechanical reconciliation.
+3. The eventual canonical freeze manifest requires its own independent review before it can become a gating artifact.
+
+Qualification evidence for R1 and R2 and repository linkage of the independently accepted successor operational specification v0.2 are no longer blockers.
 
 ## Boundary
 
