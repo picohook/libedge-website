@@ -1,0 +1,25 @@
+{
+  "instantiator_model": "moonshotai/kimi-k2.5",
+  "provider": "SiliconFlow",
+  "eligibility": "PASS",
+  "temperature": 0,
+  "max_tokens": 3200,
+  "finish_reason": "stop",
+  "raw_output_bytes": 11188,
+  "raw_output_sha256": "9830a8d05cdc46b24b7152a981de043d493f85307b4eb9b69aee55be0a4162c8",
+  "artifacts": {
+    "d022-h2-primary-rater-prompt-v0_2-PROPOSED.md": {
+      "bytes": 2752,
+      "sha256": "7bc539fb0afc85c69e2e028ed8e008de2c4862309283fa90542a0fa06f53704e"
+    },
+    "d022-h2-rating-batch-output.schema-v0_2-PROPOSED.json": {
+      "bytes": 1707,
+      "sha256": "8ecb53b4e336641310be61a1bfb70815d8304259c929e83e05b8c453778db923",
+      "structurally_identical_to_v0_1": true
+    },
+    "d022-h2-rating-instrument-qualification-manifest-v0_2-PROPOSED.md": {
+      "bytes": 6606,
+      "sha256": "a386f83b79a7a61edf244e2896b7785105710d73a8062c3e50ec0562573d005d"
+    }
+  }
+}
