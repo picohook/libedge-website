@@ -52,7 +52,7 @@ The candidate checker implementer/tuner is Grok 4.7. Eligibility/isolation was e
 ## Rater qualification status
 
 - R1 successor qualification is complete: Nex AGI Nex-N2.5-Pro (`nex-agi/nex-n2.5-pro:free`) via OpenRouter passed 3/3 fresh-session trials under the independently accepted v0.2 successor instrument. Operator-saved raw JSON artifacts were mechanically hashed from exact mounted bytes: T1 `2898c00be2ba66884010f5737e3a2e5265aee542e72692049d069d0362689fb6` (4802 bytes); T2 `a86b8a696eb4c779a827f299f7e70595425bfdbaa98bcc4cd7ad2cf83182bef0` (4216 bytes); T3 same SHA/4216 bytes. The exact identity/configuration is locked to actual H2 R1.
-- R2 format qualification is complete: Claude Opus 4.7 passed eligibility and 3/3 fresh-session qualification trials on the authoritative 90-item qualification input. The model is locked to R2; preservation/linkage of the three raw trial outputs remains part of the final evidence package.
+- R2 format qualification and raw-evidence closure are complete: Claude Opus 4.7 passed eligibility and 3/3 fresh-session qualification trials on the authoritative 90-item qualification input. The model is locked to R2. The three operator-saved raw outputs were mechanically verified as byte-identical, 4216 bytes each, SHA-256 `916843547057aa654fa1f2be511b1b80278ed8393182b58dbb8d83850c416629`.
 - Qualification must satisfy the frozen exact-model/configuration, fresh-session, byte-identical-input, tools-off requirements.
 
 ## Canonical freeze-manifest gate
@@ -62,7 +62,7 @@ The canonical `d022-h2-freeze-manifest.json` must not be created/finalized as th
 1. exact-byte repository preservation/linkage of the independently accepted successor operational specification v0.2;
 2. independent checker-freeze review and binding of the accepted checker identity/hash;
 3. acceptable R1 qualification evidence disposition under the accepted successor v0.2 rules — CLOSED / 3/3 PASS;
-4. preservation/linkage of the qualified R2 raw trial evidence;
+4. preservation/linkage of the qualified R2 raw trial evidence — CLOSED;
 5. final mechanical reconciliation of the assembled role roster and all required prerequisite artifact identities/hashes;
 6. construction of the canonical freeze manifest from evidence only;
 7. independent review of that exact canonical freeze manifest by an eligible reviewer.
@@ -74,6 +74,6 @@ Until those are closed, H2 authorship remains CLOSED.
 - Preserve/link the exact accepted v0.2 successor specification and its Claude Opus 5.5 ACCEPTED / FINAL / LOCKED review.
 - Preserve the assembled role roster without assigning new substantive roles.
 - Submit the byte-frozen Grok 4.7 candidate checker package and isolation evidence for the required independent checker-freeze verification; do not tune or modify the checker from H2 results.
-- Preserve/link the completed Claude Opus 4.7 R2 qualification evidence.
+- Claude Opus 4.7 R2 qualification raw-evidence linkage is CLOSED; retain the exact recorded hashes during canonical reconciliation.
 - Preserve/reconcile the three operator-saved Nex-N2.5-Pro R1 raw JSON artifacts against the recorded exact-byte hashes; do not normalize or reconstruct them.
 - Only after those prerequisites are satisfied, construct the canonical freeze manifest and submit that exact artifact for independent review.
