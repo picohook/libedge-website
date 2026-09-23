@@ -49,7 +49,7 @@ The candidate remains byte-frozen while review is pending. This record does not 
 ## Remaining hard gates
 
 1. Independent checker-freeze review — **CLOSED**: Claude Haiku 4.5 ACCEPT / FINAL / LOCKED; exact candidate checker identity/hashes accepted unchanged.
-2. Perform final mechanical reconciliation of the role roster, exposure attestations, prerequisite hashes, and protected-staging repository-control evidence.
+2. Exact-byte and protected-staging repository-control reconciliation — **CLOSED** through PR #174 / #175. Complete-role-roster and required governance-review closure remains OPEN.
 3. Assemble the canonical freeze manifest from evidence only.
 4. Obtain independent canonical freeze-manifest acceptance and merge it on protected staging.
 
@@ -60,3 +60,7 @@ Until the remaining gates close, H2 authorship remains `CLOSED`.
 ## Reviewer conservation rule
 
 Do not consume the reserved unused independent reviewer on a knowingly incomplete canonical freeze package. Final independent review should be requested only after the qualification raw-output evidence and checker-freeze evidence are complete.
+
+## Repository-control closure
+
+Active GitHub ruleset `Protect staging` targets `refs/heads/staging`, has no bypass actors, restricts deletion, blocks non-fast-forward/force-push rewrite, and requires the pull-request path. Operator-exported ruleset JSON: 927 bytes; SHA-256 `d18288c6a83ab63443d878e60c6f325866d1bae172fe128d520dd2cc7282ecd6`. Evidence merged through PR #175, merge commit `f035d34a6793ba5f6471751ebb7a7011fba26ec8`.
