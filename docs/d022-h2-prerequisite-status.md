@@ -18,7 +18,9 @@ This record does not create or finalize the canonical `d022-h2-freeze-manifest.j
 
 Recovered conversation evidence records an off-platform ACCEPTED disposition for the exact final head. The same recovered review text identifies that reviewer session as the H1 R2 rater and states that it had seen H1 claim-level consensus rows. Because the required review was independent and role separation is a frozen prerequisite, this recovered review cannot by itself close the independent-review gate. Repository-native GitHub review evidence also remains absent.
 
-Result: provenance is partially recovered, but the required independent-review prerequisite remains OPEN.
+On 2026-09-23, an eligible independent reviewer, Claude Opus 5.5 (`claude-opus-5-5`), reviewed the frozen exact final head and returned `ACCEPTED`, `FINAL / LOCKED`. The review restated head `f0ca5e6bd2328ab61b4d34368cac2b6d3dd4c391` and recorded no blocking findings.
+
+Result: the #132 exact-final-head independent methodology review prerequisite is CLOSED / ACCEPTED. This retrospective review closes the current evidence gap; it does not rewrite the historical pre-merge chronology.
 
 ### PR #133 — H2 construction/rating specification
 
@@ -31,7 +33,9 @@ Result: provenance is partially recovered, but the required independent-review p
 
 Recovered conversation evidence establishes an earlier review request at head `f61d867537f703d3b5b8924659ed9da30f33fd34`, but no final independent-review disposition/evidence for final head `cb08182e9b8eb0e574f90a7b415e62d59e2222f0` has been recovered. Repository-native GitHub review evidence remains absent.
 
-Result: the required final-head independent-review prerequisite remains OPEN.
+On 2026-09-23, the same eligible independent reviewer, Claude Opus 5.5 (`claude-opus-5-5`), reviewed the frozen exact final head `cb08182e9b8eb0e574f90a7b415e62d59e2222f0` and returned `CHANGES REQUIRED`, `FINAL / LOCKED`. Two blocking findings were recorded: (1) H1 claim-level consensus/disagreement non-exposure is not extended to the H2 taxonomy author, taxonomy reviewer, and rating-instrument author; and (2) checker-isolation timing is internally inconsistent and can permit access to H2 prerequisite/taxonomy material before checker freeze.
+
+Result: the #133 independent methodology review is now recovered/completed, but the methodology prerequisite remains OPEN / CHANGES REQUIRED. H2 authorship stays CLOSED. A successor operational specification must resolve the blocking findings and receive independent review.
 
 ## Role-separation status
 
@@ -55,20 +59,19 @@ This status record does not identify an implementer, authorize implementation/tu
 
 The canonical `d022-h2-freeze-manifest.json` must not be created/finalized as the authorship gate until all frozen prerequisites are satisfied and independently reviewable. At minimum, unresolved items currently include:
 
-1. #132 independent-review provenance;
-2. #133 independent-review provenance;
-3. complete role roster and role-separation evidence;
-4. checker-isolation evidence;
-5. acceptable R1 qualification evidence disposition under the frozen rules;
-6. preservation/linkage of the qualified R2 raw trial evidence;
-7. all required prerequisite artifact identities/hashes;
-8. independent review of the canonical freeze manifest itself.
+1. #133 successor operational specification resolving the independent review's blocking findings, followed by independent acceptance;
+2. complete role roster and role-separation evidence;
+3. checker-isolation evidence consistent with the accepted successor specification;
+4. acceptable R1 qualification evidence disposition under the frozen rules;
+5. preservation/linkage of the qualified R2 raw trial evidence;
+6. all required prerequisite artifact identities/hashes;
+7. independent review of the canonical freeze manifest itself.
 
 Until those are closed, H2 authorship remains CLOSED.
 
 ## Next evidence actions
 
-- Recover and preserve any authentic off-platform independent-review evidence for #132/#133 if it exists; otherwise keep the gaps explicit and resolve them only through a method permitted by the frozen governance.
+- Preserve/link the 2026-09-23 Claude Opus 5.5 independent review as provenance: #132 `ACCEPTED`; #133 `CHANGES REQUIRED` with two blocking findings. Do not treat #133 as accepted until a successor specification resolves those findings and is independently accepted.
 - Assemble the role roster from existing immutable evidence without assigning new substantive roles.
 - Assemble checker-isolation evidence before candidate checker/H2 authorship work begins.
 - Preserve and link the completed Claude Opus 4.7 R2 qualification evidence.
