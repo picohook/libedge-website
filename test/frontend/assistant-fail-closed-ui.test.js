@@ -7,7 +7,9 @@ const htmlPath = new URL('../../assistant.html', import.meta.url);
 describe('Assistant fail-closed UI contract', () => {
   it('never restores fixture answer/source content during live reset', async () => {
     const source = await readFile(uiPath, 'utf8');
-    const reset = source.match(/function resetLiveResult\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+    const resetStart = source.indexOf('function resetLiveResult() {');
+    const resetEnd = source.indexOf('\n    function setInitialLiveState()', resetStart);
+    const reset = resetStart >= 0 && resetEnd > resetStart ? source.slice(resetStart, resetEnd) : '';
 
     expect(reset).toContain('clearLiveContent()');
     expect(reset).toContain('hideFixtureResult()');
