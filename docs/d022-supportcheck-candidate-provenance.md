@@ -1,6 +1,6 @@
 # D-022 candidate supportCheck implementation provenance
 
-Status: CANDIDATE IMPLEMENTATION COMPLETE / NOT EVALUATED
+Status: CANDIDATE IMPLEMENTATION COMPLETE / CHECKER-FREEZE ACCEPTED / NOT H2-EVALUATED
 
 This record preserves mechanical provenance for the candidate `supportCheck` implementation produced in an isolated Grok 4.7 implementer/tuner session. It does not record D-022 validation, H2 acceptance, production authorization, deployment authorization, or checker-freeze acceptance.
 
@@ -55,6 +55,6 @@ The recovered dependency manifest declares Node.js >=18, ESM, no npm dependencie
 
 The recovered candidate implementation is mechanically complete enough to enter the independent checker-freeze review path. It must remain byte-identical while that review is pending. No H2 evaluation, production integration, provider activation, or deployment authorization follows from this record.
 
-Checker-freeze review: OPEN.
+Checker-freeze review: CLOSED — Claude Haiku 4.5 ACCEPT / FINAL / LOCKED; exact candidate bytes accepted unchanged for subsequent H2 evaluation.
 Canonical H2 freeze manifest: OPEN.
 H2 authorship: CLOSED.
