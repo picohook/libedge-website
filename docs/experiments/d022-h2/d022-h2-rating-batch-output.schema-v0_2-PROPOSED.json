@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "d022-h2-rating-batch-output.schema.json",
+  "title": "D022-H2 Primary Blind Rating Batch Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "holdout_version",
+    "bundle_sha256",
+    "rater_id",
+    "batch_id",
+    "first_item_id",
+    "last_item_id",
+    "ratings",
+    "status"
+  ],
+  "properties": {
+    "holdout_version": {
+      "enum": [
+        "D022-H2",
+        "D022-H2-QUALIFICATION"
+      ]
+    },
+    "bundle_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "rater_id": {
+      "type": "string",
+      "enum": [
+        "R1",
+        "R2"
+      ]
+    },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^D022-H2-(?:RATING-B(?:0[1-9]|1[0-2])|QUAL-90)$"
+    },
+    "first_item_id": {
+      "type": "string",
+      "pattern": "^B[0-9]{4}$"
+    },
+    "last_item_id": {
+      "type": "string",
+      "pattern": "^B[0-9]{4}$"
+    },
+    "ratings": {
+      "type": "array",
+      "minItems": 90,
+      "maxItems": 90,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item_id",
+          "label"
+        ],
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "pattern": "^B[0-9]{4}$"
+          },
+          "label": {
+            "type": "string",
+            "enum": [
+              "SUPPORTED",
+              "PARTIALLY_SUPPORTED",
+              "UNSUPPORTED"
+            ]
+          }
+        }
+      }
+    },
+    "status": {
+      "const": "FINAL / LOCKED"
+    }
+  }
+}
