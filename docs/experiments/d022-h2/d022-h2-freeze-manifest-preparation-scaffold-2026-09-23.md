@@ -30,7 +30,7 @@ No unresolved field below is pre-filled with `PASS`, `ACCEPTED`, `FINAL`, or `LO
 
 ## Current blockers to canonical manifest finalization
 
-1. The Grok 4.7 checker package requires independent checker-freeze/workspace-exclusion verification and canonical hash binding.
+1. Independent checker-freeze review — **CLOSED**: Claude Haiku 4.5 ACCEPT / FINAL / LOCKED; exact Grok 4.7 candidate bytes accepted unchanged. Canonical manifest must carry the frozen hashes.
 2. The assembled role roster, exposure attestations, prerequisite hashes, and protected-staging repository-control evidence require final mechanical reconciliation.
 3. The eventual canonical freeze manifest requires its own independent review before it can become a gating artifact.
 
