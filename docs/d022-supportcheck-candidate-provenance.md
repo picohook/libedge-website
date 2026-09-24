@@ -58,3 +58,52 @@ The recovered candidate implementation is mechanically complete enough to enter 
 Checker-freeze review: CLOSED — Claude Haiku 4.5 ACCEPT / FINAL / LOCKED; exact candidate bytes accepted unchanged for subsequent H2 evaluation.
 Canonical H2 freeze manifest: OPEN.
 H2 authorship: CLOSED.
+
+
+## Successor checker attempts after v0.3 reconciliation — 2026-09-24
+
+These records are historical governance evidence only. They do not alter, repair, seed, or authorize the frozen Grok 4.7 candidate above, and none of the attempts below is an H2-authorized checker.
+
+### Qwen/Qwen3-Coder-Next
+
+- Fresh-checker eligibility: PASS.
+- Deterministic candidate tests: 8/8 PASS.
+- Governance disposition: DISQUALIFIED because prospective independent technical-isolation review had not been completed before implementation.
+- Consequence: historical evidence only; not eligible as the H2 checker.
+
+### zai-org/GLM-5.3 via Novita
+
+- Fresh-checker eligibility: PASS.
+- Prospective isolation review: PASS for the controlled Novita API route.
+- Authoritative controlled streaming execution: HTTP 200 and completed SSE stream.
+- Model token accounting: 65,536 completion tokens, all reported as reasoning; assistant-content length was zero.
+- No implementation deliverables were produced.
+- Frozen stopping rule prohibited continuation, repair, or tuning.
+- Disposition: IMPLEMENTATION ATTEMPT CLOSED / UNSUCCESSFUL.
+
+### moonshotai/Kimi-K2.7-Code
+
+- Fresh-checker eligibility: PASS.
+- Prospective isolation review: PASS by deepseek-ai/DeepSeek-V4-Pro-0813 before implementation.
+- One controlled implementation response was produced.
+- Independent mechanical test result: 14 total, 13 PASS, 1 FAIL.
+- The emitted FREEZE_INVENTORY.json contained placeholder SHA-256 values rather than final deliverable hashes.
+- Frozen single-attempt rule prohibited repair, continuation, or result-driven tuning.
+- Disposition: IMPLEMENTATION ATTEMPT FAILED / CLOSED.
+- The Kimi output must not be supplied to a future checker implementer.
+
+### thinkingmachines/Inkling
+
+- Fresh-checker eligibility: PASS / FINAL.
+- Prospective isolation review: PASS / FINAL / LOCKED by google/gemma-4-26B-A4B-it before checker inputs were supplied.
+- The controlled implementation attempt started only after the prospective gate passed.
+- The model output stopped inside the first file, src/supportCheck.js, before an END FILE envelope.
+- No complete deliverable was returned; no testable package, FREEZE_INVENTORY.json, IMPLEMENTATION_COMPLETE marker, or FINAL marker was produced.
+- Frozen single-attempt rule prohibits continuation, repair, or result-driven tuning.
+- Disposition: INCOMPLETE / TRUNCATED OUTPUT — IMPLEMENTATION ATTEMPT FAILED / CLOSED.
+
+## Current checker gate
+
+No successor attempt listed above is authorized for H2 use. The historical Grok 4.7 package remains preserved as previously freeze-reviewed evidence, but the accepted v0.3 reconciliation requires a fresh checker rather than reuse of that historical candidate. H2 authorship therefore remains CLOSED.
+
+No further AI checker-candidate churn is authorized by this provenance update. A different implementation route may be considered only if it independently satisfies the frozen role-separation and checker-isolation requirements before the implementer receives prohibited H1/H2 material. Pure mechanical CI/execution remains non-substantive only when it has no discretion over checker content or results.
