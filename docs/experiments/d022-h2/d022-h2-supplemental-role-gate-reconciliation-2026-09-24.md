@@ -1,6 +1,8 @@
 # D022-H2 supplemental role-gate reconciliation — 2026-09-24
 
-Status: **PARTIAL CLOSURE / ONE ROLE REQUIRES REPLACEMENT**
+Status: **ROLE ELIGIBILITY CLOSURE COMPLETE / RESERVED ROLES NON-OPERATIVE UNTIL FREEZE GATE**
+
+Operator-provided model-selector evidence established `stepfun-ai/Step-3.7-Flash` for the successful Rubric-Delta eligibility session; the UI also displayed DeepInfra as the access/provider surface.
 
 This is a mechanical role/exposure evidence record. It does not authorize H2 authorship, create the canonical freeze manifest, or amend the accepted operational specification.
 
@@ -55,8 +57,20 @@ This is a mechanical role/exposure evidence record. It does not authorize H2 aut
 - Repository role history already records **Claude Opus 3** as a prior Candidate supportCheck implementer with role exposure consumed.
 - Disposition: **ROLE CONFLICT / NOT ELIGIBLE for Rubric-Delta Reviewer**. The self-reported no-prior-role answer conflicts with preserved D-022 role history and cannot override it.
 
+### Step-3.7-Flash — accepted replacement gate
+- Model identity: `stepfun-ai/Step-3.7-Flash`
+- Target role: D-022 H2 Rubric-Delta Reviewer
+- Identity basis: operator-provided model-selector screenshot; DeepInfra shown in the session UI.
+- Prior D-022 substantive role: NO
+- Prior D-022 governance role: NO
+- H1 pool text / author intent / ratings / consensus / disagreement access: NO
+- Role conflict: NO
+- Eligibility: YES
+- Status: FINAL
+- Disposition: **RESERVED / ELIGIBILITY GATE COMPLETE**.
+
 ## Remaining action
 
-Rubric-Delta Reviewer remains OPEN and requires a genuinely unused model identity/version with a complete artifact-free gate. Do not reuse MiniMax-M3 or Claude Opus 3 for that role.
+All five reserved substantive-role eligibility records are now complete. This record still does not open H2 authorship. Checker-isolation successor/reconciliation, remaining operator/governance identity closure, canonical manifest construction, and independent canonical freeze-manifest review remain separate gates.
 
 All reserved roles remain non-operative until the applicable freeze/authorship gate opens.
