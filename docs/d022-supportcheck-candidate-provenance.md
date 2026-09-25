@@ -107,3 +107,26 @@ These records are historical governance evidence only. They do not alter, repair
 No successor attempt listed above is authorized for H2 use. The historical Grok 4.7 package remains preserved as previously freeze-reviewed evidence, but the accepted v0.3 reconciliation requires a fresh checker rather than reuse of that historical candidate. H2 authorship therefore remains CLOSED.
 
 No further AI checker-candidate churn is authorized by this provenance update. A different implementation route may be considered only if it independently satisfies the frozen role-separation and checker-isolation requirements before the implementer receives prohibited H1/H2 material. Pure mechanical CI/execution remains non-substantive only when it has no discretion over checker content or results.
+
+
+### deepseek-ai/DeepSeek-V3.2 — 2026-09-25
+
+- Operator-observed implementer identity: `deepseek-ai/DeepSeek-V3.2`.
+- Neutral connectivity probe: PASS.
+- Fresh-checker eligibility: PASS / FINAL; self-reported identity UNKNOWN, operator-observed selector identity preserved separately.
+- Independent prospective-isolation reviewer: `Qwen/Qwen3-235B-A22B-Instruct-2507` via Novita.
+- Reviewer eligibility: PASS; self-reported identity UNKNOWN, operator-observed selector identity preserved separately.
+- Prospective isolation: PASS / FINAL / LOCKED before implementation. Four-input limit, prohibited-material exclusion, repository exclusion, broad-enumeration exclusion, role separation, and technical isolation were all marked YES; blocking finding NONE.
+- Implementer then received one controlled implementation request containing only the four frozen allowlisted inputs.
+- Raw implementation response: 13,093 bytes; SHA-256 `c2c64bc4e26fe8fd1571cb668799068660b74b6e999bb91bda642c80aff951e4`.
+- Response status: `IMPLEMENTATION COMPLETE / NOT EVALUATED`; five deliverables returned.
+- Mechanically recomputed UTF-8 deliverable hashes from the exact JSON `content` strings:
+  - `src/supportCheck.js`: 5,487 bytes; `31c95fd38be7da7fc51c690956ca3122804b45d89e568f2971667d3e7dfa970a`.
+  - `test/supportCheck.test.js`: 3,113 bytes; `66a95c481a0a7e6e961f3403ca434d6fd8fa98bc21d9a35a49826756bb8405e8`.
+  - `package.json`: 304 bytes; `710b91eb1018fb8c75a11bdff136f84dc6af6e7602949854f25fb94f25d2dfad`.
+  - `README.md`: 2,061 bytes; `f7f89351421edebe3aa31637ae648c3fe374ce58a70704182c75e608e79bc134`.
+  - `FREEZE_INVENTORY.json`: 619 bytes; `a366fef0d9d54c47314abdafe0de18e141eb4d371e5e02b5eb9c47fe0b75a759`.
+- The hashes declared inside the returned `FREEZE_INVENTORY.json` do not match the mechanically recomputed hashes of the returned deliverable contents. This violates the required exact SHA-256 freeze inventory.
+- The implementation also binds semantic decisions to external Google Gemini `gemini-2.0-flash-exp` via `@google/generative-ai` and requires `GEMINI_API_KEY`. The supplied tests invoke `supportCheck` on semantic cases rather than injecting a deterministic semantic provider, so those cases depend on the external runtime and do not constitute deterministic unit tests under the frozen task requirement.
+- Frozen single-attempt rule prohibits repair, continuation, or result-driven tuning.
+- Disposition: IMPLEMENTATION ATTEMPT FAILED / CLOSED. The output must not be supplied to a future checker implementer.
