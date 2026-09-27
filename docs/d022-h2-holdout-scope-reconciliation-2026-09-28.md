@@ -25,7 +25,7 @@ H1 closed without checker execution after failing its frozen consensus-yield pre
 
 ### H2 successor holdout preregistration
 
-PR #132, `docs: preregister D022-H2 successor holdout`, was merged to `staging` on 2026-09-20 at head `f0ca5e6bd2328ab61b4d34368cac2b6d3dd4c391`.
+PR #132, `docs: preregister D022-H2 successor holdout`, was merged to `staging` on 2026-09-20 as merge commit `6b182fba14f7d66ca86c5cce8d0e59c87b7f8dcf`. Its PR head was `f0ca5e6bd2328ab61b4d34368cac2b6d3dd4c391`.
 
 The merged preregistration at `docs/experiments/d022-supportcheck-h2-preregistration-v0.1.md` defines, before H2 construction: exactly 1,080 candidate claims; 720 intended UNSUPPORTED (120 in each U1-U6 stratum); 240 intended SUPPORTED; 120 intended PARTIALLY_SUPPORTED; exactly 180 new scenarios × 6 claims; two isolated primary raters; exact-agreement consensus; frozen minimum consensus yields; and the existing one-sided false-positive acceptance discipline.
 
@@ -41,9 +41,9 @@ Its status remains `PROPOSED / INDEPENDENT REVIEW REQUIRED`; this record does no
 
 The v0.4.x Fresh-Checker methodology introduced generic semantic-engine qualification (A1), exact artifact/runtime freeze (A2), and implementation conformance (B) while keeping H2 content isolated.
 
-The preserved v0.4.2 package states: `H2 authorship and evaluation remain CLOSED throughout Stage A1, Stage A2, and Stage B.` It further states that H2 may open only after the Fresh-Checker qualification/freeze/governance conditions are satisfied.
+An external archived v0.4.2 package recovered during provenance review states: `H2 authorship and evaluation remain CLOSED throughout Stage A1, Stage A2, and Stage B.` That source is not currently committed as a first-class repository artifact, and the quoted sentence is not independently searchable in the current repository. It must therefore be treated as external provenance rather than repository evidence until imported and hash-linked.
 
-That language is incompatible with treating A1/A2/B itself as execution of the 1,080-claim H2 holdout. It describes A1/A2/B as a prerequisite checker line that occurs while H2 remains closed.
+This external record is consistent with — but is not by itself repository proof of — A1/A2/B being a prerequisite checker line rather than execution of the 1,080-claim H2 holdout. The repository-supported conclusion remains narrower: the accepted H2 preregistration exists, the 1,080-claim holdout is not shown as executed, and no canonical repository decision currently establishes its cancellation or supersession.
 
 ## Status reconciliation
 
