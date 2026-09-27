@@ -62,16 +62,30 @@ Recovered contemporaneous registry records identify:
 
 These records corroborate the current repository final-status summary, but they do not substitute for missing original raw artifacts.
 
+### 3. Recovered Apertus-70B HuggingChat transcript
+
+A recovered contemporaneous HuggingChat transcript has now been imported at:
+
+`docs/experiments/d022-h2/d022-vnext-apertus70b-huggingchat-transcript-2026-09-27.txt`
+
+SHA-256 of the recovered source bytes before repository import: `f7e34e3ddb976f454ff6a7534e2552e2bfd06cc1cd1e6f51865182c9b23c7c37` (14,736 bytes).
+
+The transcript contains the Apertus-70B Architecture-B review, the corrected `FINAL / LOCKED` review with TC11 = SUPPORT, and the subsequent Decision-Rule Addendum exchange. Immediately before the addendum, the transcript explicitly records that no vNext engine had yet been executed and no qualification outcome had yet been observed, and requests the missing probability thresholds and precedence prospectively.
+
+The resulting Decision-Rule Addendum records fixed 0.85 thresholds and SUPPORT precedence and ends `FINAL / LOCKED`. This materially strengthens the provenance for the prospective 0.85 decision rule.
+
+The imported transcript is the recovered conversation record as supplied to this reconciliation. It is not represented as a separately saved standalone Decision-Rule Addendum artifact.
+
 ## Remaining archival limitation
 
-The original byte-for-byte standalone output of the Apertus-70B **vNext Decision-Rule Addendum** has not been recovered.
+The original Apertus-70B **vNext Decision-Rule Addendum output has been recovered within the contemporaneous HuggingChat transcript** and that transcript is now imported and hash-linked above.
 
-Therefore the repository must not claim that:
-- the original addendum bytes are committed;
-- an original addendum SHA-256 has been verified; or
-- the standalone addendum can currently be independently reconstructed byte-for-byte from repository contents.
+What has **not** been established is a separately saved standalone addendum artifact with its own independently established standalone-artifact SHA-256. Therefore the repository must not claim that:
+- a separate original standalone addendum file has been recovered;
+- an original standalone-addendum artifact SHA-256 has been independently verified; or
+- a separate standalone addendum artifact can currently be reconstructed byte-for-byte beyond the recovered conversation transcript.
 
-The 0.85 rule is recorded in the current canonical final-status file and is corroborated by contemporaneous final registry records. The missing standalone addendum is classified here as an **archival provenance limitation**, not silently filled by a reconstructed artifact.
+The prospective 0.85 rule is now supported by the imported transcript as well as the current canonical final-status file and contemporaneous final registry records. The remaining limitation is specifically the absence of a separately preserved standalone addendum artifact, not absence of the addendum output itself.
 
 The raw external Stage-B and final-audit execution records also remain subject to the existing repository caveat in `docs/decisions.md`: do not represent them as first-class repository artifacts until imported and hash-linked.
 
