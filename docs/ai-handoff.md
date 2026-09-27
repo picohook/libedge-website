@@ -83,6 +83,16 @@ For every review:
 - Keep code/config review separate from authorization to execute production deploys, probes, reruns, or observation windows.
 - At material milestone closure, check whether `docs/current-state.md` / `docs/decisions.md` require synchronization.
 
+### Reviewer-input neutrality
+
+Reviewer requests must identify the exact PR/branch/commit or other repository target to inspect, but must not characterize, summarize, pre-judge, or supply conclusions about the committed content as a substitute for inspection.
+
+- The reviewer derives scope, changed-file facts, hashes, byte/content identity, methodology meaning, provenance status, and findings from the repository artifacts and actual diff.
+- Implementer/operator narratives, PR-body summaries, handoff summaries, and conversation descriptions are orientation only and are not review evidence.
+- When a narrow re-review needs context, the request may identify the previously reviewed head and the current head, but any claimed delta must still be independently verified by the reviewer.
+- If a reviewer request contains a substantive characterization of the target, the reviewer must treat that characterization as unverified and must not use it as evidence.
+- Reviewer independence includes freedom to inspect any repository material reasonably necessary to validate the target; a request may define the intended decision scope but may not prohibit verification needed to test that scope.
+
 ## Risk-tiered review discipline
 
 Review depth must follow the risk and scope of the current head rather than mechanically repeating a full repository review.
