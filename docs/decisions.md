@@ -328,3 +328,20 @@ Blind-evaluator invariant: a blind evaluator is not a reviewer. It receives only
 D022-H1 is closed after triggering its frozen pre-checker stop conditions: 60 consensus-SUPPORTED (<100 required) and U1_NEAR_MISS 0 consensus-UNSUPPORTED (<50 required), despite 350 consensus-UNSUPPORTED overall. No checker was executed. H1 remains immutable historical evidence; further D-022 checker evaluation requires a separately preregistered successor holdout version rather than top-up, relabeling, adjudication, threshold relaxation, or in-place repair. Canonical evidence: `docs/experiments/d022-h1/rating/d022-h1-primary-rating-intake-report-v0.1.md`.
 
 Last updated: 2026-09-20
+
+### D-022 H2 successor / Fresh-Checker closure — 2026-09-27
+
+- Type: `experimental-outcome`, `architecture`, `process-rule`
+- Status: `LOCKED`
+- Outcome: `ADOPTED`
+- Decision: Close D-022 H2 as `CLOSED / PASS / FINAL / LOCKED` for the accepted Fresh-Checker line recorded in the final H2 status. The selected semantic engine is `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli` at exact revision `6f5cf0a2b59cabb106aca4c287eed12e357e90eb`. This closes the D-022 scientific/qualification line only; it does not authorize Assistant router integration, staging activation, or production deployment.
+- Reason: The successor line prospectively separated semantic-engine qualification (A1), exact artifact/runtime freeze (A2), and implementation conformance (B), and the final status records qualification 11/12 with deterministic 3/3, Stage-B 11/12 semantic primary plus 16/16 structural/fault, and final independent disposition `ACCEPT_H2_CLOSURE` with no blocking defects.
+- Provenance: `docs/d022-h2-final-status-2026-09-27.md`; `docs/d022-h2-master-final-release-2026-09-27.md`. Repository provenance caveat: at this decision-log update, the raw external execution records identified by the final status (including Stage-B job `6ab9731752d0dbd7f1d9db1f` and final-audit job `6ab975b152d0dbd7f1d9dbe4`) are not themselves committed as first-class repository artifacts. The closure summaries therefore remain controlling project-state records, but activation provenance must not represent the repository as containing those raw records until they are imported and hash-linked.
+- Isolation reconciliation: the historical v0.3 prospective-isolation rule governed a fresh *implementer* execution path and its checker-first/workspace-exclusion controls; the later successor line did not retroactively mark that failed/open v0.3 gate as PASS. Instead, v0.4.x introduced the prospective A1/A2/B architecture: engine qualification before implementer contact, exact engine/artifact/runtime freeze before implementation, strict implementer allowlist/no H1-H2 exposure, no-feedback/single-attempt rules, and post-response Stage-B conformance. This is a successor governance path, not a retroactive repair of the Grok 4.7 record. Historical v0.3 OPEN/NOT SATISFIED text must remain historical and must not be cited as a current PASS.
+- Canonical references:
+  - `docs/d022-h2-final-status-2026-09-27.md`
+  - `docs/d022-h2-master-final-release-2026-09-27.md`
+  - successor methodology / implementation-package records preserved in the D-022 evidence archive
+- Boundary: No application code or deployment authorization is created by this decision-log entry.
+
+Last updated: 2026-09-27
