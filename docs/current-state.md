@@ -224,4 +224,6 @@ Canonical records:
 
 Historical H1 and pre-closure H2 records remain evidence/history only and do not override this final closure state.
 
+Repository-evidence caveat: the final closure and master-release summaries are committed, but the raw external execution records named by those summaries (including the Stage-B and final-audit job outputs) are not currently committed as first-class repository artifacts. Do not represent repository provenance as complete until those raw records are imported and hash-linked. This provenance gap does not silently convert the historical v0.3 isolation gate to PASS; that gate remains a historical OPEN/NOT SATISFIED record, while the accepted successor line is the separately governed v0.4.x A1/A2/B path.
+
 Last updated: 2026-09-27
