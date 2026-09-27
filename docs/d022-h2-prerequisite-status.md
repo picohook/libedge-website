@@ -1,3 +1,7 @@
+> **HISTORICAL / SUPERSEDED STATUS RECORD — 27 Sep 2026**
+>
+> This document preserves the prerequisite state at the time it was written. Its OPEN/CLOSED statements are historical and are superseded by `docs/d022-h2-final-status-2026-09-27.md`. Current controlling status: **H2 CLOSED / PASS / FINAL / LOCKED**; final independent verdict: **ACCEPT_H2_CLOSURE**.
+
 # D-022 H2 prerequisite status record
 
 Status: OPEN / NOT AN AUTHORSHIP GATE
