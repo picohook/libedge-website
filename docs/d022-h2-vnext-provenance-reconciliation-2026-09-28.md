@@ -64,21 +64,39 @@ These records corroborate the current repository final-status summary, but they 
 
 ### 3. Recovered Apertus-70B HuggingChat transcript
 
-A recovered contemporaneous HuggingChat transcript has now been imported at:
+A recovered contemporaneous HuggingChat transcript has been added to this PR at:
 
 `docs/experiments/d022-h2/d022-vnext-apertus70b-huggingchat-transcript-2026-09-27.txt`
 
-SHA-256 of the recovered source bytes before repository import: `f7e34e3ddb976f454ff6a7534e2552e2bfd06cc1cd1e6f51865182c9b23c7c37` (14,736 bytes).
+### Provenance-integrity note
 
-The transcript contains the Apertus-70B Architecture-B review, the corrected `FINAL / LOCKED` review with TC11 = SUPPORT, and the subsequent Decision-Rule Addendum exchange. Immediately before the addendum, the transcript explicitly records that no vNext engine had yet been executed and no qualification outcome had yet been observed, and requests the missing probability thresholds and precedence prospectively.
+The externally supplied source file and the committed repository copy are **not byte-identical**.
 
-The resulting Decision-Rule Addendum records fixed 0.85 thresholds and SUPPORT precedence and ends `FINAL / LOCKED`. This materially strengthens the provenance for the prospective 0.85 decision rule.
+Mechanically verified source upload:
+- source filename: `Pasted text(20260927-221809).txt`;
+- SHA-256: `f7e34e3ddb976f454ff6a7534e2552e2bfd06cc1cd1e6f51865182c9b23c7c37`;
+- byte size: 14,736;
+- UTF-8 with CRLF line terminators.
 
-The imported transcript is the recovered conversation record as supplied to this reconciliation. It is not represented as a separately saved standalone Decision-Rule Addendum artifact.
+Current committed repository copy:
+- byte size: 14,482 as read from the GitHub branch;
+- reviewer independently reported SHA-256 `9a839c08c5d6e3632bcd085ba642cbd287a9f672c7f693e6e6408466aa2e1125` for the committed bytes.
+
+The earlier revision of this reconciliation incorrectly described the source hash/size as if they hash-linked the committed copy. They do not. The repository file must therefore be treated as a **transcribed/normalized copy**, not a byte-preserving import of the externally supplied source. The source-file hash is retained only to identify the external file that was supplied; it does not authenticate the committed copy.
+
+No platform export metadata, platform-signed timestamp, or independently verifiable chain-of-custody metadata has been recovered for the external transcript. Its provenance is therefore limited to the supplied conversation record plus internal consistency/corroboration with the other contemporaneous project records; repository inclusion alone does not independently authenticate the conversation.
+
+The transcript contains the Apertus-70B Architecture-B review, the corrected `FINAL / LOCKED` review with TC11 = SUPPORT, and the subsequent Decision-Rule Addendum exchange. Immediately before the addendum, the transcript states that no vNext engine had yet been executed and no qualification outcome had yet been observed, and requests the missing probability thresholds and precedence prospectively.
+
+The resulting Decision-Rule Addendum records fixed 0.85 thresholds and SUPPORT precedence and ends `FINAL / LOCKED`. This is relevant corroborating provenance for the prospective 0.85 decision rule, subject to the source-authentication limitation above.
+
+The transcript also preserves an operator-directed correction pass in which the reviewer was asked to reconsider its earlier `FURTHER REVIEW: REQUIRED: YES` position, including the statement that the review instructions asked to minimize the review chain. The reviewer subsequently changed that field to `REQUIRED: NO`. This interaction is retained without redaction and is recorded here as a **reviewer-independence / operator-influence limitation**; this reconciliation does not treat that change as independent evidence that an additional pre-freeze review was unnecessary.
+
+The transcript is not represented as a separately saved standalone Decision-Rule Addendum artifact.
 
 ## Remaining archival limitation
 
-The original Apertus-70B **vNext Decision-Rule Addendum output has been recovered within the contemporaneous HuggingChat transcript** and that transcript is now imported and hash-linked above.
+The Apertus-70B **vNext Decision-Rule Addendum output appears within the recovered contemporaneous HuggingChat transcript**. The repository copy is not byte-identical to the supplied source and is not independently authenticated by platform export metadata; it therefore must not be described as a byte-preserving, independently verified import.
 
 What has **not** been established is a separately saved standalone addendum artifact with its own independently established standalone-artifact SHA-256. Therefore the repository must not claim that:
 - a separate original standalone addendum file has been recovered;
