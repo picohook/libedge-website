@@ -1,6 +1,7 @@
 > **HISTORICAL / SUPERSEDED STATUS RECORD — 27 Sep 2026**
 >
-> This document preserves the prerequisite state at the time it was written. Its OPEN/CLOSED statements are historical and are superseded by `docs/d022-h2-final-status-2026-09-27.md`. Current controlling status: **H2 CLOSED / PASS / FINAL / LOCKED**; final independent verdict: **ACCEPT_H2_CLOSURE**.
+> This document preserves the prerequisite state at the time it was written.
+> The OPEN / NOT SATISFIED checker-isolation findings in the body were **not retroactively converted to PASS**. They describe the historical v0.3/Grok 4.7 path. The later Fresh-Checker successor used a separately governed v0.4.x A1/A2/B path (prospective engine qualification, exact artifact/runtime freeze, then implementation conformance). Readers must not interpret the supersession banner as proof that the historical v0.3 mechanism itself was satisfied. Its OPEN/CLOSED statements are historical and are superseded by `docs/d022-h2-final-status-2026-09-27.md`. Current controlling status: **H2 CLOSED / PASS / FINAL / LOCKED**; final independent verdict: **ACCEPT_H2_CLOSURE**.
 
 # D-022 H2 prerequisite status record
 

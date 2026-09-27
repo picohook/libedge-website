@@ -172,11 +172,11 @@ The staging deletion-policy work remains `CLOSED — BEHAVIORAL PASS` and is not
 9. Research Gaps live data exposure requires a separate minimized contract review; fixture UI is not authorization to expose rejected claims.
 10. Production observability metadata acceptance is endpoint-specific and reversible.
 11. No active Track A logging/config change is allowed during the 168-hour window without explicit review.
-12. Zero-hallucination commitment — see D-022; any production `supportCheck` selection requires a documented, measurable false-positive criterion before authorization.
+12. Zero-hallucination commitment — D-022 H2 is CLOSED / PASS / FINAL / LOCKED for the exact frozen Fresh-Checker. Activation still requires exact artifact pinning, router integration, staging verification, and separate deployment authorization.
 
 ## NEXT
 
-1. Preregister the AI Assistant capability/cost/latency evaluation before observing comparative results. Admit only exact Provider Privacy Gate PASS routes; keep evaluation separate from model selection and deployment authorization.
+1. Integrate the exact frozen D-022 Fresh-Checker into the Assistant router as `supportCheck`, without changing the frozen semantic rules or current all-or-nothing grounding contract; then run CI/integration and authenticated staging smoke under the exact privacy-PASS provider route.
 2. Preserve the active 168-hour Track A observation window; review anomalies immediately and otherwise evaluate the complete window at closure.
 3. Continue low-risk fixture/evidence-first UI work while keeping all live fail-closed states maintained.
 4. Keep `Research Gaps` fixture-only unless a separate minimized rejection-summary contract is reviewed and accepted.
@@ -199,10 +199,31 @@ The staging deletion-policy work remains `CLOSED — BEHAVIORAL PASS` and is not
 - Production pending-migration audit: `docs/reviews/2026-09-11-production-d1-pending-migration-audit.md`
 - Research privacy: `docs/privacy/research-privacy.md`
 
-## D-022 supportCheck evaluation state — H1 closed
+## D-022 Fresh-Checker state — H2 final closure
 
-D022-H1 is **CLOSED / STOPPED** under the frozen preregistered consensus-yield conditions. Locked primary ratings produced 60 consensus-SUPPORTED, 350 consensus-UNSUPPORTED and 310 challenge/disagreement claims; U1_NEAR_MISS produced 0 consensus-UNSUPPORTED. H1 therefore failed the >=100 consensus-SUPPORTED and >=50 consensus-UNSUPPORTED-per-stratum prerequisites. No checker was run against H1, and H1 may not be topped up, relabeled, adjudicated, or repaired in place. A separately preregistered D022-H2 successor holdout is required before further measured checker evaluation.
+D-022 H2 is **CLOSED / PASS / FINAL / LOCKED**. The accepted frozen architecture uses a blocking primary decision of `SUPPORT` vs `NOT_SUPPORTED`; `CONTRADICTS` vs `NOT_SUPPORTING` remains diagnostic and non-blocking.
 
-Canonical record: `docs/experiments/d022-h1/rating/d022-h1-primary-rating-intake-report-v0.1.md`
+Selected semantic engine:
 
-Last updated: 2026-09-20
+- model: `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`;
+- exact revision: `6f5cf0a2b59cabb106aca4c287eed12e357e90eb`;
+- qualification: **11/12 PASS**, deterministic **3/3**;
+- Stage B: **11/12 semantic primary PASS + 16/16 structural/fault PASS**;
+- final independent audit: **ACCEPT_H2_CLOSURE**;
+- blocking defects: **NONE**.
+
+Frozen limitations remain part of the record: TC11 is the sole primary semantic miss; NOT_SUPPORTING diagnostic accuracy is 0.50 against a non-blocking 0.80 reporting target; TC06 and TC12 have correct primary NOT_SUPPORTED outcomes with diagnostic subtype disagreement. These limitations do not reopen H2 and no post-result semantic rule change is authorized.
+
+**Operational consequence:** the scientific/qualification gate for the frozen Fresh-Checker is closed. This does **not** itself authorize staging or production activation. The next Assistant engineering gate is to pin the exact accepted checker artifact/version, wire it into the Assistant router as `supportCheck`, preserve the current all-or-nothing grounding contract, and obtain CI/integration plus authenticated staging smoke evidence under the exact privacy-PASS provider route. Production remains separately authorized.
+
+Canonical records:
+
+- `docs/d022-h2-final-status-2026-09-27.md`
+- `docs/d022-h2-master-final-release-2026-09-27.md`
+- `docs/assistant-activation-runbook.md`
+
+Historical H1 and pre-closure H2 records remain evidence/history only and do not override this final closure state.
+
+Repository-evidence caveat: the final closure and master-release summaries are committed, but the raw external execution records named by those summaries (including the Stage-B and final-audit job outputs) are not currently committed as first-class repository artifacts. Do not represent repository provenance as complete until those raw records are imported and hash-linked. This provenance gap does not silently convert the historical v0.3 isolation gate to PASS; that gate remains a historical OPEN/NOT SATISFIED record, while the accepted successor line is the separately governed v0.4.x A1/A2/B path.
+
+Last updated: 2026-09-27
