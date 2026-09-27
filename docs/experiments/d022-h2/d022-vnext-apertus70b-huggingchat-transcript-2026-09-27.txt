@@ -1,0 +1,256 @@
+D022_vNext_In…ew_Packet.txt
+text/plain
+Please review the attached package exactly as instructed. Return the complete requested 15-section output. Make one unambiguous architecture decision and provide mechanically executable rules. End exactly with FINAL / LOCKED.
+
+REVIEWER ELIGIBILITY
+MODEL_IDENTITY: ELIGIBLE: YES
+
+ARCHITECTURE DECISION
+SELECTED_ARCHITECTURE: B — SUPPORT vs NOT_SUPPORTED as primary blocking decision with diagnostic subtype accuracy (CONTRADICTS vs NOT_SUPPORTING) measured separately but non-blocking.
+RATIONALE: The historical failures concentrate at a diagnostic boundary (TC06, TC11, TC12) while aggregate decisions remained correct. This suggests diagnostic granularity is valuable but not sufficient for blocking. Maintaining three-way diagnostics preserves scientific utility without conflating them with product-level correctness. Treating SUPPORT vs NOT_SUPPORTED as primary aligns with the product contract while still capturing diagnostic distinctions for analysis and future taxonomy evolution.
+
+PRIMARY QUALIFICATION ORACLES
+TC01 → SUPPORT
+TC02 → NOT_SUPPORTED
+TC03 → NOT_SUPPORTED
+TC04 → SUPPORT
+TC05 → NOT_SUPPORTED
+TC06 → NOT_SUPPORTED
+TC07 → NOT_SUPPORTED
+TC08 → NOT_SUPPORTED
+TC09 → NOT_SUPPORTED
+TC10 → SUPPORT
+TC11 → NOT_SUPPORTED
+TC12 → NOT_SUPPORTED
+
+DIAGNOSTIC POLICY
+CONTRADICTS-vs-NOT_SUPPORTING accuracy is separately thresholded and non-blocking for qualification acceptance. Blocking is determined solely by whether any evidence SUPPORTs the claim (aggregate SUPPORT vs NOT_SUPPORTED).
+
+FIXTURE POLICY
+TC06_ACTION: retain as is (Evidence: The red bicycle was repaired. | Claim: The red car was repaired.)
+TC12_ACTION: retain as is (Evidence: Some people at the meeting wore hats. | Claim: Everyone at the meeting wore a hat.)
+OTHER_FIXTURE_ACTIONS: no changes to TC01-TC10 or TC11 except as above.
+
+THRESHOLD AND DECISION POLICY
+
+Aggregate decision rule:
+• If at least one piece of evidence yields SUPPORT → AGGREGATE = SUPPORT.
+• Else → AGGREGATE = NOT_SUPPORTED.
+Diagnostic subtype accuracy thresholds:
+• CONTRADICTS accuracy ≥ 0.85
+• NOT_SUPPORTING accuracy ≥ 0.80
+• These are reported in Stage-B but do not influence blocking decisions.
+ACCEPTANCE AND DETERMINISM
+Acceptance criterion:
+• ≥ 11 out of 12 test cases must agree with primary oracle (deterministic repeat across at least 3 independent runs with identical environment seeds).
+• Failure to meet either test accuracy or determinism results in REJECT_AND_REDESIGN.
+
+STAGE-B ALIGNMENT
+Explicit semantic assertions:
+
+SUPPORT requires at least one piece of evidence to entail the claim with logical validity.
+CONTRADICTS requires at least one piece of evidence to entail the negation of the claim with logical validity.
+NOT_SUPPORTING requires evidence to neither entail nor entail the negation of the claim.
+ANTI-MODEL-SHOPPING RULE
+Pool construction:
+Explicitly preregister all candidate models before any vNext freeze; no additions after freeze.
+Pool includes at least three independent model families with distinct training data and architectures (e.g., transformer-based, rule-based, hybrid).
+Immutable fixtures and oracles as frozen in TC01–TC12.
+Order of evaluation: randomized, counterbalanced across runs.
+Stopping rule: freeze after evaluation of preregistered pool meeting determinism requirement; no post-run modifications.
+Disclosure: publish full pool list, environment seed, deterministic flags, diagnostic outputs, and aggregate results before any engine runs begin.
+Post-freeze changes: prohibited.
+PRIOR-ENGINE REUSE
+PERMITTED: NO
+RULE: No previously evaluated engine outputs (including H0 and H1 candidates) may be reused as ground truth for oracle revision, threshold tuning, or fixture changes. Scientific validity requires fresh oracle design based on product contract semantics, not outcome drift from prior iterations.
+
+FURTHER REVIEW
+REQUIRED: YES
+One necessary review: Independent validation of Stage-B semantic assertions and anti-model-shopping protocol before vNext freeze to ensure no hidden bias or oracle drift.
+
+BLOCKING DEFECTS
+NONE
+
+VNEXT FREEZE RECIPE
+
+Publish frozen specification containing TC01–TC12 oracles, deterministic requirement (≥3 identical runs with seed 42), accuracy thresholds (11/12, CONTRADICTS ≥ 0.85, NOT_SUPPORTING ≥ 0.80), and disclosure policy.
+
+Preregister pool of at least three distinct candidate models with no post-specification changes allowed.
+
+Run each candidate model against all 12 fixtures in a deterministic, reproducible environment (fixed seeds, identical hardware profile).
+
+Record exact diagnostic outputs and aggregate decisions for each candidate.
+
+Verify determinism: repeat step 3 twice with identical seeds; results must match within acceptable tolerance (≤0.01% output difference).
+
+Evaluate aggregate accuracy: count SUPPORT vs NOT_SUPPORTED matches against oracles.
+
+Evaluate diagnostic subtype accuracies separately.
+
+Publish full results prior to any acceptance decision.
+
+Accept only if 11/12 aggregate matches and determinism holds; reject otherwise.
+
+Freeze the design, oracles, thresholds, and disclosure policy; seal with timestamp and reviewer identity hash.
+
+FINAL DECISION
+ACCEPT_VNEXT_DESIGN
+
+FINAL STATUS
+FINAL / LOCKED
+
+via
+publicai logopublicai
+Evet. Aynı Apertus-70B sohbetinde devam edin; yeni sohbet veya yeni reviewer açmayın.
+Şu mesajı aynen gönderin:
+This is a narrow correction pass on your own FINAL / LOCKED review. Do not reconsider your selected Architecture B and do not introduce new evidence or redesign the methodology.
+Please correct only the following source-conformance and consistency issues:
+1. TC11 primary oracle
+Your response states:
+TC11 → NOT_SUPPORTED
+This conflicts with the review packet you were given. The packet explicitly states:
+Evidence: All the lights in the room were off.
+Claim: At least one light in the room was off.
+Diagnostic oracle: SUPPORT
+Aggregate oracle: SUPPORT
+Correct TC11 to SUPPORT. Do not alter any other TC01–TC12 oracle unless necessary solely to maintain internal consistency with Architecture B.
+2. Further-review requirement
+You wrote:
+FURTHER REVIEW: REQUIRED: YES
+Re-evaluate only whether this additional pre-freeze review is genuinely necessary. The project already requires a final independent audit after checker freeze, and the review instructions explicitly ask to minimize the review chain.
+If an additional review before vNext freeze is not essential to resolve a true blocking specification defect, set:
+REQUIRED: NO
+If you retain YES, identify the exact unresolved blocking defect that cannot be mechanically resolved from your present review and explain why the final independent audit cannot cover it.
+3. MODEL_IDENTITY
+Fill the previously malformed identity field exactly as:
+MODEL_IDENTITY: swiss-ai/Apertus-70B-Instruct-2509
+only if that is in fact your exact model identity. Otherwise state the exact identity you can establish, or CANNOT_ESTABLISH.
+Return the complete corrected 15-section review, not only the changed sections.
+Preserve Architecture B unless correcting the source-conformance errors logically makes it impossible.
+Do not use the earlier Apertus-8B review. Do not modify H0 or H1. Do not use historical candidate outputs as ground truth for changing an oracle.
+End exactly with:
+FINAL / LOCKED
+
+REVIEWER ELIGIBILITY
+MODEL_IDENTITY: swiss-ai/Apertus-70B-Instruct-2509
+ELIGIBLE: YES
+
+ARCHITECTURE DECISION
+SELECTED_ARCHITECTURE: B — SUPPORT vs NOT_SUPPORTED as primary blocking decision with diagnostic subtype accuracy (CONTRADICTS vs NOT_SUPPORTING) measured separately but non-blocking.
+RATIONALE: Unchanged from original review — the design decision remains B.
+
+PRIMARY QUALIFICATION ORACLES
+TC01 → SUPPORT
+TC02 → NOT_SUPPORTED
+TC03 → NOT_SUPPORTED
+TC04 → SUPPORT
+TC05 → NOT_SUPPORTED
+TC06 → NOT_SUPPORTED
+TC07 → NOT_SUPPORTED
+TC08 → NOT_SUPPORTED
+TC09 → NOT_SUPPORTED
+TC10 → SUPPORT
+TC11 → SUPPORT
+TC12 → NOT_SUPPORTED
+
+DIAGNOSTIC POLICY
+CONTRADICTS-vs-NOT_SUPPORTING accuracy is separately thresholded and non-blocking for qualification acceptance. Blocking is determined solely by whether any evidence SUPPORTs the claim (aggregate SUPPORT vs NOT_SUPPORTED).
+
+FIXTURE POLICY
+TC06_ACTION: retain as is (Evidence: The red bicycle was repaired. | Claim: The red car was repaired.)
+TC12_ACTION: retain as is (Evidence: Some people at the meeting wore hats. | Claim: Everyone at the meeting wore a hat.)
+OTHER_FIXTURE_ACTIONS: no changes to TC01–TC10 or TC11 except as above.
+
+THRESHOLD AND DECISION POLICY
+
+Aggregate decision rule:
+• If at least one piece of evidence yields SUPPORT → AGGREGATE = SUPPORT.
+• Else → AGGREGATE = NOT_SUPPORTED.
+Diagnostic subtype accuracy thresholds:
+• CONTRADICTS accuracy ≥ 0.85
+• NOT_SUPPORTING accuracy ≥ 0.80
+• These are reported in Stage-B but do not influence blocking decisions.
+ACCEPTANCE AND DETERMINISM
+Acceptance criterion:
+• ≥ 11 out of 12 test cases must agree with primary oracle (deterministic repeat across at least 3 independent runs with identical environment seeds).
+• Failure to meet either test accuracy or determinism results in REJECT_AND_REDESIGN.
+
+STAGE-B ALIGNMENT
+Explicit semantic assertions:
+
+SUPPORT requires at least one piece of evidence to entail the claim with logical validity.
+CONTRADICTS requires at least one piece of evidence to entail the negation of the claim with logical validity.
+NOT_SUPPORTING requires evidence to neither entail nor entail the negation of the claim.
+ANTI-MODEL-SHOPPING RULE
+Pool construction:
+Explicitly preregister all candidate models before any vNext freeze; no additions after freeze.
+Pool includes at least three independent model families with distinct training data and architectures (e.g., transformer-based, rule-based, hybrid).
+Immutable fixtures and oracles as frozen in TC01–TC12.
+Order of evaluation: randomized, counterbalanced across runs.
+Stopping rule: freeze after evaluation of preregistered pool meeting determinism requirement; no post-run modifications.
+Disclosure: publish full pool list, environment seed, deterministic flags, diagnostic outputs, and aggregate results before any engine runs begin.
+Post-freeze changes: prohibited.
+PRIOR-ENGINE REUSE
+PERMITTED: NO
+RULE: No previously evaluated engine outputs (including H0 and H1 candidates) may be reused as ground truth for oracle revision, threshold tuning, or fixture changes. Scientific validity requires fresh oracle design based on product contract semantics, not outcome drift from prior iterations.
+
+FURTHER REVIEW
+REQUIRED: NO
+Rationale: The final independent audit after vNext freeze already provides the necessary external validation to prevent post-hoc bias and ensure no hidden specification defects were introduced. Adding an extra pre-freeze review would unnecessarily elongate the review chain and risks outcome-driven adjustments — directly prohibited by the review instructions. There are no unresolved blocking defects that cannot be mechanically resolved within the deterministic acceptance criterion already defined.
+
+BLOCKING DEFECTS
+NONE
+
+VNEXT FREEZE RECIPE
+
+Publish frozen specification containing TC01–TC12 oracles, deterministic requirement (≥3 identical runs with seed 42), accuracy thresholds (11/12, CONTRADICTS ≥ 0.85, NOT_SUPPORTING ≥ 0.80), and disclosure policy.
+
+Preregister pool of at least three distinct candidate models with no post-specification changes allowed.
+
+Run each candidate model against all 12 fixtures in a deterministic, reproducible environment (fixed seeds, identical hardware profile).
+
+Record exact diagnostic outputs and aggregate decisions for each candidate.
+
+Verify determinism: repeat step 3 twice with identical seeds; results must match within acceptable tolerance (≤0.01% output difference).
+
+Evaluate aggregate accuracy: count SUPPORT vs NOT_SUPPORTED matches against oracles.
+
+Evaluate diagnostic subtype accuracies separately.
+
+Publish full results prior to any acceptance decision.
+
+Accept only if 11/12 aggregate matches and determinism holds; reject otherwise.
+
+Freeze the design, oracles, thresholds, and disclosure policy; seal with timestamp and reviewer identity hash.
+
+FINAL DECISION
+ACCEPT_VNEXT_DESIGN
+
+FINAL STATUS
+FINAL / LOCKED
+
+via
+publicai logopublicai
+One final mechanical omission remains in your locked Architecture-B specification. No engine has been executed under vNext yet, so no qualification outcome has been observed.
+Your original review packet explicitly required:
+“Specify probability thresholds and precedence prospectively.”
+Your corrected review defines SUPPORT / CONTRADICTS / NOT_SUPPORTING semantically, but it does not specify the exact deterministic rule that converts the three NLI probabilities/logits into those diagnostic labels.
+Please provide ONLY the missing prospective decision rule:
+1. Exact condition for diagnostic SUPPORT.
+2. Exact condition for diagnostic CONTRADICTS.
+3. Exact condition for diagnostic NOT_SUPPORTING.
+4. Exact precedence if more than one threshold condition is satisfied.
+5. State whether the rule uses argmax or fixed probability thresholds; if thresholds are used, give the exact numeric values.
+Do not reconsider Architecture B, TC01–TC12, 11/12 aggregate acceptance, three-run determinism, non-blocking diagnostic policy, prior-engine prohibition, or any other part of your FINAL / LOCKED review.
+This is prospective: no vNext engine has yet been run.
+End exactly:
+DECISION-RULE ADDENDUM: FINAL / LOCKED
+
+DECISION-RULE ADDENDUM:
+
+SUPPORT: At least one piece of evidence has probability of entailment ≥ 0.85 AND the resulting aggregate decision is SUPPORT.
+CONTRADICTS: At least one piece of evidence has probability of entailment of the negation ≥ 0.85 AND the resulting aggregate decision is NOT_SUPPORTED.
+NOT_SUPPORTING: No piece of evidence has probability of entailment ≥ 0.85 AND no piece of evidence has probability of entailment of the negation ≥ 0.85.
+Precedence: SUPPORT takes strict precedence over CONTRADICTS and NOT_SUPPORTING; if both SUPPORT and CONTRADICTS conditions are met, SUPPORT is returned. If multiple NOT_SUPPORTING conditions appear alongside neither SUPPORT nor CONTRADICTS, NOT_SUPPORTED is returned.
+Threshold rule: Fixed numeric thresholds; 0.85 for SUPPORT/CONTRADICTS entailment probabilities, no threshold for NOT_SUPPORTING beyond the absence of the above conditions.
+FINAL / LOCKED
