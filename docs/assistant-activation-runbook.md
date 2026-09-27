@@ -14,16 +14,16 @@ Scope: product operations only. This document does not authorize D-022 H2 author
 
 ## Preconditions before semantic activation
 
-D-022 items 1-3 below are now complete under the final locked H2 record. They remain listed to preserve the activation contract. All remaining activation conditions must still be satisfied before changing the current fail-closed baseline:
+The Fresh-Checker qualification/freeze line is closed, but the separately preregistered 1,080-claim / 180-scenario H2 statistical holdout is not shown as executed or complete. The activation contract therefore distinguishes checker qualification from H2 production validation:
 
-1. **COMPLETE — D-022 H2 FINAL / LOCKED:** candidate semantic `supportCheck` implementation is isolated from H2 holdout authorship and rating.
-2. **COMPLETE — D-022 H2 FINAL / LOCKED:** D-022 H2 prerequisites and canonical authorship gate are complete.
-3. **COMPLETE — D-022 H2 FINAL / LOCKED:** frozen H2 evaluation and required independent validation are complete under the frozen rules; final independent audit verdict is `ACCEPT_H2_CLOSURE` with no blocking defects.
+1. **COMPLETE — FRESH-CHECKER QUALIFICATION/FREEZE:** the exact candidate semantic `supportCheck` engine/rule line has a recorded qualification/freeze closure.
+2. **OPEN — H2 STATISTICAL HOLDOUT GATE:** the canonical authorship/freeze gate for the separately preregistered 1,080-claim / 180-scenario H2 holdout is not established here as completed.
+3. **OPEN — H2 FALSE-POSITIVE VALIDATION:** the 1,080-claim H2 holdout is not shown as authored, rated, frozen, executed, or independently accepted. The historical Fresh-Checker final-audit verdict does not substitute for this statistical holdout.
 4. A separate production/deployment authorization explicitly approves the exact candidate checker/version to activate.
 5. The exact provider route intended for deployment has a current PASS privacy-gate record applicable to that route.
 6. Staging configuration and secrets required for authenticated smoke are available without placing credentials in source control.
 
-H2 success alone is not deployment authorization.
+Fresh-Checker qualification alone is neither H2 statistical-validation completion nor deployment authorization.
 
 ## Controlled staging activation sequence
 
@@ -82,10 +82,12 @@ After rollback, preserve privacy-safe diagnostic metadata only; do not log query
 Retain the exact commit SHA, checker artifact/version/hash, provider route/model identifier, applicable privacy-gate record, CI run, authenticated smoke result, configuration diff, authorization record, and rollback result if exercised. Distinguish a skipped smoke from a passed smoke.
 
 
-## 2026-09-27 control-plane reconciliation
+## 2026-09-27 Fresh-Checker closure and 2026-09-28 scope correction
 
-D-022 H2 is now `CLOSED / PASS / FINAL / LOCKED`. The accepted engine is `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli` at exact revision `6f5cf0a2b59cabb106aca4c287eed12e357e90eb`. Qualification passed 11/12 with 3/3 deterministic complete runs; Stage B passed 11/12 semantic primary and 16/16 structural/fault checks; the final independent audit returned `ACCEPT_H2_CLOSURE` with no blocking defects.
+The exact Fresh-Checker qualification/freeze line recorded on 2026-09-27 remains closed for its stated scope. The accepted engine is `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli` at exact revision `6f5cf0a2b59cabb106aca4c287eed12e357e90eb`. Qualification passed 11/12 with 3/3 deterministic complete runs; Stage B passed 11/12 semantic primary and 16/16 structural/fault checks; the historical final audit returned `ACCEPT_H2_CLOSURE` with no blocking defects within that Fresh-Checker line.
 
-This reconciliation changes prerequisite status only. It does not assert that the checker is already wired into the Assistant router, that an authenticated staging live-answer smoke has passed, or that staging/production activation is authorized. The controlled staging sequence above remains governing.
+The 2026-09-28 scope reconciliation establishes that this Fresh-Checker result is not evidence that the separately preregistered 1,080-claim / 180-scenario H2 statistical holdout was completed. Production semantic activation therefore remains blocked on the open H2 false-positive-validation gate unless a future prospective independently reviewed decision explicitly replaces that requirement.
 
-Canonical closure record: `docs/d022-h2-final-status-2026-09-27.md`.
+This does not assert that the checker is already wired into the Assistant router, that an authenticated staging live-answer smoke has passed, or that staging/production activation is authorized.
+
+Canonical records: `docs/d022-h2-final-status-2026-09-27.md` (historical Fresh-Checker closure) and `docs/d022-h2-holdout-scope-reconciliation-2026-09-28.md` (current scope correction).
