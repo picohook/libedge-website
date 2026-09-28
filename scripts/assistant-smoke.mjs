@@ -2,6 +2,7 @@ const BASE_URL = normalizeBaseUrl(process.env.LIBEDGE_SMOKE_BASE_URL || 'https:/
 const USER_EMAIL = process.env.LIBEDGE_SMOKE_EMAIL;
 const USER_PASSWORD = process.env.LIBEDGE_SMOKE_PASSWORD;
 const QUERY = process.env.LIBEDGE_ASSISTANT_SMOKE_QUERY || 'PEM water electrolysis catalyst';
+const EXPECTED_CODE = process.env.LIBEDGE_ASSISTANT_SMOKE_EXPECTED_CODE || 'PROVIDER_PRIVACY_GATE_REQUIRED';
 
 if (!USER_EMAIL || !USER_PASSWORD) {
   console.error('Missing LIBEDGE_SMOKE_EMAIL or LIBEDGE_SMOKE_PASSWORD.');
@@ -22,7 +23,7 @@ await step('login for assistant smoke', async () => {
   assert(Boolean(jar.get('authToken')), 'authToken cookie missing');
 });
 
-await step('assistant endpoint remains provider-gated', async () => {
+await step(`assistant endpoint fails closed as expected (${EXPECTED_CODE})`, async () => {
   const response = await fetch(`${BASE_URL}/api/assistant/ask`, {
     method: 'POST',
     headers: {
@@ -37,11 +38,11 @@ await step('assistant endpoint remains provider-gated', async () => {
   try { payload = JSON.parse(text); } catch { throw new Error(`assistant response is not JSON: ${text.slice(0, 200)}`); }
   assert(response.status === 200, `assistant expected 200, got ${response.status}: ${text.slice(0, 300)}`);
   assert(payload?.ok === false, `assistant unexpectedly returned ok=true: ${text.slice(0, 300)}`);
-  assert(payload?.code === 'PROVIDER_PRIVACY_GATE_REQUIRED', `unexpected assistant code: ${payload?.code}`);
+  assert(payload?.code === EXPECTED_CODE, `unexpected assistant code: ${payload?.code}; expected ${EXPECTED_CODE}`);
   assert(Array.isArray(payload?.claims) && payload.claims.length === 0, 'assistant claims must remain empty while gate is closed');
 });
 
-console.log(`OK assistant gate smoke passed against ${BASE_URL}`);
+console.log(`OK assistant fail-closed smoke passed against ${BASE_URL} with ${EXPECTED_CODE}`);
 
 function cookieHeader() {
   return [...jar.entries()].map(([name, value]) => `${name}=${value}`).join('; ');
