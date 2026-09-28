@@ -1,4 +1,5 @@
 import { SUPPORT_CHECK_PIN, supportCheckGateFromEnv } from './support-check-config.js';
+import { createSageMakerSupportCheckTransport } from './sagemaker-support-check-transport.js';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
@@ -40,9 +41,21 @@ function assertPinnedResponse(body) {
  * from the answer-model Provider Privacy Gate: claim/evidence text is itself
  * research-interest-bearing content.
  */
-export function createSupportCheck(env, { fetchImpl = fetch } = {}) {
+export function createSupportCheck(env, { fetchImpl = fetch, sagemakerClientFactory } = {}) {
   const gate = supportCheckGateFromEnv(env);
   if (!gate.enabled || gate.privacyStatus !== 'PASS') return null;
+
+  const transport = String(env?.RESEARCH_ASSISTANT_SUPPORT_CHECK_TRANSPORT || 'https').trim().toLowerCase();
+
+  if (transport === 'sagemaker') {
+    const invoke = createSageMakerSupportCheckTransport(env, { clientFactory: sagemakerClientFactory });
+    if (!invoke) return null;
+    return async function supportCheckSageMaker(claim, citedEvidence) {
+      return assertPinnedResponse(await invoke(claim, citedEvidence));
+    };
+  }
+
+  if (transport !== 'https') return null;
 
   let url;
   try {
