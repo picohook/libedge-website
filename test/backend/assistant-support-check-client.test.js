@@ -9,6 +9,11 @@ function enabledEnv(overrides = {}) {
     RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'https://checker.example.test/v1/support',
     RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'secret',
     RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '5000',
+    RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '100',
+    RATE_LIMIT_KV: {
+      get: vi.fn(async () => '0'),
+      put: vi.fn(async () => {})
+    },
     ...overrides
   };
 }
@@ -97,6 +102,20 @@ describe('Fresh-Checker pin', () => {
       fetchImpl: vi.fn(async () => response({ ...pinnedResult(), primary_decision: 'MAYBE' }))
     });
     await expect(invalidCheck(claim, evidence)).rejects.toThrow('SUPPORT_CHECK_INVALID_DECISION');
+  });
+
+  it('does not call checker transport when invocation budget is exhausted', async () => {
+    const fetchImpl = vi.fn(async () => response(pinnedResult()));
+    const check = createSupportCheck(enabledEnv({
+      RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '1',
+      RATE_LIMIT_KV: {
+        get: vi.fn(async () => '1'),
+        put: vi.fn(async () => {})
+      }
+    }), { fetchImpl });
+
+    await expect(check(claim, evidence)).rejects.toThrow('INVOCATION_BUDGET_EXHAUSTED');
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('refuses non-HTTPS checker endpoints', () => {

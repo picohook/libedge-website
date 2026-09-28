@@ -15,6 +15,11 @@ function env(overrides = {}) {
     RESEARCH_ASSISTANT_SUPPORT_CHECK_SAGEMAKER_ENDPOINT: 'libedge-supportcheck',
     AWS_ACCESS_KEY_ID: 'test-access',
     AWS_SECRET_ACCESS_KEY: 'test-secret',
+    RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '100',
+    RATE_LIMIT_KV: {
+      get: vi.fn(async () => '0'),
+      put: vi.fn(async () => {})
+    },
     ...overrides
   };
 }

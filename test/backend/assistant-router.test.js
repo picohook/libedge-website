@@ -23,6 +23,7 @@ function createEnv(overrides = {}) {
     RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'UNVERIFIED',
     RESEARCH_ASSISTANT_SUPPORT_CHECK_ENABLED: 'false',
     RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'UNVERIFIED',
+    RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '100',
     ...overrides
   };
 }
@@ -174,7 +175,10 @@ describe('assistant ask endpoint', () => {
         RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
         RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'https://checker.example.test/v1/support',
         RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'test-token',
-        RATE_LIMIT_KV: { get: vi.fn().mockResolvedValue('resume') }
+        RATE_LIMIT_KV: {
+          get: vi.fn(async (key) => key === 'assistant:supportcheck:paused' ? 'resume' : '0'),
+          put: vi.fn(async () => {})
+        }
       });
       const activeBody = await (await request({ query: 'hydrogen catalyst' }, activeEnv)).json();
       expect(activeBody.code).toBe('OK');
