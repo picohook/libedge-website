@@ -1,6 +1,6 @@
 # LibEdge Version and Release Governance
 
-Status: `PROPOSED / INDEPENDENT REVIEW REQUIRED`
+Status: `ADOPTED / IMPLEMENTATION REVIEW REQUIRED`
 
 Date: 2026-09-28
 
@@ -10,7 +10,9 @@ Define one explicit product-version and release-governance boundary for LibEdge 
 
 ## Current baseline
 
-No product release version is adopted by this record.
+The first LibEdge product baseline is explicitly adopted as `0.9.0` by the human gatekeeper on 2026-09-28. The machine-readable canonical value is stored in `VERSION`.
+
+This baseline records current product identity; it does not authorize production deployment or declare production/go-live readiness.
 
 The repository currently declares `"version": "1.0.0"` in `package.json`. Until a product release baseline is explicitly adopted, that value is package metadata only and MUST NOT be represented as the LibEdge product release.
 
@@ -32,7 +34,7 @@ Use Semantic Versioning syntax (`MAJOR.MINOR.PATCH`) for adopted product release
 
 Pre-release identifiers such as `-alpha`, `-beta`, or `-rc.N` may be used when a release is explicitly designated pre-release.
 
-This proposal deliberately does not assign a number to the current product. The first baseline version requires explicit human adoption after independent review.
+The current baseline `0.9.0` was explicitly adopted by the human gatekeeper on 2026-09-28. Future version changes remain subject to the release change-control rule below.
 
 ## Release boundary
 
@@ -71,11 +73,10 @@ Historical work before the first adopted product baseline is not retroactively a
 
 ## Website version display
 
-A product version may be displayed in the website footer only after the first baseline version is adopted.
+The adopted product version may be displayed in the website footer.
 
 The current site contains multiple independently authored footer variants and some pages without a site footer. A later implementation PR should either inject the canonical version through a shared mechanism or add an automated consistency test before duplicating a literal version across static HTML pages.
 
-No footer version is added by this governance proposal because no baseline version is yet adopted.
 
 ## Change control
 
@@ -85,7 +86,7 @@ Changing the canonical product version, versioning policy, or release criteria i
 
 This record does not:
 
-- declare LibEdge `v1.0.0`;
+- declare LibEdge `v1.0.0` or production-ready;
 - authorize production deployment;
 - change semantic-primary or Track A/Track B state;
 - alter D-022/D-023;
