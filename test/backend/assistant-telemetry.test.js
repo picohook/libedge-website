@@ -31,4 +31,24 @@ describe('assistant privacy-safe telemetry', () => {
     expect(payload).not.toHaveProperty('user_id');
     spy.mockRestore();
   });
+  it('logs only a sanitized error class and rejects message-like values', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    recordAssistantOutcome({ ENVIRONMENT: 'staging' }, {
+      code: 'MODEL_ADAPTER_FAILED',
+      durationMs: 5,
+      errorClass: 'CredentialsProviderError'
+    });
+    expect(JSON.parse(spy.mock.calls[0][0])).toMatchObject({
+      code: 'MODEL_ADAPTER_FAILED',
+      error_class: 'CredentialsProviderError'
+    });
+
+    recordAssistantOutcome({}, {
+      code: 'MODEL_ADAPTER_FAILED',
+      errorClass: 'Error: secret/request context'
+    });
+    expect(JSON.parse(spy.mock.calls[1][0])).not.toHaveProperty('error_class');
+    spy.mockRestore();
+  });
+
 });
