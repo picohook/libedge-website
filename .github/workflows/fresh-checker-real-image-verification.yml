@@ -45,9 +45,11 @@ jobs:
           response = client.post('/invocations', json=payload)
           assert response.status_code == 200, response.status_code
           body = response.get_json()
-          assert body.get('pin') == payload['pin']
-          assert body.get('verdict') in {'SUPPORT', 'NOT_SUPPORTED'}
-          print(json.dumps({"offline_real_model_inference": "PASS", "verdict": body['verdict']}))
+          assert body.get('model') == payload['pin']['model']
+          assert body.get('revision') == payload['pin']['revision']
+          assert body.get('engine_manifest_sha256') == payload['pin']['engineManifestSha256']
+          assert body.get('primary_decision') in {'SUPPORT', 'NOT_SUPPORTED'}
+          print(json.dumps({"offline_real_model_inference": "PASS", "primary_decision": body['primary_decision']}))
           PY
 
       - name: Inspect content-free container logs
