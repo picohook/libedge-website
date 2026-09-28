@@ -1,0 +1,60 @@
+#!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
+
+function aws(args) {
+  return JSON.parse(execFileSync('aws', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }));
+}
+function need(name) {
+  const value = String(process.env[name] || '').trim();
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+function digestFromImage(image) {
+  const match = String(image || '').match(/@sha256:([a-f0-9]{64})$/i);
+  return match ? `sha256:${match[1].toLowerCase()}` : null;
+}
+
+const region = need('SUPPORT_CHECK_AWS_REGION');
+const endpointName = need('SUPPORT_CHECK_SAGEMAKER_ENDPOINT');
+
+const caller = aws(['sts','get-caller-identity','--output','json']);
+const endpoint = aws(['sagemaker','describe-endpoint','--endpoint-name',endpointName,'--region',region,'--output','json']);
+const configName = String(endpoint.EndpointConfigName || '');
+if (!configName) throw new Error('EndpointConfigName missing');
+const config = aws(['sagemaker','describe-endpoint-config','--endpoint-config-name',configName,'--region',region,'--output','json']);
+
+const variants = Array.isArray(config.ProductionVariants) ? config.ProductionVariants : [];
+const models = variants.map((v) => {
+  const m = aws(['sagemaker','describe-model','--model-name',v.ModelName,'--region',region,'--output','json']);
+  const containers = [m.PrimaryContainer, ...(m.Containers || [])].filter(Boolean).map((x) => ({
+    image: x.Image || null,
+    image_digest: digestFromImage(x.Image),
+    model_data_url_present: Boolean(x.ModelDataUrl || x.ModelDataSource)
+  }));
+  return { model_name: v.ModelName, containers };
+});
+
+const out = {
+  schema: 'libedge.supportcheck_privacy_qualification_evidence.v1',
+  collected_at: new Date().toISOString(),
+  account_id: caller.Account || null,
+  caller_arn: caller.Arn || null,
+  region,
+  endpoint: {
+    name: endpoint.EndpointName || endpointName,
+    arn: endpoint.EndpointArn || null,
+    status: endpoint.EndpointStatus || null,
+    config_name: configName
+  },
+  data_capture: {
+    enabled: Boolean(config.DataCaptureConfig?.EnableCapture),
+    destination_s3_uri: config.DataCaptureConfig?.DestinationS3Uri ? '[configured]' : null
+  },
+  models,
+  assertions: {
+    data_capture_disabled: !config.DataCaptureConfig?.EnableCapture,
+    all_container_images_digest_pinned: models.every((m) => m.containers.length > 0 && m.containers.every((x) => Boolean(x.image_digest)))
+  }
+};
+
+process.stdout.write(JSON.stringify(out, null, 2) + '\n');
