@@ -88,8 +88,9 @@ describe('SageMaker supportCheck transport', () => {
         sagemakerClientFactory: () => ({ send })
       });
       const pending = check(claim, evidence);
+      const rejection = expect(pending).rejects.toThrow('aborted');
       await vi.advanceTimersByTimeAsync(25);
-      await expect(pending).rejects.toThrow('aborted');
+      await rejection;
       expect(capturedSignal.aborted).toBe(true);
     } finally {
       vi.useRealTimers();
