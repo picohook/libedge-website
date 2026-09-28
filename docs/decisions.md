@@ -360,10 +360,10 @@ Last updated: 2026-09-27
 ### D-023 — D-022 H2 risk-acceptance ("Path B") — 2026-09-28
 
 - Type: `risk-acceptance`, `activation-boundary`, `monitoring`
-- Status: `PROPOSED / INDEPENDENT REVIEW REQUIRED`
-- Decision authority: Altan; not yet adopted.
-- Proposal: Defer, but do not waive or relabel as complete, the preregistered 1,080-claim / 180-scenario H2 statistical holdout while permitting a separately gated production activation path for the exact frozen Fresh-Checker, subject to the proposal's trigger, monitoring, language-scope, fail-closed, operational-pause, and production-authorization conditions.
-- Boundary: This entry does not itself authorize production activation, semantic-primary (D-016), production D1 migration (Track B), real-user-content QA sampling, or any change to H1/H2 historical records. It becomes `ADOPTED` only after independent review of the exact final text and explicit approval by Altan.
-- Canonical proposal: `docs/d023-d022-h2-path-b-risk-acceptance-2026-09-28.md`
+- Status: `ADOPTED`
+- Decision authority: Altan; explicitly adopted 2026-09-28 after independent review.
+- Decision: Defer, but do not waive or relabel as complete, the preregistered 1,080-claim / 180-scenario H2 statistical holdout while permitting a separately gated production activation path for the exact frozen Fresh-Checker, subject to the decision's trigger, monitoring, language-scope, fail-closed, operational-pause, and production-authorization conditions.
+- Boundary: Adoption does not itself authorize production activation, semantic-primary (D-016), production D1 migration (Track B), real-user-content QA sampling, or any change to H1/H2 historical records. The three documented open items and separate production-authorization conditions remain in force.
+- Canonical decision: `docs/d023-d022-h2-path-b-risk-acceptance-2026-09-28.md`
 
 Last updated: 2026-09-28
