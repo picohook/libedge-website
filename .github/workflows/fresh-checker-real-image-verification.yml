@@ -17,10 +17,7 @@ jobs:
         run: docker build -t libedge-fresh-checker:verify support-checker
 
       - name: Start image with runtime network disabled
-        run: |
-          docker run -d --rm --name fresh-checker-verify \\
-            --network none \\
-            libedge-fresh-checker:verify
+        run: docker run -d --rm --name fresh-checker-verify --network none libedge-fresh-checker:verify
 
       - name: Verify real model inference inside the offline container
         run: |
