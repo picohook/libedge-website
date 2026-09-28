@@ -53,7 +53,7 @@ const out = {
   models,
   assertions: {
     data_capture_disabled: !config.DataCaptureConfig?.EnableCapture,
-    all_container_images_digest_pinned: models.every((m) => m.containers.length > 0 && m.containers.every((x) => Boolean(x.image_digest)))
+    all_container_images_digest_pinned: models.length > 0 && models.every((m) => m.containers.length > 0 && m.containers.every((x) => Boolean(x.image_digest)))
   }
 };
 
