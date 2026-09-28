@@ -349,11 +349,22 @@ Last updated: 2026-09-27
 ### D-022 validation-scope reconciliation — 2026-09-28
 
 - Type: `scope-correction`, `process-rule`, `activation-boundary`
-- Status: `PROPOSED / INDEPENDENT REVIEW REQUIRED`
+- Status: `LOCKED`
+- Outcome: `ADOPTED`
 - Decision: Preserve the recorded Fresh-Checker A1/A2/B qualification/freeze result, but do **not** treat that result as execution or completion of the separately preregistered 1,080-claim / 180-scenario H2 statistical holdout. No repository evidence currently establishes that the H2 holdout was executed, cancelled, or superseded.
 - Reason: PR #132 merged the H2 successor holdout preregistration with the 1,080-claim / 180-scenario design. Later Fresh-Checker materials explicitly keep H2 authorship/evaluation CLOSED throughout A1/A2/B and describe H2 as opening only after checker qualification/freeze/governance gates. The two lines therefore cannot be equated without an additional adopted decision that has not been recovered.
 - Production boundary: D-022's original production requirement for an explicit measurable false-positive evaluation is not satisfied merely by the 12-case Fresh-Checker qualification. Production semantic activation remains blocked until the accepted H2 statistical holdout is completed and independently reviewed, or a future prospective independently reviewed decision explicitly replaces that requirement. Staging integration/testing, if separately authorized, does not count as H2 completion.
 - Historical-record rule: Existing files using `H2 CLOSED / PASS / FINAL / LOCKED` for the Fresh-Checker line remain historical evidence of that line's qualification closure. They must not be cited as proof that the 1,080-claim holdout was completed.
 - Canonical reconciliation: `docs/d022-h2-holdout-scope-reconciliation-2026-09-28.md`
+
+
+### D-023 — D-022 H2 risk-acceptance ("Path B") — 2026-09-28
+
+- Type: `risk-acceptance`, `activation-boundary`, `monitoring`
+- Status: `PROPOSED / INDEPENDENT REVIEW REQUIRED`
+- Decision authority: Altan; not yet adopted.
+- Proposal: Defer, but do not waive or relabel as complete, the preregistered 1,080-claim / 180-scenario H2 statistical holdout while permitting a separately gated production activation path for the exact frozen Fresh-Checker, subject to the proposal's trigger, monitoring, language-scope, fail-closed, operational-pause, and production-authorization conditions.
+- Boundary: This entry does not itself authorize production activation, semantic-primary (D-016), production D1 migration (Track B), real-user-content QA sampling, or any change to H1/H2 historical records. It becomes `ADOPTED` only after independent review of the exact final text and explicit approval by Altan.
+- Canonical proposal: `docs/d023-d022-h2-path-b-risk-acceptance-2026-09-28.md`
 
 Last updated: 2026-09-28
