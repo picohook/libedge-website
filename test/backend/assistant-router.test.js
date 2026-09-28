@@ -101,6 +101,9 @@ describe('assistant ask endpoint', () => {
 
   it('fails closed at the support-check boundary when the provider gate passes but the checker is paused', async () => {
     discoverMock.mockResolvedValueOnce([work()]);
+    generateClaimsMock.mockImplementationOnce(async ({ evidencePack }) => ({
+      claims: [{ text: 'Claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }]
+    }));
     const response = await request(
       { query: 'hydrogen catalyst' },
       createEnv({ RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS' })
