@@ -74,6 +74,34 @@ describe('SageMaker supportCheck transport', () => {
     await expect(check(claim, evidence)).rejects.toThrow('SUPPORT_CHECK_REVISION_MISMATCH');
   });
 
+  it('passes an abort signal and bounds the SageMaker invocation timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      let capturedSignal;
+      const send = vi.fn((_command, options) => {
+        capturedSignal = options.abortSignal;
+        return new Promise((_resolve, reject) => {
+          options.abortSignal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+        });
+      });
+      const check = createSupportCheck(env({ RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '25' }), {
+        sagemakerClientFactory: () => ({ send })
+      });
+      const pending = check(claim, evidence);
+      const rejection = expect(pending).rejects.toThrow('aborted');
+      await vi.advanceTimersByTimeAsync(25);
+      await rejection;
+      expect(capturedSignal.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('caps configured SageMaker timeout at 15000ms', () => {
+    expect(__test.timeoutMs(env({ RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '999999' }))).toBe(15000);
+    expect(__test.timeoutMs(env({ RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: 'invalid' }))).toBe(5000);
+  });
+
   it('does not add optional tracking metadata to InvokeEndpoint', () => {
     const body = __test.payloadFor(claim, evidence);
     expect(body).toEqual({ pin: SUPPORT_CHECK_PIN, claim: { text: claim.text }, evidence });
