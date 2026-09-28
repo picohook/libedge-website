@@ -51,4 +51,20 @@ describe('assistant privacy-safe telemetry', () => {
     spy.mockRestore();
   });
 
+  it('logs only allowlisted content-free diagnostic reasons', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    recordAssistantOutcome({ ENVIRONMENT: 'staging' }, {
+      code: 'MODEL_ADAPTER_FAILED',
+      diagnosticReason: 'MODEL_OUTPUT_NOT_JSON'
+    });
+    expect(JSON.parse(spy.mock.calls[0][0])).toMatchObject({ diagnostic_reason: 'MODEL_OUTPUT_NOT_JSON' });
+
+    recordAssistantOutcome({}, {
+      code: 'MODEL_ADAPTER_FAILED',
+      diagnosticReason: 'private provider message'
+    });
+    expect(JSON.parse(spy.mock.calls[1][0])).not.toHaveProperty('diagnostic_reason');
+    spy.mockRestore();
+  });
+
 });
