@@ -109,9 +109,8 @@ export async function orchestrateResearchAnswer({
     return {
       ok: false,
       code: 'GROUNDING_REJECTED',
-      claims: [],
-      evidence_pack_id: evidencePack.pack_id,
-      rejected_claims: grounding.rejectedClaims
+      claims: []
+      evidence_pack_id: evidencePack.pack_id
     };
   }
 
