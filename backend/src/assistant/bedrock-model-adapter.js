@@ -29,18 +29,25 @@ function promptFor(task, evidencePack) {
   ].join('\n');
 }
 
+function diagnosticError(reason) {
+  const error = new Error(reason);
+  error.name = 'ModelAdapterDiagnosticError';
+  error.diagnostic_reason = reason;
+  return error;
+}
+
 function parseClaimsPayload(payload) {
   const blocks = Array.isArray(payload?.content) ? payload.content : [];
   const text = blocks.filter((block) => block?.type === 'text').map((block) => block.text).join('').trim();
-  if (!text) throw new Error('MODEL_OUTPUT_EMPTY');
+  if (!text) throw diagnosticError('MODEL_OUTPUT_EMPTY');
 
   let parsed;
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error('MODEL_OUTPUT_NOT_JSON');
+    throw diagnosticError('MODEL_OUTPUT_NOT_JSON');
   }
-  if (!Array.isArray(parsed?.claims)) throw new Error('MODEL_OUTPUT_CLAIMS_REQUIRED');
+  if (!Array.isArray(parsed?.claims)) throw diagnosticError('MODEL_OUTPUT_CLAIMS_REQUIRED');
   return { claims: parsed.claims.slice(0, MAX_CLAIMS) };
 }
 
@@ -88,4 +95,4 @@ export function createBedrockModelAdapter(env, { clientFactory } = {}) {
   };
 }
 
-export const __test = { parseClaimsPayload, promptFor, credentialsFromEnv };
+export const __test = { parseClaimsPayload, promptFor, credentialsFromEnv, diagnosticError };
