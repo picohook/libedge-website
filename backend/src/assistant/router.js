@@ -3,6 +3,7 @@ import { requireAuth } from '../auth/middleware.js';
 import { orchestrateResearchAnswer } from '../research/assistant-orchestrator.js';
 import { createBedrockModelAdapter } from './bedrock-model-adapter.js';
 import { recordAssistantOutcome } from './telemetry.js';
+import { createSupportCheck } from './support-check-client.js';
 
 const app = new Hono();
 
@@ -38,11 +39,14 @@ app.post('/api/assistant/ask', async (c) => {
     ? createBedrockModelAdapter(c.env)
     : null;
 
+  const supportCheck = createSupportCheck(c.env);
+
   const result = await orchestrateResearchAnswer({
     query,
     env: c.env,
     providerGate,
-    modelAdapter
+    modelAdapter,
+    supportCheck
   });
 
   recordAssistantOutcome(c.env, { code: result?.code, durationMs: Date.now() - startedAt });
