@@ -1,12 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sign } from 'hono/jwt';
 
-const { discoverMock } = vi.hoisted(() => ({ discoverMock: vi.fn() }));
+const { discoverMock, generateClaimsMock } = vi.hoisted(() => ({
+  discoverMock: vi.fn(),
+  generateClaimsMock: vi.fn()
+}));
 
 vi.mock('../../backend/src/research/discover.js', async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, Discover: discoverMock };
 });
+
+vi.mock('../../backend/src/assistant/bedrock-model-adapter.js', () => ({
+  createBedrockModelAdapter: () => ({ generateClaims: generateClaimsMock })
+}));
 
 import { handleAssistantRequest } from '../../backend/src/assistant/router.js';
 
@@ -14,6 +21,8 @@ function createEnv(overrides = {}) {
   return {
     JWT_SECRET: 'test-secret',
     RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'UNVERIFIED',
+    RESEARCH_ASSISTANT_SUPPORT_CHECK_ENABLED: 'false',
+    RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'UNVERIFIED',
     ...overrides
   };
 }
@@ -90,7 +99,7 @@ describe('assistant ask endpoint', () => {
     });
   });
 
-  it('still cannot call a model when the flag is PASS because no adapter is wired', async () => {
+  it('fails closed at the support-check boundary when the provider gate passes but the checker is paused', async () => {
     discoverMock.mockResolvedValueOnce([work()]);
     const response = await request(
       { query: 'hydrogen catalyst' },
@@ -100,8 +109,87 @@ describe('assistant ask endpoint', () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       ok: false,
-      code: 'MODEL_ADAPTER_REQUIRED',
+      code: 'GROUNDING_REJECTED',
       claims: []
     });
+    expect(body).not.toHaveProperty('evidence');
+  });
+
+  it.each([
+    ['HTTP error', async () => new Response('{}', { status: 503 })],
+    ['invalid result', async () => new Response(JSON.stringify({ primary_decision: 'MAYBE' }), { status: 200 })],
+    ['timeout', (_url, options) => new Promise((resolve, reject) => {
+      options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+    })]
+  ])('never returns grounded OK when the wired checker has an %s', async (_label, fetchImpl) => {
+    discoverMock.mockResolvedValueOnce([work()]);
+    generateClaimsMock.mockImplementationOnce(async ({ evidencePack }) => ({
+      claims: [{ text: 'Supported-looking claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }]
+    }));
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(fetchImpl);
+    try {
+      const response = await request(
+        { query: 'hydrogen catalyst' },
+        createEnv({
+          RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS',
+          RESEARCH_ASSISTANT_SUPPORT_CHECK_ENABLED: 'true',
+          RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
+          RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'https://checker.example.test/v1/support',
+          RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'test-token',
+          RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '1'
+        })
+      );
+      const body = await response.json();
+      expect(response.status).toBe(200);
+      expect(body).toMatchObject({ ok: false, code: 'GROUNDING_REJECTED', claims: [] });
+      expect(body).not.toHaveProperty('evidence');
+      expect(body.code).not.toBe('OK');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('exercises the operational pause flag: a previously usable checker becomes fail-closed when disabled', async () => {
+    const pinned = {
+      model: 'MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli',
+      revision: '6f5cf0a2b59cabb106aca4c287eed12e357e90eb',
+      engine_manifest_sha256: '96790beaba6826db1efe51c8638be09b049e71517c7ac8334fe1dca20e991918',
+      primary_decision: 'SUPPORT',
+      diagnostic: 'SUPPORT'
+    };
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify(pinned), { status: 200 }));
+    try {
+      discoverMock.mockResolvedValueOnce([work()]);
+      generateClaimsMock.mockImplementationOnce(async ({ evidencePack }) => ({
+        claims: [{ text: 'Claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }]
+      }));
+      const activeEnv = createEnv({
+        RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS',
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_ENABLED: 'true',
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'https://checker.example.test/v1/support',
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'test-token'
+      });
+      const activeBody = await (await request({ query: 'hydrogen catalyst' }, activeEnv)).json();
+      expect(activeBody.code).toBe('OK');
+      expect(activeBody.evidence).toHaveLength(1);
+
+      discoverMock.mockResolvedValueOnce([work()]);
+      generateClaimsMock.mockImplementationOnce(async ({ evidencePack }) => ({
+        claims: [{ text: 'Claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }]
+      }));
+      const pausedBody = await (await request(
+        { query: 'hydrogen catalyst' },
+        { ...activeEnv, RESEARCH_ASSISTANT_SUPPORT_CHECK_ENABLED: 'false' }
+      )).json();
+
+      expect(pausedBody).toMatchObject({ ok: false, code: 'GROUNDING_REJECTED', claims: [] });
+      expect(pausedBody).not.toHaveProperty('evidence');
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
