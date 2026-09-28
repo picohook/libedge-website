@@ -66,10 +66,11 @@ describe('Bedrock assistant adapter boundary', () => {
   });
 
   it('accepts one exact JSON code fence but rejects surrounding prose', () => {
-    const fenced = { content: [{ type: 'text', text: '```json\\n{"claims":[{"text":"Claim","evidence_ids":["p1:e1"]}]}\\n```' }] };
+    const json = JSON.stringify({ claims: [{ text: 'Claim', evidence_ids: ['p1:e1'] }] });
+    const fenced = { content: [{ type: 'text', text: ['```json', json, '```'].join('\n') }] };
     expect(__test.parseClaimsPayload(fenced)).toEqual({ claims: [{ text: 'Claim', evidence_ids: ['p1:e1'] }] });
 
-    const prose = { content: [{ type: 'text', text: 'Here is the JSON:\\n```json\\n{"claims":[]}\\n```' }] };
+    const prose = { content: [{ type: 'text', text: ['Here is the JSON:', '```json', '{"claims":[]}', '```'].join('\n') }] };
     expect(() => __test.parseClaimsPayload(prose)).toThrowError(expect.objectContaining({ diagnostic_reason: 'MODEL_OUTPUT_NOT_JSON' }));
   });
 
