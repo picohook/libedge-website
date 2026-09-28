@@ -28,46 +28,70 @@ function normalizeClaim(claim, index) {
  * that the cited material actually supports the factual claim. Without that
  * verifier, claims are rejected rather than treated as grounded.
  */
+const SUPPORT_CHECK_CONCURRENCY = 2;
+
+async function mapWithConcurrency(items, limit, worker) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function run() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await worker(items[index], index);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => run()));
+  return results;
+}
+
 export async function validateGroundedClaims({ claims, evidencePack, supportCheck } = {}) {
   if (!Array.isArray(claims)) throw new TypeError('GROUNDING_CLAIMS_REQUIRED');
   const byId = evidenceById(evidencePack);
   const acceptedClaims = [];
   const rejectedClaims = [];
 
-  for (let index = 0; index < claims.length; index += 1) {
-    const claim = normalizeClaim(claims[index], index);
-    if (!claim.text) {
-      rejectedClaims.push({ ...claim, code: 'CLAIM_TEXT_REQUIRED' });
-      continue;
-    }
-    if (claim.evidence_ids.length === 0) {
-      rejectedClaims.push({ ...claim, code: 'EVIDENCE_ID_REQUIRED' });
-      continue;
-    }
+  const structuralResults = claims.map((rawClaim, index) => {
+    const claim = normalizeClaim(rawClaim, index);
+    if (!claim.text) return { claim, rejection: { ...claim, code: 'CLAIM_TEXT_REQUIRED' } };
+    if (claim.evidence_ids.length === 0) return { claim, rejection: { ...claim, code: 'EVIDENCE_ID_REQUIRED' } };
 
     const missingIds = claim.evidence_ids.filter((id) => !byId.has(id));
     if (missingIds.length) {
-      rejectedClaims.push({ ...claim, code: 'EVIDENCE_ID_UNKNOWN', missing_evidence_ids: missingIds });
-      continue;
+      return { claim, rejection: { ...claim, code: 'EVIDENCE_ID_UNKNOWN', missing_evidence_ids: missingIds } };
     }
-
     if (typeof supportCheck !== 'function') {
-      rejectedClaims.push({ ...claim, code: 'SUPPORT_CHECK_REQUIRED' });
-      continue;
+      return { claim, rejection: { ...claim, code: 'SUPPORT_CHECK_REQUIRED' } };
     }
+    return { claim, citedEvidence: claim.evidence_ids.map((id) => byId.get(id)) };
+  });
 
-    const citedEvidence = claim.evidence_ids.map((id) => byId.get(id));
-    try {
-      const verdict = normalizeSupportResult(await supportCheck(claim, citedEvidence));
-      if (!verdict.supported) {
-        rejectedClaims.push({ ...claim, code: 'CLAIM_UNSUPPORTED', reason: verdict.reason });
-        continue;
+  const eligible = structuralResults
+    .map((result, position) => ({ ...result, position }))
+    .filter((result) => !result.rejection);
+
+  const semanticResults = await mapWithConcurrency(
+    eligible,
+    SUPPORT_CHECK_CONCURRENCY,
+    async ({ claim, citedEvidence, position }) => {
+      try {
+        const verdict = normalizeSupportResult(await supportCheck(claim, citedEvidence));
+        return verdict.supported
+          ? { position, claim, accepted: true }
+          : { position, claim, rejection: { ...claim, code: 'CLAIM_UNSUPPORTED', reason: verdict.reason } };
+      } catch {
+        return { position, claim, rejection: { ...claim, code: 'SUPPORT_CHECK_FAILED' } };
       }
-      acceptedClaims.push(claim);
-    } catch {
-      rejectedClaims.push({ ...claim, code: 'SUPPORT_CHECK_FAILED' });
     }
-  }
+  );
+
+  const semanticByPosition = new Map(semanticResults.map((result) => [result.position, result]));
+  structuralResults.forEach((result, position) => {
+    const finalResult = result.rejection ? result : semanticByPosition.get(position);
+    if (finalResult?.accepted) acceptedClaims.push(finalResult.claim);
+    else if (finalResult?.rejection) rejectedClaims.push(finalResult.rejection);
+  });
 
   return {
     ok: rejectedClaims.length === 0,

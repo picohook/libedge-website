@@ -100,4 +100,55 @@ describe('grounding validator', () => {
     expect(result.ok).toBe(false);
     expect(result.rejectedClaims[0]).toMatchObject({ code: 'CLAIM_UNSUPPORTED', reason: 'NOT_IN_EVIDENCE' });
   });
+  it('bounds semantic support checks to two concurrent calls while preserving claim order', async () => {
+    const pack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-concurrency' });
+    let active = 0;
+    let maxActive = 0;
+    const calls = [];
+    const claims = Array.from({ length: 5 }, (_, index) => ({
+      text: `Claim ${index}`,
+      evidence_ids: ['pack-concurrency:e1']
+    }));
+
+    const result = await validateGroundedClaims({
+      evidencePack: pack,
+      claims,
+      supportCheck: async (claim) => {
+        calls.push(claim.index);
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, claim.index % 2 === 0 ? 8 : 2));
+        active -= 1;
+        return true;
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(maxActive).toBe(2);
+    expect(calls.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+    expect(result.acceptedClaims.map((claim) => claim.index)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('runs no semantic check for structurally ineligible claims', async () => {
+    const pack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-structural-first' });
+    let calls = 0;
+    const result = await validateGroundedClaims({
+      evidencePack: pack,
+      claims: [
+        { text: '', evidence_ids: ['pack-structural-first:e1'] },
+        { text: 'No citation', evidence_ids: [] },
+        { text: 'Eligible', evidence_ids: ['pack-structural-first:e1'] }
+      ],
+      supportCheck: async () => {
+        calls += 1;
+        return true;
+      }
+    });
+
+    expect(calls).toBe(1);
+    expect(result.ok).toBe(false);
+    expect(result.acceptedClaims.map((claim) => claim.index)).toEqual([2]);
+    expect(result.rejectedClaims.map((claim) => claim.index)).toEqual([0, 1]);
+  });
+
 });
