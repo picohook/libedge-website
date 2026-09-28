@@ -11,6 +11,11 @@ const OUTCOME_CODES = new Set([
   'GROUNDING_REJECTED'
 ]);
 
+function safeErrorClass(value) {
+  const name = String(value || '').trim();
+  return /^[A-Za-z][A-Za-z0-9_]{0,79}$/.test(name) ? name : null;
+}
+
 function safeCode(code) {
   return OUTCOME_CODES.has(code) ? code : 'OTHER';
 }
@@ -22,13 +27,15 @@ function safeCode(code) {
  * credentials, or provider payloads. Logging is best-effort and must not
  * change the assistant response path.
  */
-export function recordAssistantOutcome(env, { code, durationMs } = {}) {
+export function recordAssistantOutcome(env, { code, durationMs, errorClass } = {}) {
   const payload = {
     event: 'research_assistant_outcome',
     code: safeCode(code),
     duration_ms: Math.max(0, Math.round(Number(durationMs) || 0)),
     environment: String(env?.ENVIRONMENT || 'unknown')
   };
+  const sanitizedErrorClass = safeErrorClass(errorClass);
+  if (sanitizedErrorClass) payload.error_class = sanitizedErrorClass;
 
   try {
     console.log(JSON.stringify(payload));
@@ -38,4 +45,4 @@ export function recordAssistantOutcome(env, { code, durationMs } = {}) {
   }
 }
 
-export const __test = { safeCode };
+export const __test = { safeCode, safeErrorClass };
