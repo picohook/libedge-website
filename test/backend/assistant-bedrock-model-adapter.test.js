@@ -49,4 +49,20 @@ describe('Bedrock assistant adapter boundary', () => {
     expect(prompt).not.toContain('"ak"');
     expect(prompt).not.toContain('"sk"');
   });
+  it('classifies model-output parse failures with fixed content-free reasons', () => {
+    for (const [payload, reason] of [
+      [{ content: [] }, 'MODEL_OUTPUT_EMPTY'],
+      [{ content: [{ type: 'text', text: 'not-json' }] }, 'MODEL_OUTPUT_NOT_JSON'],
+      [{ content: [{ type: 'text', text: '{"other":[]}' }] }, 'MODEL_OUTPUT_CLAIMS_REQUIRED']
+    ]) {
+      try {
+        __test.parseClaimsPayload(payload);
+        throw new Error('expected diagnostic failure');
+      } catch (error) {
+        expect(error.name).toBe('ModelAdapterDiagnosticError');
+        expect(error.diagnostic_reason).toBe(reason);
+      }
+    }
+  });
+
 });
