@@ -2,6 +2,11 @@ import { Discover } from './discover.js';
 import { createEvidencePack } from './evidence-pack.js';
 import { validateGroundedClaims } from './grounding-validator.js';
 
+function safeErrorClass(error) {
+  const name = typeof error?.name === 'string' ? error.name.trim() : '';
+  return /^[A-Za-z][A-Za-z0-9_]{0,79}$/.test(name) ? name : 'UnknownError';
+}
+
 function gatePassed(providerGate) {
   return providerGate?.status === 'PASS';
 }
@@ -74,10 +79,11 @@ export async function orchestrateResearchAnswer({
   let modelResult;
   try {
     modelResult = await modelAdapter.generateClaims({ task, evidencePack });
-  } catch {
+  } catch (error) {
     return {
       ok: false,
       code: 'MODEL_ADAPTER_FAILED',
+      diagnostic_error_class: safeErrorClass(error),
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
