@@ -1,5 +1,6 @@
 import { SUPPORT_CHECK_PIN, supportCheckGateFromEnv } from './support-check-config.js';
 import { createSageMakerSupportCheckTransport } from './sagemaker-support-check-transport.js';
+import { reserveSupportCheckInvocation } from './support-check-invocation-budget.js';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
@@ -51,6 +52,8 @@ export function createSupportCheck(env, { fetchImpl = fetch, sagemakerClientFact
     const invoke = createSageMakerSupportCheckTransport(env, { clientFactory: sagemakerClientFactory });
     if (!invoke) return null;
     return async function supportCheckSageMaker(claim, citedEvidence) {
+      const budget = await reserveSupportCheckInvocation(env);
+      if (!budget.allowed) throw new Error(budget.reason);
       return assertPinnedResponse(await invoke(claim, citedEvidence));
     };
   }
@@ -69,6 +72,8 @@ export function createSupportCheck(env, { fetchImpl = fetch, sagemakerClientFact
   if (!token) return null;
 
   return async function supportCheck(claim, citedEvidence) {
+    const budget = await reserveSupportCheckInvocation(env);
+    if (!budget.allowed) throw new Error(budget.reason);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs(env));
     try {
