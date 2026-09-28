@@ -7,6 +7,11 @@ function safeErrorClass(error) {
   return /^[A-Za-z][A-Za-z0-9_]{0,79}$/.test(name) ? name : 'UnknownError';
 }
 
+function safeDiagnosticReason(error) {
+  const reason = typeof error?.diagnostic_reason === 'string' ? error.diagnostic_reason.trim() : '';
+  return /^(MODEL_OUTPUT_EMPTY|MODEL_OUTPUT_NOT_JSON|MODEL_OUTPUT_CLAIMS_REQUIRED)$/.test(reason) ? reason : null;
+}
+
 function gatePassed(providerGate) {
   return providerGate?.status === 'PASS';
 }
@@ -84,6 +89,7 @@ export async function orchestrateResearchAnswer({
       ok: false,
       code: 'MODEL_ADAPTER_FAILED',
       diagnostic_error_class: safeErrorClass(error),
+      diagnostic_reason: safeDiagnosticReason(error),
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
