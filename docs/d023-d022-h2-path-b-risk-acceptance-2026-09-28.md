@@ -1,6 +1,6 @@
 # D-023 — D-022 H2 risk-acceptance ("Path B") — deferred holdout with monitored trigger conditions
 
-Status: `PROPOSED / INDEPENDENT REVIEW REQUIRED`
+Status: `ADOPTED`
 Date: 2026-09-28
 
 ## Decision
@@ -10,7 +10,7 @@ Production activation of `supportCheck` (Fresh-Checker v0.4.x, `MoritzLaurer/DeB
 preregistered D022-H2 statistical holdout (1,080 claims / 180 scenarios,
 `docs/experiments/d022-supportcheck-h2-preregistration-v0.1.md`).
 
-This is a proposed human-authorized risk acceptance, not a claim that the holdout requirement is
+This is a human-authorized risk acceptance, not a claim that the holdout requirement is
 satisfied. The Fresh-Checker qualification/freeze line (A1, A2, Stage-B) remains CLOSED.
 The 1,080-claim/180-scenario H2 statistical holdout remains NOT EXECUTED and is explicitly
 deferred, not waived.
@@ -107,6 +107,7 @@ evidence-pack design or the all-or-nothing policy itself (D-020) — not add fur
 
 ## Authority
 
-Proposed decision authority: Altan. This record becomes `ADOPTED` only after Altan explicitly
-approves the independently reviewed final text. It is not decided or authorized by the
-reviewer or implementer threads.
+Decision authority: Altan. The independently reviewed final text was explicitly adopted by Altan on
+2026-09-28. This adoption accepts the Path B risk decision; it does **not** close the open items above
+or authorize production activation. Those readiness and production-authorization conditions remain
+in force.
