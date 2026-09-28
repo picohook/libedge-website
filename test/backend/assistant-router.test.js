@@ -173,7 +173,8 @@ describe('assistant ask endpoint', () => {
         RESEARCH_ASSISTANT_SUPPORT_CHECK_ENABLED: 'true',
         RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
         RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'https://checker.example.test/v1/support',
-        RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'test-token'
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'test-token',
+        RATE_LIMIT_KV: { get: vi.fn().mockResolvedValue('resume') }
       });
       const activeBody = await (await request({ query: 'hydrogen catalyst' }, activeEnv)).json();
       expect(activeBody.code).toBe('OK');
@@ -185,7 +186,7 @@ describe('assistant ask endpoint', () => {
       }));
       const pausedBody = await (await request(
         { query: 'hydrogen catalyst' },
-        { ...activeEnv, RESEARCH_ASSISTANT_SUPPORT_CHECK_ENABLED: 'false' }
+        { ...activeEnv, RATE_LIMIT_KV: { get: vi.fn().mockResolvedValue('true') } }
       )).json();
 
       expect(pausedBody).toMatchObject({ ok: false, code: 'GROUNDING_REJECTED', claims: [] });

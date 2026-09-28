@@ -4,6 +4,7 @@ import { orchestrateResearchAnswer } from '../research/assistant-orchestrator.js
 import { createBedrockModelAdapter } from './bedrock-model-adapter.js';
 import { recordAssistantOutcome } from './telemetry.js';
 import { createSupportCheck } from './support-check-client.js';
+import { supportCheckRuntimePause } from './support-check-runtime-pause.js';
 
 const app = new Hono();
 
@@ -39,7 +40,8 @@ app.post('/api/assistant/ask', async (c) => {
     ? createBedrockModelAdapter(c.env)
     : null;
 
-  const supportCheck = createSupportCheck(c.env);
+  const runtimePause = await supportCheckRuntimePause(c.env);
+  const supportCheck = runtimePause.paused ? null : createSupportCheck(c.env);
 
   const result = await orchestrateResearchAnswer({
     query,
