@@ -8,7 +8,7 @@
 name = "libedge-api-local"
 main = "backend/src/worker.js"
 compatibility_date = "2026-03-01"
-# compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "local"
