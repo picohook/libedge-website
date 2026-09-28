@@ -76,13 +76,13 @@ const CODE_MAP = Object.freeze({
   GROUNDING_VALIDATION_FAILED: {
     state: ASSISTANT_UI_STATES.GROUNDING_REJECTED,
     title: 'Kaynak doğrulaması tamamlanamadı', titleEn: 'Source validation could not be completed',
-    message: 'İddialar kanıtlarla güvenli biçimde doğrulanamadığı için yanıt gösterilmiyor.', messageEn: 'No response is shown because the claims could not be safely validated against the evidence.',
+    message: 'Bu soruya yeterli kanıtla doğrulanmış bir yanıt oluşturamadım.', messageEn: 'I could not produce an answer to this question that was verified with sufficient evidence.',
     tone: 'error'
   },
   GROUNDING_REJECTED: {
     state: ASSISTANT_UI_STATES.GROUNDING_REJECTED,
     title: 'Yanıt kaynaklarla yeterince desteklenmedi', titleEn: 'The response was not sufficiently supported by the sources',
-    message: 'Bir veya daha fazla iddia kanıt sınırını geçemediği için kısmi yanıt yerine hiçbir iddia gösterilmiyor.', messageEn: 'Because one or more claims did not pass the evidence threshold, no claims are shown instead of a partial response.',
+    message: 'Bu soruya yeterli kanıtla doğrulanmış bir yanıt oluşturamadım.', messageEn: 'I could not produce an answer to this question that was verified with sufficient evidence.',
     tone: 'warning'
   }
 });
