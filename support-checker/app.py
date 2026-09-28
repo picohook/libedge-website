@@ -4,6 +4,7 @@ from typing import Any, Callable
 MODEL = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"
 REVISION = "6f5cf0a2b59cabb106aca4c287eed12e357e90eb"
 MANIFEST = "96790beaba6826db1efe51c8638be09b049e71517c7ac8334fe1dca20e991918"
+MODEL_PATH = os.environ.get("FRESH_CHECKER_MODEL_PATH", "/opt/model")
 ENTAILMENT_THRESHOLD = 0.85
 CONTRADICTION_THRESHOLD = 0.85
 AGGREGATE_RULE = "ANY_SUPPORT_ELSE_NOT_SUPPORTED"
@@ -44,7 +45,10 @@ def _scorer(premise: str, hypothesis: str) -> dict[str, float]:
     global _PIPELINE
     if _PIPELINE is None:
         from transformers import pipeline
-        _PIPELINE = pipeline("text-classification", model=MODEL, revision=REVISION, top_k=None)
+        # Runtime is intentionally network-independent: model bytes are baked into the image.
+        if not os.path.isdir(MODEL_PATH):
+            raise RuntimeError("FROZEN_MODEL_NOT_BAKED")
+        _PIPELINE = pipeline("text-classification", model=MODEL_PATH, top_k=None)
     rows = _PIPELINE({"text": premise, "text_pair": hypothesis})
     if rows and isinstance(rows[0], list): rows = rows[0]
     out = {}
