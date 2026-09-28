@@ -109,7 +109,7 @@ describe('assistant orchestration boundary', () => {
     expect(result.ok).toBe(false);
     expect(result.code).toBe('GROUNDING_REJECTED');
     expect(result.claims).toEqual([]);
-    expect(result.rejected_claims[0].code).toBe('SUPPORT_CHECK_REQUIRED');
+    expect(result).not.toHaveProperty('rejected_claims');
     expect(result).not.toHaveProperty('evidence');
   });
 
@@ -134,8 +134,7 @@ describe('assistant orchestration boundary', () => {
     expect(result.ok).toBe(false);
     expect(result.code).toBe('GROUNDING_REJECTED');
     expect(result.claims).toEqual([]);
-    expect(result.rejected_claims).toHaveLength(1);
-    expect(result.rejected_claims[0].text).toBe('Unsupported claim');
+    expect(result).not.toHaveProperty('rejected_claims');
     expect(result).not.toHaveProperty('evidence');
   });
 
