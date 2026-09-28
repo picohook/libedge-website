@@ -185,9 +185,9 @@ Verified implementation progress:
 - PR #200 added real-chain fail-closed CI/integration coverage for supportCheck HTTP error, invalid result, timeout, and kill-switch behavior.
 - The staging operational-pause exercise required by D-023 open item #1 remains outstanding and must be exercised only when checker runtime/privacy prerequisites and staging authorization are satisfied.
 - PR #202 removed outward `rejected_claims` exposure from the current all-or-nothing failure response. This is a D-020/current-contract compliance fix, not closure of D-023 open item #1.
-- D-023 open item #2 (accepted language coverage) remains unresolved.
-- D-023 open item #3 (prospectively frozen Trigger-B drift rule) remains unresolved.
-- Checker runtime/hosting, checker-specific privacy qualification, authenticated staging E2E, and product-readiness/rollout gates remain downstream work before any production activation.
+- D-023 open item #2 language scope is now defined and independently accepted as **English-only** for the validated supportCheck path; Turkish and other non-English languages remain outside authorized checker scope until separately validated.
+- D-023 open item #3 prospective Trigger-B drift rule is now defined and independently accepted; aggregate drift alone remains an investigation signal and requires the adopted confirmation/escalation path.
+- The supportCheck runtime/privacy candidate architecture and AI Assistant Product Readiness Gate are independently accepted and merged. Checker-specific privacy qualification, exact runtime implementation, staging operational-pause exercise, authenticated staging E2E, and release-candidate evidence remain downstream before any production activation.
 
 ## Product version baseline
 
@@ -195,11 +195,11 @@ LibEdge product baseline `0.9.0` is adopted. Canonical machine-readable version 
 
 ## NEXT
 
-1. Establish D-023 open item #2 language-scope evidence and keep unvalidated languages outside production supportCheck scope.
-2. Prospectively specify and independently review D-023 open item #3 Trigger-B drift rule before production monitoring.
-3. Complete checker runtime/hosting and checker-specific privacy qualification before any staging exercise that sends protected content to the checker.
-4. Exercise the D-023 operational-pause mechanism in staging when those prerequisites are satisfied, then complete authenticated staging E2E.
-5. Prepare Assistant Product Readiness and controlled-rollout criteria before requesting production authorization.
+1. Qualify the exact supportCheck runtime/hosting route against the checker-specific privacy checklist; do not set the privacy gate to PASS from generic provider documentation alone.
+2. Implement the exact accepted runtime route only after its route/configuration boundary is reviewable, preserving the frozen checker identity and fail-closed defaults.
+3. Exercise the D-023 operational-pause mechanism in staging when runtime/privacy prerequisites are satisfied, then complete authenticated staging E2E.
+4. Collect the Product Readiness release-candidate evidence: safe rejection UX, latency/reliability/cost, rollback behavior, and rollout scope.
+5. Keep the adopted English-only checker boundary enforced; non-English expansion requires separate prospective validation.
 6. Keep Track A broad semantic enablement blocked; defer its rerun until go-live planning approaches, then require durable evidence capture before start.
 7. Keep `Research Gaps` fixture-only unless a separate minimized rejection-summary contract is reviewed and accepted.
 8. Keep semantic-primary OFF and production D1 migrations paused until their separate authorization chains complete.
