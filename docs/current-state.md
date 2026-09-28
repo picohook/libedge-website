@@ -10,7 +10,7 @@ Status: `ACTIVE`
 
 - `ACTIVE`: **AI Assistant staging development and evidence-first UI**.
 - `ACTIVE`: **AI Assistant PASS-route capability/cost/latency evaluation preparation**. Evaluation is downstream of the Provider Privacy Gate and is not model selection or deployment authorization.
-- `ACTIVE / SEPARATE`: **Semantic-primary Track A production observation window (D-016)**. The 168-hour observation window is running under the reviewed minimized-logging configuration. Semantic-primary itself remains OFF.
+- `ENDED / INSUFFICIENT EVIDENCE`: **Semantic-primary Track A production observation attempt (D-016)**. The authorized 168-hour window ran, but the required full-window evidence was not durably retained; broad semantic enablement therefore remains blocked. A rerun is deferred until go-live planning approaches and must use durable evidence capture configured before the window starts. Semantic-primary remains OFF.
 - `PAUSED`: **Production/go-live execution**, including the accepted G0-G9 go-live checklist and production D1 migration reconciliation. This remains paused except for the separately authorized Track A observability work already executed.
 
 ## AI Assistant architecture
@@ -111,7 +111,9 @@ No production D1 migration is authorized by the current Track A work.
 
 ## Track A — production traffic / capacity evidence
 
-Track A remains in its **168-hour production observation window** under the reviewed minimized-logging configuration.
+The authorized Track A observation attempt is **ENDED / INSUFFICIENT EVIDENCE**. The window was validly authorized and started, but the evidence required for a valid capacity conclusion was written only to native Cloudflare Workers Logs and was not preserved in a durable full-window export. The historical attempt therefore cannot be classified PASS/CLOSED.
+
+Disposition: **INSUFFICIENT EVIDENCE — BROAD ENABLEMENT REMAINS BLOCKED**. A future rerun is deferred until semantic-primary go-live planning approaches; before any rerun starts, durable evidence capture/export must be separately reviewed and configured.
 
 Locked broad-enablement condition:
 
@@ -131,7 +133,7 @@ Independent read-only inspection established:
 
 Residual Cloudflare platform metadata includes fixed-route request method/path/redacted URL plus operational IDs such as request/ray/trace/span identifiers. This acceptance is **endpoint-specific** to the fixed `/api/research/search` route and must not be generalized to parameterized/user-content-bearing paths. Operational IDs carry a low, non-zero correlation risk if joined with richer logs elsewhere.
 
-The observation window may be interrupted/restarted only through explicit review if production observability/logging behavior materially changes.
+A future observation rerun requires explicit authorization. It must not rely on ephemeral native-log retention as the sole full-window evidence store.
 
 Canonical record:
 
@@ -171,17 +173,37 @@ The staging deletion-policy work remains `CLOSED — BEHAVIORAL PASS` and is not
 8. Production D1 migration and semantic-primary enablement remain separate decisions.
 9. Research Gaps live data exposure requires a separate minimized contract review; fixture UI is not authorization to expose rejected claims.
 10. Production observability metadata acceptance is endpoint-specific and reversible.
-11. No active Track A logging/config change is allowed during the 168-hour window without explicit review.
+11. Track A is not currently running. Any future rerun requires explicit review/authorization and durable full-window evidence capture configured before start.
 12. Zero-hallucination commitment — the exact frozen Fresh-Checker qualification/freeze line is CLOSED / PASS / FINAL / LOCKED, but the separately preregistered 1,080-claim / 180-scenario H2 statistical holdout is not shown as executed or complete. Production semantic activation may not treat Fresh-Checker qualification alone as completion of the D-022 false-positive validation gate.
+
+## D-023 / Assistant readiness progress
+
+D-023 Path B is **ADOPTED**, but production activation remains unauthorized.
+
+Verified implementation progress:
+
+- PR #200 added real-chain fail-closed CI/integration coverage for supportCheck HTTP error, invalid result, timeout, and kill-switch behavior.
+- The staging operational-pause exercise required by D-023 open item #1 remains outstanding and must be exercised only when checker runtime/privacy prerequisites and staging authorization are satisfied.
+- PR #202 removed outward `rejected_claims` exposure from the current all-or-nothing failure response. This is a D-020/current-contract compliance fix, not closure of D-023 open item #1.
+- D-023 open item #2 (accepted language coverage) remains unresolved.
+- D-023 open item #3 (prospectively frozen Trigger-B drift rule) remains unresolved.
+- Checker runtime/hosting, checker-specific privacy qualification, authenticated staging E2E, and product-readiness/rollout gates remain downstream work before any production activation.
+
+## Product version baseline
+
+LibEdge product baseline `0.9.0` is adopted. Canonical machine-readable version source: `VERSION`. Product-version governance: `VERSION.md`; release ledger: `CHANGELOG.md`. This baseline does not authorize production deployment or go-live.
 
 ## NEXT
 
-1. Keep production semantic activation blocked on the unresolved D-022 H2 statistical-validation gate. Exact-checker router integration and fail-closed staging engineering may proceed only as separately authorized engineering work and must not be represented as completion of the 1,080-claim H2 holdout.
-2. Preserve the active 168-hour Track A observation window; review anomalies immediately and otherwise evaluate the complete window at closure.
-3. Continue low-risk fixture/evidence-first UI work while keeping all live fail-closed states maintained.
-4. Keep `Research Gaps` fixture-only unless a separate minimized rejection-summary contract is reviewed and accepted.
-5. Keep semantic-primary OFF and production D1 migrations paused until their separate authorization chains complete.
-6. Keep this file and `docs/decisions.md` synchronized whenever a material project-state decision changes.
+1. Establish D-023 open item #2 language-scope evidence and keep unvalidated languages outside production supportCheck scope.
+2. Prospectively specify and independently review D-023 open item #3 Trigger-B drift rule before production monitoring.
+3. Complete checker runtime/hosting and checker-specific privacy qualification before any staging exercise that sends protected content to the checker.
+4. Exercise the D-023 operational-pause mechanism in staging when those prerequisites are satisfied, then complete authenticated staging E2E.
+5. Prepare Assistant Product Readiness and controlled-rollout criteria before requesting production authorization.
+6. Keep Track A broad semantic enablement blocked; defer its rerun until go-live planning approaches, then require durable evidence capture before start.
+7. Keep `Research Gaps` fixture-only unless a separate minimized rejection-summary contract is reviewed and accepted.
+8. Keep semantic-primary OFF and production D1 migrations paused until their separate authorization chains complete.
+9. Keep this file and `docs/decisions.md` synchronized whenever a material project-state decision changes.
 
 ## Canonical records
 
