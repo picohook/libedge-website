@@ -1,0 +1,68 @@
+name: Fresh-Checker real image verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-real-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build frozen Fresh-Checker image
+        run: docker build -t libedge-fresh-checker:verify support-checker
+
+      - name: Start image with runtime network disabled
+        run: docker run -d --rm --name fresh-checker-verify --network none libedge-fresh-checker:verify
+
+      - name: Verify real model inference inside the offline container
+        run: |
+          docker exec fresh-checker-verify python - <<'PY'
+          import json
+          from server import app
+
+          payload = {
+              "pin": {
+                  "model": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+                  "revision": "6f5cf0a2b59cabb106aca4c287eed12e357e90eb",
+                  "engineManifestSha256": "96790beaba6826db1efe51c8638be09b049e71517c7ac8334fe1dca20e991918",
+                  "entailmentThreshold": 0.85,
+                  "contradictionThreshold": 0.85,
+                  "aggregateRule": "ANY_SUPPORT_ELSE_NOT_SUPPORTED"
+              },
+              "claim": {"text": "Hydrogen is an element."},
+              "evidence": [{"evidence_id": "synthetic:e1", "title": "Synthetic", "abstract": "Hydrogen is a chemical element."}]
+          }
+          client = app.test_client()
+          assert client.get('/ping').status_code == 200
+          response = client.post('/invocations', json=payload)
+          assert response.status_code == 200, response.status_code
+          body = response.get_json()
+          assert body.get('model') == payload['pin']['model']
+          assert body.get('revision') == payload['pin']['revision']
+          assert body.get('engine_manifest_sha256') == payload['pin']['engineManifestSha256']
+          assert body.get('primary_decision') in {'SUPPORT', 'NOT_SUPPORTED'}
+          print(json.dumps({"offline_real_model_inference": "PASS", "primary_decision": body['primary_decision']}))
+          PY
+
+      - name: Inspect content-free container logs
+        if: always()
+        run: |
+          logs="$(docker logs fresh-checker-verify 2>&1 || true)"
+          if printf '%s' "$logs" | grep -Fq 'Hydrogen is an element.'; then
+            echo 'Synthetic claim text leaked to container logs' >&2
+            exit 1
+          fi
+          if printf '%s' "$logs" | grep -Fq 'Hydrogen is a chemical element.'; then
+            echo 'Synthetic evidence text leaked to container logs' >&2
+            exit 1
+          fi
+          printf '%s\\n' "$logs"
+
+      - name: Stop verification container
+        if: always()
+        run: docker stop fresh-checker-verify || true
