@@ -377,7 +377,7 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
     document.querySelectorAll('.assistant-mode').forEach((button) => { if (button.dataset.mode !== 'ask') markComingSoon(button); });
     document.querySelectorAll('.assistant-filter').forEach(markComingSoon);
     document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(.assistant-primary-btn)').forEach(markComingSoon);
-    document.querySelectorAll('[data-fixture-follow-up], .finding-follow-up').forEach(markComingSoon);
+    document.querySelectorAll('.finding-context-followup, .source-context-followup').forEach(markComingSoon);
     document.querySelectorAll('.citation-chip[data-source]').forEach((button) => button.addEventListener('click', () => highlightSource(button.dataset.source)));
     document.getElementById('viewSourcesBtn')?.addEventListener('click', openSources);
     document.getElementById('closeSourcesBtn')?.addEventListener('click', () => { closeSourceDetails(); closeSources(); });
