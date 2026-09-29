@@ -34,6 +34,7 @@ const models = variants.map((v) => {
   return {
     model_name: v.ModelName,
     execution_role_arn: m.ExecutionRoleArn || null,
+    network_isolation_enabled: Boolean(m.EnableNetworkIsolation),
     variant_name: v.VariantName || null,
     instance_type: v.InstanceType || null,
     initial_instance_count: Number.isFinite(v.InitialInstanceCount) ? v.InitialInstanceCount : null,
@@ -70,7 +71,7 @@ const out = {
   models,
   assertions: {
     data_capture_disabled: !config.DataCaptureConfig?.EnableCapture && !endpoint.DataCaptureConfig?.EnableCapture,
-    network_isolation_enabled: Boolean(config.EnableNetworkIsolation),
+    network_isolation_enabled: Boolean(config.EnableNetworkIsolation) && models.length > 0 && models.every((m) => m.network_isolation_enabled),
     all_container_images_digest_pinned: models.length > 0 && models.every((m) => m.containers.length > 0 && m.containers.every((x) => Boolean(x.image_digest)))
   }
 };
