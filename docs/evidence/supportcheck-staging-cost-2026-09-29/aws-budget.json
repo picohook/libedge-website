@@ -1,0 +1,14 @@
+{
+  "retrieved_at": "2026-09-29",
+  "source": "AWS Budgets API (aws budgets describe-budget)",
+  "account_id": "186436510070",
+  "Budget": {
+    "Name": "LibEdge-Staging-SageMaker-Guardrail",
+    "Limit": {
+      "Amount": "100.0",
+      "Unit": "USD"
+    },
+    "Type": "COST",
+    "TimeUnit": "MONTHLY"
+  }
+}

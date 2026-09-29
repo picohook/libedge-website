@@ -1,0 +1,21 @@
+{
+  "retrieved_at": "2026-09-29",
+  "source": "AWS Budgets API (aws budgets describe-notifications-for-budget)",
+  "account_id": "186436510070",
+  "budget_name": "LibEdge-Staging-SageMaker-Guardrail",
+  "Notifications": [
+    {
+      "NotificationType": "ACTUAL",
+      "ComparisonOperator": "GREATER_THAN",
+      "Threshold": 100.0,
+      "NotificationState": "OK"
+    },
+    {
+      "NotificationType": "ACTUAL",
+      "ComparisonOperator": "GREATER_THAN",
+      "Threshold": 80.0,
+      "NotificationState": "OK"
+    }
+  ],
+  "privacy_note": "Subscriber email intentionally omitted from repository evidence."
+}

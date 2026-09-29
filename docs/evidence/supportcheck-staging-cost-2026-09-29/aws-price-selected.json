@@ -1,0 +1,25 @@
+{
+  "retrieved_at": "2026-09-29",
+  "source": "AWS Price List API (aws pricing get-products)",
+  "service_code": "AmazonSageMaker",
+  "region_code": "us-east-1",
+  "selected_product": {
+    "sku": "4EXVMHA8CSKDZ59D",
+    "instanceType": "ml.m5.large-Hosting",
+    "component": "Hosting",
+    "operation": "RunInstance",
+    "usagetype": "USE1-Host:ml.m5.large"
+  },
+  "price_dimension": {
+    "pricePerUnit": { "USD": "0.1150000000" },
+    "unit": "Hrs",
+    "description": "$0.115 per Hosting ml.m5.large hour in US East (N. Virginia)"
+  },
+  "capacity_observed": 1,
+  "derived_hosting_floor": {
+    "usd_per_hour": 0.115,
+    "usd_per_24_hours": 2.76,
+    "usd_per_730_hours": 83.95
+  },
+  "scope_note": "Selected real-time Hosting record from operator-observed AWS CLI output. Derived figures are instance-hour hosting floor only, not total AWS bill or production sizing."
+}
