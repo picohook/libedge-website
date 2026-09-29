@@ -23,7 +23,7 @@ export function lexicalRelevanceScore(query, work) {
   const text = fold([work?.title, work?.abstract].filter(Boolean).join(' '));
   const matched = terms.filter((term) => text.includes(term));
   const titleMatched = terms.filter((term) => title.includes(term));
-  const distinctiveTitleMatch = titleMatched.length > 0;
+  const distinctiveTitleMatch = titleMatched.length >= Math.min(2, terms.length);
   return distinctiveTitleMatch ? (matched.length / terms.length) + (titleMatched.length / terms.length) * 0.5 : 0;
 }
 
