@@ -3163,6 +3163,86 @@ jobs:
           }
           NODE
 
+      - name: Teardown synthetic fixture (failure-safe)
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Scope cleanup to this run's exact synthetic namespace. Deleting the
+          # three users first deliberately exercises the same privacy-cleanup
+          # trigger for any target/control row that survived an interrupted run.
+          npx wrangler d1 execute libedge-db \
+            --env staging \
+            --remote \
+            --command "DELETE FROM users WHERE email IN ('${TARGET_ADMIN_EMAIL}','${TARGET_SELF_EMAIL}','${CONTROL_EMAIL}');"
+
+          # Announcements are intentionally unlinked by the deletion trigger,
+          # so they require explicit teardown or they become public leftovers.
+          npx wrangler d1 execute libedge-db \
+            --env staging \
+            --remote \
+            --command "DELETE FROM announcements WHERE title LIKE '${RUN_MARKER}-announcement-%';"
+
+          # Synthetic audit evidence is retained during assertions but must not
+          # outlive the drill itself.
+          npx wrangler d1 execute libedge-db \
+            --env staging \
+            --remote \
+            --command "DELETE FROM admin_action_logs WHERE id LIKE '${RUN_MARKER}-audit-%';"
+
+          # Remove the run-scoped institution last, after user cleanup has
+          # removed user-owned/institution-linked fixture rows.
+          npx wrangler d1 execute libedge-db \
+            --env staging \
+            --remote \
+            --command "DELETE FROM institutions WHERE name='${RUN_MARKER}-institution';"
+
+          echo "FIXTURE_TEARDOWN_COMPLETE"
+
+      - name: Verify synthetic fixture teardown
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+
+          function d1(sql) {
+            const stdout = execFileSync(
+              'npx',
+              ['wrangler','d1','execute','libedge-db','--env','staging','--remote','--command',sql,'--json'],
+              { encoding: 'utf8', env: process.env }
+            );
+            const payload = JSON.parse(stdout);
+            const result = Array.isArray(payload) ? payload[0] : payload;
+            if (!result?.success) throw new Error(stdout);
+            return result.results || [];
+          }
+
+          const marker = process.env.RUN_MARKER.replaceAll("'", "''");
+          const emails = [
+            process.env.TARGET_ADMIN_EMAIL,
+            process.env.TARGET_SELF_EMAIL,
+            process.env.CONTROL_EMAIL,
+          ].map((x) => `'${x.replaceAll("'", "''")}'`).join(',');
+
+          const checks = {
+            users: `SELECT COUNT(*) AS n FROM users WHERE email IN (${emails})`,
+            announcements: `SELECT COUNT(*) AS n FROM announcements WHERE title LIKE '${marker}-announcement-%'`,
+            audits: `SELECT COUNT(*) AS n FROM admin_action_logs WHERE id LIKE '${marker}-audit-%'`,
+            institutions: `SELECT COUNT(*) AS n FROM institutions WHERE name='${marker}-institution'`,
+          };
+
+          for (const [name, sql] of Object.entries(checks)) {
+            const n = Number(d1(sql)[0]?.n || 0);
+            if (n !== 0) throw new Error(`Synthetic teardown incomplete: ${name}=${n}`);
+          }
+
+          console.log('FIXTURE_TEARDOWN_VERIFIED');
+          NODE
+
       - name: Copy evidence to workspace
         if: always()
         shell: bash
