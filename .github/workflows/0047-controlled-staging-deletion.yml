@@ -3169,34 +3169,42 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Scope cleanup to this run's exact synthetic namespace. Deleting the
-          # three users first deliberately exercises the same privacy-cleanup
-          # trigger for any target/control row that survived an interrupted run.
-          npx wrangler d1 execute libedge-db \
-            --env staging \
-            --remote \
-            --command "DELETE FROM users WHERE email IN ('${TARGET_ADMIN_EMAIL}','${TARGET_SELF_EMAIL}','${CONTROL_EMAIL}');"
+          # Teardown must be best-effort across every resource. A failure in
+          # the privacy-cleanup trigger must not prevent public announcements or
+          # other independently removable synthetic rows from being cleaned.
+          failures=0
 
-          # Announcements are intentionally unlinked by the deletion trigger,
-          # so they require explicit teardown or they become public leftovers.
-          npx wrangler d1 execute libedge-db \
-            --env staging \
-            --remote \
-            --command "DELETE FROM announcements WHERE title LIKE '${RUN_MARKER}-announcement-%';"
+          cleanup() {
+            local label="$1"
+            local sql="$2"
+            echo "Teardown: $label"
+            if ! npx wrangler d1 execute libedge-db \
+              --env staging \
+              --remote \
+              --command "$sql"; then
+              echo "::error title=0047 teardown phase failed::$label"
+              failures=$((failures + 1))
+            fi
+          }
 
-          # Synthetic audit evidence is retained during assertions but must not
-          # outlive the drill itself.
-          npx wrangler d1 execute libedge-db \
-            --env staging \
-            --remote \
-            --command "DELETE FROM admin_action_logs WHERE id LIKE '${RUN_MARKER}-audit-%';"
+          cleanup "users" \
+            "DELETE FROM users WHERE email IN ('${TARGET_ADMIN_EMAIL}','${TARGET_SELF_EMAIL}','${CONTROL_EMAIL}');"
 
-          # Remove the run-scoped institution last, after user cleanup has
-          # removed user-owned/institution-linked fixture rows.
-          npx wrangler d1 execute libedge-db \
-            --env staging \
-            --remote \
-            --command "DELETE FROM institutions WHERE name='${RUN_MARKER}-institution';"
+          # Announcements are intentionally unlinked by the deletion trigger.
+          cleanup "announcements" \
+            "DELETE FROM announcements WHERE title LIKE '${RUN_MARKER}-announcement-%';"
+
+          cleanup "audit rows" \
+            "DELETE FROM admin_action_logs WHERE id LIKE '${RUN_MARKER}-audit-%';"
+
+          # Institution is last because surviving users may still reference it.
+          cleanup "institution" \
+            "DELETE FROM institutions WHERE name='${RUN_MARKER}-institution';"
+
+          if [ "$failures" -ne 0 ]; then
+            echo "::error::$failures teardown phase(s) failed; verification will report remaining rows."
+            exit 1
+          fi
 
           echo "FIXTURE_TEARDOWN_COMPLETE"
 
