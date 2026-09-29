@@ -1,4 +1,27 @@
-import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapLiveAssistantResult }) => {
+async function requireResearchLogin() {
+    try {
+        let response = await fetch('/api/user/profile', { credentials: 'include' });
+        if (response.status === 401) {
+            const refreshed = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+            if (refreshed.ok) response = await fetch('/api/user/profile', { credentials: 'include' });
+        }
+        if (!response.ok) {
+            window.location.replace('index.html');
+            return false;
+        }
+        return true;
+    } catch {
+        window.location.replace('index.html');
+        return false;
+    }
+}
+
+requireResearchLogin().then((authorized) => {
+    if (!authorized) return;
+    return import('./assistant-ui-state.js');
+}).then((module) => {
+    if (!module) return;
+    const { loadingStage, mapAssistantResult, mapLiveAssistantResult } = module;
     const sourcePanel = document.getElementById('assistantSources');
     const toast = document.getElementById('assistantPrototypeToast');
     const status = document.getElementById('assistantStatus');
