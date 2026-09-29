@@ -2,7 +2,8 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /opt/program
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.8.0 \
+    && pip install --no-cache-dir -r requirements.txt
 ARG FRESH_CHECKER_MODEL="MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"
 ARG FRESH_CHECKER_REVISION="6f5cf0a2b59cabb106aca4c287eed12e357e90eb"
 ENV FRESH_CHECKER_MODEL_PATH=/opt/model HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
