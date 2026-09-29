@@ -66,12 +66,12 @@ const out = {
     active_destination_s3_uri: endpoint.DataCaptureConfig?.DestinationS3Uri ? '[configured]' : null
   },
   network_isolation: {
-    enabled: Boolean(config.EnableNetworkIsolation)
+    model_level_enabled: models.length > 0 && models.every((m) => m.network_isolation_enabled)
   },
   models,
   assertions: {
     data_capture_disabled: !config.DataCaptureConfig?.EnableCapture && !endpoint.DataCaptureConfig?.EnableCapture,
-    network_isolation_enabled: Boolean(config.EnableNetworkIsolation) && models.length > 0 && models.every((m) => m.network_isolation_enabled),
+    network_isolation_enabled: models.length > 0 && models.every((m) => m.network_isolation_enabled),
     all_container_images_digest_pinned: models.length > 0 && models.every((m) => m.containers.length > 0 && m.containers.every((x) => Boolean(x.image_digest)))
   }
 };
