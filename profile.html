@@ -2246,7 +2246,7 @@ function _buildTabCategoryFilter(barId, cats, activeCat, setFn) {
     const useEn = isProfileEnglish();
     bar.innerHTML = [
         `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${!activeCat ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="${setFn}('')">${useEn ? 'All' : 'Tümü'}</button>`,
-        ...cats.map(c => `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${activeCat === c ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="${setFn}('${escapeHtml(c)}')">${escapeHtml(c)}</button>`)
+        ...cats.map(c => `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${activeCat === c ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="${setFn}('${jsStr(c)}')">${escapeHtml(c)}</button>`)
     ].join('');
 }
 
@@ -2298,7 +2298,7 @@ function _buildInstitutionCategoryFilter() {
     const useEn = isProfileEnglish();
     bar.innerHTML = [
         `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${!_activeInstitutionCat ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="_setInstitutionCat('')">${useEn ? 'All' : 'Tümü'}</button>`,
-        ...cats.map(c => `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${_activeInstitutionCat === c ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="_setInstitutionCat('${escapeHtml(c)}')">${escapeHtml(c)}</button>`)
+        ...cats.map(c => `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${_activeInstitutionCat === c ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="_setInstitutionCat('${jsStr(c)}')">${escapeHtml(c)}</button>`)
     ].join('');
 }
 
@@ -2339,7 +2339,7 @@ function _buildIndividualCategoryFilter() {
     const useEn = isProfileEnglish();
     bar.innerHTML = [
         `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${!_activeIndividualCat ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="_setIndividualCat('')">${useEn ? 'All' : 'Tümü'}</button>`,
-        ...cats.map(c => `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${_activeIndividualCat === c ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="_setIndividualCat('${escapeHtml(c)}')">${escapeHtml(c)}</button>`)
+        ...cats.map(c => `<button class="px-2.5 py-1 rounded-full text-xs font-semibold border transition ${_activeIndividualCat === c ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'}" onclick="_setIndividualCat('${jsStr(c)}')">${escapeHtml(c)}</button>`)
     ].join('');
 }
 
@@ -3461,7 +3461,7 @@ function _renderCatalog() {
                 ${desc ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${desc}</p>` : ''}
             </div>
             <div class="profile-product-footer">
-                <button type="button" class="${btnCls}" onclick="event.stopPropagation();${recommended ? '' : `_openRecommendModal('${escapeHtml(p.slug)}','${escapeHtml(p.name)}')`}" ${recommended ? 'disabled' : ''}>
+                <button type="button" class="${btnCls}" onclick="event.stopPropagation();${recommended ? '' : `_openRecommendModal('${jsStr(p.slug)}','${jsStr(p.name)}')`}" ${recommended ? 'disabled' : ''}>
                     <i class="fas ${btnIcon}"></i><span>${btnLabel}</span>
                 </button>
             </div>
@@ -3533,7 +3533,7 @@ function _showCardDetail(card) {
     document.getElementById('pcdBadges').innerHTML = typeBadge + catBadge;
 
     document.getElementById('pcdActions').innerHTML = url
-        ? `<button onclick="window.open('${escapeHtml(url)}', '_blank', 'noopener');document.getElementById('profileCardDetailModal').classList.add('hidden')" class="profile-action"><i class="fas fa-arrow-up-right-from-square"></i><span>${escapeHtml(cta)}</span></button>`
+        ? `<button onclick="window.open('${jsStr(url)}', '_blank', 'noopener');document.getElementById('profileCardDetailModal').classList.add('hidden')" class="profile-action"><i class="fas fa-arrow-up-right-from-square"></i><span>${escapeHtml(cta)}</span></button>`
         : '';
 
     document.getElementById('profileCardDetailModal').classList.remove('hidden');
