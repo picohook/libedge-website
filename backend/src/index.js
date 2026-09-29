@@ -4777,15 +4777,26 @@ app.get('/api/admin/institution-preview/:id', async (c) => {
     `).bind(inst.id).first()
   ]);
 
-  const sessionId = crypto.randomUUID();
-  await createAdminActionLogStmt(db, {
-    id: sessionId,
-    actor: auth.user,
-    entityType: 'institution_preview',
-    entityId: inst.id,
-    action: 'preview_start',
-    after: { institution_name: inst.name }
-  }).run();
+  const requestedSessionId = String(c.req.query('session_id') || '').trim();
+  let sessionId = requestedSessionId;
+  if (sessionId) {
+    const existing = await db.prepare(`
+      SELECT id FROM admin_action_logs
+      WHERE id = ? AND actor_user_id = ? AND entity_type = 'institution_preview'
+        AND entity_id = ? AND action = 'preview_start'
+    `).bind(sessionId, auth.user.user_id, String(inst.id)).first();
+    if (!existing) return c.json({ error: 'Preview session bulunamadı' }, 404);
+  } else {
+    sessionId = crypto.randomUUID();
+    await createAdminActionLogStmt(db, {
+      id: sessionId,
+      actor: auth.user,
+      entityType: 'institution_preview',
+      entityId: inst.id,
+      action: 'preview_start',
+      after: { institution_name: inst.name }
+    }).run();
+  }
 
   return c.json({
     ...fullInst,
