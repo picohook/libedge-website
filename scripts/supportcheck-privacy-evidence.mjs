@@ -54,12 +54,22 @@ const out = {
     config_name: configName
   },
   data_capture: {
-    enabled: Boolean(config.DataCaptureConfig?.EnableCapture),
-    destination_s3_uri: config.DataCaptureConfig?.DestinationS3Uri ? '[configured]' : null
+    configured_enabled: Boolean(config.DataCaptureConfig?.EnableCapture),
+    configured_destination_s3_uri: config.DataCaptureConfig?.DestinationS3Uri ? '[configured]' : null,
+    active_enabled: Boolean(endpoint.DataCaptureConfig?.EnableCapture),
+    active_capture_status: endpoint.DataCaptureConfig?.CaptureStatus || null,
+    active_sampling_percentage: Number.isFinite(endpoint.DataCaptureConfig?.CurrentSamplingPercentage)
+      ? endpoint.DataCaptureConfig.CurrentSamplingPercentage
+      : null,
+    active_destination_s3_uri: endpoint.DataCaptureConfig?.DestinationS3Uri ? '[configured]' : null
+  },
+  network_isolation: {
+    enabled: Boolean(config.EnableNetworkIsolation)
   },
   models,
   assertions: {
-    data_capture_disabled: !config.DataCaptureConfig?.EnableCapture,
+    data_capture_disabled: !config.DataCaptureConfig?.EnableCapture && !endpoint.DataCaptureConfig?.EnableCapture,
+    network_isolation_enabled: Boolean(config.EnableNetworkIsolation),
     all_container_images_digest_pinned: models.length > 0 && models.every((m) => m.containers.length > 0 && m.containers.every((x) => Boolean(x.image_digest)))
   }
 };
