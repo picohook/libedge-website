@@ -4196,6 +4196,115 @@ app.post('/api/admin/product/:slug/card-background', async (c) => {
   }
 });
 
+app.get('/api/admin/research-seats/:subscriptionId', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const db = c.env.DB;
+  const subscriptionId = Number(c.req.param('subscriptionId'));
+  const sub = await db.prepare(`
+    SELECT s.id, s.institution_id, s.product_slug, s.status, s.seat_limit, i.name AS institution_name
+    FROM institution_subscriptions s JOIN institutions i ON i.id = s.institution_id
+    WHERE s.id = ? AND s.product_slug = 'research'
+  `).bind(subscriptionId).first();
+  if (!sub) return c.json({ error: 'Research kurum aboneliği bulunamadı' }, 404);
+  if (!canManageInstitutionScope(auth.user, { id: sub.institution_id, name: sub.institution_name })) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const seats = await db.prepare(`
+    SELECT seat.id, seat.user_id, seat.assigned_at, u.full_name, u.email
+    FROM institution_subscription_seats seat
+    JOIN users u ON u.id = seat.user_id
+    WHERE seat.institution_subscription_id = ?
+    ORDER BY u.full_name, u.email
+  `).bind(subscriptionId).all();
+  return c.json({
+    subscription_id: subscriptionId,
+    seat_limit: sub.seat_limit == null ? 0 : Number(sub.seat_limit),
+    seats: seats.results || []
+  });
+});
+
+app.post('/api/admin/research-seats/:subscriptionId/:userId', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const db = c.env.DB;
+  const subscriptionId = Number(c.req.param('subscriptionId'));
+  const userId = Number(c.req.param('userId'));
+  const sub = await db.prepare(`
+    SELECT s.id, s.institution_id, s.product_slug, s.status, s.seat_limit, i.name AS institution_name
+    FROM institution_subscriptions s JOIN institutions i ON i.id = s.institution_id
+    WHERE s.id = ? AND s.product_slug = 'research' AND s.status = 'active'
+  `).bind(subscriptionId).first();
+  if (!sub) return c.json({ error: 'Aktif Research kurum aboneliği bulunamadı' }, 404);
+  if (!canManageInstitutionScope(auth.user, { id: sub.institution_id, name: sub.institution_name })) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  const user = await db.prepare(`SELECT id, institution_id FROM users WHERE id = ?`).bind(userId).first();
+  if (!user || String(user.institution_id) !== String(sub.institution_id)) {
+    return c.json({ error: 'Kullanıcı bu kuruma ait değil' }, 400);
+  }
+
+  const seatLimit = Math.max(0, Number(sub.seat_limit || 0));
+  if (seatLimit < 1) return c.json({ error: 'Research kullanıcı kotası tanımlı değil', code: 'RESEARCH_SEAT_LIMIT_REQUIRED' }, 409);
+
+  const result = await db.prepare(`
+    INSERT INTO institution_subscription_seats (institution_subscription_id, user_id, assigned_by)
+    SELECT ?, ?, ?
+    WHERE (
+      SELECT COUNT(*) FROM institution_subscription_seats
+      WHERE institution_subscription_id = ?
+    ) < ?
+    ON CONFLICT(institution_subscription_id, user_id) DO NOTHING
+  `).bind(subscriptionId, userId, auth.user.user_id, subscriptionId, seatLimit).run();
+
+  const assigned = await db.prepare(`
+    SELECT id FROM institution_subscription_seats
+    WHERE institution_subscription_id = ? AND user_id = ?
+  `).bind(subscriptionId, userId).first();
+  if (!assigned) return c.json({ error: 'Research kullanıcı kotası dolu', code: 'RESEARCH_SEAT_LIMIT_REACHED' }, 409);
+
+  await recordAdminAction(c, db, {
+    actor: auth.user, entityType: 'research_seat', entityId: `${subscriptionId}:${userId}`,
+    action: 'assign', after: { institution_subscription_id: subscriptionId, user_id: userId }
+  });
+  return c.json({ success: true, seat_id: assigned.id, inserted: Number(result.meta?.changes || 0) > 0 });
+});
+
+app.delete('/api/admin/research-seats/:subscriptionId/:userId', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const db = c.env.DB;
+  const subscriptionId = Number(c.req.param('subscriptionId'));
+  const userId = Number(c.req.param('userId'));
+  const sub = await db.prepare(`
+    SELECT s.id, s.institution_id, i.name AS institution_name
+    FROM institution_subscriptions s JOIN institutions i ON i.id = s.institution_id
+    WHERE s.id = ? AND s.product_slug = 'research'
+  `).bind(subscriptionId).first();
+  if (!sub) return c.json({ error: 'Research kurum aboneliği bulunamadı' }, 404);
+  if (!canManageInstitutionScope(auth.user, { id: sub.institution_id, name: sub.institution_name })) {
+    return c.json({ error: 'Yetkisiz' }, 403);
+  }
+
+  await db.prepare(`
+    DELETE FROM institution_subscription_seats
+    WHERE institution_subscription_id = ? AND user_id = ?
+  `).bind(subscriptionId, userId).run();
+  await recordAdminAction(c, db, {
+    actor: auth.user, entityType: 'research_seat', entityId: `${subscriptionId}:${userId}`,
+    action: 'revoke', before: { institution_subscription_id: subscriptionId, user_id: userId }
+  });
+  return c.json({ success: true });
+});
+
 app.get('/api/admin/subscriptions', async (c) => {
   if (!await isAdmin(c)) return c.json({ error: 'Yetkisiz' }, 403);
   const db = c.env.DB;
