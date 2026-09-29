@@ -1,0 +1,49 @@
+name: Assistant Bounded Load Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Staging base URL'
+        required: true
+        type: string
+        default: 'https://staging.libedge-website.pages.dev'
+      source_ref:
+        description: 'Git ref containing the evidence runner'
+        required: true
+        type: string
+        default: 'staging'
+      levels:
+        description: 'Bounded concurrency levels (max 4 each; max 8 requests total)'
+        required: true
+        type: string
+        default: '1,2,4'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assistant-bounded-load-evidence
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    name: Synthetic staging Assistant load evidence
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run bounded synthetic Assistant load evidence
+        env:
+          LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_ASSISTANT_LOAD_LEVELS: ${{ inputs.levels }}
+        run: node scripts/assistant-load-evidence.mjs
