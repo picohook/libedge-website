@@ -1,6 +1,7 @@
 import { Discover } from './discover.js';
 import { createEvidencePack } from './evidence-pack.js';
 import { validateGroundedClaims } from './grounding-validator.js';
+import { filterRelevantWorks } from './relevance.js';
 
 function safeErrorClass(error) {
   const name = typeof error?.name === 'string' ? error.name.trim() : '';
@@ -56,9 +57,14 @@ export async function orchestrateResearchAnswer({
     return { ok: false, code: 'DISCOVER_FAILED', claims: [] };
   }
 
+  const relevantWorks = filterRelevantWorks(task, works);
+  if (!relevantWorks.length) {
+    return { ok: true, code: 'OK', claims: [], evidence: [], evidence_pack_id: null };
+  }
+
   let evidencePack;
   try {
-    evidencePack = packFactory(works, packOptions);
+    evidencePack = packFactory(relevantWorks, packOptions);
   } catch {
     return { ok: false, code: 'EVIDENCE_PACK_FAILED', claims: [] };
   }
