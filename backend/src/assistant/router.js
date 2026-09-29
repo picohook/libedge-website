@@ -5,6 +5,7 @@ import { createBedrockModelAdapter } from './bedrock-model-adapter.js';
 import { recordAssistantOutcome } from './telemetry.js';
 import { createSupportCheck } from './support-check-client.js';
 import { supportCheckRuntimePause } from './support-check-runtime-pause.js';
+import { requireResearchAccess } from '../research/entitlement.js';
 
 const app = new Hono();
 
@@ -22,6 +23,9 @@ app.post('/api/assistant/ask', async (c) => {
   const startedAt = Date.now();
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
+
+  const access = await requireResearchAccess(c.env, auth.user);
+  if (!access.ok) return c.json({ ok: false, error: access.error, code: access.code, claims: [], evidence: [] }, access.status);
 
   let body;
   try {
