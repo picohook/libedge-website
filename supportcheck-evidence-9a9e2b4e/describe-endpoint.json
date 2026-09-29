@@ -1,0 +1,27 @@
+{
+    "EndpointName": "libedge-fresh-checker-staging",
+    "EndpointArn": "arn:aws:sagemaker:us-east-1:186436510070:endpoint/libedge-fresh-checker-staging",
+    "EndpointConfigName": "libedge-fresh-checker-9a9e2b4e",
+    "ProductionVariants": [
+        {
+            "VariantName": "checker",
+            "DeployedImages": [
+                {
+                    "SpecifiedImage": "186436510070.dkr.ecr.us-east-1.amazonaws.com/libedge-fresh-checker@sha256:4f57b21c08b6494a162e5c75d35c57a3dc136c3c4b47d37319d4ed475678cc40",
+                    "ResolvedImage": "186436510070.dkr.ecr.us-east-1.amazonaws.com/libedge-fresh-checker@sha256:4f57b21c08b6494a162e5c75d35c57a3dc136c3c4b47d37319d4ed475678cc40",
+                    "ResolutionTime": "2026-09-29T10:40:10.868000+00:00"
+                }
+            ],
+            "CurrentWeight": 1.0,
+            "DesiredWeight": 1.0,
+            "CurrentInstanceCount": 1,
+            "DesiredInstanceCount": 1
+        }
+    ],
+    "EndpointStatus": "InService",
+    "CreationTime": "2026-09-29T10:40:10.240000+00:00",
+    "LastModifiedTime": "2026-09-29T10:42:59.605000+00:00",
+    "MetricsConfig": {
+        "EnableDetailedObservability": true
+    }
+}
