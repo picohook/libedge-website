@@ -8,6 +8,39 @@ const app = new Hono();
 const DEFAULT_USER_LIMIT = 20;
 const DEFAULT_USER_WINDOW_SECONDS = 300;
 
+async function hasResearchEntitlement(db, user) {
+  if (!user?.user_id) return false;
+  if (user.role === 'super_admin') return true;
+
+  const individual = await db.prepare(`
+    SELECT 1 FROM subscriptions
+    WHERE user_id = ? AND product_slug = 'research' AND status = 'active'
+      AND (start_date IS NULL OR date(start_date) <= date('now'))
+      AND (end_date IS NULL OR date(end_date) >= date('now'))
+    LIMIT 1
+  `).bind(user.user_id).first();
+  if (individual) return true;
+
+  const institutionId = user.institution_id;
+  if (!institutionId) return false;
+  const seat = await db.prepare(`
+    SELECT 1
+    FROM institution_subscription_seats seat
+    JOIN institution_subscriptions sub ON sub.id = seat.institution_subscription_id
+    WHERE seat.user_id = ? AND sub.institution_id = ? AND sub.product_slug = 'research'
+      AND sub.status = 'active'
+      AND (sub.start_date IS NULL OR date(sub.start_date) <= date('now'))
+      AND (sub.end_date IS NULL OR date(sub.end_date) >= date('now'))
+    LIMIT 1
+  `).bind(user.user_id, institutionId).first();
+  return Boolean(seat);
+}
+
+function researchPrivacyGatePassed(env = {}) {
+  return String(env.RESEARCH_PROVIDER_PRIVACY_GATE_STATUS || '').trim().toUpperCase() === 'PASS'
+    && String(env.RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS || '').trim().toUpperCase() === 'PASS';
+}
+
 function normalizeQuery(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
 }
@@ -43,6 +76,13 @@ app.get('/api/research/search', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
 
+  if (!researchPrivacyGatePassed(c.env)) {
+    return c.json({ error: 'Research erişimi bu ortamda etkin değil', code: 'RESEARCH_PRIVACY_GATE_REQUIRED' }, 503);
+  }
+  if (!await hasResearchEntitlement(c.env.DB, auth.user)) {
+    return c.json({ error: 'Research aboneliği veya kurum koltuğu gerekli', code: 'RESEARCH_ENTITLEMENT_REQUIRED' }, 403);
+  }
+
   const query = normalizeQuery(c.req.query('q'));
   if (query.length < 2 || query.length > 300) {
     return c.json({ error: 'Geçerli bir araştırma sorgusu gerekli', code: 'RESEARCH_QUERY_INVALID' }, 400);
@@ -66,5 +106,5 @@ export function handleResearchRequest(request, env, ctx) {
   return app.fetch(request, env, ctx);
 }
 
-export { app as researchApp };
+export { app as researchApp, hasResearchEntitlement, researchPrivacyGatePassed };
 export { Discover, isSemanticAvailabilityFailure, researchCacheKeyFor } from './discover.js';
