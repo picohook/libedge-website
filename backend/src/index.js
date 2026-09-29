@@ -4376,6 +4376,7 @@ app.get('/api/admin/subscriptions', async (c) => {
     const unionSql = `
       SELECT s.id, 'individual' as type, s.product_slug, s.status, s.start_date, s.end_date,
              u.full_name as subject_name, u.institution as institution_name, s.user_id, NULL as institution_id,
+             NULL AS seat_limit,
              NULL AS raw_access_type, NULL AS raw_access_url, 0 AS raw_requires_institution_email,
              0 AS raw_requires_vpn, NULL AS raw_registration_url, NULL AS raw_access_notes_tr,
              NULL AS raw_access_notes_en, NULL AS access_type, NULL AS access_url,
@@ -4387,6 +4388,7 @@ app.get('/api/admin/subscriptions', async (c) => {
       UNION ALL
       SELECT is2.id, 'institution' as type, is2.product_slug, is2.status, is2.start_date, is2.end_date,
              i.name as subject_name, i.name as institution_name, NULL as user_id, is2.institution_id,
+             is2.seat_limit,
              is2.access_type AS raw_access_type,
              is2.access_url AS raw_access_url,
              COALESCE(is2.requires_institution_email, 0) AS raw_requires_institution_email,
@@ -4485,7 +4487,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                NULLIF(TRIM(is2.registration_url), '') AS registration_url,
                COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
                COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
-               i.name as subject_name, i.name as institution_name, is2.institution_id, NULL as user_id
+               i.name as subject_name, i.name as institution_name, is2.institution_id, NULL as user_id, is2.seat_limit
         FROM institution_subscriptions is2
         LEFT JOIN institutions i ON is2.institution_id = i.id
         LEFT JOIN products p ON p.slug = is2.product_slug
@@ -4509,7 +4511,7 @@ app.get('/api/admin/subscriptions', async (c) => {
                NULLIF(TRIM(is2.registration_url), '') AS registration_url,
                COALESCE(NULLIF(TRIM(is2.access_notes_tr), ''), p.default_access_notes_tr) AS access_notes_tr,
                COALESCE(NULLIF(TRIM(is2.access_notes_en), ''), p.default_access_notes_en) AS access_notes_en,
-               i.name as subject_name, i.name as institution_name, is2.institution_id, NULL as user_id
+               i.name as subject_name, i.name as institution_name, is2.institution_id, NULL as user_id, is2.seat_limit
         FROM institution_subscriptions is2
         LEFT JOIN institutions i ON is2.institution_id = i.id
         LEFT JOIN products p ON p.slug = is2.product_slug
