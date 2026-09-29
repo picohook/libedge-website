@@ -4676,7 +4676,7 @@ app.delete('/api/admin/subscription/:id', async (c) => {
 app.post('/api/admin/institution-subscription', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const auth = await requireAuth(c);
-  const { institution_id, product_slug, status, end_date, access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
+  const { institution_id, product_slug, status, end_date, access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en, seat_limit } = await c.req.json();
   if (!institution_id || !product_slug) return c.json({ error: 'institution_id ve product_slug zorunlu' }, 400);
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db, c.env);
@@ -4688,9 +4688,9 @@ app.post('/api/admin/institution-subscription', async (c) => {
   await db.prepare(`
     INSERT INTO institution_subscriptions (
       institution_id, product_slug, status, end_date, created_by,
-      access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en
+      access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en, seat_limit
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     parseInt(institution_id),
     product_slug,
@@ -4703,7 +4703,8 @@ app.post('/api/admin/institution-subscription', async (c) => {
     requires_institution_email ? 1 : 0,
     requires_vpn ? 1 : 0,
     String(access_notes_tr || '').trim() || null,
-    String(access_notes_en || '').trim() || null
+    String(access_notes_en || '').trim() || null,
+    product_slug === 'research' ? Math.max(0, Number(seat_limit || 0)) : null
   ).run();
   return c.json({ success: true });
 });
@@ -4712,7 +4713,7 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const id = Number(c.req.param('id'));
   if (!id) return c.json({ error: 'Geçersiz abonelik id' }, 400);
-  const { institution_id, product_slug, status, end_date, access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en } = await c.req.json();
+  const { institution_id, product_slug, status, end_date, access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en, seat_limit } = await c.req.json();
   if (!institution_id || !product_slug) return c.json({ error: 'institution_id ve product_slug zorunlu' }, 400);
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db, c.env);
@@ -4730,7 +4731,7 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
   const updateStmt = db.prepare(`
     UPDATE institution_subscriptions
     SET institution_id = ?, product_slug = ?, status = ?, end_date = ?,
-        access_type = ?, access_url = ?, registration_url = ?, requires_institution_email = ?, requires_vpn = ?, access_notes_tr = ?, access_notes_en = ?
+        access_type = ?, access_url = ?, registration_url = ?, requires_institution_email = ?, requires_vpn = ?, access_notes_tr = ?, access_notes_en = ?, seat_limit = ?
     WHERE id = ?
   `).bind(
     parseInt(institution_id),
@@ -4744,6 +4745,7 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
     requires_vpn ? 1 : 0,
     String(access_notes_tr || '').trim() || null,
     String(access_notes_en || '').trim() || null,
+    product_slug === 'research' ? Math.max(0, Number(seat_limit || 0)) : null,
     id
   );
   const logStmt = createAdminActionLogStmt(db, {
