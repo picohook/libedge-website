@@ -8079,7 +8079,10 @@ async function loadMyInstitution() {
     successEl.classList.add('hidden');
     
     try {
-        const res = await fetch('/api/admin/my-institution', { 
+        const previewId = currentAdmin?.role === 'super_admin' ? _institutionPreview.id : null;
+        const previewSession = _institutionPreview.sessionId ? `?session_id=${encodeURIComponent(_institutionPreview.sessionId)}` : '';
+        const endpoint = previewId ? `/api/admin/institution-preview/${previewId}${previewSession}` : '/api/admin/my-institution';
+        const res = await fetch(endpoint, {
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -8089,6 +8092,12 @@ async function loadMyInstitution() {
         }
         
         const inst = await res.json();
+        if (inst.preview?.session_id) _institutionPreview.sessionId = inst.preview.session_id;
+        const domainInput = document.getElementById('myInstitutionDomain');
+        if (domainInput) domainInput.disabled = Boolean(inst.preview?.read_only);
+        const form = document.getElementById('myInstitutionForm');
+        const submit = form?.querySelector('button[type="submit"]');
+        if (submit) submit.style.display = inst.preview?.read_only ? 'none' : '';
 
         document.getElementById('myInstitutionId').value = inst.id || '';
         document.getElementById('myInstitutionName').value = inst.name || '';
@@ -9051,6 +9060,9 @@ function renderInstitutions(institutions) {
                 <button class="inst-files-btn text-purple-600 hover:text-purple-800" title="Dosyaları Gör">
                     <i class="fas fa-folder-open"></i>
                 </button>
+                <button class="inst-preview-btn text-amber-600 hover:text-amber-800" title="Kurum admin görünümünü salt-okunur görüntüle" aria-label="Kurum admin görünümünü görüntüle">
+                    <i class="fas fa-eye"></i>
+                </button>
                 <button class="inst-edit-btn text-blue-600" title="Düzenle"><i class="fas fa-edit"></i></button>
                 ${inst.source === 'airtable' ? '' : `<button class="inst-delete-btn text-red-600" title="Sil"><i class="fas fa-trash"></i></button>`}
             </td>
@@ -9077,6 +9089,11 @@ document.getElementById('institutionsList')?.addEventListener('click', function(
 
     if (e.target.closest('.inst-files-btn')) {
         openInstFilesPanel(instId, displayName);
+        return;
+    }
+
+    if (e.target.closest('.inst-preview-btn')) {
+        enterInstitutionPreview(instId, displayName);
         return;
     }
 
