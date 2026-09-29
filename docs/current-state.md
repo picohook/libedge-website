@@ -188,7 +188,10 @@ Verified implementation progress:
 - PR #202 removed outward `rejected_claims` exposure from the current all-or-nothing failure response. This is a D-020/current-contract compliance fix, not closure of D-023 open item #1.
 - D-023 open item #2 language scope is now defined and independently accepted as **English-only** for the validated supportCheck path; Turkish and other non-English languages remain outside authorized checker scope until separately validated.
 - D-023 open item #3 prospective Trigger-B drift rule is now defined and independently accepted; aggregate drift alone remains an investigation signal and requires the adopted confirmation/escalation path.
-- The supportCheck runtime/privacy candidate architecture and AI Assistant Product Readiness Gate are independently accepted and merged. Checker-specific privacy qualification, exact runtime implementation, staging operational-pause exercise, authenticated staging E2E, and release-candidate evidence remain downstream before any production activation.
+- The supportCheck runtime/privacy candidate architecture and AI Assistant Product Readiness Gate are independently accepted and merged. Checker-specific privacy qualification, staging operational-pause exercise, authenticated staging E2E, and release-candidate evidence remain downstream before any production activation.
+- The exact Fresh-Checker source/container, real offline Docker/model execution, SageMaker transport, immutable-ECR publish helper, fail-closed SageMaker deploy/cleanup helpers, privacy evidence collector, model-level network-isolation evidence, and read-only IAM inventory are implemented and independently accepted.
+- The composed account-side AWS execution package and its read-only preflight are implemented, independently execution-tested, accepted, and merged. They do not establish an AWS deployment or checker Privacy PASS by themselves. The remaining infrastructure step requires an authorized AWS session plus existing account-specific resources (immutable ECR repository and SageMaker execution role), after which exact deployment/privacy/IAM evidence can be collected for independent review.
+- The post-Privacy-PASS staging evidence pack is implemented and independently accepted. It sequences the synthetic E2E matrix, no-redeploy operational-pause drill, aggregate performance/reliability sample, and exact endpoint cost/billing evidence without recording research-interest content.
 
 ## Product version baseline
 
@@ -252,4 +255,4 @@ Canonical records:
 
 Repository-evidence caveat: the final closure and master-release summaries are committed, but the raw external execution records named by those summaries (including the Stage-B and final-audit job outputs) are not currently committed as first-class repository artifacts. Do not represent repository provenance as complete until those raw records are imported and hash-linked. This provenance gap does not silently convert the historical v0.3 isolation gate to PASS; that gate remains a historical OPEN/NOT SATISFIED record, while the accepted successor line is the separately governed v0.4.x A1/A2/B path.
 
-Last updated: 2026-09-28
+Last updated: 2026-09-29
