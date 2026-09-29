@@ -8482,6 +8482,10 @@ app.post('/api/admin/support/tickets/:id/reply', async (c) => {
 
 // ====================== AIRTABLE HELPERS ======================
 
+function airtableFormulaString(value) {
+    return String(value ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 // Account bul veya oluştur
 async function findOrCreateAccount(env, accountName, ip) {
     if (!accountName) return null;
@@ -8489,7 +8493,7 @@ async function findOrCreateAccount(env, accountName, ip) {
     const url = `https://api.airtable.com/v0/${env.AIRTABLE_BASE_ID}/Accounts`;
 
     // Önce var mı kontrol et (formül tümünü encode et)
-    const searchFormula = `{Account Name}="${accountName}"`;
+    const searchFormula = `{Account Name}="${airtableFormulaString(accountName)}"`;
     const searchRes = await fetch(`${url}?filterByFormula=${encodeURIComponent(searchFormula)}`, {
         headers: { 'Authorization': `Bearer ${env.AIRTABLE_PAT}` }
     });
@@ -8526,7 +8530,7 @@ async function findOrCreateContact(env, contactData, accountId) {
 
     // Email ile var mı kontrol et
     if (contactData.email) {
-        const searchFormula = `{Email}="${contactData.email}"`;
+        const searchFormula = `{Email}="${airtableFormulaString(contactData.email)}"`;
         const searchRes = await fetch(`${url}?filterByFormula=${encodeURIComponent(searchFormula)}`, {
             headers: { 'Authorization': `Bearer ${env.AIRTABLE_PAT}` }
         });
@@ -8610,6 +8614,10 @@ app.post('/api/contact', async (c) => {
         }
 
         const ip = c.req.header('CF-Connecting-IP') || '';
+        const contactLimit = await checkProtectedRateLimit(c, 'contact:ip', ip || 'unknown', 20, 15 * 60);
+        if (contactLimit.isLimited) {
+            return rateLimitResponse(c, contactLimit, 'Çok fazla form gönderimi. Lütfen birkaç dakika sonra tekrar deneyin.');
+        }
         body.email = normalizedEmail;
         if (normalizedName) body.name = normalizedName;
 
