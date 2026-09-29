@@ -2,7 +2,7 @@ import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedroc
 
 const DEFAULT_MODEL_ID = 'us.anthropic.claude-sonnet-4-6';
 const DEFAULT_REGION = 'us-east-1';
-const MAX_CLAIMS = 8;
+const MAX_CLAIMS = 4;
 
 function configured(value) {
   return String(value ?? '').trim();
@@ -19,8 +19,10 @@ function credentialsFromEnv(env) {
 function promptFor(task, evidencePack) {
   return [
     'Return JSON only with shape {"claims":[{"text":"...","evidence_ids":["..."]}]}.',
-    `Produce at most ${MAX_CLAIMS} concise factual claims.`,
-    'Every claim must cite one or more evidence_id values from the supplied evidence.',
+    `Produce at most ${MAX_CLAIMS} concise, atomic factual claims. Fewer claims are better than weakly supported claims.`,
+    'Every claim must be directly and explicitly supported by the title/abstract text of its cited evidence.',
+    'Keep each claim as close as possible to what the cited evidence actually states; do not infer causes, mechanisms, comparisons, safety, efficacy, or general conclusions unless the cited text explicitly states them.',
+    'Use the minimum evidence_ids needed for each claim. Omit any claim if support is ambiguous or only indirect.',
     'Do not cite identifiers that are not present. Do not add unsupported facts.',
     '',
     `Research task: ${task}`,
