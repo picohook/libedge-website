@@ -14,7 +14,7 @@ mkdir -p "$evidence_dir"
 
 printf 'source_commit=%s\naws_region=%s\n' "$SOURCE_COMMIT" "$AWS_REGION" > "$evidence_dir/execution-context.txt"
 
-publish_output="$(AWS_REGION="$AWS_REGION" ECR_REPOSITORY="$ECR_REPOSITORY" SOURCE_COMMIT="$SOURCE_COMMIT" scripts/supportcheck-publish-immutable-ecr.sh)"
+publish_output="$(AWS_REGION="$AWS_REGION" ECR_REPOSITORY="$ECR_REPOSITORY" SOURCE_COMMIT="$SOURCE_COMMIT" bash scripts/supportcheck-publish-immutable-ecr.sh)"
 printf '%s\n' "$publish_output" | tee "$evidence_dir/ecr-publish.txt"
 immutable_uri="$(printf '%s\n' "$publish_output" | awk -F= '$1=="immutable_image_uri"{print substr($0,index($0,"=")+1)}')"
 [[ "$immutable_uri" =~ @sha256:[0-9a-f]{64}$ ]] || { echo "No valid immutable image URI from publish step" >&2; exit 1; }
@@ -26,7 +26,7 @@ SAGEMAKER_MODEL_NAME="$SAGEMAKER_MODEL_NAME" \
 SAGEMAKER_ENDPOINT_CONFIG_NAME="$SAGEMAKER_ENDPOINT_CONFIG_NAME" \
 SAGEMAKER_ENDPOINT_NAME="$SAGEMAKER_ENDPOINT_NAME" \
 SAGEMAKER_INSTANCE_TYPE="$SAGEMAKER_INSTANCE_TYPE" \
-scripts/supportcheck-deploy-sagemaker.sh | tee "$evidence_dir/sagemaker-deploy.txt"
+bash scripts/supportcheck-deploy-sagemaker.sh | tee "$evidence_dir/sagemaker-deploy.txt"
 
 SUPPORT_CHECK_AWS_REGION="$AWS_REGION" SUPPORT_CHECK_SAGEMAKER_ENDPOINT="$SAGEMAKER_ENDPOINT_NAME" \
 node scripts/supportcheck-privacy-evidence.mjs > "$evidence_dir/privacy-evidence.json"
