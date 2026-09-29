@@ -16,6 +16,22 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
         node.textContent = t(tr, en);
     }
 
+    function markComingSoon(button) {
+        if (!button || button.dataset.comingSoon === 'true') return;
+        button.dataset.comingSoon = 'true';
+        button.setAttribute('aria-disabled', 'true');
+        button.style.opacity = '0.52';
+        button.style.cursor = 'not-allowed';
+        const badge = document.createElement('span');
+        badge.className = 'assistant-coming-soon-badge';
+        badge.textContent = t('Yakında', 'Coming soon');
+        badge.style.marginInlineStart = '0.4rem';
+        badge.style.fontSize = '0.68em';
+        badge.style.fontWeight = '700';
+        badge.style.opacity = '0.9';
+        button.appendChild(badge);
+    }
+
     function showToast(tr, en = tr) {
         if (!toast) return;
         markTranslatable(toast, tr, en);
@@ -358,6 +374,10 @@ import('./assistant-ui-state.js').then(({ loadingStage, mapAssistantResult, mapL
     }
 
     markResearchGapsFixtureOnly(); addFindingContextualFollowUps(); bindFindingEvidenceInteractions(); setInitialLiveState();
+    document.querySelectorAll('.assistant-mode').forEach((button) => { if (button.dataset.mode !== 'ask') markComingSoon(button); });
+    document.querySelectorAll('.assistant-filter').forEach(markComingSoon);
+    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(.assistant-primary-btn)').forEach(markComingSoon);
+    document.querySelectorAll('[data-fixture-follow-up], .finding-follow-up').forEach(markComingSoon);
     document.querySelectorAll('.citation-chip[data-source]').forEach((button) => button.addEventListener('click', () => highlightSource(button.dataset.source)));
     document.getElementById('viewSourcesBtn')?.addEventListener('click', openSources);
     document.getElementById('closeSourcesBtn')?.addEventListener('click', () => { closeSourceDetails(); closeSources(); });
