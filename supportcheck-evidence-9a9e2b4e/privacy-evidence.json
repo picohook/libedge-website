@@ -1,0 +1,21 @@
+{
+  "schema": "libedge.supportcheck_privacy_qualification_evidence.v1",
+  "collected_at": "2026-09-29T11:50:49.684Z",
+  "account_id": "186436510070",
+  "caller_arn": "arn:aws:iam::186436510070:root",
+  "region": "us-east-1",
+  "endpoint": {"name":"libedge-fresh-checker-staging","arn":"arn:aws:sagemaker:us-east-1:186436510070:endpoint/libedge-fresh-checker-staging","status":"InService","config_name":"libedge-fresh-checker-9a9e2b4e"},
+  "data_capture": {"configured_enabled":false,"configured_destination_s3_uri":null,"active_enabled":false,"active_capture_status":null,"active_sampling_percentage":null,"active_destination_s3_uri":null},
+  "network_isolation": {"model_level_enabled":true},
+  "models": [{
+    "model_name":"libedge-fresh-checker-6afe2861",
+    "execution_role_arn":"arn:aws:iam::186436510070:role/LibEdgeFreshCheckerSageMakerExecutionRole",
+    "network_isolation_enabled":true,
+    "variant_name":"checker",
+    "instance_type":"ml.m5.large",
+    "initial_instance_count":1,
+    "initial_variant_weight":1,
+    "containers":[{"image":"186436510070.dkr.ecr.us-east-1.amazonaws.com/libedge-fresh-checker@sha256:4f57b21c08b6494a162e5c75d35c57a3dc136c3c4b47d37319d4ed475678cc40","image_digest":"sha256:4f57b21c08b6494a162e5c75d35c57a3dc136c3c4b47d37319d4ed475678cc40","model_data_url_present":false}]
+  }],
+  "assertions":{"data_capture_disabled":true,"network_isolation_enabled":true,"all_container_images_digest_pinned":true}
+}

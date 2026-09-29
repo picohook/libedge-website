@@ -1,0 +1,19 @@
+{
+    "ModelName": "libedge-fresh-checker-6afe2861",
+    "PrimaryContainer": {
+        "Image": "186436510070.dkr.ecr.us-east-1.amazonaws.com/libedge-fresh-checker@sha256:4f57b21c08b6494a162e5c75d35c57a3dc136c3c4b47d37319d4ed475678cc40",
+        "Mode": "SingleModel"
+    },
+    "ExecutionRoleArn": "arn:aws:iam::186436510070:role/LibEdgeFreshCheckerSageMakerExecutionRole",
+    "CreationTime": "2026-09-29T10:13:50.147000+00:00",
+    "ModelArn": "arn:aws:sagemaker:us-east-1:186436510070:model/libedge-fresh-checker-6afe2861",
+    "EnableNetworkIsolation": true,
+    "DeploymentRecommendation": {
+        "RecommendationStatus": "COMPLETED",
+        "RealTimeInferenceRecommendations": [
+            {"RecommendationId":"libedge-fresh-checker-6afe2861/PoS7tQlW","InstanceType":"ml.g4dn.2xlarge","Environment":{}},
+            {"RecommendationId":"libedge-fresh-checker-6afe2861/97T0pmDq","InstanceType":"ml.c6i.large","Environment":{}},
+            {"RecommendationId":"libedge-fresh-checker-6afe2861/SYHbQ9bU","InstanceType":"ml.c6i.xlarge","Environment":{}}
+        ]
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "EndpointConfigName": "libedge-fresh-checker-9a9e2b4e",
+    "EndpointConfigArn": "arn:aws:sagemaker:us-east-1:186436510070:endpoint-config/libedge-fresh-checker-9a9e2b4e",
+    "ProductionVariants": [
+        {
+            "VariantName": "checker",
+            "ModelName": "libedge-fresh-checker-6afe2861",
+            "InitialInstanceCount": 1,
+            "InstanceType": "ml.m5.large",
+            "InitialVariantWeight": 1.0
+        }
+    ],
+    "CreationTime": "2026-09-29T10:40:08.040000+00:00",
+    "EnableNetworkIsolation": false,
+    "MetricsConfig": {
+        "EnableDetailedObservability": true
+    }
+}

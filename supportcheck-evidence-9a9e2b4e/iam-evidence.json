@@ -1,0 +1,17 @@
+{
+  "schema": "libedge.supportcheck_iam_evidence.v1",
+  "collected_at": "2026-09-29T11:55:05.414Z",
+  "account_id": "186436510070",
+  "caller_arn": "arn:aws:iam::186436510070:root",
+  "region": "us-east-1",
+  "endpoint": {"name":"libedge-fresh-checker-staging","arn":"arn:aws:sagemaker:us-east-1:186436510070:endpoint/libedge-fresh-checker-staging"},
+  "sagemaker_execution_role": {
+    "arn":"arn:aws:iam::186436510070:role/LibEdgeFreshCheckerSageMakerExecutionRole",
+    "role_name":"LibEdgeFreshCheckerSageMakerExecutionRole",
+    "path":"/",
+    "permissions_boundary_arn":null,
+    "attached_managed_policy_arns":[],
+    "inline_policy_names":["LibEdgeFreshCheckerECRRead"]
+  },
+  "note":"Inventory evidence only. Policy documents and the Worker invoke principal must be independently reviewed for least privilege; this output does not assert IAM PASS."
+}

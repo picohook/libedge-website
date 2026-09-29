@@ -1,0 +1,11 @@
+{
+    "RoleName": "LibEdgeFreshCheckerSageMakerExecutionRole",
+    "PolicyName": "LibEdgeFreshCheckerECRRead",
+    "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {"Sid":"ECRImageRead","Effect":"Allow","Action":["ecr:BatchCheckLayerAvailability","ecr:GetDownloadUrlForLayer","ecr:BatchGetImage"],"Resource":"arn:aws:ecr:us-east-1:186436510070:repository/libedge-fresh-checker"},
+            {"Sid":"ECRAuthorization","Effect":"Allow","Action":"ecr:GetAuthorizationToken","Resource":"*"}
+        ]
+    }
+}
