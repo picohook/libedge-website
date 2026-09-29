@@ -485,6 +485,10 @@
 
 <!-- Admin içeriği — auth onaylanana kadar gizli -->
 <div id="authGate" style="display:none">
+<div id="institutionPreviewBanner" class="hidden sticky top-0 z-50 bg-amber-100 border-b border-amber-300 px-4 py-2 text-sm text-amber-900 flex items-center justify-between gap-3">
+    <span><i class="fas fa-eye mr-2"></i>Şu an <strong id="institutionPreviewName"></strong> admin görünümünü salt-okunur görüntülüyorsunuz.</span>
+    <button type="button" class="font-semibold underline" data-admin-action="exit-institution-preview">Super Admin görünümüne dön</button>
+</div>
 
 
 <div class="admin-layout">
@@ -5831,6 +5835,7 @@ document.addEventListener('click', (e) => {
         case 'close-sidebar': closeAdminSidebar(); break;
         case 'toggle-sidebar': toggleAdminSidebar(); break;
         case 'logout': logout(); break;
+        case 'exit-institution-preview': exitInstitutionPreview(); break;
         case 'open-user-dashboard': openUserModalFromDashboard(); break;
         case 'open-institution-dashboard': openInstitutionModalFromDashboard(); break;
         case 'open-announcement-dashboard': openAnnouncementModalFromDashboard(); break;
@@ -8036,6 +8041,36 @@ async function submitBulkUsers() {
 }
 
 // ====================== KURUMUM - ANA FONKSİYON ======================
+
+let _institutionPreview = { id: null, name: '', sessionId: null };
+
+async function enterInstitutionPreview(instId, instName) {
+    if (currentAdmin?.role !== 'super_admin') return;
+    _institutionPreview = { id: Number(instId), name: instName || '', sessionId: null };
+    const tab = document.getElementById('myInstitutionTab');
+    if (tab) tab.style.display = '';
+    document.getElementById('institutionPreviewName').textContent = instName || 'Kurum';
+    document.getElementById('institutionPreviewBanner').classList.remove('hidden');
+    goToAdminTab('my-institution');
+}
+
+async function exitInstitutionPreview() {
+    const preview = { ..._institutionPreview };
+    _institutionPreview = { id: null, name: '', sessionId: null };
+    if (preview.id && preview.sessionId) {
+        fetch(`/api/admin/institution-preview/${preview.id}/end`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: preview.sessionId })
+        }).catch(() => {});
+    }
+    document.getElementById('institutionPreviewBanner').classList.add('hidden');
+    if (currentAdmin?.role === 'super_admin') {
+        document.getElementById('myInstitutionTab').style.display = 'none';
+        goToAdminTab('institutions');
+    }
+}
 
 async function loadMyInstitution() {
     const errEl = document.getElementById('myInstitutionError');
