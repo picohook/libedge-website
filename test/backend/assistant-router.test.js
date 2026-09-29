@@ -40,7 +40,7 @@ async function authCookie() {
 function work() {
   return {
     id: 'openalex:W1',
-    title: 'Test research work',
+    title: 'Hydrogen catalyst research',
     authors: [{ name: 'Ada Researcher', orcid: null }],
     publicationDate: '2026-01-01',
     publicationYear: 2026,
