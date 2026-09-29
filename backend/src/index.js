@@ -4737,6 +4737,100 @@ app.get('/api/admin/airtable/accounts', async (c) => {
 
 // ====================== KURUM DOSYA YÖNETİMİ ======================
 
+app.get('/api/admin/institution-preview/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const db = c.env.DB;
+  await ensureInstitutionMetadataColumns(db, c.env);
+  await ensureInstitutionSubscriptionAccessColumns(db, c.env);
+  await ensureProductsTableAndSeed(db, c.env);
+
+  const inst = await getInstitutionByIdentifier(db, c.req.param('id'));
+  if (!inst) return c.json({ error: 'Kurum bulunamadı' }, 404);
+
+  const fullInst = await db.prepare(`
+    SELECT id, name, domain, website_url, city, category, logo_url,
+      (SELECT COUNT(*) FROM users WHERE institution_id = institutions.id AND role != 'super_admin') AS user_count
+    FROM institutions WHERE id = ?
+  `).bind(inst.id).first();
+
+  const [subRows, recentUsers, openTickets] = await Promise.all([
+    db.prepare(`
+      SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date,
+             COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
+             COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url
+      FROM institution_subscriptions is2
+      LEFT JOIN products p ON p.slug = is2.product_slug
+      WHERE is2.institution_id = ? AND is2.status = 'active'
+      ORDER BY is2.end_date ASC
+    `).bind(inst.id).all(),
+    db.prepare(`
+      SELECT id, full_name, email, role, created_at
+      FROM users WHERE institution_id = ? AND role != 'super_admin'
+      ORDER BY created_at DESC LIMIT 5
+    `).bind(inst.id).all(),
+    db.prepare(`
+      SELECT COUNT(*) AS cnt FROM support_tickets
+      WHERE institution_id = ? AND status NOT IN ('resolved','closed')
+    `).bind(inst.id).first()
+  ]);
+
+  const sessionId = crypto.randomUUID();
+  await createAdminActionLogStmt(db, {
+    id: sessionId,
+    actor: auth.user,
+    entityType: 'institution_preview',
+    entityId: inst.id,
+    action: 'preview_start',
+    after: { institution_name: inst.name }
+  }).run();
+
+  return c.json({
+    ...fullInst,
+    file_count: await getInstitutionFileCount(db, inst.id),
+    active_subscriptions: subRows.results || [],
+    recent_users: recentUsers.results || [],
+    open_ticket_count: openTickets?.cnt ?? 0,
+    preview: { read_only: true, session_id: sessionId }
+  });
+});
+
+app.post('/api/admin/institution-preview/:id/end', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Yetkisiz' }, 403);
+
+  const body = await c.req.json().catch(() => ({}));
+  const sessionId = String(body.session_id || '').trim();
+  if (!sessionId) return c.json({ error: 'Preview session gerekli' }, 400);
+
+  const db = c.env.DB;
+  const start = await db.prepare(`
+    SELECT id, actor_user_id, entity_id, created_at
+    FROM admin_action_logs
+    WHERE id = ? AND entity_type = 'institution_preview' AND action = 'preview_start'
+  `).bind(sessionId).first();
+
+  if (!start || String(start.actor_user_id) !== String(auth.user.user_id) ||
+      String(start.entity_id) !== String(c.req.param('id'))) {
+    return c.json({ error: 'Preview session bulunamadı' }, 404);
+  }
+
+  const durationSeconds = Math.max(0, Math.round((Date.now() - Date.parse(start.created_at)) / 1000));
+  await createAdminActionLogStmt(db, {
+    id: crypto.randomUUID(),
+    actor: auth.user,
+    entityType: 'institution_preview',
+    entityId: c.req.param('id'),
+    action: 'preview_end',
+    after: { session_id: sessionId, duration_seconds: durationSeconds }
+  }).run();
+
+  return c.json({ success: true, duration_seconds: durationSeconds });
+});
+
 app.get('/api/admin/my-institution', async (c) => {
   const payload = await getTokenPayloadFromCookie(c);
   if (!payload) return c.json({ error: 'Yetkisiz' }, 403);
