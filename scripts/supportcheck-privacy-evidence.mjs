@@ -33,6 +33,7 @@ const models = variants.map((v) => {
   }));
   return {
     model_name: v.ModelName,
+    execution_role_arn: m.ExecutionRoleArn || null,
     variant_name: v.VariantName || null,
     instance_type: v.InstanceType || null,
     initial_instance_count: Number.isFinite(v.InitialInstanceCount) ? v.InitialInstanceCount : null,
