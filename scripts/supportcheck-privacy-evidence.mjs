@@ -31,7 +31,15 @@ const models = variants.map((v) => {
     image_digest: digestFromImage(x.Image),
     model_data_url_present: Boolean(x.ModelDataUrl || x.ModelDataSource)
   }));
-  return { model_name: v.ModelName, containers };
+  return {
+    model_name: v.ModelName,
+    execution_role_arn: m.ExecutionRoleArn || null,
+    variant_name: v.VariantName || null,
+    instance_type: v.InstanceType || null,
+    initial_instance_count: Number.isFinite(v.InitialInstanceCount) ? v.InitialInstanceCount : null,
+    initial_variant_weight: Number.isFinite(v.InitialVariantWeight) ? v.InitialVariantWeight : null,
+    containers
+  };
 });
 
 const out = {
@@ -47,12 +55,22 @@ const out = {
     config_name: configName
   },
   data_capture: {
-    enabled: Boolean(config.DataCaptureConfig?.EnableCapture),
-    destination_s3_uri: config.DataCaptureConfig?.DestinationS3Uri ? '[configured]' : null
+    configured_enabled: Boolean(config.DataCaptureConfig?.EnableCapture),
+    configured_destination_s3_uri: config.DataCaptureConfig?.DestinationS3Uri ? '[configured]' : null,
+    active_enabled: Boolean(endpoint.DataCaptureConfig?.EnableCapture),
+    active_capture_status: endpoint.DataCaptureConfig?.CaptureStatus || null,
+    active_sampling_percentage: Number.isFinite(endpoint.DataCaptureConfig?.CurrentSamplingPercentage)
+      ? endpoint.DataCaptureConfig.CurrentSamplingPercentage
+      : null,
+    active_destination_s3_uri: endpoint.DataCaptureConfig?.DestinationS3Uri ? '[configured]' : null
+  },
+  network_isolation: {
+    enabled: Boolean(config.EnableNetworkIsolation)
   },
   models,
   assertions: {
-    data_capture_disabled: !config.DataCaptureConfig?.EnableCapture,
+    data_capture_disabled: !config.DataCaptureConfig?.EnableCapture && !endpoint.DataCaptureConfig?.EnableCapture,
+    network_isolation_enabled: Boolean(config.EnableNetworkIsolation),
     all_container_images_digest_pinned: models.length > 0 && models.every((m) => m.containers.length > 0 && m.containers.every((x) => Boolean(x.image_digest)))
   }
 };

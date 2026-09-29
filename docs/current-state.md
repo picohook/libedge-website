@@ -184,6 +184,7 @@ Verified implementation progress:
 
 - PR #200 added real-chain fail-closed CI/integration coverage for supportCheck HTTP error, invalid result, timeout, and kill-switch behavior.
 - The staging operational-pause exercise required by D-023 open item #1 remains outstanding and must be exercised only when checker runtime/privacy prerequisites and staging authorization are satisfied.
+- Fresh-Checker real container execution is now demonstrated on staging: manual workflow run 36526178596 at staging SHA `0fcd8d9464ba97aa4175f7a9466ad1d28ee1629d` built the frozen image, started it with runtime network disabled, completed real model inference, verified the pinned response contract, and passed the synthetic content-leak log check. This closes only the prior real-Docker/model-execution evidence gap; immutable ECR digest, SageMaker deployment, checker-specific Privacy PASS, and full staging E2E remain outstanding.
 - PR #202 removed outward `rejected_claims` exposure from the current all-or-nothing failure response. This is a D-020/current-contract compliance fix, not closure of D-023 open item #1.
 - D-023 open item #2 language scope is now defined and independently accepted as **English-only** for the validated supportCheck path; Turkish and other non-English languages remain outside authorized checker scope until separately validated.
 - D-023 open item #3 prospective Trigger-B drift rule is now defined and independently accepted; aggregate drift alone remains an investigation signal and requires the adopted confirmation/escalation path.
