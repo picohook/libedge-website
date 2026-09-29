@@ -1,0 +1,6 @@
+{
+    "Version":"2012-10-17",
+    "Statement":[
+        {"Sid":"InvokeFreshCheckerStagingOnly","Effect":"Allow","Action":"sagemaker:InvokeEndpoint","Resource":"arn:aws:sagemaker:us-east-1:186436510070:endpoint/libedge-fresh-checker-staging"}
+    ]
+}
