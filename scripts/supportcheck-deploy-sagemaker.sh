@@ -25,13 +25,10 @@ model_isolation="$(aws sagemaker describe-model --region "$AWS_REGION" --model-n
 aws sagemaker create-endpoint-config \
   --region "$AWS_REGION" \
   --endpoint-config-name "$SAGEMAKER_ENDPOINT_CONFIG_NAME" \
-  --production-variants "VariantName=checker,ModelName=$SAGEMAKER_MODEL_NAME,InitialInstanceCount=1,InstanceType=$SAGEMAKER_INSTANCE_TYPE,InitialVariantWeight=1" \
-  --enable-network-isolation >/dev/null
+  --production-variants "VariantName=checker,ModelName=$SAGEMAKER_MODEL_NAME,InitialInstanceCount=1,InstanceType=$SAGEMAKER_INSTANCE_TYPE,InitialVariantWeight=1" >/dev/null
 
-config_isolation="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$SAGEMAKER_ENDPOINT_CONFIG_NAME" --query EnableNetworkIsolation --output text)"
 capture_enabled="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$SAGEMAKER_ENDPOINT_CONFIG_NAME" --query 'DataCaptureConfig.EnableCapture' --output text)"
 
-[[ "$config_isolation" == "True" || "$config_isolation" == "true" ]] || { echo "Endpoint-config network isolation is not enabled; refusing endpoint creation" >&2; exit 1; }
 [[ "$capture_enabled" == "None" || "$capture_enabled" == "null" || "$capture_enabled" == "False" || "$capture_enabled" == "false" ]] || { echo "Data Capture is enabled/uncertain; refusing endpoint creation" >&2; exit 1; }
 
 aws sagemaker create-endpoint \
