@@ -9,7 +9,8 @@ export const ASSISTANT_UI_STATES = Object.freeze({
   EVIDENCE_PAYLOAD_REQUIRED: 'evidence-payload-required',
   MODEL_ERROR: 'model-error',
   GROUNDING_REJECTED: 'grounding-rejected',
-  GENERIC_ERROR: 'generic-error'
+  GENERIC_ERROR: 'generic-error',
+  EMPTY_RESULT: 'empty-result'
 });
 
 const CODE_MAP = Object.freeze({
@@ -89,6 +90,15 @@ const CODE_MAP = Object.freeze({
 
 export function mapAssistantResult(result) {
   if (result?.ok === true && result?.code === 'OK') {
+    const claims = Array.isArray(result.claims) ? result.claims : [];
+    if (claims.length === 0) {
+      return {
+        state: ASSISTANT_UI_STATES.EMPTY_RESULT,
+        title: 'Kaynaklar tarandı, doğrulanmış bulgu üretilemedi', titleEn: 'Sources searched, no verified finding produced',
+        message: 'Bu aramada kaynaklarla yeterince desteklenen bir bulgu oluşturulamadı.', messageEn: 'This search did not produce a finding sufficiently supported by the sources.',
+        tone: 'notice', claims: [], evidencePackId: result.evidence_pack_id || null
+      };
+    }
     return {
       state: ASSISTANT_UI_STATES.SUCCESS,
       title: 'Kanıta dayalı yanıt hazır', titleEn: 'Evidence-based response ready',
