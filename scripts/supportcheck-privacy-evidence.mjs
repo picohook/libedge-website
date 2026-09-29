@@ -31,7 +31,14 @@ const models = variants.map((v) => {
     image_digest: digestFromImage(x.Image),
     model_data_url_present: Boolean(x.ModelDataUrl || x.ModelDataSource)
   }));
-  return { model_name: v.ModelName, containers };
+  return {
+    model_name: v.ModelName,
+    variant_name: v.VariantName || null,
+    instance_type: v.InstanceType || null,
+    initial_instance_count: Number.isFinite(v.InitialInstanceCount) ? v.InitialInstanceCount : null,
+    initial_variant_weight: Number.isFinite(v.InitialVariantWeight) ? v.InitialVariantWeight : null,
+    containers
+  };
 });
 
 const out = {
