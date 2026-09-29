@@ -4,7 +4,7 @@ import { orchestrateResearchAnswer } from '../../backend/src/research/assistant-
 function work() {
   return {
     id: 'work-1',
-    title: 'Example work',
+    title: 'Hydrogen membranes research',
     authors: [],
     publicationDate: null,
     publicationYear: 2026,
@@ -163,7 +163,7 @@ describe('assistant orchestration boundary', () => {
     expect(result.evidence[0]).toMatchObject({
       evidence_id: 'pack-1:e1',
       work_id: 'work-1',
-      title: 'Example work',
+      title: 'Hydrogen membranes research',
       abstract: 'Evidence text.'
     });
     expect(result.evidence[0]).not.toHaveProperty('openAccess');
