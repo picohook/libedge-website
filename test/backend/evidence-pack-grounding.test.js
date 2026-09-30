@@ -115,6 +115,18 @@ describe('grounding validator', () => {
     expect(JSON.stringify(result)).not.toContain('secret provider detail');
   });
 
+  it('classifies real invocation budget errors as BUDGET', async () => {
+    const pack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-budget-reason' });
+    const result = await validateGroundedClaims({
+      evidencePack: pack,
+      claims: [{ text: 'Claim', evidence_ids: ['pack-budget-reason:e1'] }],
+      supportCheck: async () => { throw new Error('INVOCATION_BUDGET_EXHAUSTED'); }
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.rejectedClaims[0]).toMatchObject({ code: 'SUPPORT_CHECK_FAILED', reason: 'BUDGET' });
+  });
+
   it('bounds semantic support checks to two concurrent calls while preserving claim order', async () => {
     const pack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-concurrency' });
     let active = 0;
