@@ -2157,7 +2157,8 @@ app.get('/api/subscription/list', async (c) => {
   let instSubs = [];
   if (institutionId) {
     const instRes = await db.prepare(`
-      SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date, is2.created_at, 'institution' as source,
+      SELECT is2.id, is2.product_slug, is2.status, is2.start_date, is2.end_date, is2.seat_limit,
+           (SELECT COUNT(*) FROM institution_subscription_seats seat WHERE seat.institution_subscription_id = is2.id) AS assigned_seats, is2.created_at, 'institution' as source,
              COALESCE(NULLIF(TRIM(is2.access_type), ''), p.default_access_type) AS access_type,
              COALESCE(NULLIF(TRIM(is2.access_url), ''), p.default_access_url) AS access_url,
              CASE WHEN COALESCE(is2.requires_institution_email, 0) = 1 OR COALESCE(p.default_requires_institution_email, 0) = 1 THEN 1 ELSE 0 END AS requires_institution_email,
@@ -4883,7 +4884,7 @@ app.get('/api/admin/institution-preview/:id', async (c) => {
     db.prepare(`
       SELECT id, full_name, email, role, created_at
       FROM users WHERE institution_id = ? AND role != 'super_admin'
-      ORDER BY created_at DESC LIMIT 5
+      ORDER BY created_at DESC LIMIT 100
     `).bind(inst.id).all(),
     db.prepare(`
       SELECT COUNT(*) AS cnt FROM support_tickets
