@@ -4718,7 +4718,7 @@ app.post('/api/admin/institution-subscription', async (c) => {
   const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
   const normalizedSeatLimit = normalizeInstitutionSeatLimit(seat_limit);
   if (!normalizedSeatLimit.ok) return c.json({ error: normalizedSeatLimit.error }, 400);
-  await db.prepare(`
+  const insertResult = await db.prepare(`
     INSERT INTO institution_subscriptions (
       institution_id, product_slug, status, end_date, created_by,
       access_type, access_url, registration_url, requires_institution_email, requires_vpn, access_notes_tr, access_notes_en, seat_limit
@@ -4739,7 +4739,13 @@ app.post('/api/admin/institution-subscription', async (c) => {
     String(access_notes_en || '').trim() || null,
     normalizedSeatLimit.value
   ).run();
-  return c.json({ success: true });
+  const createdId = Number(insertResult?.meta?.last_row_id || 0);
+  const actor = await getTokenPayloadFromCookie(c);
+  await createAdminActionLogStmt(db, {
+    id: crypto.randomUUID(), actor, entityType: 'institution_subscription', entityId: createdId || null,
+    action: 'create', before: null, undoExpiresAt: null
+  }).run();
+  return c.json({ success: true, id: createdId || undefined });
 });
 
 app.put('/api/admin/institution-subscription/:id', async (c) => {
