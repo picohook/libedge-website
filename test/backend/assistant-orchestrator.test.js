@@ -138,7 +138,7 @@ describe('assistant orchestration boundary', () => {
     expect(result).not.toHaveProperty('evidence');
     expect(result.diagnostic_grounding).toEqual({
       rejected_count: 1,
-      rejection_counts: { SUPPORT_CHECK_REQUIRED: 1 }
+      rejection_counts: { CLAIM_UNSUPPORTED: 1, CLAIM_UNSUPPORTED_UNSUPPORTED: 1 }
     });
   });
 
