@@ -5406,7 +5406,7 @@ function composeFullName(firstName, lastName) {
             els.requiresVpn.checked = !!subscription?.raw_requires_vpn;
             els.accessNotesTr.value = subscription?.raw_access_notes_tr || '';
             els.accessNotesEn.value = subscription?.raw_access_notes_en || '';
-            els.seatLimit.value = String(subscription?.seat_limit ?? 0);
+            els.seatLimit.value = subscription?.seat_limit == null ? '' : String(subscription.seat_limit);
         }
 
         populateSubscriptionProductOptions(type, subscription?.product_slug || '');
@@ -5665,7 +5665,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
                 requires_vpn: els.requiresVpn.checked,
                 access_notes_tr: els.accessNotesTr.value.trim() || null,
                 access_notes_en: els.accessNotesEn.value.trim() || null,
-                seat_limit: els.product.value === 'research' ? Math.max(0, Number(els.seatLimit.value || 0)) : null
+                seat_limit: els.seatLimit.value.trim() === '' ? null : Number(els.seatLimit.value)
             }
             : {
                 user_id: els.userId.value,
