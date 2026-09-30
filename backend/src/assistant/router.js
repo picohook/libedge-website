@@ -37,7 +37,10 @@ app.post('/api/assistant/ask', async (c) => {
   }
 
   const access = await requireResearchAccess(c.env, auth.user);
-  if (!access.ok) return c.json({ ok: false, error: access.error, code: access.code, claims: [], evidence: [] }, access.status);
+  if (!access.ok) {
+    await recordAssistantOutcome(c.env, { code: access.code, durationMs: Date.now() - startedAt });
+    return c.json({ ok: false, error: access.error, code: access.code, claims: [], evidence: [] }, access.status);
+  }
 
   const providerGate = providerGateFromEnv(c.env);
   const modelAdapter = providerGate.status === 'PASS'
@@ -55,7 +58,7 @@ app.post('/api/assistant/ask', async (c) => {
     supportCheck
   });
 
-  recordAssistantOutcome(c.env, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason });
+  await recordAssistantOutcome(c.env, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason });
   if (result && 'diagnostic_error_class' in result) delete result.diagnostic_error_class;
   if (result && 'diagnostic_reason' in result) delete result.diagnostic_reason;
   return c.json(result, 200);

@@ -1,3 +1,4 @@
+import { recordResearchMetrics } from '../research/telemetry.js';
 const OUTCOME_CODES = new Set([
   'OK',
   'ASSISTANT_QUERY_REQUIRED',
@@ -8,7 +9,9 @@ const OUTCOME_CODES = new Set([
   'MODEL_ADAPTER_FAILED',
   'MODEL_OUTPUT_INVALID',
   'GROUNDING_VALIDATION_FAILED',
-  'GROUNDING_REJECTED'
+  'GROUNDING_REJECTED',
+  'RESEARCH_PRIVACY_GATE_REQUIRED',
+  'RESEARCH_ENTITLEMENT_REQUIRED'
 ]);
 
 function safeErrorClass(value) {
@@ -32,7 +35,7 @@ function safeCode(code) {
  * credentials, or provider payloads. Logging is best-effort and must not
  * change the assistant response path.
  */
-export function recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason } = {}) {
+export async function recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason } = {}) {
   const payload = {
     event: 'research_assistant_outcome',
     code: safeCode(code),
@@ -46,6 +49,11 @@ export function recordAssistantOutcome(env, { code, durationMs, errorClass, diag
 
   try {
     console.log(JSON.stringify(payload));
+    const metricCode = payload.code.toLowerCase();
+    await recordResearchMetrics(env, [
+      ['assistant_requests', 1],
+      [`assistant_outcome_${metricCode}`, 1]
+    ]);
     return true;
   } catch {
     return false;

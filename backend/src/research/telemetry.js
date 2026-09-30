@@ -16,7 +16,20 @@ const ALLOWED_METRICS = new Set([
   'crossref_search_fallbacks',
   'semantic_charged_responses',
   'semantic_cost_microusd_total',
-  'semantic_credits_total'
+  'semantic_credits_total',
+  'assistant_requests',
+  'assistant_outcome_ok',
+  'assistant_outcome_discover_failed',
+  'assistant_outcome_evidence_pack_failed',
+  'assistant_outcome_provider_privacy_gate_required',
+  'assistant_outcome_model_adapter_required',
+  'assistant_outcome_model_adapter_failed',
+  'assistant_outcome_model_output_invalid',
+  'assistant_outcome_grounding_validation_failed',
+  'assistant_outcome_grounding_rejected',
+  'assistant_outcome_research_privacy_gate_required',
+  'assistant_outcome_research_entitlement_required',
+  'assistant_outcome_other'
 ]);
 
 const INCREMENT_SQL = `
