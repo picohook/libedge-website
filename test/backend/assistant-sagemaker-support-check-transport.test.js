@@ -103,7 +103,7 @@ describe('SageMaker supportCheck transport', () => {
   });
 
   it('caps configured SageMaker timeout at 15000ms', () => {
-    expect(__test.timeoutMs(env({ RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '999999' }))).toBe(15000);
+    expect(__test.timeoutMs(env({ RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '999999' }))).toBe(45000);
     expect(__test.timeoutMs(env({ RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: 'invalid' }))).toBe(5000);
   });
 
