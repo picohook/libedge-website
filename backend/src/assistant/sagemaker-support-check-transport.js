@@ -35,7 +35,7 @@ function payloadFor(claim, citedEvidence) {
 function timeoutMs(env) {
   const parsed = Number(env?.RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS);
   if (!Number.isFinite(parsed) || parsed <= 0) return 5000;
-  return Math.min(Math.floor(parsed), 15000);
+  return Math.min(Math.floor(parsed), 45000);
 }
 
 export function createSageMakerSupportCheckTransport(env, { clientFactory } = {}) {
