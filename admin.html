@@ -4972,7 +4972,13 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         if (type) params.set('type', type);
         if (status) params.set('status', status);
         const res = await fetch(`${API_BASE}/api/admin/subscriptions?${params.toString()}`, { credentials: 'include' });
-        const payload = await res.json();
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            document.getElementById('subscriptionsList').innerHTML =
+                `<tr><td colspan="9" class="text-center py-4 text-red-600">Abonelikler yüklenemedi: ${escapeHtml(payload.error || String(res.status))}</td></tr>`;
+            document.getElementById('subscriptionsPagination').innerHTML = '';
+            return;
+        }
         const subs = payload.items || [];
         _subscriptionsView.items = subs;
         _subscriptionsView.total = Number(payload.total || 0);
