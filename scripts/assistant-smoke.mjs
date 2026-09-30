@@ -2,7 +2,8 @@ const BASE_URL = normalizeBaseUrl(process.env.LIBEDGE_SMOKE_BASE_URL || 'https:/
 const USER_EMAIL = process.env.LIBEDGE_SMOKE_EMAIL;
 const USER_PASSWORD = process.env.LIBEDGE_SMOKE_PASSWORD;
 const QUERY = process.env.LIBEDGE_ASSISTANT_SMOKE_QUERY || 'PEM water electrolysis catalyst';
-const EXPECTED_CODE = process.env.LIBEDGE_ASSISTANT_SMOKE_EXPECTED_CODE || 'GROUNDING_REJECTED';
+const EXPECTED_CODE = process.env.LIBEDGE_ASSISTANT_SMOKE_EXPECTED_CODE || 'RESEARCH_ENTITLEMENT_REQUIRED';
+const EXPECTED_STATUS = Number(process.env.LIBEDGE_ASSISTANT_SMOKE_EXPECTED_STATUS || 403);
 
 if (!USER_EMAIL || !USER_PASSWORD) {
   console.error('Missing LIBEDGE_SMOKE_EMAIL or LIBEDGE_SMOKE_PASSWORD.');
@@ -36,7 +37,7 @@ await step(`assistant endpoint fails closed as expected (${EXPECTED_CODE})`, asy
   const text = await response.text();
   let payload;
   try { payload = JSON.parse(text); } catch { throw new Error(`assistant response is not JSON: ${text.slice(0, 200)}`); }
-  assert(response.status === 200, `assistant expected 200, got ${response.status}: ${text.slice(0, 300)}`);
+  assert(response.status === EXPECTED_STATUS, `assistant expected ${EXPECTED_STATUS}, got ${response.status}: ${text.slice(0, 300)}`);
   assert(payload?.ok === false, `assistant unexpectedly returned ok=true: ${text.slice(0, 300)}`);
   assert(payload?.code === EXPECTED_CODE, `unexpected assistant code: ${payload?.code}; expected ${EXPECTED_CODE}`);
   assert(Array.isArray(payload?.claims) && payload.claims.length === 0, 'assistant claims must remain empty while gate is closed');
