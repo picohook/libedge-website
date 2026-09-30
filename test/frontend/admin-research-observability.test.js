@@ -43,4 +43,12 @@ describe('Research admin observability', () => {
     expect(researchMarkup).not.toContain('institution_id');
     expect(researchMarkup).not.toContain('evidence_pack_id');
   });
+  it('adds explicit audited checker pause/resume controls without exposing content', () => {
+    expect(admin).toContain('id="researchCheckerPauseBtn"');
+    expect(admin).toContain('id="researchCheckerResumeBtn"');
+    expect(admin).toContain("setResearchCheckerState('pause')");
+    expect(admin).toContain("setResearchCheckerState('resume')");
+    expect(admin).toContain("window.confirm('Fresh-Checker resume edilsin mi?");
+    expect(admin).toContain('/api/admin/research/support-check-state');
+  });
 });
