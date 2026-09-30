@@ -89,15 +89,15 @@ describe('assistant ask endpoint', () => {
     expect((await response.json()).code).toBe('ASSISTANT_QUERY_INVALID');
   });
 
-  it('returns the provider-gate limitation with the default closed flag', async () => {
-    discoverMock.mockResolvedValueOnce([work()]);
+  it('fails closed before generation when the Research privacy gate is not PASS', async () => {
     const response = await request({ query: 'hydrogen catalyst' });
     const body = await response.json();
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(503);
     expect(body).toMatchObject({
       ok: false,
-      code: 'PROVIDER_PRIVACY_GATE_REQUIRED',
-      claims: []
+      code: 'RESEARCH_PRIVACY_GATE_REQUIRED',
+      claims: [],
+      evidence: []
     });
   });
 
