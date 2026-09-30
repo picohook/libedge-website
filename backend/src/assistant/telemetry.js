@@ -49,7 +49,11 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
 
   const groundingCounts = groundingDiagnostic?.rejection_counts && typeof groundingDiagnostic.rejection_counts === 'object'
     ? groundingDiagnostic.rejection_counts : {};
-  const allowedGrounding = ['CLAIM_TEXT_REQUIRED','EVIDENCE_ID_REQUIRED','EVIDENCE_ID_UNKNOWN','SUPPORT_CHECK_REQUIRED','CLAIM_UNSUPPORTED','SUPPORT_CHECK_FAILED'];
+  const allowedGrounding = [
+    'CLAIM_TEXT_REQUIRED','EVIDENCE_ID_REQUIRED','EVIDENCE_ID_UNKNOWN','SUPPORT_CHECK_REQUIRED','CLAIM_UNSUPPORTED','SUPPORT_CHECK_FAILED',
+    'SUPPORT_CHECK_FAILED_TIMEOUT','SUPPORT_CHECK_FAILED_BUDGET','SUPPORT_CHECK_FAILED_LANGUAGE',
+    'SUPPORT_CHECK_FAILED_PIN_OR_RESPONSE','SUPPORT_CHECK_FAILED_TRANSPORT_OR_OTHER'
+  ];
   const groundingMetrics = [];
   for (const key of allowedGrounding) {
     const amount = Number(groundingCounts[key] || 0);
