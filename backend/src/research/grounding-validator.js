@@ -34,7 +34,7 @@ function supportCheckFailureReason(error) {
   const message = String(error?.message || '').trim();
   const name = String(error?.name || '').trim();
   if (name === 'AbortError' || /abort|timeout/i.test(message)) return 'TIMEOUT';
-  if (/^SUPPORT_CHECK_(DAILY_LIMIT_REACHED|BUDGET_UNAVAILABLE)$/.test(message)) return 'BUDGET';
+  if (/^(INVOCATION_LIMIT_REQUIRED|INVOCATION_BUDGET_(STORE_UNAVAILABLE|INVALID|EXHAUSTED|STORE_FAILED))$/.test(message)) return 'BUDGET';
   if (/^SUPPORT_CHECK_LANGUAGE_/.test(message)) return 'LANGUAGE';
   if (/^SUPPORT_CHECK_(MODEL_MISMATCH|REVISION_MISMATCH|MANIFEST_MISMATCH|INVALID_DECISION|INVALID_RESULT)$/.test(message)) return 'PIN_OR_RESPONSE';
   return 'TRANSPORT_OR_OTHER';
