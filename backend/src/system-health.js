@@ -61,6 +61,25 @@ export async function handleSystemHealthRequest(request, env) {
       })
     : { status: 'error' };
 
+  const databaseSchema = env.DB
+    ? await safeCheck(async () => {
+        const columns = await env.DB.prepare("PRAGMA table_info(institution_subscriptions)").all();
+        const columnNames = new Set((columns?.results || []).map((row) => String(row.name || '')));
+        const seatsTable = await env.DB.prepare(
+          "SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name='institution_subscription_seats'"
+        ).first();
+        const telemetryTable = await env.DB.prepare(
+          "SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name='research_telemetry_counters'"
+        ).first();
+        const missing = [];
+        if (!columnNames.has('seat_limit')) missing.push('institution_subscriptions.seat_limit');
+        if (Number(seatsTable?.count || 0) < 1) missing.push('institution_subscription_seats');
+        if (Number(telemetryTable?.count || 0) < 1) missing.push('research_telemetry_counters');
+        const schemaCurrent = missing.length === 0;
+        return { status: schemaCurrent ? 'ok' : 'error', schema_current: schemaCurrent, missing };
+      })
+    : { status: 'error', schema_current: false, missing: ['database_binding'] };
+
   const objectStorage = env.FILES_BUCKET
     ? await safeCheck(async () => {
         await env.FILES_BUCKET.list({ limit: 1 });
@@ -122,7 +141,7 @@ export async function handleSystemHealthRequest(request, env) {
       }))
     : { status: 'error', actions_24h: null };
 
-  const checks = [database, objectStorage, rateLimitStore, researchTelemetry, supportCheck, privacyQueue, adminActivity];
+  const checks = [database, databaseSchema, objectStorage, rateLimitStore, researchTelemetry, supportCheck, privacyQueue, adminActivity];
   const overall = checks.every((item) => item.status === 'ok') ? 'healthy' : 'degraded';
 
   return json({
@@ -132,6 +151,7 @@ export async function handleSystemHealthRequest(request, env) {
     worker_name: env.WORKER_NAME || 'unknown',
     components: {
       database,
+      database_schema: databaseSchema,
       object_storage: objectStorage,
       rate_limit_store: rateLimitStore,
     },
