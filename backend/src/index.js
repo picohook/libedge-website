@@ -15,6 +15,7 @@ import {
   verifyPassword,
 } from './auth/security.js';
 import { getOptionalAuth, requireAuth } from './auth/middleware.js';
+import { hasResearchEntitlement, researchPrivacyGatePassed } from './research/entitlement.js';
 import {
   checkProtectedRateLimit,
   checkRateLimit,
@@ -1882,6 +1883,23 @@ app.post('/api/auth/reset-password', async (c) => {
 });
 
 // ====================== 🆕 PROTECTED ENDPOINT'LER (Cookie ile) ======================
+
+app.get('/api/research/access', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+
+  const privacy_passed = researchPrivacyGatePassed(c.env);
+  const entitled = privacy_passed
+    ? await hasResearchEntitlement(c.env.DB, auth.user)
+    : false;
+
+  return c.json({
+    allowed: Boolean(privacy_passed && entitled),
+    privacy_passed,
+    entitled: Boolean(entitled),
+    entry_url: privacy_passed && entitled ? '/assistant.html' : null,
+  });
+});
 
 app.get('/api/user/profile', async (c) => {
   const auth = await requireAuth(c);
