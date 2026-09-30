@@ -89,6 +89,8 @@ jobs:
           LIBEDGE_SMOKE_BASE_URL: https://staging.libedge-website.pages.dev
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_ASSISTANT_SMOKE_EXPECTED_CODE: RESEARCH_ENTITLEMENT_REQUIRED
+          LIBEDGE_ASSISTANT_SMOKE_EXPECTED_STATUS: '403'
         run: |
           if [ -z "$LIBEDGE_SMOKE_EMAIL" ] || [ -z "$LIBEDGE_SMOKE_PASSWORD" ]; then
             echo "::notice::Assistant staging smoke skipped because LIBEDGE_SMOKE_EMAIL/LIBEDGE_SMOKE_PASSWORD are not configured."
