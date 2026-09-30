@@ -17,6 +17,10 @@
 
 <body class="bg-gray-50 min-h-screen" translatable>
 <!-- Shared Header -->
+<a id="researchAccessEntry" href="/assistant.html" class="hidden fixed bottom-5 right-5 z-40 bg-indigo-700 text-white rounded-full shadow-lg px-5 py-3 font-semibold hover:bg-indigo-800 transition" aria-label="LibEdge Research'e git">
+    <i class="fas fa-flask mr-2" aria-hidden="true"></i>Research
+</a>
+
 <div id="site-header"></div>
 <!-- Hero Slider Yapısı -->
 <main class="hero-slider-container">
@@ -1219,6 +1223,22 @@
 
     // Grab cursor hint
     track.style.cursor = 'grab';
+})();
+</script>
+<script>
+(async function initResearchAccessEntry() {
+    const entry = document.getElementById('researchAccessEntry');
+    if (!entry) return;
+    try {
+        const response = await fetch('/api/research/access', { credentials: 'include' });
+        if (!response.ok) return;
+        const access = await response.json();
+        if (access.allowed && access.entry_url === '/assistant.html') {
+            entry.classList.remove('hidden');
+        }
+    } catch (_) {
+        // Fail closed: Research remains hidden when access cannot be verified.
+    }
 })();
 </script>
 </body>
