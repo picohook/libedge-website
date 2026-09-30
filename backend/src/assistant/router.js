@@ -24,9 +24,6 @@ app.post('/api/assistant/ask', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
 
-  const access = await requireResearchAccess(c.env, auth.user);
-  if (!access.ok) return c.json({ ok: false, error: access.error, code: access.code, claims: [], evidence: [] }, access.status);
-
   let body;
   try {
     body = await c.req.json();
@@ -38,6 +35,9 @@ app.post('/api/assistant/ask', async (c) => {
   if (query.length < 2 || query.length > 300) {
     return c.json({ error: 'Geçerli bir araştırma sorgusu gerekli', code: 'ASSISTANT_QUERY_INVALID' }, 400);
   }
+
+  const access = await requireResearchAccess(c.env, auth.user);
+  if (!access.ok) return c.json({ ok: false, error: access.error, code: access.code, claims: [], evidence: [] }, access.status);
 
   const providerGate = providerGateFromEnv(c.env);
   const modelAdapter = providerGate.status === 'PASS'
