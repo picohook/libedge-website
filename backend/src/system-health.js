@@ -1,6 +1,8 @@
 // Read-only super-admin infrastructure health summary. Never return secret, token, PII, or raw provider errors.
 import { verify } from 'hono/jwt';
 import { readResearchTelemetrySnapshot } from './research/telemetry.js';
+import { SUPPORT_CHECK_PAUSE_KEY } from './assistant/support-check-runtime-pause.js';
+import { supportCheckInvocationKey } from './assistant/support-check-invocation-budget.js';
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -79,6 +81,27 @@ export async function handleSystemHealthRequest(request, env) {
       }))
     : { status: 'error', snapshot: null };
 
+  const supportCheck = env.RATE_LIMIT_KV
+    ? await safeCheck(async () => {
+        const [pauseRaw, invocationRaw] = await Promise.all([
+          env.RATE_LIMIT_KV.get(SUPPORT_CHECK_PAUSE_KEY),
+          env.RATE_LIMIT_KV.get(supportCheckInvocationKey()),
+        ]);
+        const pauseValue = String(pauseRaw || '').trim().toLowerCase();
+        const paused = !['false', '0', 'resume'].includes(pauseValue);
+        const used = Number(invocationRaw || 0);
+        const configuredLimit = Number(env.RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT);
+        return {
+          enabled: env.RESEARCH_ASSISTANT_SUPPORT_CHECK_ENABLED === 'true',
+          privacy_gate: env.RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS === 'PASS' ? 'PASS' : 'UNVERIFIED',
+          paused,
+          pause_reason: paused ? (pauseValue ? 'OPERATIONALLY_PAUSED' : 'PAUSE_STATE_UNSET') : null,
+          daily_invocations_used: Number.isFinite(used) && used >= 0 ? used : null,
+          daily_invocation_limit: Number.isInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : null,
+        };
+      })
+    : { status: 'error' };
+
   const privacyQueue = env.DB
     ? await safeCheck(async () => ({
         pending_r2_purge: await scalar(
@@ -99,7 +122,7 @@ export async function handleSystemHealthRequest(request, env) {
       }))
     : { status: 'error', actions_24h: null };
 
-  const checks = [database, objectStorage, rateLimitStore, researchTelemetry, privacyQueue, adminActivity];
+  const checks = [database, objectStorage, rateLimitStore, researchTelemetry, supportCheck, privacyQueue, adminActivity];
   const overall = checks.every((item) => item.status === 'ok') ? 'healthy' : 'degraded';
 
   return json({
@@ -115,5 +138,6 @@ export async function handleSystemHealthRequest(request, env) {
     privacy: privacyQueue,
     activity: adminActivity,
     research_telemetry: researchTelemetry,
+    support_check: supportCheck,
   });
 }
