@@ -2867,10 +2867,17 @@
                     </div>
 
                     <div id="subscriptionInstitutionFields" class="hidden space-y-4 border-t pt-4">
-                        <div id="subscriptionResearchSeatLimitField" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Research Kullanıcı Kotası</label>
-                            <input type="number" id="subscriptionEditorSeatLimit" min="0" step="1" value="0" class="w-full border p-2 rounded">
-                            <p class="text-xs text-gray-400 mt-1">Kurum admininin Research erişimi atayabileceği azami kullanıcı sayısı.</p>
+                        <div id="subscriptionResearchSeatLimitField">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Kullanıcı Erişimi</label>
+                            <select id="subscriptionEditorAccessMode" class="w-full border p-2 rounded">
+                                <option value="unlimited">Unlimited users</option>
+                                <option value="limited">Limited users</option>
+                            </select>
+                            <div id="subscriptionEditorSeatLimitWrap" class="hidden mt-3">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Maximum users</label>
+                                <input type="number" id="subscriptionEditorSeatLimit" min="1" step="1" class="w-full border p-2 rounded">
+                                <p class="text-xs text-gray-400 mt-1">Kurum admininin erişim atayabileceği azami kullanıcı sayısı.</p>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Kuruma Özel Erişim Tipi</label>
@@ -5319,9 +5326,21 @@ function composeFullName(firstName, lastName) {
             requiresVpn: document.getElementById('subscriptionEditorRequiresVpn'),
             accessNotesTr: document.getElementById('subscriptionEditorAccessNotesTr'),
             accessNotesEn: document.getElementById('subscriptionEditorAccessNotesEn'),
+            accessMode: document.getElementById('subscriptionEditorAccessMode'),
             seatLimit: document.getElementById('subscriptionEditorSeatLimit'),
+            seatLimitWrap: document.getElementById('subscriptionEditorSeatLimitWrap'),
             seatLimitField: document.getElementById('subscriptionResearchSeatLimitField')
         };
+    }
+
+    function syncSubscriptionAccessMode() {
+        const els = getSubscriptionEditorElements();
+        const limited = els.accessMode?.value === 'limited';
+        els.seatLimitWrap?.classList.toggle('hidden', !limited);
+        if (els.seatLimit) {
+            els.seatLimit.required = limited;
+            if (!limited) els.seatLimit.value = '';
+        }
     }
 
     function populateSubscriptionProductOptions(type, selectedValue) {
@@ -5406,7 +5425,9 @@ function composeFullName(firstName, lastName) {
             els.requiresVpn.checked = !!subscription?.raw_requires_vpn;
             els.accessNotesTr.value = subscription?.raw_access_notes_tr || '';
             els.accessNotesEn.value = subscription?.raw_access_notes_en || '';
+            els.accessMode.value = subscription?.seat_limit == null ? 'unlimited' : 'limited';
             els.seatLimit.value = subscription?.seat_limit == null ? '' : String(subscription.seat_limit);
+            syncSubscriptionAccessMode();
         }
 
         populateSubscriptionProductOptions(type, subscription?.product_slug || '');
@@ -5665,7 +5686,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
                 requires_vpn: els.requiresVpn.checked,
                 access_notes_tr: els.accessNotesTr.value.trim() || null,
                 access_notes_en: els.accessNotesEn.value.trim() || null,
-                seat_limit: els.seatLimit.value.trim() === '' ? null : Number(els.seatLimit.value)
+                seat_limit: els.accessMode.value === 'unlimited' ? null : Number(els.seatLimit.value)
             }
             : {
                 user_id: els.userId.value,
@@ -5705,6 +5726,8 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         loadSubscriptions();
         loadDashboard();
     });
+
+    document.getElementById('subscriptionEditorAccessMode')?.addEventListener('change', syncSubscriptionAccessMode);
 
     document.getElementById('individualToolForm')?.addEventListener('submit', saveIndividualTool);
 
