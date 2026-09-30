@@ -5550,7 +5550,7 @@ function composeFullName(firstName, lastName) {
                 try { before = JSON.parse(a.before_json || '{}'); } catch (_) { before = {}; }
                 const isInstitution = a.entity_type === 'institution_subscription';
                 const typeLabel = isInstitution ? 'Kurum' : 'Bireysel';
-                const actionLabel = a.action === 'delete' ? 'Silme' : 'Güncelleme';
+                const actionLabel = a.action === 'create' ? 'Oluşturma' : (a.action === 'delete' ? 'Silme' : 'Güncelleme');
                 const title = `${typeLabel} abonelik #${a.entity_id} • ${actionLabel}`;
                 const when = a.created_at ? new Date(a.created_at).toLocaleString('tr-TR') : '-';
                 const disabled = a.undone_at ? 'disabled opacity-50 cursor-not-allowed' : '';
@@ -5561,7 +5561,7 @@ function composeFullName(firstName, lastName) {
                             <div class="font-medium text-sm">${escapeHtml(title)}</div>
                             <div class="text-xs text-gray-500">${escapeHtml(before.product_slug || '-')} • ${escapeHtml(when)}</div>
                         </div>
-                        <button type="button" data-admin-action="restore-subscription-action" data-action-id="${escapeHtml(a.id)}" class="px-3 py-1.5 rounded bg-blue-600 text-white text-xs ${disabled}" ${a.undone_at ? 'disabled' : ''}>${label}</button>
+                        ${a.action === 'create' ? '' : `<button type="button" data-admin-action="restore-subscription-action" data-action-id="${escapeHtml(a.id)}" class="px-3 py-1.5 rounded bg-blue-600 text-white text-xs ${disabled}" ${a.undone_at ? 'disabled' : ''}>${label}</button>`}
                     </div>
                 `;
             }).join('') : '<div class="text-sm text-gray-400 py-4 text-center">Kayıt yok.</div>';
