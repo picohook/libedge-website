@@ -8142,37 +8142,93 @@ async function exitInstitutionPreview() {
 
 async function openResearchSeatManager(subscriptionId, seatLimit) {
     if (currentAdmin?.role === 'super_admin' && _institutionPreview.id) return;
-    const res = await fetch(`${API_BASE}/api/admin/research-seats/${subscriptionId}`, { credentials: 'include' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return alert(data.error || 'Research seat bilgileri alınamadı');
-    const assigned = new Map((data.seats || []).map((seat) => [Number(seat.user_id), seat]));
-    const users = Array.from(document.querySelectorAll('#myInstRecentUsers tr[data-user-id]')).map((row) => ({
-        id: Number(row.dataset.userId), name: row.dataset.userName || '', email: row.dataset.userEmail || ''
-    }));
+    const limit = Number(seatLimit);
+    if (!Number.isInteger(limit) || limit < 1) return alert('Unlimited aboneliklerde kullanıcı ataması gerekmez.');
+
+    const seatsRes = await fetch(`${API_BASE}/api/admin/research-seats/${subscriptionId}`, { credentials: 'include' });
+    const seatsData = await seatsRes.json().catch(() => ({}));
+    if (!seatsRes.ok) return alert(seatsData.error || 'Research seat bilgileri alınamadı');
+    const assigned = new Map((seatsData.seats || []).map((seat) => [Number(seat.user_id), seat]));
+
     const wrapper = document.createElement('div');
     wrapper.id = 'researchSeatManagerOverlay';
     wrapper.className = 'fixed inset-0 bg-black/40 z-[80] flex items-center justify-center p-4';
-    wrapper.innerHTML = `<div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
+    wrapper.innerHTML = `<div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-5">
       <div class="flex justify-between items-start gap-4 mb-4"><div><h3 class="font-semibold text-lg">Research Seat Yönetimi</h3>
-      <p id="researchSeatUsage" class="text-sm text-gray-500">${assigned.size} / ${Number(seatLimit || 0)} seat atanmış</p></div>
-      <button type="button" onclick="document.getElementById('researchSeatManagerOverlay')?.remove()" class="text-gray-500">✕</button></div>
-      <div class="space-y-2 max-h-96 overflow-auto">${users.map((user) => `<label class="flex items-center justify-between gap-3 border rounded px-3 py-2">
-        <span><strong>${escapeHtml(user.name || user.email)}</strong><br><span class="text-xs text-gray-500">${escapeHtml(user.email)}</span></span>
-        <input type="checkbox" class="research-seat-toggle" data-user-id="${user.id}" ${assigned.has(user.id) ? 'checked' : ''}>
-      </label>`).join('') || '<p class="text-sm text-gray-400">Kurum kullanıcısı bulunamadı.</p>'}</div></div>`;
+      <p id="researchSeatUsage" class="text-sm text-gray-500">${assigned.size} / ${limit} kullanıcı atanmış</p></div>
+      <button type="button" data-seat-close class="text-gray-500">✕</button></div>
+      <div class="flex flex-col sm:flex-row gap-2 mb-3">
+        <input id="researchSeatSearch" type="search" class="flex-1 border rounded px-3 py-2 text-sm" placeholder="Ad veya e-posta ara">
+        <select id="researchSeatFilter" class="border rounded px-3 py-2 text-sm">
+          <option value="all">Tümü</option><option value="assigned">Assigned</option><option value="unassigned">Unassigned</option>
+        </select>
+      </div>
+      <div id="researchSeatUsers" class="space-y-2 max-h-96 overflow-auto"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
+      <div class="flex items-center justify-between mt-4 text-sm">
+        <button type="button" id="researchSeatPrev" class="border rounded px-3 py-1.5">← Önceki</button>
+        <span id="researchSeatPage" class="text-gray-500"></span>
+        <button type="button" id="researchSeatNext" class="border rounded px-3 py-1.5">Sonraki →</button>
+      </div></div>`;
     document.body.appendChild(wrapper);
-    wrapper.querySelectorAll('.research-seat-toggle').forEach((input) => input.addEventListener('change', async () => {
-      const userId = Number(input.dataset.userId);
-      input.disabled = true;
-      const response = await fetch(`${API_BASE}/api/admin/research-seats/${subscriptionId}/${userId}`, {
-        method: input.checked ? 'POST' : 'DELETE', credentials: 'include'
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) { input.checked = !input.checked; alert(body.error || 'Research seat güncellenemedi'); }
-      input.disabled = false;
-      wrapper.querySelector('#researchSeatUsage').textContent = `${wrapper.querySelectorAll('.research-seat-toggle:checked').length} / ${Number(seatLimit || 0)} seat atanmış`;
-      await loadMyInstitution();
-    }));
+    wrapper.querySelector('[data-seat-close]').addEventListener('click', () => wrapper.remove());
+
+    let page = 1;
+    const pageSize = 25;
+    let searchTimer = null;
+
+    async function loadSeatUsers() {
+      const params = new URLSearchParams({ page: String(page), page_size: String(pageSize), sort: 'full_name', order: 'asc' });
+      const q = wrapper.querySelector('#researchSeatSearch').value.trim();
+      if (q) params.set('search', q);
+      const usersRes = await fetch(`${API_BASE}/api/admin/users?${params.toString()}`, { credentials: 'include' });
+      const payload = await usersRes.json().catch(() => ({}));
+      if (!usersRes.ok) {
+        wrapper.querySelector('#researchSeatUsers').innerHTML = '<p class="text-sm text-red-500">Kullanıcılar alınamadı.</p>';
+        return;
+      }
+      const filter = wrapper.querySelector('#researchSeatFilter').value;
+      const users = (payload.items || []).filter((user) =>
+        filter === 'assigned' ? assigned.has(Number(user.id)) :
+        filter === 'unassigned' ? !assigned.has(Number(user.id)) : true
+      );
+      wrapper.querySelector('#researchSeatUsers').innerHTML = users.map((user) => `<label class="flex items-center justify-between gap-3 border rounded px-3 py-2">
+        <span><strong>${escapeHtml(user.full_name || user.email)}</strong><br><span class="text-xs text-gray-500">${escapeHtml(user.email)}</span></span>
+        <input type="checkbox" class="research-seat-toggle" data-user-id="${Number(user.id)}" ${assigned.has(Number(user.id)) ? 'checked' : ''}>
+      </label>`).join('') || '<p class="text-sm text-gray-400">Bu filtrede kullanıcı bulunamadı.</p>';
+      wrapper.querySelector('#researchSeatPage').textContent = `Sayfa ${payload.page || page} / ${payload.total_pages || 1}`;
+      wrapper.querySelector('#researchSeatPrev').disabled = Number(payload.page || page) <= 1;
+      wrapper.querySelector('#researchSeatNext').disabled = Number(payload.page || page) >= Number(payload.total_pages || 1);
+
+      wrapper.querySelectorAll('.research-seat-toggle').forEach((input) => input.addEventListener('change', async () => {
+        const userId = Number(input.dataset.userId);
+        input.disabled = true;
+        const response = await fetch(`${API_BASE}/api/admin/research-seats/${subscriptionId}/${userId}`, {
+          method: input.checked ? 'POST' : 'DELETE', credentials: 'include'
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          input.checked = !input.checked;
+          alert(body.error || 'Research seat güncellenemedi');
+        } else if (input.checked) {
+          assigned.set(userId, { user_id: userId });
+        } else {
+          assigned.delete(userId);
+        }
+        input.disabled = false;
+        wrapper.querySelector('#researchSeatUsage').textContent = `${assigned.size} / ${limit} kullanıcı atanmış`;
+        await loadMyInstitution();
+        if (wrapper.querySelector('#researchSeatFilter').value !== 'all') await loadSeatUsers();
+      }));
+    }
+
+    wrapper.querySelector('#researchSeatSearch').addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { page = 1; loadSeatUsers(); }, 250);
+    });
+    wrapper.querySelector('#researchSeatFilter').addEventListener('change', () => { page = 1; loadSeatUsers(); });
+    wrapper.querySelector('#researchSeatPrev').addEventListener('click', () => { if (page > 1) { page -= 1; loadSeatUsers(); } });
+    wrapper.querySelector('#researchSeatNext').addEventListener('click', () => { page += 1; loadSeatUsers(); });
+    await loadSeatUsers();
 }
 
 async function loadMyInstitution() {
@@ -8222,10 +8278,10 @@ async function loadMyInstitution() {
                     <div>
                         <p class="font-medium text-sm">${escapeHtml(s.product_slug)}</p>
                         <p class="text-xs text-gray-400">Bitiş: ${s.end_date ? new Date(s.end_date).toLocaleDateString('tr-TR') : '—'}</p>
-                        ${s.product_slug === 'research' ? `<p class="text-xs text-indigo-600 mt-1">Research seat: ${Number(s.assigned_seats || 0)} / ${Number(s.seat_limit || 0)}</p>` : ''}
+                        ${s.product_slug === 'research' ? `<p class="text-xs text-indigo-600 mt-1">Research erişimi: ${s.seat_limit == null ? 'Unlimited' : `${Number(s.assigned_seats || 0)} / ${Number(s.seat_limit)} users`}</p>` : ''}
                     </div>
                     <div class="flex items-center gap-2">
-                        ${s.product_slug === 'research' && !inst.preview?.read_only ? `<button type="button" class="text-xs border border-indigo-200 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-50" onclick="openResearchSeatManager(${Number(s.id)}, ${Number(s.seat_limit || 0)})">Seat Yönet</button>` : ''}
+                        ${s.product_slug === 'research' && s.seat_limit != null && !inst.preview?.read_only ? `<button type="button" class="text-xs border border-indigo-200 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-50" onclick="openResearchSeatManager(${Number(s.id)}, ${Number(s.seat_limit)})">Seat Yönet</button>` : ''}
                         <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Aktif</span>
                     </div>
                 </div>`).join('');
