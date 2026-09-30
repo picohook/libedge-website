@@ -58,9 +58,10 @@ app.post('/api/assistant/ask', async (c) => {
     supportCheck
   });
 
-  await recordAssistantOutcome(c.env, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason });
+  await recordAssistantOutcome(c.env, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding });
   if (result && 'diagnostic_error_class' in result) delete result.diagnostic_error_class;
   if (result && 'diagnostic_reason' in result) delete result.diagnostic_reason;
+  if (result && 'diagnostic_grounding' in result) delete result.diagnostic_grounding;
   return c.json(result, 200);
 });
 

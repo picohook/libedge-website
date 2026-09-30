@@ -19,6 +19,7 @@ const ALLOWED_METRICS = new Set([
   'semantic_credits_total',
   'assistant_requests',
   'assistant_outcome_ok',
+  'assistant_outcome_assistant_query_required',
   'assistant_outcome_discover_failed',
   'assistant_outcome_evidence_pack_failed',
   'assistant_outcome_provider_privacy_gate_required',
@@ -29,7 +30,13 @@ const ALLOWED_METRICS = new Set([
   'assistant_outcome_grounding_rejected',
   'assistant_outcome_research_privacy_gate_required',
   'assistant_outcome_research_entitlement_required',
-  'assistant_outcome_other'
+  'assistant_outcome_other',
+  'assistant_grounding_rejection_claim_text_required',
+  'assistant_grounding_rejection_evidence_id_required',
+  'assistant_grounding_rejection_evidence_id_unknown',
+  'assistant_grounding_rejection_support_check_required',
+  'assistant_grounding_rejection_claim_unsupported',
+  'assistant_grounding_rejection_support_check_failed'
 ]);
 
 const INCREMENT_SQL = `

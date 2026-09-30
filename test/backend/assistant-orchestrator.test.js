@@ -136,6 +136,34 @@ describe('assistant orchestration boundary', () => {
     expect(result.claims).toEqual([]);
     expect(result).not.toHaveProperty('rejected_claims');
     expect(result).not.toHaveProperty('evidence');
+    expect(result.diagnostic_grounding).toEqual({
+      rejected_count: 1,
+      rejection_counts: { CLAIM_UNSUPPORTED: 1, CLAIM_UNSUPPORTED_UNSUPPORTED: 1 }
+    });
+  });
+
+  it('summarizes semantic grounding rejection without claim or evidence content', async () => {
+    const result = await orchestrateResearchAnswer({
+      query: 'hydrogen membranes',
+      env: {},
+      providerGate: passGate,
+      modelAdapter: {
+        generateClaims: async ({ evidencePack }) => ({
+          claims: [{ text: 'Sensitive claim text', evidence_ids: [evidencePack.evidence[0].evidence_id] }]
+        })
+      },
+      discover: discoverStub(),
+      supportCheck: () => ({ supported: false, reason: 'NOT_SUPPORTED' }),
+      packOptions
+    });
+
+    expect(result.code).toBe('GROUNDING_REJECTED');
+    expect(result.diagnostic_grounding).toEqual({
+      rejected_count: 1,
+      rejection_counts: { CLAIM_UNSUPPORTED: 1, CLAIM_UNSUPPORTED_NOT_SUPPORTED: 1 }
+    });
+    expect(JSON.stringify(result.diagnostic_grounding)).not.toContain('Sensitive claim text');
+    expect(JSON.stringify(result.diagnostic_grounding)).not.toContain('pack-1:e1');
   });
 
   it('returns only grounded structured claims and minimized evidence snapshots after all gates pass', async () => {

@@ -13,6 +13,24 @@ function safeDiagnosticReason(error) {
   return /^(MODEL_OUTPUT_EMPTY|MODEL_OUTPUT_NOT_JSON|MODEL_OUTPUT_CLAIMS_REQUIRED)$/.test(reason) ? reason : null;
 }
 
+function groundingDiagnosticSummary(rejectedClaims = []) {
+  const counts = {};
+  for (const item of rejectedClaims) {
+    const code = String(item?.code || '').trim();
+    const reason = String(item?.reason || '').trim();
+    const key = [
+      'CLAIM_TEXT_REQUIRED','EVIDENCE_ID_REQUIRED','EVIDENCE_ID_UNKNOWN',
+      'SUPPORT_CHECK_REQUIRED','CLAIM_UNSUPPORTED','SUPPORT_CHECK_FAILED'
+    ].includes(code) ? code : 'OTHER';
+    counts[key] = (counts[key] || 0) + 1;
+    if (key === 'CLAIM_UNSUPPORTED' && /^(SUPPORT|NOT_SUPPORTED|UNSUPPORTED)$/.test(reason)) {
+      const reasonKey = `CLAIM_UNSUPPORTED_${reason}`;
+      counts[reasonKey] = (counts[reasonKey] || 0) + 1;
+    }
+  }
+  return { rejected_count: rejectedClaims.length, rejection_counts: counts };
+}
+
 function gatePassed(providerGate) {
   return providerGate?.status === 'PASS';
 }
@@ -128,7 +146,8 @@ export async function orchestrateResearchAnswer({
       ok: false,
       code: 'GROUNDING_REJECTED',
       claims: [],
-      evidence_pack_id: evidencePack.pack_id
+      evidence_pack_id: evidencePack.pack_id,
+      diagnostic_grounding: groundingDiagnosticSummary(grounding.rejectedClaims)
     };
   }
 

@@ -35,7 +35,7 @@ function safeCode(code) {
  * credentials, or provider payloads. Logging is best-effort and must not
  * change the assistant response path.
  */
-export async function recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason } = {}) {
+export async function recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic } = {}) {
   const payload = {
     event: 'research_assistant_outcome',
     code: safeCode(code),
@@ -47,12 +47,25 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
   const sanitizedDiagnosticReason = safeDiagnosticReason(diagnosticReason);
   if (sanitizedDiagnosticReason) payload.diagnostic_reason = sanitizedDiagnosticReason;
 
+  const groundingCounts = groundingDiagnostic?.rejection_counts && typeof groundingDiagnostic.rejection_counts === 'object'
+    ? groundingDiagnostic.rejection_counts : {};
+  const allowedGrounding = ['CLAIM_TEXT_REQUIRED','EVIDENCE_ID_REQUIRED','EVIDENCE_ID_UNKNOWN','SUPPORT_CHECK_REQUIRED','CLAIM_UNSUPPORTED','SUPPORT_CHECK_FAILED'];
+  const groundingMetrics = [];
+  for (const key of allowedGrounding) {
+    const amount = Number(groundingCounts[key] || 0);
+    if (Number.isFinite(amount) && amount > 0) groundingMetrics.push([`assistant_grounding_rejection_${key.toLowerCase()}`, amount]);
+  }
+  if (groundingMetrics.length) payload.grounding_rejection_counts = Object.fromEntries(
+    groundingMetrics.map(([metric, amount]) => [metric.replace('assistant_grounding_rejection_', '').toUpperCase(), amount])
+  );
+
   try {
     console.log(JSON.stringify(payload));
     const metricCode = payload.code.toLowerCase();
     await recordResearchMetrics(env, [
       ['assistant_requests', 1],
-      [`assistant_outcome_${metricCode}`, 1]
+      [`assistant_outcome_${metricCode}`, 1],
+      ...groundingMetrics
     ]);
     return true;
   } catch {
