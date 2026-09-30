@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { hasResearchEntitlement, researchPrivacyGatePassed } from '../../backend/src/research/entitlement.js';
 
-function fakeDb({ individual = false, seat = false } = {}) {
+function fakeDb({ individual = false, institutional = false } = {}) {
   return {
     prepare(sql) {
       return {
@@ -9,7 +9,7 @@ function fakeDb({ individual = false, seat = false } = {}) {
           return {
             async first() {
               if (sql.includes('FROM subscriptions')) return individual ? { ok: 1 } : null;
-              if (sql.includes('institution_subscription_seats')) return seat ? { ok: 1 } : null;
+              if (sql.includes('FROM institution_subscriptions sub')) return institutional ? { ok: 1 } : null;
               return null;
             }
           };
@@ -33,8 +33,8 @@ describe('Research entitlement gate', () => {
     expect(await hasResearchEntitlement(fakeDb({ individual: true }), { user_id: 7, role: 'user' })).toBe(true);
   });
 
-  it('allows an assigned institutional Research seat', async () => {
-    expect(await hasResearchEntitlement(fakeDb({ seat: true }), { user_id: 7, role: 'user', institution_id: 3 })).toBe(true);
+  it('allows an eligible institutional Research subscription (unlimited or assigned limited seat)', async () => {
+    expect(await hasResearchEntitlement(fakeDb({ institutional: true }), { user_id: 7, role: 'user', institution_id: 3 })).toBe(true);
   });
 
   it('denies an authenticated user without subscription or seat', async () => {

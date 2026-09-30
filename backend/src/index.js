@@ -4695,6 +4695,15 @@ app.delete('/api/admin/subscription/:id', async (c) => {
 
 // ====================== KURUM ABONELİK YÖNETİMİ ======================
 
+function normalizeInstitutionSeatLimit(value) {
+  if (value === null || value === undefined || String(value).trim() === '') return { ok: true, value: null };
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return { ok: false, error: 'Limited kullanıcı erişimi için seat_limit pozitif tam sayı olmalı' };
+  }
+  return { ok: true, value: parsed };
+}
+
 app.post('/api/admin/institution-subscription', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   const auth = await requireAuth(c);
@@ -4707,6 +4716,8 @@ app.post('/api/admin/institution-subscription', async (c) => {
   const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
   if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
   const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
+  const normalizedSeatLimit = normalizeInstitutionSeatLimit(seat_limit);
+  if (!normalizedSeatLimit.ok) return c.json({ error: normalizedSeatLimit.error }, 400);
   await db.prepare(`
     INSERT INTO institution_subscriptions (
       institution_id, product_slug, status, end_date, created_by,
@@ -4726,7 +4737,7 @@ app.post('/api/admin/institution-subscription', async (c) => {
     requires_vpn ? 1 : 0,
     String(access_notes_tr || '').trim() || null,
     String(access_notes_en || '').trim() || null,
-    product_slug === 'research' ? Math.max(0, Number(seat_limit || 0)) : null
+    normalizedSeatLimit.value
   ).run();
   return c.json({ success: true });
 });
@@ -4743,6 +4754,8 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
   const productExists = await db.prepare(`SELECT slug FROM products WHERE slug = ?`).bind(product_slug).first();
   if (!productExists) return c.json({ error: 'Geçersiz ürün' }, 400);
   const validAccessTypes = ['direct', 'ip', 'proxy', 'sso', 'institution_link', 'email_password_external', 'mixed'];
+  const normalizedSeatLimit = normalizeInstitutionSeatLimit(seat_limit);
+  if (!normalizedSeatLimit.ok) return c.json({ error: normalizedSeatLimit.error }, 400);
 
   const existing = await db.prepare(`SELECT * FROM institution_subscriptions WHERE id = ?`).bind(id).first();
   if (!existing) return c.json({ error: 'Abonelik bulunamadı' }, 404);
@@ -4767,7 +4780,7 @@ app.put('/api/admin/institution-subscription/:id', async (c) => {
     requires_vpn ? 1 : 0,
     String(access_notes_tr || '').trim() || null,
     String(access_notes_en || '').trim() || null,
-    product_slug === 'research' ? Math.max(0, Number(seat_limit || 0)) : null,
+    normalizedSeatLimit.value,
     id
   );
   const logStmt = createAdminActionLogStmt(db, {
