@@ -36,8 +36,13 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
       - name: Install repository dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: List staging migrations
         run: npx --no-install wrangler d1 migrations list libedge-db --remote --env staging
 
@@ -48,8 +53,13 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
       - name: Install repository dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: Apply staging migrations
         run: npx --no-install wrangler d1 migrations apply libedge-db --remote --env staging
 
@@ -60,8 +70,13 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
       - name: Install repository dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: List production migrations
         run: npx --no-install wrangler d1 migrations list libedge-db-production --remote --env production
 
@@ -72,8 +87,13 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
       - name: Install repository dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: List pending production migrations
         run: npx --no-install wrangler d1 migrations list libedge-db-production --remote --env production
