@@ -917,7 +917,8 @@ async function ensureInstitutionSubscriptionAccessColumns(db, env = {}) {
     'ALTER TABLE institution_subscriptions ADD COLUMN requires_vpn INTEGER DEFAULT 0',
     'ALTER TABLE institution_subscriptions ADD COLUMN access_notes_tr TEXT',
     'ALTER TABLE institution_subscriptions ADD COLUMN access_notes_en TEXT',
-    'ALTER TABLE institution_subscriptions ADD COLUMN registration_url TEXT'
+    'ALTER TABLE institution_subscriptions ADD COLUMN registration_url TEXT',
+    'ALTER TABLE institution_subscriptions ADD COLUMN seat_limit INTEGER'
   ]) {
     try {
       await db.prepare(sql).run();
