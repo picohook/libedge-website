@@ -1,9 +1,9 @@
 const ASCII_LETTER = /[A-Za-z]/;
-const NON_ASCII_LETTER = /[^\x00-\x7F]/gu;
 const SAFE_SCIENTIFIC_GREEK = new Set(['α','β','γ','δ','ε','θ','λ','μ','π','σ','φ','ω','Δ','Ω']);
 
 function hasUnauthorizedNonAsciiLetter(value) {
-  for (const char of String(value || '').match(NON_ASCII_LETTER) || []) {
+  for (const char of String(value || '')) {
+    if (char.codePointAt(0) <= 127) continue;
     // Unicode punctuation, symbols, separators and numeric marks do not imply
     // non-English prose. Permit a narrow set of Greek scientific notation
     // commonly embedded in otherwise-English academic text (e.g. β, μm).
