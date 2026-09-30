@@ -32,6 +32,7 @@ async function authCookie() {
   const token = await sign({
     user_id: 42,
     email: 'researcher@example.test',
+    role: 'super_admin',
     exp: Math.floor(Date.now() / 1000) + 300
   }, 'test-secret', 'HS256');
   return `authToken=${encodeURIComponent(token)}`;
@@ -88,15 +89,15 @@ describe('assistant ask endpoint', () => {
     expect((await response.json()).code).toBe('ASSISTANT_QUERY_INVALID');
   });
 
-  it('returns the provider-gate limitation with the default closed flag', async () => {
-    discoverMock.mockResolvedValueOnce([work()]);
+  it('fails closed before generation when the Research privacy gate is not PASS', async () => {
     const response = await request({ query: 'hydrogen catalyst' });
     const body = await response.json();
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(503);
     expect(body).toMatchObject({
       ok: false,
-      code: 'PROVIDER_PRIVACY_GATE_REQUIRED',
-      claims: []
+      code: 'RESEARCH_PRIVACY_GATE_REQUIRED',
+      claims: [],
+      evidence: []
     });
   });
 
@@ -107,7 +108,10 @@ describe('assistant ask endpoint', () => {
     }));
     const response = await request(
       { query: 'hydrogen catalyst' },
-      createEnv({ RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS' })
+      createEnv({
+        RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS',
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS'
+      })
     );
     const body = await response.json();
     expect(response.status).toBe(200);

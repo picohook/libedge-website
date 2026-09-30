@@ -5,6 +5,7 @@ import { createBedrockModelAdapter } from './bedrock-model-adapter.js';
 import { recordAssistantOutcome } from './telemetry.js';
 import { createSupportCheck } from './support-check-client.js';
 import { supportCheckRuntimePause } from './support-check-runtime-pause.js';
+import { requireResearchAccess } from '../research/entitlement.js';
 
 const app = new Hono();
 
@@ -34,6 +35,9 @@ app.post('/api/assistant/ask', async (c) => {
   if (query.length < 2 || query.length > 300) {
     return c.json({ error: 'Geçerli bir araştırma sorgusu gerekli', code: 'ASSISTANT_QUERY_INVALID' }, 400);
   }
+
+  const access = await requireResearchAccess(c.env, auth.user);
+  if (!access.ok) return c.json({ ok: false, error: access.error, code: access.code, claims: [], evidence: [] }, access.status);
 
   const providerGate = providerGateFromEnv(c.env);
   const modelAdapter = providerGate.status === 'PASS'

@@ -3,6 +3,7 @@ import { requireAuth } from '../auth/middleware.js';
 import { checkProtectedRateLimit } from '../auth/rate-limit.js';
 import { discoverResearch, positiveInt } from './discover.js';
 import { recordResearchMetric } from './telemetry.js';
+import { requireResearchAccess } from './entitlement.js';
 
 const app = new Hono();
 const DEFAULT_USER_LIMIT = 20;
@@ -42,6 +43,9 @@ app.use('/api/research/search', async (c, next) => {
 app.get('/api/research/search', async (c) => {
   const auth = await requireAuth(c);
   if (auth.response) return auth.response;
+
+  const access = await requireResearchAccess(c.env, auth.user);
+  if (!access.ok) return c.json({ error: access.error, code: access.code }, access.status);
 
   const query = normalizeQuery(c.req.query('q'));
   if (query.length < 2 || query.length > 300) {

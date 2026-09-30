@@ -2867,6 +2867,11 @@
                     </div>
 
                     <div id="subscriptionInstitutionFields" class="hidden space-y-4 border-t pt-4">
+                        <div id="subscriptionResearchSeatLimitField" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Research Kullanıcı Kotası</label>
+                            <input type="number" id="subscriptionEditorSeatLimit" min="0" step="1" value="0" class="w-full border p-2 rounded">
+                            <p class="text-xs text-gray-400 mt-1">Kurum admininin Research erişimi atayabileceği azami kullanıcı sayısı.</p>
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Kuruma Özel Erişim Tipi</label>
                             <select id="subscriptionEditorAccessType" class="w-full border p-2 rounded">
@@ -5277,7 +5282,9 @@ function composeFullName(firstName, lastName) {
             requiresEmail: document.getElementById('subscriptionEditorRequiresEmail'),
             requiresVpn: document.getElementById('subscriptionEditorRequiresVpn'),
             accessNotesTr: document.getElementById('subscriptionEditorAccessNotesTr'),
-            accessNotesEn: document.getElementById('subscriptionEditorAccessNotesEn')
+            accessNotesEn: document.getElementById('subscriptionEditorAccessNotesEn'),
+            seatLimit: document.getElementById('subscriptionEditorSeatLimit'),
+            seatLimitField: document.getElementById('subscriptionResearchSeatLimitField')
         };
     }
 
@@ -5363,6 +5370,7 @@ function composeFullName(firstName, lastName) {
             els.requiresVpn.checked = !!subscription?.raw_requires_vpn;
             els.accessNotesTr.value = subscription?.raw_access_notes_tr || '';
             els.accessNotesEn.value = subscription?.raw_access_notes_en || '';
+            els.seatLimit.value = String(subscription?.seat_limit ?? 0);
         }
 
         populateSubscriptionProductOptions(type, subscription?.product_slug || '');
@@ -5620,7 +5628,8 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
                 requires_institution_email: els.requiresEmail.checked,
                 requires_vpn: els.requiresVpn.checked,
                 access_notes_tr: els.accessNotesTr.value.trim() || null,
-                access_notes_en: els.accessNotesEn.value.trim() || null
+                access_notes_en: els.accessNotesEn.value.trim() || null,
+                seat_limit: els.product.value === 'research' ? Math.max(0, Number(els.seatLimit.value || 0)) : null
             }
             : {
                 user_id: els.userId.value,

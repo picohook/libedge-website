@@ -60,6 +60,8 @@ function createEnv(overrides = {}) {
   return {
     JWT_SECRET: 'test-secret',
     ENVIRONMENT: 'staging',
+    RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS',
+    RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
     DB: createTelemetryDb(),
     RATE_LIMIT_KV: createKv(),
     CROSSREF_MAILTO: 'research@example.test',
@@ -73,6 +75,7 @@ async function authCookie() {
   const token = await sign({
     user_id: 42,
     email: 'researcher@example.test',
+    role: 'super_admin',
     exp: Math.floor(Date.now() / 1000) + 300
   }, 'test-secret', 'HS256');
   return `authToken=${encodeURIComponent(token)}`;
