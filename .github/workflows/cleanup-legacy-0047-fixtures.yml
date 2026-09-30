@@ -1,0 +1,119 @@
+name: Cleanup Legacy 0047 Synthetic Fixtures
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Choose INVENTORY for read-only inspection or CLEANUP for deletion
+        required: true
+        type: choice
+        options:
+          - INVENTORY
+          - CLEANUP
+      confirmation:
+        description: For CLEANUP only, type exactly CLEANUP-LEGACY-0047-STAGING
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: cleanup-legacy-0047-staging
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: staging }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: npm install --no-audit --no-fund
+      - name: Enforce cleanup authorization when destructive mode is selected
+        if: ${{ inputs.mode == 'CLEANUP' }}
+        run: |
+          test "${{ inputs.confirmation }}" = "CLEANUP-LEGACY-0047-STAGING" || {
+            echo "::error::CLEANUP mode requires exact destructive confirmation"; exit 1;
+          }
+      - name: Read-only inventory
+        run: |
+          npx wrangler d1 execute libedge-db --env staging --remote --command "
+          SELECT 'users' resource,COUNT(*) n FROM users WHERE email LIKE '0047-test-%@example.invalid'
+          UNION ALL SELECT 'institutions',COUNT(*) FROM institutions WHERE name LIKE '0047-test-%-institution'
+          UNION ALL SELECT 'announcements',COUNT(*) FROM announcements WHERE title LIKE '0047-test-%'
+          UNION ALL SELECT 'support_tickets',COUNT(*) FROM support_tickets WHERE subject LIKE '0047-test-%'
+          UNION ALL SELECT 'product_requests',COUNT(*) FROM product_requests WHERE product_slug LIKE '0047-test-%' OR reason LIKE '0047-test-%'
+          UNION ALL SELECT 'form_submissions',COUNT(*) FROM form_submissions WHERE email LIKE '0047-test-%@example.invalid' OR product LIKE '0047-test-%' OR message LIKE '0047-test-%'
+          UNION ALL SELECT 'affiliate_clicks',COUNT(*) FROM affiliate_clicks WHERE source LIKE '0047-test-%' OR referer LIKE '%0047-test-%'
+          UNION ALL SELECT 'ra_link_audit_findings',COUNT(*) FROM ra_link_audit_findings WHERE key_hash LIKE '0047-test-%' OR session_id LIKE '0047-test-%'
+          UNION ALL SELECT 'institution_folders',COUNT(*) FROM institution_folders WHERE folder_name LIKE '0047-test-%'
+          UNION ALL SELECT 'institution_files',COUNT(*) FROM institution_files WHERE file_name LIKE '0047-test-%' OR file_url LIKE '%0047-test-%'
+          UNION ALL SELECT 'institution_subscriptions',COUNT(*) FROM institution_subscriptions WHERE product_slug LIKE '0047-test-%'
+          UNION ALL SELECT 'admin_action_logs',COUNT(*) FROM admin_action_logs WHERE id LIKE '0047-test-%' OR before_json LIKE '%0047-test-%' OR after_json LIKE '%0047-test-%'
+          UNION ALL SELECT 'privacy_r2_purge_queue',COUNT(*) FROM privacy_r2_purge_queue WHERE object_url LIKE '%0047-test-%';"
+      - name: Stop after read-only inventory
+        if: ${{ inputs.mode == 'INVENTORY' }}
+        run: echo "INVENTORY_ONLY_COMPLETE"
+
+      - name: Marker-scoped cleanup
+        if: ${{ inputs.mode == 'CLEANUP' }}
+        run: |
+          cat > "$RUNNER_TEMP/cleanup.sql" <<'SQL'
+          DELETE FROM announcement_reactions WHERE announcement_id IN (SELECT id FROM announcements WHERE title LIKE '0047-test-%');
+          DELETE FROM announcement_comments WHERE announcement_id IN (SELECT id FROM announcements WHERE title LIKE '0047-test-%') OR body LIKE '0047-test-%';
+          DELETE FROM announcements WHERE title LIKE '0047-test-%';
+          DELETE FROM ticket_replies WHERE ticket_id IN (SELECT id FROM support_tickets WHERE subject LIKE '0047-test-%') OR message LIKE '0047-test-%';
+          DELETE FROM support_tickets WHERE subject LIKE '0047-test-%';
+          DELETE FROM product_requests WHERE product_slug LIKE '0047-test-%' OR reason LIKE '0047-test-%' OR use_case LIKE '0047-test-%';
+          DELETE FROM form_submissions WHERE email LIKE '0047-test-%@example.invalid' OR product LIKE '0047-test-%' OR message LIKE '0047-test-%' OR institution LIKE '0047-test-%';
+          DELETE FROM affiliate_clicks WHERE source LIKE '0047-test-%' OR referer LIKE '%0047-test-%' OR user_agent LIKE '0047-test-%';
+          DELETE FROM ra_link_audit_findings WHERE key_hash LIKE '0047-test-%' OR session_id LIKE '0047-test-%' OR reason LIKE '0047-test-%' OR sample_text LIKE '0047-test-%';
+          DELETE FROM institution_files WHERE file_name LIKE '0047-test-%' OR file_url LIKE '%0047-test-%';
+          DELETE FROM institution_folders WHERE folder_name LIKE '0047-test-%';
+          DELETE FROM institution_subscriptions WHERE product_slug LIKE '0047-test-%';
+          DELETE FROM admin_action_logs WHERE id LIKE '0047-test-%' OR entity_id LIKE '0047-test-%' OR before_json LIKE '%0047-test-%' OR after_json LIKE '%0047-test-%';
+          DELETE FROM users WHERE email LIKE '0047-test-%@example.invalid';
+          DELETE FROM notifications WHERE type='0047-test' OR title LIKE '0047-test-%' OR content LIKE '0047-test-%';
+          DELETE FROM user_notifications WHERE ref_type='0047-test' OR title LIKE '0047-test-%' OR body LIKE '0047-test-%';
+          DELETE FROM share_recipients WHERE share_id IN (SELECT id FROM file_shares WHERE message LIKE '0047-test-%');
+          DELETE FROM file_shares WHERE message LIKE '0047-test-%';
+          DELETE FROM user_collection_files WHERE display_name LIKE '0047-test-%';
+          DELETE FROM collection_files WHERE display_name LIKE '0047-test-%';
+          DELETE FROM user_collections WHERE name LIKE '0047-test-%';
+          DELETE FROM collections WHERE name LIKE '0047-test-%';
+          DELETE FROM files WHERE hash LIKE '0047-test-%' OR file_key LIKE 'synthetic/0047-test-%' OR original_name LIKE '0047-test-%';
+          DELETE FROM privacy_r2_purge_queue WHERE object_url LIKE '%0047-test-%';
+          DELETE FROM institutions WHERE name LIKE '0047-test-%-institution';
+          SQL
+          npx wrangler d1 execute libedge-db --env staging --remote --file "$RUNNER_TEMP/cleanup.sql"
+      - name: Verify zero marker-scoped leftovers
+        if: ${{ inputs.mode == 'CLEANUP' }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          const sql = `
+            SELECT 'users' resource,COUNT(*) n FROM users WHERE email LIKE '0047-test-%@example.invalid'
+            UNION ALL SELECT 'institutions',COUNT(*) FROM institutions WHERE name LIKE '0047-test-%-institution'
+            UNION ALL SELECT 'announcements',COUNT(*) FROM announcements WHERE title LIKE '0047-test-%'
+            UNION ALL SELECT 'support_tickets',COUNT(*) FROM support_tickets WHERE subject LIKE '0047-test-%'
+            UNION ALL SELECT 'product_requests',COUNT(*) FROM product_requests WHERE product_slug LIKE '0047-test-%' OR reason LIKE '0047-test-%'
+            UNION ALL SELECT 'form_submissions',COUNT(*) FROM form_submissions WHERE email LIKE '0047-test-%@example.invalid' OR product LIKE '0047-test-%' OR message LIKE '0047-test-%'
+            UNION ALL SELECT 'affiliate_clicks',COUNT(*) FROM affiliate_clicks WHERE source LIKE '0047-test-%' OR referer LIKE '%0047-test-%'
+            UNION ALL SELECT 'ra_link_audit_findings',COUNT(*) FROM ra_link_audit_findings WHERE key_hash LIKE '0047-test-%' OR session_id LIKE '0047-test-%'
+            UNION ALL SELECT 'institution_folders',COUNT(*) FROM institution_folders WHERE folder_name LIKE '0047-test-%'
+            UNION ALL SELECT 'institution_files',COUNT(*) FROM institution_files WHERE file_name LIKE '0047-test-%' OR file_url LIKE '%0047-test-%'
+            UNION ALL SELECT 'institution_subscriptions',COUNT(*) FROM institution_subscriptions WHERE product_slug LIKE '0047-test-%'
+            UNION ALL SELECT 'admin_action_logs',COUNT(*) FROM admin_action_logs WHERE id LIKE '0047-test-%' OR before_json LIKE '%0047-test-%' OR after_json LIKE '%0047-test-%'
+            UNION ALL SELECT 'privacy_r2_purge_queue',COUNT(*) FROM privacy_r2_purge_queue WHERE object_url LIKE '%0047-test-%'
+          `;
+          const out=execFileSync('npx',['wrangler','d1','execute','libedge-db','--env','staging','--remote','--command',sql,'--json'],{encoding:'utf8',env:process.env});
+          const payload=JSON.parse(out); const result=Array.isArray(payload)?payload[0]:payload;
+          if (!result?.success) throw new Error(out);
+          const rows=result.results||[]; console.log(rows);
+          const leftovers=rows.filter(r=>Number(r.n)!==0);
+          if (leftovers.length) throw new Error('0047 marker-scoped leftovers remain: '+JSON.stringify(leftovers));
+          console.log('LEGACY_0047_CLEANUP_VERIFIED');
+          NODE
