@@ -511,6 +511,7 @@
                 <a href="#" class="sidebar-link" data-tab="my-institution" id="myInstitutionTab" style="display:none"><i class="fas fa-university w-5"></i><span class="sidebar-label">Kurumum</span></a>
                 <a href="#" class="sidebar-link" data-tab="users"><i class="fas fa-users w-5"></i><span class="sidebar-label">Kullanıcılar</span></a>
                 <a href="#" class="sidebar-link" data-tab="subscriptions"><i class="fas fa-ticket-alt w-5"></i><span class="sidebar-label">Abonelikler</span></a>
+                <a href="#" class="sidebar-link" data-tab="research" id="researchTab"><i class="fas fa-microscope w-5"></i><span class="sidebar-label">Research</span></a>
                 <a href="#" class="sidebar-link" data-tab="requests" id="requestsTab"><i class="fas fa-envelope w-5"></i><span class="sidebar-label">Talepler</span><span id="sidebarBadgeRequests" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
                 <a href="#" class="sidebar-link" data-tab="support" id="supportTab"><i class="fas fa-headset w-5"></i><span class="sidebar-label">Destek</span><span id="sidebarBadgeSupport" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full"></span></a>
                 <a href="#" class="sidebar-link" data-tab="announcements" id="announcementsTab"><i class="fas fa-bullhorn w-5"></i><span class="sidebar-label">Duyurular</span></a>
@@ -702,6 +703,36 @@
                     <div class="text-sm text-gray-400">Yükleniyor...</div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Research Tab: content-free operational observability, superadmin only -->
+    <div id="tab-research" class="tab-content hidden">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800">Research Operasyon Özeti</h3>
+                <p class="text-sm text-gray-500 mt-1">Yalnız toplu teknik sayaçlar gösterilir; sorgu, claim, evidence, kullanıcı veya kurum içeriği gösterilmez.</p>
+            </div>
+            <button type="button" id="researchObservabilityRefreshBtn" class="btn border border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-rotate mr-2"></i>Yenile
+            </button>
+        </div>
+        <div id="researchObservabilityMeta" class="text-xs text-gray-500 mb-4">Yükleniyor...</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+            <div class="stat-card"><p class="text-gray-500 text-sm">Assistant İstekleri</p><p id="researchAssistantRequests" class="text-2xl font-bold mt-2">—</p></div>
+            <div class="stat-card"><p class="text-gray-500 text-sm">Başarılı Yanıtlar</p><p id="researchAssistantOk" class="text-2xl font-bold mt-2">—</p></div>
+            <div class="stat-card"><p class="text-gray-500 text-sm">Grounding Reddi</p><p id="researchGroundingRejected" class="text-2xl font-bold mt-2">—</p></div>
+            <div class="stat-card"><p class="text-gray-500 text-sm">Checker Durumu</p><p id="researchCheckerState" class="text-lg font-bold mt-2">—</p><p id="researchCheckerBudget" class="text-xs text-gray-500 mt-1">—</p></div>
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                <h4 class="font-semibold text-gray-800 mb-3">Katman Bazlı Sonuçlar</h4>
+                <div id="researchLayerRows" class="divide-y divide-gray-100"><p class="text-sm text-gray-400 py-3">Yükleniyor...</p></div>
+            </section>
+            <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                <h4 class="font-semibold text-gray-800 mb-3">Grounding / Checker Hataları</h4>
+                <div id="researchGroundingRows" class="divide-y divide-gray-100"><p class="text-sm text-gray-400 py-3">Yükleniyor...</p></div>
+            </section>
         </div>
     </div>
 
@@ -3031,6 +3062,7 @@ async function checkAdminAuth() {
             hide('filesTab');
             hide('individualToolsTab');
             hide('settingsTab');
+            hide('researchTab');
             hide('dashboardAddInstBtn');
             hide('dashboardAddAnnouncementBtn');
             hide('dashboardAirtableSyncBtn');
@@ -4666,6 +4698,67 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         }
     }
 
+    function researchMetricRow(label, value) {
+        return `<div class="flex items-center justify-between gap-4 py-2"><span class="text-sm text-gray-600">${escapeHtml(label)}</span><span class="text-sm font-semibold text-gray-800">${Number(value || 0).toLocaleString('tr-TR')}</span></div>`;
+    }
+
+    async function loadResearchObservability() {
+        if (currentAdmin?.role !== 'super_admin') return;
+        const meta = document.getElementById('researchObservabilityMeta');
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/system-health`, { credentials: 'include' });
+            if (!res.ok) throw new Error('research observability unavailable');
+            const health = await res.json();
+            const snapshot = health.research_telemetry?.snapshot;
+            const metrics = snapshot?.metrics || {};
+            const checker = health.support_check || {};
+            document.getElementById('researchAssistantRequests').textContent = Number(metrics.assistant_requests || 0).toLocaleString('tr-TR');
+            document.getElementById('researchAssistantOk').textContent = Number(metrics.assistant_outcome_ok || 0).toLocaleString('tr-TR');
+            document.getElementById('researchGroundingRejected').textContent = Number(metrics.assistant_outcome_grounding_rejected || 0).toLocaleString('tr-TR');
+            document.getElementById('researchCheckerState').textContent = checker.status !== 'ok' ? 'Bilinmiyor' : checker.paused ? 'Duraklatıldı' : 'Aktif';
+            document.getElementById('researchCheckerBudget').textContent = `${checker.daily_invocations_used ?? '—'} / ${checker.daily_invocation_limit ?? '—'} günlük çağrı`;
+            if (meta) meta.textContent = `${snapshot?.date_utc || '—'} UTC • ${health.environment || 'unknown'} • Salt okunur, content-free görünüm`;
+
+            const layers = [
+                ['Research istekleri', metrics.research_requests],
+                ['Semantic başarı', metrics.semantic_successes],
+                ['Semantic geçerli boş sonuç', metrics.semantic_valid_empty],
+                ['Semantic timeout/network', metrics.semantic_timeout_network],
+                ['Semantic 429', metrics.semantic_429],
+                ['Semantic 5xx', metrics.semantic_5xx],
+                ['Lexical fallback başarı', metrics.lexical_fallback_successes],
+                ['Discover hatası', metrics.assistant_outcome_discover_failed],
+                ['Evidence pack hatası', metrics.assistant_outcome_evidence_pack_failed],
+                ['Model adapter hatası', metrics.assistant_outcome_model_adapter_failed],
+                ['Model output geçersiz', metrics.assistant_outcome_model_output_invalid],
+                ['Grounding validation hatası', metrics.assistant_outcome_grounding_validation_failed],
+            ];
+            document.getElementById('researchLayerRows').innerHTML = layers.map(([label, value]) => researchMetricRow(label, value)).join('');
+
+            const grounding = [
+                ['Claim metni eksik', metrics.assistant_grounding_rejection_claim_text_required],
+                ['Evidence ID eksik', metrics.assistant_grounding_rejection_evidence_id_required],
+                ['Evidence ID bilinmiyor', metrics.assistant_grounding_rejection_evidence_id_unknown],
+                ['Support check gerekli', metrics.assistant_grounding_rejection_support_check_required],
+                ['Claim desteklenmedi', metrics.assistant_grounding_rejection_claim_unsupported],
+                ['Checker timeout', metrics.assistant_grounding_rejection_support_check_failed_timeout],
+                ['Checker bütçe', metrics.assistant_grounding_rejection_support_check_failed_budget],
+                ['Checker dil sınırı', metrics.assistant_grounding_rejection_support_check_failed_language],
+                ['Checker pin/yanıt', metrics.assistant_grounding_rejection_support_check_failed_pin_or_response],
+                ['Checker transport/diğer', metrics.assistant_grounding_rejection_support_check_failed_transport_or_other],
+            ];
+            document.getElementById('researchGroundingRows').innerHTML = grounding.map(([label, value]) => researchMetricRow(label, value)).join('');
+        } catch (_) {
+            if (meta) meta.textContent = 'Research operasyon verisi alınamadı.';
+            const layerRows = document.getElementById('researchLayerRows');
+            const groundingRows = document.getElementById('researchGroundingRows');
+            if (layerRows) layerRows.innerHTML = '<p class="text-sm text-red-600 py-3">Veri alınamadı.</p>';
+            if (groundingRows) groundingRows.innerHTML = '<p class="text-sm text-red-600 py-3">Veri alınamadı.</p>';
+        }
+    }
+
+    document.getElementById('researchObservabilityRefreshBtn')?.addEventListener('click', loadResearchObservability);
+
     // Kullanıcıları listele
     let allUsers = [];
     let _usersView = { items: [], page: 1, pageSize: 25, total: 0, totalPages: 1 };
@@ -5886,6 +5979,8 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 loadRequests();
             } else if (tab === 'support') {
                 loadSupport();
+            } else if (tab === 'research') {
+                loadResearchObservability();
             } else if (tab === 'settings') {
                 _loadSettingsTab();
             }
