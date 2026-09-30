@@ -17,8 +17,8 @@ Scope: product operations only. This document does not authorize D-022 H2 author
 The Fresh-Checker qualification/freeze line is closed, but the separately preregistered 1,080-claim / 180-scenario H2 statistical holdout is not shown as executed or complete. The activation contract therefore distinguishes checker qualification from H2 production validation:
 
 1. **COMPLETE — FRESH-CHECKER QUALIFICATION/FREEZE:** the exact candidate semantic `supportCheck` engine/rule line has a recorded qualification/freeze closure.
-2. **OPEN — H2 STATISTICAL HOLDOUT GATE:** the canonical authorship/freeze gate for the separately preregistered 1,080-claim / 180-scenario H2 holdout is not established here as completed.
-3. **OPEN — H2 FALSE-POSITIVE VALIDATION:** the 1,080-claim H2 holdout is not shown as authored, rated, frozen, executed, or independently accepted. The historical Fresh-Checker final-audit verdict does not substitute for this statistical holdout.
+2. **DEFERRED BY D-023 — H2 STATISTICAL HOLDOUT:** the separately preregistered 1,080-claim / 180-scenario H2 holdout is not completed. D-023 explicitly defers it under monitored trigger conditions; it must not be represented as passed or waived.
+3. **OPEN — D-023 ACTIVATION ITEMS:** before production authorization, complete the D-023 requirements that remain open: verified fail-closed checker error/timeout/invalid-result behavior plus exercised operational pause, an authorized language boundary, and a prospectively frozen Trigger-B drift rule. A D-023 trigger can require the deferred holdout (or a separately preregistered independently reviewed successor protocol) later.
 4. A separate production/deployment authorization explicitly approves the exact candidate checker/version to activate.
 5. The exact provider route intended for deployment has a current PASS privacy-gate record applicable to that route.
 6. Staging configuration and secrets required for authenticated smoke are available without placing credentials in source control.
@@ -86,7 +86,7 @@ Retain the exact commit SHA, checker artifact/version/hash, provider route/model
 
 The exact Fresh-Checker qualification/freeze line recorded on 2026-09-27 remains closed for its stated scope. The accepted engine is `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli` at exact revision `6f5cf0a2b59cabb106aca4c287eed12e357e90eb`. Qualification passed 11/12 with 3/3 deterministic complete runs; Stage B passed 11/12 semantic primary and 16/16 structural/fault checks; the historical final audit returned `ACCEPT_H2_CLOSURE` with no blocking defects within that Fresh-Checker line.
 
-The 2026-09-28 scope reconciliation establishes that this Fresh-Checker result is not evidence that the separately preregistered 1,080-claim / 180-scenario H2 statistical holdout was completed. Production semantic activation therefore remains blocked on the open H2 false-positive-validation gate unless a future prospective independently reviewed decision explicitly replaces that requirement.
+The 2026-09-28 scope reconciliation establishes that this Fresh-Checker result is not evidence that the separately preregistered 1,080-claim / 180-scenario H2 statistical holdout was completed. D-023, subsequently adopted on 2026-09-28, is the explicit human-authorized Path-B decision that defers that holdout under monitored trigger conditions. Production semantic activation is therefore not blocked merely because the deferred 1,080-claim holdout is unexecuted; it remains blocked until the still-open D-023 readiness items and separate production authorization are satisfied.
 
 This does not assert that the checker is already wired into the Assistant router, that an authenticated staging live-answer smoke has passed, or that staging/production activation is authorized.
 
