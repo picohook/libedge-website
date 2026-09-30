@@ -32,6 +32,7 @@ async function authCookie() {
   const token = await sign({
     user_id: 42,
     email: 'researcher@example.test',
+    role: 'super_admin',
     exp: Math.floor(Date.now() / 1000) + 300
   }, 'test-secret', 'HS256');
   return `authToken=${encodeURIComponent(token)}`;
