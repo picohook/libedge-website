@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { sign } from 'hono/jwt';
 import { handleSystemHealthRequest } from '../../backend/src/system-health.js';
 
-function createDb({ pending = 0, actions = 0 } = {}) {
+function createDb({ pending = 0, actions = 0, schemaCurrent = true } = {}) {
   return {
     prepare(sql) {
       const statement = {
@@ -10,9 +10,14 @@ function createDb({ pending = 0, actions = 0 } = {}) {
         async first() {
           if (sql.includes('privacy_r2_purge_queue')) return { count: pending };
           if (sql.includes('admin_action_logs')) return { count: actions };
+          if (sql.includes("name='institution_subscription_seats'")) return { count: schemaCurrent ? 1 : 0 };
+          if (sql.includes("name='research_telemetry_counters'")) return { count: schemaCurrent ? 1 : 0 };
           return { ok: 1 };
         },
         async all() {
+          if (sql.includes('PRAGMA table_info(institution_subscriptions)')) {
+            return { results: schemaCurrent ? [{ name: 'id' }, { name: 'seat_limit' }] : [{ name: 'id' }] };
+          }
           if (sql.includes('research_telemetry_counters')) return { results: [] };
           return { results: [] };
         },
@@ -71,6 +76,21 @@ describe('system health endpoint', () => {
     expect(body.components.rate_limit_store.status).toBe('ok');
     expect(body.privacy.pending_r2_purge).toBe(2);
     expect(body.activity.actions_24h).toBe(7);
+  });
+
+
+  it('degrades when required Research schema is missing', async () => {
+    const response = await handleSystemHealthRequest(
+      await requestWithRole('super_admin'),
+      createEnv({ DB: createDb({ pending: 2, actions: 7, schemaCurrent: false }) }),
+    );
+    const body = await response.json();
+    expect(body.status).toBe('degraded');
+    expect(body.components.database_schema.status).toBe('error');
+    expect(body.components.database_schema.schema_current).toBe(false);
+    expect(body.components.database_schema.missing).toContain('institution_subscriptions.seat_limit');
+    expect(body.components.database_schema.missing).toContain('institution_subscription_seats');
+    expect(body.components.database_schema.missing).toContain('research_telemetry_counters');
   });
 
   it('degrades without exposing backend error details', async () => {
