@@ -75,7 +75,8 @@ export async function handleSystemHealthRequest(request, env) {
         if (!columnNames.has('seat_limit')) missing.push('institution_subscriptions.seat_limit');
         if (Number(seatsTable?.count || 0) < 1) missing.push('institution_subscription_seats');
         if (Number(telemetryTable?.count || 0) < 1) missing.push('research_telemetry_counters');
-        return { schema_current: missing.length === 0, missing };
+        const schemaCurrent = missing.length === 0;
+        return { status: schemaCurrent ? 'ok' : 'error', schema_current: schemaCurrent, missing };
       })
     : { status: 'error', schema_current: false, missing: ['database_binding'] };
 
