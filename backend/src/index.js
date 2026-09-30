@@ -16,6 +16,7 @@ import {
 } from './auth/security.js';
 import { getOptionalAuth, requireAuth } from './auth/middleware.js';
 import { hasResearchEntitlement, researchPrivacyGatePassed } from './research/entitlement.js';
+import { SUPPORT_CHECK_PAUSE_KEY, supportCheckRuntimePause } from './assistant/support-check-runtime-pause.js';
 import {
   checkProtectedRateLimit,
   checkRateLimit,
@@ -2364,6 +2365,51 @@ app.get('/api/go/:slug', async (c) => {
   }
 
   return c.redirect(destination, 302);
+});
+
+// POST /api/admin/research/support-check-state — superadmin-only operational pause/resume.
+app.post('/api/admin/research/support-check-state', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+
+  const body = await c.req.json().catch(() => ({}));
+  const action = String(body.action || '').trim().toLowerCase();
+  if (!['pause', 'resume'].includes(action)) {
+    return c.json({ error: 'Geçersiz action' }, 400);
+  }
+  if (!c.env.RATE_LIMIT_KV) {
+    return c.json({ error: 'Checker kontrol deposu kullanılamıyor' }, 503);
+  }
+
+  const before = await supportCheckRuntimePause(c.env);
+  try {
+    await c.env.RATE_LIMIT_KV.put(SUPPORT_CHECK_PAUSE_KEY, action === 'pause' ? 'true' : 'resume');
+  } catch (err) {
+    console.error('supportCheck pause state write failed', err);
+    return c.json({ error: 'Checker durumu değiştirilemedi' }, 503);
+  }
+
+  const after = await supportCheckRuntimePause(c.env);
+  const expectedPaused = action === 'pause';
+  if (after.paused !== expectedPaused) {
+    console.error('supportCheck pause state read-back mismatch');
+    return c.json({ error: 'Checker durumu doğrulanamadı' }, 503);
+  }
+
+  await recordAdminAction(c, c.env.DB, {
+    actor: auth.user,
+    entityType: 'research_support_check',
+    entityId: 'runtime-pause',
+    action,
+    before: { paused: Boolean(before.paused), reason: before.reason || null },
+    after: { paused: Boolean(after.paused), reason: after.reason || null },
+  });
+
+  return c.json({
+    success: true,
+    support_check: { paused: Boolean(after.paused), reason: after.reason || null },
+  });
 });
 
 // ====================== NEWSLETTER ROUTES ======================
