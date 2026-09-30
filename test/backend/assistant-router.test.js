@@ -108,7 +108,10 @@ describe('assistant ask endpoint', () => {
     }));
     const response = await request(
       { query: 'hydrogen catalyst' },
-      createEnv({ RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS' })
+      createEnv({
+        RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS',
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS'
+      })
     );
     const body = await response.json();
     expect(response.status).toBe(200);
