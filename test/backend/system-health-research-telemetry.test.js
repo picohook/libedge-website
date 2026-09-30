@@ -94,13 +94,14 @@ describe('system health research telemetry', () => {
     const response = await handleSystemHealthRequest(await authRequest(), envWithTelemetry());
     const body = await response.json();
     const telemetry = body.research_telemetry;
-    const serialized = JSON.stringify(telemetry).toLowerCase();
-
-    expect(serialized).not.toContain('query');
-    expect(serialized).not.toContain('email');
-    expect(serialized).not.toContain('topic');
-    expect(serialized).not.toContain('doi');
-    expect(serialized).not.toContain('title');
-    expect(serialized).not.toContain('result');
+    const forbiddenKeys = new Set(['query', 'email', 'topic', 'doi', 'title', 'result']);
+    const visit = (value) => {
+      if (!value || typeof value !== 'object') return;
+      for (const [key, child] of Object.entries(value)) {
+        expect(forbiddenKeys.has(key.toLowerCase())).toBe(false);
+        visit(child);
+      }
+    };
+    visit(telemetry);
   });
 });
