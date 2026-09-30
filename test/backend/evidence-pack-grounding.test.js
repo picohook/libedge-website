@@ -100,6 +100,21 @@ describe('grounding validator', () => {
     expect(result.ok).toBe(false);
     expect(result.rejectedClaims[0]).toMatchObject({ code: 'CLAIM_UNSUPPORTED', reason: 'NOT_IN_EVIDENCE' });
   });
+  it('classifies support-check exceptions without exposing raw error text', async () => {
+    const pack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-failure-reason' });
+    const timeoutError = new Error('request aborted after secret provider detail');
+    timeoutError.name = 'AbortError';
+    const result = await validateGroundedClaims({
+      evidencePack: pack,
+      claims: [{ text: 'Claim', evidence_ids: ['pack-failure-reason:e1'] }],
+      supportCheck: async () => { throw timeoutError; }
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.rejectedClaims[0]).toMatchObject({ code: 'SUPPORT_CHECK_FAILED', reason: 'TIMEOUT' });
+    expect(JSON.stringify(result)).not.toContain('secret provider detail');
+  });
+
   it('bounds semantic support checks to two concurrent calls while preserving claim order', async () => {
     const pack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-concurrency' });
     let active = 0;
