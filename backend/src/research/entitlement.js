@@ -13,17 +13,22 @@ export async function hasResearchEntitlement(db, user) {
   if (individual) return true;
 
   if (!user.institution_id) return false;
-  const seat = await db.prepare(`
+  const institutional = await db.prepare(`
     SELECT 1
-    FROM institution_subscription_seats seat
-    JOIN institution_subscriptions sub ON sub.id = seat.institution_subscription_id
-    WHERE seat.user_id = ? AND sub.institution_id = ? AND sub.product_slug = 'research'
+    FROM institution_subscriptions sub
+    LEFT JOIN institution_subscription_seats seat
+      ON seat.institution_subscription_id = sub.id AND seat.user_id = ?
+    WHERE sub.institution_id = ? AND sub.product_slug = 'research'
       AND sub.status = 'active'
       AND (sub.start_date IS NULL OR date(sub.start_date) <= date('now'))
       AND (sub.end_date IS NULL OR date(sub.end_date) >= date('now'))
+      AND (
+        sub.seat_limit IS NULL
+        OR (sub.seat_limit > 0 AND seat.user_id IS NOT NULL)
+      )
     LIMIT 1
   `).bind(user.user_id, user.institution_id).first();
-  return Boolean(seat);
+  return Boolean(institutional);
 }
 
 export function researchPrivacyGatePassed(env = {}) {
