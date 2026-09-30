@@ -4626,7 +4626,37 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('recentUsers').innerHTML = recent.map(u => `<tr><td class="px-4 py-2">${escapeHtml(u.full_name || '-')}</td><td class="px-4 py-2">${escapeHtml(u.email)}</td><td class="px-4 py-2">${escapeHtml(u.institution || '-')}</td><td class="px-4 py-2">${new Date(u.created_at).toLocaleDateString('tr-TR')}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center py-4">Henüz kullanıcı yok</td></tr>';
             renderDashboardActions(data.actions || []);
             renderDashboardActivity(data.activity || []);
+            if (currentAdmin?.role === 'super_admin') loadSystemHealth();
         } catch(e) { console.error(e); }
+    }
+
+    async function loadSystemHealth() {
+        const card = document.getElementById('systemHealthCard');
+        const statusEl = document.getElementById('systemHealthStatus');
+        const subEl = document.getElementById('systemHealthSub');
+        const icon = document.getElementById('systemHealthIcon');
+        if (!card || !statusEl || !subEl || !icon || currentAdmin?.role !== 'super_admin') return;
+        card.classList.remove('hidden');
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/system-health`, { credentials: 'include' });
+            if (!res.ok) throw new Error('health unavailable');
+            const health = await res.json();
+            const checker = health.support_check || {};
+            const checkerLabel = checker.status !== 'ok'
+                ? 'Checker: bilinmiyor'
+                : checker.paused
+                    ? 'Checker: duraklatıldı'
+                    : `Checker: aktif • ${checker.daily_invocations_used ?? '?'} / ${checker.daily_invocation_limit ?? '?'} bugün`;
+            statusEl.textContent = health.status === 'healthy' ? 'Sağlıklı' : 'Kontrol gerekli';
+            statusEl.className = `text-xl font-bold ${health.status === 'healthy' ? 'text-emerald-600' : 'text-amber-600'}`;
+            subEl.textContent = `D1 • R2 • KV • ${checkerLabel}`;
+            icon.className = `fas fa-shield-alt text-3xl ${health.status === 'healthy' ? 'text-emerald-500' : 'text-amber-500'} opacity-60`;
+        } catch (_) {
+            statusEl.textContent = 'Kontrol edilemedi';
+            statusEl.className = 'text-xl font-bold text-red-600';
+            subEl.textContent = 'Sistem sağlık verisi alınamadı';
+            icon.className = 'fas fa-shield-alt text-3xl text-red-500 opacity-60';
+        }
     }
 
     // Kullanıcıları listele
