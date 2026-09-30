@@ -27,6 +27,8 @@ const ALLOWED_METRICS = new Set([
   'assistant_outcome_model_output_invalid',
   'assistant_outcome_grounding_validation_failed',
   'assistant_outcome_grounding_rejected',
+  'assistant_outcome_research_privacy_gate_required',
+  'assistant_outcome_research_entitlement_required',
   'assistant_outcome_other'
 ]);
 
