@@ -722,7 +722,16 @@
             <div class="stat-card"><p class="text-gray-500 text-sm">Assistant İstekleri</p><p id="researchAssistantRequests" class="text-2xl font-bold mt-2">—</p></div>
             <div class="stat-card"><p class="text-gray-500 text-sm">Başarılı Yanıtlar</p><p id="researchAssistantOk" class="text-2xl font-bold mt-2">—</p></div>
             <div class="stat-card"><p class="text-gray-500 text-sm">Grounding Reddi</p><p id="researchGroundingRejected" class="text-2xl font-bold mt-2">—</p></div>
-            <div class="stat-card"><p class="text-gray-500 text-sm">Checker Durumu</p><p id="researchCheckerState" class="text-lg font-bold mt-2">—</p><p id="researchCheckerBudget" class="text-xs text-gray-500 mt-1">—</p></div>
+            <div class="stat-card">
+                <p class="text-gray-500 text-sm">Checker Durumu</p>
+                <p id="researchCheckerState" class="text-lg font-bold mt-2">—</p>
+                <p id="researchCheckerBudget" class="text-xs text-gray-500 mt-1">—</p>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" id="researchCheckerPauseBtn" class="btn bg-red-50 text-red-700 border border-red-200 text-xs">Pause</button>
+                    <button type="button" id="researchCheckerResumeBtn" class="btn bg-green-50 text-green-700 border border-green-200 text-xs">Resume</button>
+                </div>
+                <p id="researchCheckerActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
+            </div>
         </div>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
@@ -4758,6 +4767,40 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     }
 
     document.getElementById('researchObservabilityRefreshBtn')?.addEventListener('click', loadResearchObservability);
+    async function setResearchCheckerState(action) {
+        if (currentAdmin?.role !== 'super_admin') return;
+        if (action === 'resume') {
+            const confirmed = window.confirm('Fresh-Checker resume edilsin mi? Bu işlem gerçek checker çağrılarını ve maliyeti yeniden etkinleştirir.');
+            if (!confirmed) return;
+        }
+        const status = document.getElementById('researchCheckerActionStatus');
+        const pauseBtn = document.getElementById('researchCheckerPauseBtn');
+        const resumeBtn = document.getElementById('researchCheckerResumeBtn');
+        if (pauseBtn) pauseBtn.disabled = true;
+        if (resumeBtn) resumeBtn.disabled = true;
+        if (status) status.textContent = action === 'pause' ? 'Checker duraklatılıyor…' : 'Checker etkinleştiriliyor…';
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/research/support-check-state`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action }),
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok || body.success !== true) throw new Error(body.error || 'İşlem başarısız');
+            if (status) status.textContent = body.support_check?.paused ? 'Checker duraklatıldı.' : 'Checker aktif.';
+            await loadResearchObservability();
+        } catch (err) {
+            if (status) status.textContent = err.message || 'Checker durumu değiştirilemedi.';
+        } finally {
+            if (pauseBtn) pauseBtn.disabled = false;
+            if (resumeBtn) resumeBtn.disabled = false;
+        }
+    }
+
+    document.getElementById('researchCheckerPauseBtn')?.addEventListener('click', () => setResearchCheckerState('pause'));
+    document.getElementById('researchCheckerResumeBtn')?.addEventListener('click', () => setResearchCheckerState('resume'));
+
 
     // Kullanıcıları listele
     let allUsers = [];
