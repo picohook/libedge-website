@@ -1,6 +1,7 @@
 export async function hasResearchEntitlement(db, user) {
-  if (!user?.user_id || !db) return false;
+  if (!user?.user_id) return false;
   if (user.role === 'super_admin') return true;
+  if (!db) return false;
 
   const individual = await db.prepare(`
     SELECT 1 FROM subscriptions
