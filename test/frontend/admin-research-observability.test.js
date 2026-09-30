@@ -20,4 +20,27 @@ describe('Research admin observability', () => {
     expect(admin).toContain('daily_invocations_used');
     expect(admin).not.toContain('/api/admin/support-check/pause');
   });
+
+  it('provides a superadmin-only content-free Research observability tab', () => {
+    expect(admin).toContain('data-tab="research" id="researchTab"');
+    expect(admin).toContain('id="tab-research"');
+    expect(admin).toContain("hide('researchTab')");
+    expect(admin).toContain("tab === 'research'");
+    expect(admin).toContain('loadResearchObservability()');
+    expect(admin).toContain('research_telemetry');
+    expect(admin).toContain('assistant_outcome_ok');
+    expect(admin).toContain('assistant_grounding_rejection_support_check_failed_timeout');
+    expect(admin).toContain('Salt okunur, content-free görünüm');
+  });
+
+  it('keeps Research observability read-only and avoids account/content identifiers', () => {
+    const start = admin.indexOf('<!-- Research Tab:');
+    const end = admin.indexOf('<!-- Users Tab -->', start);
+    const researchMarkup = admin.slice(start, end);
+    expect(researchMarkup).not.toContain('data-admin-action=');
+    expect(researchMarkup).not.toContain('query');
+    expect(researchMarkup).not.toContain('user_id');
+    expect(researchMarkup).not.toContain('institution_id');
+    expect(researchMarkup).not.toContain('evidence_pack_id');
+  });
 });
