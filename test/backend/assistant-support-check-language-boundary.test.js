@@ -10,6 +10,14 @@ describe('D-023 supportCheck language boundary', () => {
   });
 
   it.each([
+    ['typographic punctuation', 'PEM water electrolysis – catalyst activity reaches 80% at 60 °C.'],
+    ['Greek scientific notation', 'The β phase uses a 25 μm membrane at ΔP = 1 bar.'],
+    ['mathematical symbols', 'Current density ≥ 2 A cm⁻² and efficiency ≈ 75%.']
+  ])('allows English academic text containing %s', (_label, text) => {
+    expect(supportCheckLanguageBoundary({ text }, [])).toEqual({ authorized: true, language: 'en' });
+  });
+
+  it.each([
     ['Turkish', 'Bu katalizör hidrojen üretimini artırır.'],
     ['accented non-English', 'Le catalyseur améliore la réaction.'],
     ['empty', '']
