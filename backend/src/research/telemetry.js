@@ -36,7 +36,12 @@ const ALLOWED_METRICS = new Set([
   'assistant_grounding_rejection_evidence_id_unknown',
   'assistant_grounding_rejection_support_check_required',
   'assistant_grounding_rejection_claim_unsupported',
-  'assistant_grounding_rejection_support_check_failed'
+  'assistant_grounding_rejection_support_check_failed',
+  'assistant_grounding_rejection_support_check_failed_timeout',
+  'assistant_grounding_rejection_support_check_failed_budget',
+  'assistant_grounding_rejection_support_check_failed_language',
+  'assistant_grounding_rejection_support_check_failed_pin_or_response',
+  'assistant_grounding_rejection_support_check_failed_transport_or_other'
 ]);
 
 const INCREMENT_SQL = `

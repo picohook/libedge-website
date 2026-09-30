@@ -30,6 +30,16 @@ function normalizeClaim(claim, index) {
  */
 const SUPPORT_CHECK_CONCURRENCY = 2;
 
+function supportCheckFailureReason(error) {
+  const message = String(error?.message || '').trim();
+  const name = String(error?.name || '').trim();
+  if (name === 'AbortError' || /abort|timeout/i.test(message)) return 'TIMEOUT';
+  if (/^(INVOCATION_LIMIT_REQUIRED|INVOCATION_BUDGET_(STORE_UNAVAILABLE|INVALID|EXHAUSTED|STORE_FAILED))$/.test(message)) return 'BUDGET';
+  if (/^SUPPORT_CHECK_LANGUAGE_/.test(message)) return 'LANGUAGE';
+  if (/^SUPPORT_CHECK_(MODEL_MISMATCH|REVISION_MISMATCH|MANIFEST_MISMATCH|INVALID_DECISION|INVALID_RESULT)$/.test(message)) return 'PIN_OR_RESPONSE';
+  return 'TRANSPORT_OR_OTHER';
+}
+
 async function mapWithConcurrency(items, limit, worker) {
   const results = new Array(items.length);
   let nextIndex = 0;
@@ -80,8 +90,12 @@ export async function validateGroundedClaims({ claims, evidencePack, supportChec
         return verdict.supported
           ? { position, claim, accepted: true }
           : { position, claim, rejection: { ...claim, code: 'CLAIM_UNSUPPORTED', reason: verdict.reason } };
-      } catch {
-        return { position, claim, rejection: { ...claim, code: 'SUPPORT_CHECK_FAILED' } };
+      } catch (error) {
+        return {
+          position,
+          claim,
+          rejection: { ...claim, code: 'SUPPORT_CHECK_FAILED', reason: supportCheckFailureReason(error) }
+        };
       }
     }
   );
