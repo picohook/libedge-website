@@ -4810,7 +4810,10 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
             document.getElementById('researchUsageInstitutions').innerHTML = researchUsageRows(data.institutions, 'institution');
             if (meta) meta.textContent = `Son ${data.window_days || days} gün • yalnız operasyonel metadata • 90 gün retention`;
-        } catch (_) { if (meta) meta.textContent = 'Hesap/kurum kullanım verisi alınamadı.'; }
+        } catch (error) {
+            console.error('Research account/institution usage load failed', error);
+            if (meta) meta.textContent = 'Hesap/kurum kullanım verisi alınamadı.';
+        }
     }
 
     async function loadResearchObservability() {
@@ -4831,7 +4834,6 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             if (meta) meta.textContent = `${snapshot?.date_utc || '—'} UTC • ${health.environment || 'unknown'} • Salt okunur, content-free görünüm`;
 
             const layers = [
-                ['Research istekleri', metrics.research_requests],
                 ['Semantic başarı', metrics.semantic_successes],
                 ['Semantic geçerli boş sonuç', metrics.semantic_valid_empty],
                 ['Semantic timeout/network', metrics.semantic_timeout_network],
