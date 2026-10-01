@@ -35,13 +35,19 @@ function safeCode(code) {
  * credentials, or provider payloads. Logging is best-effort and must not
  * change the assistant response path.
  */
-export async function recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic } = {}) {
+export async function recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, stageTimings } = {}) {
   const payload = {
     event: 'research_assistant_outcome',
     code: safeCode(code),
     duration_ms: Math.max(0, Math.round(Number(durationMs) || 0)),
     environment: String(env?.ENVIRONMENT || 'unknown')
   };
+  const timings = stageTimings && typeof stageTimings === 'object' ? stageTimings : {};
+  for (const key of ['discover_ms', 'evidence_pack_ms', 'model_ms', 'grounding_ms']) {
+    const value = Number(timings[key]);
+    if (Number.isFinite(value) && value >= 0) payload[key] = Math.round(value);
+  }
+
   const sanitizedErrorClass = safeErrorClass(errorClass);
   if (sanitizedErrorClass) payload.error_class = sanitizedErrorClass;
   const sanitizedDiagnosticReason = safeDiagnosticReason(diagnosticReason);
