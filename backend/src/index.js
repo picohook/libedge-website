@@ -18,6 +18,7 @@ import { getOptionalAuth, requireAuth } from './auth/middleware.js';
 import { hasResearchEntitlement, researchPrivacyGatePassed } from './research/entitlement.js';
 import { pruneResearchUsageEvents } from './research/usage-events.js';
 import { SUPPORT_CHECK_PAUSE_KEY, supportCheckRuntimePause } from './assistant/support-check-runtime-pause.js';
+import { registrationState, setRegistrationEnabled } from './auth/registration-toggle.js';
 import {
   checkProtectedRateLimit,
   checkRateLimit,
@@ -2527,6 +2528,10 @@ const REGISTER_KVKK_CONSENT_VERSION = 'privacy-terms-2026-05-23';
 
 app.post('/api/auth/register', async (c) => {
   try {
+    const registration = await registrationState(c.env);
+    if (!registration.enabled) {
+      return c.json({ success: false, error: 'Şu anda yeni kayıt kabul edilmiyor.' }, 403);
+    }
     const ip = extractClientIp(c);
     const ipLimit = await checkProtectedRateLimit(c, 'register:ip', ip, 5, 60 * 60);
     if (ipLimit.isLimited) {
@@ -2567,6 +2572,31 @@ app.post('/api/auth/register', async (c) => {
     }
     return c.json({ success: false, error: 'Kayıt sırasında hata oluştu.' }, 500);
   }
+});
+
+app.get('/api/admin/registration-state', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  return c.json({ registration: await registrationState(c.env) });
+});
+
+app.post('/api/admin/registration-state', async (c) => {
+  if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
+  const body = await c.req.json().catch(() => ({}));
+  if (typeof body.enabled !== 'boolean') return c.json({ error: 'enabled boolean olmalıdır' }, 400);
+  const before = await registrationState(c.env);
+  const after = await setRegistrationEnabled(c.env, body.enabled);
+  const db = c.env.DB;
+  await ensureAdminActionLogsTable(db, c.env);
+  await createAdminActionLogStmt(db, {
+    id: crypto.randomUUID(),
+    actor: await getTokenPayloadFromCookie(c),
+    entityType: 'registration',
+    entityId: 'self_service_signup',
+    action: body.enabled ? 'enable' : 'disable',
+    before,
+    after,
+  }).run();
+  return c.json({ success: true, registration: after });
 });
 
 // ====================== FORM ENDPOINT ======================
