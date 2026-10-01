@@ -205,8 +205,26 @@ window.closeLoginModal = function() {
     }
 };
 
-window.openRegisterModal = function() {
+window.openRegisterModal = async function() {
     closeLoginModal();
+
+    try {
+        const response = await fetch(`${API_BASE}/api/auth/registration-state`, {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+        if (response.ok) {
+            const state = await response.json();
+            if (state?.enabled === false) {
+                showNotification('Şu anda yeni kayıt kabul etmiyoruz. Daha sonra tekrar deneyin.', 'warning');
+                return;
+            }
+        }
+    } catch (err) {
+        // UX preflight is deliberately fail-open. The POST /register gate remains authoritative.
+        queueMicrotask(() => console.warn('Registration state check failed:', err.toString()));
+    }
+
     const modal = document.getElementById('registerModal');
     if (modal) {
         modal.classList.remove('hidden');
