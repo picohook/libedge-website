@@ -5301,6 +5301,9 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                       ${s.type === 'institution'
                         ? `<button class="subscription-edit-btn text-blue-600 hover:text-blue-800 mr-2" aria-label="${escapeHtml(s.subject_name || s.institution_name || 'Abonelik')} kaydını düzenle"><i class="fas fa-edit"></i></button>`
                         : `<button class="subscription-edit-btn text-blue-600 hover:text-blue-800 mr-2" aria-label="${escapeHtml(s.subject_name || s.institution_name || 'Abonelik')} kaydını düzenle"><i class="fas fa-edit"></i></button>`}
+                      ${s.type === 'institution' && s.product_slug === 'research' && s.seat_limit != null
+                        ? `<button class="subscription-seat-btn text-indigo-600 hover:text-indigo-800 mr-2" data-seat-limit="${Number(s.seat_limit)}" aria-label="${escapeHtml(s.subject_name || s.institution_name || 'Research')} seat yönetimi"><i class="fas fa-users-cog"></i></button>`
+                        : ''}
                       <button class="subscription-delete-btn text-red-600 hover:text-red-800" aria-label="${escapeHtml(s.subject_name || s.institution_name || 'Abonelik')} kaydını sil"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
@@ -5347,6 +5350,12 @@ document.getElementById('subscriptionsList')?.addEventListener('click', function
 
     const subscriptionId = Number(row.dataset.subscriptionId);
     const subscriptionType = row.dataset.subscriptionType || '';
+
+    const seatBtn = e.target.closest('.subscription-seat-btn');
+    if (seatBtn) {
+        openResearchSeatManager(subscriptionId, Number(seatBtn.dataset.seatLimit));
+        return;
+    }
 
     if (e.target.closest('.subscription-edit-btn')) {
         if (subscriptionType === 'institution') {
