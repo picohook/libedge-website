@@ -85,7 +85,7 @@ export async function orchestrateResearchAnswer({
 
   const relevantWorks = filterRelevantWorks(task, works);
   if (!relevantWorks.length) {
-    return { ok: true, code: 'OK', claims: [], evidence: [], evidence_pack_id: null };
+    return { ok: true, code: 'OK', diagnostic_timings: diagnosticTimings, claims: [], evidence: [], evidence_pack_id: null };
   }
 
   let evidencePack;
