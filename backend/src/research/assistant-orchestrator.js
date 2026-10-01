@@ -72,9 +72,12 @@ export async function orchestrateResearchAnswer({
     return { ok: false, code: 'ASSISTANT_QUERY_REQUIRED', claims: [] };
   }
 
+  const diagnosticTimings = {};
+  let stageStartedAt = Date.now();
   let works;
   try {
     works = await discover(task, { env, perPage });
+    diagnosticTimings.discover_ms = Date.now() - stageStartedAt;
   } catch {
     return { ok: false, code: 'DISCOVER_FAILED', claims: [] };
   }
@@ -85,8 +88,10 @@ export async function orchestrateResearchAnswer({
   }
 
   let evidencePack;
+  stageStartedAt = Date.now();
   try {
     evidencePack = packFactory(relevantWorks, packOptions);
+    diagnosticTimings.evidence_pack_ms = Date.now() - stageStartedAt;
   } catch {
     return { ok: false, code: 'EVIDENCE_PACK_FAILED', claims: [] };
   }
@@ -110,8 +115,10 @@ export async function orchestrateResearchAnswer({
   }
 
   let modelResult;
+  stageStartedAt = Date.now();
   try {
     modelResult = await modelAdapter.generateClaims({ task, evidencePack });
+    diagnosticTimings.model_ms = Date.now() - stageStartedAt;
   } catch (error) {
     return {
       ok: false,
@@ -136,8 +143,10 @@ export async function orchestrateResearchAnswer({
   }
 
   let grounding;
+  stageStartedAt = Date.now();
   try {
     grounding = await validateGroundedClaims({ claims, evidencePack, supportCheck });
+    diagnosticTimings.grounding_ms = Date.now() - stageStartedAt;
   } catch {
     return {
       ok: false,
@@ -153,6 +162,7 @@ export async function orchestrateResearchAnswer({
       ok: false,
       code: 'GROUNDING_REJECTED',
       diagnostic_usage: diagnosticUsage,
+      diagnostic_timings: diagnosticTimings,
       claims: [],
       evidence_pack_id: evidencePack.pack_id,
       diagnostic_grounding: groundingDiagnosticSummary(grounding.rejectedClaims)
@@ -163,6 +173,7 @@ export async function orchestrateResearchAnswer({
     ok: true,
     code: 'OK',
     diagnostic_usage: diagnosticUsage,
+    diagnostic_timings: diagnosticTimings,
     claims: grounding.acceptedClaims,
     evidence_pack_id: evidencePack.pack_id,
     evidence: evidencePack.evidence
