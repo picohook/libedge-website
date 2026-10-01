@@ -6,8 +6,22 @@ import { recordAssistantOutcome } from './telemetry.js';
 import { createSupportCheck } from './support-check-client.js';
 import { supportCheckRuntimePause } from './support-check-runtime-pause.js';
 import { requireResearchAccess } from '../research/entitlement.js';
+import { recordResearchUsageEvent } from '../research/usage-events.js';
 
 const app = new Hono();
+
+async function recordOperationalOutcome(env, user, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic } = {}) {
+  await Promise.all([
+    recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic }),
+    recordResearchUsageEvent(env, {
+      userId: user?.user_id,
+      institutionId: user?.institution_id,
+      operation: 'assistant_ask',
+      outcomeCode: code,
+      latencyMs: durationMs
+    })
+  ]);
+}
 
 function normalizeQuery(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
@@ -38,7 +52,7 @@ app.post('/api/assistant/ask', async (c) => {
 
   const access = await requireResearchAccess(c.env, auth.user);
   if (!access.ok) {
-    await recordAssistantOutcome(c.env, { code: access.code, durationMs: Date.now() - startedAt });
+    await recordOperationalOutcome(c.env, auth.user, { code: access.code, durationMs: Date.now() - startedAt });
     return c.json({ ok: false, error: access.error, code: access.code, claims: [], evidence: [] }, access.status);
   }
 
@@ -58,7 +72,7 @@ app.post('/api/assistant/ask', async (c) => {
     supportCheck
   });
 
-  await recordAssistantOutcome(c.env, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding });
+  await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding });
   if (result && 'diagnostic_error_class' in result) delete result.diagnostic_error_class;
   if (result && 'diagnostic_reason' in result) delete result.diagnostic_reason;
   if (result && 'diagnostic_grounding' in result) delete result.diagnostic_grounding;
