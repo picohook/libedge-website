@@ -29,7 +29,8 @@ export async function recordResearchUsageEvent(env, {
   outcomeCode,
   latencyMs,
   inputTokens,
-  outputTokens
+  outputTokens,
+  stageTimings
 } = {}) {
   if (!env?.DB) return false;
   const uid = positiveId(userId);
@@ -39,12 +40,18 @@ export async function recordResearchUsageEvent(env, {
   const latency = Math.max(0, Math.round(Number(latencyMs) || 0));
   const input = optionalNonNegativeInteger(inputTokens);
   const output = optionalNonNegativeInteger(outputTokens);
+  const discoverMs = optionalNonNegativeInteger(stageTimings?.discover_ms);
+  const evidencePackMs = optionalNonNegativeInteger(stageTimings?.evidence_pack_ms);
+  const modelMs = optionalNonNegativeInteger(stageTimings?.model_ms);
+  const groundingMs = optionalNonNegativeInteger(stageTimings?.grounding_ms);
   try {
     await env.DB.prepare(`
       INSERT INTO research_usage_events
-        (user_id, institution_id, operation, outcome_code, latency_ms, input_tokens, output_tokens)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).bind(uid, iid, operation, safeOutcomeCode(outcomeCode), latency, input, output).run();
+        (user_id, institution_id, operation, outcome_code, latency_ms, input_tokens, output_tokens,
+         discover_ms, evidence_pack_ms, model_ms, grounding_ms)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(uid, iid, operation, safeOutcomeCode(outcomeCode), latency, input, output,
+      discoverMs, evidencePackMs, modelMs, groundingMs).run();
     return true;
   } catch (error) {
     console.warn('research usage event write failed', error);
