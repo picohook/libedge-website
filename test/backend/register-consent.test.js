@@ -62,6 +62,26 @@ function env(db = new RegisterD1()) {
 }
 
 describe('auth register KVKK consent', () => {
+  it('rejects registration when self-service signup is disabled', async () => {
+    const db = new RegisterD1();
+    const testEnv = env(db);
+    await testEnv.RATE_LIMIT_KV.put('auth:registration:disabled', 'true');
+    const res = await app.request('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'closed@example.com',
+        password: 'strong-pass',
+        full_name: 'Closed Signup',
+        kvkk_consent: true,
+      }),
+    }, testEnv);
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toContain('yeni kayıt kabul edilmiyor');
+    expect(db.users).toHaveLength(0);
+  });
+
   it('rejects registration without explicit KVKK consent', async () => {
     const db = new RegisterD1();
     const res = await app.request('/api/auth/register', {
