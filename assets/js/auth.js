@@ -216,7 +216,7 @@ window.openRegisterModal = async function() {
         if (response.ok) {
             const state = await response.json();
             if (state?.enabled === false) {
-                showNotification('Şu anda yeni kayıt kabul etmiyoruz. Daha sonra tekrar deneyin.', 'warning');
+                showNotification(localStorage.getItem('language') === 'en' ? 'New registrations are not currently being accepted. Please try again later.' : 'Şu anda yeni kayıt kabul etmiyoruz. Daha sonra tekrar deneyin.', 'warning');
                 return;
             }
         }
@@ -328,13 +328,13 @@ window.register = async function(fullName, email, password, institution, kvkkCon
         });
         const data = await response.json();
         if (data.success) {
-            showNotification(data.message, 'success');
+            showNotification(localStorage.getItem('language') === 'en' ? (data.message_en || data.message) : data.message, 'success');
             closeRegisterModal();
             openLoginModal();
             return true;
         }
 
-        showNotification(data.error || 'Kayıt başarısız', 'error');
+        showNotification(localStorage.getItem('language') === 'en' ? (data.error_en || data.error || 'Registration failed') : (data.error || 'Kayıt başarısız'), 'error');
         return false;
     } catch (err) {
         queueMicrotask(() => {
