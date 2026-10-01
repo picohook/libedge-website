@@ -16,6 +16,7 @@ import {
 } from './auth/security.js';
 import { getOptionalAuth, requireAuth } from './auth/middleware.js';
 import { hasResearchEntitlement, researchPrivacyGatePassed } from './research/entitlement.js';
+import { pruneResearchUsageEvents } from './research/usage-events.js';
 import { SUPPORT_CHECK_PAUSE_KEY, supportCheckRuntimePause } from './assistant/support-check-runtime-pause.js';
 import {
   checkProtectedRateLimit,
@@ -9972,6 +9973,7 @@ export default {
     ctx.waitUntil(handleScheduledAlerts(env));
     ctx.waitUntil(cleanupExpiredPasswordResets(env));
     ctx.waitUntil(cleanupOldAiUsageLogs(env));
+    ctx.waitUntil(pruneResearchUsageEvents(env));
     ctx.waitUntil(cleanupOldRefreshTokens(env));
     ctx.waitUntil(anonymizeOldProductRequests(env));
   },
