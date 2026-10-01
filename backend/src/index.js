@@ -2645,6 +2645,105 @@ app.post('/form', async (c) => {
   }
 });
 
+// GET /api/admin/research/usage — superadmin-only content-free operational aggregates.
+app.get('/api/admin/research/usage', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+
+  const url = new URL(c.req.url);
+  const daysRaw = Number(url.searchParams.get('days') || 30);
+  const days = Number.isInteger(daysRaw) && daysRaw >= 1 && daysRaw <= 90 ? daysRaw : null;
+  if (!days) return c.json({ error: 'days 1-90 arasında olmalı' }, 400);
+
+  const userIdRaw = url.searchParams.get('user_id');
+  const institutionIdRaw = url.searchParams.get('institution_id');
+  const userId = userIdRaw === null ? null : Number(userIdRaw);
+  const institutionId = institutionIdRaw === null ? null : Number(institutionIdRaw);
+  if (userIdRaw !== null && (!Number.isSafeInteger(userId) || userId <= 0)) {
+    return c.json({ error: 'Geçersiz user_id' }, 400);
+  }
+  if (institutionIdRaw !== null && (!Number.isSafeInteger(institutionId) || institutionId <= 0)) {
+    return c.json({ error: 'Geçersiz institution_id' }, 400);
+  }
+
+  const where = ["e.created_at >= datetime('now', ?)"];
+  const params = [`-${days} days`];
+  if (userId !== null) {
+    where.push('e.user_id = ?');
+    params.push(userId);
+  }
+  if (institutionId !== null) {
+    where.push('e.institution_id = ?');
+    params.push(institutionId);
+  }
+  const predicate = where.join(' AND ');
+
+  const successPredicate = "e.outcome_code = 'OK'";
+  const failurePredicate = "e.outcome_code <> 'OK'";
+
+  const [summary, outcomes, users, institutions] = await Promise.all([
+    c.env.DB.prepare(`
+      SELECT COUNT(*) AS requests,
+             SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
+             SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
+             ROUND(AVG(e.latency_ms)) AS avg_latency_ms
+      FROM research_usage_events e
+      WHERE ${predicate}
+    `).bind(...params).first(),
+    c.env.DB.prepare(`
+      SELECT e.outcome_code, COUNT(*) AS count
+      FROM research_usage_events e
+      WHERE ${predicate}
+      GROUP BY e.outcome_code
+      ORDER BY count DESC, e.outcome_code ASC
+    `).bind(...params).all(),
+    c.env.DB.prepare(`
+      SELECT e.user_id, u.full_name, u.email, COUNT(*) AS requests,
+             SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
+             SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
+             ROUND(AVG(e.latency_ms)) AS avg_latency_ms
+      FROM research_usage_events e
+      LEFT JOIN users u ON u.id = e.user_id
+      WHERE ${predicate}
+      GROUP BY e.user_id, u.full_name, u.email
+      ORDER BY requests DESC, e.user_id ASC
+      LIMIT 200
+    `).bind(...params).all(),
+    c.env.DB.prepare(`
+      SELECT e.institution_id, i.name AS institution_name, COUNT(*) AS requests,
+             SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
+             SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
+             ROUND(AVG(e.latency_ms)) AS avg_latency_ms
+      FROM research_usage_events e
+      LEFT JOIN institutions i ON i.id = e.institution_id
+      WHERE ${predicate}
+      GROUP BY e.institution_id, i.name
+      ORDER BY requests DESC, e.institution_id ASC
+      LIMIT 200
+    `).bind(...params).all()
+  ]);
+
+  const requests = Number(summary?.requests || 0);
+  const successes = Number(summary?.successes || 0);
+  const failures = Number(summary?.failures || 0);
+  return c.json({
+    window_days: days,
+    filters: { user_id: userId, institution_id: institutionId },
+    summary: {
+      requests,
+      successes,
+      failures,
+      success_rate: requests ? successes / requests : 0,
+      failure_rate: requests ? failures / requests : 0,
+      avg_latency_ms: Number(summary?.avg_latency_ms || 0)
+    },
+    outcomes: outcomes.results || [],
+    users: users.results || [],
+    institutions: institutions.results || []
+  });
+});
+
 // ====================== ADMIN ENDPOINT'LERİ (Cookie ile güncellendi) ======================
 
 // ====================== ADMIN ROUTES ======================
