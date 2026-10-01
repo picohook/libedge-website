@@ -2,6 +2,8 @@
 
 LibEdge repo'sunda günlük çalışma için güncel kısa akış:
 
+GitHub varsayılan ve canonical geliştirme dalı `staging`'dir. `main` production yetkisi anlamına gelmez ve günlük geliştirme tabanı olarak kullanılmaz.
+
 ## Şema
 
 ```text
@@ -64,7 +66,8 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 
 - Staging ve production D1'in aynı migration seviyesinde olduğu **asla varsayılmaz**.
 - Her apply öncesi `migrations list` okunur.
-- Staging'de 7 Eylül 2026 itibarıyla `0046_add_ai_product_cards.sql` ve `0047_user_deletion_integrity.sql` uygulanmıştır.
+- Repository migration zinciri `0052_research_usage_token_counts.sql` seviyesindedir. `0048`–`0052`; Research telemetry counters, notification deletion policy, Research subscription seats, content-free usage events ve token-count alanlarını ekler.
+- Staging/production üzerindeki gerçek uygulanmış seviye her operasyon öncesinde `migrations list` ile ayrıca doğrulanır.
 - Production migration seviyesi production preflight gününde ayrıca doğrulanır.
 - Production'a bu stabilizasyon çalışması sırasında migration uygulanmamıştır.
 - D1 rollback için öncelik forward-fix; gerektiğinde Time Travel bookmark kullanılır.
@@ -80,7 +83,7 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 - Playwright yalnız `test/frontend/**/*.spec.js` browser testlerini çalıştırır; Vitest `.test.js` dosyaları browser smoke'a dahil edilmez.
 - Sistem Sağlığı UI testi eski RA/tünel KPI referanslarının geri gelmediğini de doğrular.
 
-## Güncel Stabilizasyon Durumu — 7 Eylül 2026
+## Güncel Stabilizasyon / Tamamlama Durumu — 1 Ekim 2026
 
 - Auth/cookie/origin: CLOSED
 - Mobile off-canvas navigation: CLOSED
@@ -93,9 +96,14 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 - Super-admin Sistem Sağlığı: endpoint + dashboard widget + RA/tünel KPI temizliği staging'de LIVE ve doğrulanmış
 - Production D1 preflight/rollback guardrail: uygulanmış
 - Production Infrastructure Preflight: uygulanmış, production geçişinde manuel çalıştırılacak
-- Staging henüz freeze edilmemiştir; geliştirme devam eder.
+- Kapsam v1 tamamlama için freeze edilmiştir; yalnız release blocker, doğrulanmış regresyon ve açık completion issue'ları ele alınır.
+- Kalıcı merge disiplini: **PR claim ↔ actual diff ↔ tests ↔ exact HEAD ↔ CI ↔ independent ACCEPT**. HEAD değişirse önceki exact-head kabul geçersizdir.
 
-## Post-Stabilizasyon Ürün İyileştirme Roadmap'i
+## Post-v1 Ürün İyileştirme Roadmap'i
+
+Aşağıdaki P2/P3 maddeleri mevcut v1 completion kapsamını genişletmez; v1 sonrasına ertelenmiş ürün/refactor fikirleridir. Mevcut completion çalışması açık release blocker'ların kapatılması, RC doğrulaması ve ayrı production authorization ile sınırlıdır.
+
+### Arşivlenmiş post-v1 fikirler
 
 Aşağıdaki maddeler mevcut stabil staging tabanı üzerinde davranış değişikliklerini kontrollü ve küçük paketler halinde geliştirmek için sıralanmıştır.
 

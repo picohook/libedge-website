@@ -6,6 +6,23 @@ The project did not have a canonical product-release ledger before 2026-09-28. H
 
 ## Unreleased
 
+### Added
+
+- Added super-admin Research usage visibility, institution-level Research seat management, content-free usage events, and input/output token-count aggregation.
+- Added a super-admin self-service registration toggle.
+- Added bounded staging Research Assistant load evidence and a manual, rollback-verified SageMaker capacity experiment for #263 diagnosis.
+
+### Changed
+
+- GitHub default/canonical development branch is now `staging`.
+- CI now runs for pull requests targeting any base branch.
+- D1 migration chain now includes `0048` through `0052` for Research telemetry, notification deletion policy, Research seats, usage events, and token counts.
+
+### Governance
+
+- Adopted permanent merge discipline: PR claim ↔ actual diff ↔ tests ↔ exact HEAD ↔ CI ↔ independent ACCEPT.
+- Production activation remains separately gated; staging Research supportCheck evidence does not authorize production.
+
 ## 0.9.0 — 2026-09-28
 
 ### Governance
