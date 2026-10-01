@@ -52,6 +52,11 @@ function parseModelJson(text) {
   }
 }
 
+function nonNegativeInteger(value) {
+  const numeric = Number(value);
+  return Number.isSafeInteger(numeric) && numeric >= 0 ? numeric : null;
+}
+
 function parseClaimsPayload(payload) {
   const blocks = Array.isArray(payload?.content) ? payload.content : [];
   const text = blocks.filter((block) => block?.type === 'text').map((block) => block.text).join('').trim();
@@ -59,7 +64,13 @@ function parseClaimsPayload(payload) {
 
   const parsed = parseModelJson(text);
   if (!Array.isArray(parsed?.claims)) throw diagnosticError('MODEL_OUTPUT_CLAIMS_REQUIRED');
-  return { claims: parsed.claims.slice(0, MAX_CLAIMS) };
+  return {
+    claims: parsed.claims.slice(0, MAX_CLAIMS),
+    usage: {
+      input_tokens: nonNegativeInteger(payload?.usage?.input_tokens),
+      output_tokens: nonNegativeInteger(payload?.usage?.output_tokens)
+    }
+  };
 }
 
 export function bedrockAdapterConfig(env) {

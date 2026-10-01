@@ -31,7 +31,7 @@ describe('Research usage events', () => {
     const sql = db.prepare.mock.calls[0][0];
     expect(sql).toContain('research_usage_events');
     expect(sql).not.toMatch(/query|answer|claim|evidence|prompt|hash|payload/i);
-    expect(db.bind).toHaveBeenCalledWith(42, 7, 'assistant_ask', 'OK', 124);
+    expect(db.bind).toHaveBeenCalledWith(42, 7, 'assistant_ask', 'OK', 124, null, null);
   });
 
   it('fails closed for missing user identity or unknown operation without touching D1', async () => {
@@ -49,7 +49,7 @@ describe('Research usage events', () => {
       outcomeCode: 'bad value with spaces',
       latencyMs: -5
     });
-    expect(db.bind).toHaveBeenCalledWith(42, null, 'assistant_ask', 'OTHER', 0);
+    expect(db.bind).toHaveBeenCalledWith(42, null, 'assistant_ask', 'OTHER', 0, null, null);
     expect(__test.safeOutcomeCode('GROUNDING_REJECTED')).toBe('GROUNDING_REJECTED');
   });
 

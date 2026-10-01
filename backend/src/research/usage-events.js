@@ -7,6 +7,12 @@ function positiveId(value) {
   return Number.isSafeInteger(numeric) && numeric > 0 ? numeric : null;
 }
 
+function optionalNonNegativeInteger(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = Number(value);
+  return Number.isSafeInteger(numeric) && numeric >= 0 ? numeric : null;
+}
+
 function safeOutcomeCode(value) {
   const code = String(value || '').trim();
   return SAFE_OUTCOME.test(code) ? code : 'OTHER';
@@ -21,7 +27,9 @@ export async function recordResearchUsageEvent(env, {
   institutionId,
   operation = 'assistant_ask',
   outcomeCode,
-  latencyMs
+  latencyMs,
+  inputTokens,
+  outputTokens
 } = {}) {
   if (!env?.DB) return false;
   const uid = positiveId(userId);
@@ -29,12 +37,14 @@ export async function recordResearchUsageEvent(env, {
 
   const iid = positiveId(institutionId);
   const latency = Math.max(0, Math.round(Number(latencyMs) || 0));
+  const input = optionalNonNegativeInteger(inputTokens);
+  const output = optionalNonNegativeInteger(outputTokens);
   try {
     await env.DB.prepare(`
       INSERT INTO research_usage_events
-        (user_id, institution_id, operation, outcome_code, latency_ms)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind(uid, iid, operation, safeOutcomeCode(outcomeCode), latency).run();
+        (user_id, institution_id, operation, outcome_code, latency_ms, input_tokens, output_tokens)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(uid, iid, operation, safeOutcomeCode(outcomeCode), latency, input, output).run();
     return true;
   } catch (error) {
     console.warn('research usage event write failed', error);
@@ -56,4 +66,4 @@ export async function pruneResearchUsageEvents(env) {
 }
 
 export const RESEARCH_USAGE_RETENTION_DAYS = RETENTION_DAYS;
-export const __test = { positiveId, safeOutcomeCode };
+export const __test = { positiveId, safeOutcomeCode, optionalNonNegativeInteger };

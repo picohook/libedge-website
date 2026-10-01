@@ -123,11 +123,13 @@ export async function orchestrateResearchAnswer({
     };
   }
 
+  const diagnosticUsage = modelResult?.usage || null;
   const claims = normalizeModelClaims(modelResult);
   if (!claims) {
     return {
       ok: false,
       code: 'MODEL_OUTPUT_INVALID',
+      diagnostic_usage: diagnosticUsage,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -140,6 +142,7 @@ export async function orchestrateResearchAnswer({
     return {
       ok: false,
       code: 'GROUNDING_VALIDATION_FAILED',
+      diagnostic_usage: diagnosticUsage,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -149,6 +152,7 @@ export async function orchestrateResearchAnswer({
     return {
       ok: false,
       code: 'GROUNDING_REJECTED',
+      diagnostic_usage: diagnosticUsage,
       claims: [],
       evidence_pack_id: evidencePack.pack_id,
       diagnostic_grounding: groundingDiagnosticSummary(grounding.rejectedClaims)
@@ -158,6 +162,7 @@ export async function orchestrateResearchAnswer({
   return {
     ok: true,
     code: 'OK',
+    diagnostic_usage: diagnosticUsage,
     claims: grounding.acceptedClaims,
     evidence_pack_id: evidencePack.pack_id,
     evidence: evidencePack.evidence
