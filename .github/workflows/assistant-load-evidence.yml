@@ -40,6 +40,40 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Resume supportCheck in staging only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.131.1 kv key put --binding RATE_LIMIT_KV --env staging --remote "assistant:supportcheck:paused" "resume"
+
+      - name: Grant temporary staging Research entitlement
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const email = String(process.env.LIBEDGE_SMOKE_EMAIL || '').trim().toLowerCase();
+          if (!email) throw new Error('LIBEDGE_SMOKE_EMAIL is required');
+          const quoted = email.replaceAll("'", "''");
+          fs.writeFileSync('/tmp/grant-research-entitlement.sql', `
+          INSERT INTO subscriptions (user_id, product_slug, status, start_date, end_date)
+          SELECT id, 'research', 'active', '2000-01-01 00:00:00', '2099-12-31 23:59:58'
+          FROM users
+          WHERE lower(email) = '${quoted}'
+            AND NOT EXISTS (
+              SELECT 1 FROM subscriptions s
+              WHERE s.user_id = users.id
+                AND s.product_slug = 'research'
+                AND s.status = 'active'
+                AND (s.start_date IS NULL OR date(s.start_date) <= date('now'))
+                AND (s.end_date IS NULL OR date(s.end_date) >= date('now'))
+            );
+          `);
+          NODE
+          npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --file /tmp/grant-research-entitlement.sql
+
       - name: Run bounded synthetic Assistant load evidence
         env:
           LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
@@ -47,3 +81,33 @@ jobs:
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
           LIBEDGE_ASSISTANT_LOAD_LEVELS: ${{ inputs.levels }}
         run: node scripts/assistant-load-evidence.mjs
+
+      - name: Remove temporary staging Research entitlement
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const email = String(process.env.LIBEDGE_SMOKE_EMAIL || '').trim().toLowerCase();
+          if (!email) throw new Error('LIBEDGE_SMOKE_EMAIL is required');
+          const quoted = email.replaceAll("'", "''");
+          fs.writeFileSync('/tmp/revoke-research-entitlement.sql', `
+          DELETE FROM subscriptions
+          WHERE product_slug = 'research'
+            AND status = 'active'
+            AND start_date = '2000-01-01 00:00:00'
+            AND end_date = '2099-12-31 23:59:58'
+            AND user_id IN (SELECT id FROM users WHERE lower(email) = '${quoted}');
+          `);
+          NODE
+          npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --file /tmp/revoke-research-entitlement.sql
+
+      - name: Pause supportCheck again
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.131.1 kv key put --binding RATE_LIMIT_KV --env staging --remote "assistant:supportcheck:paused" "true"
