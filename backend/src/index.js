@@ -1025,10 +1025,11 @@ async function ensureProductsTableAndSeed(db, env = {}) {
         short_description_tr, short_description_en, subjects_json, access_tags_json,
         is_libedge_catalog, card_visible, display_order, is_featured
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       product.slug,
       product.name,
+      product.name_en || null,
       product.category || null,
       product.region || null,
       product.default_access_type || null,
