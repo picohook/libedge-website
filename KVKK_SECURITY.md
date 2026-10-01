@@ -41,7 +41,9 @@ Kayıt API'si `kvkk_consent` alanını zorunlu boolean olarak doğrular ve yaln�
 olduğunda kayıt oluşturur. Kullanıcı kaydında onay durumu ile birlikte onay zamanı, versiyonu,
 IP ve user-agent metadata'sı tutulur.
 
-Self-service kayıt ayrıca super-admin tarafından açılıp kapatılabilen bir kontrol ile yönetilir; KVKK onayı zorunluluğu bu kontrolden bağımsızdır.\n\n**Durum: CLOSED / uygulanmış.**
+Self-service kayıt ayrıca super-admin tarafından açılıp kapatılabilen bir kontrol ile yönetilir; KVKK onayı zorunluluğu bu kontrolden bağımsızdır.
+
+**Durum: CLOSED / uygulanmış.**
 
 ## 4. Çerez ve Yerel Tercihler
 
@@ -66,7 +68,8 @@ veya analytics rızası akışı kullanıcıya sunulmaz.
 | Password reset token kayıtları | süre bitimi sonrası cleanup | `cleanupExpiredPasswordResets` |
 | Refresh token expired/revoked | cleanup | `cleanupOldRefreshTokens` |
 | Product request | 2 yıl sonra kullanıcı bağlantısını kaldırma | `anonymizeOldProductRequests` |
-| AI usage logs | 90 gün cleanup | `cleanupOldAiUsageLogs` |\n| Research usage events ve token-count metadata | 90 gün cleanup; sorgu/cevap/claim/evidence/prompt/provider payload veya bunların hash'i tutulmaz | scheduled Research usage cleanup |
+| AI usage logs | 90 gün cleanup | `cleanupOldAiUsageLogs` |
+| Research usage events ve token-count metadata | 90 gün cleanup; sorgu/cevap/claim/evidence/prompt/provider payload veya bunların hash'i tutulmaz | scheduled Research usage cleanup |
 | Kullanıcı silme talebi | merkezi D1 privacy trigger | migration `0047_user_deletion_integrity.sql` |
 | Ticket attachment purge | privacy queue + scheduled R2 consumer | `backend/src/privacy/r2-purge.js` |
 
