@@ -31,8 +31,8 @@ describe('Assistant fail-closed UI contract', () => {
     expect(source).not.toContain("metrics[3].textContent = '0'");
   });
 
-  it('ships the cache-busted fail-closed Assistant asset', async () => {
+  it('ships the current cache-busted fail-closed Assistant asset', async () => {
     const html = await readFile(htmlPath, 'utf8');
-    expect(html).toContain('assets/js/assistant-ui.js?v=20260923a');
+    expect(html).toContain('assets/js/assistant-ui.js?v=20261001b');
   });
 });
