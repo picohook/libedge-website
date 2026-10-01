@@ -17,6 +17,16 @@ describe('Research account usage admin UI', () => {
     expect(admin).toContain('Maliyet, deterministik kaynak olmadığı için gösterilmez');
   });
 
+  it('keeps separate Research search traffic out of the Assistant layer breakdown', () => {
+    expect(admin).not.toContain("['Research istekleri', metrics.research_requests]");
+    expect(admin).toContain("['Discover hatası', metrics.assistant_outcome_discover_failed]");
+  });
+
+  it('logs the underlying usage-load error for super-admin diagnosis', () => {
+    expect(admin).toContain("console.error('Research account/institution usage load failed', error)");
+    expect(admin).toContain('Hesap/kurum kullanım verisi alınamadı.');
+  });
+
   it('keeps loading superadmin-only', () => {
     expect(admin).toContain("async function loadResearchAccountUsage()");
     expect(admin).toContain("if (currentAdmin?.role !== 'super_admin') return;");
