@@ -2726,6 +2726,10 @@ app.get('/api/admin/research/usage', async (c) => {
              SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
              SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
              ROUND(AVG(e.latency_ms)) AS avg_latency_ms,
+             ROUND(AVG(e.discover_ms)) AS avg_discover_ms,
+             ROUND(AVG(e.evidence_pack_ms)) AS avg_evidence_pack_ms,
+             ROUND(AVG(e.model_ms)) AS avg_model_ms,
+             ROUND(AVG(e.grounding_ms)) AS avg_grounding_ms,
              COALESCE(SUM(e.input_tokens), 0) AS input_tokens,
              COALESCE(SUM(e.output_tokens), 0) AS output_tokens
       FROM research_usage_events e
@@ -2803,6 +2807,12 @@ app.get('/api/admin/research/usage', async (c) => {
       success_rate: requests ? successes / requests : 0,
       failure_rate: requests ? failures / requests : 0,
       avg_latency_ms: Number(summary?.avg_latency_ms || 0),
+      stage_latency_ms: {
+        discover: summary?.avg_discover_ms == null ? null : Number(summary.avg_discover_ms),
+        evidence: summary?.avg_evidence_pack_ms == null ? null : Number(summary.avg_evidence_pack_ms),
+        model: summary?.avg_model_ms == null ? null : Number(summary.avg_model_ms),
+        grounding: summary?.avg_grounding_ms == null ? null : Number(summary.avg_grounding_ms)
+      },
       input_tokens: Number(summary?.input_tokens || 0),
       output_tokens: Number(summary?.output_tokens || 0)
     },

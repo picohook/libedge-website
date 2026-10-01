@@ -783,6 +783,18 @@
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Input token</p><p id="researchUsageInputTokens" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Output token</p><p id="researchUsageOutputTokens" class="text-xl font-bold">—</p></div>
             </div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
+                <div class="rounded-lg border border-gray-100 p-4">
+                    <h5 class="font-semibold text-gray-800 mb-2">Assistant Funnel</h5>
+                    <p class="text-xs text-gray-500 mb-3">Seçili dönemde requestlerin pipeline boyunca ulaştığı aşamalar.</p>
+                    <div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
+                </div>
+                <div class="rounded-lg border border-gray-100 p-4">
+                    <h5 class="font-semibold text-gray-800 mb-2">Stage Latency</h5>
+                    <p class="text-xs text-gray-500 mb-3">Yalnız ulaşılan aşamaların ortalama süreleri.</p>
+                    <div id="researchUsageStageLatency" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
+                </div>
+            </div>
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Hesap</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th><th class="text-right">Token</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="5" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
                 <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Kurum</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Research seat</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="6" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
@@ -4802,6 +4814,42 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         }).join('');
     }
 
+    function researchUsageFunnel(outcomes, requests, stageLatency) {
+        const counts = Object.fromEntries((outcomes || []).map((row) => [String(row.outcome_code || ''), Number(row.count || 0)]));
+        const total = Number(requests || 0);
+        const terminalBeforePipeline = (counts.ASSISTANT_RATE_LIMITED || 0)
+            + (counts.INVOCATION_LIMIT_REQUIRED || 0)
+            + (counts.INVOCATION_BUDGET_STORE_UNAVAILABLE || 0)
+            + (counts.INVOCATION_BUDGET_INVALID || 0)
+            + (counts.INVOCATION_BUDGET_EXHAUSTED || 0)
+            + (counts.INVOCATION_BUDGET_STORE_FAILED || 0);
+        const enteredPipeline = Math.max(0, total - terminalBeforePipeline);
+        const discoverFailed = counts.DISCOVER_FAILED || 0;
+        const evidenceFailed = counts.EVIDENCE_PACK_FAILED || 0;
+        const modelFailed = (counts.MODEL_ADAPTER_FAILED || 0) + (counts.MODEL_OUTPUT_INVALID || 0);
+        const stages = [
+            ['Ask', total],
+            ['Pipeline başladı', enteredPipeline],
+            ['Discover geçti', Math.max(0, enteredPipeline - discoverFailed)],
+            ['Evidence geçti', Math.max(0, enteredPipeline - discoverFailed - evidenceFailed)],
+            ['Model geçti', Math.max(0, enteredPipeline - discoverFailed - evidenceFailed - modelFailed)],
+            ['Grounded / OK', counts.OK || 0]
+        ];
+        return stages.map(([label, value]) => researchMetricRow(label, value)).join('');
+    }
+
+    function researchStageLatencyRows(stageLatency) {
+        const rows = [
+            ['Discover', stageLatency?.discover],
+            ['Evidence', stageLatency?.evidence],
+            ['Model', stageLatency?.model],
+            ['Fresh-Checker / Grounding', stageLatency?.grounding]
+        ];
+        return rows.map(([label, value]) =>
+            `<div class="flex items-center justify-between gap-4 py-2"><span class="text-sm text-gray-600">${escapeHtml(label)}</span><span class="text-sm font-semibold text-gray-800">${value == null ? '—' : `${Number(value).toLocaleString('tr-TR')} ms`}</span></div>`
+        ).join('');
+    }
+
     async function loadResearchAccountUsage() {
         if (currentAdmin?.role !== 'super_admin') return;
         const days = document.getElementById('researchUsageDays')?.value || '30';
@@ -4816,6 +4864,8 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageLatency').textContent = `${Number(summary.avg_latency_ms || 0).toLocaleString('tr-TR')} ms`;
             document.getElementById('researchUsageInputTokens').textContent = Number(summary.input_tokens || 0).toLocaleString('tr-TR');
             document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');
+            document.getElementById('researchUsageFunnel').innerHTML = researchUsageFunnel(data.outcomes, summary.requests, summary.stage_latency_ms);
+            document.getElementById('researchUsageStageLatency').innerHTML = researchStageLatencyRows(summary.stage_latency_ms);
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
             document.getElementById('researchUsageInstitutions').innerHTML = researchUsageRows(data.institutions, 'institution');
             if (meta) meta.textContent = `Son ${data.window_days || days} gün • yalnız operasyonel metadata • 90 gün retention`;
