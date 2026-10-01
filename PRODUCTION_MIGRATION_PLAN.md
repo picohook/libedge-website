@@ -4,12 +4,12 @@ Bu belge LibEdge production geçişi için güncel guardrail ve operasyon planı
 Eski RA rollout ayrıntıları `archive-staging-before-ra-cleanup-2026-09-06`
 arşivinde saklanmıştır.
 
-## Güncel Durum — 7 Eylül 2026
+## Güncel Durum — 1 Ekim 2026
 
-- Aktif geliştirme hattı `staging` branch'idir; henüz freeze edilmemiştir.
+- GitHub varsayılan/canonical geliştirme hattı `staging` branch'idir; v1 tamamlama kapsamında scope freeze uygulanır.
 - Staging Pages: `https://staging.libedge-website.pages.dev/`.
 - Staging Worker: `libedge-api-staging`.
-- Staging D1: `libedge-db`; 0046 ve 0047 migration'ları uygulanmıştır.
+- Repository migration zinciri `0052_research_usage_token_counts.sql` seviyesindedir. Staging ve production üzerindeki gerçek uygulanmış seviye cutover öncesinde ayrı ayrı `migrations list` ile doğrulanır.
 - Production D1: `libedge-db-production`; staging ile aynı migration seviyesinde olduğu varsayılmaz.
 - Production deploy ve migration işlemleri manuel workflow + production environment üzerinden yapılır.
 - Production'a bu stabilizasyon çalışması sırasında deploy veya migration yapılmamıştır.
