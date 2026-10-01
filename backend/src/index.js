@@ -2755,7 +2755,29 @@ app.get('/api/admin/research/usage', async (c) => {
              SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
              ROUND(AVG(e.latency_ms)) AS avg_latency_ms,
              COALESCE(SUM(e.input_tokens), 0) AS input_tokens,
-             COALESCE(SUM(e.output_tokens), 0) AS output_tokens
+             COALESCE(SUM(e.output_tokens), 0) AS output_tokens,
+             (
+               SELECT s.seat_limit
+               FROM institution_subscriptions s
+               WHERE s.institution_id = e.institution_id
+                 AND s.product_slug = 'research'
+                 AND s.status IN ('active', 'trial')
+                 AND (s.end_date IS NULL OR s.end_date > CURRENT_TIMESTAMP)
+               ORDER BY s.id DESC LIMIT 1
+             ) AS seat_limit,
+             (
+               SELECT COUNT(*)
+               FROM institution_subscription_seats seat
+               WHERE seat.institution_subscription_id = (
+                 SELECT s2.id
+                 FROM institution_subscriptions s2
+                 WHERE s2.institution_id = e.institution_id
+                   AND s2.product_slug = 'research'
+                   AND s2.status IN ('active', 'trial')
+                   AND (s2.end_date IS NULL OR s2.end_date > CURRENT_TIMESTAMP)
+                 ORDER BY s2.id DESC LIMIT 1
+               )
+             ) AS assigned_seats
       FROM research_usage_events e
       LEFT JOIN institutions i ON i.id = e.institution_id
       WHERE ${predicate}
