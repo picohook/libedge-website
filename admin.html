@@ -103,6 +103,34 @@
         .admin-sidebar-shell.collapsed .admin-sidebar-inner {
             padding: 1rem 0.5rem;
         }
+        .admin-sidebar-shell.collapsed .admin-sidebar-inner > div:first-child {
+            justify-content: center;
+            gap: 0;
+        }
+        .admin-sidebar-shell.collapsed .admin-sidebar-inner > div:first-child img {
+            width: 2rem;
+            height: 2rem;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+        .admin-sidebar-shell.collapsed .sidebar-link {
+            position: relative;
+        }
+        .admin-sidebar-shell.collapsed #sidebarBadgeRequests,
+        .admin-sidebar-shell.collapsed #sidebarBadgeSupport {
+            position: absolute;
+            top: 0.45rem;
+            right: 0.45rem;
+            width: 0.45rem;
+            height: 0.45rem;
+            min-width: 0;
+            padding: 0;
+            margin: 0;
+            border-radius: 9999px;
+            overflow: hidden;
+            color: transparent;
+            font-size: 0;
+        }
         .admin-sidebar-inner {
             position: sticky;
             top: 0;
