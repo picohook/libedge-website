@@ -1581,6 +1581,11 @@ const profileTranslations = {
     'Filtre': 'Filter',
     'Tüm Kategoriler': 'All Categories',
     'Yapay Zeka': 'Artificial Intelligence',
+    'Sağlık ve Yapay Zeka': 'Health & Artificial Intelligence',
+    'Genel': 'General',
+    'AI Etik & Akademik Dürüstlük': 'AI Ethics & Academic Integrity',
+    'Akademik Yazım & Dil': 'Academic Writing & Language',
+    'Anket & Veri Toplama': 'Survey & Data Collection',
     'Sağlık': 'Health',
     'Fen & Matematik': 'Science & Mathematics',
     'İş & Hukuk': 'Business & Law',
@@ -2820,11 +2825,12 @@ async function loadSubscriptions() {
             const subId = sub.id;
             const prod = profileProductMap.get(sub.product_slug) || {};
             const useEnglish = isProfileEnglish();
-            const name = prod.name || sub.product_name || sub.product_slug || (useEnglish ? 'Unnamed product' : 'İsimsiz ürün');
+            const name = useEnglish
+                ? (prod.name_en || prod.name || sub.product_name || sub.product_slug || 'Unnamed product')
+                : (prod.name || prod.name_en || sub.product_name || sub.product_slug || 'İsimsiz ürün');
             const rawCategory = prod.category || sub.category || '';
-            const categorySource = useEnglish ? (prod.category_en || rawCategory) : (rawCategory || prod.category_en || '');
-            const category = translateProfileString(categorySource, useEnglish);
-            const categoryKey = String(rawCategory || prod.category_en || '').toLowerCase();
+            const category = translateProfileString(rawCategory, useEnglish);
+            const categoryKey = String(rawCategory || '').toLowerCase();
             const logoUrl = prod.logo_url || null;
             const registrationUrl = sub.registration_url || sub.default_registration_url || null;
             const normalizedUrl = normalizeExternalUrl(sub.access_url || sub.default_access_url);
@@ -2880,7 +2886,7 @@ async function loadSubscriptions() {
                     data-source="${escapeHtml(sub.source || 'institution')}"
                     data-category="${escapeHtml(categoryKey)}"
                     data-extra-categories="${escapeHtml(String(prod.extra_categories || '').toLowerCase())}"
-                    data-search-text="${escapeHtml([name, rawCategory, prod.category_en, category].join(' ').toLowerCase())}"
+                    data-search-text="${escapeHtml([name, prod.name, prod.name_en, rawCategory, category].join(' ').toLowerCase())}"
                     data-detail-name="${escapeHtml(name)}"
                     data-detail-summary="${escapeHtml(descriptionText)}"
                     data-detail-logo="${escapeHtml(logoUrl || '')}"
@@ -3437,9 +3443,10 @@ function _renderCatalog() {
     mod.classList.remove('hidden');
     const useEn = isProfileEnglish();
     el.innerHTML = unsubscribed.map(p => {
-        const name = escapeHtml(p.name || p.slug);
+        const localizedName = useEn ? (p.name_en || p.name || p.slug) : (p.name || p.name_en || p.slug);
+        const name = escapeHtml(localizedName);
         const desc = escapeHtml(useEn ? (p.short_description_en || p.short_description_tr || '') : (p.short_description_tr || p.short_description_en || ''));
-        const logo = p.logo_url ? `<img src="${escapeHtml(p.logo_url)}" alt="${name}" loading="lazy">` : `<span>${escapeHtml((p.name||'?').slice(0,2).toUpperCase())}</span>`;
+        const logo = p.logo_url ? `<img src="${escapeHtml(p.logo_url)}" alt="${name}" loading="lazy">` : `<span>${escapeHtml((localizedName||'?').slice(0,2).toUpperCase())}</span>`;
         const recommended = _myRecommendations.has(p.slug);
         const btnCls = recommended ? 'profile-action secondary' : 'profile-action';
         const btnIcon = recommended ? 'fa-check' : 'fa-thumbs-up';
@@ -3455,13 +3462,13 @@ function _renderCatalog() {
                     <div class="profile-product-logo" style="color:#ca8a04">${logo}</div>
                     <div class="min-w-0"><h4>${name}</h4></div>
                 </div>
-                <span class="profile-tag bg-amber-50 text-amber-700">${escapeHtml(p.category || '')}</span>
+                <span class="profile-tag bg-amber-50 text-amber-700">${escapeHtml(translateProfileString(p.category || '', useEn))}</span>
             </div>
             <div class="profile-product-body">
                 ${desc ? `<p class="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">${desc}</p>` : ''}
             </div>
             <div class="profile-product-footer">
-                <button type="button" class="${btnCls}" onclick="event.stopPropagation();${recommended ? '' : `_openRecommendModal('${jsStr(p.slug)}','${jsStr(p.name)}')`}" ${recommended ? 'disabled' : ''}>
+                <button type="button" class="${btnCls}" onclick="event.stopPropagation();${recommended ? '' : `_openRecommendModal('${jsStr(p.slug)}','${jsStr(localizedName)}')`}" ${recommended ? 'disabled' : ''}>
                     <i class="fas ${btnIcon}"></i><span>${btnLabel}</span>
                 </button>
             </div>
