@@ -1845,6 +1845,19 @@
                 </div>
             </div>
 
+            <!-- Self-service kayıt kontrolü -->
+            <div id="registrationControlCard" class="hidden bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-base font-semibold text-gray-800 mb-1">Yeni Kullanıcı Kaydı</h3>
+                <p class="text-sm text-gray-400 mb-4">Public self-service kayıt akışını deploy gerektirmeden açıp kapatın.</p>
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <p id="registrationStateLabel" class="font-medium text-gray-700">Durum yükleniyor…</p>
+                        <p id="registrationStateMessage" class="text-xs text-gray-400 mt-1"></p>
+                    </div>
+                    <button type="button" id="registrationToggleBtn" class="btn btn-primary text-sm" disabled>Yükleniyor…</button>
+                </div>
+            </div>
+
             <!-- Sistem Bilgisi -->
             <div class="bg-white rounded-xl shadow-sm p-6">
                 <h3 class="text-base font-semibold text-gray-800 mb-1">Sistem Bilgisi</h3>
@@ -6451,6 +6464,29 @@ async function _loadSettingsTab() {
     if (el('settingsEnvLabel')) el('settingsEnvLabel').textContent = 'Yükleniyor...';
     if (el('settingsWorkerName')) el('settingsWorkerName').textContent = '…';
 
+    // ─── Self-service kayıt durumu (yalnız Super Admin) ─────────────────────
+    if (currentAdmin?.role === 'super_admin') {
+        const card = el('registrationControlCard');
+        if (card) card.classList.remove('hidden');
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/registration-state`, { credentials: 'include' });
+            if (!res.ok) throw new Error('Kayıt durumu alınamadı');
+            const data = await res.json();
+            const enabled = data.registration?.enabled !== false;
+            const label = el('registrationStateLabel');
+            const button = el('registrationToggleBtn');
+            if (label) label.textContent = enabled ? 'Yeni kayıtlar açık' : 'Yeni kayıtlar kapalı';
+            if (button) {
+                button.dataset.enabled = String(enabled);
+                button.textContent = enabled ? 'Kayıtları Kapat' : 'Kayıtları Aç';
+                button.disabled = false;
+            }
+        } catch (err) {
+            if (el('registrationStateLabel')) el('registrationStateLabel').textContent = 'Kayıt durumu alınamadı';
+            if (el('registrationStateMessage')) el('registrationStateMessage').textContent = err.message || 'Bir hata oluştu.';
+        }
+    }
+
     // ─── Runtime info ────────────────────────────────────────────────────────
     try {
         const res = await fetch(`${API_BASE}/api/admin/runtime-info`, { credentials: 'include' });
@@ -6489,6 +6525,34 @@ async function _loadSettingsTab() {
     // ─── Şifre formu (bir kez bağla) ────────────────────────────────────────
     if (!_settingsTabInitialized) {
         _settingsTabInitialized = true;
+
+        const registrationBtn = document.getElementById('registrationToggleBtn');
+        if (registrationBtn) {
+            registrationBtn.addEventListener('click', async () => {
+                if (currentAdmin?.role !== 'super_admin') return;
+                const currentEnabled = registrationBtn.dataset.enabled === 'true';
+                registrationBtn.disabled = true;
+                try {
+                    const res = await fetch(`${API_BASE}/api/admin/registration-state`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enabled: !currentEnabled }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || data.success !== true) throw new Error(data.error || 'Kayıt durumu değiştirilemedi');
+                    const enabled = data.registration?.enabled !== false;
+                    registrationBtn.dataset.enabled = String(enabled);
+                    registrationBtn.textContent = enabled ? 'Kayıtları Kapat' : 'Kayıtları Aç';
+                    if (el('registrationStateLabel')) el('registrationStateLabel').textContent = enabled ? 'Yeni kayıtlar açık' : 'Yeni kayıtlar kapalı';
+                    if (el('registrationStateMessage')) el('registrationStateMessage').textContent = 'Değişiklik anında uygulandı.';
+                } catch (err) {
+                    if (el('registrationStateMessage')) el('registrationStateMessage').textContent = err.message || 'Bir hata oluştu.';
+                } finally {
+                    registrationBtn.disabled = false;
+                }
+            });
+        }
 
         const form = document.getElementById('settingsPasswordForm');
         const msgEl = document.getElementById('settingsPasswordMsg');
