@@ -2574,6 +2574,11 @@ app.post('/api/auth/register', async (c) => {
   }
 });
 
+app.get('/api/auth/registration-state', async (c) => {
+  const registration = await registrationState(c.env);
+  return c.json({ enabled: registration.enabled });
+});
+
 app.get('/api/admin/registration-state', async (c) => {
   if (!await isSuperAdmin(c)) return c.json({ error: 'Sadece Super Admin' }, 403);
   return c.json({ registration: await registrationState(c.env) });
