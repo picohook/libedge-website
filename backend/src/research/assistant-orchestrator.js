@@ -80,12 +80,13 @@ export async function orchestrateResearchAnswer({
     diagnosticTimings.discover_ms = Date.now() - stageStartedAt;
   } catch {
     diagnosticTimings.discover_ms = Date.now() - stageStartedAt;
-    return { ok: false, code: 'DISCOVER_FAILED', diagnostic_timings: diagnosticTimings, claims: [] };
+    return { ok: false, code: 'DISCOVER_FAILED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, claims: [] };
   }
 
+  const diagnosticCosts = { discovery_cost_usd: Number(works?.diagnostic_discovery_cost_usd) || 0 };
   const relevantWorks = filterRelevantWorks(task, works);
   if (!relevantWorks.length) {
-    return { ok: true, code: 'OK', diagnostic_timings: diagnosticTimings, claims: [], evidence: [], evidence_pack_id: null };
+    return { ok: true, code: 'OK', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, claims: [], evidence: [], evidence_pack_id: null };
   }
 
   let evidencePack;
@@ -95,7 +96,7 @@ export async function orchestrateResearchAnswer({
     diagnosticTimings.evidence_pack_ms = Date.now() - stageStartedAt;
   } catch {
     diagnosticTimings.evidence_pack_ms = Date.now() - stageStartedAt;
-    return { ok: false, code: 'EVIDENCE_PACK_FAILED', diagnostic_timings: diagnosticTimings, claims: [] };
+    return { ok: false, code: 'EVIDENCE_PACK_FAILED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, claims: [] };
   }
 
   if (!gatePassed(providerGate)) {
@@ -137,6 +138,7 @@ export async function orchestrateResearchAnswer({
   }
 
   const diagnosticUsage = modelResult?.usage || null;
+  if (Number.isFinite(Number(diagnosticUsage?.llm_cost_usd))) diagnosticCosts.llm_cost_usd = Number(diagnosticUsage.llm_cost_usd);
   const claims = normalizeModelClaims(modelResult);
   if (!claims) {
     return {
@@ -144,6 +146,7 @@ export async function orchestrateResearchAnswer({
       code: 'MODEL_OUTPUT_INVALID',
       diagnostic_usage: diagnosticUsage,
       diagnostic_timings: diagnosticTimings,
+      diagnostic_costs: diagnosticCosts,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -161,6 +164,7 @@ export async function orchestrateResearchAnswer({
       code: 'GROUNDING_VALIDATION_FAILED',
       diagnostic_usage: diagnosticUsage,
       diagnostic_timings: diagnosticTimings,
+      diagnostic_costs: diagnosticCosts,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -172,6 +176,7 @@ export async function orchestrateResearchAnswer({
       code: 'GROUNDING_REJECTED',
       diagnostic_usage: diagnosticUsage,
       diagnostic_timings: diagnosticTimings,
+      diagnostic_costs: diagnosticCosts,
       claims: [],
       evidence_pack_id: evidencePack.pack_id,
       diagnostic_grounding: groundingDiagnosticSummary(grounding.rejectedClaims)
@@ -183,6 +188,7 @@ export async function orchestrateResearchAnswer({
     code: 'OK',
     diagnostic_usage: diagnosticUsage,
     diagnostic_timings: diagnosticTimings,
+    diagnostic_costs: diagnosticCosts,
     claims: grounding.acceptedClaims,
     evidence_pack_id: evidencePack.pack_id,
     evidence: evidencePack.evidence
