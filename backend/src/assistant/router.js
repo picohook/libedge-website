@@ -26,7 +26,8 @@ async function recordOperationalOutcome(env, user, { code, durationMs, errorClas
       outcomeCode: code,
       latencyMs: durationMs,
       inputTokens: usage?.input_tokens,
-      outputTokens: usage?.output_tokens
+      outputTokens: usage?.output_tokens,
+      stageTimings
     })
   ]);
 }
