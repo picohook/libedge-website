@@ -1743,6 +1743,10 @@ body.menu-open {
 
 /* Hero slider mobil */
 @media (max-width: 768px) {
+    .hero-content {
+        padding-bottom: 5.5rem;
+    }
+
     .hero-header {
         font-size: 2rem !important;
         padding: 0 1rem;
