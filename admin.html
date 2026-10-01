@@ -1611,8 +1611,12 @@
                                         <input type="text" id="productSlug" class="w-full border p-2 rounded font-mono text-sm" placeholder="ornek-urun" pattern="[a-z0-9][a-z0-9_\-]{0,79}" title="Küçük harf, rakam, tire veya alt çizgi">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Ürün Adı</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Ürün Adı (TR)</label>
                                         <input type="text" id="productName" class="w-full border p-2 rounded" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Ürün Adı (EN)</label>
+                                        <input type="text" id="productNameEn" class="w-full border p-2 rounded" placeholder="English product name">
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
@@ -3388,6 +3392,7 @@ function bindRemainingAdminFormEvents() {
     [
         'productSlug',
         'productName',
+        'productNameEn',
         'productCategory',
         'productRegion',
         'productAccessUrl',
@@ -4310,6 +4315,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         document.getElementById('productSlugHint').textContent = isNew ? '(yeni ürün için slug belirleyin)' : '(slug değiştirilemez)';
         document.getElementById('productModalTitle').textContent = isNew ? 'Yeni Ürün' : 'Ürün Düzenle';
         document.getElementById('productName').value = product.name || '';
+        document.getElementById('productNameEn').value = product.name_en || '';
         document.getElementById('productCategory').value = product.category || '';
         document.getElementById('productRegion').value = product.region || '';
         document.getElementById('productAccessType').value = product.default_access_type || '';
@@ -6024,6 +6030,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         const payload = {
             slug,
             name: document.getElementById('productName').value.trim(),
+            name_en: document.getElementById('productNameEn').value.trim() || null,
             category: document.getElementById('productCategory').value.trim() || null,
             region: document.getElementById('productRegion').value.trim() || null,
             default_access_type: document.getElementById('productAccessType').value || null,
