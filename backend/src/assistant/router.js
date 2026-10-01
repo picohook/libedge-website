@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../auth/middleware.js';
+import { checkProtectedRateLimit } from '../auth/rate-limit.js';
 import { orchestrateResearchAnswer } from '../research/assistant-orchestrator.js';
 import { createBedrockModelAdapter } from './bedrock-model-adapter.js';
 import { recordAssistantOutcome } from './telemetry.js';
@@ -7,9 +8,12 @@ import { createSupportCheck } from './support-check-client.js';
 import { supportCheckRuntimePause } from './support-check-runtime-pause.js';
 import { requireResearchAccess } from '../research/entitlement.js';
 import { recordResearchUsageEvent } from '../research/usage-events.js';
+import { positiveInt } from '../research/discover.js';
 import { deleteAssistantHistory, getAssistantHistory, listAssistantHistory, saveAssistantHistory } from './history-storage.js';
 
 const app = new Hono();
+const DEFAULT_ASSISTANT_USER_LIMIT = 10;
+const DEFAULT_ASSISTANT_USER_WINDOW_SECONDS = 300;
 
 async function recordOperationalOutcome(env, user, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, stageTimings, usage } = {}) {
   await Promise.all([
@@ -57,6 +61,15 @@ app.post('/api/assistant/ask', async (c) => {
   if (!access.ok) {
     await recordOperationalOutcome(c.env, auth.user, { code: access.code, durationMs: Date.now() - startedAt });
     return c.json({ ok: false, error: access.error, code: access.code, claims: [], evidence: [] }, access.status);
+  }
+
+  const identifier = auth.user?.user_id || auth.user?.sub || auth.user?.email || 'authenticated';
+  const limit = positiveInt(c.env.RESEARCH_ASSISTANT_USER_RATE_LIMIT, DEFAULT_ASSISTANT_USER_LIMIT, 100);
+  const windowSeconds = positiveInt(c.env.RESEARCH_ASSISTANT_USER_RATE_WINDOW_SECONDS, DEFAULT_ASSISTANT_USER_WINDOW_SECONDS, 3600);
+  const quota = await checkProtectedRateLimit(c, 'assistant-ask', identifier, limit, windowSeconds);
+  if (quota.isLimited) {
+    await recordOperationalOutcome(c.env, auth.user, { code: 'ASSISTANT_RATE_LIMITED', durationMs: Date.now() - startedAt });
+    return c.json({ ok: false, error: 'Assistant kullanım limiti aşıldı', code: 'ASSISTANT_RATE_LIMITED', claims: [], evidence: [] }, 429);
   }
 
   const providerGate = providerGateFromEnv(c.env);
