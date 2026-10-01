@@ -4807,8 +4807,6 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageLatency').textContent = `${Number(summary.avg_latency_ms || 0).toLocaleString('tr-TR')} ms`;
             document.getElementById('researchUsageInputTokens').textContent = Number(summary.input_tokens || 0).toLocaleString('tr-TR');
             document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');
-            document.getElementById('researchUsageInputTokens').textContent = Number(summary.input_tokens || 0).toLocaleString('tr-TR');
-            document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
             document.getElementById('researchUsageInstitutions').innerHTML = researchUsageRows(data.institutions, 'institution');
             if (meta) meta.textContent = `Son ${data.window_days || days} gün • yalnız operasyonel metadata • 90 gün retention`;
