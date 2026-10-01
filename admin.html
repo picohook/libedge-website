@@ -761,6 +761,31 @@
                 <p id="researchCheckerActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
             </div>
         </div>
+        <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+            <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
+                <div>
+                    <h4 class="font-semibold text-gray-800">Hesap / Kurum Kullanımı</h4>
+                    <p class="text-xs text-gray-500 mt-1">Son 90 güne kadar operasyonel kullanım; sorgu/yanıt içeriği ve hash gösterilmez. Maliyet, deterministik kaynak olmadığı için gösterilmez.</p>
+                </div>
+                <div class="lg:ml-auto">
+                    <label for="researchUsageDays" class="block text-xs text-gray-500 mb-1">Dönem</label>
+                    <select id="researchUsageDays" class="border rounded px-3 py-2 text-sm bg-white">
+                        <option value="7">7 gün</option><option value="30" selected>30 gün</option><option value="90">90 gün</option>
+                    </select>
+                </div>
+            </div>
+            <div id="researchUsageMeta" class="text-xs text-gray-500 mb-3">Yükleniyor...</div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">İstek</p><p id="researchUsageRequests" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Başarı</p><p id="researchUsageSuccessRate" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Başarısızlık</p><p id="researchUsageFailureRate" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Ort. latency</p><p id="researchUsageLatency" class="text-xl font-bold">—</p></div>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Hesap</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="4" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Kurum</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="4" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+            </div>
+        </section>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
                 <h4 class="font-semibold text-gray-800 mb-3">Katman Bazlı Sonuçlar</h4>
@@ -4714,6 +4739,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         if (!card || !statusEl || !subEl || !icon || currentAdmin?.role !== 'super_admin') return;
         card.classList.remove('hidden');
         try {
+            await loadResearchAccountUsage();
             const res = await fetch(`${API_BASE}/api/admin/system-health`, { credentials: 'include' });
             if (!res.ok) throw new Error('health unavailable');
             const health = await res.json();
@@ -4737,6 +4763,37 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
 
     function researchMetricRow(label, value) {
         return `<div class="flex items-center justify-between gap-4 py-2"><span class="text-sm text-gray-600">${escapeHtml(label)}</span><span class="text-sm font-semibold text-gray-800">${Number(value || 0).toLocaleString('tr-TR')}</span></div>`;
+    }
+
+    function researchUsagePercent(successes, requests) {
+        const total = Number(requests || 0);
+        return total ? `${Math.round((Number(successes || 0) / total) * 100)}%` : '—';
+    }
+
+    function researchUsageRows(rows, kind) {
+        if (!rows?.length) return '<tr><td colspan="4" class="py-3 text-gray-400">Kayıt yok.</td></tr>';
+        return rows.map((row) => {
+            const label = kind === 'user' ? (row.full_name || row.email || `Kullanıcı #${row.user_id}`) : (row.institution_name || (row.institution_id ? `Kurum #${row.institution_id}` : 'Bireysel / kurumsuz'));
+            return `<tr class="border-t border-gray-100"><td class="py-2 pr-3">${escapeHtml(label)}</td><td class="text-right">${Number(row.requests || 0).toLocaleString('tr-TR')}</td><td class="text-right">${researchUsagePercent(row.successes, row.requests)}</td><td class="text-right">${Number(row.avg_latency_ms || 0).toLocaleString('tr-TR')} ms</td></tr>`;
+        }).join('');
+    }
+
+    async function loadResearchAccountUsage() {
+        if (currentAdmin?.role !== 'super_admin') return;
+        const days = document.getElementById('researchUsageDays')?.value || '30';
+        const meta = document.getElementById('researchUsageMeta');
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/research/usage?days=${encodeURIComponent(days)}`, { credentials: 'include' });
+            if (!res.ok) throw new Error('usage unavailable');
+            const data = await res.json(); const summary = data.summary || {};
+            document.getElementById('researchUsageRequests').textContent = Number(summary.requests || 0).toLocaleString('tr-TR');
+            document.getElementById('researchUsageSuccessRate').textContent = `${Math.round(Number(summary.success_rate || 0) * 100)}%`;
+            document.getElementById('researchUsageFailureRate').textContent = `${Math.round(Number(summary.failure_rate || 0) * 100)}%`;
+            document.getElementById('researchUsageLatency').textContent = `${Number(summary.avg_latency_ms || 0).toLocaleString('tr-TR')} ms`;
+            document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
+            document.getElementById('researchUsageInstitutions').innerHTML = researchUsageRows(data.institutions, 'institution');
+            if (meta) meta.textContent = `Son ${data.window_days || days} gün • yalnız operasyonel metadata • 90 gün retention`;
+        } catch (_) { if (meta) meta.textContent = 'Hesap/kurum kullanım verisi alınamadı.'; }
     }
 
     async function loadResearchObservability() {
@@ -4795,6 +4852,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     }
 
     document.getElementById('researchObservabilityRefreshBtn')?.addEventListener('click', loadResearchObservability);
+    document.getElementById('researchUsageDays')?.addEventListener('change', loadResearchAccountUsage);
     async function setResearchCheckerState(action) {
         if (currentAdmin?.role !== 'super_admin') return;
         if (action === 'resume') {
