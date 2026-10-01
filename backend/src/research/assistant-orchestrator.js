@@ -79,7 +79,8 @@ export async function orchestrateResearchAnswer({
     works = await discover(task, { env, perPage });
     diagnosticTimings.discover_ms = Date.now() - stageStartedAt;
   } catch {
-    return { ok: false, code: 'DISCOVER_FAILED', claims: [] };
+    diagnosticTimings.discover_ms = Date.now() - stageStartedAt;
+    return { ok: false, code: 'DISCOVER_FAILED', diagnostic_timings: diagnosticTimings, claims: [] };
   }
 
   const relevantWorks = filterRelevantWorks(task, works);
@@ -93,13 +94,15 @@ export async function orchestrateResearchAnswer({
     evidencePack = packFactory(relevantWorks, packOptions);
     diagnosticTimings.evidence_pack_ms = Date.now() - stageStartedAt;
   } catch {
-    return { ok: false, code: 'EVIDENCE_PACK_FAILED', claims: [] };
+    diagnosticTimings.evidence_pack_ms = Date.now() - stageStartedAt;
+    return { ok: false, code: 'EVIDENCE_PACK_FAILED', diagnostic_timings: diagnosticTimings, claims: [] };
   }
 
   if (!gatePassed(providerGate)) {
     return {
       ok: false,
       code: 'PROVIDER_PRIVACY_GATE_REQUIRED',
+      diagnostic_timings: diagnosticTimings,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -109,6 +112,7 @@ export async function orchestrateResearchAnswer({
     return {
       ok: false,
       code: 'MODEL_ADAPTER_REQUIRED',
+      diagnostic_timings: diagnosticTimings,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -120,9 +124,11 @@ export async function orchestrateResearchAnswer({
     modelResult = await modelAdapter.generateClaims({ task, evidencePack });
     diagnosticTimings.model_ms = Date.now() - stageStartedAt;
   } catch (error) {
+    diagnosticTimings.model_ms = Date.now() - stageStartedAt;
     return {
       ok: false,
       code: 'MODEL_ADAPTER_FAILED',
+      diagnostic_timings: diagnosticTimings,
       diagnostic_error_class: safeErrorClass(error),
       diagnostic_reason: safeDiagnosticReason(error),
       claims: [],
@@ -137,6 +143,7 @@ export async function orchestrateResearchAnswer({
       ok: false,
       code: 'MODEL_OUTPUT_INVALID',
       diagnostic_usage: diagnosticUsage,
+      diagnostic_timings: diagnosticTimings,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -148,10 +155,12 @@ export async function orchestrateResearchAnswer({
     grounding = await validateGroundedClaims({ claims, evidencePack, supportCheck });
     diagnosticTimings.grounding_ms = Date.now() - stageStartedAt;
   } catch {
+    diagnosticTimings.grounding_ms = Date.now() - stageStartedAt;
     return {
       ok: false,
       code: 'GROUNDING_VALIDATION_FAILED',
       diagnostic_usage: diagnosticUsage,
+      diagnostic_timings: diagnosticTimings,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
