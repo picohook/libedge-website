@@ -4786,10 +4786,10 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     }
 
     function researchUsageRows(rows, kind) {
-        if (!rows?.length) return '<tr><td colspan="4" class="py-3 text-gray-400">Kayıt yok.</td></tr>';
+        if (!rows?.length) return '<tr><td colspan="5" class="py-3 text-gray-400">Kayıt yok.</td></tr>';
         return rows.map((row) => {
             const label = kind === 'user' ? (row.full_name || row.email || `Kullanıcı #${row.user_id}`) : (row.institution_name || (row.institution_id ? `Kurum #${row.institution_id}` : 'Bireysel / kurumsuz'));
-            return `<tr class="border-t border-gray-100"><td class="py-2 pr-3">${escapeHtml(label)}</td><td class="text-right">${Number(row.requests || 0).toLocaleString('tr-TR')}</td><td class="text-right">${researchUsagePercent(row.successes, row.requests)}</td><td class="text-right">${Number(row.avg_latency_ms || 0).toLocaleString('tr-TR')} ms</td></tr>`;
+            return `<tr class="border-t border-gray-100"><td class="py-2 pr-3">${escapeHtml(label)}</td><td class="text-right">${Number(row.requests || 0).toLocaleString('tr-TR')}</td><td class="text-right">${researchUsagePercent(row.successes, row.requests)}</td><td class="text-right">${Number(row.avg_latency_ms || 0).toLocaleString('tr-TR')} ms</td><td class="text-right">${Number(row.input_tokens || 0) + Number(row.output_tokens || 0)}</td></tr>`;
         }).join('');
     }
 
@@ -4805,6 +4805,8 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageSuccessRate').textContent = `${Math.round(Number(summary.success_rate || 0) * 100)}%`;
             document.getElementById('researchUsageFailureRate').textContent = `${Math.round(Number(summary.failure_rate || 0) * 100)}%`;
             document.getElementById('researchUsageLatency').textContent = `${Number(summary.avg_latency_ms || 0).toLocaleString('tr-TR')} ms`;
+            document.getElementById('researchUsageInputTokens').textContent = Number(summary.input_tokens || 0).toLocaleString('tr-TR');
+            document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
             document.getElementById('researchUsageInstitutions').innerHTML = researchUsageRows(data.institutions, 'institution');
             if (meta) meta.textContent = `Son ${data.window_days || days} gün • yalnız operasyonel metadata • 90 gün retention`;
