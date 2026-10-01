@@ -1,6 +1,8 @@
 # Workflow
 
-LibEdge repo'sunda günlük çalışma için güncel kısa akış:\n\nGitHub varsayılan ve canonical geliştirme dalı `staging`'dir. `main` production yetkisi anlamına gelmez ve günlük geliştirme tabanı olarak kullanılmaz.
+LibEdge repo'sunda günlük çalışma için güncel kısa akış:
+
+GitHub varsayılan ve canonical geliştirme dalı `staging`'dir. `main` production yetkisi anlamına gelmez ve günlük geliştirme tabanı olarak kullanılmaz.
 
 ## Şema
 
@@ -64,7 +66,8 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 
 - Staging ve production D1'in aynı migration seviyesinde olduğu **asla varsayılmaz**.
 - Her apply öncesi `migrations list` okunur.
-- Repository migration zinciri `0052_research_usage_token_counts.sql` seviyesindedir. `0048`–`0052`; Research telemetry counters, notification deletion policy, Research subscription seats, content-free usage events ve token-count alanlarını ekler.\n- Staging/production üzerindeki gerçek uygulanmış seviye her operasyon öncesinde `migrations list` ile ayrıca doğrulanır.
+- Repository migration zinciri `0052_research_usage_token_counts.sql` seviyesindedir. `0048`–`0052`; Research telemetry counters, notification deletion policy, Research subscription seats, content-free usage events ve token-count alanlarını ekler.
+- Staging/production üzerindeki gerçek uygulanmış seviye her operasyon öncesinde `migrations list` ile ayrıca doğrulanır.
 - Production migration seviyesi production preflight gününde ayrıca doğrulanır.
 - Production'a bu stabilizasyon çalışması sırasında migration uygulanmamıştır.
 - D1 rollback için öncelik forward-fix; gerektiğinde Time Travel bookmark kullanılır.
@@ -93,9 +96,14 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 - Super-admin Sistem Sağlığı: endpoint + dashboard widget + RA/tünel KPI temizliği staging'de LIVE ve doğrulanmış
 - Production D1 preflight/rollback guardrail: uygulanmış
 - Production Infrastructure Preflight: uygulanmış, production geçişinde manuel çalıştırılacak
-- Kapsam v1 tamamlama için freeze edilmiştir; yalnız release blocker, doğrulanmış regresyon ve açık completion issue'ları ele alınır.\n- Kalıcı merge disiplini: **PR claim ↔ actual diff ↔ tests ↔ exact HEAD ↔ CI ↔ independent ACCEPT**. HEAD değişirse önceki exact-head kabul geçersizdir.
+- Kapsam v1 tamamlama için freeze edilmiştir; yalnız release blocker, doğrulanmış regresyon ve açık completion issue'ları ele alınır.
+- Kalıcı merge disiplini: **PR claim ↔ actual diff ↔ tests ↔ exact HEAD ↔ CI ↔ independent ACCEPT**. HEAD değişirse önceki exact-head kabul geçersizdir.
 
-## Post-v1 Ürün İyileştirme Roadmap'i\n\nAşağıdaki P2/P3 maddeleri mevcut v1 completion kapsamını genişletmez; v1 sonrasına ertelenmiş ürün/refactor fikirleridir. Mevcut completion çalışması açık release blocker'ların kapatılması, RC doğrulaması ve ayrı production authorization ile sınırlıdır.\n\n### Arşivlenmiş post-v1 fikirler
+## Post-v1 Ürün İyileştirme Roadmap'i
+
+Aşağıdaki P2/P3 maddeleri mevcut v1 completion kapsamını genişletmez; v1 sonrasına ertelenmiş ürün/refactor fikirleridir. Mevcut completion çalışması açık release blocker'ların kapatılması, RC doğrulaması ve ayrı production authorization ile sınırlıdır.
+
+### Arşivlenmiş post-v1 fikirler
 
 Aşağıdaki maddeler mevcut stabil staging tabanı üzerinde davranış değişikliklerini kontrollü ve küçük paketler halinde geliştirmek için sıralanmıştır.
 
