@@ -2678,11 +2678,14 @@ app.get('/api/admin/research/usage', async (c) => {
   }
   const predicate = where.join(' AND ');
 
+  const successPredicate = "e.outcome_code = 'OK'";
+  const failurePredicate = "e.outcome_code <> 'OK'";
+
   const [summary, outcomes, users, institutions] = await Promise.all([
     c.env.DB.prepare(`
       SELECT COUNT(*) AS requests,
-             SUM(CASE WHEN e.outcome_code = 'OK' THEN 1 ELSE 0 END) AS successes,
-             SUM(CASE WHEN e.outcome_code <> 'OK' THEN 1 ELSE 0 END) AS failures,
+             SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
+             SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
              ROUND(AVG(e.latency_ms)) AS avg_latency_ms
       FROM research_usage_events e
       WHERE ${predicate}
@@ -2696,8 +2699,8 @@ app.get('/api/admin/research/usage', async (c) => {
     `).bind(...params).all(),
     c.env.DB.prepare(`
       SELECT e.user_id, u.full_name, u.email, COUNT(*) AS requests,
-             SUM(CASE WHEN e.outcome_code = 'OK' THEN 1 ELSE 0 END) AS successes,
-             SUM(CASE WHEN e.outcome_code <> 'OK' THEN 1 ELSE 0 END) AS failures,
+             SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
+             SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
              ROUND(AVG(e.latency_ms)) AS avg_latency_ms
       FROM research_usage_events e
       LEFT JOIN users u ON u.id = e.user_id
@@ -2708,8 +2711,8 @@ app.get('/api/admin/research/usage', async (c) => {
     `).bind(...params).all(),
     c.env.DB.prepare(`
       SELECT e.institution_id, i.name AS institution_name, COUNT(*) AS requests,
-             SUM(CASE WHEN e.outcome_code = 'OK' THEN 1 ELSE 0 END) AS successes,
-             SUM(CASE WHEN e.outcome_code <> 'OK' THEN 1 ELSE 0 END) AS failures,
+             SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
+             SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
              ROUND(AVG(e.latency_ms)) AS avg_latency_ms
       FROM research_usage_events e
       LEFT JOIN institutions i ON i.id = e.institution_id
