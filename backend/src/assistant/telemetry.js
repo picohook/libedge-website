@@ -72,9 +72,19 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
   try {
     console.log(JSON.stringify(payload));
     const metricCode = payload.code.toLowerCase();
+    const timingMetrics = [['assistant_duration_ms_total', payload.duration_ms]];
+    for (const [field, metric] of [
+      ['discover_ms', 'assistant_discover_ms_total'],
+      ['evidence_pack_ms', 'assistant_evidence_pack_ms_total'],
+      ['model_ms', 'assistant_model_ms_total'],
+      ['grounding_ms', 'assistant_grounding_ms_total']
+    ]) {
+      if (Object.hasOwn(payload, field)) timingMetrics.push([metric, payload[field]]);
+    }
     await recordResearchMetrics(env, [
       ['assistant_requests', 1],
       [`assistant_outcome_${metricCode}`, 1],
+      ...timingMetrics,
       ...groundingMetrics
     ]);
     return true;
