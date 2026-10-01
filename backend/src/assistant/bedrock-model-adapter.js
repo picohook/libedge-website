@@ -3,6 +3,8 @@ import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedroc
 const DEFAULT_MODEL_ID = 'us.anthropic.claude-sonnet-4-6';
 const DEFAULT_REGION = 'us-east-1';
 const MAX_CLAIMS = 4;
+const DEFAULT_INPUT_USD_PER_MILLION_TOKENS = 3;
+const DEFAULT_OUTPUT_USD_PER_MILLION_TOKENS = 15;
 
 function configured(value) {
   return String(value ?? '').trim();
@@ -57,6 +59,13 @@ function nonNegativeInteger(value) {
   return Number.isSafeInteger(numeric) && numeric >= 0 ? numeric : null;
 }
 
+function exactUsageCostUsd(usage, inputRate = DEFAULT_INPUT_USD_PER_MILLION_TOKENS, outputRate = DEFAULT_OUTPUT_USD_PER_MILLION_TOKENS) {
+  const input = nonNegativeInteger(usage?.input_tokens);
+  const output = nonNegativeInteger(usage?.output_tokens);
+  if (input == null || output == null) return null;
+  return (input * inputRate + output * outputRate) / 1_000_000;
+}
+
 function parseClaimsPayload(payload) {
   const blocks = Array.isArray(payload?.content) ? payload.content : [];
   const text = blocks.filter((block) => block?.type === 'text').map((block) => block.text).join('').trim();
@@ -68,7 +77,8 @@ function parseClaimsPayload(payload) {
     claims: parsed.claims.slice(0, MAX_CLAIMS),
     usage: {
       input_tokens: nonNegativeInteger(payload?.usage?.input_tokens),
-      output_tokens: nonNegativeInteger(payload?.usage?.output_tokens)
+      output_tokens: nonNegativeInteger(payload?.usage?.output_tokens),
+      llm_cost_usd: exactUsageCostUsd(payload?.usage)
     }
   };
 }
@@ -117,4 +127,4 @@ export function createBedrockModelAdapter(env, { clientFactory } = {}) {
   };
 }
 
-export const __test = { parseClaimsPayload, parseModelJson, promptFor, credentialsFromEnv, diagnosticError };
+export const __test = { parseClaimsPayload, parseModelJson, promptFor, credentialsFromEnv, diagnosticError, exactUsageCostUsd };
