@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   measure:
-    name: Synthetic staging Assistant load evidence
+    name: Successful grounded staging Assistant load evidence
     runs-on: ubuntu-latest
     environment: staging
     steps:

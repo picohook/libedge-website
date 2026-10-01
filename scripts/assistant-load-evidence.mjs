@@ -2,7 +2,7 @@ const BASE_URL = normalizeBaseUrl(process.env.LIBEDGE_SMOKE_BASE_URL || 'https:/
 const USER_EMAIL = process.env.LIBEDGE_SMOKE_EMAIL;
 const USER_PASSWORD = process.env.LIBEDGE_SMOKE_PASSWORD;
 const QUERY = process.env.LIBEDGE_ASSISTANT_LOAD_QUERY || 'PEM water electrolysis catalyst';
-const EXPECTED_CODE = process.env.LIBEDGE_ASSISTANT_LOAD_EXPECTED_CODE || 'GROUNDING_REJECTED';
+const EXPECTED_CODE = process.env.LIBEDGE_ASSISTANT_LOAD_EXPECTED_CODE || 'OK';
 const LEVELS = parseLevels(process.env.LIBEDGE_ASSISTANT_LOAD_LEVELS || '1,2,4');
 const MAX_REQUESTS = 8;
 
@@ -73,8 +73,14 @@ async function ask() {
     let payload;
     try { payload = JSON.parse(text); } catch { return { latencyMs, code: 'NON_JSON', valid: false }; }
     const code = String(payload?.code || (payload?.ok === true ? 'OK' : 'UNKNOWN'));
-    const noLeak = Array.isArray(payload?.claims) && payload.claims.length === 0;
-    const valid = response.status === 200 && payload?.ok === false && code === EXPECTED_CODE && noLeak;
+    const claims = Array.isArray(payload?.claims) ? payload.claims : [];
+    const evidence = Array.isArray(payload?.evidence) ? payload.evidence : [];
+    const evidenceIds = new Set(evidence.map((item) => String(item?.evidence_id || item?.id || '')).filter(Boolean));
+    const claimsGrounded = claims.length > 0 && claims.every((claim) =>
+      Array.isArray(claim?.evidence_ids) && claim.evidence_ids.length > 0 &&
+      claim.evidence_ids.every((id) => evidenceIds.has(String(id)))
+    );
+    const valid = response.status === 200 && payload?.ok === true && code === EXPECTED_CODE && evidence.length > 0 && claimsGrounded;
     return { latencyMs, code, valid };
   } catch {
     return { latencyMs: performance.now() - started, code: 'TRANSPORT_ERROR', valid: false };
