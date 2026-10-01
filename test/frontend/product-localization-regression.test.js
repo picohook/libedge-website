@@ -12,6 +12,7 @@ describe('#347 product localization contract', () => {
     expect(migrationSource).toContain('ALTER TABLE products ADD COLUMN name_en TEXT');
     expect(backendSource).toContain('SELECT slug, name, name_en, category');
     expect(backendSource).toContain('SET name = ?, name_en = ?, category = ?');
+    expect(backendSource).toMatch(/slug, name, name_en, category,[\s\S]*?VALUES \(\?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?, \?\)[\s\S]*?product\.slug,[\s\S]*?product\.name,[\s\S]*?product\.name_en \|\| null,[\s\S]*?product\.category \|\| null/);
   });
 
   it('lets admins edit the English product name', () => {
