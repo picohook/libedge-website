@@ -796,6 +796,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 delete element.dataset.originalText;
             }
 
+            // Translatable accessibility/title attributes
+            if (toEnglish) {
+                if (element.dataset.enAriaLabel) {
+                    element.dataset.originalAriaLabel = element.getAttribute('aria-label') || '';
+                    element.setAttribute('aria-label', element.dataset.enAriaLabel);
+                }
+                if (element.dataset.enTitle) {
+                    element.dataset.originalTitle = element.getAttribute('title') || '';
+                    element.setAttribute('title', element.dataset.enTitle);
+                }
+            } else {
+                if (Object.prototype.hasOwnProperty.call(element.dataset, 'originalAriaLabel')) {
+                    element.setAttribute('aria-label', element.dataset.originalAriaLabel);
+                    delete element.dataset.originalAriaLabel;
+                }
+                if (Object.prototype.hasOwnProperty.call(element.dataset, 'originalTitle')) {
+                    element.setAttribute('title', element.dataset.originalTitle);
+                    delete element.dataset.originalTitle;
+                }
+            }
+
             // Placeholder
             if (element.placeholder) {
                 if (toEnglish) {
