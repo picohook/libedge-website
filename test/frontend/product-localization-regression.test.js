@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const profileSource = readFileSync('profile.html', 'utf8');
 const adminSource = readFileSync('admin.html', 'utf8');
 const backendSource = readFileSync('backend/src/index.js', 'utf8');
+const authSource = readFileSync('assets/js/auth.js', 'utf8');
 const migrationSource = readFileSync('migrations/0053_product_name_localization.sql', 'utf8');
 
 describe('#347 product localization contract', () => {
@@ -31,5 +32,10 @@ describe('#347 product localization contract', () => {
     expect(profileSource).toContain("'Akademik Yazım & Dil': 'Academic Writing & Language'");
     expect(profileSource).toContain("'Anket & Veri Toplama': 'Survey & Data Collection'");
     expect(profileSource).toContain('translateProfileString(rawCategory, useEnglish)');
+  });
+  it('shows registration feedback in the selected language', () => {
+    expect(backendSource).toContain("message_en: 'Registration successful! You can now sign in.'");
+    expect(authSource).toContain("data.message_en || data.message");
+    expect(authSource).toContain("data.error_en || data.error || 'Registration failed'");
   });
 });
