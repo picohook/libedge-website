@@ -5,7 +5,7 @@ baseline'ını özetler. Hukuki görüş yerine teknik uyum ve operasyon checkli
 kullanılmalıdır. Production öncesinde nihai aydınlatma metni, sözleşmeler ve veri işleyen
 şartları ayrıca hukuk danışmanı ile gözden geçirilmelidir.
 
-**Son teknik senkronizasyon:** 7 Eylül 2026
+**Son teknik senkronizasyon:** 1 Ekim 2026
 
 ## 1. Veri Kategorileri
 
@@ -17,7 +17,7 @@ kullanılmalıdır. Production öncesinde nihai aydınlatma metni, sözleşmeler
 | Abonelik/erişim | Ürün abonelikleri, erişim türleri | Kişisel davranış verisi |
 | Dosya metadata | Dosya adı, mime type, yükleyen kullanıcı, paylaşım kayıtları | Kişisel veri içerebilir |
 | Destek kayıtları | Ticket, reply, attachment | Kişisel veri içerebilir |
-| AI kullanım verisi | Sorgu hash'i, öneri, ürün eşleşmeleri, kullanım limiti | Profil çıkarımı riski |
+| AI kullanım verisi | Content-free Research kullanım olayı, outcome code, latency, input/output token sayıları, kullanıcı/kurum ilişkilendirmesi | Profil çıkarımı ve kullanım metadata riski |
 | Harici servis credential | Airtable/API secret vb. | Çok hassas secret |
 
 Eski RA/proxy runtime kodu aktif uygulamadan çıkarılmıştır. Migration geçmişinde legacy RA
@@ -41,7 +41,7 @@ Kayıt API'si `kvkk_consent` alanını zorunlu boolean olarak doğrular ve yaln�
 olduğunda kayıt oluşturur. Kullanıcı kaydında onay durumu ile birlikte onay zamanı, versiyonu,
 IP ve user-agent metadata'sı tutulur.
 
-**Durum: CLOSED / uygulanmış.**
+Self-service kayıt ayrıca super-admin tarafından açılıp kapatılabilen bir kontrol ile yönetilir; KVKK onayı zorunluluğu bu kontrolden bağımsızdır.\n\n**Durum: CLOSED / uygulanmış.**
 
 ## 4. Çerez ve Yerel Tercihler
 
@@ -66,7 +66,7 @@ veya analytics rızası akışı kullanıcıya sunulmaz.
 | Password reset token kayıtları | süre bitimi sonrası cleanup | `cleanupExpiredPasswordResets` |
 | Refresh token expired/revoked | cleanup | `cleanupOldRefreshTokens` |
 | Product request | 2 yıl sonra kullanıcı bağlantısını kaldırma | `anonymizeOldProductRequests` |
-| AI usage logs | 90 gün cleanup | `cleanupOldAiUsageLogs` |
+| AI usage logs | 90 gün cleanup | `cleanupOldAiUsageLogs` |\n| Research usage events ve token-count metadata | 90 gün cleanup; sorgu/cevap/claim/evidence/prompt/provider payload veya bunların hash'i tutulmaz | scheduled Research usage cleanup |
 | Kullanıcı silme talebi | merkezi D1 privacy trigger | migration `0047_user_deletion_integrity.sql` |
 | Ticket attachment purge | privacy queue + scheduled R2 consumer | `backend/src/privacy/r2-purge.js` |
 
