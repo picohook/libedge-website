@@ -47,20 +47,20 @@ function getHeaderFallbackHtml() {
                     <span>Yükleniyor...</span>
                 </div>
                 <div id="authNotLoggedIn">
-                    <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openLoginModal()" aria-label="Giriş Yap" data-en-aria-label="Sign In">
+                    <a class="text-white hover:text-purple-300 cursor-pointer" onclick="openLoginModal()" aria-label="Giriş Yap" translatable data-en-aria-label="Sign In">
                         <i class="fas fa-user text-xl"></i>
                     </a>
                 </div>
                 <div id="authLoggedIn" class="relative hidden flex items-center gap-4">
                     <div id="notifRoot" class="relative">
-                        <button id="notifBellBtn" type="button" class="notif-bell-btn text-white hover:text-purple-300 relative" aria-label="Bildirimler" data-en-aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
+                        <button id="notifBellBtn" type="button" class="notif-bell-btn text-white hover:text-purple-300 relative" aria-label="Bildirimler" translatable data-en-aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-bell text-xl"></i>
                             <span id="notifBadge" class="notif-badge hidden">0</span>
                         </button>
-                        <div id="notifPanel" class="notif-panel hidden" role="menu" aria-label="Bildirim listesi" data-en-aria-label="Notification list">
+                        <div id="notifPanel" class="notif-panel hidden" role="menu" aria-label="Bildirim listesi" translatable data-en-aria-label="Notification list">
                             <div class="notif-panel-header">
                                 <h3 class="notif-panel-title translatable" data-en="Notifications"><i class="fas fa-bell mr-2"></i>Bildirimler</h3>
-                                <button id="notifMarkAllBtn" type="button" class="notif-mark-all" title="Tümünü okundu işaretle" data-en-title="Mark all as read">
+                                <button id="notifMarkAllBtn" type="button" class="notif-mark-all" title="Tümünü okundu işaretle" translatable data-en-title="Mark all as read">
                                     <i class="fas fa-check-double mr-1"></i><span class="translatable" data-en="Mark all read">Tümünü okundu</span>
                                 </button>
                             </div>
@@ -93,7 +93,7 @@ function getHeaderFallbackHtml() {
                                     </div>
                                 </div>
                                 <a id="dropdownInstSection" href="#" target="_blank" rel="noopener" class="hidden mt-3 flex items-center gap-2 min-w-0" onclick="return !!this.dataset.url" style="pointer-events:none">
-                                    <div class="w-[50px] h-[50px] rounded-full bg-white/15 flex items-center justify-center overflow-hidden flex-shrink-0 ring-1 ring-white/15" title="Kurumunuz" data-en-title="Your institution">
+                                    <div class="w-[50px] h-[50px] rounded-full bg-white/15 flex items-center justify-center overflow-hidden flex-shrink-0 ring-1 ring-white/15" title="Kurumunuz" translatable data-en-title="Your institution">
                                         <img id="dropdownInstLogoImg" src="" alt="" class="w-full h-full object-contain p-1 hidden">
                                         <span id="dropdownInstInitials" class="text-white text-sm font-bold leading-none">?</span>
                                     </div>
@@ -118,7 +118,7 @@ function getHeaderFallbackHtml() {
         <a class="text-2xl text-primary nav-logo" href="index.html">
             <span class="lib-bold">Lib</span><span>Edge Eğitim ve Danışmanlık</span>
         </a>
-        <button class="hamburger" aria-label="Menüyü aç/kapat" data-en-aria-label="Open/close menu" aria-expanded="false">
+        <button class="hamburger" aria-label="Menüyü aç/kapat" translatable data-en-aria-label="Open/close menu" aria-expanded="false">
             <i class="fas fa-bars"></i>
         </button>
         <div class="nav-links flex items-center space-x-4 text-xs sm:text-sm font-medium text-gray-700">
