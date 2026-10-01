@@ -77,6 +77,32 @@ describe('assistant orchestration boundary', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('preserves content-free stage timings when model generation fails', async () => {
+    const result = await orchestrateResearchAnswer({
+      query: 'hydrogen membranes',
+      env: {},
+      providerGate: passGate,
+      modelAdapter: {
+        generateClaims: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          throw new Error('provider failure');
+        }
+      },
+      discover: discoverStub(),
+      supportCheck: () => true,
+      packOptions
+    });
+
+    expect(result).toMatchObject({ ok: false, code: 'MODEL_ADAPTER_FAILED', claims: [] });
+    expect(result.diagnostic_timings).toEqual(expect.objectContaining({
+      discover_ms: expect.any(Number),
+      evidence_pack_ms: expect.any(Number),
+      model_ms: expect.any(Number)
+    }));
+    expect(result.diagnostic_timings.model_ms).toBeGreaterThanOrEqual(4);
+    expect(JSON.stringify(result.diagnostic_timings)).not.toContain('hydrogen membranes');
+  });
+
   it('fails closed on malformed model output', async () => {
     const result = await orchestrateResearchAnswer({
       query: 'hydrogen membranes',

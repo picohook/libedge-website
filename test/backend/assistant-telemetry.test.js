@@ -67,4 +67,30 @@ describe('assistant privacy-safe telemetry', () => {
     spy.mockRestore();
   });
 
+
+  it('logs only allowlisted stage timings and no arbitrary diagnostic fields', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    recordAssistantOutcome({ ENVIRONMENT: 'staging' }, {
+      code: 'OK',
+      durationMs: 100,
+      stageTimings: {
+        discover_ms: 11.2,
+        evidence_pack_ms: 2,
+        model_ms: 33.8,
+        grounding_ms: 51,
+        query: 'private query',
+        arbitrary_ms: 999
+      }
+    });
+    const payload = JSON.parse(spy.mock.calls[0][0]);
+    expect(payload).toMatchObject({
+      discover_ms: 11,
+      evidence_pack_ms: 2,
+      model_ms: 34,
+      grounding_ms: 51
+    });
+    expect(payload).not.toHaveProperty('query');
+    expect(payload).not.toHaveProperty('arbitrary_ms');
+    spy.mockRestore();
+  });
 });
