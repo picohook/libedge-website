@@ -4,6 +4,7 @@ import { handleSystemHealthRequest } from './system-health.js';
 import { handleResearchRequest } from './research/router.js';
 import { handleAssistantRequest } from './assistant/router.js';
 import { pruneResearchTelemetry } from './research/telemetry.js';
+import { pruneAssistantHistory } from './assistant/history-storage.js';
 export { OpenAlexSemanticPacer } from './research/semantic-pacer.js';
 
 // Research metadata may be cached server-side in KV using hashed, user-independent
@@ -28,7 +29,7 @@ export default {
     if (url.pathname === '/api/research/search' && request.method === 'GET') {
       return privateNoStore(await handleResearchRequest(request, env, ctx));
     }
-    if (url.pathname === '/api/assistant/ask' && request.method === 'POST') {
+    if (url.pathname.startsWith('/api/assistant/') && ['GET', 'POST', 'DELETE'].includes(request.method)) {
       return privateNoStore(await handleAssistantRequest(request, env, ctx));
     }
     return worker.fetch(request, env, ctx);
@@ -40,5 +41,6 @@ export default {
     }
     ctx.waitUntil(purgePrivacyR2Queue(env));
     ctx.waitUntil(pruneResearchTelemetry(env));
+    ctx.waitUntil(pruneAssistantHistory(env));
   },
 };

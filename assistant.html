@@ -117,6 +117,7 @@
                         <button type="button" class="assistant-primary-btn small translatable" data-en="Follow-up question"><i class="far fa-comment-dots"></i> Takip sorusu</button>
                         <button type="button" class="assistant-secondary-btn translatable" data-en="Narrow search"><i class="fas fa-sliders"></i> Aramayı daralt</button>
                         <button id="viewSourcesBtn" type="button" class="assistant-secondary-btn translatable" data-en="Evidence panel"><i class="fas fa-link"></i> Kanıt paneli</button>
+                        <button id="assistantHistoryBtn" type="button" class="assistant-secondary-btn translatable" data-en="History"><i class="fas fa-clock-rotate-left"></i> Geçmiş</button>
                         <button type="button" class="assistant-secondary-btn translatable" data-en="Export" disabled title="Sonraki sürüm"><i class="fas fa-file-export"></i> Dışa aktar</button>
                     </footer>
                 </article>
@@ -134,7 +135,13 @@
         </div>
     </main>
 
+    <aside id="assistantHistoryPanel" class="assistant-sources-panel" aria-labelledby="assistant-history-title" hidden>
+        <div class="sources-panel-header"><div><h2 id="assistant-history-title" class="translatable" data-en="History">Geçmiş</h2></div><button id="closeAssistantHistoryBtn" type="button" class="sources-close" aria-label="Geçmişi kapat"><i class="fas fa-xmark"></i></button></div>
+        <p class="sources-intro translatable" data-en="Only you can view these encrypted saved searches. They expire after 90 days and can be permanently deleted at any time.">Bu şifreli kayıtları yalnızca siz görebilirsiniz. 90 gün sonra silinir; istediğiniz zaman kalıcı olarak silebilirsiniz.</p>
+        <div id="assistantHistoryList"></div>
+    </aside>
+
     <div id="assistantPrototypeToast" class="assistant-toast translatable" role="status" aria-live="polite" hidden></div>
-    <script src="assets/js/assistant-ui.js?v=20261001b"></script>
+    <script src="assets/js/assistant-ui.js?v=20261002a"></script>
 </body>
 </html>

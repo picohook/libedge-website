@@ -7,6 +7,7 @@ import { createSupportCheck } from './support-check-client.js';
 import { supportCheckRuntimePause } from './support-check-runtime-pause.js';
 import { requireResearchAccess } from '../research/entitlement.js';
 import { recordResearchUsageEvent } from '../research/usage-events.js';
+import { deleteAssistantHistory, getAssistantHistory, listAssistantHistory, saveAssistantHistory } from './history-storage.js';
 
 const app = new Hono();
 
@@ -75,12 +76,42 @@ app.post('/api/assistant/ask', async (c) => {
   });
 
   await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding, stageTimings: result?.diagnostic_timings, usage: result?.diagnostic_usage });
+  if (result?.code === 'OK') {
+    await saveAssistantHistory(c.env, auth.user?.user_id, query, result);
+  }
   if (result && 'diagnostic_error_class' in result) delete result.diagnostic_error_class;
   if (result && 'diagnostic_reason' in result) delete result.diagnostic_reason;
   if (result && 'diagnostic_grounding' in result) delete result.diagnostic_grounding;
   if (result && 'diagnostic_usage' in result) delete result.diagnostic_usage;
   if (result && 'diagnostic_timings' in result) delete result.diagnostic_timings;
   return c.json(result, 200);
+});
+
+app.get('/api/assistant/history', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  return c.json({ items: await listAssistantHistory(c.env, auth.user?.user_id) }, 200);
+});
+
+app.get('/api/assistant/history/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  try {
+    const item = await getAssistantHistory(c.env, auth.user?.user_id, c.req.param('id'));
+    return item ? c.json(item, 200) : c.json({ error: 'Kayıt bulunamadı', code: 'ASSISTANT_HISTORY_NOT_FOUND' }, 404);
+  } catch (error) {
+    console.warn('assistant history read failed', error);
+    return c.json({ error: 'Geçmiş kaydı okunamadı', code: 'ASSISTANT_HISTORY_UNAVAILABLE' }, 503);
+  }
+});
+
+app.delete('/api/assistant/history/:id', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  const deleted = await deleteAssistantHistory(c.env, auth.user?.user_id, c.req.param('id'));
+  return deleted
+    ? c.json({ ok: true }, 200)
+    : c.json({ error: 'Kayıt bulunamadı', code: 'ASSISTANT_HISTORY_NOT_FOUND' }, 404);
 });
 
 export function handleAssistantRequest(request, env, ctx) {

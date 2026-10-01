@@ -27,6 +27,8 @@ requireResearchLogin().then((authorized) => {
     const status = document.getElementById('assistantStatus');
     const queryInput = document.getElementById('assistantQuery');
     const answerCard = document.querySelector('.assistant-answer-card');
+    const historyPanel = document.getElementById('assistantHistoryPanel');
+    const historyList = document.getElementById('assistantHistoryList');
     const demoSearchButton = document.getElementById('assistantDemoSearch');
     const isEnglish = () => localStorage.getItem('language') === 'en';
     const t = (tr, en) => isEnglish() ? en : tr;
@@ -389,6 +391,77 @@ requireResearchLogin().then((authorized) => {
         }
     }
 
+
+    function closeHistory() {
+        if (historyPanel) historyPanel.hidden = true;
+    }
+
+    function historyRow(item) {
+        const row = document.createElement('div');
+        row.className = 'source-card assistant-history-item';
+
+        const content = document.createElement('div');
+        content.className = 'source-content';
+        const title = document.createElement('h3');
+        title.textContent = item.query || t('Kaydedilmiş araştırma', 'Saved research');
+        const meta = document.createElement('p');
+        meta.className = 'source-meta';
+        meta.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+
+        const open = document.createElement('button');
+        open.type = 'button'; open.className = 'source-action';
+        open.textContent = t('Aç', 'Open');
+        open.addEventListener('click', async () => {
+            const response = await fetch('/api/assistant/history/' + encodeURIComponent(item.id), { credentials: 'same-origin' });
+            if (!response.ok) { showToast('Geçmiş kaydı açılamadı.', 'Saved research could not be opened.'); return; }
+            const saved = await response.json();
+            if (queryInput) queryInput.value = saved.query || '';
+            resetLiveResult(); clearEvidenceFocus(); closeSourceDetails(); closeSources(); closeHistory();
+            renderMappedState(saved.result);
+            if (!renderLiveAssistantResult(saved.result)) {
+                renderMappedState({ ok: false, code: 'EVIDENCE_PAYLOAD_REQUIRED', claims: [] });
+                return;
+            }
+            showToast('Kaydedilmiş araştırma açıldı; yeniden çalıştırılmadı.', 'Saved research opened without re-running it.');
+        });
+
+        const remove = document.createElement('button');
+        remove.type = 'button'; remove.className = 'source-action';
+        remove.textContent = t('Kalıcı sil', 'Delete permanently');
+        remove.addEventListener('click', async () => {
+            const response = await fetch('/api/assistant/history/' + encodeURIComponent(item.id), { method: 'DELETE', credentials: 'same-origin' });
+            if (!response.ok) { showToast('Kayıt silinemedi.', 'Saved research could not be deleted.'); return; }
+            row.remove();
+            showToast('Kayıt kalıcı olarak silindi.', 'Saved research permanently deleted.');
+        });
+
+        content.append(title, meta, open, remove); row.appendChild(content);
+        return row;
+    }
+
+    async function openHistory() {
+        if (!historyPanel || !historyList) return;
+        historyPanel.hidden = false;
+        historyList.replaceChildren();
+        try {
+            const response = await fetch('/api/assistant/history', { credentials: 'same-origin' });
+            if (!response.ok) throw new Error('history unavailable');
+            const payload = await response.json();
+            const items = Array.isArray(payload.items) ? payload.items : [];
+            if (!items.length) {
+                const empty = document.createElement('p');
+                empty.textContent = t('Henüz kaydedilmiş araştırmanız yok.', 'You have no saved research yet.');
+                historyList.appendChild(empty);
+                return;
+            }
+            items.forEach((item) => historyList.appendChild(historyRow(item)));
+        } catch {
+            const error = document.createElement('p');
+            error.textContent = t('Geçmiş şu anda yüklenemiyor.', 'History is unavailable right now.');
+            historyList.appendChild(error);
+        }
+    }
+
     function bindFindingEvidenceInteractions() {
         document.querySelectorAll('.finding-item').forEach((finding) => {
             const sourceCount = finding.querySelectorAll('.citation-chip[data-source]').length; if (!sourceCount) return; finding.tabIndex = 0; finding.setAttribute('role', 'button'); finding.setAttribute('aria-pressed', 'false'); finding.setAttribute('aria-label', t(`Bulgu için ${sourceCount} ilişkili kanıt kaydını göster`, `Show ${sourceCount} related evidence records for this finding`));
@@ -399,10 +472,12 @@ requireResearchLogin().then((authorized) => {
     markResearchGapsFixtureOnly(); addFindingContextualFollowUps(); bindFindingEvidenceInteractions(); setInitialLiveState();
     document.querySelectorAll('.assistant-mode').forEach((button) => { if (button.dataset.mode !== 'ask') markComingSoon(button); });
     document.querySelectorAll('.assistant-filter').forEach(markComingSoon);
-    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(.assistant-primary-btn)').forEach(markComingSoon);
+    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(#assistantHistoryBtn):not(.assistant-primary-btn)').forEach(markComingSoon);
     document.querySelectorAll('.finding-context-followup, .source-context-followup').forEach(markComingSoon);
     document.querySelectorAll('.citation-chip[data-source]').forEach((button) => button.addEventListener('click', () => highlightSource(button.dataset.source)));
     document.getElementById('viewSourcesBtn')?.addEventListener('click', openSources);
+    document.getElementById('assistantHistoryBtn')?.addEventListener('click', openHistory);
+    document.getElementById('closeAssistantHistoryBtn')?.addEventListener('click', closeHistory);
     document.getElementById('closeSourcesBtn')?.addEventListener('click', () => { closeSourceDetails(); closeSources(); });
     document.querySelectorAll('.assistant-mode').forEach((button) => button.addEventListener('click', () => {
         document.querySelectorAll('.assistant-mode').forEach((item) => item.classList.remove('active')); button.classList.add('active');
@@ -412,7 +487,7 @@ requireResearchLogin().then((authorized) => {
     demoSearchButton?.addEventListener('click', runLiveResearch);
     document.querySelectorAll('.source-action').forEach((button) => { button.setAttribute('aria-expanded', 'false'); button.addEventListener('click', () => toggleSourceDetail(button)); });
     document.querySelector('.assistant-answer-actions .assistant-primary-btn')?.addEventListener('click', beginFixtureFollowUp);
-    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(.assistant-primary-btn)').forEach((button) => { if (!button.disabled) button.addEventListener('click', () => showToast('Bu aksiyon sonraki UI iterasyonunda etkinleştirilecek.', 'This action will be enabled in a later UI iteration.')); });
+    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(#assistantHistoryBtn):not(.assistant-primary-btn)').forEach((button) => { if (!button.disabled) button.addEventListener('click', () => showToast('Bu aksiyon sonraki UI iterasyonunda etkinleştirilecek.', 'This action will be enabled in a later UI iteration.')); });
     document.querySelectorAll('.assistant-filter').forEach((button) => button.addEventListener('click', () => showToast('Filtre kontrolleri prototipte pasif; backend bağlantısı yapılmadı.', 'Filter controls are inactive in the prototype; no backend connection has been made.')));
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { clearEvidenceFocus(); closeSourceDetails(); closeSources(); } });
 }).catch((error) => { console.error('Assistant UI state module failed to load:', error); });
