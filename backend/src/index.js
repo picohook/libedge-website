@@ -2717,7 +2717,9 @@ app.get('/api/admin/research/usage', async (c) => {
       SELECT COUNT(*) AS requests,
              SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
              SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
-             ROUND(AVG(e.latency_ms)) AS avg_latency_ms
+             ROUND(AVG(e.latency_ms)) AS avg_latency_ms,
+             COALESCE(SUM(e.input_tokens), 0) AS input_tokens,
+             COALESCE(SUM(e.output_tokens), 0) AS output_tokens
       FROM research_usage_events e
       WHERE ${predicate}
     `).bind(...params).first(),
@@ -2732,7 +2734,9 @@ app.get('/api/admin/research/usage', async (c) => {
       SELECT e.user_id, u.full_name, u.email, COUNT(*) AS requests,
              SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
              SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
-             ROUND(AVG(e.latency_ms)) AS avg_latency_ms
+             ROUND(AVG(e.latency_ms)) AS avg_latency_ms,
+             COALESCE(SUM(e.input_tokens), 0) AS input_tokens,
+             COALESCE(SUM(e.output_tokens), 0) AS output_tokens
       FROM research_usage_events e
       LEFT JOIN users u ON u.id = e.user_id
       WHERE ${predicate}
@@ -2744,7 +2748,9 @@ app.get('/api/admin/research/usage', async (c) => {
       SELECT e.institution_id, i.name AS institution_name, COUNT(*) AS requests,
              SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
              SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
-             ROUND(AVG(e.latency_ms)) AS avg_latency_ms
+             ROUND(AVG(e.latency_ms)) AS avg_latency_ms,
+             COALESCE(SUM(e.input_tokens), 0) AS input_tokens,
+             COALESCE(SUM(e.output_tokens), 0) AS output_tokens
       FROM research_usage_events e
       LEFT JOIN institutions i ON i.id = e.institution_id
       WHERE ${predicate}
@@ -2766,7 +2772,9 @@ app.get('/api/admin/research/usage', async (c) => {
       failures,
       success_rate: requests ? successes / requests : 0,
       failure_rate: requests ? failures / requests : 0,
-      avg_latency_ms: Number(summary?.avg_latency_ms || 0)
+      avg_latency_ms: Number(summary?.avg_latency_ms || 0),
+      input_tokens: Number(summary?.input_tokens || 0),
+      output_tokens: Number(summary?.output_tokens || 0)
     },
     outcomes: outcomes.results || [],
     users: users.results || [],
