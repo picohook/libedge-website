@@ -10,7 +10,7 @@ import { recordResearchUsageEvent } from '../research/usage-events.js';
 
 const app = new Hono();
 
-async function recordOperationalOutcome(env, user, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic } = {}) {
+async function recordOperationalOutcome(env, user, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, usage } = {}) {
   await Promise.all([
     recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic }),
     recordResearchUsageEvent(env, {
@@ -18,7 +18,9 @@ async function recordOperationalOutcome(env, user, { code, durationMs, errorClas
       institutionId: user?.institution_id,
       operation: 'assistant_ask',
       outcomeCode: code,
-      latencyMs: durationMs
+      latencyMs: durationMs,
+      inputTokens: usage?.input_tokens,
+      outputTokens: usage?.output_tokens
     })
   ]);
 }
@@ -72,10 +74,11 @@ app.post('/api/assistant/ask', async (c) => {
     supportCheck
   });
 
-  await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding });
+  await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding, usage: result?.diagnostic_usage });
   if (result && 'diagnostic_error_class' in result) delete result.diagnostic_error_class;
   if (result && 'diagnostic_reason' in result) delete result.diagnostic_reason;
   if (result && 'diagnostic_grounding' in result) delete result.diagnostic_grounding;
+  if (result && 'diagnostic_usage' in result) delete result.diagnostic_usage;
   return c.json(result, 200);
 });
 
