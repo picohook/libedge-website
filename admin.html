@@ -4814,19 +4814,26 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         }).join('');
     }
 
-    function researchUsageFunnel(outcomes, requests) {
+    function researchUsageFunnel(outcomes, requests, stageLatency) {
         const counts = Object.fromEntries((outcomes || []).map((row) => [String(row.outcome_code || ''), Number(row.count || 0)]));
         const total = Number(requests || 0);
+        const terminalBeforePipeline = (counts.ASSISTANT_RATE_LIMITED || 0)
+            + (counts.INVOCATION_LIMIT_REQUIRED || 0)
+            + (counts.INVOCATION_BUDGET_STORE_UNAVAILABLE || 0)
+            + (counts.INVOCATION_BUDGET_INVALID || 0)
+            + (counts.INVOCATION_BUDGET_EXHAUSTED || 0)
+            + (counts.INVOCATION_BUDGET_STORE_FAILED || 0);
+        const enteredPipeline = Math.max(0, total - terminalBeforePipeline);
         const discoverFailed = counts.DISCOVER_FAILED || 0;
         const evidenceFailed = counts.EVIDENCE_PACK_FAILED || 0;
         const modelFailed = (counts.MODEL_ADAPTER_FAILED || 0) + (counts.MODEL_OUTPUT_INVALID || 0);
-        const grounded = counts.OK || 0;
         const stages = [
             ['Ask', total],
-            ['Discover geçti', Math.max(0, total - discoverFailed)],
-            ['Evidence geçti', Math.max(0, total - discoverFailed - evidenceFailed)],
-            ['Model geçti', Math.max(0, total - discoverFailed - evidenceFailed - modelFailed)],
-            ['Grounded / OK', grounded]
+            ['Pipeline başladı', enteredPipeline],
+            ['Discover geçti', Math.max(0, enteredPipeline - discoverFailed)],
+            ['Evidence geçti', Math.max(0, enteredPipeline - discoverFailed - evidenceFailed)],
+            ['Model geçti', Math.max(0, enteredPipeline - discoverFailed - evidenceFailed - modelFailed)],
+            ['Grounded / OK', counts.OK || 0]
         ];
         return stages.map(([label, value]) => researchMetricRow(label, value)).join('');
     }
@@ -4857,7 +4864,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageLatency').textContent = `${Number(summary.avg_latency_ms || 0).toLocaleString('tr-TR')} ms`;
             document.getElementById('researchUsageInputTokens').textContent = Number(summary.input_tokens || 0).toLocaleString('tr-TR');
             document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');
-            document.getElementById('researchUsageFunnel').innerHTML = researchUsageFunnel(data.outcomes, summary.requests);
+            document.getElementById('researchUsageFunnel').innerHTML = researchUsageFunnel(data.outcomes, summary.requests, summary.stage_latency_ms);
             document.getElementById('researchUsageStageLatency').innerHTML = researchStageLatencyRows(summary.stage_latency_ms);
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
             document.getElementById('researchUsageInstitutions').innerHTML = researchUsageRows(data.institutions, 'institution');
