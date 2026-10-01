@@ -25,6 +25,31 @@ function ttlUntilNextUtcDay(now) {
  * configuration, unavailable KV, exhausted budget, or KV read/write failure.
  * The counter is content-free and contains no query, claim, evidence, or user ID.
  */
+
+/**
+ * Read-only early availability check used before paid Assistant work.
+ * This does not reserve capacity and must not be treated as an atomic hard cap.
+ * The authoritative reservation remains immediately before checker transport.
+ */
+export async function preflightSupportCheckInvocation(env, now = new Date()) {
+  const limit = parseLimit(env?.RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT);
+  if (!limit) return { allowed: false, reason: 'INVOCATION_LIMIT_REQUIRED', limit, used: null };
+  if (!env?.RATE_LIMIT_KV) return { allowed: false, reason: 'INVOCATION_BUDGET_STORE_UNAVAILABLE', limit, used: null };
+
+  const key = supportCheckInvocationKey(now);
+  try {
+    const raw = await env.RATE_LIMIT_KV.get(key);
+    const used = Number(raw || 0);
+    if (!Number.isFinite(used) || used < 0) {
+      return { allowed: false, reason: 'INVOCATION_BUDGET_INVALID', limit, used: null };
+    }
+    if (used >= limit) return { allowed: false, reason: 'INVOCATION_BUDGET_EXHAUSTED', limit, used };
+    return { allowed: true, reason: null, limit, used };
+  } catch {
+    return { allowed: false, reason: 'INVOCATION_BUDGET_STORE_FAILED', limit, used: null };
+  }
+}
+
 export async function reserveSupportCheckInvocation(env, now = new Date()) {
   const limit = parseLimit(env?.RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT);
   if (!limit) return { allowed: false, reason: 'INVOCATION_LIMIT_REQUIRED', limit, used: null };

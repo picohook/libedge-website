@@ -5,6 +5,7 @@ import { orchestrateResearchAnswer } from '../research/assistant-orchestrator.js
 import { createBedrockModelAdapter } from './bedrock-model-adapter.js';
 import { recordAssistantOutcome } from './telemetry.js';
 import { createSupportCheck } from './support-check-client.js';
+import { preflightSupportCheckInvocation } from './support-check-invocation-budget.js';
 import { supportCheckRuntimePause } from './support-check-runtime-pause.js';
 import { requireResearchAccess } from '../research/entitlement.js';
 import { recordResearchUsageEvent } from '../research/usage-events.js';
@@ -72,12 +73,20 @@ app.post('/api/assistant/ask', async (c) => {
     return c.json({ ok: false, error: 'Assistant kullanım limiti aşıldı', code: 'ASSISTANT_RATE_LIMITED', claims: [], evidence: [] }, 429);
   }
 
+  const runtimePause = await supportCheckRuntimePause(c.env);
+  if (!runtimePause.paused) {
+    const budget = await preflightSupportCheckInvocation(c.env);
+    if (!budget.allowed) {
+      await recordOperationalOutcome(c.env, auth.user, { code: budget.reason, durationMs: Date.now() - startedAt });
+      return c.json({ ok: false, error: 'Assistant doğrulama bütçesi şu anda kullanılamıyor', code: budget.reason, claims: [], evidence: [] }, 503);
+    }
+  }
+
   const providerGate = providerGateFromEnv(c.env);
   const modelAdapter = providerGate.status === 'PASS'
     ? createBedrockModelAdapter(c.env)
     : null;
 
-  const runtimePause = await supportCheckRuntimePause(c.env);
   const supportCheck = runtimePause.paused ? null : createSupportCheck(c.env);
 
   const result = await orchestrateResearchAnswer({
