@@ -13,6 +13,12 @@ function optionalNonNegativeInteger(value) {
   return Number.isSafeInteger(numeric) && numeric >= 0 ? numeric : null;
 }
 
+function optionalNonNegativeNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+}
+
 function safeOutcomeCode(value) {
   const code = String(value || '').trim();
   return SAFE_OUTCOME.test(code) ? code : 'OTHER';
@@ -30,7 +36,9 @@ export async function recordResearchUsageEvent(env, {
   latencyMs,
   inputTokens,
   outputTokens,
-  stageTimings
+  stageTimings,
+  llmCostUsd,
+  discoveryCostUsd
 } = {}) {
   if (!env?.DB) return false;
   const uid = positiveId(userId);
@@ -44,14 +52,16 @@ export async function recordResearchUsageEvent(env, {
   const evidencePackMs = optionalNonNegativeInteger(stageTimings?.evidence_pack_ms);
   const modelMs = optionalNonNegativeInteger(stageTimings?.model_ms);
   const groundingMs = optionalNonNegativeInteger(stageTimings?.grounding_ms);
+  const llmCost = optionalNonNegativeNumber(llmCostUsd);
+  const discoveryCost = optionalNonNegativeNumber(discoveryCostUsd);
   try {
     await env.DB.prepare(`
       INSERT INTO research_usage_events
         (user_id, institution_id, operation, outcome_code, latency_ms, input_tokens, output_tokens,
-         discover_ms, evidence_pack_ms, model_ms, grounding_ms)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         discover_ms, evidence_pack_ms, model_ms, grounding_ms, llm_cost_usd, discovery_cost_usd)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(uid, iid, operation, safeOutcomeCode(outcomeCode), latency, input, output,
-      discoverMs, evidencePackMs, modelMs, groundingMs).run();
+      discoverMs, evidencePackMs, modelMs, groundingMs, llmCost, discoveryCost).run();
     return true;
   } catch (error) {
     console.warn('research usage event write failed', error);
@@ -73,4 +83,4 @@ export async function pruneResearchUsageEvents(env) {
 }
 
 export const RESEARCH_USAGE_RETENTION_DAYS = RETENTION_DAYS;
-export const __test = { positiveId, safeOutcomeCode, optionalNonNegativeInteger };
+export const __test = { positiveId, safeOutcomeCode, optionalNonNegativeInteger, optionalNonNegativeNumber };
