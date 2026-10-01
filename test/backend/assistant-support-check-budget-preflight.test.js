@@ -15,7 +15,7 @@ describe('Assistant checker budget preflight contract', () => {
     expect(preflight).not.toContain('RATE_LIMIT_KV.put');
 
     const preflightAt = router.indexOf('await preflightSupportCheckInvocation');
-    const modelAt = router.indexOf('createBedrockModelAdapter');
+    const modelAt = router.indexOf('createBedrockModelAdapter(c.env)');
     const orchestratorAt = router.indexOf('await orchestrateResearchAnswer');
     expect(preflightAt).toBeGreaterThan(-1);
     expect(preflightAt).toBeLessThan(modelAt);
