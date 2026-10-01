@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
         with: { ref: staging }
       - uses: actions/setup-node@v4
-        with: { node-version: "20" }
+        with: { node-version: "22" }
       - run: npm install --no-audit --no-fund
       - name: Enforce cleanup authorization when destructive mode is selected
         if: ${{ inputs.mode == 'CLEANUP' }}
@@ -40,20 +40,22 @@ jobs:
           }
       - name: Read-only inventory
         run: |
-          npx wrangler d1 execute libedge-db --env staging --remote --command "
-          SELECT 'users' resource,COUNT(*) n FROM users WHERE email LIKE '0047-test-%@example.invalid'
-          UNION ALL SELECT 'institutions',COUNT(*) FROM institutions WHERE name LIKE '0047-test-%-institution'
-          UNION ALL SELECT 'announcements',COUNT(*) FROM announcements WHERE title LIKE '0047-test-%'
-          UNION ALL SELECT 'support_tickets',COUNT(*) FROM support_tickets WHERE subject LIKE '0047-test-%'
-          UNION ALL SELECT 'product_requests',COUNT(*) FROM product_requests WHERE product_slug LIKE '0047-test-%' OR reason LIKE '0047-test-%'
-          UNION ALL SELECT 'form_submissions',COUNT(*) FROM form_submissions WHERE email LIKE '0047-test-%@example.invalid' OR product LIKE '0047-test-%' OR message LIKE '0047-test-%'
-          UNION ALL SELECT 'affiliate_clicks',COUNT(*) FROM affiliate_clicks WHERE source LIKE '0047-test-%' OR referer LIKE '%0047-test-%'
-          UNION ALL SELECT 'ra_link_audit_findings',COUNT(*) FROM ra_link_audit_findings WHERE key_hash LIKE '0047-test-%' OR session_id LIKE '0047-test-%'
-          UNION ALL SELECT 'institution_folders',COUNT(*) FROM institution_folders WHERE folder_name LIKE '0047-test-%'
-          UNION ALL SELECT 'institution_files',COUNT(*) FROM institution_files WHERE file_name LIKE '0047-test-%' OR file_url LIKE '%0047-test-%'
-          UNION ALL SELECT 'institution_subscriptions',COUNT(*) FROM institution_subscriptions WHERE product_slug LIKE '0047-test-%'
-          UNION ALL SELECT 'admin_action_logs',COUNT(*) FROM admin_action_logs WHERE id LIKE '0047-test-%' OR before_json LIKE '%0047-test-%' OR after_json LIKE '%0047-test-%'
-          UNION ALL SELECT 'privacy_r2_purge_queue',COUNT(*) FROM privacy_r2_purge_queue WHERE object_url LIKE '%0047-test-%';"
+          cat > "$RUNNER_TEMP/inventory.sql" <<'SQL'
+          SELECT 'users' resource,COUNT(*) n FROM users WHERE email LIKE '0047-test-%@example.invalid';
+          SELECT 'institutions' resource,COUNT(*) n FROM institutions WHERE name LIKE '0047-test-%-institution';
+          SELECT 'announcements' resource,COUNT(*) n FROM announcements WHERE title LIKE '0047-test-%';
+          SELECT 'support_tickets' resource,COUNT(*) n FROM support_tickets WHERE subject LIKE '0047-test-%';
+          SELECT 'product_requests' resource,COUNT(*) n FROM product_requests WHERE product_slug LIKE '0047-test-%' OR reason LIKE '0047-test-%';
+          SELECT 'form_submissions' resource,COUNT(*) n FROM form_submissions WHERE email LIKE '0047-test-%@example.invalid' OR product LIKE '0047-test-%' OR message LIKE '0047-test-%';
+          SELECT 'affiliate_clicks' resource,COUNT(*) n FROM affiliate_clicks WHERE source LIKE '0047-test-%' OR referer LIKE '%0047-test-%';
+          SELECT 'ra_link_audit_findings' resource,COUNT(*) n FROM ra_link_audit_findings WHERE key_hash LIKE '0047-test-%' OR session_id LIKE '0047-test-%';
+          SELECT 'institution_folders' resource,COUNT(*) n FROM institution_folders WHERE folder_name LIKE '0047-test-%';
+          SELECT 'institution_files' resource,COUNT(*) n FROM institution_files WHERE file_name LIKE '0047-test-%' OR file_url LIKE '%0047-test-%';
+          SELECT 'institution_subscriptions' resource,COUNT(*) n FROM institution_subscriptions WHERE product_slug LIKE '0047-test-%';
+          SELECT 'admin_action_logs' resource,COUNT(*) n FROM admin_action_logs WHERE id LIKE '0047-test-%' OR before_json LIKE '%0047-test-%' OR after_json LIKE '%0047-test-%';
+          SELECT 'privacy_r2_purge_queue' resource,COUNT(*) n FROM privacy_r2_purge_queue WHERE object_url LIKE '%0047-test-%';
+          SQL
+          npx wrangler d1 execute libedge-db --env staging --remote --file "$RUNNER_TEMP/inventory.sql"
       - name: Stop after read-only inventory
         if: ${{ inputs.mode == 'INVENTORY' }}
         run: echo "INVENTORY_ONLY_COMPLETE"
@@ -94,26 +96,30 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import { execFileSync } from 'node:child_process';
-          const sql = `
-            SELECT 'users' resource,COUNT(*) n FROM users WHERE email LIKE '0047-test-%@example.invalid'
-            UNION ALL SELECT 'institutions',COUNT(*) FROM institutions WHERE name LIKE '0047-test-%-institution'
-            UNION ALL SELECT 'announcements',COUNT(*) FROM announcements WHERE title LIKE '0047-test-%'
-            UNION ALL SELECT 'support_tickets',COUNT(*) FROM support_tickets WHERE subject LIKE '0047-test-%'
-            UNION ALL SELECT 'product_requests',COUNT(*) FROM product_requests WHERE product_slug LIKE '0047-test-%' OR reason LIKE '0047-test-%'
-            UNION ALL SELECT 'form_submissions',COUNT(*) FROM form_submissions WHERE email LIKE '0047-test-%@example.invalid' OR product LIKE '0047-test-%' OR message LIKE '0047-test-%'
-            UNION ALL SELECT 'affiliate_clicks',COUNT(*) FROM affiliate_clicks WHERE source LIKE '0047-test-%' OR referer LIKE '%0047-test-%'
-            UNION ALL SELECT 'ra_link_audit_findings',COUNT(*) FROM ra_link_audit_findings WHERE key_hash LIKE '0047-test-%' OR session_id LIKE '0047-test-%'
-            UNION ALL SELECT 'institution_folders',COUNT(*) FROM institution_folders WHERE folder_name LIKE '0047-test-%'
-            UNION ALL SELECT 'institution_files',COUNT(*) FROM institution_files WHERE file_name LIKE '0047-test-%' OR file_url LIKE '%0047-test-%'
-            UNION ALL SELECT 'institution_subscriptions',COUNT(*) FROM institution_subscriptions WHERE product_slug LIKE '0047-test-%'
-            UNION ALL SELECT 'admin_action_logs',COUNT(*) FROM admin_action_logs WHERE id LIKE '0047-test-%' OR before_json LIKE '%0047-test-%' OR after_json LIKE '%0047-test-%'
-            UNION ALL SELECT 'privacy_r2_purge_queue',COUNT(*) FROM privacy_r2_purge_queue WHERE object_url LIKE '%0047-test-%'
-          `;
-          const out=execFileSync('npx',['wrangler','d1','execute','libedge-db','--env','staging','--remote','--command',sql,'--json'],{encoding:'utf8',env:process.env});
-          const payload=JSON.parse(out); const result=Array.isArray(payload)?payload[0]:payload;
-          if (!result?.success) throw new Error(out);
-          const rows=result.results||[]; console.log(rows);
-          const leftovers=rows.filter(r=>Number(r.n)!==0);
+          const checks = [
+            ["users", "SELECT COUNT(*) n FROM users WHERE email LIKE '0047-test-%@example.invalid'"],
+            ["institutions", "SELECT COUNT(*) n FROM institutions WHERE name LIKE '0047-test-%-institution'"],
+            ["announcements", "SELECT COUNT(*) n FROM announcements WHERE title LIKE '0047-test-%'"],
+            ["support_tickets", "SELECT COUNT(*) n FROM support_tickets WHERE subject LIKE '0047-test-%'"],
+            ["product_requests", "SELECT COUNT(*) n FROM product_requests WHERE product_slug LIKE '0047-test-%' OR reason LIKE '0047-test-%'"],
+            ["form_submissions", "SELECT COUNT(*) n FROM form_submissions WHERE email LIKE '0047-test-%@example.invalid' OR product LIKE '0047-test-%' OR message LIKE '0047-test-%'"],
+            ["affiliate_clicks", "SELECT COUNT(*) n FROM affiliate_clicks WHERE source LIKE '0047-test-%' OR referer LIKE '%0047-test-%'"],
+            ["ra_link_audit_findings", "SELECT COUNT(*) n FROM ra_link_audit_findings WHERE key_hash LIKE '0047-test-%' OR session_id LIKE '0047-test-%'"],
+            ["institution_folders", "SELECT COUNT(*) n FROM institution_folders WHERE folder_name LIKE '0047-test-%'"],
+            ["institution_files", "SELECT COUNT(*) n FROM institution_files WHERE file_name LIKE '0047-test-%' OR file_url LIKE '%0047-test-%'"],
+            ["institution_subscriptions", "SELECT COUNT(*) n FROM institution_subscriptions WHERE product_slug LIKE '0047-test-%'"],
+            ["admin_action_logs", "SELECT COUNT(*) n FROM admin_action_logs WHERE id LIKE '0047-test-%' OR before_json LIKE '%0047-test-%' OR after_json LIKE '%0047-test-%'"],
+            ["privacy_r2_purge_queue", "SELECT COUNT(*) n FROM privacy_r2_purge_queue WHERE object_url LIKE '%0047-test-%'"]
+          ];
+          const leftovers = [];
+          for (const [resource, sql] of checks) {
+            const out = execFileSync('npx',['wrangler','d1','execute','libedge-db','--env','staging','--remote','--command',sql,'--json'],{encoding:'utf8',env:process.env});
+            const payload=JSON.parse(out); const result=Array.isArray(payload)?payload[0]:payload;
+            if (!result?.success) throw new Error(out);
+            const n=Number(result.results?.[0]?.n ?? NaN);
+            console.log({resource,n});
+            if (!Number.isFinite(n) || n !== 0) leftovers.push({resource,n});
+          }
           if (leftovers.length) throw new Error('0047 marker-scoped leftovers remain: '+JSON.stringify(leftovers));
           console.log('LEGACY_0047_CLEANUP_VERIFIED');
           NODE
