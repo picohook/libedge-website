@@ -775,15 +775,17 @@
                 </div>
             </div>
             <div id="researchUsageMeta" class="text-xs text-gray-500 mb-3">Yükleniyor...</div>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">İstek</p><p id="researchUsageRequests" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Başarı</p><p id="researchUsageSuccessRate" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Başarısızlık</p><p id="researchUsageFailureRate" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Ort. latency</p><p id="researchUsageLatency" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Input token</p><p id="researchUsageInputTokens" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Output token</p><p id="researchUsageOutputTokens" class="text-xl font-bold">—</p></div>
             </div>
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Hesap</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="4" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
-                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Kurum</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="4" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Hesap</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th><th class="text-right">Token</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="5" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Kurum</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th><th class="text-right">Token</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="5" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
             </div>
         </section>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
