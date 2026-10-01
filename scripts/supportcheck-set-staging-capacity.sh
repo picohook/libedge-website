@@ -15,7 +15,7 @@ config_name="$(printf '%s' "$endpoint_json" | node -e "let s='';process.stdin.on
 config_json="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$config_name" --output json)"
 readarray -t variant_lines < <(printf '%s' "$config_json" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s); for(const v of j.ProductionVariants||[]) console.log([v.VariantName,v.InstanceType].join('\\t'))})")
 [[ "${#variant_lines[@]}" -eq 1 ]] || { echo "Expected exactly one production variant" >&2; exit 1; }
-IFS=$'\\t' read -r variant instance_type <<< "${variant_lines[0]}"
+IFS=$'\t' read -r variant instance_type <<< "${variant_lines[0]}"
 current_count="$(printf '%s' "$endpoint_json" | VARIANT="$variant" node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s); const v=(j.ProductionVariants||[]).find(x=>x.VariantName===process.env.VARIANT); console.log(v?.CurrentInstanceCount ?? '')})")"
 [[ "$current_count" =~ ^[12]$ ]] || { echo "Live current instance count must be 1 or 2; got $current_count" >&2; exit 1; }
 
