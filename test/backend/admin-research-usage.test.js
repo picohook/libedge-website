@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sign } from 'hono/jwt';
-import { app } from '../../backend/src/index.js';
+import app from '../../backend/src/index.js';
 
 async function cookie(role = 'super_admin') {
   const token = await sign({ user_id: 42, role, exp: Math.floor(Date.now() / 1000) + 300 }, 'test-secret', 'HS256');
@@ -13,7 +13,7 @@ function env() {
     prepare: vi.fn((sql) => {
       prepared.push(sql);
       return {
-        bind: vi.fn((...args) => ({
+        bind: vi.fn(() => ({
           first: vi.fn(async () => ({ requests: 4, successes: 3, failures: 1, avg_latency_ms: 125 })),
           all: vi.fn(async () => ({ results: [] }))
         }))
