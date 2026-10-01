@@ -942,6 +942,7 @@ async function ensureProductsTableAndSeed(db, env = {}) {
     CREATE TABLE IF NOT EXISTS products (
       slug TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      name_en TEXT,
       category TEXT,
       region TEXT,
       default_access_type TEXT,
@@ -974,6 +975,7 @@ async function ensureProductsTableAndSeed(db, env = {}) {
   `).run();
 
   for (const sql of [
+    'ALTER TABLE products ADD COLUMN name_en TEXT',
     'ALTER TABLE products ADD COLUMN default_access_type TEXT',
     'ALTER TABLE products ADD COLUMN default_access_url TEXT',
     'ALTER TABLE products ADD COLUMN default_requires_institution_email INTEGER DEFAULT 0',
@@ -1013,7 +1015,7 @@ async function ensureProductsTableAndSeed(db, env = {}) {
   for (const product of DEFAULT_PRODUCT_CATALOG) {
     await db.prepare(`
       INSERT OR IGNORE INTO products (
-        slug, name, category, region,
+        slug, name, name_en, category, region,
         default_access_type, default_access_url,
         default_requires_institution_email, default_requires_vpn,
         default_access_notes_tr, default_access_notes_en,
@@ -1023,10 +1025,11 @@ async function ensureProductsTableAndSeed(db, env = {}) {
         short_description_tr, short_description_en, subjects_json, access_tags_json,
         is_libedge_catalog, card_visible, display_order, is_featured
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       product.slug,
       product.name,
+      product.name_en || null,
       product.category || null,
       product.region || null,
       product.default_access_type || null,
@@ -2264,7 +2267,7 @@ app.get('/api/individual-tools', async (c) => {
 // ── LibEdge Catalog (public) ───────────────────────────────────────────────
 app.get('/api/catalog', async (c) => {
   const rows = await c.env.DB.prepare(`
-    SELECT slug, name, category, extra_categories, default_access_type, logo_url,
+    SELECT slug, name, name_en, category, extra_categories, default_access_type, logo_url,
            short_description_tr, short_description_en
     FROM products
     WHERE is_libedge_catalog = 1
@@ -2530,7 +2533,7 @@ app.post('/api/auth/register', async (c) => {
   try {
     const registration = await registrationState(c.env);
     if (!registration.enabled) {
-      return c.json({ success: false, error: 'Şu anda yeni kayıt kabul edilmiyor.' }, 403);
+      return c.json({ success: false, error: 'Şu anda yeni kayıt kabul edilmiyor.', error_en: 'New registrations are not currently being accepted.' }, 403);
     }
     const ip = extractClientIp(c);
     const ipLimit = await checkProtectedRateLimit(c, 'register:ip', ip, 5, 60 * 60);
@@ -2565,12 +2568,12 @@ app.post('/api/auth/register', async (c) => {
       userAgent || null
     ).run();
 
-    return c.json({ success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.' });
+    return c.json({ success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.', message_en: 'Registration successful! You can now sign in.' });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
-      return c.json({ success: false, error: 'Bu e-posta adresi zaten kayıtlı.' }, 409);
+      return c.json({ success: false, error: 'Bu e-posta adresi zaten kayıtlı.', error_en: 'This email address is already registered.' }, 409);
     }
-    return c.json({ success: false, error: 'Kayıt sırasında hata oluştu.' }, 500);
+    return c.json({ success: false, error: 'Kayıt sırasında hata oluştu.', error_en: 'An error occurred during registration.' }, 500);
   }
 });
 
@@ -3735,7 +3738,7 @@ app.get('/api/admin/products', async (c) => {
   const db = c.env.DB;
   await ensureProductsTableAndSeed(db, c.env);
   const rows = await db.prepare(`
-    SELECT slug, name, category, region,
+    SELECT slug, name, name_en, category, region,
            default_access_type, default_access_url,
            COALESCE(default_requires_institution_email, 0) AS default_requires_institution_email,
            COALESCE(default_requires_vpn, 0) AS default_requires_vpn,
@@ -3899,7 +3902,7 @@ app.get('/api/products', async (c) => {
   await ensureProductsTableAndSeed(db, c.env);
 
   const rows = await db.prepare(`
-    SELECT slug, name, category, region,
+    SELECT slug, name, name_en, category, region,
            logo_url, logo_updated_at, brand_color,
            default_access_url AS access_url,
            card_background_url, card_background_updated_at,
@@ -3990,7 +3993,7 @@ app.put('/api/admin/product/:slug', async (c) => {
 
   const body = await c.req.json().catch(() => ({}));
   const {
-    name, category, region,
+    name, name_en, category, region,
     default_access_type, default_access_url,
     default_requires_institution_email, default_requires_vpn,
     default_access_notes_tr, default_access_notes_en,
@@ -4019,7 +4022,7 @@ app.put('/api/admin/product/:slug', async (c) => {
   const actor = await getTokenPayloadFromCookie(c);
   const updateStmt = db.prepare(`
     UPDATE products
-    SET name = ?, category = ?, region = ?,
+    SET name = ?, name_en = ?, category = ?, region = ?,
         default_access_type = ?, default_access_url = ?,
         default_requires_institution_email = ?, default_requires_vpn = ?,
         default_access_notes_tr = ?, default_access_notes_en = ?,
@@ -4035,6 +4038,7 @@ app.put('/api/admin/product/:slug', async (c) => {
     WHERE slug = ?
   `).bind(
     String(name || '').trim() || slug,
+    String(name_en || '').trim() || null,
     String(category || '').trim() || null,
     String(region || '').trim() || null,
     normalizeProductAccessType(default_access_type),
@@ -4088,7 +4092,7 @@ async function restoreProductAction(db, id, { enforceExpiry = false } = {}) {
   const before = JSON.parse(log.before_json || '{}');
   if (!before.slug) return { error: 'Geri alma verisi eksik', status: 400 };
   const columns = [
-    'name', 'category', 'region',
+    'name', 'name_en', 'category', 'region',
     'default_access_type', 'default_access_url',
     'default_requires_institution_email', 'default_requires_vpn',
     'default_access_notes_tr', 'default_access_notes_en',
@@ -4230,7 +4234,7 @@ app.post('/api/admin/products', async (c) => {
 
   const body = await c.req.json().catch(() => ({}));
   const {
-    slug, name, category, region,
+    slug, name, name_en, category, region,
     default_access_type, default_access_url,
     default_requires_institution_email, default_requires_vpn,
     default_access_notes_tr, default_access_notes_en
@@ -4253,7 +4257,7 @@ app.post('/api/admin/products', async (c) => {
 
   await db.prepare(`
     INSERT INTO products (
-      slug, name, category, region,
+      slug, name, name_en, category, region,
       default_access_type, default_access_url,
       default_requires_institution_email, default_requires_vpn,
       default_access_notes_tr, default_access_notes_en,
@@ -4263,10 +4267,11 @@ app.post('/api/admin/products', async (c) => {
       short_description_tr, short_description_en, subjects_json, access_tags_json,
       card_visible, display_order, is_featured,
       brochure_url, is_libedge_catalog
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     slugNorm,
     String(name).trim(),
+    String(name_en || '').trim() || null,
     String(category || '').trim() || null,
     String(region || '').trim() || null,
     normalizeProductAccessType(default_access_type),
