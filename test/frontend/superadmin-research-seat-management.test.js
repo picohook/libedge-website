@@ -5,7 +5,7 @@ describe('superadmin Research seat management', () => {
   const admin = fs.readFileSync('admin.html', 'utf8');
 
   it('shows Kurumum to a superadmin with an institution', () => {
-    expect(admin).toContain("isAdmin || (isSuperAdmin && user.institution)");
+    expect(admin).toContain("isAdmin || (isSuperAdmin && user.institution_id)");
     expect(admin).toContain("show('myInstitutionTab')");
   });
 
