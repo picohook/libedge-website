@@ -2532,7 +2532,7 @@ app.post('/api/auth/register', async (c) => {
   try {
     const registration = await registrationState(c.env);
     if (!registration.enabled) {
-      return c.json({ success: false, error: 'Şu anda yeni kayıt kabul edilmiyor.' }, 403);
+      return c.json({ success: false, error: 'Şu anda yeni kayıt kabul edilmiyor.', error_en: 'New registrations are not currently being accepted.' }, 403);
     }
     const ip = extractClientIp(c);
     const ipLimit = await checkProtectedRateLimit(c, 'register:ip', ip, 5, 60 * 60);
@@ -2567,12 +2567,12 @@ app.post('/api/auth/register', async (c) => {
       userAgent || null
     ).run();
 
-    return c.json({ success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.' });
+    return c.json({ success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.', message_en: 'Registration successful! You can now sign in.' });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
-      return c.json({ success: false, error: 'Bu e-posta adresi zaten kayıtlı.' }, 409);
+      return c.json({ success: false, error: 'Bu e-posta adresi zaten kayıtlı.', error_en: 'This email address is already registered.' }, 409);
     }
-    return c.json({ success: false, error: 'Kayıt sırasında hata oluştu.' }, 500);
+    return c.json({ success: false, error: 'Kayıt sırasında hata oluştu.', error_en: 'An error occurred during registration.' }, 500);
   }
 });
 
