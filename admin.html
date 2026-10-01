@@ -3146,7 +3146,7 @@ async function checkAdminAuth() {
             const instSubBtn = document.getElementById('addInstSubscriptionBtn');
             if (instSubBtn) instSubBtn.style.display = '';
         }
-        if (isAdmin || (isSuperAdmin && user.institution)) {
+        if (isAdmin || (isSuperAdmin && user.institution_id)) {
             show('myInstitutionTab');
         }
         if (isAdmin) show('instFilesTab');
