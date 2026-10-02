@@ -318,15 +318,23 @@ requireResearchLogin().then((authorized) => {
         });
 
         removeFixtureResult();
-        const overview = document.querySelector('.evidence-overview');
-        if (overview) {
-            overview.hidden = false;
-            const metrics = overview.querySelectorAll('div strong');
-            if (metrics[0]) metrics[0].textContent = String(result.evidence.length);
-            if (metrics[1]) metrics[1].textContent = String(result.claims.length);
-            if (metrics[2]) metrics[2].closest('div').hidden = true;
-            if (metrics[3]) metrics[3].closest('div').hidden = true;
-        }
+        const overview = document.createElement('div');
+        overview.className = 'evidence-overview';
+        overview.dataset.liveEvidenceOverview = 'true';
+        const sourceMetric = document.createElement('div');
+        const sourceMetricValue = document.createElement('strong');
+        sourceMetricValue.textContent = String(result.evidence.length);
+        const sourceMetricLabel = document.createElement('span');
+        markTranslatable(sourceMetricLabel, 'incelenen kaynak', 'sources reviewed');
+        sourceMetric.append(sourceMetricValue, sourceMetricLabel);
+        const findingMetric = document.createElement('div');
+        const findingMetricValue = document.createElement('strong');
+        findingMetricValue.textContent = String(result.claims.length);
+        const findingMetricLabel = document.createElement('span');
+        markTranslatable(findingMetricLabel, 'desteklenen bulgu', 'supported findings');
+        findingMetric.append(findingMetricValue, findingMetricLabel);
+        overview.append(sourceMetric, findingMetric);
+        answerCard.appendChild(overview);
         answerCard.classList.remove('is-unavailable');
         answerCard.style.opacity = '1';
         return true;
