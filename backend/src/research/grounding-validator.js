@@ -37,6 +37,11 @@ function supportCheckFailureReason(error) {
   if (/^(INVOCATION_LIMIT_REQUIRED|INVOCATION_BUDGET_(STORE_UNAVAILABLE|INVALID|EXHAUSTED|STORE_FAILED))$/.test(message)) return 'BUDGET';
   if (/^SUPPORT_CHECK_LANGUAGE_/.test(message)) return 'LANGUAGE';
   if (/^SUPPORT_CHECK_(MODEL_MISMATCH|REVISION_MISMATCH|MANIFEST_MISMATCH|INVALID_DECISION|INVALID_RESULT)$/.test(message)) return 'PIN_OR_RESPONSE';
+  if (name === 'ModelError') return 'TRANSPORT_MODEL_ERROR';
+  if (/^(ServiceUnavailable|InternalFailure|InternalDependencyException)$/.test(name)) return 'TRANSPORT_SERVICE_UNAVAILABLE';
+  if (name === 'ModelNotReadyException') return 'TRANSPORT_MODEL_NOT_READY';
+  if (name === 'ValidationError') return 'TRANSPORT_VALIDATION';
+  if (/^(ModelStreamError|InternalStreamFailure)$/.test(name)) return 'TRANSPORT_STREAM_ERROR';
   return 'TRANSPORT_OR_OTHER';
 }
 

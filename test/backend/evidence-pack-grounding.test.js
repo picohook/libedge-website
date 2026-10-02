@@ -112,6 +112,25 @@ describe('grounding validator', () => {
 
     expect(result.ok).toBe(false);
     expect(result.rejectedClaims[0]).toMatchObject({ code: 'SUPPORT_CHECK_FAILED', reason: 'TIMEOUT' });
+
+    for (const [name, reason] of [
+      ['ModelError', 'TRANSPORT_MODEL_ERROR'],
+      ['ServiceUnavailable', 'TRANSPORT_SERVICE_UNAVAILABLE'],
+      ['InternalFailure', 'TRANSPORT_SERVICE_UNAVAILABLE'],
+      ['InternalDependencyException', 'TRANSPORT_SERVICE_UNAVAILABLE'],
+      ['ModelNotReadyException', 'TRANSPORT_MODEL_NOT_READY'],
+      ['ValidationError', 'TRANSPORT_VALIDATION'],
+      ['ModelStreamError', 'TRANSPORT_STREAM_ERROR'],
+      ['InternalStreamFailure', 'TRANSPORT_STREAM_ERROR']
+    ]) {
+      const sdkError = Object.assign(new Error('provider detail'), { name });
+      const classified = await validateGroundedClaims({
+        claims: [{ text: 'Claim', evidence_ids: ['pack-failure-reason:e1'] }],
+        evidencePack: pack,
+        supportCheck: async () => { throw sdkError; }
+      });
+      expect(classified.rejectedClaims[0]).toMatchObject({ code: 'SUPPORT_CHECK_FAILED', reason });
+    }
     expect(JSON.stringify(result)).not.toContain('secret provider detail');
   });
 
