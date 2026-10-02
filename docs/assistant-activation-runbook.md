@@ -88,6 +88,6 @@ The exact Fresh-Checker qualification/freeze line recorded on 2026-09-27 remains
 
 The 2026-09-28 scope reconciliation establishes that this Fresh-Checker result is not evidence that the separately preregistered 1,080-claim / 180-scenario H2 statistical holdout was completed. D-023, subsequently adopted on 2026-09-28, is the explicit human-authorized Path-B decision that defers that holdout under monitored trigger conditions. Production semantic activation is therefore not blocked merely because the deferred 1,080-claim holdout is unexecuted; it remains blocked until the still-open D-023 readiness items and separate production authorization are satisfied.
 
-This does not assert that the checker is already wired into the Assistant router, that an authenticated staging live-answer smoke has passed, or that staging/production activation is authorized.
+This historical closure did not, by itself, assert router wiring, authenticated staging live-answer success, or deployment authorization. Subsequent reviewed staging work has since wired the accepted checker and recorded authenticated/synthetic staging evidence as summarized in the current safe baseline above. Neither the historical closure nor that later staging evidence authorizes production activation.
 
 Canonical records: `docs/d022-h2-final-status-2026-09-27.md` (historical Fresh-Checker closure) and `docs/d022-h2-holdout-scope-reconciliation-2026-09-28.md` (current scope correction).
