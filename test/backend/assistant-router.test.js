@@ -180,7 +180,11 @@ describe('assistant ask endpoint', () => {
         RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'https://checker.example.test/v1/support',
         RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'test-token',
         RATE_LIMIT_KV: {
-          get: vi.fn(async (key) => key === 'assistant:supportcheck:paused' ? 'resume' : '0'),
+          get: vi.fn(async (key) => {
+            if (key === 'assistant:supportcheck:paused') return 'resume';
+            if (key === 'assistant:supportcheck:daily-invocation-limit') return null;
+            return '0';
+          }),
           put: vi.fn(async () => {})
         }
       });
