@@ -31,18 +31,16 @@ describe('Assistant fail-closed UI contract', () => {
     expect(source).toContain('sourceCount.textContent = String(result.evidence.length)');
   });
 
-  it('keeps hard-coded fixture metrics hidden until a verified live result', async () => {
+  it('removes hard-coded fixture metrics and recreates the overview only from verified live counts', async () => {
     const source = await readFile(uiPath, 'utf8');
 
     expect(source).toContain("const overview = document.querySelector('.evidence-overview')");
-    expect(source).toContain('if (overview) overview.hidden = true');
-    expect(source).toContain('if (overview) {');
-    expect(source).toContain('overview.hidden = false');
+    expect(source).toContain('if (overview) overview.remove()');
+    expect(source).toContain("overview.dataset.liveEvidenceOverview = 'true'");
     expect(source).toContain("sourceMetricValue.textContent = String(result.evidence.length)");
     expect(source).toContain("findingMetricValue.textContent = String(result.claims.length)");
-    expect(source).toContain("overview.dataset.liveEvidenceOverview = 'true'");
-    expect(source).not.toContain("metrics[2].textContent = '0'");
-    expect(source).not.toContain("metrics[3].textContent = '0'");
+    expect(source).not.toContain('overview.hidden = true');
+    expect(source).not.toContain('overview.hidden = false');
   });
 
   it('ships the current cache-busted fail-closed Assistant asset', async () => {
