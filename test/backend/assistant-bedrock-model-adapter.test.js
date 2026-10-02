@@ -39,7 +39,7 @@ describe('Bedrock assistant adapter boundary', () => {
       evidencePack: { pack_id: 'p1', evidence: [{ evidence_id: 'p1:e1', title: 'Paper' }] }
     });
 
-    expect(result).toEqual({ claims: [{ text: 'Claim', evidence_ids: ['p1:e1'] }], usage: { input_tokens: null, output_tokens: null } });
+    expect(result).toEqual({ claims: [{ text: 'Claim', evidence_ids: ['p1:e1'] }], usage: { input_tokens: null, output_tokens: null, llm_cost_usd: null } });
     expect(send).toHaveBeenCalledOnce();
     const command = send.mock.calls[0][0];
     const body = JSON.parse(new TextDecoder().decode(command.input.body));
@@ -68,7 +68,7 @@ describe('Bedrock assistant adapter boundary', () => {
   it('accepts one exact JSON code fence but rejects surrounding prose', () => {
     const json = JSON.stringify({ claims: [{ text: 'Claim', evidence_ids: ['p1:e1'] }] });
     const fenced = { content: [{ type: 'text', text: ['```json', json, '```'].join('\n') }] };
-    expect(__test.parseClaimsPayload(fenced)).toEqual({ claims: [{ text: 'Claim', evidence_ids: ['p1:e1'] }], usage: { input_tokens: null, output_tokens: null } });
+    expect(__test.parseClaimsPayload(fenced)).toEqual({ claims: [{ text: 'Claim', evidence_ids: ['p1:e1'] }], usage: { input_tokens: null, output_tokens: null, llm_cost_usd: null } });
 
     const prose = { content: [{ type: 'text', text: ['Here is the JSON:', '```json', '{"claims":[]}', '```'].join('\n') }] };
     expect(() => __test.parseClaimsPayload(prose)).toThrowError(expect.objectContaining({ diagnostic_reason: 'MODEL_OUTPUT_NOT_JSON' }));

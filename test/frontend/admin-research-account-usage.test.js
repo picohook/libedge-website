@@ -12,9 +12,10 @@ describe('Research account usage admin UI', () => {
     expect(admin).toContain('90 gün retention');
   });
 
-  it('states that content/hash and non-deterministic cost are excluded', () => {
+  it('states that content/hash are excluded and exposes exact provider cost fields', () => {
     expect(admin).toContain('sorgu/yanıt içeriği ve hash gösterilmez');
-    expect(admin).toContain('Maliyet, deterministik kaynak olmadığı için gösterilmez');
+    expect(admin).toContain('researchUsageLlmCost');
+    expect(admin).toContain('researchUsageDiscoveryCost');
   });
 
   it('keeps loading superadmin-only', () => {

@@ -4,12 +4,12 @@ import { __test as usageTest } from '../../backend/src/research/usage-events.js'
 import { __test as bedrockTest } from '../../backend/src/assistant/bedrock-model-adapter.js';
 
 describe('Research token usage metering', () => {
-  it('extracts only token counts from a Bedrock payload', () => {
+  it('extracts token counts and deterministic LLM cost from a Bedrock payload', () => {
     const result = bedrockTest.parseClaimsPayload({
       content: [{ type: 'text', text: '{"claims":[]}' }],
       usage: { input_tokens: 123, output_tokens: 45 }
     });
-    expect(result).toEqual({ claims: [], usage: { input_tokens: 123, output_tokens: 45 } });
+    expect(result).toEqual({ claims: [], usage: { input_tokens: 123, output_tokens: 45, llm_cost_usd: 0.001044 } });
   });
 
   it('sanitizes optional token counts', () => {

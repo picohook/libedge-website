@@ -2730,6 +2730,8 @@ app.get('/api/admin/research/usage', async (c) => {
              ROUND(AVG(e.evidence_pack_ms)) AS avg_evidence_pack_ms,
              ROUND(AVG(e.model_ms)) AS avg_model_ms,
              ROUND(AVG(e.grounding_ms)) AS avg_grounding_ms,
+             COALESCE(SUM(e.llm_cost_usd), 0) AS llm_cost_usd,
+             COALESCE(SUM(e.discovery_cost_usd), 0) AS discovery_cost_usd,
              COALESCE(SUM(e.input_tokens), 0) AS input_tokens,
              COALESCE(SUM(e.output_tokens), 0) AS output_tokens
       FROM research_usage_events e
@@ -2748,7 +2750,9 @@ app.get('/api/admin/research/usage', async (c) => {
              SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
              ROUND(AVG(e.latency_ms)) AS avg_latency_ms,
              COALESCE(SUM(e.input_tokens), 0) AS input_tokens,
-             COALESCE(SUM(e.output_tokens), 0) AS output_tokens
+             COALESCE(SUM(e.output_tokens), 0) AS output_tokens,
+             COALESCE(SUM(e.llm_cost_usd), 0) AS llm_cost_usd,
+             COALESCE(SUM(e.discovery_cost_usd), 0) AS discovery_cost_usd
       FROM research_usage_events e
       LEFT JOIN users u ON u.id = e.user_id
       WHERE ${predicate}
@@ -2763,6 +2767,8 @@ app.get('/api/admin/research/usage', async (c) => {
              ROUND(AVG(e.latency_ms)) AS avg_latency_ms,
              COALESCE(SUM(e.input_tokens), 0) AS input_tokens,
              COALESCE(SUM(e.output_tokens), 0) AS output_tokens,
+             COALESCE(SUM(e.llm_cost_usd), 0) AS llm_cost_usd,
+             COALESCE(SUM(e.discovery_cost_usd), 0) AS discovery_cost_usd,
              (
                SELECT s.seat_limit
                FROM institution_subscriptions s
@@ -2813,6 +2819,8 @@ app.get('/api/admin/research/usage', async (c) => {
         model: summary?.avg_model_ms == null ? null : Number(summary.avg_model_ms),
         grounding: summary?.avg_grounding_ms == null ? null : Number(summary.avg_grounding_ms)
       },
+      llm_cost_usd: Number(summary?.llm_cost_usd || 0),
+      discovery_cost_usd: Number(summary?.discovery_cost_usd || 0),
       input_tokens: Number(summary?.input_tokens || 0),
       output_tokens: Number(summary?.output_tokens || 0)
     },

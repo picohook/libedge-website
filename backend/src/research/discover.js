@@ -269,5 +269,11 @@ export async function Discover(query, { env, perPage = 10 } = {}) {
     error.payload = result.body;
     throw error;
   }
-  return result.body.results;
+  const works = result.body.results;
+  const cost = Number(result.body?.meta?.providers?.openalex?.telemetry?.requestCostUsd);
+  Object.defineProperty(works, 'diagnostic_discovery_cost_usd', {
+    value: Number.isFinite(cost) && cost >= 0 && !result.body?.meta?.cached ? cost : 0,
+    enumerable: false
+  });
+  return works;
 }
