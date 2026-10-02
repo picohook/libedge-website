@@ -19,6 +19,7 @@ import { hasResearchEntitlement, researchPrivacyGatePassed } from './research/en
 import { pruneResearchUsageEvents } from './research/usage-events.js';
 import { SUPPORT_CHECK_PAUSE_KEY, supportCheckRuntimePause } from './assistant/support-check-runtime-pause.js';
 import { SUPPORT_CHECK_INVOCATION_LIMIT_KEY, supportCheckInvocationLimit } from './assistant/support-check-invocation-budget.js';
+import { assistantUsageScopeLimit, assistantUsageScopeLimitOverrideKey, USAGE_SCOPE_DAILY_LIMIT_KEY } from './assistant/usage-scope-quota.js';
 import { registrationState, setRegistrationEnabled } from './auth/registration-toggle.js';
 import {
   checkProtectedRateLimit,
@@ -2371,6 +2372,68 @@ app.get('/api/go/:slug', async (c) => {
   }
 
   return c.redirect(destination, 302);
+});
+
+// GET/POST /api/admin/research/assistant-usage-limit — superadmin-only shared request-pool limits.
+app.get('/api/admin/research/assistant-usage-limit', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+
+  const scopeType = String(c.req.query('scope_type') || '').trim();
+  const scopeId = String(c.req.query('scope_id') || '').trim();
+  const scope = scopeType || scopeId ? { type: scopeType, id: scopeId } : null;
+  if (scope && (!['institution', 'user'].includes(scope.type) || !scope.id)) {
+    return c.json({ error: 'Geçerli scope_type ve scope_id gerekli' }, 400);
+  }
+  const state = await assistantUsageScopeLimit(c.env, scope);
+  return c.json({ enabled: state.enabled, daily_request_limit: state.limit, source: state.source, reason: state.reason || null, scope });
+});
+
+app.post('/api/admin/research/assistant-usage-limit', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+  if (!c.env.RATE_LIMIT_KV) return c.json({ error: 'Assistant kota deposu kullanılamıyor' }, 503);
+
+  const body = await c.req.json().catch(() => ({}));
+  const limit = Number(body.daily_request_limit);
+  if (!Number.isSafeInteger(limit) || limit <= 0 || limit > 100000) {
+    return c.json({ error: 'daily_request_limit 1-100000 arasında tam sayı olmalıdır' }, 400);
+  }
+  const scopeType = String(body.scope_type || '').trim();
+  const scopeId = String(body.scope_id || '').trim();
+  const scope = scopeType || scopeId ? { type: scopeType, id: scopeId } : null;
+  if (scope && (!['institution', 'user'].includes(scope.type) || !scope.id)) {
+    return c.json({ error: 'Geçerli scope_type ve scope_id gerekli' }, 400);
+  }
+
+  const before = await assistantUsageScopeLimit(c.env, scope);
+  const key = scope ? assistantUsageScopeLimitOverrideKey(scope) : USAGE_SCOPE_DAILY_LIMIT_KEY;
+  try {
+    await c.env.RATE_LIMIT_KV.put(key, String(limit));
+  } catch (err) {
+    console.error('assistant usage-scope limit write failed', err);
+    return c.json({ error: 'Assistant günlük request limiti değiştirilemedi' }, 503);
+  }
+
+  const after = await assistantUsageScopeLimit(c.env, scope);
+  const expectedSource = scope ? 'scope-runtime' : 'runtime';
+  if (after.limit !== limit || after.source !== expectedSource) {
+    console.error('assistant usage-scope limit read-back mismatch');
+    return c.json({ error: 'Assistant günlük request limiti doğrulanamadı' }, 503);
+  }
+
+  await recordAdminAction(c.env, {
+    actor: auth.user,
+    entityType: 'assistant_usage_scope',
+    entityId: scope ? `${scope.type}:${scope.id}` : 'default',
+    action: 'update-daily-request-limit',
+    before: { daily_request_limit: before.limit, source: before.source || null },
+    after: { daily_request_limit: after.limit, source: after.source || null },
+  });
+
+  return c.json({ success: true, enabled: after.enabled, daily_request_limit: after.limit, source: after.source, scope });
 });
 
 // GET/POST /api/admin/research/support-check-limit — superadmin-only runtime daily invocation limit.
