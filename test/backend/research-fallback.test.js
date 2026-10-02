@@ -143,10 +143,6 @@ describe('research provider fallback and budget', () => {
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     vi.stubGlobal('fetch', providerFetch);
     const testEnv = env({ RESEARCH_SEMANTIC_PRIMARY_ENABLED: 'true', RESEARCH_SEMANTIC_CANDIDATE_DEPTH: '50' });
-    const request = () => new Request('https://example.test/api/research/search?q=candidate%20pool', {
-      headers: { cookie: '' }
-    });
-
     const first = await handleResearchRequest(new Request('https://example.test/api/research/search?q=candidate%20pool', {
       headers: { cookie: await cookie() }
     }), testEnv);
