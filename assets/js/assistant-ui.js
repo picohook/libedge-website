@@ -197,7 +197,7 @@ requireResearchLogin().then((authorized) => {
             node.remove();
         });
         const overview = document.querySelector('.evidence-overview');
-        if (overview) overview.hidden = true;
+        if (overview) overview.remove();
     }
 
     function resetLiveResult() {
