@@ -835,8 +835,8 @@
                 </div>
             </div>
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Hesap</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th><th class="text-right">Token</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="5" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
-                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Kurum</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Research seat</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="6" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Hesap</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th><th class="text-right">Token</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="6" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Kurum</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="8" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
             </div>
         </section>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -4843,13 +4843,23 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     }
 
     function researchUsageRows(rows, kind) {
-        if (!rows?.length) return `<tr><td colspan="${kind === 'institution' ? 6 : 5}" class="py-3 text-gray-400">Kayıt yok.</td></tr>`;
+        if (!rows?.length) return `<tr><td colspan="${kind === 'institution' ? 8 : 6}" class="py-3 text-gray-400">Kayıt yok.</td></tr>`;
         return rows.map((row) => {
             const label = kind === 'user' ? (row.full_name || row.email || `Kullanıcı #${row.user_id}`) : (row.institution_name || (row.institution_id ? `Kurum #${row.institution_id}` : 'Bireysel / kurumsuz'));
+            const userScopeCell = kind === 'user'
+                ? `<td class="text-left text-xs text-gray-500">${escapeHtml(row.institution_name || (row.institution_id ? `Kurum #${row.institution_id}` : 'B2C kullanıcı scope'))}</td>`
+                : '';
+            const scope = row.usage_scope;
             const seatCell = kind === 'institution'
                 ? `<td class="text-right">${row.seat_limit == null ? '—' : `${Number(row.assigned_seats || 0)} / ${Number(row.seat_limit || 0)}`}</td>`
                 : '';
-            return `<tr class="border-t border-gray-100"><td class="py-2 pr-3">${escapeHtml(label)}</td><td class="text-right">${Number(row.requests || 0).toLocaleString('tr-TR')}</td><td class="text-right">${researchUsagePercent(row.successes, row.requests)}</td><td class="text-right">${Number(row.avg_latency_ms || 0).toLocaleString('tr-TR')} ms</td><td class="text-right">${Number(row.input_tokens || 0) + Number(row.output_tokens || 0)}</td>${seatCell}</tr>`;
+            const quotaCell = kind === 'institution'
+                ? `<td class="text-right text-xs">${!scope || scope.daily_limit == null ? '—' : `${Number(scope.used_today || 0).toLocaleString('tr-TR')} / ${Number(scope.daily_limit).toLocaleString('tr-TR')} (${Math.round(Number(scope.percent_used_today || 0) * 100)}%)`}</td>`
+                : '';
+            const stateCell = kind === 'institution'
+                ? `<td class="text-right text-xs">${!scope ? '—' : escapeHtml(scope.state || (scope.active ? 'active' : scope.state_reason || 'unavailable'))}</td>`
+                : '';
+            return `<tr class="border-t border-gray-100"><td class="py-2 pr-3">${escapeHtml(label)}</td>${userScopeCell}<td class="text-right">${Number(row.requests || 0).toLocaleString('tr-TR')}</td><td class="text-right">${researchUsagePercent(row.successes, row.requests)}</td><td class="text-right">${Number(row.avg_latency_ms || 0).toLocaleString('tr-TR')} ms</td><td class="text-right">${Number(row.input_tokens || 0) + Number(row.output_tokens || 0)}</td>${seatCell}${quotaCell}${stateCell}</tr>`;
         }).join('');
     }
 
