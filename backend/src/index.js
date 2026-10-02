@@ -19,7 +19,7 @@ import { hasResearchEntitlement, researchPrivacyGatePassed } from './research/en
 import { pruneResearchUsageEvents } from './research/usage-events.js';
 import { SUPPORT_CHECK_PAUSE_KEY, supportCheckRuntimePause } from './assistant/support-check-runtime-pause.js';
 import { SUPPORT_CHECK_INVOCATION_LIMIT_KEY, supportCheckInvocationLimit } from './assistant/support-check-invocation-budget.js';
-import { assistantUsageScopeLimit, assistantUsageScopeLimitOverrideKey, USAGE_SCOPE_DAILY_LIMIT_KEY } from './assistant/usage-scope-quota.js';
+import { assistantUsageScopeKey, assistantUsageScopeLimit, assistantUsageScopeLimitOverrideKey, USAGE_SCOPE_DAILY_LIMIT_KEY } from './assistant/usage-scope-quota.js';
 import { assistantUsageScopeState, assistantUsageScopeStateKey } from './assistant/usage-scope-state.js';
 import { registrationState, setRegistrationEnabled } from './auth/registration-toggle.js';
 import {
