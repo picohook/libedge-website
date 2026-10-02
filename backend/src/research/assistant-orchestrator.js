@@ -73,6 +73,7 @@ export async function orchestrateResearchAnswer({
   }
 
   const diagnosticTimings = {};
+  const diagnosticCosts = { discovery_cost_usd: 0 };
   let stageStartedAt = Date.now();
   let works;
   try {
@@ -83,7 +84,7 @@ export async function orchestrateResearchAnswer({
     return { ok: false, code: 'DISCOVER_FAILED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, claims: [] };
   }
 
-  const diagnosticCosts = { discovery_cost_usd: Number(works?.diagnostic_discovery_cost_usd) || 0 };
+  diagnosticCosts.discovery_cost_usd = Number(works?.diagnostic_discovery_cost_usd) || 0;
   const relevantWorks = filterRelevantWorks(task, works);
   if (!relevantWorks.length) {
     return { ok: true, code: 'OK', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, claims: [], evidence: [], evidence_pack_id: null };
