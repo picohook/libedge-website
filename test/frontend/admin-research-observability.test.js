@@ -59,4 +59,13 @@ describe('Research admin observability', () => {
     expect(admin).toContain('daily_invocation_limit_source');
   });
 
+
+  it('exposes shared Assistant request-pool controls separately from checker limits', () => {
+    expect(admin).toContain('id="researchUsageScopeType"');
+    expect(admin).toContain('id="researchUsageScopeId"');
+    expect(admin).toContain('id="researchUsageScopeDailyLimitInput"');
+    expect(admin).toContain('/api/admin/research/assistant-usage-limit');
+    expect(admin).toContain('loadResearchUsageScopeLimit()');
+    expect(admin).toContain('setResearchUsageScopeLimit()');
+  });
 });
