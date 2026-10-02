@@ -37,6 +37,7 @@ describe('Research admin observability', () => {
     const start = admin.indexOf('<!-- Research Tab:');
     const end = admin.indexOf('<!-- Users Tab -->', start);
     const researchMarkup = admin.slice(start, end);
+    expect(researchMarkup).not.toContain('data-admin-action=');
     expect(researchMarkup).not.toContain('query');
     expect(researchMarkup).not.toContain('user_id');
     expect(researchMarkup).not.toContain('institution_id');
