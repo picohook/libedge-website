@@ -13,7 +13,7 @@ function safeDiagnosticReason(error) {
   return /^(MODEL_OUTPUT_EMPTY|MODEL_OUTPUT_NOT_JSON|MODEL_OUTPUT_CLAIMS_REQUIRED)$/.test(reason) ? reason : null;
 }
 
-function groundingDiagnosticSummary(rejectedClaims = []) {
+function groundingDiagnosticSummary(rejectedClaims = [], totalClaims = 0) {
   const counts = {};
   for (const item of rejectedClaims) {
     const code = String(item?.code || '').trim();
@@ -32,7 +32,12 @@ function groundingDiagnosticSummary(rejectedClaims = []) {
       counts[reasonKey] = (counts[reasonKey] || 0) + 1;
     }
   }
-  return { rejected_count: rejectedClaims.length, rejection_counts: counts };
+  return {
+    claim_count: Math.max(0, Number(totalClaims) || 0),
+    accepted_count: Math.max(0, (Number(totalClaims) || 0) - rejectedClaims.length),
+    rejected_count: rejectedClaims.length,
+    rejection_counts: counts
+  };
 }
 
 function gatePassed(providerGate) {
@@ -180,7 +185,7 @@ export async function orchestrateResearchAnswer({
       diagnostic_costs: diagnosticCosts,
       claims: [],
       evidence_pack_id: evidencePack.pack_id,
-      diagnostic_grounding: groundingDiagnosticSummary(grounding.rejectedClaims)
+      diagnostic_grounding: groundingDiagnosticSummary(grounding.rejectedClaims, claims.length)
     };
   }
 
@@ -192,6 +197,7 @@ export async function orchestrateResearchAnswer({
     diagnostic_costs: diagnosticCosts,
     claims: grounding.acceptedClaims,
     evidence_pack_id: evidencePack.pack_id,
+    diagnostic_grounding: groundingDiagnosticSummary([], claims.length),
     evidence: evidencePack.evidence
   };
 }
