@@ -8,9 +8,9 @@ Scope: product operations only. This document does not authorize D-022 H2 author
 - Assistant UI is live-API wired and fail-closed.
 - The exact AWS Bedrock Claude Sonnet 4.6 `us.` inference-profile route has a current Provider Privacy Gate `PASS`; no broader provider/model PASS is implied.
 - Semantic-primary remains disabled.
-- The Assistant router does not currently inject a semantic `supportCheck`.
-- The grounding validator rejects generated claims when a `supportCheck` is absent.
-- The current fail-closed staging baseline has not yet recorded the authenticated end-to-end live-answer smoke required after checker integration.
+- The Assistant router is wired to the accepted Fresh-Checker through the reviewed SageMaker supportCheck transport in staging and preserves fail-closed behavior.
+- The grounding validator rejects generated claims when a `supportCheck` is absent or does not support the claim.
+- Staging has accumulated authenticated/synthetic E2E, operational-pause, bounded latency/reliability and checker-invocation evidence during the R2 readiness work. Production authorization must still bind those results to one exact current release candidate or refresh them when the candidate/runtime materially differs.
 
 ## Preconditions before semantic activation
 
@@ -18,7 +18,7 @@ The Fresh-Checker qualification/freeze line is closed, but the separately prereg
 
 1. **COMPLETE — FRESH-CHECKER QUALIFICATION/FREEZE:** the exact candidate semantic `supportCheck` engine/rule line has a recorded qualification/freeze closure.
 2. **DEFERRED BY D-023 — H2 STATISTICAL HOLDOUT:** the separately preregistered 1,080-claim / 180-scenario H2 holdout is not completed. D-023 explicitly defers it under monitored trigger conditions; it must not be represented as passed or waived.
-3. **OPEN — D-023 ACTIVATION ITEMS:** before production authorization, complete the D-023 requirements that remain open: verified fail-closed checker error/timeout/invalid-result behavior plus exercised operational pause, an authorized language boundary, and a prospectively frozen Trigger-B drift rule. A D-023 trigger can require the deferred holdout (or a separately preregistered independently reviewed successor protocol) later.
+3. **ADOPTED / EVIDENCED FOR THE CURRENT STAGING LINE — D-023 ACTIVATION ITEMS:** fail-closed checker error/timeout/invalid-result behavior, the operational pause mechanism, the English-only language boundary, and the prospective Trigger-B drift rule have been implemented/adopted through the reviewed staging work. Production authorization must still verify the applicable evidence against the exact candidate/runtime being authorized. A D-023 trigger can require the deferred holdout (or a separately preregistered independently reviewed successor protocol) later.
 4. A separate production/deployment authorization explicitly approves the exact candidate checker/version to activate.
 5. The exact provider route intended for deployment has a current PASS privacy-gate record applicable to that route.
 6. Staging configuration and secrets required for authenticated smoke are available without placing credentials in source control.
