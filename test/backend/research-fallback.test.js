@@ -127,6 +127,45 @@ describe('research provider fallback and budget', () => {
     expect(String(providerFetch.mock.calls[2][0])).toContain('api.crossref.org/works');
   });
 
+  it('retains the bounded semantic candidate pool in cache while keeping grounded results capped', async () => {
+    const results = Array.from({ length: 12 }, (_, index) => ({
+      id: `https://openalex.org/W${index + 1}`,
+      title: `Candidate ${index + 1}`,
+      publication_year: 2026,
+      authorships: [],
+      cited_by_count: index,
+      open_access: {},
+      primary_location: null
+    }));
+    const providerFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      meta: { cost_usd: 0.001 },
+      results
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', providerFetch);
+    const testEnv = env({ RESEARCH_SEMANTIC_PRIMARY_ENABLED: 'true', RESEARCH_SEMANTIC_CANDIDATE_DEPTH: '50' });
+    const first = await handleResearchRequest(new Request('https://example.test/api/research/search?q=candidate%20pool', {
+      headers: { cookie: await cookie() }
+    }), testEnv);
+    const firstBody = await first.json();
+
+    expect(first.status).toBe(200);
+    expect(firstBody.results).toHaveLength(10);
+    expect(firstBody.candidatePool).toHaveLength(12);
+    expect(firstBody.meta.candidatePoolSize).toBe(12);
+    expect(firstBody.candidatePool[10].title).toBe('Candidate 11');
+
+    const second = await handleResearchRequest(new Request('https://example.test/api/research/search?q=candidate%20pool', {
+      headers: { cookie: await cookie() }
+    }), testEnv);
+    const secondBody = await second.json();
+
+    expect(second.status).toBe(200);
+    expect(secondBody.meta.cached).toBe(true);
+    expect(secondBody.results).toHaveLength(10);
+    expect(secondBody.candidatePool).toHaveLength(12);
+    expect(providerFetch).toHaveBeenCalledTimes(1);
+  });
+
   it('does not allow Crossref to short-circuit a valid semantic empty response', async () => {
     const providerFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
       meta: { cost_usd: 0.001 },

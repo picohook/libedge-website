@@ -153,10 +153,21 @@ async function crossrefFallback(query, env, perPage, openAlexMeta, crossrefCache
 }
 
 async function buildOpenAlexPayload(openAlex, env, mode, semanticError = null, perPage = 10) {
-  const baseResults = deduplicateResearchWorks(openAlex.results).slice(0, perPage);
+  const candidatePool = deduplicateResearchWorks(openAlex.results);
+  const baseResults = candidatePool.slice(0, perPage);
   const crossref = await enrichWithCrossref(baseResults, env);
   const partial = crossref.status === 'unavailable' || crossref.status === 'rate_limited';
-  return { results: crossref.results, meta: { partial, cached: false, retrievalSource: mode, providers: { openalex: openAlexSuccessMeta(mode, openAlex.telemetry, semanticError), crossref: { status: crossref.status } } } };
+  return {
+    results: crossref.results,
+    candidatePool,
+    meta: {
+      partial,
+      cached: false,
+      retrievalSource: mode,
+      candidatePoolSize: candidatePool.length,
+      providers: { openalex: openAlexSuccessMeta(mode, openAlex.telemetry, semanticError), crossref: { status: crossref.status } }
+    }
+  };
 }
 
 function response(body, status = 200) {
