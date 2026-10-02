@@ -102,7 +102,33 @@ describe('SageMaker supportCheck transport', () => {
     }
   });
 
-  it('caps configured SageMaker timeout at 15000ms', () => {
+  it('logs only content-free SageMaker error metadata and rethrows', async () => {
+    const error = Object.assign(new Error('sensitive original message'), {
+      name: 'ModelError',
+      $fault: 'client',
+      OriginalStatusCode: 500,
+      LogStreamArn: 'arn:aws:logs:us-east-1:123:log-stream:test',
+      OriginalMessage: 'must never be logged'
+    });
+    const send = vi.fn(async () => { throw error; });
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const invoke = createSageMakerSupportCheckTransport(env(), { clientFactory: () => ({ send }) });
+      await expect(invoke(claim, evidence)).rejects.toBe(error);
+      expect(spy).toHaveBeenCalledWith('supportCheck SageMaker invocation failed', {
+        name: 'ModelError',
+        fault: 'client',
+        originalStatusCode: 500,
+        logStreamArn: 'arn:aws:logs:us-east-1:123:log-stream:test'
+      });
+      expect(JSON.stringify(spy.mock.calls)).not.toContain('must never be logged');
+      expect(JSON.stringify(spy.mock.calls)).not.toContain('sensitive original message');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('caps configured SageMaker timeout at 45000ms', () => {
     expect(__test.timeoutMs(env({ RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '999999' }))).toBe(45000);
     expect(__test.timeoutMs(env({ RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: 'invalid' }))).toBe(5000);
   });
