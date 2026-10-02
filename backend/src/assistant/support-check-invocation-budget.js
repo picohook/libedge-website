@@ -1,4 +1,5 @@
 const SUPPORT_CHECK_INVOCATION_PREFIX = 'assistant:supportcheck:invocations';
+export const SUPPORT_CHECK_INVOCATION_LIMIT_KEY = 'assistant:supportcheck:daily-invocation-limit';
 
 function utcDateKey(now = new Date()) {
   return now.toISOString().slice(0, 10);
@@ -7,6 +8,24 @@ function utcDateKey(now = new Date()) {
 function parseLimit(value) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export async function supportCheckInvocationLimit(env) {
+  const fallback = parseLimit(env?.RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT);
+  if (!env?.RATE_LIMIT_KV) {
+    return { limit: fallback, source: fallback ? 'env' : null, reason: fallback ? 'RUNTIME_LIMIT_STORE_UNAVAILABLE' : 'INVOCATION_LIMIT_REQUIRED' };
+  }
+  try {
+    const raw = await env.RATE_LIMIT_KV.get(SUPPORT_CHECK_INVOCATION_LIMIT_KEY);
+    if (raw === null || raw === undefined || String(raw).trim() === '') {
+      return { limit: fallback, source: fallback ? 'env' : null, reason: fallback ? null : 'INVOCATION_LIMIT_REQUIRED' };
+    }
+    const runtime = parseLimit(raw);
+    if (!runtime) return { limit: null, source: 'runtime', reason: 'INVOCATION_LIMIT_INVALID' };
+    return { limit: runtime, source: 'runtime', reason: null };
+  } catch {
+    return { limit: fallback, source: fallback ? 'env' : null, reason: fallback ? 'RUNTIME_LIMIT_STORE_READ_FAILED' : 'INVOCATION_LIMIT_REQUIRED' };
+  }
 }
 
 export function supportCheckInvocationKey(now = new Date()) {
@@ -32,8 +51,9 @@ function ttlUntilNextUtcDay(now) {
  * The authoritative reservation remains immediately before checker transport.
  */
 export async function preflightSupportCheckInvocation(env, now = new Date()) {
-  const limit = parseLimit(env?.RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT);
-  if (!limit) return { allowed: false, reason: 'INVOCATION_LIMIT_REQUIRED', limit, used: null };
+  const resolved = await supportCheckInvocationLimit(env);
+  const limit = resolved.limit;
+  if (!limit) return { allowed: false, reason: resolved.reason || 'INVOCATION_LIMIT_REQUIRED', limit, used: null };
   if (!env?.RATE_LIMIT_KV) return { allowed: false, reason: 'INVOCATION_BUDGET_STORE_UNAVAILABLE', limit, used: null };
 
   const key = supportCheckInvocationKey(now);
@@ -51,8 +71,9 @@ export async function preflightSupportCheckInvocation(env, now = new Date()) {
 }
 
 export async function reserveSupportCheckInvocation(env, now = new Date()) {
-  const limit = parseLimit(env?.RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT);
-  if (!limit) return { allowed: false, reason: 'INVOCATION_LIMIT_REQUIRED', limit, used: null };
+  const resolved = await supportCheckInvocationLimit(env);
+  const limit = resolved.limit;
+  if (!limit) return { allowed: false, reason: resolved.reason || 'INVOCATION_LIMIT_REQUIRED', limit, used: null };
   if (!env?.RATE_LIMIT_KV) return { allowed: false, reason: 'INVOCATION_BUDGET_STORE_UNAVAILABLE', limit, used: null };
 
   const key = supportCheckInvocationKey(now);
