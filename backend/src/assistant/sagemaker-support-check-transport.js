@@ -58,6 +58,17 @@ export function createSageMakerSupportCheckTransport(env, { clientFactory } = {}
       }), { abortSignal: controller.signal });
       const decoded = new TextDecoder().decode(response.Body);
       return JSON.parse(decoded);
+    } catch (error) {
+      const details = {
+        name: String(error?.name || 'Error'),
+        fault: String(error?.$fault || '')
+      };
+      if (error?.name === 'ModelError') {
+        details.originalStatusCode = Number.isFinite(Number(error?.OriginalStatusCode)) ? Number(error.OriginalStatusCode) : null;
+        details.logStreamArn = String(error?.LogStreamArn || '');
+      }
+      console.error('supportCheck SageMaker invocation failed', details);
+      throw error;
     } finally {
       clearTimeout(timer);
     }
