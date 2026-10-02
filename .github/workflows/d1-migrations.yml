@@ -19,6 +19,7 @@ on:
         options:
           - list
           - inspect-provisioning
+          - inspect-research-usage
           - provision-r2-pilot
           - apply
 
@@ -137,6 +138,41 @@ jobs:
                 AND (s.end_date IS NULL OR date(s.end_date) >= date('now'))
               GROUP BY u.institution_id
               ORDER BY u.institution_id;
+          "
+
+
+  inspect-production-research-usage:
+    name: Inspect production Research usage
+    if: inputs.environment == 'production' && inputs.operation == 'inspect-research-usage'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
+      - name: Install repository dependencies
+        run: npm install --no-audit --no-fund
+      - name: Read-only content-free Research usage evidence
+        run: |
+          set -euo pipefail
+          npx --no-install wrangler d1 execute libedge-db-production --remote --env production --command "
+            SELECT COUNT(*) AS total_usage_events
+              FROM research_usage_events;
+            SELECT outcome_code, COUNT(*) AS event_count
+              FROM research_usage_events
+              WHERE created_at >= datetime('now', '-30 days')
+              GROUP BY outcome_code
+              ORDER BY outcome_code;
+            SELECT id, user_id, institution_id, operation, outcome_code, latency_ms,
+                   input_tokens, output_tokens, discover_ms, evidence_pack_ms,
+                   model_ms, grounding_ms, created_at
+              FROM research_usage_events
+              WHERE created_at >= datetime('now', '-30 days')
+              ORDER BY created_at DESC, id DESC
+              LIMIT 50;
           "
 
 
