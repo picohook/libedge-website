@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasResearchEntitlement, researchPrivacyGatePassed } from '../../backend/src/research/entitlement.js';
+import { hasResearchEntitlement, researchPrivacyGatePassed, resolveResearchEntitlement } from '../../backend/src/research/entitlement.js';
 
 function fakeDb({ individual = false, institutional = false } = {}) {
   return {
@@ -31,6 +31,13 @@ describe('Research entitlement gate', () => {
 
   it('allows an active individual Research subscription', async () => {
     expect(await hasResearchEntitlement(fakeDb({ individual: true }), { user_id: 7, role: 'user' })).toBe(true);
+  });
+
+  it('reports individual as the grant source when both individual and institution affiliation exist', async () => {
+    await expect(resolveResearchEntitlement(
+      fakeDb({ individual: true, institutional: true }),
+      { user_id: 7, role: 'user', institution_id: 3 }
+    )).resolves.toEqual({ allowed: true, source: 'individual' });
   });
 
   it('allows an eligible institutional Research subscription (unlimited or assigned limited seat)', async () => {
