@@ -26,9 +26,10 @@ function enabledEnv(store = kv(), limit = '3') {
 }
 
 describe('Assistant usage-scope shared request pool', () => {
-  it('resolves institution scope first and falls back to a B2C user scope', () => {
-    expect(resolveAssistantUsageScope({ user_id: 7, institution_id: 42 })).toEqual({ type: 'institution', id: '42' });
-    expect(resolveAssistantUsageScope({ user_id: 7, institution_id: null })).toEqual({ type: 'user', id: '7' });
+  it('uses the entitlement grant source, so an individual subscription wins over profile institution affiliation', () => {
+    const affiliatedUser = { user_id: 7, institution_id: 42 };
+    expect(resolveAssistantUsageScope(affiliatedUser, 'individual')).toEqual({ type: 'user', id: '7' });
+    expect(resolveAssistantUsageScope(affiliatedUser, 'institution')).toEqual({ type: 'institution', id: '42' });
   });
 
   it('lets two institution users consume the same shared pool without per-user allocation', async () => {
@@ -36,9 +37,9 @@ describe('Assistant usage-scope shared request pool', () => {
     const env = enabledEnv(store, '2');
     const now = new Date('2026-10-02T10:00:00Z');
 
-    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 1, institution_id: 9 }, now)).allowed).toBe(true);
-    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 2, institution_id: 9 }, now)).allowed).toBe(true);
-    const third = await reserveAssistantUsageScopeRequest(env, { user_id: 1, institution_id: 9 }, now);
+    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 1, institution_id: 9 }, 'institution', now)).allowed).toBe(true);
+    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 2, institution_id: 9 }, 'institution', now)).allowed).toBe(true);
+    const third = await reserveAssistantUsageScopeRequest(env, { user_id: 1, institution_id: 9 }, 'institution', now);
 
     expect(third).toMatchObject({ allowed: false, reason: 'ASSISTANT_USAGE_SCOPE_QUOTA_EXHAUSTED', used: 2 });
     expect(store.store.get(assistantUsageScopeKey({ type: 'institution', id: '9' }, now))).toBe('2');
@@ -49,8 +50,8 @@ describe('Assistant usage-scope shared request pool', () => {
     const env = enabledEnv(store, '1');
     const now = new Date('2026-10-02T10:00:00Z');
 
-    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 1, institution_id: 9 }, now)).allowed).toBe(true);
-    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 2, institution_id: 10 }, now)).allowed).toBe(true);
+    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 1, institution_id: 9 }, 'institution', now)).allowed).toBe(true);
+    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 2, institution_id: 10 }, 'institution', now)).allowed).toBe(true);
   });
 
   it('gives B2C users separate user-scoped pools', async () => {
@@ -58,9 +59,9 @@ describe('Assistant usage-scope shared request pool', () => {
     const env = enabledEnv(store, '1');
     const now = new Date('2026-10-02T10:00:00Z');
 
-    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 1 }, now)).allowed).toBe(true);
-    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 2 }, now)).allowed).toBe(true);
-    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 1 }, now)).reason).toBe('ASSISTANT_USAGE_SCOPE_QUOTA_EXHAUSTED');
+    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 1 }, 'individual', now)).allowed).toBe(true);
+    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 2 }, 'individual', now)).allowed).toBe(true);
+    expect((await reserveAssistantUsageScopeRequest(env, { user_id: 1 }, 'individual', now)).reason).toBe('ASSISTANT_USAGE_SCOPE_QUOTA_EXHAUSTED');
   });
 
   it('prefers a scope-specific override over the runtime default and env fallback', async () => {
@@ -83,6 +84,6 @@ describe('Assistant usage-scope shared request pool', () => {
   });
 
   it('is dormant unless explicitly enabled, preserving current production behavior on merge', async () => {
-    await expect(reserveAssistantUsageScopeRequest({}, { user_id: 1 })).resolves.toMatchObject({ allowed: true, enabled: false });
+    await expect(reserveAssistantUsageScopeRequest({}, { user_id: 1 }, 'individual')).resolves.toMatchObject({ allowed: true, enabled: false });
   });
 });
