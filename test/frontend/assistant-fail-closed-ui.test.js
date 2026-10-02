@@ -5,15 +5,29 @@ const uiPath = new URL('../../assets/js/assistant-ui.js', import.meta.url);
 const htmlPath = new URL('../../assistant.html', import.meta.url);
 
 describe('Assistant fail-closed UI contract', () => {
-  it('never restores fixture answer/source content during live reset', async () => {
+  it('removes fixture answer/source DOM before live rendering instead of relying on hidden CSS', async () => {
     const source = await readFile(uiPath, 'utf8');
+    const removeStart = source.indexOf('function removeFixtureResult() {');
+    const removeEnd = source.indexOf('\n    function resetLiveResult()', removeStart);
+    const removeFixture = removeStart >= 0 && removeEnd > removeStart ? source.slice(removeStart, removeEnd) : '';
+
+    expect(removeFixture).toContain('node.remove()');
+    expect(removeFixture).toContain("#assistantSources > .source-card:not([data-live-evidence])");
+    expect(removeFixture).not.toContain('node.hidden = true');
+  });
+
+  it('resets the evidence count only during reset, not while removing fixture DOM after a live render', async () => {
+    const source = await readFile(uiPath, 'utf8');
+    const removeStart = source.indexOf('function removeFixtureResult() {');
+    const removeEnd = source.indexOf('\n    function resetLiveResult()', removeStart);
+    const removeFixture = removeStart >= 0 && removeEnd > removeStart ? source.slice(removeStart, removeEnd) : '';
     const resetStart = source.indexOf('function resetLiveResult() {');
     const resetEnd = source.indexOf('\n    function setInitialLiveState()', resetStart);
     const reset = resetStart >= 0 && resetEnd > resetStart ? source.slice(resetStart, resetEnd) : '';
 
-    expect(reset).toContain('clearLiveContent()');
-    expect(reset).toContain('hideFixtureResult()');
-    expect(reset).not.toContain('node.hidden = false');
+    expect(removeFixture).not.toContain("sourceCount.textContent = '0'");
+    expect(reset).toContain("sourceCount.textContent = '0'");
+    expect(source).toContain('sourceCount.textContent = String(result.evidence.length)');
   });
 
   it('keeps hard-coded fixture metrics hidden until a verified live result', async () => {
