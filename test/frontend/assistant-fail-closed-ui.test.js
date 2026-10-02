@@ -14,6 +14,7 @@ describe('Assistant fail-closed UI contract', () => {
     expect(removeFixture).toContain('node.remove()');
     expect(removeFixture).toContain("#assistantSources > .source-card:not([data-live-evidence])");
     expect(removeFixture).not.toContain('node.hidden = true');
+    expect(removeFixture).toContain('if (overview) overview.remove()');
   });
 
   it('resets the evidence count only during reset, not while removing fixture DOM after a live render', async () => {
@@ -37,10 +38,9 @@ describe('Assistant fail-closed UI contract', () => {
     expect(source).toContain('if (overview) overview.hidden = true');
     expect(source).toContain('if (overview) {');
     expect(source).toContain('overview.hidden = false');
-    expect(source).toContain("metrics[0].textContent = String(result.evidence.length)");
-    expect(source).toContain("metrics[1].textContent = String(result.claims.length)");
-    expect(source).toContain("metrics[2].closest('div').hidden = true");
-    expect(source).toContain("metrics[3].closest('div').hidden = true");
+    expect(source).toContain("sourceMetricValue.textContent = String(result.evidence.length)");
+    expect(source).toContain("findingMetricValue.textContent = String(result.claims.length)");
+    expect(source).toContain("overview.dataset.liveEvidenceOverview = 'true'");
     expect(source).not.toContain("metrics[2].textContent = '0'");
     expect(source).not.toContain("metrics[3].textContent = '0'");
   });
