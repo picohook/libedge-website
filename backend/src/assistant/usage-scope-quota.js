@@ -1,5 +1,6 @@
 const USAGE_SCOPE_PREFIX = 'assistant:usage-scope:requests';
 export const USAGE_SCOPE_DAILY_LIMIT_KEY = 'assistant:usage-scope:daily-request-limit';
+export const USAGE_SCOPE_LIMIT_OVERRIDE_PREFIX = 'assistant:usage-scope:limit';
 
 function enabled(value) {
   return /^(1|true|yes|on)$/i.test(String(value ?? '').trim());
@@ -40,7 +41,12 @@ export function assistantUsageScopeKey(scope, now = new Date()) {
   return `${USAGE_SCOPE_PREFIX}:${scope.type}:${scope.id}:${utcDateKey(now)}`;
 }
 
-export async function assistantUsageScopeLimit(env) {
+export function assistantUsageScopeLimitOverrideKey(scope) {
+  if (!scope || !['institution', 'user'].includes(scope.type) || !scope.id) throw new Error('ASSISTANT_USAGE_SCOPE_INVALID');
+  return `${USAGE_SCOPE_LIMIT_OVERRIDE_PREFIX}:${scope.type}:${scope.id}`;
+}
+
+export async function assistantUsageScopeLimit(env, scope = null) {
   if (!enabled(env?.RESEARCH_ASSISTANT_USAGE_SCOPE_QUOTA_ENABLED)) {
     return { enabled: false, limit: null, source: null, reason: null };
   }
@@ -51,6 +57,14 @@ export async function assistantUsageScopeLimit(env) {
   }
 
   try {
+    if (scope) {
+      const scopedRaw = await env.RATE_LIMIT_KV.get(assistantUsageScopeLimitOverrideKey(scope));
+      if (scopedRaw !== null && scopedRaw !== undefined && String(scopedRaw).trim() !== '') {
+        const scoped = parseLimit(scopedRaw);
+        if (!scoped) return { enabled: true, limit: null, source: 'scope-runtime', reason: 'USAGE_SCOPE_LIMIT_INVALID' };
+        return { enabled: true, limit: scoped, source: 'scope-runtime', reason: null };
+      }
+    }
     const raw = await env.RATE_LIMIT_KV.get(USAGE_SCOPE_DAILY_LIMIT_KEY);
     if (raw === null || raw === undefined || String(raw).trim() === '') {
       return { enabled: true, limit: fallback, source: fallback ? 'env' : null, reason: fallback ? null : 'USAGE_SCOPE_LIMIT_REQUIRED' };
@@ -70,13 +84,14 @@ export async function assistantUsageScopeLimit(env) {
  * guardrail, not a strict concurrent accounting ledger.
  */
 export async function reserveAssistantUsageScopeRequest(env, user, now = new Date()) {
-  const resolved = await assistantUsageScopeLimit(env);
-  if (!resolved.enabled) return { allowed: true, enabled: false, reason: null, limit: null, used: null, scope: null };
-  if (!resolved.limit) return { allowed: false, enabled: true, reason: resolved.reason || 'USAGE_SCOPE_LIMIT_REQUIRED', limit: null, used: null, scope: null };
-  if (!env?.RATE_LIMIT_KV) return { allowed: false, enabled: true, reason: 'USAGE_SCOPE_QUOTA_STORE_UNAVAILABLE', limit: resolved.limit, used: null, scope: null };
-
   const scope = resolveAssistantUsageScope(user);
-  if (!scope) return { allowed: false, enabled: true, reason: 'USAGE_SCOPE_REQUIRED', limit: resolved.limit, used: null, scope: null };
+  if (!scope && enabled(env?.RESEARCH_ASSISTANT_USAGE_SCOPE_QUOTA_ENABLED)) {
+    return { allowed: false, enabled: true, reason: 'USAGE_SCOPE_REQUIRED', limit: null, used: null, scope: null };
+  }
+  const resolved = await assistantUsageScopeLimit(env, scope);
+  if (!resolved.enabled) return { allowed: true, enabled: false, reason: null, limit: null, used: null, scope: null };
+  if (!resolved.limit) return { allowed: false, enabled: true, reason: resolved.reason || 'USAGE_SCOPE_LIMIT_REQUIRED', limit: null, used: null, scope };
+  if (!env?.RATE_LIMIT_KV) return { allowed: false, enabled: true, reason: 'USAGE_SCOPE_QUOTA_STORE_UNAVAILABLE', limit: resolved.limit, used: null, scope };
 
   const key = assistantUsageScopeKey(scope, now);
   try {
