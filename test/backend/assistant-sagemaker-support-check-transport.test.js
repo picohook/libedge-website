@@ -17,7 +17,7 @@ function env(overrides = {}) {
     AWS_SECRET_ACCESS_KEY: 'test-secret',
     RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '100',
     RATE_LIMIT_KV: {
-      get: vi.fn(async () => '0'),
+      get: vi.fn(async (key) => key === 'assistant:supportcheck:daily-invocation-limit' ? null : '0'),
       put: vi.fn(async () => {})
     },
     ...overrides

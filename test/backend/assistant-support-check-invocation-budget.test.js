@@ -1,14 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  preflightSupportCheckInvocation,
   reserveSupportCheckInvocation,
-  supportCheckInvocationKey
+  supportCheckInvocationKey,
+  supportCheckInvocationLimit,
+  SUPPORT_CHECK_INVOCATION_LIMIT_KEY
 } from '../../backend/src/assistant/support-check-invocation-budget.js';
 
 function kv(initial = null, { getError = false, putError = false } = {}) {
   let value = initial;
   return {
-    get: vi.fn(async () => {
+    get: vi.fn(async (key) => {
       if (getError) throw new Error('read failed');
+      if (key === SUPPORT_CHECK_INVOCATION_LIMIT_KEY) return null;
       return value;
     }),
     put: vi.fn(async (_key, next) => {
@@ -64,4 +68,47 @@ describe('supportCheck invocation budget', () => {
       expect(result).toMatchObject({ allowed: false, reason: 'INVOCATION_BUDGET_STORE_FAILED' });
     }
   });
+  it('prefers a valid runtime KV limit and falls back to env when unset', async () => {
+    const runtime = {
+      get: vi.fn(async (key) => key === SUPPORT_CHECK_INVOCATION_LIMIT_KEY ? '7' : null),
+      put: vi.fn(async () => {})
+    };
+    await expect(supportCheckInvocationLimit({
+      RATE_LIMIT_KV: runtime,
+      RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '10'
+    })).resolves.toMatchObject({ limit: 7, source: 'runtime', reason: null });
+    expect(runtime.get).toHaveBeenCalledWith(SUPPORT_CHECK_INVOCATION_LIMIT_KEY);
+
+    await expect(supportCheckInvocationLimit({
+      RATE_LIMIT_KV: kv(null),
+      RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '10'
+    })).resolves.toMatchObject({ limit: 10, source: 'env', reason: null });
+  });
+
+  it('fails closed on an explicitly invalid runtime override', async () => {
+    await expect(preflightSupportCheckInvocation({
+      RATE_LIMIT_KV: {
+        get: vi.fn(async (key) => key === SUPPORT_CHECK_INVOCATION_LIMIT_KEY ? 'invalid' : null),
+        put: vi.fn(async () => {})
+      },
+      RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '10'
+    }, now)).resolves.toMatchObject({ allowed: false, reason: 'INVOCATION_LIMIT_INVALID', limit: null });
+  });
+
+  it('uses the runtime limit in authoritative reservation', async () => {
+    const values = new Map([
+      [SUPPORT_CHECK_INVOCATION_LIMIT_KEY, '4'],
+      [supportCheckInvocationKey(now), '3']
+    ]);
+    const store = {
+      get: vi.fn(async (key) => values.get(key) ?? null),
+      put: vi.fn(async (key, value) => { values.set(key, value); })
+    };
+    const result = await reserveSupportCheckInvocation({
+      RATE_LIMIT_KV: store,
+      RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '10'
+    }, now);
+    expect(result).toMatchObject({ allowed: true, limit: 4, used: 4 });
+  });
+
 });

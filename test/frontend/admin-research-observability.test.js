@@ -33,7 +33,7 @@ describe('Research admin observability', () => {
     expect(admin).toContain('Salt okunur, content-free görünüm');
   });
 
-  it('keeps Research observability read-only and avoids account/content identifiers', () => {
+  it('keeps Research observability content-free and avoids account/content identifiers', () => {
     const start = admin.indexOf('<!-- Research Tab:');
     const end = admin.indexOf('<!-- Users Tab -->', start);
     const researchMarkup = admin.slice(start, end);
@@ -51,4 +51,12 @@ describe('Research admin observability', () => {
     expect(admin).toContain("window.confirm('Fresh-Checker resume edilsin mi?");
     expect(admin).toContain('/api/admin/research/support-check-state');
   });
+  it('adds an admin-editable daily checker limit without exposing content', () => {
+    expect(admin).toContain('id="researchCheckerDailyLimitInput"');
+    expect(admin).toContain('id="researchCheckerDailyLimitSaveBtn"');
+    expect(admin).toContain('setResearchCheckerDailyLimit()');
+    expect(admin).toContain('/api/admin/research/support-check-limit');
+    expect(admin).toContain('daily_invocation_limit_source');
+  });
+
 });

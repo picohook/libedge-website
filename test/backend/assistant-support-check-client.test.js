@@ -11,7 +11,7 @@ function enabledEnv(overrides = {}) {
     RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '5000',
     RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '100',
     RATE_LIMIT_KV: {
-      get: vi.fn(async () => '0'),
+      get: vi.fn(async (key) => key === 'assistant:supportcheck:daily-invocation-limit' ? null : '0'),
       put: vi.fn(async () => {})
     },
     ...overrides
@@ -109,7 +109,7 @@ describe('Fresh-Checker pin', () => {
     const check = createSupportCheck(enabledEnv({
       RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '1',
       RATE_LIMIT_KV: {
-        get: vi.fn(async () => '1'),
+        get: vi.fn(async (key) => key === 'assistant:supportcheck:daily-invocation-limit' ? null : '1'),
         put: vi.fn(async () => {})
       }
     }), { fetchImpl });
