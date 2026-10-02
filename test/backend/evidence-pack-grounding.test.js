@@ -125,7 +125,7 @@ describe('grounding validator', () => {
     ]) {
       const sdkError = Object.assign(new Error('provider detail'), { name });
       const classified = await validateGroundedClaims({
-        claims: [{ text: 'Claim', evidence_ids: ['p:e1'] }],
+        claims: [{ text: 'Claim', evidence_ids: ['pack-failure-reason:e1'] }],
         evidencePack: pack,
         supportCheck: async () => { throw sdkError; }
       });
