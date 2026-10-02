@@ -781,7 +781,9 @@
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Başarısızlık</p><p id="researchUsageFailureRate" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Ort. latency</p><p id="researchUsageLatency" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Input token</p><p id="researchUsageInputTokens" class="text-xl font-bold">—</p></div>
-                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Output token</p><p id="researchUsageOutputTokens" class="text-xl font-bold">—</p></div>\n                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">LLM exact cost</p><p id="researchUsageLlmCost" class="text-xl font-bold">—</p></div>\n                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Discovery exact cost</p><p id="researchUsageDiscoveryCost" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Output token</p><p id="researchUsageOutputTokens" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">LLM exact cost</p><p id="researchUsageLlmCost" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Discovery exact cost</p><p id="researchUsageDiscoveryCost" class="text-xl font-bold">—</p></div>
             </div>
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
                 <div class="rounded-lg border border-gray-100 p-4">
@@ -4863,7 +4865,9 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageFailureRate').textContent = `${Math.round(Number(summary.failure_rate || 0) * 100)}%`;
             document.getElementById('researchUsageLatency').textContent = `${Number(summary.avg_latency_ms || 0).toLocaleString('tr-TR')} ms`;
             document.getElementById('researchUsageInputTokens').textContent = Number(summary.input_tokens || 0).toLocaleString('tr-TR');
-            document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');\n            document.getElementById('researchUsageLlmCost').textContent = `${Number(summary.llm_cost_usd || 0).toFixed(6)}`;\n            document.getElementById('researchUsageDiscoveryCost').textContent = `${Number(summary.discovery_cost_usd || 0).toFixed(6)}`;
+            document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');
+            document.getElementById('researchUsageLlmCost').textContent = `${Number(summary.llm_cost_usd || 0).toFixed(6)}`;
+            document.getElementById('researchUsageDiscoveryCost').textContent = `${Number(summary.discovery_cost_usd || 0).toFixed(6)}`;
             document.getElementById('researchUsageFunnel').innerHTML = researchUsageFunnel(data.outcomes, summary.requests, summary.stage_latency_ms);
             document.getElementById('researchUsageStageLatency').innerHTML = researchStageLatencyRows(summary.stage_latency_ms);
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
