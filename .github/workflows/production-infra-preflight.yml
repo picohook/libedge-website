@@ -25,13 +25,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
       - name: Verify production secret names
         run: |
           set -euo pipefail
-          OUT="$(npx wrangler secret list --env production --format json)"
+          OUT="$(npx --yes wrangler@4.131.1 secret list --env production --format json)"
           node -e '
             const rows = JSON.parse(process.argv[1]);
             const names = new Set(rows.map((row) => row.name));
@@ -47,17 +44,17 @@ jobs:
       - name: Verify production D1 and rollback capability
         run: |
           set -euo pipefail
-          npx wrangler d1 migrations list libedge-db-production --remote --env production
-          npx wrangler d1 execute libedge-db-production --remote --env production --command "PRAGMA table_info(users); PRAGMA table_info(products);"
-          npx wrangler d1 time-travel info libedge-db-production --env production
+          npx --yes wrangler@4.131.1 d1 migrations list libedge-db-production --remote --env production
+          npx --yes wrangler@4.131.1 d1 execute libedge-db-production --remote --env production --command "PRAGMA table_info(users); PRAGMA table_info(products);"
+          npx --yes wrangler@4.131.1 d1 time-travel info libedge-db-production --env production
 
       - name: Verify production R2 bucket
-        run: npx wrangler r2 bucket info libedge-files --json
+        run: npx --yes wrangler@4.131.1 r2 bucket info libedge-files --json
 
       - name: Verify production KV namespace exists
         run: |
           set -euo pipefail
-          OUT="$(npx wrangler kv namespace list)"
+          OUT="$(npx --yes wrangler@4.131.1 kv namespace list)"
           node -e '
             const rows = JSON.parse(process.argv[1]);
             const requiredId = "5640d9b898c54a96bdd9e361e1c6f593";
@@ -69,4 +66,4 @@ jobs:
           ' "$OUT"
 
       - name: Validate production Wrangler configuration
-        run: npx wrangler deploy --env production --dry-run
+        run: npx --yes wrangler@4.131.1 deploy --env production --dry-run
