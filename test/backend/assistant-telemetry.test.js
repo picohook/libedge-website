@@ -68,6 +68,26 @@ describe('assistant privacy-safe telemetry', () => {
   });
 
 
+  it('logs only bounded grounding cardinality and ignores content-like diagnostic fields', async () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await recordAssistantOutcome({ ENVIRONMENT: 'staging' }, {
+      code: 'GROUNDING_REJECTED',
+      groundingDiagnostic: {
+        claim_count: 4,
+        accepted_count: 3,
+        rejected_count: 1,
+        query: 'private query',
+        claim: 'private claim',
+        evidence: 'private evidence',
+        fingerprint: 'do-not-log'
+      }
+    });
+    const payload = JSON.parse(spy.mock.calls[0][0]);
+    expect(payload.grounding_cardinality).toEqual({ claim_count: 4, accepted_count: 3, rejected_count: 1 });
+    expect(JSON.stringify(payload)).not.toMatch(/private query|private claim|private evidence|do-not-log/);
+    spy.mockRestore();
+  });
+
   it('persists only aggregate content-free timing counters', async () => {
     const batch = vi.fn().mockResolvedValue([]);
     const prepare = vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn() })) }));
