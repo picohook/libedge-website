@@ -6,5 +6,8 @@
 --   yayıncılar için (raw cookie name'leri JS bekliyor).
 --
 -- Default 'scoped' → çalışan tüm publisher davranışı korunur.
+--
+-- D1/SQLite does not support ALTER TABLE ... ADD COLUMN IF NOT EXISTS.
+-- Wrangler records successful migrations, so this migration is executed once.
 
-ALTER TABLE products ADD COLUMN IF NOT EXISTS ra_cookie_mode TEXT NOT NULL DEFAULT 'scoped';
+ALTER TABLE products ADD COLUMN ra_cookie_mode TEXT NOT NULL DEFAULT 'scoped';
