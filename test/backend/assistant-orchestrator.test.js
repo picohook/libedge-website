@@ -163,6 +163,8 @@ describe('assistant orchestration boundary', () => {
     expect(result).not.toHaveProperty('rejected_claims');
     expect(result).not.toHaveProperty('evidence');
     expect(result.diagnostic_grounding).toEqual({
+      claim_count: 2,
+      accepted_count: 1,
       rejected_count: 1,
       rejection_counts: { CLAIM_UNSUPPORTED: 1, CLAIM_UNSUPPORTED_UNSUPPORTED: 1 }
     });
@@ -185,6 +187,8 @@ describe('assistant orchestration boundary', () => {
 
     expect(result.code).toBe('GROUNDING_REJECTED');
     expect(result.diagnostic_grounding).toEqual({
+      claim_count: 1,
+      accepted_count: 0,
       rejected_count: 1,
       rejection_counts: { CLAIM_UNSUPPORTED: 1, CLAIM_UNSUPPORTED_NOT_SUPPORTED: 1 }
     });
@@ -213,6 +217,7 @@ describe('assistant orchestration boundary', () => {
       claims: [{ index: 0, text: 'Supported claim', evidence_ids: ['pack-1:e1'] }],
       evidence_pack_id: 'pack-1'
     });
+    expect(result.diagnostic_grounding).toEqual({ claim_count: 1, accepted_count: 1, rejected_count: 0, rejection_counts: {} });
     expect(result.evidence).toHaveLength(1);
     expect(result.evidence[0]).toMatchObject({
       evidence_id: 'pack-1:e1',
