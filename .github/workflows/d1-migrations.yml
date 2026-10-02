@@ -18,6 +18,7 @@ on:
         default: list
         options:
           - list
+          - inspect-provisioning
           - apply
 
 concurrency:
@@ -83,6 +84,60 @@ jobs:
       - name: Verify post-migration Research schemas
         run: |
           npx --no-install wrangler d1 execute libedge-db-production --remote --env production --command "PRAGMA table_info(institution_subscriptions); PRAGMA table_info(institution_subscription_seats); PRAGMA table_info(research_usage_events); SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_institution_subscription_seats_subscription','idx_institution_subscription_seats_user','idx_research_usage_events_created','idx_research_usage_events_user_created','idx_research_usage_events_institution_created') ORDER BY name; SELECT slug, name FROM products WHERE slug='research';"
+
+
+  inspect-production-provisioning:
+    name: Inspect production Research provisioning
+    if: inputs.environment == 'production' && inputs.operation == 'inspect-provisioning'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
+      - name: Install repository dependencies
+        run: npm install --no-audit --no-fund
+      - name: Read-only Research provisioning evidence
+        run: |
+          npx --no-install wrangler d1 execute libedge-db-production --remote --env production --command "
+            SELECT id, name FROM institutions WHERE id IN (1,188) ORDER BY id;
+            SELECT id, institution_id, product_slug, status, start_date, end_date, seat_limit
+              FROM institution_subscriptions
+              WHERE institution_id IN (1,188) AND product_slug='research'
+              ORDER BY institution_id, id;
+            SELECT sub.institution_id, COUNT(seat.id) AS assigned_seats
+              FROM institution_subscriptions sub
+              LEFT JOIN institution_subscription_seats seat ON seat.institution_subscription_id=sub.id
+              WHERE sub.institution_id IN (1,188) AND sub.product_slug='research'
+              GROUP BY sub.institution_id
+              ORDER BY sub.institution_id;
+            SELECT seat.institution_subscription_id, seat.user_id,
+                   sub.institution_id AS subscription_institution_id,
+                   u.institution_id AS user_institution_id
+              FROM institution_subscription_seats seat
+              JOIN institution_subscriptions sub ON sub.id=seat.institution_subscription_id
+              LEFT JOIN users u ON u.id=seat.user_id
+              WHERE sub.institution_id IN (1,188) AND sub.product_slug='research'
+              ORDER BY sub.institution_id, seat.user_id;
+            SELECT institution_id, COUNT(*) AS institution_users
+              FROM users
+              WHERE institution_id IN (1,188)
+              GROUP BY institution_id
+              ORDER BY institution_id;
+            SELECT u.institution_id, COUNT(DISTINCT s.user_id) AS active_individual_research_users
+              FROM subscriptions s
+              JOIN users u ON u.id=s.user_id
+              WHERE u.institution_id IN (1,188)
+                AND s.product_slug='research' AND s.status='active'
+                AND (s.start_date IS NULL OR date(s.start_date) <= date('now'))
+                AND (s.end_date IS NULL OR date(s.end_date) >= date('now'))
+              GROUP BY u.institution_id
+              ORDER BY u.institution_id;
+          "
+
 
   apply-production:
     name: Apply production migrations
