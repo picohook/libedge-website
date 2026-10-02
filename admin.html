@@ -767,6 +767,31 @@
                 <p id="researchCheckerLimitSource" class="text-xs text-gray-400 mt-1"></p>
                 <p id="researchCheckerActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
             </div>
+            <div class="stat-card">
+                <p class="text-gray-500 text-sm">Assistant Ortak Request Havuzu</p>
+                <p class="text-xs text-gray-500 mt-1">Kurum kullanıcıları aynı havuzu paylaşır; B2C kullanıcı user-scope havuzu kullanır. Checker çağrı limiti bundan ayrıdır.</p>
+                <div class="grid grid-cols-1 gap-2 mt-3">
+                    <label class="text-xs text-gray-500">Scope
+                        <select id="researchUsageScopeType" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                            <option value="">Varsayılan</option>
+                            <option value="institution">Kurum</option>
+                            <option value="user">B2C kullanıcı</option>
+                        </select>
+                    </label>
+                    <label class="text-xs text-gray-500">Scope ID (varsayılan için boş)
+                        <input id="researchUsageScopeId" type="text" class="mt-1 w-full border rounded px-2 py-1 text-sm" aria-label="Assistant usage scope ID">
+                    </label>
+                    <label class="text-xs text-gray-500">Günlük Assistant request limiti
+                        <input id="researchUsageScopeDailyLimitInput" type="number" min="1" max="100000" step="1" class="mt-1 w-full border rounded px-2 py-1 text-sm" aria-label="Günlük Assistant request limiti">
+                    </label>
+                    <div class="flex gap-2">
+                        <button type="button" id="researchUsageScopeLoadBtn" class="btn bg-gray-50 text-gray-700 border text-xs">Yükle</button>
+                        <button type="button" id="researchUsageScopeSaveBtn" class="btn bg-blue-50 text-blue-700 border border-blue-200 text-xs">Kaydet</button>
+                    </div>
+                </div>
+                <p id="researchUsageScopeLimitSource" class="text-xs text-gray-400 mt-1"></p>
+                <p id="researchUsageScopeActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
+            </div>
         </div>
         <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
             <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
@@ -5007,6 +5032,62 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         }
     }
 
+    function researchUsageScopeSelection() {
+        const type = document.getElementById('researchUsageScopeType')?.value || '';
+        const id = String(document.getElementById('researchUsageScopeId')?.value || '').trim();
+        if (!type && !id) return { type: '', id: '' };
+        if (!type || !id) throw new Error('Kurum/B2C scope için hem tür hem ID gerekli.');
+        return { type, id };
+    }
+
+    async function loadResearchUsageScopeLimit() {
+        if (currentAdmin?.role !== 'super_admin') return;
+        const status = document.getElementById('researchUsageScopeActionStatus');
+        try {
+            const scope = researchUsageScopeSelection();
+            const params = new URLSearchParams();
+            if (scope.type) { params.set('scope_type', scope.type); params.set('scope_id', scope.id); }
+            const res = await fetch(`${API_BASE}/api/admin/research/assistant-usage-limit?${params.toString()}`, { credentials: 'include' });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.error || 'Limit yüklenemedi');
+            const input = document.getElementById('researchUsageScopeDailyLimitInput');
+            if (input) input.value = body.daily_request_limit ?? '';
+            const source = document.getElementById('researchUsageScopeLimitSource');
+            if (source) source.textContent = `Kaynak: ${body.source || 'tanımsız'} • ${body.enabled ? 'policy aktif' : 'policy dormant'}`;
+            if (status) status.textContent = 'Assistant request limiti yüklendi.';
+        } catch (err) {
+            if (status) status.textContent = err.message || 'Limit yüklenemedi.';
+        }
+    }
+
+    async function setResearchUsageScopeLimit() {
+        if (currentAdmin?.role !== 'super_admin') return;
+        const status = document.getElementById('researchUsageScopeActionStatus');
+        const saveBtn = document.getElementById('researchUsageScopeSaveBtn');
+        try {
+            const scope = researchUsageScopeSelection();
+            const limit = Number(document.getElementById('researchUsageScopeDailyLimitInput')?.value);
+            if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100000) throw new Error('Günlük request limiti 1-100000 arasında tam sayı olmalıdır.');
+            if (saveBtn) saveBtn.disabled = true;
+            const payload = { daily_request_limit: limit };
+            if (scope.type) { payload.scope_type = scope.type; payload.scope_id = scope.id; }
+            const res = await fetch(`${API_BASE}/api/admin/research/assistant-usage-limit`, {
+                method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok || body.success !== true) throw new Error(body.error || 'Limit değiştirilemedi');
+            if (status) status.textContent = `Günlük Assistant request limiti ${body.daily_request_limit} olarak kaydedildi.`;
+            const source = document.getElementById('researchUsageScopeLimitSource');
+            if (source) source.textContent = `Kaynak: ${body.source || 'runtime'} • ${body.enabled ? 'policy aktif' : 'policy dormant'}`;
+        } catch (err) {
+            if (status) status.textContent = err.message || 'Limit değiştirilemedi.';
+        } finally {
+            if (saveBtn) saveBtn.disabled = false;
+        }
+    }
+
+    document.getElementById('researchUsageScopeLoadBtn')?.addEventListener('click', loadResearchUsageScopeLimit);
+    document.getElementById('researchUsageScopeSaveBtn')?.addEventListener('click', setResearchUsageScopeLimit);
     document.getElementById('researchCheckerPauseBtn')?.addEventListener('click', () => setResearchCheckerState('pause'));
     document.getElementById('researchCheckerResumeBtn')?.addEventListener('click', () => setResearchCheckerState('resume'));
     document.getElementById('researchCheckerDailyLimitSaveBtn')?.addEventListener('click', setResearchCheckerDailyLimit);

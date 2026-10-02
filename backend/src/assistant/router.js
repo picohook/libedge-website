@@ -7,6 +7,7 @@ import { recordAssistantOutcome } from './telemetry.js';
 import { createSupportCheck } from './support-check-client.js';
 import { preflightSupportCheckInvocation } from './support-check-invocation-budget.js';
 import { supportCheckRuntimePause } from './support-check-runtime-pause.js';
+import { reserveAssistantUsageScopeRequest } from './usage-scope-quota.js';
 import { requireResearchAccess } from '../research/entitlement.js';
 import { recordResearchUsageEvent } from '../research/usage-events.js';
 import { positiveInt } from '../research/discover.js';
@@ -74,6 +75,19 @@ app.post('/api/assistant/ask', async (c) => {
   if (quota.isLimited) {
     await recordOperationalOutcome(c.env, auth.user, { code: 'ASSISTANT_RATE_LIMITED', durationMs: Date.now() - startedAt });
     return c.json({ ok: false, error: 'Assistant kullanım limiti aşıldı', code: 'ASSISTANT_RATE_LIMITED', claims: [], evidence: [] }, 429);
+  }
+
+  const usageScopeQuota = await reserveAssistantUsageScopeRequest(c.env, auth.user, access.entitlementSource);
+  if (!usageScopeQuota.allowed) {
+    await recordOperationalOutcome(c.env, auth.user, { code: usageScopeQuota.reason, durationMs: Date.now() - startedAt });
+    const exhausted = usageScopeQuota.reason === 'ASSISTANT_USAGE_SCOPE_QUOTA_EXHAUSTED';
+    return c.json({
+      ok: false,
+      error: exhausted ? 'Assistant günlük ortak kullanım havuzu doldu' : 'Assistant kullanım kotası şu anda kullanılamıyor',
+      code: usageScopeQuota.reason,
+      claims: [],
+      evidence: []
+    }, exhausted ? 429 : 503);
   }
 
   const runtimePause = await supportCheckRuntimePause(c.env);

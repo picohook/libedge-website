@@ -1,7 +1,7 @@
-export async function hasResearchEntitlement(db, user) {
-  if (!user?.user_id) return false;
-  if (user.role === 'super_admin') return true;
-  if (!db) return false;
+export async function resolveResearchEntitlement(db, user) {
+  if (!user?.user_id) return { allowed: false, source: null };
+  if (user.role === 'super_admin') return { allowed: true, source: 'individual' };
+  if (!db) return { allowed: false, source: null };
 
   const individual = await db.prepare(`
     SELECT 1 FROM subscriptions
@@ -10,9 +10,9 @@ export async function hasResearchEntitlement(db, user) {
       AND (end_date IS NULL OR date(end_date) >= date('now'))
     LIMIT 1
   `).bind(user.user_id).first();
-  if (individual) return true;
+  if (individual) return { allowed: true, source: 'individual' };
 
-  if (!user.institution_id) return false;
+  if (!user.institution_id) return { allowed: false, source: null };
   const institutional = await db.prepare(`
     SELECT 1
     FROM institution_subscriptions sub
@@ -28,7 +28,13 @@ export async function hasResearchEntitlement(db, user) {
       )
     LIMIT 1
   `).bind(user.user_id, user.institution_id).first();
-  return Boolean(institutional);
+  return institutional
+    ? { allowed: true, source: 'institution' }
+    : { allowed: false, source: null };
+}
+
+export async function hasResearchEntitlement(db, user) {
+  return (await resolveResearchEntitlement(db, user)).allowed;
 }
 
 export function researchPrivacyGatePassed(env = {}) {
@@ -40,8 +46,9 @@ export async function requireResearchAccess(env, user) {
   if (!researchPrivacyGatePassed(env)) {
     return { ok: false, status: 503, code: 'RESEARCH_PRIVACY_GATE_REQUIRED', error: 'Research erişimi bu ortamda etkin değil' };
   }
-  if (!await hasResearchEntitlement(env?.DB, user)) {
+  const entitlement = await resolveResearchEntitlement(env?.DB, user);
+  if (!entitlement.allowed) {
     return { ok: false, status: 403, code: 'RESEARCH_ENTITLEMENT_REQUIRED', error: 'Research aboneliği veya kurum koltuğu gerekli' };
   }
-  return { ok: true };
+  return { ok: true, entitlementSource: entitlement.source };
 }
