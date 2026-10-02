@@ -10,8 +10,9 @@ import {
 function kv(initial = null, { getError = false, putError = false } = {}) {
   let value = initial;
   return {
-    get: vi.fn(async () => {
+    get: vi.fn(async (key) => {
       if (getError) throw new Error('read failed');
+      if (key === SUPPORT_CHECK_INVOCATION_LIMIT_KEY) return null;
       return value;
     }),
     put: vi.fn(async (_key, next) => {
@@ -68,7 +69,10 @@ describe('supportCheck invocation budget', () => {
     }
   });
   it('prefers a valid runtime KV limit and falls back to env when unset', async () => {
-    const runtime = kv('7');
+    const runtime = {
+      get: vi.fn(async (key) => key === SUPPORT_CHECK_INVOCATION_LIMIT_KEY ? '7' : null),
+      put: vi.fn(async () => {})
+    };
     await expect(supportCheckInvocationLimit({
       RATE_LIMIT_KV: runtime,
       RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '10'
@@ -83,7 +87,10 @@ describe('supportCheck invocation budget', () => {
 
   it('fails closed on an explicitly invalid runtime override', async () => {
     await expect(preflightSupportCheckInvocation({
-      RATE_LIMIT_KV: kv('invalid'),
+      RATE_LIMIT_KV: {
+        get: vi.fn(async (key) => key === SUPPORT_CHECK_INVOCATION_LIMIT_KEY ? 'invalid' : null),
+        put: vi.fn(async () => {})
+      },
       RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '10'
     }, now)).resolves.toMatchObject({ allowed: false, reason: 'INVOCATION_LIMIT_INVALID', limit: null });
   });
