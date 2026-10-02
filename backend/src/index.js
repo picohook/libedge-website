@@ -1595,6 +1595,9 @@ app.post('/api/auth/refresh', async (c) => {
   if (!refreshPayload || refreshPayload.type !== 'refresh') {
     return c.json({ error: 'Geçersiz veya süresi dolmuş refresh token' }, 401);
   }
+  if (isStrictRuntimeEnv(c.env) && !refreshPayload.jti) {
+    return c.json({ error: 'Refresh oturumu doğrulanamadı. Lütfen tekrar giriş yapın.' }, 401);
+  }
 
   const db = c.env.DB;
   let currentRefreshTokenHash = null;
