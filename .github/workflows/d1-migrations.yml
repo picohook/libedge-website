@@ -19,6 +19,7 @@ on:
         options:
           - list
           - inspect-provisioning
+          - provision-r2-pilot
           - apply
 
 concurrency:
@@ -137,6 +138,166 @@ jobs:
               GROUP BY u.institution_id
               ORDER BY u.institution_id;
           "
+
+
+  provision-r2-production-pilot:
+    name: Provision R2 production Research institution limits
+    if: inputs.environment == 'production' && inputs.operation == 'provision-r2-pilot'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
+      - name: Install repository dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Preflight exact R2 institutions and existing Research subscriptions
+        run: |
+          set -euo pipefail
+          npx --no-install wrangler d1 execute libedge-db-production --remote --env production --command "
+            SELECT id, name FROM institutions WHERE id IN (1,188) ORDER BY id;
+            SELECT id, institution_id, product_slug, status, start_date, end_date, seat_limit
+              FROM institution_subscriptions
+              WHERE institution_id IN (1,188) AND product_slug='research'
+              ORDER BY institution_id, id;
+            SELECT sub.institution_id, COUNT(seat.id) AS assigned_seats
+              FROM institution_subscriptions sub
+              LEFT JOIN institution_subscription_seats seat ON seat.institution_subscription_id=sub.id
+              WHERE sub.institution_id IN (1,188) AND sub.product_slug='research'
+              GROUP BY sub.institution_id ORDER BY sub.institution_id;
+          "
+
+      - name: Guard R2 provisioning preconditions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+
+          function d1(sql) {
+            const stdout = execFileSync('npx', [
+              'wrangler', 'd1', 'execute', 'libedge-db-production',
+              '--env', 'production', '--remote', '--command', sql, '--json'
+            ], { encoding: 'utf8', env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+            const payload = JSON.parse(stdout);
+            const result = Array.isArray(payload) ? payload[0] : payload;
+            if (!result?.success) throw new Error('D1 precondition query failed');
+            return result.results || [];
+          }
+
+          const institutions = d1("SELECT id FROM institutions WHERE id IN (1,188) ORDER BY id");
+          if (institutions.length !== 2 || Number(institutions[0].id) !== 1 || Number(institutions[1].id) !== 188) {
+            throw new Error('Expected R2 institutions 1 and 188 were not both found');
+          }
+
+          const subscriptions = d1("SELECT id, institution_id, seat_limit FROM institution_subscriptions WHERE institution_id IN (1,188) AND product_slug='research' ORDER BY institution_id,id");
+          for (const institutionId of [1, 188]) {
+            const rows = subscriptions.filter((row) => Number(row.institution_id) === institutionId);
+            if (rows.length > 1) throw new Error(`Duplicate Research subscriptions for institution ${institutionId}`);
+          }
+
+          const seatState = d1(`
+            SELECT sub.institution_id, COUNT(seat.id) AS assigned_seats,
+                   SUM(CASE WHEN u.id IS NULL OR u.institution_id != sub.institution_id THEN 1 ELSE 0 END) AS invalid_seats
+            FROM institution_subscriptions sub
+            LEFT JOIN institution_subscription_seats seat ON seat.institution_subscription_id=sub.id
+            LEFT JOIN users u ON u.id=seat.user_id
+            WHERE sub.institution_id IN (1,188) AND sub.product_slug='research'
+            GROUP BY sub.id, sub.institution_id
+          `);
+          for (const row of seatState) {
+            const limit = Number(row.institution_id) === 1 ? 10 : 90;
+            if (Number(row.assigned_seats || 0) > limit) throw new Error(`Existing seats exceed target limit for institution ${row.institution_id}`);
+            if (Number(row.invalid_seats || 0) > 0) throw new Error(`Invalid cross-institution/orphan seat found for institution ${row.institution_id}`);
+          }
+          console.log('R2 provisioning preconditions: PASS');
+          NODE
+
+      - name: Capture production rollback bookmark
+        run: npx --no-install wrangler d1 time-travel info libedge-db-production --env production
+
+      - name: Provision R2 institution Research limits
+        run: |
+          set -euo pipefail
+          npx --no-install wrangler d1 execute libedge-db-production --remote --env production --command "
+            INSERT INTO institution_subscriptions
+              (institution_id, product_slug, status, access_type, start_date, seat_limit)
+            SELECT 1, 'research', 'active', 'internal', CURRENT_TIMESTAMP, 10
+            WHERE NOT EXISTS (
+              SELECT 1 FROM institution_subscriptions
+              WHERE institution_id=1 AND product_slug='research'
+            );
+            INSERT INTO institution_subscriptions
+              (institution_id, product_slug, status, access_type, start_date, seat_limit)
+            SELECT 188, 'research', 'active', 'internal', CURRENT_TIMESTAMP, 90
+            WHERE NOT EXISTS (
+              SELECT 1 FROM institution_subscriptions
+              WHERE institution_id=188 AND product_slug='research'
+            );
+            UPDATE institution_subscriptions
+              SET status='active', access_type='internal', end_date=NULL, seat_limit=10
+              WHERE institution_id=1 AND product_slug='research';
+            UPDATE institution_subscriptions
+              SET status='active', access_type='internal', end_date=NULL, seat_limit=90
+              WHERE institution_id=188 AND product_slug='research';
+          "
+
+      - name: Verify exact R2 provisioning
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+
+          function d1(sql) {
+            const stdout = execFileSync('npx', [
+              'wrangler', 'd1', 'execute', 'libedge-db-production',
+              '--env', 'production', '--remote', '--command', sql, '--json'
+            ], { encoding: 'utf8', env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+            const payload = JSON.parse(stdout);
+            const result = Array.isArray(payload) ? payload[0] : payload;
+            if (!result?.success) throw new Error('D1 verification query failed');
+            return result.results || [];
+          }
+
+          const rows = d1(`
+            SELECT id, institution_id, product_slug, status, access_type, start_date, end_date, seat_limit
+            FROM institution_subscriptions
+            WHERE institution_id IN (1,188) AND product_slug='research'
+            ORDER BY institution_id,id
+          `);
+          if (rows.length !== 2) throw new Error(`Expected exactly 2 R2 Research subscriptions; found ${rows.length}`);
+          const expected = new Map([[1,10],[188,90]]);
+          for (const row of rows) {
+            const institutionId = Number(row.institution_id);
+            if (!expected.has(institutionId)) throw new Error(`Unexpected institution ${institutionId}`);
+            if (row.status !== 'active' || row.access_type !== 'internal' || row.end_date != null || Number(row.seat_limit) !== expected.get(institutionId)) {
+              throw new Error(`Incorrect R2 subscription state for institution ${institutionId}`);
+            }
+          }
+
+          const seats = d1(`
+            SELECT sub.institution_id, COUNT(seat.id) AS assigned_seats,
+                   SUM(CASE WHEN seat.id IS NOT NULL AND (u.id IS NULL OR u.institution_id != sub.institution_id) THEN 1 ELSE 0 END) AS invalid_seats
+            FROM institution_subscriptions sub
+            LEFT JOIN institution_subscription_seats seat ON seat.institution_subscription_id=sub.id
+            LEFT JOIN users u ON u.id=seat.user_id
+            WHERE sub.institution_id IN (1,188) AND sub.product_slug='research'
+            GROUP BY sub.id, sub.institution_id ORDER BY sub.institution_id
+          `);
+          for (const row of seats) {
+            const limit = expected.get(Number(row.institution_id));
+            if (Number(row.assigned_seats || 0) > limit) throw new Error(`Seat limit exceeded for institution ${row.institution_id}`);
+            if (Number(row.invalid_seats || 0) !== 0) throw new Error(`Invalid seat assignment for institution ${row.institution_id}`);
+          }
+          console.log('R2 production provisioning verification: PASS');
+          console.log('Institution 1 seat limit: 10');
+          console.log('Institution 188 seat limit: 90');
+          NODE
 
 
   apply-production:
