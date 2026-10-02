@@ -18,6 +18,7 @@ import { getOptionalAuth, requireAuth } from './auth/middleware.js';
 import { hasResearchEntitlement, researchPrivacyGatePassed } from './research/entitlement.js';
 import { pruneResearchUsageEvents } from './research/usage-events.js';
 import { SUPPORT_CHECK_PAUSE_KEY, supportCheckRuntimePause } from './assistant/support-check-runtime-pause.js';
+import { SUPPORT_CHECK_INVOCATION_LIMIT_KEY, supportCheckInvocationLimit } from './assistant/support-check-invocation-budget.js';
 import { registrationState, setRegistrationEnabled } from './auth/registration-toggle.js';
 import {
   checkProtectedRateLimit,
@@ -2370,6 +2371,53 @@ app.get('/api/go/:slug', async (c) => {
   }
 
   return c.redirect(destination, 302);
+});
+
+// GET/POST /api/admin/research/support-check-limit — superadmin-only runtime daily invocation limit.
+app.get('/api/admin/research/support-check-limit', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+  const state = await supportCheckInvocationLimit(c.env);
+  return c.json({ daily_invocation_limit: state.limit, source: state.source, reason: state.reason || null });
+});
+
+app.post('/api/admin/research/support-check-limit', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+  if (!c.env.RATE_LIMIT_KV) return c.json({ error: 'Checker kontrol deposu kullanılamıyor' }, 503);
+
+  const body = await c.req.json().catch(() => ({}));
+  const limit = Number(body.daily_invocation_limit);
+  if (!Number.isSafeInteger(limit) || limit <= 0 || limit > 100000) {
+    return c.json({ error: 'daily_invocation_limit 1-100000 arasında tam sayı olmalıdır' }, 400);
+  }
+
+  const before = await supportCheckInvocationLimit(c.env);
+  try {
+    await c.env.RATE_LIMIT_KV.put(SUPPORT_CHECK_INVOCATION_LIMIT_KEY, String(limit));
+  } catch (err) {
+    console.error('supportCheck invocation limit write failed', err);
+    return c.json({ error: 'Checker günlük limiti değiştirilemedi' }, 503);
+  }
+
+  const after = await supportCheckInvocationLimit(c.env);
+  if (after.limit !== limit || after.source !== 'runtime') {
+    console.error('supportCheck invocation limit read-back mismatch');
+    return c.json({ error: 'Checker günlük limiti doğrulanamadı' }, 503);
+  }
+
+  await recordAdminAction(c, c.env.DB, {
+    actor: auth.user,
+    entityType: 'research_support_check',
+    entityId: 'daily-invocation-limit',
+    action: 'update-limit',
+    before: { daily_invocation_limit: before.limit, source: before.source || null },
+    after: { daily_invocation_limit: after.limit, source: after.source || null },
+  });
+
+  return c.json({ success: true, daily_invocation_limit: after.limit, source: after.source });
 });
 
 // POST /api/admin/research/support-check-state — superadmin-only operational pause/resume.
