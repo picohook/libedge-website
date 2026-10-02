@@ -77,7 +77,7 @@ app.post('/api/assistant/ask', async (c) => {
     return c.json({ ok: false, error: 'Assistant kullanım limiti aşıldı', code: 'ASSISTANT_RATE_LIMITED', claims: [], evidence: [] }, 429);
   }
 
-  const usageScopeQuota = await reserveAssistantUsageScopeRequest(c.env, auth.user);
+  const usageScopeQuota = await reserveAssistantUsageScopeRequest(c.env, auth.user, access.entitlementSource);
   if (!usageScopeQuota.allowed) {
     await recordOperationalOutcome(c.env, auth.user, { code: usageScopeQuota.reason, durationMs: Date.now() - startedAt });
     const exhausted = usageScopeQuota.reason === 'ASSISTANT_USAGE_SCOPE_QUOTA_EXHAUSTED';
