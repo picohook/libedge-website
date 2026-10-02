@@ -788,6 +788,11 @@
                         <button type="button" id="researchUsageScopeLoadBtn" class="btn bg-gray-50 text-gray-700 border text-xs">Yükle</button>
                         <button type="button" id="researchUsageScopeSaveBtn" class="btn bg-blue-50 text-blue-700 border border-blue-200 text-xs">Kaydet</button>
                     </div>
+                    <div class="flex items-center gap-2 pt-2 border-t">
+                        <span id="researchUsageScopeState" class="text-xs text-gray-500">Durum: —</span>
+                        <button type="button" id="researchUsageScopePauseBtn" class="btn bg-amber-50 text-amber-700 border border-amber-200 text-xs">Pause</button>
+                        <button type="button" id="researchUsageScopeResumeBtn" class="btn bg-green-50 text-green-700 border border-green-200 text-xs">Resume</button>
+                    </div>
                 </div>
                 <p id="researchUsageScopeLimitSource" class="text-xs text-gray-400 mt-1"></p>
                 <p id="researchUsageScopeActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
@@ -5086,8 +5091,47 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         }
     }
 
-    document.getElementById('researchUsageScopeLoadBtn')?.addEventListener('click', loadResearchUsageScopeLimit);
+    async function loadResearchUsageScopeState() {
+        if (currentAdmin?.role !== 'super_admin') return;
+        const status = document.getElementById('researchUsageScopeActionStatus');
+        try {
+            const scope = researchUsageScopeSelection();
+            if (!scope.type) throw new Error('Pause/Resume için kurum veya B2C kullanıcı scope seçin.');
+            const params = new URLSearchParams({ scope_type: scope.type, scope_id: scope.id });
+            const res = await fetch(`${API_BASE}/api/admin/research/assistant-usage-state?${params.toString()}`, { credentials: 'include' });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.error || 'Durum yüklenemedi');
+            const state = document.getElementById('researchUsageScopeState');
+            if (state) state.textContent = `Durum: ${body.state || 'unavailable'}`;
+        } catch (err) {
+            if (status) status.textContent = err.message || 'Durum yüklenemedi.';
+        }
+    }
+
+    async function setResearchUsageScopeState(action) {
+        if (currentAdmin?.role !== 'super_admin') return;
+        const status = document.getElementById('researchUsageScopeActionStatus');
+        try {
+            const scope = researchUsageScopeSelection();
+            if (!scope.type) throw new Error('Pause/Resume için kurum veya B2C kullanıcı scope seçin.');
+            const res = await fetch(`${API_BASE}/api/admin/research/assistant-usage-state`, {
+                method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scope_type: scope.type, scope_id: scope.id, action })
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok || body.success !== true) throw new Error(body.error || 'Durum değiştirilemedi');
+            const state = document.getElementById('researchUsageScopeState');
+            if (state) state.textContent = `Durum: ${body.state}`;
+            if (status) status.textContent = action === 'pause' ? 'Assistant bu scope için duraklatıldı.' : 'Assistant bu scope için yeniden açıldı.';
+        } catch (err) {
+            if (status) status.textContent = err.message || 'Durum değiştirilemedi.';
+        }
+    }
+
+    document.getElementById('researchUsageScopeLoadBtn')?.addEventListener('click', () => { loadResearchUsageScopeLimit(); loadResearchUsageScopeState(); });
     document.getElementById('researchUsageScopeSaveBtn')?.addEventListener('click', setResearchUsageScopeLimit);
+    document.getElementById('researchUsageScopePauseBtn')?.addEventListener('click', () => setResearchUsageScopeState('pause'));
+    document.getElementById('researchUsageScopeResumeBtn')?.addEventListener('click', () => setResearchUsageScopeState('resume'));
     document.getElementById('researchCheckerPauseBtn')?.addEventListener('click', () => setResearchCheckerState('pause'));
     document.getElementById('researchCheckerResumeBtn')?.addEventListener('click', () => setResearchCheckerState('resume'));
     document.getElementById('researchCheckerDailyLimitSaveBtn')?.addEventListener('click', setResearchCheckerDailyLimit);

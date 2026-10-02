@@ -101,6 +101,31 @@ describe('assistant ask endpoint', () => {
     });
   });
 
+  it('rejects a paused usage scope before quota reservation or paid Assistant work', async () => {
+    discoverMock.mockClear();
+    generateClaimsMock.mockClear();
+    const put = vi.fn(async () => {});
+    const response = await request(
+      { query: 'hydrogen catalyst' },
+      createEnv({
+        RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS',
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
+        RESEARCH_ASSISTANT_USAGE_SCOPE_QUOTA_ENABLED: 'true',
+        RESEARCH_ASSISTANT_USAGE_SCOPE_DAILY_REQUEST_LIMIT: '10',
+        RATE_LIMIT_KV: {
+          get: vi.fn(async (key) => key === 'assistant:usage-scope:state:user:42' ? 'paused' : null),
+          put
+        }
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(403);
+    expect(body).toMatchObject({ ok: false, code: 'ASSISTANT_USAGE_SCOPE_PAUSED', claims: [], evidence: [] });
+    expect(put.mock.calls.some(([key]) => String(key).startsWith('assistant:usage-scope:requests:'))).toBe(false);
+    expect(discoverMock).not.toHaveBeenCalled();
+    expect(generateClaimsMock).not.toHaveBeenCalled();
+  });
+
   it('rejects an exhausted shared request pool before discovery or other paid Assistant work', async () => {
     discoverMock.mockClear();
     generateClaimsMock.mockClear();
@@ -133,7 +158,8 @@ describe('assistant ask endpoint', () => {
       { query: 'hydrogen catalyst' },
       createEnv({
         RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS',
-        RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS'
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
+        RATE_LIMIT_KV: { get: vi.fn(async () => null), put: vi.fn(async () => {}) }
       })
     );
     const body = await response.json();
@@ -168,7 +194,8 @@ describe('assistant ask endpoint', () => {
           RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
           RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'https://checker.example.test/v1/support',
           RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'test-token',
-          RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '1'
+          RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '1',
+          RATE_LIMIT_KV: { get: vi.fn(async () => null), put: vi.fn(async () => {}) }
         })
       );
       const body = await response.json();
@@ -206,6 +233,7 @@ describe('assistant ask endpoint', () => {
           get: vi.fn(async (key) => {
             if (key === 'assistant:supportcheck:paused') return 'resume';
             if (key === 'assistant:supportcheck:daily-invocation-limit') return null;
+            if (String(key).startsWith('assistant:usage-scope:state:')) return null;
             return '0';
           }),
           put: vi.fn(async () => {})
@@ -221,7 +249,7 @@ describe('assistant ask endpoint', () => {
       }));
       const pausedBody = await (await request(
         { query: 'hydrogen catalyst' },
-        { ...activeEnv, RATE_LIMIT_KV: { get: vi.fn().mockResolvedValue('true') } }
+        { ...activeEnv, RATE_LIMIT_KV: { get: vi.fn(async (key) => String(key).startsWith('assistant:usage-scope:state:') ? null : 'true'), put: vi.fn(async () => {}) } }
       )).json();
 
       expect(pausedBody).toMatchObject({ ok: false, code: 'GROUNDING_REJECTED', claims: [] });

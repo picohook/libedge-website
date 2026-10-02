@@ -68,4 +68,12 @@ describe('Research admin observability', () => {
     expect(admin).toContain('loadResearchUsageScopeLimit()');
     expect(admin).toContain('setResearchUsageScopeLimit()');
   });
+
+  it('exposes usage-scope pause and resume separately from quota and checker controls', () => {
+    expect(admin).toContain('id="researchUsageScopePauseBtn"');
+    expect(admin).toContain('id="researchUsageScopeResumeBtn"');
+    expect(admin).toContain('/api/admin/research/assistant-usage-state');
+    expect(admin).toContain("setResearchUsageScopeState('pause')");
+    expect(admin).toContain("setResearchUsageScopeState('resume')");
+  });
 });
