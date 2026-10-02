@@ -82,7 +82,7 @@ jobs:
 
       - name: Verify post-migration Research schemas
         run: |
-          npx --no-install wrangler d1 execute libedge-db-production --remote --env production --command "PRAGMA table_info(institution_subscriptions); PRAGMA table_info(institution_subscription_seats); PRAGMA table_info(research_usage_events); SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_institution_subscription_seats_subscription','idx_institution_subscription_seats_user','idx_research_usage_events_created','idx_research_usage_events_user_created','idx_research_usage_events_institution_created') ORDER BY name; SELECT id, slug, name FROM products WHERE slug='research';"
+          npx --no-install wrangler d1 execute libedge-db-production --remote --env production --command "PRAGMA table_info(institution_subscriptions); PRAGMA table_info(institution_subscription_seats); PRAGMA table_info(research_usage_events); SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_institution_subscription_seats_subscription','idx_institution_subscription_seats_user','idx_research_usage_events_created','idx_research_usage_events_user_created','idx_research_usage_events_institution_created') ORDER BY name; SELECT slug, name FROM products WHERE slug='research';"
 
   apply-production:
     name: Apply production migrations
