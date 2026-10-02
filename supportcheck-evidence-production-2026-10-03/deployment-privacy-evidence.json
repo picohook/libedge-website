@@ -1,0 +1,62 @@
+{
+  "schema": "libedge.supportcheck_production_deployment_privacy_evidence.v1",
+  "collected_on": "2026-10-03",
+  "account_id": "186436510070",
+  "region": "us-east-1",
+  "source": "Maintainer-provided read-only AWS CLI describe/get-user-policy output",
+  "endpoint": {
+    "name": "libedge-fresh-checker-production",
+    "config_name": "libedge-fresh-checker-production",
+    "status": "InService",
+    "variant_name": "checker",
+    "current_instance_count": 2,
+    "desired_instance_count": 2,
+    "current_weight": 1.0,
+    "desired_weight": 1.0,
+    "specified_image": "186436510070.dkr.ecr.us-east-1.amazonaws.com/libedge-fresh-checker@sha256:7f68156a1e3ce3a58072b36977260fa3ae10dfc8b10d62376482800bdfa80be5",
+    "resolved_image": "186436510070.dkr.ecr.us-east-1.amazonaws.com/libedge-fresh-checker@sha256:7f68156a1e3ce3a58072b36977260fa3ae10dfc8b10d62376482800bdfa80be5",
+    "creation_time": "2026-10-02T16:23:29.831000+00:00",
+    "last_modified_time": "2026-10-02T16:26:19.771000+00:00",
+    "image_resolution_time": "2026-10-02T16:23:30.780000+00:00"
+  },
+  "endpoint_config": {
+    "name": "libedge-fresh-checker-production",
+    "variant_name": "checker",
+    "model_name": "libedge-fresh-checker-production",
+    "initial_instance_count": 2,
+    "instance_type": "ml.m5.large",
+    "initial_variant_weight": 1.0,
+    "data_capture_config": null,
+    "async_inference_config": null,
+    "explainer_config": null,
+    "kms_key_id": null,
+    "creation_time": "2026-10-02T16:23:28.168000+00:00"
+  },
+  "model": {
+    "name": "libedge-fresh-checker-production",
+    "execution_role_arn": "arn:aws:iam::186436510070:role/LibEdgeFreshCheckerSageMakerExecutionRole",
+    "image": "186436510070.dkr.ecr.us-east-1.amazonaws.com/libedge-fresh-checker@sha256:7f68156a1e3ce3a58072b36977260fa3ae10dfc8b10d62376482800bdfa80be5",
+    "mode": "SingleModel",
+    "network_isolation_enabled": true,
+    "creation_time": "2026-10-02T16:23:26.556000+00:00"
+  },
+  "worker_invoke_principal": {
+    "iam_user": "Research",
+    "inline_policy_name": "LibEdgeFreshCheckerInvokeProductionOnly",
+    "policy_version": "2012-10-17",
+    "statement": {
+      "sid": "InvokeFreshCheckerProductionOnly",
+      "effect": "Allow",
+      "action": "sagemaker:InvokeEndpoint",
+      "resource": "arn:aws:sagemaker:us-east-1:186436510070:endpoint/libedge-fresh-checker-production"
+    }
+  },
+  "assertions": {
+    "endpoint_in_service": true,
+    "data_capture_disabled": true,
+    "network_isolation_enabled": true,
+    "container_image_digest_pinned": true,
+    "worker_invoke_scoped_to_exact_production_endpoint": true
+  },
+  "scope_note": "This file records account-specific production deployment/privacy evidence only. It does not constitute final R2 GO, authenticated product smoke PASS, or a new production mutation."
+}
