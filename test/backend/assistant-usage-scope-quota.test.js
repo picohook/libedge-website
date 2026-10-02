@@ -4,7 +4,8 @@ import {
   assistantUsageScopeLimit,
   reserveAssistantUsageScopeRequest,
   resolveAssistantUsageScope,
-  USAGE_SCOPE_DAILY_LIMIT_KEY
+  USAGE_SCOPE_DAILY_LIMIT_KEY,
+  assistantUsageScopeLimitOverrideKey
 } from '../../backend/src/assistant/usage-scope-quota.js';
 
 function kv(initial = {}) {
@@ -60,6 +61,17 @@ describe('Assistant usage-scope shared request pool', () => {
     expect((await reserveAssistantUsageScopeRequest(env, { user_id: 1 }, now)).allowed).toBe(true);
     expect((await reserveAssistantUsageScopeRequest(env, { user_id: 2 }, now)).allowed).toBe(true);
     expect((await reserveAssistantUsageScopeRequest(env, { user_id: 1 }, now)).reason).toBe('ASSISTANT_USAGE_SCOPE_QUOTA_EXHAUSTED');
+  });
+
+  it('prefers a scope-specific override over the runtime default and env fallback', async () => {
+    const scope = { type: 'institution', id: '42' };
+    const runtime = kv({
+      [USAGE_SCOPE_DAILY_LIMIT_KEY]: '7',
+      [assistantUsageScopeLimitOverrideKey(scope)]: '11'
+    });
+    await expect(assistantUsageScopeLimit(enabledEnv(runtime, '3'), scope)).resolves.toMatchObject({
+      enabled: true, limit: 11, source: 'scope-runtime'
+    });
   });
 
   it('uses a valid runtime override and fails safely on an invalid runtime value', async () => {
