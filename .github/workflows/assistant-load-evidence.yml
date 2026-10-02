@@ -78,7 +78,12 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --json --command "SELECT metric, value FROM research_telemetry_counters WHERE date_utc = date('now') AND (metric LIKE 'assistant_grounding_rejection_%' OR metric IN ('assistant_requests','assistant_duration_ms_total','assistant_discover_ms_total','assistant_evidence_pack_ms_total','assistant_model_ms_total','assistant_grounding_ms_total')) ORDER BY metric;" > /tmp/assistant-before.json
+        run: |
+          npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --json --command "SELECT metric, value FROM research_telemetry_counters WHERE date_utc = date('now') AND (metric LIKE 'assistant_grounding_rejection_%' OR metric IN ('assistant_requests','assistant_duration_ms_total','assistant_discover_ms_total','assistant_evidence_pack_ms_total','assistant_model_ms_total','assistant_grounding_ms_total')) ORDER BY metric;" > /tmp/assistant-before.json
+          key="assistant:supportcheck:invocations:$(date -u +%F)"
+          before="$(npx --yes wrangler@4.131.1 kv key get --binding RATE_LIMIT_KV --env staging --remote "$key" 2>/dev/null || true)"
+          [[ "$before" =~ ^[0-9]+$ ]] || before=0
+          printf '%s\n' "$before" > /tmp/supportcheck-invocations-before
 
       - name: Run bounded synthetic Assistant load evidence
         env:
@@ -96,6 +101,12 @@ jobs:
         run: |
           npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --json --command "SELECT metric, value FROM research_telemetry_counters WHERE date_utc = date('now') AND (metric LIKE 'assistant_grounding_rejection_%' OR metric IN ('assistant_requests','assistant_duration_ms_total','assistant_discover_ms_total','assistant_evidence_pack_ms_total','assistant_model_ms_total','assistant_grounding_ms_total')) ORDER BY metric;" > /tmp/assistant-after.json
           node scripts/assistant-grounding-delta.mjs /tmp/assistant-before.json /tmp/assistant-after.json
+          key="assistant:supportcheck:invocations:$(date -u +%F)"
+          after="$(npx --yes wrangler@4.131.1 kv key get --binding RATE_LIMIT_KV --env staging --remote "$key" 2>/dev/null || true)"
+          [[ "$after" =~ ^[0-9]+$ ]] || after=0
+          before="$(cat /tmp/supportcheck-invocations-before 2>/dev/null || printf '0')"
+          delta=$((after - before))
+          printf '{"support_check_invocations_before":%d,"support_check_invocations_after":%d,"support_check_invocations_delta":%d}\n' "$before" "$after" "$delta"
 
       - name: Remove temporary staging Research entitlement
         if: always()
