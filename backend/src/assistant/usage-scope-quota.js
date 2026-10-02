@@ -22,12 +22,15 @@ function ttlUntilNextUtcDay(now) {
   return Math.max(60, Math.ceil((tomorrow.getTime() - now.getTime()) / 1000)) + 300;
 }
 
-export function resolveAssistantUsageScope(user) {
+export function resolveAssistantUsageScope(user, entitlementSource = null) {
+  const userId = user?.user_id || user?.sub;
+  if (entitlementSource === 'individual' && userId !== null && userId !== undefined && String(userId).trim() !== '') {
+    return { type: 'user', id: String(userId) };
+  }
   const institutionId = user?.institution_id;
-  if (institutionId !== null && institutionId !== undefined && String(institutionId).trim() !== '') {
+  if (entitlementSource === 'institution' && institutionId !== null && institutionId !== undefined && String(institutionId).trim() !== '') {
     return { type: 'institution', id: String(institutionId) };
   }
-  const userId = user?.user_id || user?.sub;
   if (userId !== null && userId !== undefined && String(userId).trim() !== '') {
     return { type: 'user', id: String(userId) };
   }
@@ -83,8 +86,8 @@ export async function assistantUsageScopeLimit(env, scope = null) {
  * KV read -> increment -> put is not atomic; this is a pilot operational
  * guardrail, not a strict concurrent accounting ledger.
  */
-export async function reserveAssistantUsageScopeRequest(env, user, now = new Date()) {
-  const scope = resolveAssistantUsageScope(user);
+export async function reserveAssistantUsageScopeRequest(env, user, entitlementSource = null, now = new Date()) {
+  const scope = resolveAssistantUsageScope(user, entitlementSource);
   if (!scope && enabled(env?.RESEARCH_ASSISTANT_USAGE_SCOPE_QUOTA_ENABLED)) {
     return { allowed: false, enabled: true, reason: 'USAGE_SCOPE_REQUIRED', limit: null, used: null, scope: null };
   }
