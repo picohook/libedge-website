@@ -101,6 +101,31 @@ describe('assistant ask endpoint', () => {
     });
   });
 
+  it('rejects a paused usage scope before quota reservation or paid Assistant work', async () => {
+    discoverMock.mockClear();
+    generateClaimsMock.mockClear();
+    const put = vi.fn(async () => {});
+    const response = await request(
+      { query: 'hydrogen catalyst' },
+      createEnv({
+        RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS',
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
+        RESEARCH_ASSISTANT_USAGE_SCOPE_QUOTA_ENABLED: 'true',
+        RESEARCH_ASSISTANT_USAGE_SCOPE_DAILY_REQUEST_LIMIT: '10',
+        RATE_LIMIT_KV: {
+          get: vi.fn(async (key) => key === 'assistant:usage-scope:state:user:42' ? 'paused' : null),
+          put
+        }
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(403);
+    expect(body).toMatchObject({ ok: false, code: 'ASSISTANT_USAGE_SCOPE_PAUSED', claims: [], evidence: [] });
+    expect(put).not.toHaveBeenCalled();
+    expect(discoverMock).not.toHaveBeenCalled();
+    expect(generateClaimsMock).not.toHaveBeenCalled();
+  });
+
   it('rejects an exhausted shared request pool before discovery or other paid Assistant work', async () => {
     discoverMock.mockClear();
     generateClaimsMock.mockClear();
