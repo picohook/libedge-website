@@ -53,6 +53,13 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
   const sanitizedDiagnosticReason = safeDiagnosticReason(diagnosticReason);
   if (sanitizedDiagnosticReason) payload.diagnostic_reason = sanitizedDiagnosticReason;
 
+  const cardinality = {};
+  for (const key of ['claim_count', 'accepted_count', 'rejected_count']) {
+    const value = Number(groundingDiagnostic?.[key]);
+    if (Number.isSafeInteger(value) && value >= 0) cardinality[key] = value;
+  }
+  if (Object.keys(cardinality).length) payload.grounding_cardinality = cardinality;
+
   const groundingCounts = groundingDiagnostic?.rejection_counts && typeof groundingDiagnostic.rejection_counts === 'object'
     ? groundingDiagnostic.rejection_counts : {};
   const allowedGrounding = [
