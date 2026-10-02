@@ -65,8 +65,11 @@ jobs:
             console.log("Production RATE_LIMIT_KV namespace exists");
           ' "$OUT"
 
-      - name: Install backend bundle dependencies for dry-run
-        run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false hono@4.12.10 zod@4.4.3 @hono/zod-validator@0.7.6 @aws-sdk/client-bedrock-runtime@3.1135.0 @aws-sdk/client-sagemaker-runtime@3.1135.0
+      - name: Pin npm version for dry-run
+        run: npm install -g npm@11.6.0
+
+      - name: Install dependencies for dry-run
+        run: npm install --no-audit --no-fund
 
       - name: Validate production Wrangler configuration
         run: npx --yes wrangler@4.131.1 deploy --env production --dry-run
