@@ -19,9 +19,9 @@ TARGET_INSTANCE_COUNT=2 \
 bash scripts/supportcheck-set-staging-capacity.sh
 ```
 
-After the script reports `verified_instance_count=2`, run the existing **Assistant Bounded Load Evidence** workflow against `staging` with levels `1,2,4`. Preserve the workflow run ID and its content-free grounding diagnostic delta.
+After the script reports `verified_instance_count=2`, run the existing **Assistant Bounded Load Evidence** workflow against `staging` with levels `1,2`. For the #263 R2 closure, repeat the exact same C1/C2 run at least twice on the exact release-candidate configuration. Preserve both workflow run IDs and their content-free grounding diagnostic deltas. C4 is explicitly outside this closure scope and must not be run merely to close #263.
 
-Do not change grounding thresholds or timeout to make the experiment pass.
+Do not change grounding thresholds, timeout, checker artifact/model/revision/manifest, or fail-closed behavior to make the experiment pass. Both C1 and C2 must complete without supportCheck timeout/error for a repeat to count as passing.
 
 ## Roll back to one instance
 
