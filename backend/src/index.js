@@ -20,6 +20,7 @@ import { pruneResearchUsageEvents } from './research/usage-events.js';
 import { SUPPORT_CHECK_PAUSE_KEY, supportCheckRuntimePause } from './assistant/support-check-runtime-pause.js';
 import { SUPPORT_CHECK_INVOCATION_LIMIT_KEY, supportCheckInvocationLimit } from './assistant/support-check-invocation-budget.js';
 import { assistantUsageScopeLimit, assistantUsageScopeLimitOverrideKey, USAGE_SCOPE_DAILY_LIMIT_KEY } from './assistant/usage-scope-quota.js';
+import { assistantUsageScopeState, assistantUsageScopeStateKey } from './assistant/usage-scope-state.js';
 import { registrationState, setRegistrationEnabled } from './auth/registration-toggle.js';
 import {
   checkProtectedRateLimit,
@@ -2372,6 +2373,53 @@ app.get('/api/go/:slug', async (c) => {
   }
 
   return c.redirect(destination, 302);
+});
+
+// GET/POST /api/admin/research/assistant-usage-state — superadmin-only per-scope operational pause.
+app.get('/api/admin/research/assistant-usage-state', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+  const scope = { type: String(c.req.query('scope_type') || '').trim(), id: String(c.req.query('scope_id') || '').trim() };
+  if (!['institution', 'user'].includes(scope.type) || !scope.id) return c.json({ error: 'Geçerli scope_type ve scope_id gerekli' }, 400);
+  const state = await assistantUsageScopeState(c.env, scope);
+  return c.json({ scope, active: state.active, state: state.state, source: state.source || null, reason: state.reason || null });
+});
+
+app.post('/api/admin/research/assistant-usage-state', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+  if (!c.env.RATE_LIMIT_KV) return c.json({ error: 'Assistant durum deposu kullanılamıyor' }, 503);
+  const body = await c.req.json().catch(() => ({}));
+  const scope = { type: String(body.scope_type || '').trim(), id: String(body.scope_id || '').trim() };
+  const action = String(body.action || '').trim().toLowerCase();
+  if (!['institution', 'user'].includes(scope.type) || !scope.id) return c.json({ error: 'Geçerli scope_type ve scope_id gerekli' }, 400);
+  if (!['pause', 'resume'].includes(action)) return c.json({ error: 'action pause veya resume olmalıdır' }, 400);
+
+  const before = await assistantUsageScopeState(c.env, scope);
+  const desired = action === 'pause' ? 'paused' : 'active';
+  try {
+    await c.env.RATE_LIMIT_KV.put(assistantUsageScopeStateKey(scope), desired);
+  } catch (err) {
+    console.error('assistant usage-scope state write failed', err);
+    return c.json({ error: 'Assistant kullanım durumu değiştirilemedi' }, 503);
+  }
+  const after = await assistantUsageScopeState(c.env, scope);
+  if (after.state !== desired || after.active !== (desired === 'active')) {
+    console.error('assistant usage-scope state read-back mismatch');
+    return c.json({ error: 'Assistant kullanım durumu doğrulanamadı' }, 503);
+  }
+
+  await recordAdminAction(c.env, {
+    actor: auth.user,
+    entityType: 'assistant_usage_scope',
+    entityId: `${scope.type}:${scope.id}`,
+    action: action === 'pause' ? 'pause-assistant' : 'resume-assistant',
+    before: { state: before.state, active: before.active },
+    after: { state: after.state, active: after.active },
+  });
+  return c.json({ success: true, scope, active: after.active, state: after.state, source: after.source });
 });
 
 // GET/POST /api/admin/research/assistant-usage-limit — superadmin-only shared request-pool limits.
