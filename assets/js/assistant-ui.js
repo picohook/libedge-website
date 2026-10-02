@@ -189,26 +189,26 @@ requireResearchLogin().then((authorized) => {
         document.querySelectorAll('[data-live-evidence]').forEach((node) => node.remove());
     }
 
-    function hideFixtureResult() {
+    function removeFixtureResult() {
         document.querySelectorAll('.assistant-answer-card > :not([data-live-assistant-content])').forEach((node) => {
-            node.hidden = true;
+            node.remove();
         });
         document.querySelectorAll('#assistantSources > .source-card:not([data-live-evidence]), #assistantSources > .sources-intro').forEach((node) => {
-            node.hidden = true;
+            node.remove();
         });
         const overview = document.querySelector('.evidence-overview');
-        if (overview) overview.hidden = true;
-        const sourceCount = sourcePanel?.querySelector('.source-count');
-        if (sourceCount) sourceCount.textContent = '0';
+        if (overview) overview.remove();
     }
 
     function resetLiveResult() {
         clearLiveContent();
-        hideFixtureResult();
+        removeFixtureResult();
+        const sourceCount = sourcePanel?.querySelector('.source-count');
+        if (sourceCount) sourceCount.textContent = '0';
     }
 
     function setInitialLiveState() {
-        hideFixtureResult();
+        resetLiveResult();
         answerCard?.classList.add('is-unavailable');
         if (answerCard) answerCard.style.opacity = '.58';
         setStatus({
@@ -317,16 +317,24 @@ requireResearchLogin().then((authorized) => {
             sourcePanelBody?.appendChild(card);
         });
 
-        hideFixtureResult();
-        const overview = document.querySelector('.evidence-overview');
-        if (overview) {
-            overview.hidden = false;
-            const metrics = overview.querySelectorAll('div strong');
-            if (metrics[0]) metrics[0].textContent = String(result.evidence.length);
-            if (metrics[1]) metrics[1].textContent = String(result.claims.length);
-            if (metrics[2]) metrics[2].closest('div').hidden = true;
-            if (metrics[3]) metrics[3].closest('div').hidden = true;
-        }
+        removeFixtureResult();
+        const overview = document.createElement('div');
+        overview.className = 'evidence-overview';
+        overview.dataset.liveEvidenceOverview = 'true';
+        const sourceMetric = document.createElement('div');
+        const sourceMetricValue = document.createElement('strong');
+        sourceMetricValue.textContent = String(result.evidence.length);
+        const sourceMetricLabel = document.createElement('span');
+        markTranslatable(sourceMetricLabel, 'incelenen kaynak', 'sources reviewed');
+        sourceMetric.append(sourceMetricValue, sourceMetricLabel);
+        const findingMetric = document.createElement('div');
+        const findingMetricValue = document.createElement('strong');
+        findingMetricValue.textContent = String(result.claims.length);
+        const findingMetricLabel = document.createElement('span');
+        markTranslatable(findingMetricLabel, 'desteklenen bulgu', 'supported findings');
+        findingMetric.append(findingMetricValue, findingMetricLabel);
+        overview.append(sourceMetric, findingMetric);
+        answerCard.appendChild(overview);
         answerCard.classList.remove('is-unavailable');
         answerCard.style.opacity = '1';
         return true;

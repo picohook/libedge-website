@@ -47,7 +47,9 @@ describe('Research Assistant live boundary', () => {
         expect(js).toContain('function renderLiveAssistantResult(result)');
         expect(js).toContain("Array.isArray(result?.claims)");
         expect(js).toContain("Array.isArray(result?.evidence)");
-        expect(js).toContain("node.hidden = true");
+        expect(js).toContain('function removeFixtureResult()');
+        expect(js).toContain('node.remove()');
+        expect(js).not.toContain("node.hidden = true");
         expect(js).toContain('mapLiveAssistantResult(result)');
     });
 
