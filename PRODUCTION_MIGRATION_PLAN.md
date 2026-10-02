@@ -23,7 +23,7 @@ arşivinde saklanmıştır.
 5. Veri değiştiren seed/update migration'ları ayrıca incelenir; production verisi GitHub artifact olarak export edilmez.
 6. Worker/Pages deploy rollback'i Cloudflare deployment rollback üzerinden yapılır.
 7. Production Worker için `wrangler.toml` içindeki gerekli secret sözleşmesi deploy sırasında fail-closed uygulanır.
-8. `.github/workflows/production-preflight.yml` production'a yazmadan D1, Time Travel, R2, KV, secret isimleri ve Wrangler config erişimini doğrular.
+8. `.github/workflows/production-infra-preflight.yml` production'a yazmadan D1, Time Travel, R2, KV, secret isimleri ve Wrangler config erişimini doğrular.
 
 ## Production Secret Sözleşmesi
 
