@@ -2,7 +2,7 @@
 import { verify } from 'hono/jwt';
 import { readResearchTelemetrySnapshot } from './research/telemetry.js';
 import { SUPPORT_CHECK_PAUSE_KEY } from './assistant/support-check-runtime-pause.js';
-import { supportCheckInvocationKey } from './assistant/support-check-invocation-budget.js';
+import { supportCheckInvocationKey, supportCheckInvocationLimit } from './assistant/support-check-invocation-budget.js';
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -109,14 +109,16 @@ export async function handleSystemHealthRequest(request, env) {
         const pauseValue = String(pauseRaw || '').trim().toLowerCase();
         const paused = !['false', '0', 'resume'].includes(pauseValue);
         const used = Number(invocationRaw || 0);
-        const configuredLimit = Number(env.RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT);
+        const limitState = await supportCheckInvocationLimit(env);
         return {
           enabled: env.RESEARCH_ASSISTANT_SUPPORT_CHECK_ENABLED === 'true',
           privacy_gate: env.RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS === 'PASS' ? 'PASS' : 'UNVERIFIED',
           paused,
           pause_reason: paused ? (pauseValue ? 'OPERATIONALLY_PAUSED' : 'PAUSE_STATE_UNSET') : null,
           daily_invocations_used: Number.isFinite(used) && used >= 0 ? used : null,
-          daily_invocation_limit: Number.isInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : null,
+          daily_invocation_limit: limitState.limit,
+          daily_invocation_limit_source: limitState.source,
+          daily_invocation_limit_reason: limitState.reason || null,
         };
       })
     : { status: 'error' };
