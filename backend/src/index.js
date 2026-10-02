@@ -19,7 +19,7 @@ import { hasResearchEntitlement, researchPrivacyGatePassed } from './research/en
 import { pruneResearchUsageEvents } from './research/usage-events.js';
 import { SUPPORT_CHECK_PAUSE_KEY, supportCheckRuntimePause } from './assistant/support-check-runtime-pause.js';
 import { SUPPORT_CHECK_INVOCATION_LIMIT_KEY, supportCheckInvocationLimit } from './assistant/support-check-invocation-budget.js';
-import { assistantUsageScopeLimit, assistantUsageScopeLimitOverrideKey, USAGE_SCOPE_DAILY_LIMIT_KEY } from './assistant/usage-scope-quota.js';
+import { assistantUsageScopeKey, assistantUsageScopeLimit, assistantUsageScopeLimitOverrideKey, USAGE_SCOPE_DAILY_LIMIT_KEY } from './assistant/usage-scope-quota.js';
 import { assistantUsageScopeState, assistantUsageScopeStateKey } from './assistant/usage-scope-state.js';
 import { registrationState, setRegistrationEnabled } from './auth/registration-toggle.js';
 import {
@@ -2904,7 +2904,7 @@ app.get('/api/admin/research/usage', async (c) => {
       ORDER BY count DESC, e.outcome_code ASC
     `).bind(...params).all(),
     c.env.DB.prepare(`
-      SELECT e.user_id, u.full_name, u.email, COUNT(*) AS requests,
+      SELECT e.user_id, e.institution_id, i.name AS institution_name, u.full_name, u.email, COUNT(*) AS requests,
              SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
              SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
              ROUND(AVG(e.latency_ms)) AS avg_latency_ms,
@@ -2914,8 +2914,9 @@ app.get('/api/admin/research/usage', async (c) => {
              COALESCE(SUM(e.discovery_cost_usd), 0) AS discovery_cost_usd
       FROM research_usage_events e
       LEFT JOIN users u ON u.id = e.user_id
+      LEFT JOIN institutions i ON i.id = e.institution_id
       WHERE ${predicate}
-      GROUP BY e.user_id, u.full_name, u.email
+      GROUP BY e.user_id, e.institution_id, i.name, u.full_name, u.email
       ORDER BY requests DESC, e.user_id ASC
       LIMIT 200
     `).bind(...params).all(),
@@ -2959,6 +2960,36 @@ app.get('/api/admin/research/usage', async (c) => {
     `).bind(...params).all()
   ]);
 
+  const institutionRows = institutions.results || [];
+  const institutionScopes = await Promise.all(institutionRows.map(async (row) => {
+    if (row.institution_id == null) return { ...row, usage_scope: null };
+    const scope = { type: 'institution', id: String(row.institution_id) };
+    const [limit, state, usedRaw] = await Promise.all([
+      assistantUsageScopeLimit(c.env, scope),
+      assistantUsageScopeState(c.env, scope),
+      c.env.RATE_LIMIT_KV?.get(assistantUsageScopeKey(scope)).catch(() => null)
+    ]);
+    const usedToday = Number(usedRaw || 0);
+    const validUsed = Number.isSafeInteger(usedToday) && usedToday >= 0 ? usedToday : null;
+    return {
+      ...row,
+      usage_scope: {
+        type: scope.type,
+        id: scope.id,
+        quota_enabled: limit.enabled,
+        daily_limit: limit.limit,
+        limit_source: limit.source,
+        used_today: validUsed,
+        remaining_today: limit.limit != null && validUsed != null ? Math.max(0, limit.limit - validUsed) : null,
+        percent_used_today: limit.limit && validUsed != null ? validUsed / limit.limit : null,
+        state: state.state,
+        active: state.active,
+        state_source: state.source || null,
+        state_reason: state.reason || null
+      }
+    };
+  }));
+
   const requests = Number(summary?.requests || 0);
   const successes = Number(summary?.successes || 0);
   const failures = Number(summary?.failures || 0);
@@ -2985,7 +3016,7 @@ app.get('/api/admin/research/usage', async (c) => {
     },
     outcomes: outcomes.results || [],
     users: users.results || [],
-    institutions: institutions.results || []
+    institutions: institutionScopes
   });
 });
 

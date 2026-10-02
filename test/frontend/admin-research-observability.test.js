@@ -76,4 +76,13 @@ describe('Research admin observability', () => {
     expect(admin).toContain("setResearchUsageScopeState('pause')");
     expect(admin).toContain("setResearchUsageScopeState('resume')");
   });
+
+  it('shows institution daily shared-pool usage separately from period request aggregates', () => {
+    expect(admin).toContain('Bugünkü ortak havuz');
+    expect(admin).toContain('B2C kullanıcı scope');
+    expect(admin).toContain('scope.used_today');
+    expect(admin).toContain('scope.daily_limit');
+    expect(admin).toContain('scope.percent_used_today');
+    expect(admin).toContain('scope.state');
+  });
 });
