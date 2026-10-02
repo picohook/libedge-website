@@ -189,26 +189,26 @@ requireResearchLogin().then((authorized) => {
         document.querySelectorAll('[data-live-evidence]').forEach((node) => node.remove());
     }
 
-    function hideFixtureResult() {
+    function removeFixtureResult() {
         document.querySelectorAll('.assistant-answer-card > :not([data-live-assistant-content])').forEach((node) => {
-            node.hidden = true;
+            node.remove();
         });
         document.querySelectorAll('#assistantSources > .source-card:not([data-live-evidence]), #assistantSources > .sources-intro').forEach((node) => {
-            node.hidden = true;
+            node.remove();
         });
         const overview = document.querySelector('.evidence-overview');
         if (overview) overview.hidden = true;
-        const sourceCount = sourcePanel?.querySelector('.source-count');
-        if (sourceCount) sourceCount.textContent = '0';
     }
 
     function resetLiveResult() {
         clearLiveContent();
-        hideFixtureResult();
+        removeFixtureResult();
+        const sourceCount = sourcePanel?.querySelector('.source-count');
+        if (sourceCount) sourceCount.textContent = '0';
     }
 
     function setInitialLiveState() {
-        hideFixtureResult();
+        resetLiveResult();
         answerCard?.classList.add('is-unavailable');
         if (answerCard) answerCard.style.opacity = '.58';
         setStatus({
@@ -317,7 +317,7 @@ requireResearchLogin().then((authorized) => {
             sourcePanelBody?.appendChild(card);
         });
 
-        hideFixtureResult();
+        removeFixtureResult();
         const overview = document.querySelector('.evidence-overview');
         if (overview) {
             overview.hidden = false;
