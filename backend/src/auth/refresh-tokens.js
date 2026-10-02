@@ -60,6 +60,10 @@ export async function createLoginRefreshToken(c, db, userId, secret) {
   try {
     return await createRefreshToken(c, db, userId, secret);
   } catch (err) {
+    if (isStrictRateLimitEnv(c.env)) {
+      console.error('DB-backed refresh token creation failed in strict runtime; refusing stateless fallback', err);
+      throw err;
+    }
     console.error('DB-backed refresh token creation failed; falling back to stateless refresh token', err);
     const now = Math.floor(Date.now() / 1000);
     const payload = {

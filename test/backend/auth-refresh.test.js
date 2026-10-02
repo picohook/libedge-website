@@ -188,7 +188,7 @@ describe('auth refresh token rotation', () => {
     expect(rotatedAfterReplayRes.status).toBe(401);
   });
 
-  it('refreshes stateless fallback tokens without touching unavailable refresh schema', async () => {
+  it('rejects legacy stateless refresh tokens in strict staging runtime', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const user = {
       id: 42,
@@ -227,9 +227,8 @@ describe('auth refresh token rotation', () => {
         }
       );
 
-      expect(res.status).toBe(200);
-      const rotatedRefreshToken = getRefreshTokenFromResponse(res);
-      expect(rotatedRefreshToken).not.toBe(statelessRefreshToken);
+      expect(res.status).toBe(401);
+      expect(await res.json()).toMatchObject({ error: 'Refresh oturumu doğrulanamadı. Lütfen tekrar giriş yapın.' });
     } finally {
       consoleError.mockRestore();
     }
