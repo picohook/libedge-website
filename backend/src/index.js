@@ -2733,9 +2733,7 @@ app.get('/api/admin/research/usage', async (c) => {
              COALESCE(SUM(e.llm_cost_usd), 0) AS llm_cost_usd,
              COALESCE(SUM(e.discovery_cost_usd), 0) AS discovery_cost_usd,
              COALESCE(SUM(e.input_tokens), 0) AS input_tokens,
-             COALESCE(SUM(e.output_tokens), 0) AS output_tokens,
-             COALESCE(SUM(e.llm_cost_usd), 0) AS llm_cost_usd,
-             COALESCE(SUM(e.discovery_cost_usd), 0) AS discovery_cost_usd
+             COALESCE(SUM(e.output_tokens), 0) AS output_tokens
       FROM research_usage_events e
       WHERE ${predicate}
     `).bind(...params).first(),
