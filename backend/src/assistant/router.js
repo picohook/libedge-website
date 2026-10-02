@@ -7,7 +7,8 @@ import { recordAssistantOutcome } from './telemetry.js';
 import { createSupportCheck } from './support-check-client.js';
 import { preflightSupportCheckInvocation } from './support-check-invocation-budget.js';
 import { supportCheckRuntimePause } from './support-check-runtime-pause.js';
-import { reserveAssistantUsageScopeRequest } from './usage-scope-quota.js';
+import { reserveAssistantUsageScopeRequest, resolveAssistantUsageScope } from './usage-scope-quota.js';
+import { assistantUsageScopeState } from './usage-scope-state.js';
 import { requireResearchAccess } from '../research/entitlement.js';
 import { recordResearchUsageEvent } from '../research/usage-events.js';
 import { positiveInt } from '../research/discover.js';
@@ -75,6 +76,20 @@ app.post('/api/assistant/ask', async (c) => {
   if (quota.isLimited) {
     await recordOperationalOutcome(c.env, auth.user, { code: 'ASSISTANT_RATE_LIMITED', durationMs: Date.now() - startedAt });
     return c.json({ ok: false, error: 'Assistant kullanım limiti aşıldı', code: 'ASSISTANT_RATE_LIMITED', claims: [], evidence: [] }, 429);
+  }
+
+  const usageScope = resolveAssistantUsageScope(auth.user, access.entitlementSource);
+  const usageScopeState = await assistantUsageScopeState(c.env, usageScope);
+  if (!usageScopeState.active) {
+    await recordOperationalOutcome(c.env, auth.user, { code: usageScopeState.reason, durationMs: Date.now() - startedAt });
+    const paused = usageScopeState.reason === 'ASSISTANT_USAGE_SCOPE_PAUSED';
+    return c.json({
+      ok: false,
+      error: paused ? 'Assistant bu hesap için geçici olarak duraklatıldı' : 'Assistant kullanım durumu şu anda doğrulanamıyor',
+      code: usageScopeState.reason,
+      claims: [],
+      evidence: []
+    }, paused ? 403 : 503);
   }
 
   const usageScopeQuota = await reserveAssistantUsageScopeRequest(c.env, auth.user, access.entitlementSource);
