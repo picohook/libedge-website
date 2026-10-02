@@ -19,6 +19,7 @@ on:
         options:
           - list
           - inspect-provisioning
+          - provision-r2-pilot
           - apply
 
 concurrency:
@@ -136,6 +137,90 @@ jobs:
                 AND (s.end_date IS NULL OR date(s.end_date) >= date('now'))
               GROUP BY u.institution_id
               ORDER BY u.institution_id;
+          "
+
+
+  provision-r2-production-pilot:
+    name: Provision R2 production Research institution limits
+    if: inputs.environment == 'production' && inputs.operation == 'provision-r2-pilot'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
+      - name: Install repository dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Preflight exact R2 institutions and existing Research subscriptions
+        run: |
+          set -euo pipefail
+          npx --no-install wrangler d1 execute libedge-db-production --remote --env production --command "
+            SELECT id, name FROM institutions WHERE id IN (1,188) ORDER BY id;
+            SELECT id, institution_id, product_slug, status, start_date, end_date, seat_limit
+              FROM institution_subscriptions
+              WHERE institution_id IN (1,188) AND product_slug='research'
+              ORDER BY institution_id, id;
+            SELECT sub.institution_id, COUNT(seat.id) AS assigned_seats
+              FROM institution_subscriptions sub
+              LEFT JOIN institution_subscription_seats seat ON seat.institution_subscription_id=sub.id
+              WHERE sub.institution_id IN (1,188) AND sub.product_slug='research'
+              GROUP BY sub.institution_id ORDER BY sub.institution_id;
+          "
+
+      - name: Capture production rollback bookmark
+        run: npx --no-install wrangler d1 time-travel info libedge-db-production --env production
+
+      - name: Provision R2 institution Research limits
+        run: |
+          set -euo pipefail
+          npx --no-install wrangler d1 execute libedge-db-production --remote --env production --command "
+            INSERT INTO institution_subscriptions
+              (institution_id, product_slug, status, access_type, start_date, seat_limit)
+            SELECT 1, 'research', 'active', 'internal', CURRENT_TIMESTAMP, 10
+            WHERE NOT EXISTS (
+              SELECT 1 FROM institution_subscriptions
+              WHERE institution_id=1 AND product_slug='research'
+            );
+            INSERT INTO institution_subscriptions
+              (institution_id, product_slug, status, access_type, start_date, seat_limit)
+            SELECT 188, 'research', 'active', 'internal', CURRENT_TIMESTAMP, 90
+            WHERE NOT EXISTS (
+              SELECT 1 FROM institution_subscriptions
+              WHERE institution_id=188 AND product_slug='research'
+            );
+            UPDATE institution_subscriptions
+              SET status='active', seat_limit=10
+              WHERE institution_id=1 AND product_slug='research';
+            UPDATE institution_subscriptions
+              SET status='active', seat_limit=90
+              WHERE institution_id=188 AND product_slug='research';
+          "
+
+      - name: Verify exact R2 provisioning
+        run: |
+          set -euo pipefail
+          npx --no-install wrangler d1 execute libedge-db-production --remote --env production --command "
+            SELECT id, institution_id, product_slug, status, start_date, end_date, seat_limit
+              FROM institution_subscriptions
+              WHERE institution_id IN (1,188) AND product_slug='research'
+              ORDER BY institution_id, id;
+            SELECT sub.institution_id, sub.seat_limit, COUNT(seat.id) AS assigned_seats
+              FROM institution_subscriptions sub
+              LEFT JOIN institution_subscription_seats seat ON seat.institution_subscription_id=sub.id
+              WHERE sub.institution_id IN (1,188) AND sub.product_slug='research'
+              GROUP BY sub.id, sub.institution_id, sub.seat_limit
+              ORDER BY sub.institution_id;
+            SELECT COUNT(*) AS invalid_r2_rows
+              FROM institution_subscriptions
+              WHERE product_slug='research' AND institution_id IN (1,188)
+                AND NOT (
+                  status='active'
+                  AND ((institution_id=1 AND seat_limit=10) OR (institution_id=188 AND seat_limit=90))
+                );
           "
 
 
