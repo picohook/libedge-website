@@ -1,7 +1,7 @@
 import { francAll } from 'franc-min';
 
 const MIN_DETECTION_CHARS = 120;
-const MIN_SCORE_MARGIN = 0.05;
+const MIN_SCORE_MARGIN = 0.02;
 
 function normalizedProviderLanguage(value) {
   return String(value || '').trim().toLowerCase();
