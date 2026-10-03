@@ -68,6 +68,12 @@ const CODE_MAP = Object.freeze({
     message: 'Model katmanı yanıt veremedi. Kaynaklar korunuyor; desteklenmeyen bir yanıt gösterilmiyor.', messageEn: 'The model layer could not respond. The sources are preserved; an unsupported response is not shown.',
     tone: 'error'
   },
+  NO_AUTHORIZED_EVIDENCE: {
+    state: ASSISTANT_UI_STATES.EMPTY_RESULT,
+    title: 'Bu arama için uygun akademik kanıt bulunamadı', titleEn: 'No eligible academic evidence was found for this search',
+    message: 'Kaynak araması tamamlandı ancak güvenli yanıt üretiminde kullanılabilecek yetkili ve uygun bir kanıt kaydı bulunamadı.', messageEn: 'The source search completed, but no authorized and eligible evidence record was available for safe response generation.',
+    tone: 'notice'
+  },
   NO_SUPPORTABLE_CLAIMS: {
     state: ASSISTANT_UI_STATES.EMPTY_RESULT,
     title: 'Kaynaklar tarandı, yeterince desteklenebilir bulgu üretilemedi', titleEn: 'Sources searched, no sufficiently supportable finding was generated',

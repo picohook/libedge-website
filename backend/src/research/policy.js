@@ -11,6 +11,12 @@ export function isSupplementaryMaterialWork(work) {
   return /^10\.1021\/.+\.s\d+$/.test(doi);
 }
 
+export function canonicalParentDoiForSupplementaryWork(work) {
+  const doi = String(work?.doi || '').trim().toLowerCase();
+  const match = doi.match(/^(10\.1021\/.+)\.s\d+$/);
+  return match ? match[1] : null;
+}
+
 export function canonicalResearchWorks(works) {
   return Array.isArray(works) ? works.filter((work) => !isSupplementaryMaterialWork(work)) : [];
 }
