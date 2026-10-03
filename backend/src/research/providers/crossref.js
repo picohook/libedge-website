@@ -70,12 +70,10 @@ export function normalizeCrossrefMessage(message, retrievedAt = new Date().toISO
   };
 }
 
-export function crossrefMessageToResearchWork(message, retrievedAt = new Date().toISOString()) {
-  const normalized = normalizeCrossrefMessage(message, retrievedAt);
-  if (!normalized) return null;
-
+export function crossrefNormalizedToResearchWork(normalized) {
+  if (!normalized?.doi || !normalized?.title) return null;
   const count = normalized.citationObservation?.count ?? null;
-  const work = {
+  return parseResearchWork({
     id: `doi:${normalized.doi}`,
     title: normalized.title,
     authors: normalized.authors,
@@ -91,28 +89,24 @@ export function crossrefMessageToResearchWork(message, retrievedAt = new Date().
       level: normalized.abstract ? 'ABSTRACT' : 'METADATA_ONLY',
       sources: [normalized.evidenceSource]
     },
-    openAccess: {
-      isOa: null,
-      status: null,
-      url: null,
-      source: null
-    },
+    openAccess: { isOa: null, status: null, url: null, source: null },
     licenses: normalized.licenses,
     citations: {
       preferredCount: count,
       preferredSource: count == null ? null : 'crossref',
       observations: normalized.citationObservation ? [normalized.citationObservation] : []
     },
-    urls: {
-      doi: normalized.urls.doi,
-      publisher: normalized.urls.publisher,
-      openAccess: null
-    },
+    urls: { doi: normalized.urls.doi, publisher: normalized.urls.publisher, openAccess: null },
     flags: { retracted: null },
     provenance: [normalized.provenance]
-  };
+  });
+}
 
-  return parseResearchWork(work);
+export function crossrefMessageToResearchWork(message, retrievedAt = new Date().toISOString()) {
+  const normalized = normalizeCrossrefMessage(message, retrievedAt);
+  if (!normalized) return null;
+
+  return crossrefNormalizedToResearchWork(normalized);
 }
 
 function providerError(status, code) {
