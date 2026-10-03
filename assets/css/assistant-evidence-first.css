@@ -1,6 +1,6 @@
 .evidence-overview {
     display: grid;
-    grid-template-columns: repeat(4, minmax(115px, 1fr)) minmax(260px, 1.65fr);
+    grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
     gap: 10px;
     margin: 0 0 14px;
     padding: 12px;
