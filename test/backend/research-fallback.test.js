@@ -195,6 +195,13 @@ describe('research provider fallback and budget', () => {
     expect(new URL(String(providerFetch.mock.calls[0][0])).searchParams.get('per-page')).toBe('50');
   });
 
+  it('keeps lexical cache identities separate across candidate depths', async () => {
+    const { researchCacheKeyFor } = await import('../../backend/src/research/discover.js');
+    const shallow = await researchCacheKeyFor('same query', 10, 'lexical', 10);
+    const deep = await researchCacheKeyFor('same query', 10, 'lexical', 50);
+    expect(shallow).not.toBe(deep);
+  });
+
   it('does not allow Crossref to short-circuit a valid semantic empty response', async () => {
     const providerFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
       meta: { cost_usd: 0.001 },
