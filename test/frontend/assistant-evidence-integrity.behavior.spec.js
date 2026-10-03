@@ -54,6 +54,7 @@ test.afterAll(async () => {
 });
 
 test('fixture evidence is absent and live evidence/counts are rendered in a real browser', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('language', 'en'));
   await page.goto(`${baseURL}/assistant.html`);
   await expect(page.getByText('Sample fixture record representing hydrogen permeability')).toHaveCount(0);
   await expect(page.locator('.evidence-overview')).toHaveCount(0);
