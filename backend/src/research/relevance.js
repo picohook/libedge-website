@@ -1,3 +1,5 @@
+import { englishEvidenceEligibility } from './language-eligibility.js';
+
 const RAW_STOPWORDS = [
   'the','and','for','with','from','that','this','what','which','are','is','of','to','in','on','as','at','by','an','a',
   've','veya','ile','için','bu','şu','nedir','nelerdir','hangi','olarak','açısından','mevcut','bir','de','da','mi','mı','mu','mü','ne','nasıl',
@@ -30,7 +32,7 @@ export function lexicalRelevanceScore(query, work) {
 export function filterRelevantWorks(query, works, { minScore = 0.2, language = null } = {}) {
   if (!Array.isArray(works)) return [];
   return works
-    .filter((work) => !language || String(work?.language || '').trim().toLowerCase() === language)
+    .filter((work) => !language || (language === 'en' ? englishEvidenceEligibility(work).eligible : String(work?.language || '').trim().toLowerCase() === language))
     .map((work, index) => ({ work, index, score: lexicalRelevanceScore(query, work) }))
     .filter((item) => item.score >= minScore)
     .sort((a, b) => b.score - a.score || a.index - b.index)
