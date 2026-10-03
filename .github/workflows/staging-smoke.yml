@@ -38,6 +38,11 @@ on:
         required: true
         type: boolean
         default: true
+      run_sparse_benchmark:
+        description: 'Measure Research v2 sparse benchmark candidates through Assistant'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -136,6 +141,14 @@ jobs:
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
         run: npm run smoke:assistant
+
+      - name: Measure sparse benchmark candidates
+        if: inputs.run_sparse_benchmark
+        env:
+          LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+        run: node scripts/research-sparse-benchmark.mjs
 
       - name: Run frontend browser smoke
         if: inputs.run_frontend
