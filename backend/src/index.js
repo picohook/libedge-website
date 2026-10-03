@@ -2504,8 +2504,15 @@ app.post('/api/admin/research/support-check-limit', async (c) => {
 
   const body = await c.req.json().catch(() => ({}));
   const limit = Number(body.daily_invocation_limit);
-  if (!Number.isSafeInteger(limit) || limit <= 0 || limit > 100000) {
-    return c.json({ error: 'daily_invocation_limit 1-100000 arasında tam sayı olmalıdır' }, 400);
+  const hardCeiling = Number(c.env.RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT);
+  if (!Number.isSafeInteger(limit) || limit <= 0) {
+    return c.json({ error: 'daily_invocation_limit pozitif tam sayı olmalıdır' }, 400);
+  }
+  if (!Number.isSafeInteger(hardCeiling) || hardCeiling <= 0) {
+    return c.json({ error: 'Checker hard ceiling yapılandırması geçersiz' }, 503);
+  }
+  if (limit > hardCeiling) {
+    return c.json({ error: `daily_invocation_limit deploy-time hard ceiling (${hardCeiling}) değerini aşamaz` }, 400);
   }
 
   const before = await supportCheckInvocationLimit(c.env);
