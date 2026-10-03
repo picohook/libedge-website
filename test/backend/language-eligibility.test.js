@@ -20,6 +20,15 @@ describe('Research evidence language eligibility', () => {
   });
 
   it.each([
+    ['fuel-cell durability', 'Proton exchange membrane fuel cells require durable electrocatalysts and ionomers for long-term operation. Accelerated stress testing reveals degradation mechanisms involving platinum dissolution, carbon corrosion, membrane thinning, radical attack, and catalyst layer restructuring under automotive duty cycles.'],
+    ['water electrolysis', 'Water electrolysis using polymer electrolyte membranes enables production of renewable hydrogen at high current density. Recent studies investigate iridium oxide oxygen evolution catalysts, porous transport layers, membrane electrode assemblies, mass transport limitations, efficiency losses, and durability during dynamic operation.'],
+    ['battery materials', 'Lithium sulfur batteries offer high theoretical specific energy but practical performance is limited by polysulfide dissolution, sluggish conversion kinetics, lithium metal instability, and electrolyte consumption. Composite sulfur cathodes and functional separators can improve cycling stability and active material utilization.'],
+    ['anion-exchange chemistry', 'Alkaline anion exchange membranes transport hydroxide ions through hydrated polymer domains. Molecular design strategies include stable cationic groups, sterically protected backbones, controlled crosslinking, phase-separated morphologies, and reduced water swelling while maintaining useful ionic conductivity.']
+  ])('accepts diverse scientific English prose with missing provider metadata: %s', (_topic, abstract) => {
+    expect(englishEvidenceEligibility({ language: null, title: 'Scientific study', abstract }).eligible).toBe(true);
+  });
+
+  it.each([
     ['Spanish', spanishAscii],
     ['French', frenchAscii],
     ['German', germanAscii]
