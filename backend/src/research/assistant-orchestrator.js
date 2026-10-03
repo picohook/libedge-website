@@ -97,6 +97,7 @@ export async function orchestrateResearchAnswer({
 
   const diagnosticTimings = {};
   const diagnosticCosts = { discovery_cost_usd: 0 };
+  let diagnosticRetrieval = { retrieved_count: 0, relevant_count: 0, language_eligible_count: 0, authorized_relevant_count: 0 };
   let stageStartedAt = Date.now();
   let works;
   try {
@@ -113,7 +114,7 @@ export async function orchestrateResearchAnswer({
   const relevantBeforeLanguage = filterRelevantWorks(task, discoveredWorks);
   const languageEligibleWorks = filterEnglishEligibleWorks(discoveredWorks);
   const relevantWorks = filterRelevantWorks(task, languageEligibleWorks);
-  const diagnosticRetrieval = {
+  diagnosticRetrieval = {
     retrieved_count: discoveredWorks.length,
     relevant_count: relevantBeforeLanguage.length,
     language_eligible_count: languageEligibleWorks.length,
@@ -125,7 +126,6 @@ export async function orchestrateResearchAnswer({
       code: 'NO_AUTHORIZED_EVIDENCE',
       diagnostic_timings: diagnosticTimings,
       diagnostic_costs: diagnosticCosts,
-      diagnostic_retrieval: diagnosticRetrieval,
       diagnostic_retrieval: diagnosticRetrieval,
       claims: [],
       evidence: [],
