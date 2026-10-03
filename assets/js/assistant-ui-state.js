@@ -176,3 +176,14 @@ export function loadingStage(index = 0) {
   ];
   return stages[Math.max(0, Math.min(index, stages.length - 1))];
 }
+
+
+export function bibliographicYear(item = {}) {
+  const direct = Number(item?.publicationYear);
+  if (Number.isInteger(direct) && direct >= 1000 && direct <= 9999) return String(direct);
+
+  const match = String(item?.publicationDate || '').trim().match(/^(\d{4})(?:-|$)/);
+  if (!match) return '';
+  const year = Number(match[1]);
+  return Number.isInteger(year) && year >= 1000 && year <= 9999 ? match[1] : '';
+}

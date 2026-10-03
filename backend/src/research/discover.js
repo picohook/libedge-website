@@ -1,6 +1,6 @@
 import { checkOpenAlexSoftBudget, recordOpenAlexCost } from './budget.js';
 import { deduplicateResearchWorks, mergeCrossrefEnrichment } from './deduplicate.js';
-import { selectCrossrefEnrichmentCandidates } from './policy.js';
+import { canonicalResearchWorks, selectCrossrefEnrichmentCandidates } from './policy.js';
 import { searchOpenAlex } from './providers/openalex.js';
 import { fetchCrossrefByDoi, searchCrossref } from './providers/crossref.js';
 import { acquireSemanticPacing } from './semantic-pacer.js';
@@ -27,7 +27,7 @@ async function sha256Hex(value) {
 
 export async function researchCacheKeyFor(query, perPage, retrievalSource) {
   if (!CACHE_SOURCES.has(retrievalSource)) throw new Error('RESEARCH_CACHE_SOURCE_INVALID');
-  const hash = await sha256Hex(JSON.stringify({ v: 2, retrievalSource, query: query.toLowerCase(), perPage }));
+  const hash = await sha256Hex(JSON.stringify({ v: 3, retrievalSource, query: query.toLowerCase(), perPage }));
   return `research:cache:v2:${hash}`;
 }
 
@@ -144,7 +144,7 @@ async function crossrefFallback(query, env, perPage, openAlexMeta, crossrefCache
   try {
     const crossref = await searchCrossref(query, env, { perPage });
     await recordResearchMetric(env, 'crossref_search_fallbacks');
-    const response = { results: deduplicateResearchWorks(crossref.results), meta: { partial: true, cached: false, retrievalSource: 'crossref', providers: { openalex: openAlexMeta, crossref: { status: 'ok' } } } };
+    const response = { results: deduplicateResearchWorks(canonicalResearchWorks(crossref.results)), meta: { partial: true, cached: false, retrievalSource: 'crossref', providers: { openalex: openAlexMeta, crossref: { status: 'ok' } } } };
     await writeCache(env, crossrefCacheKey, response);
     return { response };
   } catch (crossrefError) {
@@ -153,7 +153,7 @@ async function crossrefFallback(query, env, perPage, openAlexMeta, crossrefCache
 }
 
 async function buildOpenAlexPayload(openAlex, env, mode, semanticError = null, perPage = 10) {
-  const candidatePool = deduplicateResearchWorks(openAlex.results);
+  const candidatePool = deduplicateResearchWorks(canonicalResearchWorks(openAlex.results));
   const baseResults = candidatePool.slice(0, perPage);
   const crossref = await enrichWithCrossref(baseResults, env);
   const partial = crossref.status === 'unavailable' || crossref.status === 'rate_limited';
