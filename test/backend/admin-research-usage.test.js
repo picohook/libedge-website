@@ -14,7 +14,7 @@ function env() {
       prepared.push(sql);
       return {
         bind: vi.fn(() => ({
-          first: vi.fn(async () => ({ requests: 4, successes: 3, failures: 1, avg_latency_ms: 125 })),
+          first: vi.fn(async () => ({ requests: 4, successes: 2, valid_empty: 1, failures: 1, avg_latency_ms: 125 })),
           all: vi.fn(async () => ({ results: [] }))
         }))
       };
@@ -44,10 +44,11 @@ describe('superadmin Research usage aggregate API', () => {
     expect(body).toMatchObject({
       window_days: 30,
       filters: { user_id: 42, institution_id: 7 },
-      summary: { requests: 4, successes: 3, failures: 1, success_rate: 0.75, failure_rate: 0.25, avg_latency_ms: 125 }
+      summary: { requests: 4, successes: 2, valid_empty: 1, failures: 1, verified_rate: 0.5, valid_empty_rate: 0.25, failure_rate: 0.25, outcome_count_consistent: true, avg_latency_ms: 125 }
     });
     const sql = e.prepared.join('\n');
     expect(sql).toContain('research_usage_events');
+    expect(sql.match(/AS valid_empty/g)?.length).toBeGreaterThanOrEqual(3);
     expect(sql).not.toMatch(/query_text|answer_text|claim_text|evidence_text|prompt_text|payload/i);
   });
 
