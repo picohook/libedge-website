@@ -24,6 +24,10 @@ describe('content-free per-user request drilldown', () => {
     expect(route).toContain('request_id');
     expect(route).toContain('severity');
     expect(route).toContain('stage_latency_ms');
+    expect(route).toContain('retrieval_mode');
+    expect(route).toContain('candidate_depth');
+    expect(route).toContain('abstract_bearing_count');
+    expect(route).toContain('metadata_only_count');
   });
 
   it('renders deterministic severity colors and a per-user drilldown control', () => {
@@ -34,5 +38,9 @@ describe('content-free per-user request drilldown', () => {
     expect(admin).toContain("red: 'bg-red-100 text-red-800'");
     expect(admin).toContain("grey: 'bg-gray-200 text-gray-700'");
     expect(admin).toContain('90 gün retention • request detayları en fazla 30 gün');
+    expect(admin).toContain('<th>Retrieval</th>');
+    expect(admin).toContain('<th>Evidence depth</th>');
+    expect(admin).toContain("request.retrieval?.mode");
+    expect(admin).toContain("request.retrieval?.candidate_depth");
   });
 });

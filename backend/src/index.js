@@ -3057,7 +3057,9 @@ app.get('/api/admin/research/usage/requests', async (c) => {
   const rows = await c.env.DB.prepare(`
     SELECT e.id, e.created_at, e.operation, e.outcome_code, e.latency_ms,
            e.discover_ms, e.evidence_pack_ms, e.model_ms, e.grounding_ms,
-           e.input_tokens, e.output_tokens
+           e.input_tokens, e.output_tokens,
+           e.retrieval_mode, e.candidate_depth, e.retrieved_count,
+           e.authorized_relevant_count, e.abstract_bearing_count, e.metadata_only_count
     FROM research_usage_events e
     WHERE e.user_id = ? AND e.created_at >= datetime('now', ?)
     ORDER BY e.created_at DESC, e.id DESC
@@ -3095,6 +3097,14 @@ app.get('/api/admin/research/usage/requests', async (c) => {
         evidence: row.evidence_pack_ms,
         model: row.model_ms,
         grounding: row.grounding_ms
+      },
+      retrieval: {
+        mode: row.retrieval_mode,
+        candidate_depth: row.candidate_depth,
+        retrieved_count: row.retrieved_count,
+        authorized_relevant_count: row.authorized_relevant_count,
+        abstract_bearing_count: row.abstract_bearing_count,
+        metadata_only_count: row.metadata_only_count
       },
       input_tokens: row.input_tokens,
       output_tokens: row.output_tokens
