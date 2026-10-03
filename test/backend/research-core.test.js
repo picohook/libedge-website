@@ -3,7 +3,7 @@ import { normalizeDoi, reconstructOpenAlexAbstract, stripCrossrefMarkup } from '
 import { normalizeOpenAlexWork, extractOpenAlexTelemetry } from '../../backend/src/research/providers/openalex.js';
 import { normalizeCrossrefMessage } from '../../backend/src/research/providers/crossref.js';
 import { deduplicateResearchWorks, mergeCrossrefEnrichment } from '../../backend/src/research/deduplicate.js';
-import { needsCrossrefEnrichment, selectCrossrefEnrichmentCandidates } from '../../backend/src/research/policy.js';
+import { canonicalResearchWorks, isSupplementaryMaterialWork, needsCrossrefEnrichment, selectCrossrefEnrichmentCandidates } from '../../backend/src/research/policy.js';
 import { parseResearchWork } from '../../backend/src/research/research-work.js';
 
 describe('research normalization', () => {
@@ -48,6 +48,21 @@ describe('ResearchWork schema', () => {
     };
     expect(parseResearchWork(future).identifiers.pmcid).toBe('PMC123');
     expect(parseResearchWork(future).identifiers.arxiv).toBe('2609.00001');
+  });
+});
+
+describe('canonical research evidence policy', () => {
+  it('rejects ACS Supporting Information DOI records without rejecting the parent article', () => {
+    expect(isSupplementaryMaterialWork({ doi: '10.1021/acs.macromol.7b00401.s001', type: 'article' })).toBe(true);
+    expect(isSupplementaryMaterialWork({ doi: '10.1021/acs.macromol.7b00401', type: 'article' })).toBe(false);
+  });
+
+  it('rejects provider-declared supplementary records and retains canonical article records', () => {
+    const works = [
+      { id: 'supp', doi: '10.1000/supp', type: 'supplementary-material' },
+      { id: 'article', doi: '10.1000/article', type: 'journal-article' }
+    ];
+    expect(canonicalResearchWorks(works).map((work) => work.id)).toEqual(['article']);
   });
 });
 
