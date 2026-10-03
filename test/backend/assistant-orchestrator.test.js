@@ -50,6 +50,8 @@ describe('assistant orchestration boundary', () => {
     expect(result).toMatchObject({ ok: true, code: 'NO_AUTHORIZED_EVIDENCE', claims: [], evidence: [] });
     expect(generateClaims).not.toHaveBeenCalled();
     expect(result.diagnostic_retrieval).toEqual({
+      retrieval_mode: 'unknown',
+      candidate_depth: 1,
       retrieved_count: 1,
       relevant_count: 0,
       language_eligible_count: 0,
