@@ -8,7 +8,7 @@ const admin = fs.readFileSync('admin.html', 'utf8');
 describe('content-free per-user request drilldown', () => {
   it('keeps request-level retention bounded to 30 days', () => {
     expect(usage).toContain('const RETENTION_DAYS = 30');
-    expect(usage).toContain("DELETE FROM research_usage_events WHERE created_at < datetime('now', '-\${RETENTION_DAYS} days')");
+    expect(usage).toContain("DELETE FROM research_usage_events WHERE created_at < datetime('now', '-${RETENTION_DAYS} days')");
   });
 
   it('keeps the endpoint superadmin-only and response allowlisted', () => {
