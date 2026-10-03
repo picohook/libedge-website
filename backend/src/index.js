@@ -2532,7 +2532,7 @@ app.post('/api/admin/research/retrieval-controls', async (c) => {
     return c.json({ error: 'Retrieval kontrolü doğrulanamadı' }, 503);
   }
 
-  await recordAdminAction(c.env, {
+  await recordAdminAction(c, c.env.DB, {
     actor: auth.user,
     entityType: 'research_retrieval_controls',
     entityId: 'staging',
