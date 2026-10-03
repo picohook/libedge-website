@@ -320,10 +320,6 @@
 .source-badges { display: flex; gap: 5px; flex-wrap: wrap; }
 .source-badges span { padding: 4px 7px; border-radius: 999px; background: #ecfdf5; color: #047857; font-size: .62rem; font-weight: 700; }
 .source-action { padding: 0; background: transparent; color: #2563eb; font-size: .7rem; font-weight: 700; }
-.live-source-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
-.live-source-links a { color: #2563eb; font-size: .68rem; font-weight: 700; text-decoration: none; }
-.live-source-links a:hover,
-.live-source-links a:focus-visible { text-decoration: underline; outline: none; }
 
 .assistant-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 12000; max-width: min(520px, calc(100% - 32px)); padding: 11px 15px; border-radius: 12px; background: #111827; color: white; box-shadow: 0 16px 40px rgba(15,23,42,.3); font-size: .78rem; text-align: center; }
 
