@@ -64,7 +64,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
   if (sanitizedDiagnosticReason) payload.diagnostic_reason = sanitizedDiagnosticReason;
 
   const cardinality = {};
-  for (const key of ['claim_count', 'accepted_count', 'rejected_count']) {
+  for (const key of ['claim_count', 'accepted_count', 'rejected_count', 'eligible_count', 'checked_count', 'truncated_count', 'support_check_limit']) {
     const value = Number(groundingDiagnostic?.[key]);
     if (Number.isSafeInteger(value) && value >= 0) cardinality[key] = value;
   }
@@ -80,7 +80,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
   const groundingCounts = groundingDiagnostic?.rejection_counts && typeof groundingDiagnostic.rejection_counts === 'object'
     ? groundingDiagnostic.rejection_counts : {};
   const allowedGrounding = [
-    'CLAIM_TEXT_REQUIRED','EVIDENCE_ID_REQUIRED','EVIDENCE_ID_UNKNOWN','SUPPORT_CHECK_REQUIRED','CLAIM_UNSUPPORTED','SUPPORT_CHECK_FAILED',
+    'CLAIM_TEXT_REQUIRED','EVIDENCE_ID_REQUIRED','EVIDENCE_ID_UNKNOWN','SUPPORT_CHECK_REQUIRED','SUPPORT_CHECK_BUDGET_TRUNCATED','CLAIM_UNSUPPORTED','SUPPORT_CHECK_FAILED',
     'SUPPORT_CHECK_FAILED_TIMEOUT','SUPPORT_CHECK_FAILED_BUDGET','SUPPORT_CHECK_FAILED_LANGUAGE',
     'SUPPORT_CHECK_FAILED_PIN_OR_RESPONSE','SUPPORT_CHECK_FAILED_TRANSPORT_OR_OTHER'
   ];
@@ -108,6 +108,11 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     const modelFailureMetrics = payload.code === 'MODEL_ADAPTER_FAILED'
       ? [[modelFailureMetric(payload.error_class), 1]]
       : [];
+    const groundingCardinalityMetrics = [
+      ['assistant_grounding_eligible_claims_total', cardinality.eligible_count],
+      ['assistant_grounding_checked_claims_total', cardinality.checked_count],
+      ['assistant_grounding_truncated_claims_total', cardinality.truncated_count]
+    ];
     const retrievalMetrics = [
       ['assistant_retrieved_works_total', retrievalCardinality.retrieved_count],
       ['assistant_relevant_works_total', retrievalCardinality.relevant_count],
@@ -121,6 +126,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
       [`assistant_outcome_${metricCode}`, 1],
       ...timingMetrics,
       ...retrievalMetrics,
+      ...groundingCardinalityMetrics,
       ...modelFailureMetrics,
       ...groundingMetrics
     ]);
