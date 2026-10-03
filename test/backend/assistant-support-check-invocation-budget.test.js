@@ -111,4 +111,19 @@ describe('supportCheck invocation budget', () => {
     expect(result).toMatchObject({ allowed: true, limit: 4, used: 4 });
   });
 
+  it('fails closed when a runtime limit exceeds the deploy-time hard ceiling', async () => {
+    const store = {
+      get: vi.fn(async (key) => key === SUPPORT_CHECK_INVOCATION_LIMIT_KEY ? '101' : '0'),
+      put: vi.fn(async () => {})
+    };
+    await expect(supportCheckInvocationLimit({
+      RATE_LIMIT_KV: store,
+      RESEARCH_ASSISTANT_SUPPORT_CHECK_DAILY_INVOCATION_LIMIT: '100'
+    })).resolves.toMatchObject({
+      limit: null,
+      source: 'runtime',
+      reason: 'INVOCATION_LIMIT_EXCEEDS_HARD_CEILING'
+    });
+  });
+
 });

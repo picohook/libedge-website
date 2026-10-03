@@ -22,6 +22,8 @@ export async function supportCheckInvocationLimit(env) {
     }
     const runtime = parseLimit(raw);
     if (!runtime) return { limit: null, source: 'runtime', reason: 'INVOCATION_LIMIT_INVALID' };
+    if (!fallback) return { limit: null, source: 'runtime', reason: 'INVOCATION_LIMIT_HARD_CEILING_REQUIRED' };
+    if (runtime > fallback) return { limit: null, source: 'runtime', reason: 'INVOCATION_LIMIT_EXCEEDS_HARD_CEILING' };
     return { limit: runtime, source: 'runtime', reason: null };
   } catch {
     return { limit: fallback, source: fallback ? 'env' : null, reason: fallback ? 'RUNTIME_LIMIT_STORE_READ_FAILED' : 'INVOCATION_LIMIT_REQUIRED' };
