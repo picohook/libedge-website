@@ -66,6 +66,18 @@ function evidenceForAcceptedClaims(evidence = [], acceptedClaims = []) {
   return evidence.filter((item) => citedIds.has(item.evidence_id));
 }
 
+function preferAbstractBearingWorks(works = []) {
+  return [...works].sort((a, b) => Number(Boolean(b?.abstract)) - Number(Boolean(a?.abstract)));
+}
+
+function evidenceDepthDiagnostic(works = []) {
+  const abstractBearing = works.filter((work) => Boolean(String(work?.abstract || '').trim())).length;
+  return {
+    abstract_bearing_count: abstractBearing,
+    metadata_only_count: Math.max(0, works.length - abstractBearing)
+  };
+}
+
 /**
  * Provider-independent orchestration boundary.
  *
@@ -113,12 +125,13 @@ export async function orchestrateResearchAnswer({
   const discoveredWorks = Array.isArray(works) ? works : [];
   const relevantBeforeLanguage = filterRelevantWorks(task, discoveredWorks);
   const languageEligibleWorks = filterEnglishEligibleWorks(discoveredWorks);
-  const relevantWorks = filterRelevantWorks(task, languageEligibleWorks);
+  const relevantWorks = preferAbstractBearingWorks(filterRelevantWorks(task, languageEligibleWorks));
   diagnosticRetrieval = {
     retrieved_count: discoveredWorks.length,
     relevant_count: relevantBeforeLanguage.length,
     language_eligible_count: languageEligibleWorks.length,
-    authorized_relevant_count: relevantWorks.length
+    authorized_relevant_count: relevantWorks.length,
+    ...evidenceDepthDiagnostic(relevantWorks)
   };
   if (!relevantWorks.length) {
     return {
