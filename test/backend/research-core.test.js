@@ -3,7 +3,7 @@ import { normalizeDoi, reconstructOpenAlexAbstract, stripCrossrefMarkup } from '
 import { normalizeOpenAlexWork, extractOpenAlexTelemetry } from '../../backend/src/research/providers/openalex.js';
 import { normalizeCrossrefMessage } from '../../backend/src/research/providers/crossref.js';
 import { deduplicateResearchWorks, mergeCrossrefEnrichment } from '../../backend/src/research/deduplicate.js';
-import { canonicalResearchWorks, isSupplementaryMaterialWork, needsCrossrefEnrichment, selectCrossrefEnrichmentCandidates } from '../../backend/src/research/policy.js';
+import { canonicalParentDoiForSupplementaryWork, canonicalResearchWorks, isSupplementaryMaterialWork, needsCrossrefEnrichment, selectCrossrefEnrichmentCandidates } from '../../backend/src/research/policy.js';
 import { parseResearchWork } from '../../backend/src/research/research-work.js';
 
 describe('research normalization', () => {
@@ -55,6 +55,8 @@ describe('canonical research evidence policy', () => {
   it('rejects ACS Supporting Information DOI records without rejecting the parent article', () => {
     expect(isSupplementaryMaterialWork({ doi: '10.1021/acs.macromol.7b00401.s001', type: 'article' })).toBe(true);
     expect(isSupplementaryMaterialWork({ doi: '10.1021/acs.macromol.7b00401', type: 'article' })).toBe(false);
+    expect(canonicalParentDoiForSupplementaryWork({ doi: '10.1021/acs.macromol.7b00401.s001' })).toBe('10.1021/acs.macromol.7b00401');
+    expect(canonicalParentDoiForSupplementaryWork({ doi: '10.1000/example.s001' })).toBeNull();
   });
 
   it('rejects provider-declared supplementary records and retains canonical article records', () => {
