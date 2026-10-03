@@ -19,6 +19,10 @@ test.beforeAll(async () => {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({
         ok: true, code: 'OK', evidence_pack_id: 'browser-regression',
+        research_summary: {
+          literature: { retrieved_count: 17, authorized_relevant_count: 6, abstract_bearing_count: 4, metadata_only_count: 2 },
+          verification: { checked_count: 3, verified_count: 1, truncated_count: 2 }
+        },
         claims: [{ text: 'Live supported finding', evidence_ids: ['live-e1'] }],
         evidence: [{
           evidence_id: 'live-e1',
@@ -67,7 +71,19 @@ test('fixture evidence is absent and live evidence/counts are rendered in a real
   await expect(page.getByText('Live evidence title')).toBeVisible();
   await expect(page.locator('#assistantSources [data-live-evidence]')).toHaveCount(1);
   await expect(page.locator('.source-count')).toHaveText('1');
-  await expect(page.locator('[data-live-evidence-overview] strong').first()).toHaveText('1');
+  const summary = page.locator('[data-live-evidence-overview][data-research-summary="true"]');
+  await expect(summary).toBeVisible();
+  await expect(summary.getByText('17')).toBeVisible();
+  await expect(summary.getByText('works found')).toBeVisible();
+  await expect(summary.getByText('6')).toBeVisible();
+  await expect(summary.getByText('eligible evidence records')).toBeVisible();
+  await expect(summary.getByText('4')).toBeVisible();
+  await expect(summary.getByText('records with abstracts')).toBeVisible();
+  await expect(summary.getByText('metadata-only records')).toBeVisible();
+  await expect(summary.getByText('claims checked')).toBeVisible();
+  await expect(summary.getByText('verified findings')).toBeVisible();
+  await expect(summary.getByText('not checked due to request limit')).toBeVisible();
+  await expect(summary.getByText('sources reviewed')).toHaveCount(0);
   await expect(page.getByText('Sample fixture record representing hydrogen permeability')).toHaveCount(0);
   await expect(page.locator('[data-live-evidence] [data-evidence-level="ABSTRACT"]')).toHaveText('ABSTRACT');
   await expect(page.locator('[data-live-evidence] .live-source-links a')).toHaveCount(3);
