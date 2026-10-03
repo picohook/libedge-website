@@ -40,6 +40,29 @@ function normalizeQuery(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
+function safeCount(value) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number >= 0 ? number : 0;
+}
+
+export function publicResearchSummary(result = {}) {
+  const retrieval = result?.diagnostic_retrieval || {};
+  const grounding = result?.diagnostic_grounding || {};
+  return {
+    literature: {
+      retrieved_count: safeCount(retrieval.retrieved_count),
+      authorized_relevant_count: safeCount(retrieval.authorized_relevant_count),
+      abstract_bearing_count: safeCount(retrieval.abstract_bearing_count),
+      metadata_only_count: safeCount(retrieval.metadata_only_count)
+    },
+    verification: {
+      checked_count: safeCount(grounding.checked_count),
+      verified_count: Array.isArray(result?.claims) ? result.claims.length : 0,
+      truncated_count: safeCount(grounding.truncated_count)
+    }
+  };
+}
+
 export function providerGateFromEnv(env) {
   return {
     status: env?.RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS === 'PASS' ? 'PASS' : 'UNVERIFIED'
@@ -130,6 +153,7 @@ app.post('/api/assistant/ask', async (c) => {
   });
 
   await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding, retrievalDiagnostic: result?.diagnostic_retrieval, stageTimings: result?.diagnostic_timings, usage: result?.diagnostic_usage, costs: result?.diagnostic_costs });
+  result.research_summary = publicResearchSummary(result);
   if (result?.code === 'OK') {
     await saveAssistantHistory(c.env, auth.user?.user_id, query, result);
   }

@@ -37,8 +37,12 @@ describe('Assistant fail-closed UI contract', () => {
     expect(source).toContain("const overview = document.querySelector('.evidence-overview')");
     expect(source).toContain('if (overview) overview.remove()');
     expect(source).toContain("overview.dataset.liveEvidenceOverview = 'true'");
-    expect(source).toContain("sourceMetricValue.textContent = String(result.evidence.length)");
-    expect(source).toContain("findingMetricValue.textContent = String(result.claims.length)");
+    expect(source).toContain("overview.dataset.researchSummary = 'true'");
+    expect(source).toContain("appendMetric(literature.retrieved_count");
+    expect(source).toContain("appendMetric(verification.checked_count");
+    expect(source).toContain("appendMetric(verification.verified_count");
+    expect(source).toContain("appendMetric(result.evidence.length, 'kullanılan kanıt', 'evidence cited')");
+    expect(source).not.toContain("'incelenen kaynak', 'sources reviewed'");
     expect(source).not.toContain('overview.hidden = true');
     expect(source).not.toContain('overview.hidden = false');
   });

@@ -364,19 +364,33 @@ requireResearchLogin().then((authorized) => {
         const overview = document.createElement('div');
         overview.className = 'evidence-overview';
         overview.dataset.liveEvidenceOverview = 'true';
-        const sourceMetric = document.createElement('div');
-        const sourceMetricValue = document.createElement('strong');
-        sourceMetricValue.textContent = String(result.evidence.length);
-        const sourceMetricLabel = document.createElement('span');
-        markTranslatable(sourceMetricLabel, 'incelenen kaynak', 'sources reviewed');
-        sourceMetric.append(sourceMetricValue, sourceMetricLabel);
-        const findingMetric = document.createElement('div');
-        const findingMetricValue = document.createElement('strong');
-        findingMetricValue.textContent = String(result.claims.length);
-        const findingMetricLabel = document.createElement('span');
-        markTranslatable(findingMetricLabel, 'desteklenen bulgu', 'supported findings');
-        findingMetric.append(findingMetricValue, findingMetricLabel);
-        overview.append(sourceMetric, findingMetric);
+        const appendMetric = (value, trLabel, enLabel) => {
+            const metric = document.createElement('div');
+            const metricValue = document.createElement('strong');
+            metricValue.textContent = String(value);
+            const metricLabel = document.createElement('span');
+            markTranslatable(metricLabel, trLabel, enLabel);
+            metric.append(metricValue, metricLabel);
+            overview.appendChild(metric);
+        };
+        const summary = result.research_summary;
+        const literature = summary?.literature;
+        const verification = summary?.verification;
+        if (literature && verification) {
+            overview.dataset.researchSummary = 'true';
+            appendMetric(literature.retrieved_count, 'bulunan çalışma', 'works found');
+            appendMetric(literature.authorized_relevant_count, 'uygun kanıt kaydı', 'eligible evidence records');
+            appendMetric(literature.abstract_bearing_count, 'özet içeren kayıt', 'records with abstracts');
+            appendMetric(literature.metadata_only_count, 'yalnız metadata', 'metadata-only records');
+            appendMetric(verification.checked_count, 'kontrol edilen iddia', 'claims checked');
+            appendMetric(verification.verified_count, 'doğrulanan bulgu', 'verified findings');
+            if (Number(verification.truncated_count) > 0) {
+                appendMetric(verification.truncated_count, 'sınır nedeniyle kontrol edilmedi', 'not checked due to request limit');
+            }
+        } else {
+            appendMetric(result.evidence.length, 'kullanılan kanıt', 'evidence cited');
+            appendMetric(result.claims.length, 'doğrulanan bulgu', 'verified findings');
+        }
         answerCard.appendChild(overview);
         answerCard.classList.remove('is-unavailable');
         answerCard.style.opacity = '1';
