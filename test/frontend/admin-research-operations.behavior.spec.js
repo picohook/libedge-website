@@ -29,7 +29,11 @@ test.afterAll(async () => {
 });
 
 test('Research operations center renders outcome, pipeline and account controls in a real browser', async ({ page }) => {
+  await page.route('**/api/user/profile', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 1, role: 'super_admin', full_name: 'Test Super Admin', email: 'admin@example.test' }) });
+  });
   await page.goto(`${baseURL}/admin.html`);
+  await expect(page.locator('#authGate')).toBeVisible();
   const research = page.locator('#tab-research');
   await research.evaluate((el) => el.classList.remove('hidden'));
 
