@@ -1,6 +1,5 @@
 ﻿<!DOCTYPE html>
 <html lang="tr">
-<!-- test staging -->
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
@@ -26,7 +25,7 @@
 <main class="hero-slider-container">
     <div id="hero-slider" class="hero-slider">
         <!-- SLIDE 1: Mevcut İçerik (Video) -->
-        <div class="hero-slide active">
+        <div class="hero-slide active" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);">
             <video class="hero-video" src="assets/videos/library.mp4" autoplay muted loop playsinline aria-hidden="true" role="presentation"></video>
             <div class="hero-content">
                 <h1 class="hero-header translatable"><span class="font-normal">Bilginin Gücünü Keşfedin</span></h1>
@@ -675,7 +674,7 @@
                 <div>
                     <h3 class="text-xl font-semibold text-primary mb-2 translatable" data-en="Access and Integration Support">Erişim ve Entegrasyon Desteği</h3>
                     <p class="text-sm translatable">
-                        Kaynakların kurumunuzun sistemlerine entegrasyonu, uzaktan erişim ayarları ve teknik sorun giderme konularında destek sağlıyoruz.
+                        Kaynakların kurumunuzun sistemlerine entegrasyonu, erişim ayarları ve teknik sorun giderme konularında destek sağlıyoruz.
                     </p>
                 </div>
                 <div>
@@ -698,7 +697,7 @@
         <p class="text-gray-600 italic mb-4 translatable">
           "LibEdge ile çalışmak işlerimizi çok kolaylaştırdı. Hızlı yanıtları ve çözüm odaklı yaklaşımları sayesinde ihtiyaçlarımıza en uygun kaynaklara ulaştık."
         </p>
-        <p class="text-right font-semibold text-primary translatable">- Kenan Öztop/Kütüphane Müdürü</p>
+        <p class="text-right font-semibold text-primary translatable" data-en="- Kenan Öztop/Library Director">- Kenan Öztop/Kütüphane Müdürü</p>
         <p class="text-right text-sm text-gray-600 translatable" data-en="Istanbul Okan University">İstanbul Okan Üniversitesi</p>
       </div>
 
@@ -707,7 +706,7 @@
         <p class="text-gray-600 italic mb-4 translatable">
           "Hizmete sunduğu kaynakların yanı sıra yeni ürünlerle ilgili danışmanlık ve yenilikçi çözümler sunma anlayışında olması nedeniyle LibEdge firması ile çalışmak her zaman avantajlı."
         </p>
-        <p class="text-right font-semibold text-primary translatable">- Aykut Bayraktar/Birim Sorumlusu</p>
+        <p class="text-right font-semibold text-primary translatable" data-en="- Aykut Bayraktar/Unit Supervisor">- Aykut Bayraktar/Birim Sorumlusu</p>
         <p class="text-right text-sm text-gray-600 translatable" data-en="Bursa Uludag University">Bursa Uludağ Üniversitesi</p>
       </div>
     </div>
@@ -796,7 +795,7 @@
                     <a href="https://medici.tv/" target="_blank" rel="noopener" class="marquee-item">
                         <img src="assets/images/medicitv_logo.webp" alt="Medici.tv Logo" class="marquee-logo" loading="lazy">
                     </a>
-                    <a href="https://onlinelibrary.wiley.com/" target="_blank" rel="noopener" class="marquee-item">
+                    <a href="https://www.wiley.com/" target="_blank" rel="noopener" class="marquee-item">
                         <img src="assets/images/wiley_logo.svg" alt="Wiley Logo" class="marquee-logo" loading="lazy">
                     </a>
                 </div>
@@ -1031,19 +1030,18 @@
         <span class="sr-only translatable">Back to top</span>
     </button>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Glide.js/3.6.0/glide.min.js"></script>
 <script src="assets/js/url-safety.js?v=20260508a"></script>
 <script src="assets/js/auth.js?v=20260508b"></script>
 <script src="assets/js/header.js?v=20260907a"></script>
 <script src="assets/js/header-controller.js?v=20260420b"></script>
 <script src="assets/js/notifications.js?v=20260420b"></script>
-<script src="assets/js/script.js?v=20260907a"></script>
+<script src="assets/js/script.js?v=20261003a"></script>
 <script src="assets/js/mobile-fixes.js?v=20260422"></script>
     
     <div id="trialModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
-      <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-        <i class="fas fa-times"></i>
+      <button type="button" onclick="closeModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Kapat">
+        <i class="fas fa-times" aria-hidden="true"></i>
       </button>
       <h2 class="text-lg font-semibold mb-4 text-primary translatable" data-en="Trial Access Request Form">Deneme Erişimi Talep Formu</h2>
 <form id="trialForm" class="space-y-4">
@@ -1060,8 +1058,8 @@
   </div>
 <div id="suggestionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
   <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 relative shadow-lg">
-    <button onclick="closeSuggestionModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-      <i class="fas fa-times"></i>
+    <button type="button" onclick="closeSuggestionModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Kapat">
+      <i class="fas fa-times" aria-hidden="true"></i>
     </button>
     <h2 class="text-lg font-semibold mb-4 text-primary translatable" data-en="Product Suggestion Form">Ürün Öneri Formu</h2>
     <form id="suggestionForm" class="space-y-4">
@@ -1079,14 +1077,14 @@
 
 <div id="mapModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
   <div class="bg-white rounded-lg p-4 w-full max-w-4xl h-[80vh] relative flex flex-col">
-    <button onclick="closeMapModal()" class="absolute top-2 right-2 text-gray-700 hover:text-primary z-10">
-      <i class="fas fa-times text-2xl"></i>
+    <button type="button" onclick="closeMapModal()" class="absolute top-2 right-2 text-gray-700 hover:text-primary z-10" aria-label="Kapat">
+      <i class="fas fa-times text-2xl" aria-hidden="true"></i>
     </button>
     <div class="flex-grow w-full">
 <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d6248.890749726966!2d27.166892793579095!3d38.454277999999995!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14bbd7ff8a83562b%3A0xcabe31e138901273!2seOfis%20-%20%C4%B0zmir%20Folkart%20Towers!5e0!3m2!1str!2str!4v1757432797541!5m2!1str!2str" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
     </div>
     <div class="mt-2 text-center text-sm text-gray-600 translatable">
-      LibEdge ||| Daire: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/İzmir
+      LibEdge – Daire: 2617, Adalet, Manas Blv. No: 47/B, 35530 Bayraklı/İzmir
     </div>
   </div>
 </div>
