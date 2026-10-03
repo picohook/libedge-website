@@ -1,8 +1,8 @@
 import { checkOpenAlexSoftBudget, recordOpenAlexCost } from './budget.js';
 import { deduplicateResearchWorks, mergeCrossrefEnrichment } from './deduplicate.js';
-import { canonicalResearchWorks, selectCrossrefEnrichmentCandidates } from './policy.js';
+import { canonicalParentDoiForSupplementaryWork, canonicalResearchWorks, isSupplementaryMaterialWork, selectCrossrefEnrichmentCandidates } from './policy.js';
 import { searchOpenAlex } from './providers/openalex.js';
-import { fetchCrossrefByDoi, searchCrossref } from './providers/crossref.js';
+import { crossrefNormalizedToResearchWork, fetchCrossrefByDoi, searchCrossref } from './providers/crossref.js';
 import { acquireSemanticPacing } from './semantic-pacer.js';
 import { recordResearchMetric, recordResearchMetrics, semanticTelemetryEntries } from './telemetry.js';
 
@@ -27,7 +27,7 @@ async function sha256Hex(value) {
 
 export async function researchCacheKeyFor(query, perPage, retrievalSource) {
   if (!CACHE_SOURCES.has(retrievalSource)) throw new Error('RESEARCH_CACHE_SOURCE_INVALID');
-  const hash = await sha256Hex(JSON.stringify({ v: 3, retrievalSource, query: query.toLowerCase(), perPage }));
+  const hash = await sha256Hex(JSON.stringify({ v: 4, retrievalSource, query: query.toLowerCase(), perPage }));
   return `research:cache:v2:${hash}`;
 }
 
@@ -111,6 +111,30 @@ function semanticFailureMetric(error) {
   return null;
 }
 
+async function recoverCanonicalParentWorks(works, env) {
+  const source = Array.isArray(works) ? works : [];
+  const canonical = canonicalResearchWorks(source);
+  const existingDois = new Set(canonical.map((work) => String(work?.doi || '').trim().toLowerCase()).filter(Boolean));
+  const parentDois = [...new Set(source
+    .filter(isSupplementaryMaterialWork)
+    .map(canonicalParentDoiForSupplementaryWork)
+    .filter((doi) => doi && !existingDois.has(doi)))];
+
+  if (!parentDois.length) return canonical;
+
+  const recovered = [];
+  for (let offset = 0; offset < parentDois.length; offset += 3) {
+    const batch = parentDois.slice(offset, offset + 3);
+    const settled = await Promise.allSettled(batch.map((doi) => fetchCrossrefByDoi(doi, env)));
+    for (const item of settled) {
+      if (item.status !== 'fulfilled' || !item.value) continue;
+      const work = crossrefNormalizedToResearchWork(item.value);
+      if (work && !isSupplementaryMaterialWork(work)) recovered.push(work);
+    }
+  }
+  return deduplicateResearchWorks([...canonical, ...recovered]);
+}
+
 async function enrichWithCrossref(works, env) {
   const max = positiveInt(env.RESEARCH_CROSSREF_MAX_ENRICHMENTS, 10, 20);
   const candidates = selectCrossrefEnrichmentCandidates(works, { max });
@@ -144,7 +168,7 @@ async function crossrefFallback(query, env, perPage, openAlexMeta, crossrefCache
   try {
     const crossref = await searchCrossref(query, env, { perPage });
     await recordResearchMetric(env, 'crossref_search_fallbacks');
-    const response = { results: deduplicateResearchWorks(canonicalResearchWorks(crossref.results)), meta: { partial: true, cached: false, retrievalSource: 'crossref', providers: { openalex: openAlexMeta, crossref: { status: 'ok' } } } };
+    const response = { results: await recoverCanonicalParentWorks(crossref.results, env), meta: { partial: true, cached: false, retrievalSource: 'crossref', providers: { openalex: openAlexMeta, crossref: { status: 'ok' } } } };
     await writeCache(env, crossrefCacheKey, response);
     return { response };
   } catch (crossrefError) {
@@ -153,7 +177,7 @@ async function crossrefFallback(query, env, perPage, openAlexMeta, crossrefCache
 }
 
 async function buildOpenAlexPayload(openAlex, env, mode, semanticError = null, perPage = 10) {
-  const candidatePool = deduplicateResearchWorks(canonicalResearchWorks(openAlex.results));
+  const candidatePool = await recoverCanonicalParentWorks(openAlex.results, env);
   const baseResults = candidatePool.slice(0, perPage);
   const crossref = await enrichWithCrossref(baseResults, env);
   const partial = crossref.status === 'unavailable' || crossref.status === 'rate_limited';
