@@ -455,13 +455,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (nextBtn) nextBtn.addEventListener('click', nextSlide);
         if (autoplayToggle) autoplayToggle.addEventListener('click', toggleAutoplay);
         
+        // Ok tuşları slaytı değiştirir; form alanlarında yazarken imleç hareketini bozmamak için atlanır.
+        // Space tuşu yakalanmaz: odaklı butonların tetiklenmesi ve sayfa kaydırma tarayıcıda kalmalı.
         document.addEventListener('keydown', (e) => {
+            if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            const target = e.target;
+            if (target && (target.isContentEditable || target.closest?.('input, textarea, select, [contenteditable]'))) return;
             if (e.key === 'ArrowLeft') prevSlide();
             if (e.key === 'ArrowRight') nextSlide();
-            if (e.key === ' ' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-                e.preventDefault();
-                toggleAutoplay();
-            }
         });
         
         let touchStartX = 0;
