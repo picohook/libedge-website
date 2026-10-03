@@ -109,3 +109,28 @@ export function mergeCrossrefEnrichment(work, enrichment) {
 
   return parseResearchWork(merged);
 }
+
+
+export function mergeUnpaywallEnrichment(work, enrichment) {
+  if (!work || !enrichment || !work.doi || work.doi !== enrichment.doi) return work;
+  const hasUrl = typeof enrichment.url === 'string' && /^https:\/\//i.test(enrichment.url);
+  const merged = {
+    ...work,
+    openAccess: {
+      isOa: enrichment.isOa ?? work.openAccess.isOa,
+      status: enrichment.status || work.openAccess.status,
+      url: hasUrl ? enrichment.url : work.openAccess.url,
+      source: hasUrl || enrichment.isOa != null || enrichment.status ? 'unpaywall' : work.openAccess.source
+    },
+    urls: {
+      ...work.urls,
+      openAccess: hasUrl ? enrichment.url : work.urls.openAccess
+    },
+    provenance: [
+      ...work.provenance,
+      { provider: 'unpaywall', providerId: enrichment.doi, retrievedAt: enrichment.retrievedAt }
+    ]
+  };
+  // OA location metadata is not evidence content and must never promote evidence.level.
+  return parseResearchWork(merged);
+}

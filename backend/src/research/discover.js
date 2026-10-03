@@ -1,8 +1,9 @@
 import { checkOpenAlexSoftBudget, recordOpenAlexCost } from './budget.js';
-import { deduplicateResearchWorks, mergeCrossrefEnrichment } from './deduplicate.js';
+import { deduplicateResearchWorks, mergeCrossrefEnrichment, mergeUnpaywallEnrichment } from './deduplicate.js';
 import { canonicalParentDoiForSupplementaryWork, canonicalResearchWorks, isSupplementaryMaterialWork, selectCrossrefEnrichmentCandidates } from './policy.js';
 import { searchOpenAlex } from './providers/openalex.js';
 import { crossrefNormalizedToResearchWork, fetchCrossrefByDoi, searchCrossref } from './providers/crossref.js';
+import { fetchUnpaywallByDoi } from './providers/unpaywall.js';
 import { acquireSemanticPacing } from './semantic-pacer.js';
 import { recordResearchMetric, recordResearchMetrics, semanticTelemetryEntries } from './telemetry.js';
 
@@ -160,6 +161,51 @@ async function enrichWithCrossref(works, env) {
   return { results, status };
 }
 
+const UNPAYWALL_CACHE_TTL_SECONDS = 86400 * 7;
+
+async function unpaywallCacheKey(doi) {
+  return `research:unpaywall:v1:${await sha256Hex(String(doi).toLowerCase())}`;
+}
+
+async function fetchCachedUnpaywall(doi, env) {
+  const key = await unpaywallCacheKey(doi);
+  const cached = await readCache(env, key);
+  if (cached) return cached.found ? cached.value : null;
+  const value = await fetchUnpaywallByDoi(doi, env);
+  if (env.RATE_LIMIT_KV) {
+    try {
+      await env.RATE_LIMIT_KV.put(key, JSON.stringify({ found: Boolean(value), value }), { expirationTtl: UNPAYWALL_CACHE_TTL_SECONDS });
+    } catch (error) {
+      console.warn('research Unpaywall cache write failed', error);
+    }
+  }
+  return value;
+}
+
+export async function enrichWithUnpaywall(works, env) {
+  const results = [...(Array.isArray(works) ? works : [])];
+  if (!String(env.UNPAYWALL_CONTACT_EMAIL || '').trim()) return { results, status: 'skipped' };
+  const candidates = results.filter((work) => work?.doi);
+  if (!candidates.length) return { results, status: 'skipped' };
+  const byDoi = new Map(results.map((work, index) => [work?.doi, index]).filter(([doi]) => doi));
+  let status = 'ok';
+  for (let offset = 0; offset < candidates.length; offset += 3) {
+    const batch = candidates.slice(offset, offset + 3);
+    const settled = await Promise.allSettled(batch.map((work) => fetchCachedUnpaywall(work.doi, env)));
+    settled.forEach((item, index) => {
+      const candidate = batch[index];
+      if (item.status === 'fulfilled') {
+        if (!item.value) return;
+        const resultIndex = byDoi.get(candidate.doi);
+        if (resultIndex != null) results[resultIndex] = mergeUnpaywallEnrichment(results[resultIndex], item.value);
+      } else {
+        status = providerStatusFromError(item.reason);
+      }
+    });
+  }
+  return { results, status };
+}
+
 async function crossrefFallback(query, env, perPage, openAlexMeta, crossrefCacheKey) {
   const cached = await readCache(env, crossrefCacheKey);
   if (cached) {
@@ -180,16 +226,17 @@ async function buildOpenAlexPayload(openAlex, env, mode, semanticError = null, p
   const candidatePool = await recoverCanonicalParentWorks(openAlex.results, env);
   const baseResults = candidatePool.slice(0, perPage);
   const crossref = await enrichWithCrossref(baseResults, env);
+  const unpaywall = await enrichWithUnpaywall(crossref.results, env);
   const partial = crossref.status === 'unavailable' || crossref.status === 'rate_limited';
   return {
-    results: crossref.results,
+    results: unpaywall.results,
     candidatePool,
     meta: {
       partial,
       cached: false,
       retrievalSource: mode,
       candidatePoolSize: candidatePool.length,
-      providers: { openalex: openAlexSuccessMeta(mode, openAlex.telemetry, semanticError), crossref: { status: crossref.status } }
+      providers: { openalex: openAlexSuccessMeta(mode, openAlex.telemetry, semanticError), crossref: { status: crossref.status }, unpaywall: { status: unpaywall.status } }
     }
   };
 }
