@@ -6,9 +6,10 @@ const usage = fs.readFileSync('backend/src/research/usage-events.js', 'utf8');
 const admin = fs.readFileSync('admin.html', 'utf8');
 
 describe('content-free per-user request drilldown', () => {
-  it('keeps request-level retention bounded to 30 days', () => {
-    expect(usage).toContain('const RETENTION_DAYS = 30');
+  it('keeps shared usage retention at 90 days while drilldown is bounded to 30 days', () => {
+    expect(usage).toContain('const RETENTION_DAYS = 90');
     expect(usage).toContain("DELETE FROM research_usage_events WHERE created_at < datetime('now', '-${RETENTION_DAYS} days')");
+    expect(backend).toContain("daysRaw >= 1 && daysRaw <= 30");
   });
 
   it('keeps the endpoint superadmin-only and response allowlisted', () => {
@@ -32,6 +33,6 @@ describe('content-free per-user request drilldown', () => {
     expect(admin).toContain("amber: 'bg-amber-100 text-amber-800'");
     expect(admin).toContain("red: 'bg-red-100 text-red-800'");
     expect(admin).toContain("grey: 'bg-gray-200 text-gray-700'");
-    expect(admin).toContain('30 gün request retention');
+    expect(admin).toContain('90 gün retention • request detayları en fazla 30 gün');
   });
 });
