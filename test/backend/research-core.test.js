@@ -5,7 +5,7 @@ import { normalizeCrossrefMessage } from '../../backend/src/research/providers/c
 import { deduplicateResearchWorks, mergeCrossrefEnrichment } from '../../backend/src/research/deduplicate.js';
 import { canonicalParentDoiForSupplementaryWork, canonicalResearchWorks, isSupplementaryMaterialWork, needsCrossrefEnrichment, selectCrossrefEnrichmentCandidates } from '../../backend/src/research/policy.js';
 import { parseResearchWork } from '../../backend/src/research/research-work.js';
-import { recoverCanonicalParentWorks } from '../../backend/src/research/discover.js';
+import { recoverCanonicalParentWorks, selectAssistantCandidates } from '../../backend/src/research/discover.js';
 
 describe('research normalization', () => {
   it('normalizes DOI variants to a canonical lowercase DOI', () => {
@@ -118,6 +118,45 @@ describe('canonical parent recovery', () => {
     });
     expect(calls).toBe(0);
     expect(results).toEqual([parent]);
+  });
+});
+
+
+describe('Assistant bounded candidate selection', () => {
+  const candidate = (id, title, abstract = null, language = 'en') => ({ id, title, abstract, language });
+
+  it('selects the final target from the full eligible candidate pool', () => {
+    const pool = [
+      candidate('weak-1', 'Unrelated polymer processing'),
+      candidate('weak-2', 'General membrane fabrication'),
+      candidate('strong-11', 'Alkaline stability anion exchange membranes degradation mechanisms', 'Evidence-rich abstract.')
+    ];
+    const selection = selectAssistantCandidates('alkaline stability anion exchange membranes', pool, 1);
+    expect(selection.selected.map((work) => work.id)).toEqual(['strong-11']);
+    expect(selection.diagnostics).toEqual({
+      retrievedCount: 3,
+      relevantCount: 1,
+      languageEligibleCount: 3,
+      authorizedRelevantCount: 1
+    });
+  });
+
+  it('never promotes a weaker-relevance abstract merely because evidence depth is higher', () => {
+    const strongerMetadata = candidate('strong', 'Alkaline stability anion exchange membranes', null);
+    const weakerAbstract = candidate('weak', 'Alkaline stability membranes', 'Has an abstract.');
+    const selection = selectAssistantCandidates(
+      'alkaline stability anion exchange membranes',
+      [strongerMetadata, weakerAbstract],
+      2
+    );
+    expect(selection.selected.map((work) => work.id)).toEqual(['strong', 'weak']);
+  });
+
+  it('uses abstract availability only as a tie-break at equal relevance', () => {
+    const metadata = candidate('metadata', 'Hydrogen membranes', null);
+    const abstract = candidate('abstract', 'Hydrogen membranes', 'Evidence text.');
+    const selection = selectAssistantCandidates('hydrogen membranes', [metadata, abstract], 2);
+    expect(selection.selected.map((work) => work.id)).toEqual(['abstract', 'metadata']);
   });
 });
 
