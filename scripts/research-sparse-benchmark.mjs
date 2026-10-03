@@ -74,7 +74,7 @@ async function telemetrySnapshot() {
   });
   if (response.status !== 200) throw new Error(`system health failed: ${response.status}`);
   const body = await response.json();
-  const metrics = body?.checks?.research_telemetry?.snapshot?.metrics;
+  const metrics = body?.research_telemetry?.snapshot?.metrics;
   if (!metrics || typeof metrics !== 'object') throw new Error('research telemetry snapshot unavailable');
   return metrics;
 }
