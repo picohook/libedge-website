@@ -81,11 +81,15 @@ The evidence objects remain limited to the existing EvidencePack snapshot fields
 
 ## Grounding invariant
 
-The `evidence` array may be returned only when the outward response is `ok: true` and all outward claims have passed `validateGroundedClaims()`.
+The `evidence` array may be returned only when the outward response is `ok: true` and every outward claim has individually passed `validateGroundedClaims()`.
 
-A claim's `evidence_ids` must resolve against the returned `evidence` array.
+Claim-local rejections (`CLAIM_UNSUPPORTED`, `CLAIM_TEXT_REQUIRED`, `EVIDENCE_ID_REQUIRED`, or `EVIDENCE_ID_UNKNOWN`) may be omitted when at least one independent claim remains accepted. Rejected claims never become render-ready.
 
-No partially grounded claim set becomes render-ready.
+Verifier/infrastructure failures (`SUPPORT_CHECK_REQUIRED`, `SUPPORT_CHECK_FAILED`, or an unknown grounding rejection class) keep the entire response fail-closed, including when mixed with otherwise accepted or claim-local rejected claims.
+
+If no accepted claim remains, the response is `GROUNDING_REJECTED`.
+
+A successful response returns only evidence referenced by the accepted claims. A claim's `evidence_ids` must resolve against that filtered `evidence` array; evidence referenced exclusively by rejected claims is omitted.
 
 ## Failure responses
 
@@ -111,7 +115,7 @@ The UI may:
 - render each grounded claim;
 - map each claim's `evidence_ids` to source cards;
 - highlight claim/source relationships;
-- show all returned EvidencePack sources in pack order.
+- show the returned, accepted-claim-referenced EvidencePack sources in pack order.
 
 ## Non-goals
 
