@@ -128,6 +128,8 @@ export async function orchestrateResearchAnswer({
   const languageEligibleWorks = filterEnglishEligibleWorks(discoveredWorks);
   const relevantWorks = preferAbstractBearingWorks(filterRelevantWorks(task, languageEligibleWorks));
   diagnosticRetrieval = {
+    retrieval_mode: String(works?.diagnostic_retrieval_mode || 'unknown'),
+    candidate_depth: Number(works?.diagnostic_candidate_depth) || discoveredWorks.length,
     retrieved_count: discoveredWorks.length,
     relevant_count: relevantBeforeLanguage.length,
     language_eligible_count: languageEligibleWorks.length,

@@ -38,7 +38,8 @@ export async function recordResearchUsageEvent(env, {
   outputTokens,
   stageTimings,
   llmCostUsd,
-  discoveryCostUsd
+  discoveryCostUsd,
+  retrievalDiagnostic
 } = {}) {
   if (!env?.DB) return false;
   const uid = positiveId(userId);
@@ -54,14 +55,23 @@ export async function recordResearchUsageEvent(env, {
   const groundingMs = optionalNonNegativeInteger(stageTimings?.grounding_ms);
   const llmCost = optionalNonNegativeNumber(llmCostUsd);
   const discoveryCost = optionalNonNegativeNumber(discoveryCostUsd);
+  const retrievalMode = ['lexical', 'semantic', 'crossref'].includes(retrievalDiagnostic?.retrieval_mode)
+    ? retrievalDiagnostic.retrieval_mode : null;
+  const candidateDepth = optionalNonNegativeInteger(retrievalDiagnostic?.candidate_depth);
+  const retrievedCount = optionalNonNegativeInteger(retrievalDiagnostic?.retrieved_count);
+  const relevantCount = optionalNonNegativeInteger(retrievalDiagnostic?.authorized_relevant_count);
+  const abstractCount = optionalNonNegativeInteger(retrievalDiagnostic?.abstract_bearing_count);
+  const metadataCount = optionalNonNegativeInteger(retrievalDiagnostic?.metadata_only_count);
   try {
     await env.DB.prepare(`
       INSERT INTO research_usage_events
         (user_id, institution_id, operation, outcome_code, latency_ms, input_tokens, output_tokens,
-         discover_ms, evidence_pack_ms, model_ms, grounding_ms, llm_cost_usd, discovery_cost_usd)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         discover_ms, evidence_pack_ms, model_ms, grounding_ms, llm_cost_usd, discovery_cost_usd,
+         retrieval_mode, candidate_depth, retrieved_count, authorized_relevant_count, abstract_bearing_count, metadata_only_count)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(uid, iid, operation, safeOutcomeCode(outcomeCode), latency, input, output,
-      discoverMs, evidencePackMs, modelMs, groundingMs, llmCost, discoveryCost).run();
+      discoverMs, evidencePackMs, modelMs, groundingMs, llmCost, discoveryCost,
+      retrievalMode, candidateDepth, retrievedCount, relevantCount, abstractCount, metadataCount).run();
     return true;
   } catch (error) {
     console.warn('research usage event write failed', error);
