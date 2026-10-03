@@ -37,6 +37,18 @@ This means:
 4. Unsupported-language handling must fail closed or route to a separately authorized non-supportCheck behavior; it must not silently run the frozen checker and present the result as validated.
 5. This record does not select or authorize a specific language detector. Runtime enforcement design remains an implementation item and must itself preserve privacy and fail-closed behavior.
 
+## Product-language architecture
+
+This English-only boundary applies to the **verification/evidence path**, not to the intended user-facing language policy.
+
+The product target keeps three concerns separate:
+
+- **query language:** Turkish or English;
+- **verification language:** English under the currently validated D-023 checker scope;
+- **response language:** Turkish or English, selected independently from the query language.
+
+A future Turkish-query path may normalize or translate the research task into an English canonical retrieval/verification task, and a verified English claim may later be rendered in Turkish. Neither transformation is authorized by this record: query translation and post-verification response translation require their own integrity/privacy contract so that entailment is not silently changed. The runtime English evidence filter is therefore a current checker-scope guardrail, not a declaration that LibEdge is an English-only product.
+
 ## What would expand the scope
 
 A future language may be added only after a prospective validation record defines, before results are observed:
