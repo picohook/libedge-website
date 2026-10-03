@@ -27,9 +27,11 @@ export function lexicalRelevanceScore(query, work) {
   return distinctiveTitleMatch ? (matched.length / terms.length) + (titleMatched.length / terms.length) * 0.5 : 0;
 }
 
-export function filterRelevantWorks(query, works, { minScore = 0.2 } = {}) {
+export function filterRelevantWorks(query, works, { minScore = 0.2, language = null } = {}) {
   if (!Array.isArray(works)) return [];
-  return works.map((work, index) => ({ work, index, score: lexicalRelevanceScore(query, work) }))
+  return works
+    .filter((work) => !language || String(work?.language || '').trim().toLowerCase() === language)
+    .map((work, index) => ({ work, index, score: lexicalRelevanceScore(query, work) }))
     .filter((item) => item.score >= minScore)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((item) => item.work);

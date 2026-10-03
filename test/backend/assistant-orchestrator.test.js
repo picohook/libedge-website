@@ -9,7 +9,7 @@ function work() {
     publicationDate: null,
     publicationYear: 2026,
     type: null,
-    language: null,
+    language: 'en',
     doi: null,
     identifiers: {},
     venue: { name: null, issn: [], publisher: null },
