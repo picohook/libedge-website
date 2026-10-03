@@ -1,4 +1,4 @@
-const RETENTION_DAYS = 90;
+const RETENTION_DAYS = 30;
 const ALLOWED_OPERATIONS = new Set(['assistant_ask']);
 const SAFE_OUTCOME = /^[A-Z][A-Z0-9_]{0,79}$/;
 
