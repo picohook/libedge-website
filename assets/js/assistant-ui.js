@@ -393,6 +393,10 @@ requireResearchLogin().then((authorized) => {
         const summary = result.research_summary;
         const literature = summary?.literature;
         const verification = summary?.verification;
+        const supportingEvidenceIds = new Set(
+            result.claims.flatMap((claim) => Array.isArray(claim?.evidence_ids) ? claim.evidence_ids : [])
+                .filter((id) => evidenceById.has(id))
+        );
         if (literature && verification) {
             overview.dataset.researchSummary = 'true';
             appendMetric(literature.retrieved_count, 'bulunan çalışma', 'works found');
@@ -401,6 +405,13 @@ requireResearchLogin().then((authorized) => {
             appendMetric(literature.metadata_only_count, 'yalnız metadata', 'metadata-only records');
             appendMetric(verification.checked_count, 'kontrol edilen iddia', 'claims checked');
             appendMetric(verification.verified_count, 'doğrulanan bulgu', 'verified findings');
+            appendMetric(supportingEvidenceIds.size, 'doğrulanmış bulguları destekleyen kaynak', 'sources supporting verified findings');
+            if (Number(verification.verified_count) > 0 && supportingEvidenceIds.size === 1) {
+                const supportNote = document.createElement('p');
+                supportNote.className = 'evidence-support-note';
+                markTranslatable(supportNote, 'Doğrulanmış sentez şu anda 1 destekleyici kaynağa dayanıyor.', 'Verified synthesis currently relies on 1 supporting source.');
+                overview.appendChild(supportNote);
+            }
             if (Number(verification.truncated_count) > 0) {
                 appendMetric(verification.truncated_count, 'sınır nedeniyle kontrol edilmedi', 'not checked due to request limit');
             }
