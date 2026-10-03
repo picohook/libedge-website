@@ -94,4 +94,14 @@ describe('Research admin observability', () => {
     expect(admin).toContain('Aktif operasyonel blocker görünmüyor');
   });
 
+  it('renders request timestamps as local time and exposes per-stage latency', () => {
+    expect(admin).toContain('function researchRequestLocalTime(value)');
+    expect(admin).toContain("raw.replace(' ', 'T') + 'Z'");
+    expect(admin).toContain("date.toLocaleString('tr-TR')");
+    expect(admin).toContain('function researchRequestStageBreakdown(stageLatency = {})');
+    expect(admin).toContain('request.stage_latency_ms');
+    expect(admin).toContain('Aşama süreleri');
+    expect(admin).toContain('Yerel zaman');
+  });
+
 });
