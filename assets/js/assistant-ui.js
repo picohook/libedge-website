@@ -308,50 +308,10 @@ requireResearchLogin().then((authorized) => {
             const authors = Array.isArray(item.authors) ? item.authors.map((a) => a?.name).filter(Boolean).join(', ') : '';
             meta.textContent = [authors, item.publicationYear, item.venue?.name].filter(Boolean).join(' · ');
             content.append(title, meta);
-
-            const badges = document.createElement('div');
-            badges.className = 'source-badges';
-            const evidenceLevel = String(item.evidence?.level || '').trim();
-            if (['FULL_TEXT', 'ABSTRACT', 'METADATA_ONLY'].includes(evidenceLevel)) {
-                const levelBadge = document.createElement('span');
-                levelBadge.dataset.evidenceLevel = evidenceLevel;
-                levelBadge.textContent = evidenceLevel.replace('_', ' ');
-                badges.appendChild(levelBadge);
-            }
-            if (badges.childElementCount) content.appendChild(badges);
-
             if (item.abstract) {
                 const abstract = document.createElement('p');
                 abstract.textContent = item.abstract;
                 content.appendChild(abstract);
-            }
-
-            const links = [
-                { label: 'DOI', url: item.urls?.doi || (item.doi ? `https://doi.org/${item.doi}` : null) },
-                { label: t('Yayıncı', 'Publisher'), url: item.urls?.publisher },
-                { label: t('Açık erişim', 'Open access'), url: item.urls?.openAccess }
-            ].filter(({ url }, index, all) => {
-                if (!url) return false;
-                try {
-                    const parsed = new URL(url);
-                    if (!['http:', 'https:'].includes(parsed.protocol)) return false;
-                    return all.findIndex((candidate) => candidate.url === url) === index;
-                } catch {
-                    return false;
-                }
-            });
-            if (links.length) {
-                const actions = document.createElement('div');
-                actions.className = 'live-source-links';
-                links.forEach(({ label, url }) => {
-                    const anchor = document.createElement('a');
-                    anchor.href = url;
-                    anchor.target = '_blank';
-                    anchor.rel = 'noopener noreferrer';
-                    anchor.textContent = label;
-                    actions.appendChild(anchor);
-                });
-                content.appendChild(actions);
             }
             card.append(rank, content);
             sourcePanelBody?.appendChild(card);
