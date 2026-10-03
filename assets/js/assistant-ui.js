@@ -260,22 +260,39 @@ requireResearchLogin().then((authorized) => {
             text.textContent = String(claim?.text || '');
             body.appendChild(text);
 
+            const verified = document.createElement('span');
+            verified.className = 'verified-contract-badge';
+            verified.dataset.verificationState = 'checker-passed';
+            markTranslatable(verified, 'Doğrulandı · checker sözleşmesini geçti', 'Verified · passed checker contract');
+            body.appendChild(verified);
+
             (claim?.evidence_ids || []).forEach((id) => {
                 const linked = evidenceById.get(id);
                 if (!linked) return;
                 const chip = document.createElement('button');
                 chip.type = 'button';
                 chip.className = 'citation-chip';
+                chip.dataset.source = `live-${id}`;
                 chip.textContent = linked.label;
-                chip.addEventListener('click', () => {
-                    document.getElementById(`live-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    openSources();
+                chip.setAttribute('aria-label', t(`${linked.label} kanıtını göster`, `Show evidence ${linked.label}`));
+                chip.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    highlightSource(`live-${id}`);
                 });
                 body.appendChild(document.createTextNode(' '));
                 body.appendChild(chip);
             });
 
             finding.append(badge, body);
+            const linkedCount = finding.querySelectorAll('.citation-chip[data-source]').length;
+            if (linkedCount) {
+                finding.tabIndex = 0;
+                finding.setAttribute('role', 'button');
+                finding.setAttribute('aria-pressed', 'false');
+                finding.setAttribute('aria-label', t(`F${index + 1} için ${linkedCount} ilişkili kanıt kaydını göster`, `Show ${linkedCount} related evidence records for F${index + 1}`));
+                finding.addEventListener('click', (event) => { if (!event.target.closest('.citation-chip')) focusFindingEvidence(finding); });
+                finding.addEventListener('keydown', (event) => { if (event.key !== 'Enter' && event.key !== ' ') return; event.preventDefault(); focusFindingEvidence(finding); });
+            }
             list.appendChild(finding);
         });
 

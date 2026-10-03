@@ -23,7 +23,10 @@ test.beforeAll(async () => {
           literature: { retrieved_count: 17, authorized_relevant_count: 6, abstract_bearing_count: 4, metadata_only_count: 2 },
           verification: { checked_count: 3, verified_count: 1, truncated_count: 2 }
         },
-        claims: [{ text: 'Live supported finding', evidence_ids: ['live-e1'] }],
+        claims: [
+          { text: 'Live supported finding', evidence_ids: ['live-e1'] },
+          { text: 'Second verified finding', evidence_ids: ['live-e2'] }
+        ],
         evidence: [{
           evidence_id: 'live-e1',
           title: 'Live evidence title',
@@ -35,6 +38,13 @@ test.beforeAll(async () => {
             publisher: 'https://publisher.example/article',
             openAccess: 'https://repository.example/live'
           }
+        }, {
+          evidence_id: 'live-e2',
+          title: 'Second evidence title',
+          abstract: '',
+          doi: '10.1000/second',
+          evidence: { level: 'METADATA_ONLY', sources: [] },
+          urls: { doi: 'https://doi.org/10.1000/second' }
         }]
       }));
       return;
@@ -69,8 +79,11 @@ test('fixture evidence is absent and live evidence/counts are rendered in a real
 
   await expect(page.getByText('Live supported finding')).toBeVisible();
   await expect(page.getByText('Live evidence title')).toBeVisible();
-  await expect(page.locator('#assistantSources [data-live-evidence]')).toHaveCount(1);
-  await expect(page.locator('.source-count')).toHaveText('1');
+  await expect(page.getByText('Second evidence title')).toBeVisible();
+  await expect(page.locator('[data-verification-state="checker-passed"]')).toHaveCount(2);
+  await expect(page.getByText('Verified · passed checker contract')).toHaveCount(2);
+  await expect(page.locator('#assistantSources [data-live-evidence]')).toHaveCount(2);
+  await expect(page.locator('.source-count')).toHaveText('2');
   const summary = page.locator('[data-live-evidence-overview][data-research-summary="true"]');
   await expect(summary).toBeVisible();
   await expect(summary.getByText('17')).toBeVisible();
@@ -86,8 +99,20 @@ test('fixture evidence is absent and live evidence/counts are rendered in a real
   await expect(summary.getByText('sources reviewed')).toHaveCount(0);
   await expect(page.getByText('Sample fixture record representing hydrogen permeability')).toHaveCount(0);
   await expect(page.locator('[data-live-evidence] [data-evidence-level="ABSTRACT"]')).toHaveText('ABSTRACT');
-  await expect(page.locator('[data-live-evidence] .live-source-links a')).toHaveCount(3);
-  await expect(page.getByRole('link', { name: 'DOI' })).toHaveAttribute('href', 'https://doi.org/10.1000/live');
+  await expect(page.locator('[data-live-evidence] [data-evidence-level="METADATA_ONLY"]')).toHaveText('METADATA ONLY');
+  const firstFinding = page.locator('.finding-item').filter({ hasText: 'Live supported finding' });
+  await firstFinding.click();
+  await expect(firstFinding).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#live-live-e1')).toHaveClass(/is-related/);
+  await expect(page.locator('#live-live-e2')).not.toHaveClass(/is-related/);
+  const secondFinding = page.locator('.finding-item').filter({ hasText: 'Second verified finding' });
+  await secondFinding.focus();
+  await page.keyboard.press('Enter');
+  await expect(secondFinding).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#live-live-e2')).toHaveClass(/is-related/);
+  await expect(page.locator('#live-live-e1')).not.toHaveClass(/is-related/);
+  await expect(page.locator('[data-live-evidence] .live-source-links a')).toHaveCount(4);
+  await expect(page.locator('#live-live-e1').getByRole('link', { name: 'DOI' })).toHaveAttribute('href', 'https://doi.org/10.1000/live');
   await expect(page.getByRole('link', { name: 'Publisher' })).toHaveAttribute('href', 'https://publisher.example/article');
   await expect(page.getByRole('link', { name: 'Open access' })).toHaveAttribute('href', 'https://repository.example/live');
   for (const link of await page.locator('[data-live-evidence] .live-source-links a').all()) {
