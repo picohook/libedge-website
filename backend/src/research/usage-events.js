@@ -55,7 +55,7 @@ export async function recordResearchUsageEvent(env, {
   const groundingMs = optionalNonNegativeInteger(stageTimings?.grounding_ms);
   const llmCost = optionalNonNegativeNumber(llmCostUsd);
   const discoveryCost = optionalNonNegativeNumber(discoveryCostUsd);
-  const retrievalMode = ['lexical', 'semantic', 'crossref'].includes(retrievalDiagnostic?.retrieval_mode)
+  const retrievalMode = ['lexical', 'lexical_fallback', 'semantic', 'crossref'].includes(retrievalDiagnostic?.retrieval_mode)
     ? retrievalDiagnostic.retrieval_mode : null;
   const candidateDepth = optionalNonNegativeInteger(retrievalDiagnostic?.candidate_depth);
   const retrievedCount = optionalNonNegativeInteger(retrievalDiagnostic?.retrieved_count);
