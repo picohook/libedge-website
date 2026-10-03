@@ -4933,6 +4933,13 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         }
     }
 
+    document.getElementById('researchUsageUsers')?.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-research-request-user]');
+        if (!button) return;
+        const userId = Number(button.dataset.researchRequestUser);
+        if (Number.isSafeInteger(userId) && userId > 0) toggleResearchRequestDrilldown(userId);
+    });
+
     async function loadResearchAccountUsage() {
         if (currentAdmin?.role !== 'super_admin') return;
         const days = document.getElementById('researchUsageDays')?.value || '30';
