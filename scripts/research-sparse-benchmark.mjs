@@ -1,7 +1,9 @@
 const BASE_URL = String(process.env.LIBEDGE_SMOKE_BASE_URL || 'https://staging.libedge-website.pages.dev').replace(/\/+$/, '');
 const EMAIL = process.env.LIBEDGE_SMOKE_EMAIL;
 const PASSWORD = process.env.LIBEDGE_SMOKE_PASSWORD;
-if (!EMAIL || !PASSWORD) throw new Error('Missing smoke credentials');
+const ADMIN_EMAIL = process.env.LIBEDGE_SMOKE_ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.LIBEDGE_SMOKE_ADMIN_PASSWORD;
+if (!EMAIL || !PASSWORD || !ADMIN_EMAIL || !ADMIN_PASSWORD) throw new Error('Missing benchmark credentials');
 
 const CASES = [
   { name: 'humanities', query: 'Ottoman Empire print culture' },
@@ -10,6 +12,7 @@ const CASES = [
 ];
 
 const cookies = new Map();
+const adminCookies = new Map();
 const login = await fetch(`${BASE_URL}/api/auth/login`, {
   method: 'POST',
   headers: { 'content-type': 'application/json', origin: new URL(BASE_URL).origin },
@@ -19,7 +22,17 @@ const login = await fetch(`${BASE_URL}/api/auth/login`, {
 applyCookies(login);
 if (login.status !== 200 || !cookies.get('authToken')) throw new Error(`login failed: ${login.status}`);
 
+const adminLogin = await fetch(`${BASE_URL}/api/auth/login`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', origin: new URL(BASE_URL).origin },
+  body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+  redirect: 'manual'
+});
+applyCookies(adminLogin, adminCookies);
+if (adminLogin.status !== 200 || !adminCookies.get('authToken')) throw new Error(`admin login failed: ${adminLogin.status}`);
+
 for (const candidate of CASES) {
+  const before = await telemetrySnapshot();
   const response = await fetch(`${BASE_URL}/api/assistant/ask`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', cookie: cookieHeader() },
@@ -31,16 +44,19 @@ for (const candidate of CASES) {
     throw new Error('Sparse benchmark smoke account is not Research-entitled; measurement aborted');
   }
   if (response.status !== 200) throw new Error(`${candidate.name} HTTP ${response.status}`);
+  const after = await telemetrySnapshot();
   const summary = body?.research_summary;
   if (!summary?.literature || !summary?.verification) throw new Error(`${candidate.name} missing research_summary`);
   const output = {
     case: candidate.name,
     code: body.code,
     literature: {
-      retrieved_count: count(summary.literature.retrieved_count),
-      authorized_relevant_count: count(summary.literature.authorized_relevant_count),
-      abstract_bearing_count: count(summary.literature.abstract_bearing_count),
-      metadata_only_count: count(summary.literature.metadata_only_count)
+      retrieved_count: delta(before, after, 'assistant_retrieved_works_total'),
+      relevant_count: delta(before, after, 'assistant_relevant_works_total'),
+      language_eligible_count: delta(before, after, 'assistant_language_eligible_works_total'),
+      authorized_relevant_count: delta(before, after, 'assistant_authorized_relevant_works_total'),
+      abstract_bearing_count: delta(before, after, 'assistant_abstract_bearing_works_total'),
+      metadata_only_count: delta(before, after, 'assistant_metadata_only_works_total')
     },
     verification: {
       checked_count: count(summary.verification.checked_count),
@@ -51,16 +67,30 @@ for (const candidate of CASES) {
   console.log('SPARSE_BENCHMARK', JSON.stringify(output));
 }
 
+async function telemetrySnapshot() {
+  const response = await fetch(`${BASE_URL}/api/admin/system-health`, {
+    headers: { cookie: cookieHeader(adminCookies) },
+    redirect: 'manual'
+  });
+  if (response.status !== 200) throw new Error(`system health failed: ${response.status}`);
+  const body = await response.json();
+  const metrics = body?.research_telemetry?.snapshot?.metrics;
+  if (!metrics || typeof metrics !== 'object') throw new Error('research telemetry snapshot unavailable');
+  return metrics;
+}
+function delta(before, after, key) {
+  return count(after?.[key]) - count(before?.[key]);
+}
 function count(value) {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error('Invalid public research cardinality');
   return value;
 }
-function cookieHeader() { return [...cookies].map(([k,v]) => `${k}=${v}`).join('; '); }
-function applyCookies(response) {
+function cookieHeader(jar = cookies) { return [...jar].map(([k,v]) => `${k}=${v}`).join('; '); }
+function applyCookies(response, jar = cookies) {
   const values = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : split(response.headers.get('set-cookie'));
   for (const cookie of values) {
     const match = /^([^=;\s]+)=([^;]*)/.exec(cookie || '');
-    if (match?.[2]) cookies.set(match[1], match[2]);
+    if (match?.[2]) jar.set(match[1], match[2]);
   }
 }
 function split(value) { return value ? value.split(/,(?=\s*[^;,=]+=[^;,]+)/g).map((x) => x.trim()) : []; }

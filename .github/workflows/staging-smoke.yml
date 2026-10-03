@@ -98,7 +98,7 @@ jobs:
             require_secret LIBEDGE_SMOKE_PASSWORD
           fi
 
-          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ]; then
+          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_SPARSE_BENCHMARK" = "true" ]; then
             require_secret LIBEDGE_SMOKE_ADMIN_EMAIL
             require_secret LIBEDGE_SMOKE_ADMIN_PASSWORD
           fi
@@ -149,6 +149,8 @@ jobs:
           LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
         run: node scripts/research-sparse-benchmark.mjs
 
       - name: Run frontend browser smoke
