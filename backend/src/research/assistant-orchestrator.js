@@ -67,10 +67,6 @@ function evidenceForAcceptedClaims(evidence = [], acceptedClaims = []) {
   return evidence.filter((item) => citedIds.has(item.evidence_id));
 }
 
-function preferAbstractBearingWorks(works = []) {
-  return [...works].sort((a, b) => Number(Boolean(b?.abstract)) - Number(Boolean(a?.abstract)));
-}
-
 function evidenceDepthDiagnostic(works = []) {
   const abstractBearing = works.filter((work) => Boolean(String(work?.abstract || '').trim())).length;
   return {
@@ -126,14 +122,14 @@ export async function orchestrateResearchAnswer({
   const discoveredWorks = Array.isArray(works) ? works : [];
   const relevantBeforeLanguage = filterRelevantWorks(task, discoveredWorks);
   const languageEligibleWorks = filterEnglishEligibleWorks(discoveredWorks);
-  const relevantWorks = preferAbstractBearingWorks(filterRelevantWorks(task, languageEligibleWorks));
+  const relevantWorks = filterRelevantWorks(task, languageEligibleWorks);
   diagnosticRetrieval = {
     retrieval_mode: String(works?.diagnostic_retrieval_mode || 'unknown'),
     candidate_depth: Number(works?.diagnostic_candidate_depth) || discoveredWorks.length,
-    retrieved_count: discoveredWorks.length,
-    relevant_count: relevantBeforeLanguage.length,
-    language_eligible_count: languageEligibleWorks.length,
-    authorized_relevant_count: relevantWorks.length,
+    retrieved_count: Number(works?.diagnostic_retrieved_count) || discoveredWorks.length,
+    relevant_count: Number(works?.diagnostic_relevant_count) || relevantBeforeLanguage.length,
+    language_eligible_count: Number(works?.diagnostic_language_eligible_count) || languageEligibleWorks.length,
+    authorized_relevant_count: Number(works?.diagnostic_authorized_relevant_count) || relevantWorks.length,
     ...evidenceDepthDiagnostic(relevantWorks)
   };
   if (!relevantWorks.length) {
