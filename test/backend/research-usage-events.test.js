@@ -56,6 +56,23 @@ describe('Research usage events', () => {
     expect(db.prepare.mock.calls[0][0]).not.toMatch(/query|title|doi|claim|evidence_text|payload/i);
   });
 
+  it('persists lexical_fallback as a distinct content-free retrieval mode', async () => {
+    const db = dbMock();
+    await recordResearchUsageEvent(db, {
+      userId: 42,
+      outcomeCode: 'OK',
+      retrievalDiagnostic: {
+        retrieval_mode: 'lexical_fallback',
+        candidate_depth: 50,
+        retrieved_count: 20,
+        authorized_relevant_count: 5,
+        abstract_bearing_count: 2,
+        metadata_only_count: 3
+      }
+    });
+    expect(db.bind.mock.calls[0]).toContain('lexical_fallback');
+  });
+
   it('fails closed for missing user identity or unknown operation without touching D1', async () => {
     const db = dbMock();
     expect(await recordResearchUsageEvent(db, { operation: 'assistant_ask', outcomeCode: 'OK' })).toBe(false);
