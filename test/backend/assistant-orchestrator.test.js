@@ -140,6 +140,24 @@ describe('assistant orchestration boundary', () => {
     expect(result).not.toHaveProperty('evidence');
   });
 
+  it('classifies an empty generated claim set as invalid model output without invoking support check', async () => {
+    const supportCheck = vi.fn();
+    const result = await orchestrateResearchAnswer({
+      query: 'hydrogen membranes',
+      env: {},
+      providerGate: passGate,
+      modelAdapter: { generateClaims: async () => ({ claims: [] }) },
+      discover: discoverStub(),
+      supportCheck,
+      packOptions
+    });
+
+    expect(result).toMatchObject({ ok: false, code: 'MODEL_OUTPUT_INVALID', claims: [] });
+    expect(supportCheck).not.toHaveBeenCalled();
+    expect(result).not.toHaveProperty('diagnostic_grounding');
+    expect(result).not.toHaveProperty('evidence');
+  });
+
   it('fails closed when semantic support checking is absent', async () => {
     const result = await orchestrateResearchAnswer({
       query: 'hydrogen membranes',
