@@ -738,8 +738,8 @@
     <div id="tab-research" class="tab-content hidden">
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
             <div>
-                <h3 class="text-lg font-semibold text-gray-800">Research Operasyon Özeti</h3>
-                <p class="text-sm text-gray-500 mt-1">Yalnız toplu teknik sayaçlar gösterilir; sorgu, claim, evidence, kullanıcı veya kurum içeriği gösterilmez.</p>
+                <h3 class="text-lg font-semibold text-gray-800">Research Operasyon Merkezi</h3>
+                <p class="text-sm text-gray-500 mt-1">Sistem sağlığı, pipeline darboğazları, kişi/kurum kullanım metadata'sı ve güvenli müdahale kontrolleri. Sorgu, claim ve evidence içeriği gösterilmez.</p>
             </div>
             <button type="button" id="researchObservabilityRefreshBtn" class="btn border border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
                 <i class="fas fa-rotate mr-2"></i>Yenile
@@ -813,9 +813,10 @@
             </div>
             <div id="researchUsageMeta" class="text-xs text-gray-500 mb-3">Yükleniyor...</div>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">İstek</p><p id="researchUsageRequests" class="text-xl font-bold">—</p></div>
-                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Başarı</p><p id="researchUsageSuccessRate" class="text-xl font-bold">—</p></div>
-                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Başarısızlık</p><p id="researchUsageFailureRate" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Toplam istek</p><p id="researchUsageRequests" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-emerald-100 bg-emerald-50/40 p-3"><p class="text-xs text-emerald-700">Verified yanıt</p><p id="researchUsageSuccessRate" class="text-xl font-bold text-emerald-700">—</p><p id="researchUsageSuccessCount" class="text-xs text-gray-500 mt-1">—</p></div>
+                <div class="rounded-lg border border-amber-100 bg-amber-50/40 p-3"><p class="text-xs text-amber-700">Geçerli boş / bulgu yok</p><p id="researchUsageValidEmptyRate" class="text-xl font-bold text-amber-700">—</p><p id="researchUsageValidEmptyCount" class="text-xs text-gray-500 mt-1">—</p></div>
+                <div class="rounded-lg border border-red-100 bg-red-50/40 p-3"><p class="text-xs text-red-700">Başarısız</p><p id="researchUsageFailureRate" class="text-xl font-bold text-red-700">—</p><p id="researchUsageFailureCount" class="text-xs text-gray-500 mt-1">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Ort. latency</p><p id="researchUsageLatency" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Input token</p><p id="researchUsageInputTokens" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Output token</p><p id="researchUsageOutputTokens" class="text-xl font-bold">—</p></div>
@@ -834,9 +835,11 @@
                     <div id="researchUsageStageLatency" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
                 </div>
             </div>
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Hesap</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th><th class="text-right">Token</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="6" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
-                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Kurum</th><th class="text-right">İstek</th><th class="text-right">Başarı</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="8" class="py-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+            <div class="space-y-6">
+                <div><div class="flex items-center justify-between mb-2"><h5 class="font-semibold text-gray-800">Kurum Bazlı Kullanım</h5><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
+                <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div></div>
+                <div><div class="flex items-center justify-between mb-2"><h5 class="font-semibold text-gray-800">Kişi Bazlı Kullanım</h5><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
+                <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right px-3">Maliyet</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="9" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div></div>
             </div>
         </section>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -4843,23 +4846,21 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     }
 
     function researchUsageRows(rows, kind) {
-        if (!rows?.length) return `<tr><td colspan="${kind === 'institution' ? 8 : 6}" class="py-3 text-gray-400">Kayıt yok.</td></tr>`;
+        const cols = kind === 'institution' ? 11 : 9;
+        if (!rows?.length) return `<tr><td colspan="${cols}" class="py-4 px-3 text-gray-400">Bu dönemde kullanım kaydı yok.</td></tr>`;
         return rows.map((row) => {
             const label = kind === 'user' ? (row.full_name || row.email || `Kullanıcı #${row.user_id}`) : (row.institution_name || (row.institution_id ? `Kurum #${row.institution_id}` : 'Bireysel / kurumsuz'));
-            const userScopeCell = kind === 'user'
-                ? `<td class="text-left text-xs text-gray-500">${escapeHtml(row.institution_name || (row.institution_id ? `Kurum #${row.institution_id}` : 'B2C kullanıcı scope'))}</td>`
-                : '';
+            const identity = kind === 'user' && row.email && row.email !== label ? `<div class="text-xs text-gray-400">${escapeHtml(row.email)}</div>` : '';
+            const userScopeCell = kind === 'user' ? `<td class="text-left text-xs text-gray-500">${escapeHtml(row.institution_name || (row.institution_id ? `Kurum #${row.institution_id}` : 'B2C kullanıcı scope'))}</td>` : '';
             const scope = row.usage_scope;
-            const seatCell = kind === 'institution'
-                ? `<td class="text-right">${row.seat_limit == null ? '—' : `${Number(row.assigned_seats || 0)} / ${Number(row.seat_limit || 0)}`}</td>`
-                : '';
-            const quotaCell = kind === 'institution'
-                ? `<td class="text-right text-xs">${!scope || scope.daily_limit == null ? '—' : `${Number(scope.used_today || 0).toLocaleString('tr-TR')} / ${Number(scope.daily_limit).toLocaleString('tr-TR')} (${Math.round(Number(scope.percent_used_today || 0) * 100)}%)`}</td>`
-                : '';
-            const stateCell = kind === 'institution'
-                ? `<td class="text-right text-xs">${!scope ? '—' : escapeHtml(scope.state || (scope.active ? 'active' : scope.state_reason || 'unavailable'))}</td>`
-                : '';
-            return `<tr class="border-t border-gray-100"><td class="py-2 pr-3">${escapeHtml(label)}</td>${userScopeCell}<td class="text-right">${Number(row.requests || 0).toLocaleString('tr-TR')}</td><td class="text-right">${researchUsagePercent(row.successes, row.requests)}</td><td class="text-right">${Number(row.avg_latency_ms || 0).toLocaleString('tr-TR')} ms</td><td class="text-right">${Number(row.input_tokens || 0) + Number(row.output_tokens || 0)}</td>${seatCell}${quotaCell}${stateCell}</tr>`;
+            const cost = Number(row.llm_cost_usd || 0) + Number(row.discovery_cost_usd || 0);
+            const outcomeCells = `<td class="text-right text-emerald-700">${Number(row.successes || 0).toLocaleString('tr-TR')} <span class="text-xs text-gray-400">(${researchUsagePercent(row.successes, row.requests)})</span></td><td class="text-right text-amber-700">${Number(row.valid_empty || 0).toLocaleString('tr-TR')}</td><td class="text-right text-red-700">${Number(row.failures || 0).toLocaleString('tr-TR')}</td>`;
+            const common = `<td class="text-right">${Number(row.requests || 0).toLocaleString('tr-TR')}</td>${outcomeCells}<td class="text-right">${Number(row.avg_latency_ms || 0).toLocaleString('tr-TR')} ms</td><td class="text-right">${(Number(row.input_tokens || 0) + Number(row.output_tokens || 0)).toLocaleString('tr-TR')}</td><td class="text-right">$ ${cost.toFixed(6)}</td>`;
+            if (kind === 'user') return `<tr class="border-t border-gray-100"><td class="py-2 px-3">${escapeHtml(label)}${identity}</td>${userScopeCell}${common}</tr>`;
+            const seats = row.seat_limit == null ? '—' : `${Number(row.assigned_seats || 0)} / ${Number(row.seat_limit || 0)}`;
+            const quota = !scope || scope.daily_limit == null ? '—' : `${Number(scope.used_today || 0).toLocaleString('tr-TR')} / ${Number(scope.daily_limit).toLocaleString('tr-TR')} (${Math.round(Number(scope.percent_used_today || 0) * 100)}%)`;
+            const state = !scope ? '—' : escapeHtml(scope.state || (scope.active ? 'active' : scope.state_reason || 'unavailable'));
+            return `<tr class="border-t border-gray-100"><td class="py-2 px-3">${escapeHtml(label)}</td>${common}<td class="text-right">${seats}</td><td class="text-right text-xs">${quota}</td><td class="text-right text-xs px-3">${state}</td></tr>`;
         }).join('');
     }
 
@@ -4909,8 +4910,12 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             if (!res.ok) throw new Error('usage unavailable');
             const data = await res.json(); const summary = data.summary || {};
             document.getElementById('researchUsageRequests').textContent = Number(summary.requests || 0).toLocaleString('tr-TR');
-            document.getElementById('researchUsageSuccessRate').textContent = `${Math.round(Number(summary.success_rate || 0) * 100)}%`;
+            document.getElementById('researchUsageSuccessRate').textContent = `${Math.round(Number(summary.verified_rate || 0) * 100)}%`;
+            document.getElementById('researchUsageSuccessCount').textContent = `${Number(summary.successes || 0).toLocaleString('tr-TR')} verified yanıt`;
+            document.getElementById('researchUsageValidEmptyRate').textContent = `${Math.round(Number(summary.valid_empty_rate || 0) * 100)}%`;
+            document.getElementById('researchUsageValidEmptyCount').textContent = `${Number(summary.valid_empty || 0).toLocaleString('tr-TR')} geçerli boş sonuç`;
             document.getElementById('researchUsageFailureRate').textContent = `${Math.round(Number(summary.failure_rate || 0) * 100)}%`;
+            document.getElementById('researchUsageFailureCount').textContent = `${Number(summary.failures || 0).toLocaleString('tr-TR')} başarısız istek`;
             document.getElementById('researchUsageLatency').textContent = `${Number(summary.avg_latency_ms || 0).toLocaleString('tr-TR')} ms`;
             document.getElementById('researchUsageInputTokens').textContent = Number(summary.input_tokens || 0).toLocaleString('tr-TR');
             document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');
@@ -4920,7 +4925,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageStageLatency').innerHTML = researchStageLatencyRows(summary.stage_latency_ms);
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
             document.getElementById('researchUsageInstitutions').innerHTML = researchUsageRows(data.institutions, 'institution');
-            if (meta) meta.textContent = `Son ${data.window_days || days} gün • yalnız operasyonel metadata • 90 gün retention`;
+            if (meta) meta.textContent = `Son ${data.window_days || days} gün • verified + geçerli boş + başarısız = toplam istek: ${summary.outcome_count_consistent ? 'tutarlı' : 'UYARI: tutarsız'} • 90 gün retention`;
         } catch (error) {
             console.error('Research account/institution usage load failed:', error);
             if (meta) meta.textContent = 'Hesap/kurum kullanım verisi alınamadı. Ayrıntı tarayıcı konsolunda.';
