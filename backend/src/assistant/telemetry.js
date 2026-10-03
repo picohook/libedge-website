@@ -71,7 +71,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
   if (Object.keys(cardinality).length) payload.grounding_cardinality = cardinality;
 
   const retrievalCardinality = {};
-  for (const key of ['retrieved_count', 'relevant_count', 'language_eligible_count', 'authorized_relevant_count']) {
+  for (const key of ['retrieved_count', 'relevant_count', 'language_eligible_count', 'authorized_relevant_count', 'abstract_bearing_count', 'metadata_only_count']) {
     const value = Number(retrievalDiagnostic?.[key]);
     if (Number.isSafeInteger(value) && value >= 0) retrievalCardinality[key] = value;
   }
@@ -112,7 +112,9 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
       ['assistant_retrieved_works_total', retrievalCardinality.retrieved_count],
       ['assistant_relevant_works_total', retrievalCardinality.relevant_count],
       ['assistant_language_eligible_works_total', retrievalCardinality.language_eligible_count],
-      ['assistant_authorized_relevant_works_total', retrievalCardinality.authorized_relevant_count]
+      ['assistant_authorized_relevant_works_total', retrievalCardinality.authorized_relevant_count],
+      ['assistant_abstract_bearing_works_total', retrievalCardinality.abstract_bearing_count],
+      ['assistant_metadata_only_works_total', retrievalCardinality.metadata_only_count]
     ];
     await recordResearchMetrics(env, [
       ['assistant_requests', 1],

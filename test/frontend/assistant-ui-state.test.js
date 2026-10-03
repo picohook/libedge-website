@@ -51,6 +51,25 @@ describe('Assistant UI response contract', () => {
     expect(result.claims).toHaveLength(1);
   });
 
+  it.each([
+    ['metadata-only', [{ evidence_id: 'e1', title: 'Title only', abstract: null }], /metadata|title-level/i],
+    ['abstract-bearing', [{ evidence_id: 'e1', title: 'With abstract', abstract: 'Abstract text.' }], /abstract/i],
+    ['mixed', [
+      { evidence_id: 'e1', title: 'With abstract', abstract: 'Abstract text.' },
+      { evidence_id: 'e2', title: 'Title only', abstract: null }
+    ], /mix|karışım/i]
+  ])('describes %s evidence depth without overstating source review', (_label, evidence, expected) => {
+    const result = mapLiveAssistantResult({
+      ok: true,
+      code: 'OK',
+      claims: [{ text: 'Supported claim', evidence_ids: ['e1'] }],
+      evidence_pack_id: 'pack',
+      evidence
+    });
+    expect(result.state).toBe('success');
+    expect(result.messageEn).toMatch(expected);
+  });
+
   it('does not let fail-closed live states leak claims', () => {
     for (const code of ['PROVIDER_PRIVACY_GATE_REQUIRED', 'MODEL_ADAPTER_REQUIRED', 'EVIDENCE_PAYLOAD_REQUIRED']) {
       const result = mapLiveAssistantResult({ ok: false, code, claims: [{ text: 'must not render' }] });

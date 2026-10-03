@@ -53,7 +53,38 @@ describe('assistant orchestration boundary', () => {
       retrieved_count: 1,
       relevant_count: 0,
       language_eligible_count: 0,
-      authorized_relevant_count: 0
+      authorized_relevant_count: 0,
+      abstract_bearing_count: 0,
+      metadata_only_count: 0
+    });
+  });
+
+  it('prefers abstract-bearing relevant evidence while retaining metadata-only fallback', async () => {
+    const metadataOnly = { ...work(), id: 'metadata', title: 'Hydrogen membranes metadata', abstract: null, evidence: {
+      level: 'METADATA_ONLY',
+      sources: [{ kind: 'metadata', provider: 'test', sourceRef: 'metadata', retrievedAt: '2026-09-13T00:00:00.000Z' }]
+    }};
+    const withAbstract = { ...work(), id: 'abstract', title: 'Hydrogen membranes abstract', abstract: 'Hydrogen membranes evidence text.' };
+    const generateClaims = vi.fn(async ({ evidencePack }) => ({
+      claims: [{ text: 'Supported claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }]
+    }));
+
+    const result = await orchestrateResearchAnswer({
+      query: 'hydrogen membranes',
+      env: {},
+      providerGate: passGate,
+      modelAdapter: { generateClaims },
+      discover: vi.fn(async () => [metadataOnly, withAbstract]),
+      supportCheck: () => true,
+      packOptions
+    });
+
+    const evidencePack = generateClaims.mock.calls[0][0].evidencePack;
+    expect(evidencePack.evidence.map((item) => item.work_id)).toEqual(['abstract', 'metadata']);
+    expect(result.diagnostic_retrieval).toMatchObject({
+      authorized_relevant_count: 2,
+      abstract_bearing_count: 1,
+      metadata_only_count: 1
     });
   });
 

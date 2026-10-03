@@ -126,11 +126,46 @@ export function mapAssistantResult(result) {
   };
 }
 
+function liveEvidenceDepth(evidence = []) {
+  const abstractBearing = evidence.filter((item) => Boolean(String(item?.abstract || '').trim())).length;
+  const metadataOnly = Math.max(0, evidence.length - abstractBearing);
+  if (evidence.length > 0 && metadataOnly === evidence.length) return 'metadata-only';
+  if (abstractBearing > 0 && metadataOnly > 0) return 'mixed';
+  if (abstractBearing > 0) return 'abstract-bearing';
+  return 'unknown';
+}
+
 export function mapLiveAssistantResult(result) {
   if (result?.ok === true && result?.code === 'OK' && (!Array.isArray(result.evidence) || !Array.isArray(result.claims))) {
     return mapAssistantResult({ ok: false, code: 'EVIDENCE_PAYLOAD_REQUIRED', claims: [] });
   }
-  return mapAssistantResult(result);
+
+  const mapped = mapAssistantResult(result);
+  if (mapped.state !== ASSISTANT_UI_STATES.SUCCESS) return mapped;
+
+  const depth = liveEvidenceDepth(result.evidence);
+  if (depth === 'metadata-only') {
+    return {
+      ...mapped,
+      message: 'Bulgular bibliyografik metadata ve başlık düzeyindeki kaynak kayıtlarıyla doğrulandı; gösterilen kanıtlarda özet veya tam metin bulunmuyor.',
+      messageEn: 'The findings were validated against bibliographic metadata and title-level source records; the displayed evidence does not include abstracts or full text.'
+    };
+  }
+  if (depth === 'mixed') {
+    return {
+      ...mapped,
+      message: 'Bulgular kaynaklarla doğrulandı; kullanılan kanıtlar özet içeren ve yalnız metadata içeren kayıtların bir karışımıdır.',
+      messageEn: 'The findings were validated against the sources; the evidence used is a mix of abstract-bearing and metadata-only records.'
+    };
+  }
+  if (depth === 'abstract-bearing') {
+    return {
+      ...mapped,
+      message: 'Bulgular, gösterilen kaynakların özet metinlerini içeren kanıtlarla doğrulandı.',
+      messageEn: 'The findings were validated with evidence that includes the displayed sources’ abstract text.'
+    };
+  }
+  return mapped;
 }
 
 export function loadingStage(index = 0) {
