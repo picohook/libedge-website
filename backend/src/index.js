@@ -2880,8 +2880,8 @@ app.get('/api/admin/research/usage', async (c) => {
   const predicate = where.join(' AND ');
 
   const successPredicate = "e.outcome_code = 'OK'";
-  const neutralPredicate = "e.outcome_code = 'NO_AUTHORIZED_EVIDENCE'";
-  const failurePredicate = "e.outcome_code NOT IN ('OK', 'NO_AUTHORIZED_EVIDENCE')";
+  const neutralPredicate = "e.outcome_code IN ('NO_AUTHORIZED_EVIDENCE', 'NO_SUPPORTABLE_CLAIMS')";
+  const failurePredicate = "e.outcome_code NOT IN ('OK', 'NO_AUTHORIZED_EVIDENCE', 'NO_SUPPORTABLE_CLAIMS')";
 
   const [summary, outcomes, users, institutions] = await Promise.all([
     c.env.DB.prepare(`
