@@ -21,7 +21,7 @@ requireResearchLogin().then((authorized) => {
     return import('./assistant-ui-state.js');
 }).then((module) => {
     if (!module) return;
-    const { loadingStage, mapAssistantResult, mapLiveAssistantResult } = module;
+    const { bibliographicYear, loadingStage, mapAssistantResult, mapLiveAssistantResult } = module;
     const sourcePanel = document.getElementById('assistantSources');
     const toast = document.getElementById('assistantPrototypeToast');
     const status = document.getElementById('assistantStatus');
@@ -308,7 +308,7 @@ requireResearchLogin().then((authorized) => {
             const authorNames = Array.isArray(item.authors) ? item.authors.map((a) => a?.name).filter(Boolean) : [];
             const authors = authorNames.length > 3 ? `${authorNames[0]} et al.` : authorNames.join(', ');
             const venue = String(item.venue?.name || '').trim();
-            const year = item.publicationYear || (item.publicationDate ? String(item.publicationDate).slice(0, 4) : '');
+            const year = bibliographicYear(item);
             meta.textContent = [authors, venue, year].filter(Boolean).join(' · ');
             content.append(title, meta);
 
