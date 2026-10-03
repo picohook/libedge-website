@@ -59,6 +59,15 @@ describe('Research admin observability', () => {
     expect(admin).toContain('daily_invocation_limit_source');
   });
 
+  it('exposes staging retrieval experiment controls with separate mode, depth, and final target', () => {
+    expect(admin).toContain('id="researchRetrievalMode"');
+    expect(admin).toContain('id="researchLexicalCandidateDepth"');
+    expect(admin).toContain('id="researchFinalResultTarget"');
+    expect(admin).toContain('id="researchRetrievalControlsSaveBtn"');
+    expect(admin).toContain('/api/admin/research/retrieval-controls');
+    expect(admin).toContain('loadResearchRetrievalControls()');
+    expect(admin).toContain('setResearchRetrievalControls()');
+  });
 
   it('exposes shared Assistant request-pool controls separately from checker limits', () => {
     expect(admin).toContain('id="researchUsageScopeType"');

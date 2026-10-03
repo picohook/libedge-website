@@ -769,6 +769,30 @@
                 <p id="researchCheckerActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
             </div>
             <div class="stat-card">
+                <p class="text-gray-500 text-sm">Retrieval Deneyi</p>
+                <p class="text-xs text-gray-500 mt-1">Yalnız staging. Candidate depth ve final sonuç hedefi ayrıdır.</p>
+                <div class="grid grid-cols-1 gap-2 mt-3">
+                    <label class="text-xs text-gray-500">Mode
+                        <select id="researchRetrievalMode" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                            <option value="lexical">lexical</option><option value="semantic">semantic</option>
+                        </select>
+                    </label>
+                    <label class="text-xs text-gray-500">Lexical candidate depth
+                        <select id="researchLexicalCandidateDepth" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                            <option value="10">10</option><option value="20">20</option><option value="30">30</option><option value="50">50</option>
+                        </select>
+                    </label>
+                    <label class="text-xs text-gray-500">Final result target
+                        <select id="researchFinalResultTarget" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                            <option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option>
+                        </select>
+                    </label>
+                    <button type="button" id="researchRetrievalControlsSaveBtn" class="btn bg-blue-50 text-blue-700 border border-blue-200 text-xs">Kaydet</button>
+                </div>
+                <p id="researchRetrievalControlsSource" class="text-xs text-gray-400 mt-1"></p>
+                <p id="researchRetrievalControlsStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
+            </div>
+            <div class="stat-card">
                 <p class="text-gray-500 text-sm">Assistant Ortak Request Havuzu</p>
                 <p class="text-xs text-gray-500 mt-1">Kurum kullanıcıları aynı havuzu paylaşır; B2C kullanıcı user-scope havuzu kullanır. Checker çağrı limiti bundan ayrıdır.</p>
                 <div class="grid grid-cols-1 gap-2 mt-3">
@@ -4990,6 +5014,53 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         }
     }
 
+    async function loadResearchRetrievalControls() {
+        if (currentAdmin?.role !== 'super_admin') return;
+        const status = document.getElementById('researchRetrievalControlsStatus');
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/research/retrieval-controls`, { credentials: 'include' });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.error || 'Retrieval controls yüklenemedi');
+            document.getElementById('researchRetrievalMode').value = body.mode;
+            document.getElementById('researchLexicalCandidateDepth').value = String(body.lexical_candidate_depth);
+            document.getElementById('researchFinalResultTarget').value = String(body.final_result_target);
+            document.getElementById('researchRetrievalControlsSource').textContent = `Kaynak: ${body.source || 'tanımsız'}${body.reason ? ' • ' + body.reason : ''}`;
+            if (status) status.textContent = '';
+        } catch (err) {
+            if (status) status.textContent = err.message || 'Retrieval controls yüklenemedi.';
+        }
+    }
+
+    async function setResearchRetrievalControls() {
+        if (currentAdmin?.role !== 'super_admin') return;
+        const saveBtn = document.getElementById('researchRetrievalControlsSaveBtn');
+        const status = document.getElementById('researchRetrievalControlsStatus');
+        const payload = {
+            mode: document.getElementById('researchRetrievalMode')?.value,
+            lexical_candidate_depth: Number(document.getElementById('researchLexicalCandidateDepth')?.value),
+            final_result_target: Number(document.getElementById('researchFinalResultTarget')?.value),
+        };
+        if (payload.lexical_candidate_depth < payload.final_result_target) {
+            if (status) status.textContent = 'Candidate depth final result target değerinden küçük olamaz.';
+            return;
+        }
+        if (saveBtn) saveBtn.disabled = true;
+        if (status) status.textContent = 'Retrieval controls kaydediliyor…';
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/research/retrieval-controls`, {
+                method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok || body.success !== true) throw new Error(body.error || 'Retrieval controls değiştirilemedi');
+            if (status) status.textContent = `${body.mode} · depth ${body.lexical_candidate_depth} · final ${body.final_result_target} kaydedildi.`;
+            await loadResearchRetrievalControls();
+        } catch (err) {
+            if (status) status.textContent = err.message || 'Retrieval controls değiştirilemedi.';
+        } finally {
+            if (saveBtn) saveBtn.disabled = false;
+        }
+    }
+
     async function loadResearchObservability() {
         if (currentAdmin?.role !== 'super_admin') return;
         const meta = document.getElementById('researchObservabilityMeta');
@@ -5078,7 +5149,8 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         }
     }
 
-    document.getElementById('researchObservabilityRefreshBtn')?.addEventListener('click', loadResearchObservability);
+    document.getElementById('researchObservabilityRefreshBtn')?.addEventListener('click', () => { loadResearchObservability(); loadResearchRetrievalControls(); });
+    document.getElementById('researchRetrievalControlsSaveBtn')?.addEventListener('click', setResearchRetrievalControls);
     document.getElementById('researchUsageDays')?.addEventListener('change', loadResearchAccountUsage);
     async function setResearchCheckerState(action) {
         if (currentAdmin?.role !== 'super_admin') return;
@@ -6473,6 +6545,7 @@ document.querySelectorAll('.sidebar-link').forEach(link => {
                 loadSupport();
             } else if (tab === 'research') {
                 loadResearchObservability();
+                loadResearchRetrievalControls();
             } else if (tab === 'settings') {
                 _loadSettingsTab();
             }
