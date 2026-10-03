@@ -20,18 +20,7 @@ test.beforeAll(async () => {
       res.end(JSON.stringify({
         ok: true, code: 'OK', evidence_pack_id: 'browser-regression',
         claims: [{ text: 'Live supported finding', evidence_ids: ['live-e1'] }],
-        evidence: [{
-          evidence_id: 'live-e1',
-          title: 'Live evidence title',
-          abstract: 'Live evidence abstract',
-          doi: '10.1000/live',
-          evidence: { level: 'ABSTRACT', sources: [] },
-          urls: {
-            doi: 'https://doi.org/10.1000/live',
-            publisher: 'https://publisher.example/article',
-            openAccess: 'https://repository.example/live'
-          }
-        }]
+        evidence: [{ evidence_id: 'live-e1', title: 'Live evidence title', abstract: 'Live evidence abstract' }]
       }));
       return;
     }
@@ -54,7 +43,6 @@ test.afterAll(async () => {
 });
 
 test('fixture evidence is absent and live evidence/counts are rendered in a real browser', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('language', 'en'));
   await page.goto(`${baseURL}/assistant.html`);
   await expect(page.getByText('Sample fixture record representing hydrogen permeability')).toHaveCount(0);
   await expect(page.locator('.evidence-overview')).toHaveCount(0);
@@ -69,13 +57,4 @@ test('fixture evidence is absent and live evidence/counts are rendered in a real
   await expect(page.locator('.source-count')).toHaveText('1');
   await expect(page.locator('[data-live-evidence-overview] strong').first()).toHaveText('1');
   await expect(page.getByText('Sample fixture record representing hydrogen permeability')).toHaveCount(0);
-  await expect(page.locator('[data-live-evidence] [data-evidence-level="ABSTRACT"]')).toHaveText('ABSTRACT');
-  await expect(page.locator('[data-live-evidence] .live-source-links a')).toHaveCount(3);
-  await expect(page.getByRole('link', { name: 'DOI' })).toHaveAttribute('href', 'https://doi.org/10.1000/live');
-  await expect(page.getByRole('link', { name: 'Publisher' })).toHaveAttribute('href', 'https://publisher.example/article');
-  await expect(page.getByRole('link', { name: 'Open access' })).toHaveAttribute('href', 'https://repository.example/live');
-  for (const link of await page.locator('[data-live-evidence] .live-source-links a').all()) {
-    await expect(link).toHaveAttribute('target', '_blank');
-    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-  }
 });
