@@ -30,6 +30,8 @@ const ALLOWED_METRICS = new Set([
   'assistant_relevant_works_total',
   'assistant_language_eligible_works_total',
   'assistant_authorized_relevant_works_total',
+  'assistant_abstract_bearing_works_total',
+  'assistant_metadata_only_works_total',
   'assistant_outcome_assistant_query_required',
   'assistant_outcome_discover_failed',
   'assistant_outcome_evidence_pack_failed',
