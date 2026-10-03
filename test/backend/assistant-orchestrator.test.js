@@ -136,7 +136,7 @@ describe('assistant orchestration boundary', () => {
       packOptions
     });
 
-    expect(result).toMatchObject({ ok: false, code: 'MODEL_OUTPUT_INVALID', claims: [] });
+    expect(result).toMatchObject({ ok: true, code: 'NO_SUPPORTABLE_CLAIMS', claims: [], evidence: [] });
     expect(result).not.toHaveProperty('evidence');
   });
 
