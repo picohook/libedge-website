@@ -51,6 +51,12 @@ describe('assistant privacy-safe telemetry', () => {
     spy.mockRestore();
   });
 
+  it('maps model adapter failures to bounded aggregate classes and never to raw provider text', () => {
+    expect(__test.modelFailureMetric('AccessDeniedException')).toBe('assistant_model_failure_access_denied_exception');
+    expect(__test.modelFailureMetric('ThrottlingException')).toBe('assistant_model_failure_throttling_exception');
+    expect(__test.modelFailureMetric('private provider/query text')).toBe('assistant_model_failure_other');
+  });
+
   it('logs only allowlisted content-free diagnostic reasons', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     recordAssistantOutcome({ ENVIRONMENT: 'staging' }, {
