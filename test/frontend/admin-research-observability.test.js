@@ -85,4 +85,13 @@ describe('Research admin observability', () => {
     expect(admin).toContain('scope.percent_used_today');
     expect(admin).toContain('scope.state');
   });
+  it('surfaces actionable pipeline blockers and a healthy zero-state', () => {
+    expect(admin).toContain('id="researchOpsAlert"');
+    expect(admin).toContain('Müdahale / inceleme gerekiyor');
+    expect(admin).toContain('Discover aşamasında');
+    expect(admin).toContain('yetkili/uygun evidence bulunamadı');
+    expect(admin).toContain('Fresh-Checker katmanında');
+    expect(admin).toContain('Aktif operasyonel blocker görünmüyor');
+  });
+
 });

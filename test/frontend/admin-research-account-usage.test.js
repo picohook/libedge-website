@@ -10,10 +10,14 @@ describe('Research account usage admin UI', () => {
     expect(admin).toContain('id="researchUsageUsers"');
     expect(admin).toContain('id="researchUsageInstitutions"');
     expect(admin).toContain('90 gün retention');
+    expect(admin).toContain('Kurum Bazlı Kullanım');
+    expect(admin).toContain('Kişi Bazlı Kullanım');
   });
 
   it('states that content/hash are excluded and exposes exact provider cost fields', () => {
     expect(admin).toContain('sorgu/yanıt içeriği ve hash gösterilmez');
+    expect(admin).toContain('researchUsageValidEmptyRate');
+    expect(admin).toContain('outcome_count_consistent');
     expect(admin).toContain('researchUsageLlmCost');
     expect(admin).toContain('researchUsageDiscoveryCost');
   });
