@@ -20,7 +20,7 @@ function groundingDiagnosticSummary(rejectedClaims = [], totalClaims = 0) {
     const reason = String(item?.reason || '').trim();
     const key = [
       'CLAIM_TEXT_REQUIRED','EVIDENCE_ID_REQUIRED','EVIDENCE_ID_UNKNOWN',
-      'SUPPORT_CHECK_REQUIRED','CLAIM_UNSUPPORTED','SUPPORT_CHECK_FAILED'
+      'SUPPORT_CHECK_REQUIRED','SUPPORT_CHECK_BUDGET_TRUNCATED','CLAIM_UNSUPPORTED','SUPPORT_CHECK_FAILED'
     ].includes(code) ? code : 'OTHER';
     counts[key] = (counts[key] || 0) + 1;
     if (key === 'CLAIM_UNSUPPORTED' && /^(SUPPORT|NOT_SUPPORTED|UNSUPPORTED)$/.test(reason)) {
@@ -54,7 +54,8 @@ const CLAIM_LOCAL_REJECTION_CODES = new Set([
   'CLAIM_TEXT_REQUIRED',
   'EVIDENCE_ID_REQUIRED',
   'EVIDENCE_ID_UNKNOWN',
-  'CLAIM_UNSUPPORTED'
+  'CLAIM_UNSUPPORTED',
+  'SUPPORT_CHECK_BUDGET_TRUNCATED'
 ]);
 
 function hasBlockingGroundingFailure(rejectedClaims = []) {
@@ -228,7 +229,7 @@ export async function orchestrateResearchAnswer({
   let grounding;
   stageStartedAt = Date.now();
   try {
-    grounding = await validateGroundedClaims({ claims, evidencePack, supportCheck });
+    grounding = await validateGroundedClaims({ claims, evidencePack, supportCheck, maxSupportChecks: env?.RESEARCH_SUPPORT_CHECKS_PER_REQUEST });
     diagnosticTimings.grounding_ms = Date.now() - stageStartedAt;
   } catch {
     diagnosticTimings.grounding_ms = Date.now() - stageStartedAt;
@@ -244,7 +245,10 @@ export async function orchestrateResearchAnswer({
     };
   }
 
-  const diagnosticGrounding = groundingDiagnosticSummary(grounding.rejectedClaims, claims.length);
+  const diagnosticGrounding = {
+    ...groundingDiagnosticSummary(grounding.rejectedClaims, claims.length),
+    ...(grounding.diagnostics || {})
+  };
   const blockingGroundingFailure = hasBlockingGroundingFailure(grounding.rejectedClaims);
 
   if (blockingGroundingFailure || grounding.acceptedClaims.length === 0) {
