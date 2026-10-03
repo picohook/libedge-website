@@ -1,5 +1,20 @@
 export const DEFAULT_CROSSREF_MAX_ENRICHMENTS = 10;
 
+export function isSupplementaryMaterialWork(work) {
+  const type = String(work?.type || '').trim().toLowerCase();
+  if (type.includes('supplement') || type.includes('supporting-information')) return true;
+
+  const doi = String(work?.doi || '').trim().toLowerCase();
+  // ACS assigns separate Supporting Information DOIs by appending .sNNN to
+  // the canonical article DOI. These records can inherit the article title
+  // while lacking article-level authors, venue, year, and abstract metadata.
+  return /^10\.1021\/.+\.s\d+$/.test(doi);
+}
+
+export function canonicalResearchWorks(works) {
+  return Array.isArray(works) ? works.filter((work) => !isSupplementaryMaterialWork(work)) : [];
+}
+
 export function hasUsefulAbstract(work) {
   return typeof work?.abstract === 'string' && work.abstract.trim().length > 0;
 }
