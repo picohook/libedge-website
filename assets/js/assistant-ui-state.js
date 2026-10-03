@@ -68,6 +68,12 @@ const CODE_MAP = Object.freeze({
     message: 'Model katmanı yanıt veremedi. Kaynaklar korunuyor; desteklenmeyen bir yanıt gösterilmiyor.', messageEn: 'The model layer could not respond. The sources are preserved; an unsupported response is not shown.',
     tone: 'error'
   },
+  NO_SUPPORTABLE_CLAIMS: {
+    state: ASSISTANT_UI_STATES.EMPTY_RESULT,
+    title: 'Kaynaklar tarandı, yeterince desteklenebilir bulgu üretilemedi', titleEn: 'Sources searched, no sufficiently supportable finding was generated',
+    message: 'Kaynaklar bulundu ancak model bunlardan güvenli biçimde doğrulamaya gönderilebilecek bir bulgu üretmedi.', messageEn: 'Sources were found, but the model did not generate a finding that could safely be sent for verification.',
+    tone: 'notice'
+  },
   MODEL_OUTPUT_INVALID: {
     state: ASSISTANT_UI_STATES.MODEL_ERROR,
     title: 'AI yanıtı doğrulanamadı', titleEn: 'AI response could not be verified',
