@@ -31,7 +31,29 @@ describe('Research usage events', () => {
     const sql = db.prepare.mock.calls[0][0];
     expect(sql).toContain('research_usage_events');
     expect(sql).not.toMatch(/\b(query|answer|claim|evidence|prompt|hash|payload)\b/i);
-    expect(db.bind).toHaveBeenCalledWith(42, 7, 'assistant_ask', 'OK', 124, null, null, null, null, null, null, null, null);
+    expect(db.bind).toHaveBeenCalledWith(42, 7, 'assistant_ask', 'OK', 124, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+  });
+
+  it('records allowlisted content-free retrieval diagnostics', async () => {
+    const db = dbMock();
+    await recordResearchUsageEvent(db, {
+      userId: 42,
+      outcomeCode: 'OK',
+      retrievalDiagnostic: {
+        retrieval_mode: 'lexical',
+        candidate_depth: 50,
+        retrieved_count: 10,
+        authorized_relevant_count: 6,
+        abstract_bearing_count: 1,
+        metadata_only_count: 5,
+        query: 'must not be stored'
+      }
+    });
+    expect(db.bind).toHaveBeenCalledWith(
+      42, null, 'assistant_ask', 'OK', 0, null, null, null, null, null, null, null, null,
+      'lexical', 50, 10, 6, 1, 5
+    );
+    expect(db.prepare.mock.calls[0][0]).not.toMatch(/query|title|doi|claim|evidence_text|payload/i);
   });
 
   it('fails closed for missing user identity or unknown operation without touching D1', async () => {
@@ -49,7 +71,7 @@ describe('Research usage events', () => {
       outcomeCode: 'bad value with spaces',
       latencyMs: -5
     });
-    expect(db.bind).toHaveBeenCalledWith(42, null, 'assistant_ask', 'OTHER', 0, null, null, null, null, null, null, null, null);
+    expect(db.bind).toHaveBeenCalledWith(42, null, 'assistant_ask', 'OTHER', 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     expect(__test.safeOutcomeCode('GROUNDING_REJECTED')).toBe('GROUNDING_REJECTED');
   });
 
