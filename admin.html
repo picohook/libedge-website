@@ -746,9 +746,10 @@
             </button>
         </div>
         <div id="researchObservabilityMeta" class="text-xs text-gray-500 mb-4">Yükleniyor...</div>
+        <div id="researchOpsAlert" class="hidden mb-5 rounded-lg border p-4" role="status" aria-live="polite"></div>
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
             <div class="stat-card"><p class="text-gray-500 text-sm">Assistant İstekleri</p><p id="researchAssistantRequests" class="text-2xl font-bold mt-2">—</p></div>
-            <div class="stat-card"><p class="text-gray-500 text-sm">Başarılı Yanıtlar</p><p id="researchAssistantOk" class="text-2xl font-bold mt-2">—</p></div>
+            <div class="stat-card"><p class="text-gray-500 text-sm">Verified Yanıtlar</p><p id="researchAssistantOk" class="text-2xl font-bold mt-2">—</p></div>
             <div class="stat-card"><p class="text-gray-500 text-sm">Grounding Reddi</p><p id="researchGroundingRejected" class="text-2xl font-bold mt-2">—</p></div>
             <div class="stat-card">
                 <p class="text-gray-500 text-sm">Checker Durumu</p>
@@ -4986,12 +4987,33 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 ['Checker transport/diğer', metrics.assistant_grounding_rejection_support_check_failed_transport_or_other],
             ];
             document.getElementById('researchGroundingRows').innerHTML = grounding.map(([label, value]) => researchMetricRow(label, value)).join('');
+            const alert = document.getElementById('researchOpsAlert');
+            const blockers = [];
+            if (checker.status !== 'ok') blockers.push('Fresh-Checker durumu okunamıyor.');
+            else if (checker.paused) blockers.push('Fresh-Checker duraklatılmış: verified yanıt üretimi engellenir.');
+            if (Number(metrics.assistant_outcome_discover_failed || 0) > 0) blockers.push(`Discover aşamasında ${Number(metrics.assistant_outcome_discover_failed)} hata var.`);
+            if (Number(metrics.assistant_outcome_no_authorized_evidence || 0) > 0) blockers.push(`${Number(metrics.assistant_outcome_no_authorized_evidence)} istekte yetkili/uygun evidence bulunamadı.`);
+            if (Number(metrics.assistant_outcome_model_adapter_failed || 0) + Number(metrics.assistant_outcome_model_output_invalid || 0) > 0) blockers.push('Model aşamasında hata/geçersiz çıktı var.');
+            const checkerFailures = grounding.slice(5).reduce((sum, [, value]) => sum + Number(value || 0), 0);
+            if (checkerFailures > 0) blockers.push(`Fresh-Checker katmanında ${checkerFailures} teknik/sınır hatası var.`);
+            if (Number(metrics.assistant_outcome_grounding_rejected || 0) > 0) blockers.push(`${Number(metrics.assistant_outcome_grounding_rejected)} istek grounding aşamasında reddedildi.`);
+            if (alert) {
+                if (blockers.length) {
+                    alert.className = 'mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900';
+                    alert.innerHTML = `<div class="font-semibold mb-1">Müdahale / inceleme gerekiyor</div><ul class="text-sm list-disc pl-5 space-y-1">${blockers.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+                } else {
+                    alert.className = 'mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900';
+                    alert.innerHTML = '<div class="font-semibold">Aktif operasyonel blocker görünmüyor.</div><div class="text-sm mt-1">Pipeline ve Fresh-Checker sayaçlarında müdahale gerektiren bir durum saptanmadı.</div>';
+                }
+            }
         } catch (_) {
             if (meta) meta.textContent = 'Research operasyon verisi alınamadı.';
             const layerRows = document.getElementById('researchLayerRows');
             const groundingRows = document.getElementById('researchGroundingRows');
             if (layerRows) layerRows.innerHTML = '<p class="text-sm text-red-600 py-3">Veri alınamadı.</p>';
             if (groundingRows) groundingRows.innerHTML = '<p class="text-sm text-red-600 py-3">Veri alınamadı.</p>';
+            const alert = document.getElementById('researchOpsAlert');
+            if (alert) { alert.className = 'mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800'; alert.textContent = 'Operasyon verisi alınamadı; sistem sağlık endpointi ve yetkilendirme kontrol edilmeli.'; }
         }
     }
 
