@@ -166,6 +166,35 @@ describe('research provider fallback and budget', () => {
     expect(providerFetch).toHaveBeenCalledTimes(1);
   });
 
+  it('uses a deeper lexical candidate pool without increasing final result count', async () => {
+    const results = Array.from({ length: 20 }, (_, index) => ({
+      id: `https://openalex.org/L${index + 1}`,
+      title: `Lexical candidate ${index + 1}`,
+      publication_year: 2026,
+      authorships: [],
+      cited_by_count: index,
+      open_access: {},
+      primary_location: null
+    }));
+    const providerFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      meta: { count: 20 },
+      results
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', providerFetch);
+
+    const response = await handleResearchRequest(new Request('https://example.test/api/research/search?q=lexical%20depth', {
+      headers: { cookie: await cookie() }
+    }), env({ RESEARCH_LEXICAL_CANDIDATE_DEPTH: '50' }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.meta.retrievalSource).toBe('lexical');
+    expect(body.results).toHaveLength(10);
+    expect(body.candidatePool).toHaveLength(20);
+    expect(body.meta.candidatePoolSize).toBe(20);
+    expect(new URL(String(providerFetch.mock.calls[0][0])).searchParams.get('per-page')).toBe('50');
+  });
+
   it('does not allow Crossref to short-circuit a valid semantic empty response', async () => {
     const providerFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
       meta: { cost_usd: 0.001 },
