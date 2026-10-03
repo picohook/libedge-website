@@ -111,7 +111,7 @@ function semanticFailureMetric(error) {
   return null;
 }
 
-async function recoverCanonicalParentWorks(works, env) {
+export async function recoverCanonicalParentWorks(works, env, { fetchByDoi = fetchCrossrefByDoi } = {}) {
   const source = Array.isArray(works) ? works : [];
   const canonical = canonicalResearchWorks(source);
   const existingDois = new Set(canonical.map((work) => String(work?.doi || '').trim().toLowerCase()).filter(Boolean));
@@ -125,7 +125,7 @@ async function recoverCanonicalParentWorks(works, env) {
   const recovered = [];
   for (let offset = 0; offset < parentDois.length; offset += 3) {
     const batch = parentDois.slice(offset, offset + 3);
-    const settled = await Promise.allSettled(batch.map((doi) => fetchCrossrefByDoi(doi, env)));
+    const settled = await Promise.allSettled(batch.map((doi) => fetchByDoi(doi, env)));
     for (const item of settled) {
       if (item.status !== 'fulfilled' || !item.value) continue;
       const work = crossrefNormalizedToResearchWork(item.value);
