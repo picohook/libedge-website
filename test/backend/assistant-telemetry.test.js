@@ -94,6 +94,44 @@ describe('assistant privacy-safe telemetry', () => {
     spy.mockRestore();
   });
 
+  it('allowlists bounded checker cardinality while excluding content-like fields', async () => {
+    const batch = vi.fn().mockResolvedValue([]);
+    const prepare = vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn() })) }));
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await recordAssistantOutcome({ ENVIRONMENT: 'staging', DB: { prepare, batch } }, {
+      code: 'OK',
+      groundingDiagnostic: {
+        claim_count: 6,
+        accepted_count: 4,
+        rejected_count: 2,
+        eligible_count: 6,
+        checked_count: 4,
+        truncated_count: 2,
+        support_check_limit: 4,
+        rejection_counts: { SUPPORT_CHECK_BUDGET_TRUNCATED: 2 },
+        claim: 'private scientific claim',
+        evidence: 'private evidence'
+      }
+    });
+    const payload = JSON.parse(spy.mock.calls[0][0]);
+    expect(payload.grounding_cardinality).toEqual({
+      claim_count: 6, accepted_count: 4, rejected_count: 2,
+      eligible_count: 6, checked_count: 4, truncated_count: 2, support_check_limit: 4
+    });
+    expect(payload.grounding_rejection_counts).toEqual({ SUPPORT_CHECK_BUDGET_TRUNCATED: 2 });
+    expect(JSON.stringify(payload)).not.toMatch(/private scientific claim|private evidence/);
+
+    const binds = prepare.mock.results.map((result) => result.value.bind.mock.calls[0]).filter(Boolean);
+    const metrics = Object.fromEntries(binds.map((args) => [args[1], args[2]]));
+    expect(metrics).toMatchObject({
+      assistant_grounding_eligible_claims_total: 6,
+      assistant_grounding_checked_claims_total: 4,
+      assistant_grounding_truncated_claims_total: 2,
+      assistant_grounding_rejection_support_check_budget_truncated: 2
+    });
+    spy.mockRestore();
+  });
+
   it('persists only aggregate content-free timing counters', async () => {
     const batch = vi.fn().mockResolvedValue([]);
     const prepare = vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn() })) }));
