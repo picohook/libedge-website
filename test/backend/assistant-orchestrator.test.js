@@ -61,7 +61,7 @@ describe('assistant orchestration boundary', () => {
     });
   });
 
-  it('prefers abstract-bearing relevant evidence while retaining metadata-only fallback', async () => {
+  it('preserves relevance ordering while retaining metadata-only fallback', async () => {
     const metadataOnly = { ...work(), id: 'metadata', title: 'Hydrogen membranes metadata', abstract: null, evidence: {
       level: 'METADATA_ONLY',
       sources: [{ kind: 'metadata', provider: 'test', sourceRef: 'metadata', retrievedAt: '2026-09-13T00:00:00.000Z' }]
@@ -82,7 +82,7 @@ describe('assistant orchestration boundary', () => {
     });
 
     const evidencePack = generateClaims.mock.calls[0][0].evidencePack;
-    expect(evidencePack.evidence.map((item) => item.work_id)).toEqual(['abstract', 'metadata']);
+    expect(evidencePack.evidence.map((item) => item.work_id)).toEqual(['metadata', 'abstract']);
     expect(result.diagnostic_retrieval).toMatchObject({
       authorized_relevant_count: 2,
       abstract_bearing_count: 1,
