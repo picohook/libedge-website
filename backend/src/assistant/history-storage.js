@@ -7,6 +7,13 @@ function positiveId(value) {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
+export function sanitizeAssistantHistoryResult(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return {};
+  return Object.fromEntries(
+    Object.entries(result).filter(([key]) => !String(key).startsWith('diagnostic_'))
+  );
+}
+
 export async function saveAssistantHistory(env, userId, query, result) {
   const uid = positiveId(userId);
   if (!uid || !env?.DB || result?.code !== 'OK') return false;
@@ -18,7 +25,7 @@ export async function saveAssistantHistory(env, userId, query, result) {
   try {
     const [queryCiphertext, resultCiphertext] = await Promise.all([
       encryptAssistantHistory(query, secret),
-      encryptAssistantHistory(JSON.stringify(result), secret)
+      encryptAssistantHistory(JSON.stringify(sanitizeAssistantHistoryResult(result)), secret)
     ]);
     await env.DB.prepare(`
       INSERT INTO assistant_saved_queries
@@ -72,7 +79,9 @@ export async function getAssistantHistory(env, userId, id) {
   return {
     id: row.id,
     query: await decryptAssistantHistory(row.query_ciphertext, env.ASSISTANT_HISTORY_ENCRYPTION_SECRET),
-    result: JSON.parse(await decryptAssistantHistory(row.result_ciphertext, env.ASSISTANT_HISTORY_ENCRYPTION_SECRET)),
+    result: sanitizeAssistantHistoryResult(
+      JSON.parse(await decryptAssistantHistory(row.result_ciphertext, env.ASSISTANT_HISTORY_ENCRYPTION_SECRET))
+    ),
     outcome_code: row.outcome_code,
     created_at: row.created_at,
     expires_at: row.expires_at
