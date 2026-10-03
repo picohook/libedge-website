@@ -17,6 +17,7 @@ import {
 import { getOptionalAuth, requireAuth } from './auth/middleware.js';
 import { hasResearchEntitlement, researchPrivacyGatePassed } from './research/entitlement.js';
 import { pruneResearchUsageEvents } from './research/usage-events.js';
+import { RESEARCH_RETRIEVAL_CONTROL_KEY, researchRetrievalControls, serializeResearchRetrievalControls } from './research/retrieval-runtime-controls.js';
 import { SUPPORT_CHECK_PAUSE_KEY, supportCheckRuntimePause } from './assistant/support-check-runtime-pause.js';
 import { SUPPORT_CHECK_INVOCATION_LIMIT_KEY, supportCheckInvocationLimit } from './assistant/support-check-invocation-budget.js';
 import { assistantUsageScopeKey, assistantUsageScopeLimit, assistantUsageScopeLimitOverrideKey, USAGE_SCOPE_DAILY_LIMIT_KEY } from './assistant/usage-scope-quota.js';
@@ -2485,6 +2486,62 @@ app.post('/api/admin/research/assistant-usage-limit', async (c) => {
   });
 
   return c.json({ success: true, enabled: after.enabled, daily_request_limit: after.limit, source: after.source, scope });
+});
+
+// GET/POST /api/admin/research/retrieval-controls — staging-only, superadmin-only experiment controls.
+app.get('/api/admin/research/retrieval-controls', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+  if (String(c.env.ENVIRONMENT || '').trim().toLowerCase() !== 'staging') {
+    return c.json({ error: 'Retrieval experiment controls yalnız staging ortamında kullanılabilir' }, 404);
+  }
+  const state = await researchRetrievalControls(c.env);
+  return c.json(state);
+});
+
+app.post('/api/admin/research/retrieval-controls', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+  if (String(c.env.ENVIRONMENT || '').trim().toLowerCase() !== 'staging') {
+    return c.json({ error: 'Retrieval experiment controls yalnız staging ortamında değiştirilebilir' }, 403);
+  }
+  if (!c.env.RATE_LIMIT_KV) return c.json({ error: 'Retrieval kontrol deposu kullanılamıyor' }, 503);
+
+  const body = await c.req.json().catch(() => ({}));
+  const serialized = serializeResearchRetrievalControls(body);
+  if (!serialized) {
+    return c.json({ error: 'Geçersiz retrieval control değeri' }, 400);
+  }
+
+  const before = await researchRetrievalControls(c.env);
+  try {
+    await c.env.RATE_LIMIT_KV.put(RESEARCH_RETRIEVAL_CONTROL_KEY, serialized);
+  } catch (err) {
+    console.error('research retrieval control write failed', err);
+    return c.json({ error: 'Retrieval kontrolü değiştirilemedi' }, 503);
+  }
+
+  const after = await researchRetrievalControls(c.env);
+  const requested = JSON.parse(serialized);
+  if (after.source !== 'runtime' || after.mode !== requested.mode ||
+      after.lexical_candidate_depth !== requested.lexical_candidate_depth ||
+      after.final_result_target !== requested.final_result_target) {
+    console.error('research retrieval control read-back mismatch');
+    return c.json({ error: 'Retrieval kontrolü doğrulanamadı' }, 503);
+  }
+
+  await recordAdminAction(c.env, {
+    actor: auth.user,
+    entityType: 'research_retrieval_controls',
+    entityId: 'staging',
+    action: 'update',
+    before: { mode: before.mode, lexical_candidate_depth: before.lexical_candidate_depth, final_result_target: before.final_result_target, source: before.source },
+    after: { mode: after.mode, lexical_candidate_depth: after.lexical_candidate_depth, final_result_target: after.final_result_target, source: after.source },
+  });
+
+  return c.json({ success: true, ...after });
 });
 
 // GET/POST /api/admin/research/support-check-limit — superadmin-only runtime daily invocation limit.
