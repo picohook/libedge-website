@@ -119,4 +119,13 @@ test('fixture evidence is absent and live evidence/counts are rendered in a real
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   }
+  test('distinguishes corpus breadth from unique sources supporting verified findings', async ({ page }) => {
+    await page.goto('/assistant.html');
+    await page.locator('#assistant-query').fill('support breadth');
+    await page.locator('#assistant-run').click();
+    await expect(page.locator('[data-research-summary="true"]')).toContainText('6');
+    await expect(page.locator('[data-research-summary="true"]')).toContainText(/sources supporting verified findings|doğrulanmış bulguları destekleyen kaynak/i);
+    await expect(page.locator('.evidence-support-note')).toContainText(/1 supporting source|1 destekleyici kaynağa/i);
+  });
+
 });
