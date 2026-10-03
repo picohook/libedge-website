@@ -22,4 +22,15 @@ describe('research retrieval relevance regression', () => {
     expect(terms).not.toContain('acısından');
     expect(filterRelevantWorks(query, works).map((work) => work.id)).toEqual(['10']);
   });
+
+  it('can constrain relevant evidence to the checker-authorized language', () => {
+    const query = 'alkaline stability anion exchange membranes';
+    const works = [
+      { id: 'en', title: 'Alkaline stability of anion exchange membranes', abstract: 'English abstract', language: 'en' },
+      { id: 'tr', title: 'Alkaline stability of anion exchange membranes', abstract: 'Türkçe özet', language: 'tr' },
+      { id: 'unknown', title: 'Alkaline stability of anion exchange membranes', abstract: 'Unknown language', language: null }
+    ];
+
+    expect(filterRelevantWorks(query, works, { language: 'en' }).map((work) => work.id)).toEqual(['en']);
+  });
 });
