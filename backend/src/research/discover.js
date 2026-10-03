@@ -355,15 +355,15 @@ export async function Discover(query, { env, perPage = 10 } = {}) {
   const works = result.body.results;
   const cost = Number(result.body?.meta?.providers?.openalex?.telemetry?.requestCostUsd);
   Object.defineProperties(works, {
-    diagnostic_discovery_cost_usd: {
+    'diagnostic_discovery_cost_usd': {
       value: Number.isFinite(cost) && cost >= 0 && !result.body?.meta?.cached ? cost : 0,
       enumerable: false
     },
-    diagnostic_retrieval_mode: {
+    'diagnostic_retrieval_mode': {
       value: String(result.body?.meta?.retrievalSource || 'unknown'),
       enumerable: false
     },
-    diagnostic_candidate_depth: {
+    'diagnostic_candidate_depth': {
       value: Number(result.body?.meta?.candidatePoolSize) || works.length,
       enumerable: false
     }
