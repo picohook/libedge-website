@@ -31,7 +31,8 @@ async function recordOperationalOutcome(env, user, { code, durationMs, errorClas
       outputTokens: usage?.output_tokens,
       stageTimings,
       llmCostUsd: costs?.llm_cost_usd,
-      discoveryCostUsd: costs?.discovery_cost_usd
+      discoveryCostUsd: costs?.discovery_cost_usd,
+      retrievalDiagnostic
     })
   ]);
 }
