@@ -105,6 +105,27 @@ describe('research telemetry D1 counters', () => {
     expect([...db.rows.keys()].some((key) => key.includes('not_allowed_metric'))).toBe(false);
   });
 
+  it('C2: explicitly allowlists bounded checker aggregate metrics and rejects lookalikes', async () => {
+    const db = createD1();
+    const env = { DB: db };
+    const now = new Date('2026-09-11T12:00:00.000Z');
+    await recordResearchMetrics(env, [
+      ['assistant_grounding_eligible_claims_total', 6],
+      ['assistant_grounding_checked_claims_total', 4],
+      ['assistant_grounding_truncated_claims_total', 2],
+      ['assistant_grounding_rejection_support_check_budget_truncated', 2],
+      ['assistant_grounding_private_claim_text', 99]
+    ], now);
+    const snapshot = await readResearchTelemetrySnapshot(env, now);
+    expect(snapshot.metrics).toMatchObject({
+      assistant_grounding_eligible_claims_total: 6,
+      assistant_grounding_checked_claims_total: 4,
+      assistant_grounding_truncated_claims_total: 2,
+      assistant_grounding_rejection_support_check_budget_truncated: 2
+    });
+    expect([...db.rows.keys()].some((key) => key.includes('private_claim_text'))).toBe(false);
+  });
+
   it('D: persists only date, allowlisted metric and numeric deltas', async () => {
     const db = createD1();
     const env = { DB: db };

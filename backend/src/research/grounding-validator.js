@@ -29,6 +29,13 @@ function normalizeClaim(claim, index) {
  * verifier, claims are rejected rather than treated as grounded.
  */
 const SUPPORT_CHECK_CONCURRENCY = 2;
+export const DEFAULT_SUPPORT_CHECKS_PER_REQUEST = 4;
+
+function supportCheckLimit(value) {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_SUPPORT_CHECKS_PER_REQUEST;
+  return Math.min(parsed, DEFAULT_SUPPORT_CHECKS_PER_REQUEST);
+}
 
 function supportCheckFailureReason(error) {
   const message = String(error?.message || '').trim();
@@ -61,7 +68,7 @@ async function mapWithConcurrency(items, limit, worker) {
   return results;
 }
 
-export async function validateGroundedClaims({ claims, evidencePack, supportCheck } = {}) {
+export async function validateGroundedClaims({ claims, evidencePack, supportCheck, maxSupportChecks = DEFAULT_SUPPORT_CHECKS_PER_REQUEST } = {}) {
   if (!Array.isArray(claims)) throw new TypeError('GROUNDING_CLAIMS_REQUIRED');
   const byId = evidenceById(evidencePack);
   const acceptedClaims = [];
@@ -85,9 +92,15 @@ export async function validateGroundedClaims({ claims, evidencePack, supportChec
   const eligible = structuralResults
     .map((result, position) => ({ ...result, position }))
     .filter((result) => !result.rejection);
+  const checkLimit = supportCheckLimit(maxSupportChecks);
+  const checkable = eligible.slice(0, checkLimit);
+  const truncated = eligible.slice(checkLimit);
+  for (const { claim, position } of truncated) {
+    structuralResults[position] = { claim, rejection: { ...claim, code: 'SUPPORT_CHECK_BUDGET_TRUNCATED' } };
+  }
 
   const semanticResults = await mapWithConcurrency(
-    eligible,
+    checkable,
     SUPPORT_CHECK_CONCURRENCY,
     async ({ claim, citedEvidence, position }) => {
       try {
@@ -115,6 +128,7 @@ export async function validateGroundedClaims({ claims, evidencePack, supportChec
   return {
     ok: rejectedClaims.length === 0,
     acceptedClaims,
-    rejectedClaims
+    rejectedClaims,
+    diagnostics: { eligible_count: eligible.length, checked_count: checkable.length, truncated_count: truncated.length, support_check_limit: checkLimit }
   };
 }
