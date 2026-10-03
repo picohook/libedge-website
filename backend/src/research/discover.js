@@ -26,9 +26,9 @@ async function sha256Hex(value) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export async function researchCacheKeyFor(query, perPage, retrievalSource) {
+export async function researchCacheKeyFor(query, perPage, retrievalSource, candidateDepth = perPage) {
   if (!CACHE_SOURCES.has(retrievalSource)) throw new Error('RESEARCH_CACHE_SOURCE_INVALID');
-  const hash = await sha256Hex(JSON.stringify({ v: 4, retrievalSource, query: query.toLowerCase(), perPage }));
+  const hash = await sha256Hex(JSON.stringify({ v: 5, retrievalSource, query: query.toLowerCase(), perPage, candidateDepth }));
   return `research:cache:v2:${hash}`;
 }
 
@@ -247,8 +247,10 @@ function response(body, status = 200) {
 
 export async function discoverResearch(query, env, { perPage = 10 } = {}) {
   const semanticPrimary = enabled(env.RESEARCH_SEMANTIC_PRIMARY_ENABLED);
-  const semanticCacheKey = await researchCacheKeyFor(query, perPage, 'semantic');
-  const lexicalCacheKey = await researchCacheKeyFor(query, perPage, 'lexical');
+  const semanticDepth = positiveInt(env.RESEARCH_SEMANTIC_CANDIDATE_DEPTH, 50, 50);
+  const lexicalDepth = positiveInt(env.RESEARCH_LEXICAL_CANDIDATE_DEPTH, perPage, 50);
+  const semanticCacheKey = await researchCacheKeyFor(query, perPage, 'semantic', semanticDepth);
+  const lexicalCacheKey = await researchCacheKeyFor(query, perPage, 'lexical', lexicalDepth);
   const crossrefCacheKey = await researchCacheKeyFor(query, perPage, 'crossref');
 
   if (!semanticPrimary) {
@@ -269,7 +271,7 @@ export async function discoverResearch(query, env, { perPage = 10 } = {}) {
 
   if (!semanticPrimary) {
     try {
-      const openAlex = await searchOpenAlex(query, env, { perPage, mode: 'lexical' });
+      const openAlex = await searchOpenAlex(query, env, { perPage: lexicalDepth, mode: 'lexical' });
       await recordOpenAlexCost(env, openAlex.telemetry?.requestCostUsd);
       const payload = await buildOpenAlexPayload(openAlex, env, 'lexical', null, perPage);
       await writeCache(env, lexicalCacheKey, payload);
@@ -287,7 +289,6 @@ export async function discoverResearch(query, env, { perPage = 10 } = {}) {
   try {
     const pacing = await acquireSemanticPacing(env);
     semanticPacingWaitMs = Number(pacing.waitMs) || 0;
-    const semanticDepth = positiveInt(env.RESEARCH_SEMANTIC_CANDIDATE_DEPTH, 50, 50);
     semanticProviderStartedAt = Date.now();
     const semantic = await searchOpenAlex(query, env, { perPage: semanticDepth, mode: 'semantic' });
     const latencyMs = Date.now() - semanticProviderStartedAt;
@@ -325,7 +326,7 @@ export async function discoverResearch(query, env, { perPage = 10 } = {}) {
 
   let lexicalError = null;
   try {
-    const lexical = await searchOpenAlex(query, env, { perPage, mode: 'lexical' });
+    const lexical = await searchOpenAlex(query, env, { perPage: lexicalDepth, mode: 'lexical' });
     await recordOpenAlexCost(env, lexical.telemetry?.requestCostUsd);
     await recordResearchMetrics(env, [['lexical_fallback_attempts', 1], ['lexical_fallback_successes', 1]]);
     const payload = await buildOpenAlexPayload(lexical, env, 'lexical', semanticError, perPage);
