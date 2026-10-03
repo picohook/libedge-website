@@ -25,6 +25,14 @@ function safeDiagnosticReason(value) {
   return /^(MODEL_OUTPUT_EMPTY|MODEL_OUTPUT_NOT_JSON|MODEL_OUTPUT_CLAIMS_REQUIRED)$/.test(reason) ? reason : null;
 }
 
+function modelFailureMetric(errorClass) {
+  const value = String(errorClass || '').trim();
+  if (/^(CredentialsProviderError|UnrecognizedClientException|AccessDeniedException|ValidationException|ResourceNotFoundException|ThrottlingException|ServiceUnavailableException|TimeoutError)$/.test(value)) {
+    return `assistant_model_failure_${value.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase()}`;
+  }
+  return 'assistant_model_failure_other';
+}
+
 function safeCode(code) {
   return OUTCOME_CODES.has(code) ? code : 'OTHER';
 }
@@ -96,6 +104,9 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     ]) {
       if (Object.hasOwn(payload, field)) timingMetrics.push([metric, payload[field]]);
     }
+    const modelFailureMetrics = payload.code === 'MODEL_ADAPTER_FAILED'
+      ? [[modelFailureMetric(payload.error_class), 1]]
+      : [];
     const retrievalMetrics = [
       ['assistant_retrieved_works_total', retrievalCardinality.retrieved_count],
       ['assistant_relevant_works_total', retrievalCardinality.relevant_count],
@@ -107,6 +118,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
       [`assistant_outcome_${metricCode}`, 1],
       ...timingMetrics,
       ...retrievalMetrics,
+      ...modelFailureMetrics,
       ...groundingMetrics
     ]);
     return true;
@@ -115,4 +127,4 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
   }
 }
 
-export const __test = { safeCode, safeErrorClass, safeDiagnosticReason };
+export const __test = { safeCode, safeErrorClass, safeDiagnosticReason, modelFailureMetric };
