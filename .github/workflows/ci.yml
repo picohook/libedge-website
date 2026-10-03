@@ -51,6 +51,30 @@ jobs:
       - name: Build CSS
         run: npm run build
 
+
+  frontend-browser:
+    name: Playwright browser regressions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Pin npm version
+        run: npm install -g npm@11.6.0
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser regressions
+        run: npx playwright test --project=chromium
+
+
   assistant-integration:
     name: Assistant orchestration + real Discover
     runs-on: ubuntu-latest
