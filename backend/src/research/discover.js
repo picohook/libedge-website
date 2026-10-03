@@ -6,6 +6,7 @@ import { crossrefNormalizedToResearchWork, fetchCrossrefByDoi, searchCrossref } 
 import { fetchUnpaywallByDoi } from './providers/unpaywall.js';
 import { acquireSemanticPacing } from './semantic-pacer.js';
 import { recordResearchMetric, recordResearchMetrics, semanticTelemetryEntries } from './telemetry.js';
+import { researchRetrievalControls } from './retrieval-runtime-controls.js';
 
 const DEFAULT_CACHE_TTL_SECONDS = 600;
 const CACHE_SOURCES = new Set(['semantic', 'lexical', 'crossref']);
@@ -245,10 +246,13 @@ function response(body, status = 200) {
   return { body, status };
 }
 
-export async function discoverResearch(query, env, { perPage = 10 } = {}) {
-  const semanticPrimary = enabled(env.RESEARCH_SEMANTIC_PRIMARY_ENABLED);
+export async function discoverResearch(query, env, { perPage = 10, useRuntimeControls = false } = {}) {
+  const runtime = useRuntimeControls ? await researchRetrievalControls(env) : null;
+  const effectivePerPage = runtime?.final_result_target || perPage;
+  const semanticPrimary = runtime ? runtime.mode === 'semantic' : enabled(env.RESEARCH_SEMANTIC_PRIMARY_ENABLED);
   const semanticDepth = positiveInt(env.RESEARCH_SEMANTIC_CANDIDATE_DEPTH, 50, 50);
-  const lexicalDepth = positiveInt(env.RESEARCH_LEXICAL_CANDIDATE_DEPTH, perPage, 50);
+  const lexicalDepth = runtime?.lexical_candidate_depth || positiveInt(env.RESEARCH_LEXICAL_CANDIDATE_DEPTH, effectivePerPage, 50);
+  perPage = effectivePerPage;
   const semanticCacheKey = await researchCacheKeyFor(query, perPage, 'semantic', semanticDepth);
   const lexicalCacheKey = await researchCacheKeyFor(query, perPage, 'lexical', lexicalDepth);
   const crossrefCacheKey = await researchCacheKeyFor(query, perPage, 'crossref');
@@ -344,7 +348,7 @@ export async function discoverResearch(query, env, { perPage = 10 } = {}) {
 }
 
 export async function Discover(query, { env, perPage = 10 } = {}) {
-  const result = await discoverResearch(query, env, { perPage });
+  const result = await discoverResearch(query, env, { perPage, useRuntimeControls: true });
   if (result.status !== 200) {
     const error = new Error(result.body?.code || 'RESEARCH_DISCOVERY_FAILED');
     error.code = result.body?.code || 'RESEARCH_DISCOVERY_FAILED';
