@@ -94,7 +94,7 @@ test('fixture evidence is absent and live evidence/counts are rendered in a real
   await expect(summary.getByText('records with abstracts')).toBeVisible();
   await expect(summary.getByText('metadata-only records')).toBeVisible();
   await expect(summary.getByText('claims checked')).toBeVisible();
-  await expect(summary.getByText('verified findings')).toBeVisible();
+  await expect(summary.getByText('verified findings', { exact: true })).toBeVisible();
   await expect(summary.getByText('not checked due to request limit')).toBeVisible();
   await expect(summary.getByText('sources reviewed')).toHaveCount(0);
   await expect(page.getByText('Sample fixture record representing hydrogen permeability')).toHaveCount(0);
@@ -119,4 +119,6 @@ test('fixture evidence is absent and live evidence/counts are rendered in a real
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   }
+  await expect(summary.getByText('sources supporting verified findings', { exact: true })).toBeVisible();
+  await expect(summary).not.toContainText('Verified synthesis currently relies on 1 supporting source.');
 });
