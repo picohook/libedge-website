@@ -29,6 +29,11 @@ export function lexicalRelevanceScore(query, work) {
   return distinctiveTitleMatch ? (matched.length / terms.length) + (titleMatched.length / terms.length) * 0.5 : 0;
 }
 
+export function filterEnglishEligibleWorks(works) {
+  if (!Array.isArray(works)) return [];
+  return works.filter((work) => englishEvidenceEligibility(work).eligible);
+}
+
 export function filterRelevantWorks(query, works, { minScore = 0.2, language = null } = {}) {
   if (!Array.isArray(works)) return [];
   return works
