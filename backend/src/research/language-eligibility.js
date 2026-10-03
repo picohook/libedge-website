@@ -1,8 +1,8 @@
 import { francAll } from 'franc-min';
 
 const MIN_DETECTION_CHARS = 120;
-const MIN_ENGLISH_SCORE = 0.8;
-const MIN_SCORE_MARGIN = 0.15;
+const MIN_ENGLISH_SCORE = 0.55;
+const MIN_SCORE_MARGIN = 0.05;
 
 function normalizedProviderLanguage(value) {
   return String(value || '').trim().toLowerCase();
@@ -22,12 +22,18 @@ export function englishEvidenceEligibility(work) {
   if (text.length < MIN_DETECTION_CHARS) return { eligible: false, basis: 'insufficient_text' };
 
   const ranked = francAll(text, { minLength: 60 });
-  const [best, second] = ranked;
+  const [best] = ranked;
   const bestLanguage = best?.[0] || 'und';
-  const bestScore = Number(best?.[1] || 0);
-  const secondScore = Number(second?.[1] || 0);
-  const margin = bestScore - secondScore;
-  const eligible = bestLanguage === 'eng' && bestScore >= MIN_ENGLISH_SCORE && margin >= MIN_SCORE_MARGIN;
+  const bestDistance = Number(best?.[1]);
+  const englishDistance = Number(ranked.find(([language]) => language === 'eng')?.[1]);
+  const runnerUpDistance = Number(ranked.find(([language]) => language !== 'eng')?.[1]);
+  const englishConfidence = Number.isFinite(englishDistance) ? 1 - englishDistance : 0;
+  const distanceMargin = Number.isFinite(runnerUpDistance) && Number.isFinite(englishDistance)
+    ? runnerUpDistance - englishDistance : 0;
+  const eligible = bestLanguage === 'eng'
+    && Number.isFinite(bestDistance)
+    && englishConfidence >= MIN_ENGLISH_SCORE
+    && distanceMargin >= MIN_SCORE_MARGIN;
   return { eligible, basis: eligible ? 'detected_en' : 'detected_not_authorized' };
 }
 
