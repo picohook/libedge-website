@@ -34,7 +34,8 @@ describe('R2 pre-launch security boundaries', () => {
     ['/api/admin/research/assistant-usage-state', { scope_type: 'institution', scope_id: '7', action: 'pause' }],
     ['/api/admin/research/assistant-usage-limit', { scope_type: 'institution', scope_id: '7', daily_request_limit: 10 }],
     ['/api/admin/research/support-check-state', { action: 'pause' }],
-    ['/api/admin/research/support-check-limit', { daily_invocation_limit: 300 }]
+    ['/api/admin/research/support-check-limit', { daily_invocation_limit: 300 }],
+    ['/api/admin/research/retrieval-controls', { mode: 'semantic', lexical_candidate_depth: 50, final_result_target: 10 }]
   ])('denies non-superadmin mutation of %s before KV writes', async (path, body) => {
     const { env, put } = guardedEnv();
     const response = await app.fetch(new Request(`https://example.test${path}`, {
