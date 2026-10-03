@@ -27,6 +27,9 @@ for (const candidate of CASES) {
     redirect: 'manual'
   });
   const body = await response.json();
+  if (response.status === 403 && body?.code === 'RESEARCH_ENTITLEMENT_REQUIRED') {
+    throw new Error('Sparse benchmark smoke account is not Research-entitled; measurement aborted');
+  }
   if (response.status !== 200) throw new Error(`${candidate.name} HTTP ${response.status}`);
   const summary = body?.research_summary;
   if (!summary?.literature || !summary?.verification) throw new Error(`${candidate.name} missing research_summary`);
