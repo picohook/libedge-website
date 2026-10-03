@@ -5,6 +5,7 @@ import { normalizeCrossrefMessage } from '../../backend/src/research/providers/c
 import { deduplicateResearchWorks, mergeCrossrefEnrichment } from '../../backend/src/research/deduplicate.js';
 import { canonicalParentDoiForSupplementaryWork, canonicalResearchWorks, isSupplementaryMaterialWork, needsCrossrefEnrichment, selectCrossrefEnrichmentCandidates } from '../../backend/src/research/policy.js';
 import { parseResearchWork } from '../../backend/src/research/research-work.js';
+import { recoverCanonicalParentWorks } from '../../backend/src/research/discover.js';
 
 describe('research normalization', () => {
   it('normalizes DOI variants to a canonical lowercase DOI', () => {
@@ -65,6 +66,58 @@ describe('canonical research evidence policy', () => {
       { id: 'article', doi: '10.1000/article', type: 'journal-article' }
     ];
     expect(canonicalResearchWorks(works).map((work) => work.id)).toEqual(['article']);
+  });
+});
+
+describe('canonical parent recovery', () => {
+  const supplementary = {
+    id: 'supp',
+    doi: '10.1021/acs.macromol.7b00401.s001',
+    type: 'article',
+    title: 'Supporting record'
+  };
+  const parentNormalized = {
+    doi: '10.1021/acs.macromol.7b00401',
+    title: 'Canonical article',
+    authors: [{ name: 'A. Author', orcid: null }],
+    publicationDate: '2017-01-01',
+    publicationYear: 2017,
+    type: 'journal-article',
+    language: 'en',
+    identifiers: { doi: '10.1021/acs.macromol.7b00401' },
+    venue: { name: 'Macromolecules', issn: [], publisher: 'ACS' },
+    abstract: 'Canonical abstract.',
+    evidenceSource: { kind: 'abstract', provider: 'crossref', sourceRef: '10.1021/acs.macromol.7b00401', retrievedAt: '2026-10-03T00:00:00.000Z' },
+    licenses: [],
+    citationObservation: null,
+    urls: { doi: 'https://doi.org/10.1021/acs.macromol.7b00401', publisher: null },
+    provenance: { provider: 'crossref', providerId: '10.1021/acs.macromol.7b00401', retrievedAt: '2026-10-03T00:00:00.000Z' }
+  };
+
+  it('replaces an ACS supplementary hit with the fetched canonical parent', async () => {
+    const calls = [];
+    const results = await recoverCanonicalParentWorks([supplementary], {}, {
+      fetchByDoi: async (doi) => { calls.push(doi); return parentNormalized; }
+    });
+    expect(calls).toEqual(['10.1021/acs.macromol.7b00401']);
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ doi: '10.1021/acs.macromol.7b00401', publicationYear: 2017 });
+    expect(results[0].doi).not.toMatch(/\.s\d+$/);
+  });
+
+  it('stays fail-closed when canonical parent recovery misses', async () => {
+    const results = await recoverCanonicalParentWorks([supplementary], {}, { fetchByDoi: async () => null });
+    expect(results).toEqual([]);
+  });
+
+  it('does not refetch a parent already present and preserves normal records', async () => {
+    const parent = { ...supplementary, id: 'parent', doi: '10.1021/acs.macromol.7b00401', type: 'journal-article' };
+    let calls = 0;
+    const results = await recoverCanonicalParentWorks([supplementary, parent], {}, {
+      fetchByDoi: async () => { calls += 1; return parentNormalized; }
+    });
+    expect(calls).toBe(0);
+    expect(results).toEqual([parent]);
   });
 });
 
