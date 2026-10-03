@@ -4969,6 +4969,10 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 ['Discover hatası', metrics.assistant_outcome_discover_failed],
                 ['Evidence pack hatası', metrics.assistant_outcome_evidence_pack_failed],
                 ['Model adapter hatası', metrics.assistant_outcome_model_adapter_failed],
+                ['Model auth/izin', Number(metrics.assistant_model_failure_credentials_provider_error || 0) + Number(metrics.assistant_model_failure_unrecognized_client_exception || 0) + Number(metrics.assistant_model_failure_access_denied_exception || 0)],
+                ['Model istek/config', Number(metrics.assistant_model_failure_validation_exception || 0) + Number(metrics.assistant_model_failure_resource_not_found_exception || 0)],
+                ['Model throttle/service', Number(metrics.assistant_model_failure_throttling_exception || 0) + Number(metrics.assistant_model_failure_service_unavailable_exception || 0) + Number(metrics.assistant_model_failure_timeout_error || 0)],
+                ['Model diğer', metrics.assistant_model_failure_other],
                 ['Model output geçersiz', metrics.assistant_outcome_model_output_invalid],
                 ['Grounding validation hatası', metrics.assistant_outcome_grounding_validation_failed],
             ];
