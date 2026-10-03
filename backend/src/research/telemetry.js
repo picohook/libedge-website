@@ -25,6 +25,7 @@ const ALLOWED_METRICS = new Set([
   'assistant_grounding_ms_total',
   'assistant_outcome_ok',
   'assistant_outcome_no_authorized_evidence',
+  'assistant_outcome_no_supportable_claims',
   'assistant_retrieved_works_total',
   'assistant_relevant_works_total',
   'assistant_language_eligible_works_total',
