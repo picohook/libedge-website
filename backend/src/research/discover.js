@@ -28,9 +28,9 @@ async function sha256Hex(value) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export async function researchCacheKeyFor(query, perPage, retrievalSource, candidateDepth = perPage) {
+export async function researchCacheKeyFor(query, perPage, retrievalSource, candidateDepth = perPage, selectionPolicy = 'provider-order') {
   if (!CACHE_SOURCES.has(retrievalSource)) throw new Error('RESEARCH_CACHE_SOURCE_INVALID');
-  const hash = await sha256Hex(JSON.stringify({ v: 5, retrievalSource, query: query.toLowerCase(), perPage, candidateDepth }));
+  const hash = await sha256Hex(JSON.stringify({ v: 6, retrievalSource, query: query.toLowerCase(), perPage, candidateDepth, selectionPolicy }));
   return `research:cache:v2:${hash}`;
 }
 
@@ -223,7 +223,7 @@ async function crossrefFallback(query, env, perPage, openAlexMeta, crossrefCache
   }
 }
 
-function selectAssistantCandidates(query, candidatePool, perPage) {
+export function selectAssistantCandidates(query, candidatePool, perPage) {
   const relevant = filterRelevantWorks(query, candidatePool);
   const languageEligible = filterEnglishEligibleWorks(candidatePool);
   const authorizedRelevant = filterRelevantWorks(query, languageEligible);
@@ -283,8 +283,9 @@ export async function discoverResearch(query, env, { perPage = 10, useRuntimeCon
   const semanticDepth = positiveInt(env.RESEARCH_SEMANTIC_CANDIDATE_DEPTH, 50, 50);
   const lexicalDepth = runtime?.lexical_candidate_depth || positiveInt(env.RESEARCH_LEXICAL_CANDIDATE_DEPTH, effectivePerPage, 50);
   perPage = effectivePerPage;
-  const semanticCacheKey = await researchCacheKeyFor(query, perPage, 'semantic', semanticDepth);
-  const lexicalCacheKey = await researchCacheKeyFor(query, perPage, 'lexical', lexicalDepth);
+  const selectionPolicy = useRuntimeControls ? 'assistant-relevance-v1' : 'provider-order';
+  const semanticCacheKey = await researchCacheKeyFor(query, perPage, 'semantic', semanticDepth, selectionPolicy);
+  const lexicalCacheKey = await researchCacheKeyFor(query, perPage, 'lexical', lexicalDepth, selectionPolicy);
   const crossrefCacheKey = await researchCacheKeyFor(query, perPage, 'crossref');
 
   if (!semanticPrimary) {
