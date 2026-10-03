@@ -4902,6 +4902,25 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         ).join('');
     }
 
+    function researchRequestLocalTime(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return '—';
+        const normalized = /(?:Z|[+-]\d\d:\d\d)$/i.test(raw) ? raw : raw.replace(' ', 'T') + 'Z';
+        const date = new Date(normalized);
+        if (Number.isNaN(date.getTime())) return raw;
+        return date.toLocaleString('tr-TR');
+    }
+
+    function researchRequestStageBreakdown(stageLatency = {}) {
+        const parts = [
+            ['D', stageLatency.discover],
+            ['E', stageLatency.evidence],
+            ['M', stageLatency.model],
+            ['G', stageLatency.grounding]
+        ].filter(([, value]) => value != null && Number.isFinite(Number(value)));
+        return parts.length ? parts.map(([label, value]) => `${label} ${Number(value).toLocaleString('tr-TR')} ms`).join(' · ') : '—';
+    }
+
     function researchRequestSeverityBadge(severity) {
         const styles = {
             green: 'bg-emerald-100 text-emerald-800',
@@ -4927,7 +4946,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             const data = await res.json();
             const requests = data.requests || [];
             if (!requests.length) { cell.innerHTML = '<span class="text-sm text-gray-500">Bu dönemde istek yok.</span>'; return; }
-            cell.innerHTML = `<div class="mb-2 text-xs text-gray-500">Son ${data.window_days} gün · İçerik gösterilmez · En fazla 50 istek</div><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr><th>Zaman</th><th>Request</th><th>Durum</th><th>Aşama</th><th>Sonuç kodu</th><th class="text-right">Süre</th></tr></thead><tbody>${requests.map((request) => `<tr><td>${escapeHtml(request.created_at || '—')}</td><td class="font-mono">${escapeHtml(request.request_id || '—')}</td><td>${researchRequestSeverityBadge(request.severity)}</td><td>${escapeHtml(request.stage || '—')}</td><td class="font-mono">${escapeHtml(request.status || '—')}</td><td class="text-right">${Number(request.latency_ms || 0).toLocaleString('tr-TR')} ms</td></tr>`).join('')}</tbody></table></div>`;
+            cell.innerHTML = `<div class="mb-2 text-xs text-gray-500">Son ${data.window_days} gün · İçerik gösterilmez · En fazla 50 istek</div><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr><th>Yerel zaman</th><th>Request</th><th>Durum</th><th>Aşama</th><th>Sonuç kodu</th><th>Aşama süreleri</th><th class="text-right">Toplam</th></tr></thead><tbody>${requests.map((request) => `<tr><td>${escapeHtml(researchRequestLocalTime(request.created_at))}</td><td class="font-mono">${escapeHtml(request.request_id || '—')}</td><td>${researchRequestSeverityBadge(request.severity)}</td><td>${escapeHtml(request.stage || '—')}</td><td class="font-mono">${escapeHtml(request.status || '—')}</td><td class="whitespace-nowrap">${escapeHtml(researchRequestStageBreakdown(request.stage_latency_ms))}</td><td class="text-right">${Number(request.latency_ms || 0).toLocaleString('tr-TR')} ms</td></tr>`).join('')}</tbody></table></div>`;
         } catch (error) {
             cell.innerHTML = '<span class="text-sm text-red-600">İstek detayları alınamadı.</span>';
         }
