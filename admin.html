@@ -4874,14 +4874,15 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             + (counts.INVOCATION_BUDGET_STORE_FAILED || 0);
         const enteredPipeline = Math.max(0, total - terminalBeforePipeline);
         const discoverFailed = counts.DISCOVER_FAILED || 0;
+        const noAuthorizedEvidence = counts.NO_AUTHORIZED_EVIDENCE || 0;
         const evidenceFailed = counts.EVIDENCE_PACK_FAILED || 0;
         const modelFailed = (counts.MODEL_ADAPTER_FAILED || 0) + (counts.MODEL_OUTPUT_INVALID || 0);
         const stages = [
             ['Ask', total],
             ['Pipeline başladı', enteredPipeline],
             ['Discover geçti', Math.max(0, enteredPipeline - discoverFailed)],
-            ['Evidence geçti', Math.max(0, enteredPipeline - discoverFailed - evidenceFailed)],
-            ['Model geçti', Math.max(0, enteredPipeline - discoverFailed - evidenceFailed - modelFailed)],
+            ['Evidence geçti', Math.max(0, enteredPipeline - discoverFailed - noAuthorizedEvidence - evidenceFailed)],
+            ['Model geçti', Math.max(0, enteredPipeline - discoverFailed - noAuthorizedEvidence - evidenceFailed - modelFailed)],
             ['Grounded / OK', counts.OK || 0]
         ];
         return stages.map(([label, value]) => researchMetricRow(label, value)).join('');
@@ -4954,6 +4955,11 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 ['Semantic 429', metrics.semantic_429],
                 ['Semantic 5xx', metrics.semantic_5xx],
                 ['Lexical fallback başarı', metrics.lexical_fallback_successes],
+                ['Yetkili kanıt bulunamadı', metrics.assistant_outcome_no_authorized_evidence],
+                ['Retrieved work toplamı', metrics.assistant_retrieved_works_total],
+                ['Relevant work toplamı', metrics.assistant_relevant_works_total],
+                ['Dil açısından uygun work toplamı', metrics.assistant_language_eligible_works_total],
+                ['Yetkili + relevant work toplamı', metrics.assistant_authorized_relevant_works_total],
                 ['Discover hatası', metrics.assistant_outcome_discover_failed],
                 ['Evidence pack hatası', metrics.assistant_outcome_evidence_pack_failed],
                 ['Model adapter hatası', metrics.assistant_outcome_model_adapter_failed],

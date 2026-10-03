@@ -1,6 +1,7 @@
 import { recordResearchMetrics } from '../research/telemetry.js';
 const OUTCOME_CODES = new Set([
   'OK',
+  'NO_AUTHORIZED_EVIDENCE',
   'ASSISTANT_QUERY_REQUIRED',
   'DISCOVER_FAILED',
   'EVIDENCE_PACK_FAILED',
@@ -35,7 +36,7 @@ function safeCode(code) {
  * credentials, or provider payloads. Logging is best-effort and must not
  * change the assistant response path.
  */
-export async function recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, stageTimings } = {}) {
+export async function recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, retrievalDiagnostic, stageTimings } = {}) {
   const payload = {
     event: 'research_assistant_outcome',
     code: safeCode(code),
@@ -59,6 +60,13 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     if (Number.isSafeInteger(value) && value >= 0) cardinality[key] = value;
   }
   if (Object.keys(cardinality).length) payload.grounding_cardinality = cardinality;
+
+  const retrievalCardinality = {};
+  for (const key of ['retrieved_count', 'relevant_count', 'language_eligible_count', 'authorized_relevant_count']) {
+    const value = Number(retrievalDiagnostic?.[key]);
+    if (Number.isSafeInteger(value) && value >= 0) retrievalCardinality[key] = value;
+  }
+  if (Object.keys(retrievalCardinality).length) payload.retrieval_cardinality = retrievalCardinality;
 
   const groundingCounts = groundingDiagnostic?.rejection_counts && typeof groundingDiagnostic.rejection_counts === 'object'
     ? groundingDiagnostic.rejection_counts : {};
@@ -88,10 +96,17 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     ]) {
       if (Object.hasOwn(payload, field)) timingMetrics.push([metric, payload[field]]);
     }
+    const retrievalMetrics = [
+      ['assistant_retrieved_works_total', retrievalCardinality.retrieved_count],
+      ['assistant_relevant_works_total', retrievalCardinality.relevant_count],
+      ['assistant_language_eligible_works_total', retrievalCardinality.language_eligible_count],
+      ['assistant_authorized_relevant_works_total', retrievalCardinality.authorized_relevant_count]
+    ];
     await recordResearchMetrics(env, [
       ['assistant_requests', 1],
       [`assistant_outcome_${metricCode}`, 1],
       ...timingMetrics,
+      ...retrievalMetrics,
       ...groundingMetrics
     ]);
     return true;

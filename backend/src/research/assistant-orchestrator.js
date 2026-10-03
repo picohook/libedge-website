@@ -1,7 +1,7 @@
 import { Discover } from './discover.js';
 import { createEvidencePack } from './evidence-pack.js';
 import { validateGroundedClaims } from './grounding-validator.js';
-import { filterRelevantWorks } from './relevance.js';
+import { filterEnglishEligibleWorks, filterRelevantWorks } from './relevance.js';
 
 function safeErrorClass(error) {
   const name = typeof error?.name === 'string' ? error.name.trim() : '';
@@ -97,6 +97,7 @@ export async function orchestrateResearchAnswer({
 
   const diagnosticTimings = {};
   const diagnosticCosts = { discovery_cost_usd: 0 };
+  let diagnosticRetrieval = { retrieved_count: 0, relevant_count: 0, language_eligible_count: 0, authorized_relevant_count: 0 };
   let stageStartedAt = Date.now();
   let works;
   try {
@@ -104,13 +105,32 @@ export async function orchestrateResearchAnswer({
     diagnosticTimings.discover_ms = Date.now() - stageStartedAt;
   } catch {
     diagnosticTimings.discover_ms = Date.now() - stageStartedAt;
-    return { ok: false, code: 'DISCOVER_FAILED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, claims: [] };
+    return { ok: false, code: 'DISCOVER_FAILED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts,
+      diagnostic_retrieval: diagnosticRetrieval, claims: [] };
   }
 
   diagnosticCosts.discovery_cost_usd = Number(works?.diagnostic_discovery_cost_usd) || 0;
-  const relevantWorks = filterRelevantWorks(task, works, { language: 'en' });
+  const discoveredWorks = Array.isArray(works) ? works : [];
+  const relevantBeforeLanguage = filterRelevantWorks(task, discoveredWorks);
+  const languageEligibleWorks = filterEnglishEligibleWorks(discoveredWorks);
+  const relevantWorks = filterRelevantWorks(task, languageEligibleWorks);
+  diagnosticRetrieval = {
+    retrieved_count: discoveredWorks.length,
+    relevant_count: relevantBeforeLanguage.length,
+    language_eligible_count: languageEligibleWorks.length,
+    authorized_relevant_count: relevantWorks.length
+  };
   if (!relevantWorks.length) {
-    return { ok: true, code: 'OK', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, claims: [], evidence: [], evidence_pack_id: null };
+    return {
+      ok: true,
+      code: 'NO_AUTHORIZED_EVIDENCE',
+      diagnostic_timings: diagnosticTimings,
+      diagnostic_costs: diagnosticCosts,
+      diagnostic_retrieval: diagnosticRetrieval,
+      claims: [],
+      evidence: [],
+      evidence_pack_id: null
+    };
   }
 
   let evidencePack;
@@ -120,7 +140,8 @@ export async function orchestrateResearchAnswer({
     diagnosticTimings.evidence_pack_ms = Date.now() - stageStartedAt;
   } catch {
     diagnosticTimings.evidence_pack_ms = Date.now() - stageStartedAt;
-    return { ok: false, code: 'EVIDENCE_PACK_FAILED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, claims: [] };
+    return { ok: false, code: 'EVIDENCE_PACK_FAILED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts,
+      diagnostic_retrieval: diagnosticRetrieval, claims: [] };
   }
 
   if (!gatePassed(providerGate)) {
@@ -171,6 +192,7 @@ export async function orchestrateResearchAnswer({
       diagnostic_usage: diagnosticUsage,
       diagnostic_timings: diagnosticTimings,
       diagnostic_costs: diagnosticCosts,
+      diagnostic_retrieval: diagnosticRetrieval,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -189,6 +211,7 @@ export async function orchestrateResearchAnswer({
       diagnostic_usage: diagnosticUsage,
       diagnostic_timings: diagnosticTimings,
       diagnostic_costs: diagnosticCosts,
+      diagnostic_retrieval: diagnosticRetrieval,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -204,6 +227,7 @@ export async function orchestrateResearchAnswer({
       diagnostic_usage: diagnosticUsage,
       diagnostic_timings: diagnosticTimings,
       diagnostic_costs: diagnosticCosts,
+      diagnostic_retrieval: diagnosticRetrieval,
       claims: [],
       evidence_pack_id: evidencePack.pack_id,
       diagnostic_grounding: diagnosticGrounding
@@ -216,6 +240,7 @@ export async function orchestrateResearchAnswer({
     diagnostic_usage: diagnosticUsage,
     diagnostic_timings: diagnosticTimings,
     diagnostic_costs: diagnosticCosts,
+      diagnostic_retrieval: diagnosticRetrieval,
     claims: grounding.acceptedClaims,
     evidence_pack_id: evidencePack.pack_id,
     diagnostic_grounding: diagnosticGrounding,

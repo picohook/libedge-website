@@ -35,6 +35,28 @@ function discoverStub() {
 }
 
 describe('assistant orchestration boundary', () => {
+  it('returns a distinct valid-empty outcome before model/checker when no evidence is language-authorized', async () => {
+    const generateClaims = vi.fn();
+    const result = await orchestrateResearchAnswer({
+      query: 'alkaline stability anion exchange membranes',
+      env: {},
+      providerGate: passGate,
+      modelAdapter: { generateClaims },
+      discover: vi.fn(async () => [{ ...work(), language: null, title: 'Short technical title', abstract: null }]),
+      supportCheck: vi.fn(),
+      packOptions
+    });
+
+    expect(result).toMatchObject({ ok: true, code: 'NO_AUTHORIZED_EVIDENCE', claims: [], evidence: [] });
+    expect(generateClaims).not.toHaveBeenCalled();
+    expect(result.diagnostic_retrieval).toEqual({
+      retrieved_count: 1,
+      relevant_count: 0,
+      language_eligible_count: 0,
+      authorized_relevant_count: 0
+    });
+  });
+
   it('does not send the research task to a model adapter without Provider Privacy Gate PASS', async () => {
     const discover = discoverStub();
     const generateClaims = vi.fn();
