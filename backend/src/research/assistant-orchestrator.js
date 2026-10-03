@@ -185,7 +185,7 @@ export async function orchestrateResearchAnswer({
   const diagnosticUsage = modelResult?.usage || null;
   if (Number.isFinite(Number(diagnosticUsage?.llm_cost_usd))) diagnosticCosts.llm_cost_usd = Number(diagnosticUsage.llm_cost_usd);
   const claims = normalizeModelClaims(modelResult);
-  if (!claims || claims.length === 0) {
+  if (!claims) {
     return {
       ok: false,
       code: 'MODEL_OUTPUT_INVALID',
@@ -194,6 +194,20 @@ export async function orchestrateResearchAnswer({
       diagnostic_costs: diagnosticCosts,
       diagnostic_retrieval: diagnosticRetrieval,
       claims: [],
+      evidence_pack_id: evidencePack.pack_id
+    };
+  }
+
+  if (claims.length === 0) {
+    return {
+      ok: true,
+      code: 'NO_SUPPORTABLE_CLAIMS',
+      diagnostic_usage: diagnosticUsage,
+      diagnostic_timings: diagnosticTimings,
+      diagnostic_costs: diagnosticCosts,
+      diagnostic_retrieval: diagnosticRetrieval,
+      claims: [],
+      evidence: [],
       evidence_pack_id: evidencePack.pack_id
     };
   }

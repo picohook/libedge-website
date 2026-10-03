@@ -2,6 +2,7 @@ import { recordResearchMetrics } from '../research/telemetry.js';
 const OUTCOME_CODES = new Set([
   'OK',
   'NO_AUTHORIZED_EVIDENCE',
+  'NO_SUPPORTABLE_CLAIMS',
   'ASSISTANT_QUERY_REQUIRED',
   'DISCOVER_FAILED',
   'EVIDENCE_PACK_FAILED',
