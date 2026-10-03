@@ -4964,7 +4964,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageStageLatency').innerHTML = researchStageLatencyRows(summary.stage_latency_ms);
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
             document.getElementById('researchUsageInstitutions').innerHTML = researchUsageRows(data.institutions, 'institution');
-            if (meta) meta.textContent = `Son ${data.window_days || days} gün • verified + geçerli boş + başarısız = toplam istek: ${summary.outcome_count_consistent ? 'tutarlı' : 'UYARI: tutarsız'} • 30 gün request retention`;
+            if (meta) meta.textContent = `Son ${data.window_days || days} gün • verified + geçerli boş + başarısız = toplam istek: ${summary.outcome_count_consistent ? 'tutarlı' : 'UYARI: tutarsız'} • 90 gün retention • request detayları en fazla 30 gün`;
         } catch (error) {
             console.error('Research account/institution usage load failed:', error);
             if (meta) meta.textContent = 'Hesap/kurum kullanım verisi alınamadı. Ayrıntı tarayıcı konsolunda.';
