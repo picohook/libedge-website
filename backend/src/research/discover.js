@@ -248,7 +248,7 @@ function response(body, status = 200) {
 
 export async function discoverResearch(query, env, { perPage = 10, useRuntimeControls = false } = {}) {
   const runtime = useRuntimeControls ? await researchRetrievalControls(env) : null;
-  const effectivePerPage = runtime?.final_result_target || perPage;
+  const effectivePerPage = runtime?.source === 'runtime' ? runtime.final_result_target : perPage;
   const semanticPrimary = runtime ? runtime.mode === 'semantic' : enabled(env.RESEARCH_SEMANTIC_PRIMARY_ENABLED);
   const semanticDepth = positiveInt(env.RESEARCH_SEMANTIC_CANDIDATE_DEPTH, 50, 50);
   const lexicalDepth = runtime?.lexical_candidate_depth || positiveInt(env.RESEARCH_LEXICAL_CANDIDATE_DEPTH, effectivePerPage, 50);
