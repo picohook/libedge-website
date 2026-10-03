@@ -112,7 +112,7 @@ test('fixture evidence is absent and live evidence/counts are rendered in a real
   await expect(page.locator('#live-live-e2')).toHaveClass(/is-related/);
   await expect(page.locator('#live-live-e1')).not.toHaveClass(/is-related/);
   await expect(page.locator('[data-live-evidence] .live-source-links a')).toHaveCount(4);
-  await expect(page.getByRole('link', { name: 'DOI' })).toHaveAttribute('href', 'https://doi.org/10.1000/live');
+  await expect(page.locator('#live-live-e1').getByRole('link', { name: 'DOI' })).toHaveAttribute('href', 'https://doi.org/10.1000/live');
   await expect(page.getByRole('link', { name: 'Publisher' })).toHaveAttribute('href', 'https://publisher.example/article');
   await expect(page.getByRole('link', { name: 'Open access' })).toHaveAttribute('href', 'https://repository.example/live');
   for (const link of await page.locator('[data-live-evidence] .live-source-links a').all()) {
