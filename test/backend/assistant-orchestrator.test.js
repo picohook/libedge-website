@@ -299,6 +299,51 @@ describe('assistant orchestration boundary', () => {
     });
   });
 
+  it('never renders unchecked budget-truncated claims or their evidence', async () => {
+    const supportCheck = vi.fn(async () => true);
+    const result = await orchestrateResearchAnswer({
+      query: 'hydrogen membranes',
+      env: { RESEARCH_SUPPORT_CHECKS_PER_REQUEST: '2' },
+      providerGate: passGate,
+      modelAdapter: {
+        generateClaims: async () => ({
+          claims: [
+            { text: 'Verified one', evidence_ids: ['pack-cap:e1'] },
+            { text: 'Verified two', evidence_ids: ['pack-cap:e2'] },
+            { text: 'Unchecked three', evidence_ids: ['pack-cap:e3'] }
+          ]
+        })
+      },
+      discover: discoverStub(),
+      packFactory: () => ({
+        pack_id: 'pack-cap',
+        evidence: [
+          { evidence_id: 'pack-cap:e1', title: 'Evidence one' },
+          { evidence_id: 'pack-cap:e2', title: 'Evidence two' },
+          { evidence_id: 'pack-cap:e3', title: 'Unchecked-only evidence' }
+        ]
+      }),
+      supportCheck
+    });
+
+    expect(supportCheck).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ ok: true, code: 'OK' });
+    expect(result.claims.map((claim) => claim.text)).toEqual(['Verified one', 'Verified two']);
+    expect(result.evidence.map((item) => item.evidence_id)).toEqual(['pack-cap:e1', 'pack-cap:e2']);
+    expect(JSON.stringify(result.claims)).not.toContain('Unchecked three');
+    expect(JSON.stringify(result.evidence)).not.toContain('Unchecked-only evidence');
+    expect(result.diagnostic_grounding).toMatchObject({
+      claim_count: 3,
+      accepted_count: 2,
+      rejected_count: 1,
+      eligible_count: 3,
+      checked_count: 2,
+      truncated_count: 1,
+      support_check_limit: 2,
+      rejection_counts: { SUPPORT_CHECK_BUDGET_TRUNCATED: 1 }
+    });
+  });
+
   it('fails the entire response closed when semantic rejection and checker failure are mixed', async () => {
     const result = await orchestrateResearchAnswer({
       query: 'hydrogen membranes',
