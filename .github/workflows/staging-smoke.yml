@@ -78,6 +78,7 @@ jobs:
           RUN_FILES: ${{ inputs.run_files }}
           RUN_RESEARCH: ${{ inputs.run_research }}
           RUN_ASSISTANT: ${{ inputs.run_assistant }}
+          RUN_SPARSE_BENCHMARK: ${{ inputs.run_sparse_benchmark }}
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
           LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
@@ -92,7 +93,7 @@ jobs:
             fi
           }
 
-          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_RESEARCH" = "true" ] || [ "$RUN_ASSISTANT" = "true" ]; then
+          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_RESEARCH" = "true" ] || [ "$RUN_ASSISTANT" = "true" ] || [ "$RUN_SPARSE_BENCHMARK" = "true" ]; then
             require_secret LIBEDGE_SMOKE_EMAIL
             require_secret LIBEDGE_SMOKE_PASSWORD
           fi
