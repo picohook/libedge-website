@@ -50,6 +50,22 @@ function normalizeModelClaims(result) {
   return null;
 }
 
+const CLAIM_LOCAL_REJECTION_CODES = new Set([
+  'CLAIM_TEXT_REQUIRED',
+  'EVIDENCE_ID_REQUIRED',
+  'EVIDENCE_ID_UNKNOWN',
+  'CLAIM_UNSUPPORTED'
+]);
+
+function hasBlockingGroundingFailure(rejectedClaims = []) {
+  return rejectedClaims.some((item) => !CLAIM_LOCAL_REJECTION_CODES.has(String(item?.code || '').trim()));
+}
+
+function evidenceForAcceptedClaims(evidence = [], acceptedClaims = []) {
+  const citedIds = new Set(acceptedClaims.flatMap((claim) => claim.evidence_ids || []));
+  return evidence.filter((item) => citedIds.has(item.evidence_id));
+}
+
 /**
  * Provider-independent orchestration boundary.
  *
@@ -58,8 +74,10 @@ function normalizeModelClaims(result) {
  * PASS. The adapter contract is intentionally provider-neutral and receives no
  * user/account/session/quota context from this layer.
  *
- * No partially grounded response is render-ready: if any claim fails the
- * grounding boundary, the outward claims array is empty.
+ * Only individually validated claims are render-ready. Claim-local semantic
+ * or structural rejections may be omitted when at least one independent claim
+ * remains accepted. Any verifier/infrastructure failure keeps the entire
+ * response fail-closed.
  */
 export async function orchestrateResearchAnswer({
   query,
@@ -176,7 +194,10 @@ export async function orchestrateResearchAnswer({
     };
   }
 
-  if (!grounding.ok) {
+  const diagnosticGrounding = groundingDiagnosticSummary(grounding.rejectedClaims, claims.length);
+  const blockingGroundingFailure = hasBlockingGroundingFailure(grounding.rejectedClaims);
+
+  if (blockingGroundingFailure || grounding.acceptedClaims.length === 0) {
     return {
       ok: false,
       code: 'GROUNDING_REJECTED',
@@ -185,7 +206,7 @@ export async function orchestrateResearchAnswer({
       diagnostic_costs: diagnosticCosts,
       claims: [],
       evidence_pack_id: evidencePack.pack_id,
-      diagnostic_grounding: groundingDiagnosticSummary(grounding.rejectedClaims, claims.length)
+      diagnostic_grounding: diagnosticGrounding
     };
   }
 
@@ -197,7 +218,7 @@ export async function orchestrateResearchAnswer({
     diagnostic_costs: diagnosticCosts,
     claims: grounding.acceptedClaims,
     evidence_pack_id: evidencePack.pack_id,
-    diagnostic_grounding: groundingDiagnosticSummary([], claims.length),
-    evidence: evidencePack.evidence
+    diagnostic_grounding: diagnosticGrounding,
+    evidence: evidenceForAcceptedClaims(evidencePack.evidence, grounding.acceptedClaims)
   };
 }

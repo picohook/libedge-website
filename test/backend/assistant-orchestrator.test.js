@@ -139,7 +139,7 @@ describe('assistant orchestration boundary', () => {
     expect(result).not.toHaveProperty('evidence');
   });
 
-  it('returns no render-ready claims if even one claim fails grounding', async () => {
+  it('returns supported claims when another claim is semantically unsupported', async () => {
     const result = await orchestrateResearchAnswer({
       query: 'hydrogen membranes',
       env: {},
@@ -148,25 +148,124 @@ describe('assistant orchestration boundary', () => {
         generateClaims: async ({ evidencePack }) => ({
           claims: [
             { text: 'Supported claim', evidence_ids: [evidencePack.evidence[0].evidence_id] },
-            { text: 'Unsupported claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }
+            { text: 'Unsupported claim', evidence_ids: [evidencePack.evidence[1].evidence_id] }
           ]
         })
       },
       discover: discoverStub(),
-      supportCheck: (claim) => claim.text === 'Supported claim',
-      packOptions
+      packFactory: () => ({
+        pack_id: 'pack-1',
+        evidence: [
+          { evidence_id: 'pack-1:e1', title: 'Accepted evidence' },
+          { evidence_id: 'pack-1:e2', title: 'Rejected-only evidence' }
+        ]
+      }),
+      supportCheck: (claim) => claim.text === 'Supported claim'
     });
 
-    expect(result.ok).toBe(false);
-    expect(result.code).toBe('GROUNDING_REJECTED');
-    expect(result.claims).toEqual([]);
-    expect(result).not.toHaveProperty('rejected_claims');
-    expect(result).not.toHaveProperty('evidence');
+    expect(result.ok).toBe(true);
+    expect(result.code).toBe('OK');
+    expect(result.claims).toEqual([{ index: 0, text: 'Supported claim', evidence_ids: ['pack-1:e1'] }]);
+    expect(result.evidence).toEqual([{ evidence_id: 'pack-1:e1', title: 'Accepted evidence' }]);
     expect(result.diagnostic_grounding).toEqual({
       claim_count: 2,
       accepted_count: 1,
       rejected_count: 1,
       rejection_counts: { CLAIM_UNSUPPORTED: 1, CLAIM_UNSUPPORTED_UNSUPPORTED: 1 }
+    });
+  });
+
+  it.each([
+    ['empty claim text', { text: '', evidence_ids: ['pack-1:e1'] }],
+    ['missing evidence IDs', { text: 'Malformed claim', evidence_ids: [] }],
+    ['unknown evidence ID', { text: 'Malformed claim', evidence_ids: ['pack-1:missing'] }]
+  ])('drops a structurally invalid claim (%s) while preserving an independently verified claim', async (_label, malformedClaim) => {
+    const result = await orchestrateResearchAnswer({
+      query: 'hydrogen membranes',
+      env: {},
+      providerGate: passGate,
+      modelAdapter: {
+        generateClaims: async ({ evidencePack }) => ({
+          claims: [
+            { text: 'Supported claim', evidence_ids: [evidencePack.evidence[0].evidence_id] },
+            malformedClaim
+          ]
+        })
+      },
+      discover: discoverStub(),
+      supportCheck: () => true,
+      packOptions
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.code).toBe('OK');
+    expect(result.claims).toHaveLength(1);
+    expect(result.claims[0].text).toBe('Supported claim');
+    expect(result.diagnostic_grounding.rejected_count).toBe(1);
+  });
+
+  it('fails closed when support checking is unavailable even if another claim is structurally invalid', async () => {
+    const result = await orchestrateResearchAnswer({
+      query: 'hydrogen membranes',
+      env: {},
+      providerGate: passGate,
+      modelAdapter: {
+        generateClaims: async ({ evidencePack }) => ({
+          claims: [
+            { text: 'Would require checker', evidence_ids: [evidencePack.evidence[0].evidence_id] },
+            { text: '', evidence_ids: [] }
+          ]
+        })
+      },
+      discover: discoverStub(),
+      packOptions
+    });
+
+    expect(result).toMatchObject({ ok: false, code: 'GROUNDING_REJECTED', claims: [] });
+    expect(result).not.toHaveProperty('evidence');
+    expect(result.diagnostic_grounding.rejection_counts).toEqual({
+      CLAIM_TEXT_REQUIRED: 1,
+      SUPPORT_CHECK_REQUIRED: 1
+    });
+  });
+
+  it('fails the entire response closed when semantic rejection and checker failure are mixed', async () => {
+    const result = await orchestrateResearchAnswer({
+      query: 'hydrogen membranes',
+      env: {},
+      providerGate: passGate,
+      modelAdapter: {
+        generateClaims: async ({ evidencePack }) => ({
+          claims: [
+            { text: 'Supported claim', evidence_ids: [evidencePack.evidence[0].evidence_id] },
+            { text: 'Unsupported claim', evidence_ids: [evidencePack.evidence[0].evidence_id] },
+            { text: 'Checker failure claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }
+          ]
+        })
+      },
+      discover: discoverStub(),
+      supportCheck: (claim) => {
+        if (claim.text === 'Supported claim') return true;
+        if (claim.text === 'Unsupported claim') return false;
+        const error = new Error('timeout');
+        error.name = 'AbortError';
+        throw error;
+      },
+      packOptions
+    });
+
+    expect(result).toMatchObject({ ok: false, code: 'GROUNDING_REJECTED', claims: [] });
+    expect(result).not.toHaveProperty('evidence');
+    expect(result.diagnostic_grounding).toEqual({
+      claim_count: 3,
+      accepted_count: 1,
+      rejected_count: 2,
+      rejection_counts: {
+        CLAIM_UNSUPPORTED: 1,
+        CLAIM_UNSUPPORTED_UNSUPPORTED: 1,
+        SUPPORT_CHECK_FAILED: 1,
+        SUPPORT_CHECK_FAILED_TIMEOUT: 1
+      }
     });
   });
 
