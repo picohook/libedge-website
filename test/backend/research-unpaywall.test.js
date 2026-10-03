@@ -64,6 +64,26 @@ describe('Unpaywall enrichment', () => {
     expect(kv.put).toHaveBeenCalledTimes(1);
   });
 
+  it('starts optional DOI lookups concurrently instead of serial batches', async () => {
+    const started = [];
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      started.push(String(url));
+      await gate;
+      return new Response(JSON.stringify({ doi: '10.1000/example', is_oa: false }), { status: 200 });
+    }));
+    const works = Array.from({ length: 7 }, (_, index) => {
+      const work = baseWork();
+      work.doi = `10.1000/test-${index}`;
+      return work;
+    });
+    const pending = enrichWithUnpaywall(works, { UNPAYWALL_CONTACT_EMAIL: 'altan@libedge.com' });
+    await vi.waitFor(() => expect(started).toHaveLength(7));
+    release();
+    await pending;
+  });
+
   it('degrades gracefully when the provider errors', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 503 })));
     const original = baseWork();
