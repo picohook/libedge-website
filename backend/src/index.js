@@ -3031,6 +3031,70 @@ app.get('/api/admin/research/usage', async (c) => {
   });
 });
 
+
+app.get('/api/admin/research/usage/requests', async (c) => {
+  const auth = await requireAuth(c);
+  if (auth.response) return auth.response;
+  if (auth.user.role !== 'super_admin') return c.json({ error: 'Sadece Super Admin' }, 403);
+
+  const url = new URL(c.req.url);
+  const userId = Number(url.searchParams.get('user_id'));
+  const daysRaw = Number(url.searchParams.get('days') || 30);
+  const days = Number.isInteger(daysRaw) && daysRaw >= 1 && daysRaw <= 30 ? daysRaw : null;
+  const limitRaw = Number(url.searchParams.get('limit') || 50);
+  const limit = Number.isInteger(limitRaw) && limitRaw >= 1 && limitRaw <= 100 ? limitRaw : null;
+  if (!Number.isSafeInteger(userId) || userId <= 0) return c.json({ error: 'Geçersiz user_id' }, 400);
+  if (!days) return c.json({ error: 'days 1-30 arasında olmalı' }, 400);
+  if (!limit) return c.json({ error: 'limit 1-100 arasında olmalı' }, 400);
+
+  const rows = await c.env.DB.prepare(`
+    SELECT e.id, e.created_at, e.operation, e.outcome_code, e.latency_ms,
+           e.discover_ms, e.evidence_pack_ms, e.model_ms, e.grounding_ms,
+           e.input_tokens, e.output_tokens
+    FROM research_usage_events e
+    WHERE e.user_id = ? AND e.created_at >= datetime('now', ?)
+    ORDER BY e.created_at DESC, e.id DESC
+    LIMIT ?
+  `).bind(userId, `-${days} days`, limit).all();
+
+  const severityFor = (code) => {
+    if (code === 'OK') return 'green';
+    if (['NO_AUTHORIZED_EVIDENCE', 'NO_SUPPORTABLE_CLAIMS'].includes(code)) return 'amber';
+    if (['SKIPPED', 'CANCELLED', 'NOT_RUN'].includes(code)) return 'grey';
+    return 'red';
+  };
+  const stageFor = (row) => {
+    if (row.outcome_code === 'OK') return 'completed';
+    if (row.grounding_ms != null) return 'grounding';
+    if (row.model_ms != null) return 'model';
+    if (row.evidence_pack_ms != null) return 'evidence';
+    if (row.discover_ms != null) return 'discover';
+    return 'request';
+  };
+
+  return c.json({
+    window_days: days,
+    user_id: userId,
+    requests: (rows.results || []).map((row) => ({
+      request_id: `research-${row.id}`,
+      created_at: row.created_at,
+      operation: row.operation,
+      status: row.outcome_code,
+      severity: severityFor(row.outcome_code),
+      stage: stageFor(row),
+      latency_ms: row.latency_ms,
+      stage_latency_ms: {
+        discover: row.discover_ms,
+        evidence: row.evidence_pack_ms,
+        model: row.model_ms,
+        grounding: row.grounding_ms
+      },
+      input_tokens: row.input_tokens,
+      output_tokens: row.output_tokens
+    }))
+  });
+});
+
 // ====================== ADMIN ENDPOINT'LERİ (Cookie ile güncellendi) ======================
 
 // ====================== ADMIN ROUTES ======================
