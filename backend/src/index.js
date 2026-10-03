@@ -2880,13 +2880,15 @@ app.get('/api/admin/research/usage', async (c) => {
   const predicate = where.join(' AND ');
 
   const successPredicate = "e.outcome_code = 'OK'";
-  const failurePredicate = "e.outcome_code <> 'OK'";
+  const neutralPredicate = "e.outcome_code = 'NO_AUTHORIZED_EVIDENCE'";
+  const failurePredicate = "e.outcome_code NOT IN ('OK', 'NO_AUTHORIZED_EVIDENCE')";
 
   const [summary, outcomes, users, institutions] = await Promise.all([
     c.env.DB.prepare(`
       SELECT COUNT(*) AS requests,
              SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
              SUM(CASE WHEN ${failurePredicate} THEN 1 ELSE 0 END) AS failures,
+             SUM(CASE WHEN ${neutralPredicate} THEN 1 ELSE 0 END) AS valid_empty,
              ROUND(AVG(e.latency_ms)) AS avg_latency_ms,
              ROUND(AVG(e.discover_ms)) AS avg_discover_ms,
              ROUND(AVG(e.evidence_pack_ms)) AS avg_evidence_pack_ms,
@@ -2996,6 +2998,7 @@ app.get('/api/admin/research/usage', async (c) => {
   const requests = Number(summary?.requests || 0);
   const successes = Number(summary?.successes || 0);
   const failures = Number(summary?.failures || 0);
+  const validEmpty = Number(summary?.valid_empty || 0);
   return c.json({
     window_days: days,
     filters: { user_id: userId, institution_id: institutionId },
@@ -3003,6 +3006,7 @@ app.get('/api/admin/research/usage', async (c) => {
       requests,
       successes,
       failures,
+      valid_empty: validEmpty,
       success_rate: requests ? successes / requests : 0,
       failure_rate: requests ? failures / requests : 0,
       avg_latency_ms: Number(summary?.avg_latency_ms || 0),
