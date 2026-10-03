@@ -189,20 +189,19 @@ export async function enrichWithUnpaywall(works, env) {
   if (!candidates.length) return { results, status: 'skipped' };
   const byDoi = new Map(results.map((work, index) => [work?.doi, index]).filter(([doi]) => doi));
   let status = 'ok';
-  for (let offset = 0; offset < candidates.length; offset += 3) {
-    const batch = candidates.slice(offset, offset + 3);
-    const settled = await Promise.allSettled(batch.map((work) => fetchCachedUnpaywall(work.doi, env)));
-    settled.forEach((item, index) => {
-      const candidate = batch[index];
-      if (item.status === 'fulfilled') {
-        if (!item.value) return;
-        const resultIndex = byDoi.get(candidate.doi);
-        if (resultIndex != null) results[resultIndex] = mergeUnpaywallEnrichment(results[resultIndex], item.value);
-      } else {
-        status = providerStatusFromError(item.reason);
-      }
-    });
-  }
+  // Unpaywall only contributes OA-location metadata; it must not serialize optional
+  // lookups behind multiple provider-timeout windows on the critical Discover path.
+  const settled = await Promise.allSettled(candidates.map((work) => fetchCachedUnpaywall(work.doi, env)));
+  settled.forEach((item, index) => {
+    const candidate = candidates[index];
+    if (item.status === 'fulfilled') {
+      if (!item.value) return;
+      const resultIndex = byDoi.get(candidate.doi);
+      if (resultIndex != null) results[resultIndex] = mergeUnpaywallEnrichment(results[resultIndex], item.value);
+    } else {
+      status = providerStatusFromError(item.reason);
+    }
+  });
   return { results, status };
 }
 
