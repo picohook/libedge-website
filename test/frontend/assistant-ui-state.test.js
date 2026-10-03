@@ -23,6 +23,13 @@ describe('Assistant UI response contract', () => {
     expect(result.evidencePackId).toBe('pack');
   });
 
+  it('maps no authorized evidence to a valid-empty notice instead of a generic error', () => {
+    const result = mapLiveAssistantResult({ ok: true, code: 'NO_AUTHORIZED_EVIDENCE', claims: [], evidence: [] });
+    expect(result.state).toBe('empty-result');
+    expect(result.tone).toBe('notice');
+    expect(result.claims).toEqual([]);
+  });
+
   it('maps privacy-gate and missing-adapter states to non-success UI states', () => {
     expect(mapAssistantResult({ ok: false, code: 'PROVIDER_PRIVACY_GATE_REQUIRED', claims: [] }).state).toBe('gate-blocked');
     expect(mapAssistantResult({ ok: false, code: 'MODEL_ADAPTER_REQUIRED', claims: [] }).state).toBe('adapter-missing');
