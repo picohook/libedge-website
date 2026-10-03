@@ -185,7 +185,7 @@ export async function orchestrateResearchAnswer({
   const diagnosticUsage = modelResult?.usage || null;
   if (Number.isFinite(Number(diagnosticUsage?.llm_cost_usd))) diagnosticCosts.llm_cost_usd = Number(diagnosticUsage.llm_cost_usd);
   const claims = normalizeModelClaims(modelResult);
-  if (!claims) {
+  if (!claims || claims.length === 0) {
     return {
       ok: false,
       code: 'MODEL_OUTPUT_INVALID',
