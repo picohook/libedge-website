@@ -10,7 +10,7 @@ import { researchRetrievalControls } from './retrieval-runtime-controls.js';
 import { filterEnglishEligibleWorks, filterRelevantWorks, lexicalRelevanceScore } from './relevance.js';
 
 const DEFAULT_CACHE_TTL_SECONDS = 600;
-const CACHE_SOURCES = new Set(['semantic', 'lexical', 'crossref']);
+const CACHE_SOURCES = new Set(['semantic', 'lexical', 'lexical_fallback', 'crossref']);
 
 export function positiveInt(value, fallback, max = Number.MAX_SAFE_INTEGER) {
   const parsed = Number.parseInt(String(value ?? ''), 10);
@@ -286,6 +286,7 @@ export async function discoverResearch(query, env, { perPage = 10, useRuntimeCon
   const selectionPolicy = useRuntimeControls ? 'assistant-relevance-v1' : 'provider-order';
   const semanticCacheKey = await researchCacheKeyFor(query, perPage, 'semantic', semanticDepth, selectionPolicy);
   const lexicalCacheKey = await researchCacheKeyFor(query, perPage, 'lexical', lexicalDepth, selectionPolicy);
+  const lexicalFallbackCacheKey = await researchCacheKeyFor(query, perPage, 'lexical_fallback', lexicalDepth, selectionPolicy);
   const crossrefCacheKey = await researchCacheKeyFor(query, perPage, 'crossref');
 
   if (!semanticPrimary) {
@@ -352,7 +353,7 @@ export async function discoverResearch(query, env, { perPage = 10, useRuntimeCon
     }
   }
 
-  const cachedLexical = await readCache(env, lexicalCacheKey);
+  const cachedLexical = await readCache(env, lexicalFallbackCacheKey);
   if (cachedLexical) {
     const cachedTelemetry = cachedLexical.meta?.providers?.openalex?.telemetry || null;
     await recordResearchMetrics(env, [['lexical_fallback_attempts', 1], ['lexical_fallback_successes', 1]]);
@@ -365,7 +366,7 @@ export async function discoverResearch(query, env, { perPage = 10, useRuntimeCon
     await recordOpenAlexCost(env, lexical.telemetry?.requestCostUsd);
     await recordResearchMetrics(env, [['lexical_fallback_attempts', 1], ['lexical_fallback_successes', 1]]);
     const payload = await buildOpenAlexPayload(lexical, env, 'lexical', semanticError, perPage, { query, assistantSelection: useRuntimeControls, candidateDepth: lexicalDepth });
-    await writeCache(env, lexicalCacheKey, payload);
+    await writeCache(env, lexicalFallbackCacheKey, payload);
     return response(payload);
   } catch (error) {
     lexicalError = error;
