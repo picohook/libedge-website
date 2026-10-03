@@ -66,6 +66,7 @@ workers_dev = true
 crons = ["*/5 * * * *"]
 
 [env.staging.vars]
+RESEARCH_LEXICAL_CANDIDATE_DEPTH = "10"
 ENVIRONMENT = "staging"
 WORKER_NAME = "libedge-api-staging"
 UNPAYWALL_CONTACT_EMAIL = "altan@libedge.com"
