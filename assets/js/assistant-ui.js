@@ -349,7 +349,7 @@ requireResearchLogin().then((authorized) => {
             const links = [
                 { label: 'DOI', url: item.urls?.doi || (item.doi ? `https://doi.org/${item.doi}` : null) },
                 { label: t('Yayıncı', 'Publisher'), url: item.urls?.publisher },
-                { label: t('Açık erişim', 'Open access'), url: item.urls?.openAccess }
+                { label: t('Açık tam metin', 'Open full text'), url: item.urls?.openAccess }
             ].filter(({ url }, index, all) => {
                 if (!url) return false;
                 try {
