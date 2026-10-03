@@ -169,7 +169,7 @@ describe('grounding validator', () => {
       }
     });
 
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
     expect(maxActive).toBe(2);
     expect(calls.sort((a, b) => a - b)).toEqual([0, 1, 2, 3]);
     expect(result.acceptedClaims.map((claim) => claim.index)).toEqual([0, 1, 2, 3]);
