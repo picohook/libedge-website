@@ -263,7 +263,7 @@ async function buildOpenAlexPayload(openAlex, env, mode, semanticError = null, p
     meta: {
       partial,
       cached: false,
-      retrievalSource: semanticError ? 'lexical_fallback' : mode,
+      retrievalSource: mode,
       candidateDepth,
       candidatePoolSize: candidatePool.length,
       ...(selection.diagnostics ? { selectionDiagnostics: selection.diagnostics } : {}),
@@ -357,7 +357,7 @@ export async function discoverResearch(query, env, { perPage = 10, useRuntimeCon
   if (cachedLexical) {
     const cachedTelemetry = cachedLexical.meta?.providers?.openalex?.telemetry || null;
     await recordResearchMetrics(env, [['lexical_fallback_attempts', 1], ['lexical_fallback_successes', 1]]);
-    return response({ ...cachedLexical, meta: { ...cachedLexical.meta, cached: true, retrievalSource: 'lexical_fallback', providers: { ...cachedLexical.meta?.providers, openalex: openAlexSuccessMeta('lexical', cachedTelemetry, semanticError, true) } } });
+    return response({ ...cachedLexical, meta: { ...cachedLexical.meta, cached: true, retrievalSource: 'lexical', providers: { ...cachedLexical.meta?.providers, openalex: openAlexSuccessMeta('lexical', cachedTelemetry, semanticError, true) } } });
   }
 
   let lexicalError = null;
@@ -397,7 +397,7 @@ export async function Discover(query, { env, perPage = 10 } = {}) {
       enumerable: false
     },
     'diagnostic_retrieval_mode': {
-      value: String(result.body?.meta?.retrievalSource || 'unknown'),
+      value: result.body?.meta?.providers?.openalex?.fallback === true ? 'lexical_fallback' : String(result.body?.meta?.retrievalSource || 'unknown'),
       enumerable: false
     },
     'diagnostic_candidate_depth': {
