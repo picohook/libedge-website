@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { loadingStage, mapAssistantResult, mapLiveAssistantResult } from '../../assets/js/assistant-ui-state.js';
+import { bibliographicYear, loadingStage, mapAssistantResult, mapLiveAssistantResult } from '../../assets/js/assistant-ui-state.js';
+
+describe('evidence bibliographic metadata', () => {
+  it('renders only plausible four-digit publication years', () => {
+    expect(bibliographicYear({ publicationYear: 2017 })).toBe('2017');
+    expect(bibliographicYear({ publicationYear: 0, publicationDate: '0000-01-01' })).toBe('');
+    expect(bibliographicYear({ publicationYear: null, publicationDate: '2025-09-12' })).toBe('2025');
+    expect(bibliographicYear({ publicationYear: null, publicationDate: null })).toBe('');
+  });
+});
 
 describe('Assistant UI response contract', () => {
   it('maps a grounded success result without dropping claims', () => {
