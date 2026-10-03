@@ -18,9 +18,9 @@ const app = new Hono();
 const DEFAULT_ASSISTANT_USER_LIMIT = 10;
 const DEFAULT_ASSISTANT_USER_WINDOW_SECONDS = 300;
 
-async function recordOperationalOutcome(env, user, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, stageTimings, usage, costs } = {}) {
+async function recordOperationalOutcome(env, user, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, retrievalDiagnostic, stageTimings, usage, costs } = {}) {
   await Promise.all([
-    recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, stageTimings }),
+    recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, retrievalDiagnostic, stageTimings }),
     recordResearchUsageEvent(env, {
       userId: user?.user_id,
       institutionId: user?.institution_id,
@@ -129,7 +129,7 @@ app.post('/api/assistant/ask', async (c) => {
     supportCheck
   });
 
-  await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding, stageTimings: result?.diagnostic_timings, usage: result?.diagnostic_usage, costs: result?.diagnostic_costs });
+  await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding, retrievalDiagnostic: result?.diagnostic_retrieval, stageTimings: result?.diagnostic_timings, usage: result?.diagnostic_usage, costs: result?.diagnostic_costs });
   if (result?.code === 'OK') {
     await saveAssistantHistory(c.env, auth.user?.user_id, query, result);
   }
@@ -137,6 +137,7 @@ app.post('/api/assistant/ask', async (c) => {
   if (result && 'diagnostic_reason' in result) delete result.diagnostic_reason;
   if (result && 'diagnostic_grounding' in result) delete result.diagnostic_grounding;
   if (result && 'diagnostic_usage' in result) delete result.diagnostic_usage;
+  if (result && 'diagnostic_retrieval' in result) delete result.diagnostic_retrieval;
   if (result && 'diagnostic_timings' in result) delete result.diagnostic_timings;
   if (result && 'diagnostic_costs' in result) delete result.diagnostic_costs;
   return c.json(result, 200);
