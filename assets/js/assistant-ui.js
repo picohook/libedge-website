@@ -305,8 +305,11 @@ requireResearchLogin().then((authorized) => {
             title.textContent = item.title || item.work_id || evidenceLabel(item, index);
             const meta = document.createElement('p');
             meta.className = 'source-meta';
-            const authors = Array.isArray(item.authors) ? item.authors.map((a) => a?.name).filter(Boolean).join(', ') : '';
-            meta.textContent = [authors, item.publicationYear, item.venue?.name].filter(Boolean).join(' · ');
+            const authorNames = Array.isArray(item.authors) ? item.authors.map((a) => a?.name).filter(Boolean) : [];
+            const authors = authorNames.length > 3 ? `${authorNames[0]} et al.` : authorNames.join(', ');
+            const venue = String(item.venue?.name || '').trim();
+            const year = item.publicationYear || (item.publicationDate ? String(item.publicationDate).slice(0, 4) : '');
+            meta.textContent = [authors, venue, year].filter(Boolean).join(' · ');
             content.append(title, meta);
 
             const badges = document.createElement('div');
