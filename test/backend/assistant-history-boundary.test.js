@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { sanitizeAssistantHistoryResult } from '../../backend/src/assistant/history-storage.js';
 
-describe('assistant history public result boundary', () => {
-  it('strips known and future diagnostic fields while preserving user-facing result data', () => {
+describe('assistant public result boundary', () => {
+  it('strips known and future diagnostic fields while preserving user-facing result data for live and history boundaries', () => {
     const result = sanitizeAssistantHistoryResult({
       ok: true,
       code: 'OK',
