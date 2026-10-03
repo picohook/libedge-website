@@ -200,6 +200,8 @@ describe('research provider fallback and budget', () => {
     const shallow = await researchCacheKeyFor('same query', 10, 'lexical', 10);
     const deep = await researchCacheKeyFor('same query', 10, 'lexical', 50);
     expect(shallow).not.toBe(deep);
+    const fallback = await researchCacheKeyFor('same query', 10, 'lexical_fallback', 50);
+    expect(fallback).not.toBe(deep);
   });
 
   it('does not allow Crossref to short-circuit a valid semantic empty response', async () => {

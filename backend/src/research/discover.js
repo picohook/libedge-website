@@ -7,9 +7,10 @@ import { fetchUnpaywallByDoi } from './providers/unpaywall.js';
 import { acquireSemanticPacing } from './semantic-pacer.js';
 import { recordResearchMetric, recordResearchMetrics, semanticTelemetryEntries } from './telemetry.js';
 import { researchRetrievalControls } from './retrieval-runtime-controls.js';
+import { filterEnglishEligibleWorks, filterRelevantWorks, lexicalRelevanceScore } from './relevance.js';
 
 const DEFAULT_CACHE_TTL_SECONDS = 600;
-const CACHE_SOURCES = new Set(['semantic', 'lexical', 'crossref']);
+const CACHE_SOURCES = new Set(['semantic', 'lexical', 'lexical_fallback', 'crossref']);
 
 export function positiveInt(value, fallback, max = Number.MAX_SAFE_INTEGER) {
   const parsed = Number.parseInt(String(value ?? ''), 10);
@@ -27,9 +28,9 @@ async function sha256Hex(value) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export async function researchCacheKeyFor(query, perPage, retrievalSource, candidateDepth = perPage) {
+export async function researchCacheKeyFor(query, perPage, retrievalSource, candidateDepth = perPage, selectionPolicy = 'provider-order') {
   if (!CACHE_SOURCES.has(retrievalSource)) throw new Error('RESEARCH_CACHE_SOURCE_INVALID');
-  const hash = await sha256Hex(JSON.stringify({ v: 5, retrievalSource, query: query.toLowerCase(), perPage, candidateDepth }));
+  const hash = await sha256Hex(JSON.stringify({ v: 6, retrievalSource, query: query.toLowerCase(), perPage, candidateDepth, selectionPolicy }));
   return `research:cache:v2:${hash}`;
 }
 
@@ -222,9 +223,37 @@ async function crossrefFallback(query, env, perPage, openAlexMeta, crossrefCache
   }
 }
 
-async function buildOpenAlexPayload(openAlex, env, mode, semanticError = null, perPage = 10) {
+export function selectAssistantCandidates(query, candidatePool, perPage) {
+  const relevant = filterRelevantWorks(query, candidatePool);
+  const languageEligible = filterEnglishEligibleWorks(candidatePool);
+  const authorizedRelevant = filterRelevantWorks(query, languageEligible);
+  const originalIndex = new Map(candidatePool.map((work, index) => [work, index]));
+  const selected = [...authorizedRelevant]
+    .sort((a, b) => {
+      const scoreDelta = lexicalRelevanceScore(query, b) - lexicalRelevanceScore(query, a);
+      if (scoreDelta !== 0) return scoreDelta;
+      const abstractDelta = Number(Boolean(b?.abstract)) - Number(Boolean(a?.abstract));
+      if (abstractDelta !== 0) return abstractDelta;
+      return (originalIndex.get(a) ?? 0) - (originalIndex.get(b) ?? 0);
+    })
+    .slice(0, perPage);
+  return {
+    selected,
+    diagnostics: {
+      retrievedCount: candidatePool.length,
+      relevantCount: relevant.length,
+      languageEligibleCount: languageEligible.length,
+      authorizedRelevantCount: authorizedRelevant.length
+    }
+  };
+}
+
+async function buildOpenAlexPayload(openAlex, env, mode, semanticError = null, perPage = 10, { query = '', assistantSelection = false, candidateDepth = perPage } = {}) {
   const candidatePool = await recoverCanonicalParentWorks(openAlex.results, env);
-  const baseResults = candidatePool.slice(0, perPage);
+  const selection = assistantSelection
+    ? selectAssistantCandidates(query, candidatePool, perPage)
+    : { selected: candidatePool.slice(0, perPage), diagnostics: null };
+  const baseResults = selection.selected;
   const crossref = await enrichWithCrossref(baseResults, env);
   const unpaywall = await enrichWithUnpaywall(crossref.results, env);
   const partial = crossref.status === 'unavailable' || crossref.status === 'rate_limited';
@@ -235,7 +264,9 @@ async function buildOpenAlexPayload(openAlex, env, mode, semanticError = null, p
       partial,
       cached: false,
       retrievalSource: mode,
+      candidateDepth,
       candidatePoolSize: candidatePool.length,
+      ...(selection.diagnostics ? { selectionDiagnostics: selection.diagnostics } : {}),
       providers: { openalex: openAlexSuccessMeta(mode, openAlex.telemetry, semanticError), crossref: { status: crossref.status }, unpaywall: { status: unpaywall.status } }
     }
   };
@@ -252,8 +283,10 @@ export async function discoverResearch(query, env, { perPage = 10, useRuntimeCon
   const semanticDepth = positiveInt(env.RESEARCH_SEMANTIC_CANDIDATE_DEPTH, 50, 50);
   const lexicalDepth = runtime?.lexical_candidate_depth || positiveInt(env.RESEARCH_LEXICAL_CANDIDATE_DEPTH, effectivePerPage, 50);
   perPage = effectivePerPage;
-  const semanticCacheKey = await researchCacheKeyFor(query, perPage, 'semantic', semanticDepth);
-  const lexicalCacheKey = await researchCacheKeyFor(query, perPage, 'lexical', lexicalDepth);
+  const selectionPolicy = useRuntimeControls ? 'assistant-relevance-v1' : 'provider-order';
+  const semanticCacheKey = await researchCacheKeyFor(query, perPage, 'semantic', semanticDepth, selectionPolicy);
+  const lexicalCacheKey = await researchCacheKeyFor(query, perPage, 'lexical', lexicalDepth, selectionPolicy);
+  const lexicalFallbackCacheKey = await researchCacheKeyFor(query, perPage, 'lexical_fallback', lexicalDepth, selectionPolicy);
   const crossrefCacheKey = await researchCacheKeyFor(query, perPage, 'crossref');
 
   if (!semanticPrimary) {
@@ -276,7 +309,7 @@ export async function discoverResearch(query, env, { perPage = 10, useRuntimeCon
     try {
       const openAlex = await searchOpenAlex(query, env, { perPage: lexicalDepth, mode: 'lexical' });
       await recordOpenAlexCost(env, openAlex.telemetry?.requestCostUsd);
-      const payload = await buildOpenAlexPayload(openAlex, env, 'lexical', null, perPage);
+      const payload = await buildOpenAlexPayload(openAlex, env, 'lexical', null, perPage, { query, assistantSelection: useRuntimeControls, candidateDepth: lexicalDepth });
       await writeCache(env, lexicalCacheKey, payload);
       return response(payload);
     } catch (openAlexError) {
@@ -305,7 +338,7 @@ export async function discoverResearch(query, env, { perPage = 10, useRuntimeCon
     ];
     await recordResearchMetrics(env, telemetryEntries);
     await recordOpenAlexCost(env, semantic.telemetry?.requestCostUsd);
-    const payload = await buildOpenAlexPayload(semantic, env, 'semantic', null, perPage);
+    const payload = await buildOpenAlexPayload(semantic, env, 'semantic', null, perPage, { query, assistantSelection: useRuntimeControls, candidateDepth: semanticDepth });
     await writeCache(env, semanticCacheKey, payload);
     return response(payload);
   } catch (error) {
@@ -320,7 +353,7 @@ export async function discoverResearch(query, env, { perPage = 10, useRuntimeCon
     }
   }
 
-  const cachedLexical = await readCache(env, lexicalCacheKey);
+  const cachedLexical = await readCache(env, lexicalFallbackCacheKey);
   if (cachedLexical) {
     const cachedTelemetry = cachedLexical.meta?.providers?.openalex?.telemetry || null;
     await recordResearchMetrics(env, [['lexical_fallback_attempts', 1], ['lexical_fallback_successes', 1]]);
@@ -332,8 +365,8 @@ export async function discoverResearch(query, env, { perPage = 10, useRuntimeCon
     const lexical = await searchOpenAlex(query, env, { perPage: lexicalDepth, mode: 'lexical' });
     await recordOpenAlexCost(env, lexical.telemetry?.requestCostUsd);
     await recordResearchMetrics(env, [['lexical_fallback_attempts', 1], ['lexical_fallback_successes', 1]]);
-    const payload = await buildOpenAlexPayload(lexical, env, 'lexical', semanticError, perPage);
-    await writeCache(env, lexicalCacheKey, payload);
+    const payload = await buildOpenAlexPayload(lexical, env, 'lexical', semanticError, perPage, { query, assistantSelection: useRuntimeControls, candidateDepth: lexicalDepth });
+    await writeCache(env, lexicalFallbackCacheKey, payload);
     return response(payload);
   } catch (error) {
     lexicalError = error;
@@ -356,6 +389,7 @@ export async function Discover(query, { env, perPage = 10 } = {}) {
     throw error;
   }
   const works = result.body.results;
+  const selectionDiagnostics = result.body?.meta?.selectionDiagnostics || null;
   const cost = Number(result.body?.meta?.providers?.openalex?.telemetry?.requestCostUsd);
   Object.defineProperties(works, {
     'diagnostic_discovery_cost_usd': {
@@ -363,11 +397,27 @@ export async function Discover(query, { env, perPage = 10 } = {}) {
       enumerable: false
     },
     'diagnostic_retrieval_mode': {
-      value: String(result.body?.meta?.retrievalSource || 'unknown'),
+      value: result.body?.meta?.providers?.openalex?.fallback === true ? 'lexical_fallback' : String(result.body?.meta?.retrievalSource || 'unknown'),
       enumerable: false
     },
     'diagnostic_candidate_depth': {
-      value: Number(result.body?.meta?.candidatePoolSize) || works.length,
+      value: Number(result.body?.meta?.candidateDepth) || works.length,
+      enumerable: false
+    },
+    'diagnostic_retrieved_count': {
+      value: Number(selectionDiagnostics?.retrievedCount) || Number(result.body?.meta?.candidatePoolSize) || works.length,
+      enumerable: false
+    },
+    'diagnostic_relevant_count': {
+      value: Number(selectionDiagnostics?.relevantCount) || 0,
+      enumerable: false
+    },
+    'diagnostic_language_eligible_count': {
+      value: Number(selectionDiagnostics?.languageEligibleCount) || 0,
+      enumerable: false
+    },
+    'diagnostic_authorized_relevant_count': {
+      value: Number(selectionDiagnostics?.authorizedRelevantCount) || works.length,
       enumerable: false
     }
   });
