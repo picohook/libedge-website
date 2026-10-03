@@ -31,6 +31,6 @@ describe('Research token usage metering', () => {
 
   it('strips internal usage diagnostics before the API response', () => {
     const router = fs.readFileSync('backend/src/assistant/router.js', 'utf8');
-    expect(router).toContain("delete result.diagnostic_usage");
+    expect(router).toContain('sanitizeAssistantHistoryResult(result)');
   });
 });

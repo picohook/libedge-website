@@ -12,7 +12,7 @@ import { assistantUsageScopeState } from './usage-scope-state.js';
 import { requireResearchAccess } from '../research/entitlement.js';
 import { recordResearchUsageEvent } from '../research/usage-events.js';
 import { positiveInt } from '../research/discover.js';
-import { deleteAssistantHistory, getAssistantHistory, listAssistantHistory, saveAssistantHistory } from './history-storage.js';
+import { deleteAssistantHistory, getAssistantHistory, listAssistantHistory, sanitizeAssistantHistoryResult, saveAssistantHistory } from './history-storage.js';
 
 const app = new Hono();
 const DEFAULT_ASSISTANT_USER_LIMIT = 10;
@@ -157,14 +157,7 @@ app.post('/api/assistant/ask', async (c) => {
   if (result?.code === 'OK') {
     await saveAssistantHistory(c.env, auth.user?.user_id, query, result);
   }
-  if (result && 'diagnostic_error_class' in result) delete result.diagnostic_error_class;
-  if (result && 'diagnostic_reason' in result) delete result.diagnostic_reason;
-  if (result && 'diagnostic_grounding' in result) delete result.diagnostic_grounding;
-  if (result && 'diagnostic_usage' in result) delete result.diagnostic_usage;
-  if (result && 'diagnostic_retrieval' in result) delete result.diagnostic_retrieval;
-  if (result && 'diagnostic_timings' in result) delete result.diagnostic_timings;
-  if (result && 'diagnostic_costs' in result) delete result.diagnostic_costs;
-  return c.json(result, 200);
+  return c.json(sanitizeAssistantHistoryResult(result), 200);
 });
 
 app.get('/api/assistant/history', async (c) => {
