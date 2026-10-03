@@ -171,8 +171,63 @@ describe('grounding validator', () => {
 
     expect(result.ok).toBe(true);
     expect(maxActive).toBe(2);
-    expect(calls.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
-    expect(result.acceptedClaims.map((claim) => claim.index)).toEqual([0, 1, 2, 3, 4]);
+    expect(calls.sort((a, b) => a - b)).toEqual([0, 1, 2, 3]);
+    expect(result.acceptedClaims.map((claim) => claim.index)).toEqual([0, 1, 2, 3]);
+    expect(result.rejectedClaims[0]).toMatchObject({ index: 4, code: 'SUPPORT_CHECK_BUDGET_TRUNCATED' });
+  });
+
+  it('hard-caps semantic checks per request and rejects unchecked claims deterministically', async () => {
+    const pack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-request-cap' });
+    let calls = 0;
+    const claims = Array.from({ length: 6 }, (_, index) => ({
+      text: `Claim ${index}`,
+      evidence_ids: ['pack-request-cap:e1']
+    }));
+
+    const result = await validateGroundedClaims({
+      evidencePack: pack,
+      claims,
+      maxSupportChecks: 4,
+      supportCheck: async () => {
+        calls += 1;
+        return true;
+      }
+    });
+
+    expect(calls).toBe(4);
+    expect(result.acceptedClaims.map((claim) => claim.index)).toEqual([0, 1, 2, 3]);
+    expect(result.rejectedClaims.slice(-2).map((claim) => claim.code)).toEqual([
+      'SUPPORT_CHECK_BUDGET_TRUNCATED',
+      'SUPPORT_CHECK_BUDGET_TRUNCATED'
+    ]);
+    expect(result.diagnostics).toEqual({
+      eligible_count: 6,
+      checked_count: 4,
+      truncated_count: 2,
+      support_check_limit: 4
+    });
+  });
+
+  it('does not allow configuration to raise the hard request cap above four', async () => {
+    const pack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-hard-cap' });
+    let calls = 0;
+    const claims = Array.from({ length: 7 }, (_, index) => ({
+      text: `Claim ${index}`,
+      evidence_ids: ['pack-hard-cap:e1']
+    }));
+    const result = await validateGroundedClaims({
+      evidencePack: pack,
+      claims,
+      maxSupportChecks: 99,
+      supportCheck: async () => {
+        calls += 1;
+        return true;
+      }
+    });
+
+    expect(calls).toBe(4);
+    expect(result.acceptedClaims).toHaveLength(4);
+    expect(result.diagnostics).toMatchObject({ checked_count: 4, truncated_count: 3, support_check_limit: 4 });
   });
 
   it('runs no semantic check for structurally ineligible claims', async () => {
