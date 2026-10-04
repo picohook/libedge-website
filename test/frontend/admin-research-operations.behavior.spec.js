@@ -91,7 +91,7 @@ test('Research operations center renders outcome, pipeline and account controls 
     }) });
   });
   await research.locator('#researchObservabilityRefreshBtn').click();
-  await expect(research.locator('#researchObservabilityLastRefresh')).toHaveText('son yenileme: şimdi');
+  await expect(research.locator('#researchObservabilityLastRefresh')).toContainText(/^son yenileme: \\d{2}:\\d{2}$/);
   await expect(research.locator('#researchBreadthVerified')).toHaveText('4 yanıt · 11 claim');
   await expect(research.locator('#researchBreadthSourcesPerAnswer')).toHaveText('2,50');
   await expect(research.locator('#researchBreadthSingleSource')).toHaveText('1 · %25,0');
