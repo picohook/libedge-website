@@ -2947,7 +2947,7 @@ app.get('/api/admin/research/usage', async (c) => {
   const neutralPredicate = "e.outcome_code IN ('NO_AUTHORIZED_EVIDENCE', 'NO_SUPPORTABLE_CLAIMS')";
   const failurePredicate = "e.outcome_code NOT IN ('OK', 'NO_AUTHORIZED_EVIDENCE', 'NO_SUPPORTABLE_CLAIMS')";
 
-  const [summary, outcomes, users, institutions] = await Promise.all([
+  const [summary, outcomes, users, institutions, retrievalModes] = await Promise.all([
     c.env.DB.prepare(`
       SELECT COUNT(*) AS requests,
              SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes,
@@ -3028,6 +3028,13 @@ app.get('/api/admin/research/usage', async (c) => {
       GROUP BY e.institution_id, i.name
       ORDER BY requests DESC, e.institution_id ASC
       LIMIT 200
+    `).bind(...params).all(),
+    c.env.DB.prepare(`
+      SELECT e.retrieval_mode, COUNT(*) AS count
+      FROM research_usage_events e
+      WHERE ${predicate} AND e.retrieval_mode IS NOT NULL
+      GROUP BY e.retrieval_mode
+      ORDER BY count DESC, e.retrieval_mode ASC
     `).bind(...params).all()
   ]);
 
@@ -3090,6 +3097,7 @@ app.get('/api/admin/research/usage', async (c) => {
       output_tokens: Number(summary?.output_tokens || 0)
     },
     outcomes: outcomes.results || [],
+    retrieval_modes: retrievalModes.results || [],
     users: users.results || [],
     institutions: institutionScopes
   });
