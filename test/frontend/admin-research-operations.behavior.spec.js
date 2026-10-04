@@ -99,6 +99,8 @@ test('Research operations center renders outcome, pipeline and account controls 
     }) });
   });
   await page.reload();
+  await research.evaluate((el) => el.classList.remove('hidden'));
+  await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchCheckerStateDetail')).toContainText('calls');
   await expect(research.locator('#researchCheckerStateDetail')).toContainText('runtime');
   await expect(research.locator('#researchCheckerStateDetail')).toContainText('hard ceiling');
