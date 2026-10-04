@@ -204,7 +204,8 @@ describe('grounding validator', () => {
       eligible_count: 6,
       checked_count: 4,
       truncated_count: 2,
-      support_check_limit: 4
+      support_check_limit: 4,
+      support_check_ms: expect.any(Number)
     });
   });
 
