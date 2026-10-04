@@ -74,8 +74,12 @@ describe('Research admin observability', () => {
     expect(admin).toContain('id="researchUsageScopeId"');
     expect(admin).toContain('id="researchUsageScopeDailyLimitInput"');
     expect(admin).toContain('/api/admin/research/assistant-usage-limit');
-    expect(admin).toContain('loadResearchUsageScopeLimit()');
-    expect(admin).toContain('setResearchUsageScopeLimit()');
+    expect(admin).toContain('loadResearchUsageScopeLimit(scopeOverride = false)');
+    expect(admin).toContain('setResearchUsageScopeLimit(scopeOverride = false)');
+    expect(admin).toContain("loadResearchUsageScopeLimit(false)");
+    expect(admin).toContain("setResearchUsageScopeLimit(false)");
+    expect(admin).toContain("loadResearchUsageScopeLimit(true)");
+    expect(admin).toContain("setResearchUsageScopeLimit(true)");
   });
 
   it('exposes usage-scope pause and resume separately from quota and checker controls', () => {
