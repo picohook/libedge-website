@@ -67,6 +67,9 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.getByText('Assistant Request Havuzu', { exact: true })).toBeVisible();
   await expect(research.getByText('Gelişmiş kurum / B2C override')).toBeVisible();
   await expect(research.locator('#researchUsageScopeId')).toBeHidden();
+  await expect(research.locator('#researchUsageScopePauseBtn')).toBeHidden();
+  await expect(research.locator('#researchUsageScopeOverrideDailyLimitInput')).toBeHidden();
+  await expect(research.locator('#researchUsageScopeSaveBtn')).toHaveText('Varsayılanı kaydet');
   await expect(research.locator('#researchRetrievalExperimentPanel')).not.toHaveAttribute('open', '');
   await expect(research.locator('#researchRetrievalMode')).toBeHidden();
 
