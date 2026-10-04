@@ -845,8 +845,8 @@
             </div>
             <div class="border-t border-gray-100 pt-4">
                 <div class="flex items-center gap-1 mb-3" role="tablist" aria-label="Research usage breakdown">
-                    <button type="button" id="researchUsageInstitutionsTab" role="tab" aria-controls="researchUsageInstitutionsPanel" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
-                    <button type="button" id="researchUsageUsersTab" role="tab" aria-controls="researchUsageUsersPanel" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageInstitutionsTab" role="tab" aria-controls="researchUsageInstitutionsPanel" tabindex="0" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageUsersTab" role="tab" aria-controls="researchUsageUsersPanel" tabindex="-1" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
                 </div>
                 <div id="researchUsageInstitutionsPanel" role="tabpanel" aria-labelledby="researchUsageInstitutionsTab">
                     <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
@@ -5284,9 +5284,20 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         active?.classList.remove('text-gray-600');
         institutionTab?.setAttribute('aria-selected', institutions ? 'true' : 'false');
         userTab?.setAttribute('aria-selected', institutions ? 'false' : 'true');
+        institutionTab?.setAttribute('tabindex', institutions ? '0' : '-1');
+        userTab?.setAttribute('tabindex', institutions ? '-1' : '0');
     }
-    document.getElementById('researchUsageInstitutionsTab')?.addEventListener('click', () => setResearchUsageBreakdownTab('institutions'));
-    document.getElementById('researchUsageUsersTab')?.addEventListener('click', () => setResearchUsageBreakdownTab('users'));
+    const researchUsageInstitutionTab = document.getElementById('researchUsageInstitutionsTab');
+    const researchUsageUserTab = document.getElementById('researchUsageUsersTab');
+    researchUsageInstitutionTab?.addEventListener('click', () => setResearchUsageBreakdownTab('institutions'));
+    researchUsageUserTab?.addEventListener('click', () => setResearchUsageBreakdownTab('users'));
+    [researchUsageInstitutionTab, researchUsageUserTab].forEach((button) => button?.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        const showUsers = event.currentTarget === researchUsageInstitutionTab ? event.key === 'ArrowRight' : event.key !== 'ArrowLeft';
+        setResearchUsageBreakdownTab(showUsers ? 'users' : 'institutions');
+        (showUsers ? researchUsageUserTab : researchUsageInstitutionTab)?.focus();
+    }));
     document.getElementById('researchUsageDays')?.addEventListener('change', loadResearchAccountUsage);
     async function setResearchCheckerState(action) {
         if (currentAdmin?.role !== 'super_admin') return;
