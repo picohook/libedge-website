@@ -4,6 +4,9 @@ import { readResearchTelemetrySnapshot } from './research/telemetry.js';
 import { SUPPORT_CHECK_PAUSE_KEY } from './assistant/support-check-runtime-pause.js';
 import { supportCheckInvocationKey, supportCheckInvocationLimit } from './assistant/support-check-invocation-budget.js';
 
+const SUPPORT_CHECK_INFRASTRUCTURE_STATE_KEY = 'assistant:supportcheck:infrastructure-state';
+const SUPPORT_CHECK_INFRASTRUCTURE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -102,14 +105,34 @@ export async function handleSystemHealthRequest(request, env) {
 
   const supportCheck = env.RATE_LIMIT_KV
     ? await safeCheck(async () => {
-        const [pauseRaw, invocationRaw] = await Promise.all([
+        const [pauseRaw, invocationRaw, infrastructureRaw] = await Promise.all([
           env.RATE_LIMIT_KV.get(SUPPORT_CHECK_PAUSE_KEY),
           env.RATE_LIMIT_KV.get(supportCheckInvocationKey()),
+          env.RATE_LIMIT_KV.get(SUPPORT_CHECK_INFRASTRUCTURE_STATE_KEY),
         ]);
         const pauseValue = String(pauseRaw || '').trim().toLowerCase();
         const paused = !['false', '0', 'resume'].includes(pauseValue);
         const used = Number(invocationRaw || 0);
         const limitState = await supportCheckInvocationLimit(env);
+        let infrastructure = { state: 'unknown', published_at: null, stale: true, instance_type: null, instance_count: null };
+        if (infrastructureRaw) {
+          try {
+            const parsed = JSON.parse(infrastructureRaw);
+            const publishedAtMs = Date.parse(parsed?.published_at || '');
+            const ageMs = Date.now() - publishedAtMs;
+            const fresh = Number.isFinite(publishedAtMs) && ageMs >= -5 * 60 * 1000 && ageMs <= SUPPORT_CHECK_INFRASTRUCTURE_MAX_AGE_MS;
+            const observedState = ['available', 'unavailable'].includes(parsed?.state) ? parsed.state : 'unknown';
+            infrastructure = {
+              state: fresh ? observedState : 'unknown',
+              published_at: Number.isFinite(publishedAtMs) ? new Date(publishedAtMs).toISOString() : null,
+              stale: !fresh,
+              instance_type: fresh && typeof parsed?.instance_type === 'string' ? parsed.instance_type : null,
+              instance_count: fresh && [1, 2].includes(Number(parsed?.instance_count)) ? Number(parsed.instance_count) : null,
+            };
+          } catch {
+            // Malformed operational state fails closed to Unknown without exposing raw KV content.
+          }
+        }
         return {
           enabled: env.RESEARCH_ASSISTANT_SUPPORT_CHECK_ENABLED === 'true',
           privacy_gate: env.RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS === 'PASS' ? 'PASS' : 'UNVERIFIED',
@@ -119,6 +142,7 @@ export async function handleSystemHealthRequest(request, env) {
           daily_invocation_limit: limitState.limit,
           daily_invocation_limit_source: limitState.source,
           daily_invocation_limit_reason: limitState.reason || null,
+          infrastructure,
         };
       })
     : { status: 'error' };

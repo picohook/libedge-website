@@ -753,11 +753,15 @@
             <div class="stat-card"><p class="text-gray-500 text-sm">Grounding Reddi</p><p id="researchGroundingRejected" class="text-2xl font-bold mt-2">—</p></div>
             <div class="stat-card">
                 <p class="text-gray-500 text-sm">Checker Durumu</p>
-                <p id="researchCheckerState" class="text-lg font-bold mt-2">—</p>
+                <div class="mt-2 space-y-1">
+                    <p class="text-xs text-gray-500">Endpoint: <span id="researchCheckerInfrastructureState" class="font-semibold text-gray-700">Unknown</span></p>
+                    <p class="text-xs text-gray-500">Verification: <span id="researchCheckerState" class="font-semibold text-gray-700">—</span></p>
+                </div>
+                <p id="researchCheckerInfrastructureDetail" class="text-xs text-gray-400 mt-1">Infrastructure state bekleniyor.</p>
                 <p id="researchCheckerBudget" class="text-xs text-gray-500 mt-1">—</p>
                 <div class="flex gap-2 mt-3">
                     <button type="button" id="researchCheckerPauseBtn" class="btn bg-red-50 text-red-700 border border-red-200 text-xs">Pause</button>
-                    <button type="button" id="researchCheckerResumeBtn" class="btn bg-green-50 text-green-700 border border-green-200 text-xs">Resume</button>
+                    <button type="button" id="researchCheckerResumeBtn" disabled title="Infrastructure durumu doğrulanana kadar Resume kullanılamaz." class="btn bg-green-50 text-green-700 border border-green-200 text-xs">Resume</button>
                 </div>
                 <div class="flex items-end gap-2 mt-3">
                     <label class="text-xs text-gray-500 flex-1">Günlük checker limiti
@@ -5074,7 +5078,33 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchAssistantRequests').textContent = Number(metrics.assistant_requests || 0).toLocaleString('tr-TR');
             document.getElementById('researchAssistantOk').textContent = Number(metrics.assistant_outcome_ok || 0).toLocaleString('tr-TR');
             document.getElementById('researchGroundingRejected').textContent = Number(metrics.assistant_outcome_grounding_rejected || 0).toLocaleString('tr-TR');
-            document.getElementById('researchCheckerState').textContent = checker.status !== 'ok' ? 'Bilinmiyor' : checker.paused ? 'Duraklatıldı' : 'Aktif';
+            const infrastructure = checker.infrastructure || { state: 'unknown', stale: true };
+            const infrastructureState = infrastructure.state === 'available' ? 'Available' : infrastructure.state === 'unavailable' ? 'Unavailable' : 'Unknown';
+            document.getElementById('researchCheckerInfrastructureState').textContent = infrastructureState;
+            document.getElementById('researchCheckerState').textContent = checker.status !== 'ok' ? 'Unknown' : checker.paused ? 'Paused' : 'Running';
+            const infrastructureDetail = document.getElementById('researchCheckerInfrastructureDetail');
+            if (infrastructureDetail) {
+                const observed = infrastructure.published_at ? new Date(infrastructure.published_at).toLocaleString('tr-TR') : null;
+                const pauseDetail = checker.status !== 'ok'
+                    ? ' • pause store unreadable'
+                    : checker.pause_reason === 'PAUSE_STATE_UNSET'
+                        ? ' • Paused (state unset)'
+                        : checker.pause_reason === 'OPERATIONALLY_PAUSED'
+                            ? ' • Paused by operator'
+                            : '';
+                infrastructureDetail.textContent = (infrastructureState === 'Available'
+                    ? `${infrastructure.instance_type || 'checker'} • ${infrastructure.instance_count || '—'} instance • doğrulama ${observed || '—'}`
+                    : infrastructureState === 'Unavailable'
+                        ? `Staging endpoint deployed değil • doğrulama ${observed || '—'}`
+                        : infrastructure.stale
+                            ? 'Infrastructure bilgisi eksik veya eski; güvenli olarak Unknown gösteriliyor.'
+                            : 'Infrastructure durumu doğrulanamadı.') + pauseDetail;
+            }
+            const resumeBtn = document.getElementById('researchCheckerResumeBtn');
+            if (resumeBtn) {
+                resumeBtn.disabled = infrastructureState !== 'Available' || checker.status !== 'ok' || checker.paused === false;
+                resumeBtn.title = infrastructureState === 'Available' ? '' : 'Staging endpoint doğrulanmış olarak Available değil.';
+            }
             document.getElementById('researchCheckerBudget').textContent = `${checker.daily_invocations_used ?? '—'} / ${checker.daily_invocation_limit ?? '—'} günlük çağrı`;
             const limitInput = document.getElementById('researchCheckerDailyLimitInput');
             if (limitInput && checker.daily_invocation_limit != null) limitInput.value = checker.daily_invocation_limit;
@@ -5121,8 +5151,10 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchGroundingRows').innerHTML = grounding.map(([label, value]) => researchMetricRow(label, value)).join('');
             const alert = document.getElementById('researchOpsAlert');
             const blockers = [];
-            if (checker.status !== 'ok') blockers.push('Fresh-Checker durumu okunamıyor.');
-            else if (checker.paused) blockers.push('Fresh-Checker duraklatılmış: verified yanıt üretimi engellenir.');
+            if (checker.status !== 'ok') blockers.push('Fresh-Checker verification durumu okunamıyor.');
+            if (infrastructureState === 'Unavailable') blockers.push('Fresh-Checker staging endpoint mevcut değil; Resume kullanılamaz.');
+            else if (infrastructureState === 'Unknown') blockers.push('Fresh-Checker infrastructure durumu doğrulanamıyor veya stale; Resume kullanılamaz.');
+            if (checker.status === 'ok' && checker.paused) blockers.push('Fresh-Checker duraklatılmış: verified yanıt üretimi engellenir.');
             if (Number(metrics.assistant_outcome_discover_failed || 0) > 0) blockers.push(`Discover aşamasında ${Number(metrics.assistant_outcome_discover_failed)} hata var.`);
             if (Number(metrics.assistant_outcome_no_authorized_evidence || 0) > 0) blockers.push(`${Number(metrics.assistant_outcome_no_authorized_evidence)} istekte yetkili/uygun evidence bulunamadı.`);
             if (Number(metrics.assistant_outcome_model_adapter_failed || 0) + Number(metrics.assistant_outcome_model_output_invalid || 0) > 0) blockers.push('Model aşamasında hata/geçersiz çıktı var.');
@@ -5140,6 +5172,17 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             }
         } catch (_) {
             if (meta) meta.textContent = 'Research operasyon verisi alınamadı.';
+            const infrastructureStateEl = document.getElementById('researchCheckerInfrastructureState');
+            const verificationStateEl = document.getElementById('researchCheckerState');
+            const infrastructureDetailEl = document.getElementById('researchCheckerInfrastructureDetail');
+            const resumeBtn = document.getElementById('researchCheckerResumeBtn');
+            if (infrastructureStateEl) infrastructureStateEl.textContent = 'Unknown';
+            if (verificationStateEl) verificationStateEl.textContent = 'Unknown';
+            if (infrastructureDetailEl) infrastructureDetailEl.textContent = 'Infrastructure / pause store durumu okunamadı; güvenli olarak Unknown gösteriliyor.';
+            if (resumeBtn) {
+                resumeBtn.disabled = true;
+                resumeBtn.title = 'Infrastructure durumu doğrulanamadığı için Resume kullanılamaz.';
+            }
             const layerRows = document.getElementById('researchLayerRows');
             const groundingRows = document.getElementById('researchGroundingRows');
             if (layerRows) layerRows.innerHTML = '<p class="text-sm text-red-600 py-3">Veri alınamadı.</p>';
@@ -5155,6 +5198,12 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     async function setResearchCheckerState(action) {
         if (currentAdmin?.role !== 'super_admin') return;
         if (action === 'resume') {
+            const resumeBtn = document.getElementById('researchCheckerResumeBtn');
+            if (resumeBtn?.disabled) {
+                const status = document.getElementById('researchCheckerActionStatus');
+                if (status) status.textContent = 'Resume için staging endpoint durumunun Available olarak doğrulanması gerekir.';
+                return;
+            }
             const confirmed = window.confirm('Fresh-Checker resume edilsin mi? Bu işlem gerçek checker çağrılarını ve maliyeti yeniden etkinleştirir.');
             if (!confirmed) return;
         }
@@ -5179,7 +5228,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             if (status) status.textContent = err.message || 'Checker durumu değiştirilemedi.';
         } finally {
             if (pauseBtn) pauseBtn.disabled = false;
-            if (resumeBtn) resumeBtn.disabled = false;
+            await loadResearchObservability();
         }
     }
 
