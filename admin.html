@@ -830,8 +830,8 @@
         <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
             <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
                 <div>
-                    <h4 class="font-semibold text-gray-800">Hesap / Kurum Kullanımı</h4>
-                    <p class="text-xs text-gray-500 mt-1">Son 90 güne kadar operasyonel kullanım; sorgu/yanıt içeriği ve hash gösterilmez. LLM ve discovery exact provider maliyetleri ayrı gösterilir; checker hosting tahmini dahil değildir.</p>
+                    <div class="flex items-center gap-2"><h4 class="font-semibold text-gray-800">Usage & Cost</h4><span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">content-free</span></div>
+                    <p class="text-xs text-gray-500 mt-1">Son 90 güne kadar Research operasyon özeti. Exact cost yalnız LLM + Discovery provider maliyetidir; checker hosting ayrı bir tahmindir ve exact toplama dahil edilmez.</p>
                 </div>
                 <div class="lg:ml-auto">
                     <label for="researchUsageDays" class="block text-xs text-gray-500 mb-1">Dönem</label>
@@ -851,17 +851,17 @@
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Output token</p><p id="researchUsageOutputTokens" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">LLM exact cost</p><p id="researchUsageLlmCost" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Discovery exact cost</p><p id="researchUsageDiscoveryCost" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-blue-100 bg-blue-50/30 p-3"><p class="text-xs text-blue-700">Exact total</p><p id="researchUsageExactCost" class="text-xl font-bold text-blue-800">—</p><p class="text-[11px] text-gray-500 mt-1">LLM + Discovery</p></div>
+                <div class="rounded-lg border border-dashed border-gray-200 p-3"><p class="text-xs text-gray-500">Checker hosting</p><p id="researchUsageCheckerEstimatedCost" class="text-xl font-bold text-gray-500">Ayrı</p><p class="text-[11px] text-gray-400 mt-1">Estimated • exact toplama dahil değil</p></div>
             </div>
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
-                <div class="rounded-lg border border-gray-100 p-4">
-                    <h5 class="font-semibold text-gray-800 mb-2">Assistant Funnel</h5>
-                    <p class="text-xs text-gray-500 mb-3">Seçili dönemde requestlerin pipeline boyunca ulaştığı aşamalar.</p>
-                    <div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
+            <div class="rounded-xl border border-gray-100 bg-gray-50/40 p-4 mb-5">
+                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 mb-4">
+                    <div><h5 class="font-semibold text-gray-800">Pipeline Funnel & Latency</h5><p class="text-xs text-gray-500 mt-1">Aynı pipeline'ın hacim ve süre görünümü; yalnız ulaşılan aşamalar latency hesabına girer.</p></div>
+                    <span class="text-[11px] text-gray-400">Discover → Evidence → Model → Grounding</span>
                 </div>
-                <div class="rounded-lg border border-gray-100 p-4">
-                    <h5 class="font-semibold text-gray-800 mb-2">Stage Latency</h5>
-                    <p class="text-xs text-gray-500 mb-3">Yalnız ulaşılan aşamaların ortalama süreleri.</p>
-                    <div id="researchUsageStageLatency" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Funnel</p><div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></div>
+                    <div class="xl:border-l xl:border-gray-200 xl:pl-5"><p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Stage latency</p><div id="researchUsageStageLatency" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></div>
                 </div>
             </div>
             <div class="space-y-6">
