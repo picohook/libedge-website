@@ -5089,7 +5089,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             const infrastructure = checker.infrastructure || { state: 'unknown', stale: true };
             const infrastructureState = infrastructure.state === 'available' ? 'Available' : infrastructure.state === 'unavailable' ? 'Unavailable' : 'Unknown';
             document.getElementById('researchCheckerInfrastructureState').textContent = infrastructureState;
-            document.getElementById('researchCheckerState').textContent = checker.status !== 'ok' ? 'Unknown' : checker.paused ? 'Paused' : 'Running';
+            document.getElementById('researchCheckerState').textContent = checker.status !== 'ok' ? 'Unknown' : checker.paused ? 'Paused' : infrastructureState === 'Available' ? 'Running' : 'Running · etkisiz';
             const infrastructureDetail = document.getElementById('researchCheckerInfrastructureDetail');
             if (infrastructureDetail) {
                 const observed = infrastructure.published_at ? new Date(infrastructure.published_at).toLocaleString('tr-TR') : null;
