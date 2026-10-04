@@ -3114,7 +3114,7 @@ app.get('/api/admin/research/usage/requests', async (c) => {
   const rows = await c.env.DB.prepare(`
     SELECT e.id, e.created_at, e.operation, e.outcome_code, e.latency_ms,
            e.discover_ms, e.evidence_pack_ms, e.model_ms, e.grounding_ms,
-           e.input_tokens, e.output_tokens,
+           e.input_tokens, e.output_tokens, e.discovery_cost_usd,
            e.retrieval_mode, e.candidate_depth, e.retrieved_count,
            e.authorized_relevant_count, e.abstract_bearing_count, e.metadata_only_count
     FROM research_usage_events e
@@ -3164,7 +3164,8 @@ app.get('/api/admin/research/usage/requests', async (c) => {
         metadata_only_count: row.metadata_only_count
       },
       input_tokens: row.input_tokens,
-      output_tokens: row.output_tokens
+      output_tokens: row.output_tokens,
+      discovery_cost_usd: row.discovery_cost_usd
     }))
   });
 });
