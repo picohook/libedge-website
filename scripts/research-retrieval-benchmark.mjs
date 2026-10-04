@@ -53,7 +53,10 @@ try {
         authorized_relevant_count: request.retrieval?.authorized_relevant_count ?? null,
         abstract_bearing_count: request.retrieval?.abstract_bearing_count ?? null,
         metadata_only_count: request.retrieval?.metadata_only_count ?? null,
+        checked_count: countOrNull(verification.checked_count),
         verified_count: countOrNull(verification.verified_count),
+        truncated_count: countOrNull(verification.truncated_count),
+        rejection_counts: safeRejectionCounts(verification.rejection_counts),
         unique_supporting_source_count: supporting.size,
         discover_ms: request.stage_latency_ms?.discover ?? null,
         total_latency_ms: request.latency_ms ?? null,
@@ -126,6 +129,12 @@ function finiteOrNull(value) {
 }
 function countOrNull(value) {
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+function safeRejectionCounts(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter(([code, amount]) =>
+    /^[A-Z][A-Z0-9_]{0,79}$/.test(code) && Number.isSafeInteger(amount) && amount > 0
+  ));
 }
 function cookieHeader(jar) { return [...jar].map(([k,v]) => `${k}=${v}`).join('; '); }
 function applyCookies(response, jar) {
