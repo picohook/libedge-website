@@ -785,6 +785,7 @@
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Discovery exact cost</p><p id="researchUsageDiscoveryCost" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-blue-100 bg-blue-50/30 p-3"><p class="text-xs text-blue-700">Exact total</p><p id="researchUsageExactCost" class="text-xl font-bold text-blue-800">—</p><p class="text-[11px] text-gray-500 mt-1">LLM + Discovery</p></div>
             </div>
+            <div id="researchCheckerHostingEstimate" class="hidden rounded-lg border border-slate-200 bg-slate-50 p-3 mb-4"><p class="text-xs font-medium text-slate-700">Checker barındırma tahmini</p><p id="researchCheckerHostingEstimateValue" class="text-sm font-semibold text-slate-800 mt-1">—</p><p class="text-[11px] text-gray-500 mt-1">Exact total ve kurum/kişi maliyetlerine dahil değildir.</p></div>
 <section id="researchVerificationBreadth" class="rounded-xl border border-slate-200 bg-slate-50 p-4 mb-5">
             <div class="flex items-center justify-between gap-3 mb-4">
                 <div>
@@ -5158,14 +5159,26 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             if (freshnessEl) freshnessEl.classList.toggle('hidden', !infrastructure.stale);
             const checkerStateEl = document.getElementById('researchCheckerState');
             document.getElementById('researchCheckerInfrastructureState').textContent = infrastructureState;
-            checkerStateEl.textContent = checker.status !== 'ok' ? 'Unknown' : checker.paused ? 'Paused' : infrastructureState === 'Available' ? 'Running' : 'Running · etkisiz';
             const verificationState = checker.status !== 'ok' ? 'Unknown' : checker.paused ? 'Paused' : infrastructureState === 'Available' ? 'Running' : 'Running · etkisiz';
+            checkerStateEl.textContent = verificationState;
             const infrastructureBadge = document.getElementById('researchCheckerInfrastructureBadge');
             const verificationBadge = document.getElementById('researchCheckerVerificationBadge');
             const stateBanner = document.getElementById('researchCheckerStateBanner');
             if (infrastructureBadge) infrastructureBadge.textContent = infrastructureState;
             if (verificationBadge) verificationBadge.textContent = verificationState;
             if (stateBanner) stateBanner.textContent = `Fresh-Checker · Altyapı: ${infrastructureState} · Doğrulama: ${verificationState}`;
+            const hostingEstimate = document.getElementById('researchCheckerHostingEstimate');
+            const hostingEstimateValue = document.getElementById('researchCheckerHostingEstimateValue');
+            const instanceCount = Number(infrastructure.instance_count);
+            const hourlyUsd = Number(infrastructure.hourly_cost_usd);
+            const showHostingEstimate = infrastructureState === 'Available'
+                && infrastructure.instance_type
+                && Number.isFinite(instanceCount) && instanceCount > 0
+                && Number.isFinite(hourlyUsd) && hourlyUsd > 0;
+            if (hostingEstimate) hostingEstimate.classList.toggle('hidden', !showHostingEstimate);
+            if (hostingEstimateValue) hostingEstimateValue.textContent = showHostingEstimate
+                ? `≈ ${(instanceCount * hourlyUsd * 24).toFixed(2)} / gün · ${instanceCount} × ${infrastructure.instance_type} · ${hourlyUsd.toFixed(4)} / saat`
+                : '—';
             checkerStateEl.classList.toggle('text-green-700', checker.status === 'ok' && !checker.paused && infrastructureState === 'Available');
             checkerStateEl.classList.toggle('text-gray-700', checker.status !== 'ok' || checker.paused || infrastructureState !== 'Available');
             const infrastructureDetail = document.getElementById('researchCheckerInfrastructureDetail');
@@ -5270,6 +5283,8 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             if (infrastructureBadge) infrastructureBadge.textContent = 'Unknown';
             if (verificationBadge) verificationBadge.textContent = 'Unknown';
             if (stateBanner) stateBanner.textContent = 'Fresh-Checker · Altyapı: Unknown · Doğrulama: Unknown';
+            const hostingEstimate = document.getElementById('researchCheckerHostingEstimate');
+            if (hostingEstimate) hostingEstimate.classList.add('hidden');
             if (infrastructureDetailEl) infrastructureDetailEl.textContent = 'Infrastructure / pause store durumu okunamadı; güvenli olarak Unknown gösteriliyor.';
             if (resumeBtn) {
                 resumeBtn.disabled = true;
