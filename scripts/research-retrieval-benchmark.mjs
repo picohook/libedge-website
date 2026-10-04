@@ -27,6 +27,7 @@ try {
   for (const config of CONFIGS) {
     await setControls(config);
     for (const candidate of CASES) {
+      const beforeTelemetry = await telemetrySnapshot();
       const beforeRequestId = await latestRequestId(userId);
       const response = await fetch(`${BASE_URL}/api/assistant/ask`, {
         method: 'POST',
@@ -37,6 +38,7 @@ try {
       const body = await response.json();
       if (response.status !== 200) throw new Error(`${config.name}/${candidate.name} HTTP ${response.status}`);
       const request = await latestNewRequest(userId, beforeRequestId);
+      const afterTelemetry = await telemetrySnapshot();
       const verification = body?.research_summary?.verification || {};
       const supporting = new Set(
         (Array.isArray(body?.claims) ? body.claims : [])
@@ -59,6 +61,8 @@ try {
         rejection_counts: safeRejectionCounts(verification.rejection_counts),
         unique_supporting_source_count: supporting.size,
         discover_ms: request.stage_latency_ms?.discover ?? null,
+        grounding_ms: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_ms_total'),
+        support_check_ms: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_ms_total'),
         total_latency_ms: request.latency_ms ?? null,
         discovery_cost_usd: finiteOrNull(request.discovery_cost_usd)
       }));
@@ -112,6 +116,17 @@ async function latestNewRequest(userId, beforeRequestId) {
   const request = (body.requests || []).find((row) => row.request_id !== beforeRequestId);
   if (!request) throw new Error('benchmark request drilldown missing');
   return request;
+}
+async function telemetrySnapshot() {
+  const body = await adminJson('/api/admin/system-health');
+  const metrics = body?.research_telemetry?.snapshot?.metrics;
+  if (!metrics || typeof metrics !== 'object') throw new Error('research telemetry snapshot unavailable');
+  return metrics;
+}
+function metricDelta(before, after, key) {
+  const start = Number(before?.[key] || 0);
+  const end = Number(after?.[key] || 0);
+  return Number.isFinite(start) && Number.isFinite(end) && end >= start ? end - start : null;
 }
 async function adminJson(path, init = {}) {
   const response = await fetch(`${BASE_URL}${path}`, {
