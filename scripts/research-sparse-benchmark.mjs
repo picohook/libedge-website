@@ -50,13 +50,16 @@ for (const candidate of CASES) {
   const output = {
     case: candidate.name,
     code: body.code,
-    literature: {
+    candidate_pool: {
       retrieved_count: delta(before, after, 'assistant_retrieved_works_total'),
       relevant_count: delta(before, after, 'assistant_relevant_works_total'),
       language_eligible_count: delta(before, after, 'assistant_language_eligible_works_total'),
-      authorized_relevant_count: delta(before, after, 'assistant_authorized_relevant_works_total'),
-      abstract_bearing_count: delta(before, after, 'assistant_abstract_bearing_works_total'),
-      metadata_only_count: delta(before, after, 'assistant_metadata_only_works_total')
+      authorized_relevant_count: delta(before, after, 'assistant_authorized_relevant_works_total')
+    },
+    final_evidence_set: {
+      record_count: count(summary.literature.abstract_bearing_count) + count(summary.literature.metadata_only_count),
+      abstract_bearing_count: count(summary.literature.abstract_bearing_count),
+      metadata_only_count: count(summary.literature.metadata_only_count)
     },
     verification: {
       checked_count: count(summary.verification.checked_count),
