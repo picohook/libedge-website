@@ -139,6 +139,23 @@ test('runtime profile controls switch between Turkish and English', async ({ pag
   await expect(recommendationPlaceholder).toHaveAttribute('placeholder', 'Neden bu ürünü öneriyorsunuz? Kurumunuza nasıl katkı sağlar?');
 });
 
+
+test('profile catalog heading and category pills update to English without reload', async ({ page }) => {
+  const initialUrl = page.url();
+  await page.evaluate(() => {
+    globalThis.profileSubscriptions = [{ status: 'active', product_slug: 'demo' }];
+    globalThis.profileProductMap = new Map([['demo', { category: 'Veritabanı' }]]);
+    globalThis.profileIndividualTools = [];
+    globalThis.renderSecondaryFilters();
+  });
+  await expect(page.locator('#secondaryResourceFilters')).toContainText('Veritabanı');
+  await page.locator('#translateBtn').click();
+  await expect(page.locator('#profileCatalogModule .profile-module-title')).toContainText('Discover & Recommend to Your Institution');
+  await expect(page.locator('#secondaryResourceFilters')).not.toContainText('Veritabanı');
+  await expect(page.locator('#secondaryResourceFilters')).toContainText('Database');
+  expect(page.url()).toBe(initialUrl);
+});
+
 function resolveStaticPath(urlPathname) {
   const requested = urlPathname === '/' ? '/index.html' : decodeURIComponent(urlPathname);
   const relativePath = requested.replace(/^\/+/, '');
