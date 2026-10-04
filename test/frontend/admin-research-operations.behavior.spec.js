@@ -79,8 +79,8 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchRetrievalMode')).toBeHidden();
   await expect(research.locator('#researchVerificationBreadth')).toBeVisible();
   await expect(research.locator('#researchDiagnosticsShowZero')).not.toBeChecked();
-  await expect(research.locator('#researchRetrievalModeObserved')).toBeVisible();
-  await expect(research.locator('#researchCheckerStateDetail')).toBeVisible();
+  await expect(research.locator('#researchRetrievalModeObserved')).toContainText('Lexical');
+  await expect(research.locator('#researchRetrievalModeObserved')).toContainText('%75');
 
   await page.route('**/api/admin/system-health', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
@@ -98,6 +98,10 @@ test('Research operations center renders outcome, pipeline and account controls 
       },
     }) });
   });
+  await page.reload();
+  await expect(research.locator('#researchCheckerStateDetail')).toContainText('calls');
+  await expect(research.locator('#researchCheckerStateDetail')).toContainText('runtime');
+  await expect(research.locator('#researchCheckerStateDetail')).toContainText('hard ceiling');
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchObservabilityLastRefresh')).toContainText(/^son yenileme: \d{2}:\d{2}$/);
   await expect(research.locator('#researchBreadthVerified')).toHaveText('4 yanıt · 11 claim');

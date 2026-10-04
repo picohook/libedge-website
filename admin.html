@@ -5203,7 +5203,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 const used = Number.isFinite(Number(checker.daily_invocations_used)) ? Number(checker.daily_invocations_used) : null;
                 const runtimeLimit = Number.isFinite(Number(checker.daily_invocation_limit)) ? Number(checker.daily_invocation_limit) : null;
                 const hardCeiling = Number.isFinite(Number(checker.daily_invocation_hard_ceiling)) ? Number(checker.daily_invocation_hard_ceiling) : null;
-                const pauseReason = checker.pause_reason || (checker.status === 'ok' ? 'Running' : 'PAUSE_STORE_UNAVAILABLE');
+                const pauseReason = checker.pause_reason || (checker.status === 'ok' ? 'Running' : (checker.status || 'Unknown'));
                 checkerDetail.textContent = `${pauseReason} · calls ${used ?? '—'} / runtime ${runtimeLimit ?? '—'} · hard ceiling ${hardCeiling ?? '—'}`;
             }
             const resumeBtn = document.getElementById('researchCheckerResumeBtn');
