@@ -13,7 +13,8 @@ test.beforeAll(async () => {
     const filePath = path.join(rootDir, url.pathname === '/' ? 'admin.html' : url.pathname.replace(/^\//, ''));
     try {
       const body = await readFile(filePath);
-      res.writeHead(200, { 'content-type': filePath.endsWith('.html') ? 'text/html; charset=utf-8' : 'text/plain' });
+      const contentType = filePath.endsWith('.html') ? 'text/html; charset=utf-8' : filePath.endsWith('.css') ? 'text/css; charset=utf-8' : filePath.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'text/plain';
+      res.writeHead(200, { 'content-type': contentType });
       res.end(body);
     } catch {
       res.writeHead(404);
@@ -32,6 +33,13 @@ test('Research operations center renders outcome, pipeline and account controls 
   await page.route('**/api/user/profile', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 1, role: 'super_admin', full_name: 'Test Super Admin', email: 'admin@example.test' }) });
   });
+  await page.route('**/api/admin/research/usage?**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      window_days: 30,
+      summary: { requests: 2, successes: 1, verified_rate: 0.5, valid_empty: 1, valid_empty_rate: 0.5, failures: 0, failure_rate: 0, avg_latency_ms: 1200, input_tokens: 100, output_tokens: 20, llm_cost_usd: 0.012345, discovery_cost_usd: 0.001234, outcome_count_consistent: true, stage_latency_ms: {} },
+      outcomes: [], users: [], institutions: []
+    }) });
+  });
   await page.goto(`${baseURL}/admin.html`);
   await expect(page.locator('#authGate')).toBeVisible();
   const research = page.locator('#tab-research');
@@ -45,7 +53,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.getByText('Usage & Cost')).toBeVisible();
   await expect(research.getByText('Pipeline Funnel & Latency')).toBeVisible();
   await expect(research.locator('#researchUsageExactCost')).toBeVisible();
-  await expect(research.locator('#researchUsageCheckerEstimatedCost')).toHaveText('Ayrı');
+  await expect(research.locator('#researchUsageExactCost')).toHaveText('$0.013579');
   await expect(research.locator('#researchUsageUsersPanel')).toBeHidden();
   await research.locator('#researchUsageUsersTab').click();
   await expect(research.locator('#researchUsageUsersPanel')).toBeVisible();
