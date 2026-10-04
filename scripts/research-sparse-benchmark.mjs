@@ -6,9 +6,9 @@ const ADMIN_PASSWORD = process.env.LIBEDGE_SMOKE_ADMIN_PASSWORD;
 if (!EMAIL || !PASSWORD || !ADMIN_EMAIL || !ADMIN_PASSWORD) throw new Error('Missing benchmark credentials');
 
 const CASES = [
-  { name: 'ottoman-periodical-typography', query: 'Ottoman Turkish periodical typography 1860s' },
-  { name: 'alkaline-fuel-cell-membrane', query: 'alkaline fuel cell asbestos membrane potassium hydroxide' },
-  { name: 'radiation-grafted-membrane', query: 'radiation grafted polyethylene styrene ion exchange membrane 1970' }
+  { name: 'pbi-phosphoric-acid-1980', query: 'polybenzimidazole phosphoric acid fuel cell membrane 1980' },
+  { name: 'pfsa-chlor-alkali-1970', query: 'perfluorinated sulfonic acid membrane chlor alkali 1970' },
+  { name: 'radiation-grafted-fluoropolymer-1960', query: 'radiation grafted fluoropolymer styrene sulfonic acid membrane 1960' }
 ];
 
 const cookies = new Map();
