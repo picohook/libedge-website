@@ -125,9 +125,9 @@ test('runtime profile controls switch between Turkish and English', async ({ pag
   await expect(recommendationPlaceholder).toHaveAttribute('placeholder', 'Why do you recommend this product? How would it benefit your organization?');
 
   const runtimeTranslations = await page.evaluate(() => ({
-    subscribe: translateProfileString('Abone Ol', isProfileEnglish()),
-    sending: translateProfileString('Gönderiliyor...', isProfileEnglish()),
-    folderPrompt: translateProfileString('Klasör adını girin:', isProfileEnglish()),
+    subscribe: window.translateProfileString('Abone Ol', window.isProfileEnglish()),
+    sending: window.translateProfileString('Gönderiliyor...', window.isProfileEnglish()),
+    folderPrompt: window.translateProfileString('Klasör adını girin:', window.isProfileEnglish()),
   }));
   expect(runtimeTranslations).toEqual({
     subscribe: 'Subscribe',
