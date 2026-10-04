@@ -5268,6 +5268,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     }
 
     document.getElementById('researchObservabilityRefreshBtn')?.addEventListener('click', () => { loadResearchObservability(); loadResearchRetrievalControls(); });
+    document.getElementById('researchDiagnosticsShowZero')?.addEventListener('change', loadResearchObservability);
     document.getElementById('researchRetrievalControlsSaveBtn')?.addEventListener('click', setResearchRetrievalControls);
     function setResearchUsageBreakdownTab(tab) {
         const institutions = tab !== 'users';
