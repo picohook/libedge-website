@@ -55,7 +55,7 @@ jobs:
         run: |
           grep -Fq '.xl\:grid-cols-2' assets/css/tailwind.css || { echo 'missing generated utility: xl:grid-cols-2'; exit 1; }
           grep -Fq '.lg\:items-end' assets/css/tailwind.css || { echo 'missing generated utility: lg:items-end'; exit 1; }
-          grep -Fq '.gap-5' assets/css/tailwind.css || { echo 'missing generated utility: gap-5'; exit 1; }
+          grep -Fq '.bg-blue-50\/30' assets/css/tailwind.css || { echo 'missing generated utility: bg-blue-50/30'; exit 1; }
 
 
   frontend-browser:
