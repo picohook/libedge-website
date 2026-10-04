@@ -1666,7 +1666,22 @@ const profileTranslations = {
     'Profil linkleri kaydedilemedi.': 'Profile links could not be saved.',
     'Oturum yenileme çok sık denendi. Biraz bekleyip tekrar kontrol edeceğim.': 'Session refresh was attempted too often. I will wait a bit and check again.',
     'Geçici bağlantı sorunu var. Oturum kapatılmadı.': 'There is a temporary connection issue. Your session was not signed out.',
-    'Klasörler yüklenemedi.': 'Folders could not be loaded.'
+    'Klasörler yüklenemedi.': 'Folders could not be loaded.',
+    'Not': 'Note',
+    '(isteğe bağlı)': '(optional)',
+    'Neden bu ürünü öneriyorsunuz? Kurumunuza nasıl katkı sağlar?': 'Why do you recommend this product? How would it benefit your organization?',
+    'Öneri Gönder': 'Send Suggestion',
+    'Bu kategoride araç yok.': 'No tools in this category.',
+    'Durum yükleniyor...': 'Loading status...',
+    'Aboneliği İptal Et': 'Unsubscribe',
+    'Abone Ol': 'Subscribe',
+    'Durum öğrenilemedi.': 'Could not retrieve status.',
+    'Kurumsal giriş bağlantısı henüz tanımlı değil.': 'The organization login link has not been configured yet.',
+    'Bu abonelik için erişim bağlantısı henüz tanımlı değil.': 'The access link for this subscription has not been configured yet.',
+    'E-bülten aboneliğiniz aktif edildi.': 'Your newsletter subscription is now active.',
+    'E-bülten aboneliği sırasında hata oluştu.': 'An error occurred while subscribing to the newsletter.',
+    'E-bülten aboneliğiniz iptal edildi.': 'Your newsletter subscription has been cancelled.',
+    'E-bülten aboneliği iptal edilirken hata oluştu.': 'An error occurred while cancelling the newsletter subscription.'
 };
 const profileTranslationsReverse = Object.fromEntries(
     Object.entries(profileTranslations).map(([tr, en]) => [en, tr])
@@ -1682,7 +1697,9 @@ const profilePatternTranslations = {
         { pattern: /(\d+)\s*gün kaldı\b/gi, replacement: '$1 days left' },
         { pattern: /Üye\s+/g, replacement: 'Member since ' },
         { pattern: /Abonelikler yüklenemedi:/g, replacement: 'Subscriptions could not be loaded:' },
-        { pattern: /Araçlar yüklenemedi:/g, replacement: 'Tools could not be loaded:' }
+        { pattern: /Araçlar yüklenemedi:/g, replacement: 'Tools could not be loaded:' },
+        { pattern: /(.+?) adresiyle e-bülten aboneliğiniz aktif\./g, replacement: '$1 is subscribed to the newsletter.' },
+        { pattern: /(.+?) adresiyle e-bültene henüz abone değilsiniz\./g, replacement: '$1 is not subscribed to the newsletter yet.' }
     ],
     toTurkish: [
         { pattern: /(\d+)\s*resources\b/gi, replacement: '$1 kaynak' },
@@ -1691,7 +1708,9 @@ const profilePatternTranslations = {
         { pattern: /(\d+)\s*days left\b/gi, replacement: '$1 gün kaldı' },
         { pattern: /Member since\s+/g, replacement: 'Üye ' },
         { pattern: /Subscriptions could not be loaded:/g, replacement: 'Abonelikler yüklenemedi:' },
-        { pattern: /Tools could not be loaded:/g, replacement: 'Araçlar yüklenemedi:' }
+        { pattern: /Tools could not be loaded:/g, replacement: 'Araçlar yüklenemedi:' },
+        { pattern: /(.+?) is subscribed to the newsletter\./g, replacement: '$1 adresiyle e-bülten aboneliğiniz aktif.' },
+        { pattern: /(.+?) is not subscribed to the newsletter yet\./g, replacement: '$1 adresiyle e-bültene henüz abone değilsiniz.' }
     ]
 };
 let profileLanguageApplying = false;
@@ -2332,7 +2351,7 @@ function _renderIndividualToolsWithFilter() {
         : profileIndividualTools;
     el.innerHTML = tools.length
         ? tools.filter(Boolean).map(renderProfileIndividualToolCard).join('')
-        : '<p class="text-gray-500 text-sm">Bu kategoride araç yok.</p>';
+        : `<p class="text-gray-500 text-sm">${translateProfileString('Bu kategoride araç yok.', isProfileEnglish())}</p>`;
 }
 
 function _buildIndividualCategoryFilter() {
@@ -2761,7 +2780,7 @@ function openSubscriptionAccess(btn) {
     if (accessType === 'institution_link') {
         if (accessUrl) { openUrl(accessUrl); return; }
         if (typeof window.showToast === 'function')
-            window.showToast('Kurumsal giriş bağlantısı henüz tanımlı değil.', 'warning');
+            window.showToast(translateProfileString('Kurumsal giriş bağlantısı henüz tanımlı değil.', isProfileEnglish()), 'warning');
         return;
     }
 
@@ -2769,7 +2788,7 @@ function openSubscriptionAccess(btn) {
     if (accessUrl) { openUrl(accessUrl); return; }
 
     if (typeof window.showToast === 'function')
-        window.showToast('Bu abonelik için erişim bağlantısı henüz tanımlı değil.', 'warning');
+        window.showToast(translateProfileString('Bu abonelik için erişim bağlantısı henüz tanımlı değil.', isProfileEnglish()), 'warning');
 }
 window.openSubscriptionAccess = openSubscriptionAccess;
 
@@ -3593,8 +3612,8 @@ async function loadNewsletterSubscription() {
     if (!textEl || !btn) return;
 
     btn.disabled = true;
-    textEl.textContent = 'Durum yükleniyor...';
-    btn.textContent = 'Yükleniyor...';
+    textEl.textContent = translateProfileString('Durum yükleniyor...', isProfileEnglish());
+    btn.textContent = translateProfileString('Yükleniyor...', isProfileEnglish());
 
     try {
         const res = await fetch('/api/newsletter/status', { credentials: 'include' });
@@ -3602,15 +3621,15 @@ async function loadNewsletterSubscription() {
         const email = data.email || window.currentUser?.email || '-';
 
         if (data.subscribed) {
-            textEl.textContent = `${email} adresiyle e-bülten aboneliğiniz aktif.`;
-            btn.textContent = 'Aboneliği İptal Et';
+            textEl.textContent = translateProfileString(`${email} adresiyle e-bülten aboneliğiniz aktif.`, isProfileEnglish());
+            btn.textContent = translateProfileString('Aboneliği İptal Et', isProfileEnglish());
             btn.classList.remove('bg-primary');
             btn.classList.add('bg-red-600', 'hover:bg-red-700');
             btn.disabled = false;
             btn.onclick = unsubscribeNewsletter;
         } else {
-            textEl.textContent = `${email} adresiyle e-bültene henüz abone değilsiniz.`;
-            btn.textContent = 'Abone Ol';
+            textEl.textContent = translateProfileString(`${email} adresiyle e-bültene henüz abone değilsiniz.`, isProfileEnglish());
+            btn.textContent = translateProfileString('Abone Ol', isProfileEnglish());
             btn.classList.remove('bg-red-600', 'hover:bg-red-700');
             btn.classList.add('bg-primary');
             btn.disabled = false;
@@ -3618,7 +3637,7 @@ async function loadNewsletterSubscription() {
         }
     } catch (err) {
         console.error('loadNewsletterSubscription error:', err);
-        if (textEl) textEl.textContent = 'Durum öğrenilemedi.';
+        if (textEl) textEl.textContent = translateProfileString('Durum öğrenilemedi.', isProfileEnglish());
         if (btn) btn.disabled = true;
     }
 }
@@ -3639,12 +3658,12 @@ async function subscribeNewsletterFromProfile() {
             body: JSON.stringify({})
         });
         if (!res.ok) throw new Error('subscribe failed');
-        showToast('E-bülten aboneliğiniz aktif edildi.', 'success');
+        showToast(translateProfileString('E-bülten aboneliğiniz aktif edildi.', isProfileEnglish()), 'success');
         await loadNewsletterSubscription();
     } catch (error) {
         btn.disabled = false;
         btn.textContent = originalText;
-        showToast('E-bülten aboneliği sırasında hata oluştu.', 'error');
+        showToast(translateProfileString('E-bülten aboneliği sırasında hata oluştu.', isProfileEnglish()), 'error');
     }
 }
 
@@ -3661,12 +3680,12 @@ async function unsubscribeNewsletter() {
             credentials: 'include'
         });
         if (!res.ok) throw new Error('unsubscribe failed');
-        showToast('E-bülten aboneliğiniz iptal edildi.', 'success');
+        showToast(translateProfileString('E-bülten aboneliğiniz iptal edildi.', isProfileEnglish()), 'success');
         await loadNewsletterSubscription();
     } catch (error) {
         btn.disabled = false;
         btn.textContent = originalText;
-        showToast('E-bülten aboneliği iptal edilirken hata oluştu.', 'error');
+        showToast(translateProfileString('E-bülten aboneliği iptal edilirken hata oluştu.', isProfileEnglish()), 'error');
     }
 }
 
