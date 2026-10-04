@@ -841,7 +841,6 @@
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Discover → Evidence → Model → Grounding → Verified</p>
                     <div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
-                    <div id="researchUsageStageLatency" class="hidden" aria-hidden="true"></div>
                 </div>
             </div>
             <div class="border-t border-gray-100 pt-4">
@@ -4979,18 +4978,6 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         }).join('');
     }
 
-    function researchStageLatencyRows(stageLatency) {
-        const rows = [
-            ['Discover', stageLatency?.discover],
-            ['Evidence', stageLatency?.evidence],
-            ['Model', stageLatency?.model],
-            ['Fresh-Checker / Grounding', stageLatency?.grounding]
-        ];
-        return rows.map(([label, value]) =>
-            `<div class="flex items-center justify-between gap-4 py-2"><span class="text-sm text-gray-600">${escapeHtml(label)}</span><span class="text-sm font-semibold text-gray-800">${value == null ? '—' : `${Number(value).toLocaleString('tr-TR')} ms`}</span></div>`
-        ).join('');
-    }
-
     function researchRequestLocalTime(value) {
         const raw = String(value || '').trim();
         if (!raw) return '—';
@@ -5070,7 +5057,6 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageDiscoveryCost').textContent = '$' + Number(summary.discovery_cost_usd || 0).toFixed(6);
             document.getElementById('researchUsageExactCost').textContent = '$' + (Number(summary.llm_cost_usd || 0) + Number(summary.discovery_cost_usd || 0)).toFixed(6);
             document.getElementById('researchUsageFunnel').innerHTML = researchUsageFunnel(data.outcomes, summary.requests, summary.stage_latency_ms);
-            document.getElementById('researchUsageStageLatency').innerHTML = researchStageLatencyRows(summary.stage_latency_ms);
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
             document.getElementById('researchUsageInstitutions').innerHTML = researchUsageRows(data.institutions, 'institution');
             if (meta) meta.textContent = `Son ${data.window_days || days} gün • verified + geçerli boş + başarısız = toplam istek: ${summary.outcome_count_consistent ? 'tutarlı' : 'UYARI: tutarsız'} • 90 gün retention • request detayları en fazla 30 gün`;
