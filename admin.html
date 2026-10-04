@@ -831,7 +831,7 @@
             <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
                 <div>
                     <div class="flex items-center gap-2"><h4 class="font-semibold text-gray-800">Usage & Cost</h4><span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">content-free</span></div>
-                    <p class="text-xs text-gray-500 mt-1">Son 90 güne kadar Research operasyon özeti. Exact cost yalnız LLM + Discovery provider maliyetidir; checker hosting ayrı bir tahmindir ve exact toplama dahil edilmez.</p>
+                    <p class="text-xs text-gray-500 mt-1">Son 90 güne kadar Research operasyon özeti; sorgu/yanıt içeriği ve hash gösterilmez. Exact cost yalnız LLM + Discovery provider maliyetidir; checker hosting ayrı bir tahmindir ve exact toplama dahil edilmez.</p>
                 </div>
                 <div class="lg:ml-auto">
                     <label for="researchUsageDays" class="block text-xs text-gray-500 mb-1">Dönem</label>
@@ -873,7 +873,7 @@
                     <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
                     <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
                 </div>
-                <div id="researchUsageUsersPanel" class="hidden">
+                <div id="researchUsageUsersPanel" class="hidden" hidden>
                     <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
                     <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
                 </div>
@@ -5204,8 +5204,12 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     document.getElementById('researchRetrievalControlsSaveBtn')?.addEventListener('click', setResearchRetrievalControls);
     function setResearchUsageBreakdownTab(tab) {
         const institutions = tab !== 'users';
-        document.getElementById('researchUsageInstitutionsPanel')?.classList.toggle('hidden', !institutions);
-        document.getElementById('researchUsageUsersPanel')?.classList.toggle('hidden', institutions);
+        const institutionPanel = document.getElementById('researchUsageInstitutionsPanel');
+        const userPanel = document.getElementById('researchUsageUsersPanel');
+        institutionPanel?.classList.toggle('hidden', !institutions);
+        userPanel?.classList.toggle('hidden', institutions);
+        if (institutionPanel) institutionPanel.hidden = !institutions;
+        if (userPanel) userPanel.hidden = institutions;
         const institutionTab = document.getElementById('researchUsageInstitutionsTab');
         const userTab = document.getElementById('researchUsageUsersTab');
         [institutionTab, userTab].forEach((button) => button?.classList.remove('bg-gray-900', 'text-white'));
