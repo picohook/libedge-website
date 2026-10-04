@@ -72,6 +72,8 @@ const ALLOWED_METRICS = new Set([
   'assistant_grounding_rejection_support_check_failed_language',
   'assistant_grounding_rejection_support_check_failed_language_claim',
   'assistant_grounding_rejection_support_check_failed_language_evidence',
+  'assistant_grounding_rejection_support_check_failed_language_claim',
+  'assistant_grounding_rejection_support_check_failed_language_evidence',
   'assistant_grounding_rejection_support_check_failed_pin_or_response',
   'assistant_grounding_rejection_support_check_failed_transport_or_other'
 ]);
