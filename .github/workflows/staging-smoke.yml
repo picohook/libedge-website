@@ -43,6 +43,11 @@ on:
         required: true
         type: boolean
         default: false
+      run_retrieval_benchmark:
+        description: 'Run controlled lexical-10 / lexical-50 / semantic-50 Research benchmark'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -79,6 +84,7 @@ jobs:
           RUN_RESEARCH: ${{ inputs.run_research }}
           RUN_ASSISTANT: ${{ inputs.run_assistant }}
           RUN_SPARSE_BENCHMARK: ${{ inputs.run_sparse_benchmark }}
+          RUN_RETRIEVAL_BENCHMARK: ${{ inputs.run_retrieval_benchmark }}
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
           LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
@@ -93,12 +99,12 @@ jobs:
             fi
           }
 
-          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_RESEARCH" = "true" ] || [ "$RUN_ASSISTANT" = "true" ] || [ "$RUN_SPARSE_BENCHMARK" = "true" ]; then
+          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_RESEARCH" = "true" ] || [ "$RUN_ASSISTANT" = "true" ] || [ "$RUN_SPARSE_BENCHMARK" = "true" ] || [ "$RUN_RETRIEVAL_BENCHMARK" = "true" ]; then
             require_secret LIBEDGE_SMOKE_EMAIL
             require_secret LIBEDGE_SMOKE_PASSWORD
           fi
 
-          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_SPARSE_BENCHMARK" = "true" ]; then
+          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_SPARSE_BENCHMARK" = "true" ] || [ "$RUN_RETRIEVAL_BENCHMARK" = "true" ]; then
             require_secret LIBEDGE_SMOKE_ADMIN_EMAIL
             require_secret LIBEDGE_SMOKE_ADMIN_PASSWORD
           fi
@@ -152,6 +158,16 @@ jobs:
           LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
           LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
         run: node scripts/research-sparse-benchmark.mjs
+
+      - name: Run controlled retrieval benchmark
+        if: inputs.run_retrieval_benchmark
+        env:
+          LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+        run: node scripts/research-retrieval-benchmark.mjs
 
       - name: Run frontend browser smoke
         if: inputs.run_frontend
