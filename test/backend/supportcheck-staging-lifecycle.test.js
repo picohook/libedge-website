@@ -9,7 +9,10 @@ describe('SupportCheck staging lifecycle governance', () => {
     expect(workflow).toContain('environment: staging');
     expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('SUPPORTCHECK_STAGING_LIFECYCLE_ROLE_ARN');
-    expect(workflow).not.toMatch(/AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|production/i);
+    expect(workflow).not.toMatch(/AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY/);
+    expect(workflow).not.toContain('libedge-fresh-checker-production');
+    expect(workflow).not.toContain('environment: production');
+    expect(workflow).not.toContain('--env production');
   });
 
   it('publishes only content-free infrastructure state to staging KV', () => {
@@ -18,7 +21,8 @@ describe('SupportCheck staging lifecycle governance', () => {
     expect(workflow).toContain('unavailable');
     expect(workflow).toContain('unknown');
     expect(workflow).toContain('--env staging --remote');
-    expect(workflow).not.toMatch(/query|claim|evidence_text|doi/i);
+    expect(workflow).toContain('"state":"%s","published_at":"%s","source":"staging-lifecycle-workflow","instance_type":"%s","instance_count":%s');
+    expect(workflow).not.toMatch(/claim_text|evidence_text|doi/);
   });
 
   it('verifies privacy invariants and keeps deploy idempotent', () => {
@@ -26,6 +30,9 @@ describe('SupportCheck staging lifecycle governance', () => {
     expect(workflow).toContain('DataCaptureConfig.EnableCapture');
     expect(workflow).toContain('@sha256:');
     expect(deploy).toContain('describe-endpoint');
-    expect(deploy).toContain('Endpoint already exists; verifying invariants');
+    expect(deploy).toContain('Endpoint already exists; skipping creation and verifying invariants');
+    expect(workflow).toContain("node-version: '22'");
+    expect(workflow).toContain('Checker image does not match the approved staging digest');
+    expect(workflow).toContain('OBSERVED_INSTANCE_COUNT');
   });
 });
