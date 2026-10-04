@@ -63,6 +63,9 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerResumeBtn')).toBeVisible();
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unknown');
+  await expect(research.locator('#researchCheckerLifecycleLink')).toHaveAttribute('href', 'https://github.com/picohook/libedge-website/actions/workflows/supportcheck-staging-lifecycle.yml');
+  await expect(research.locator('#researchCheckerLifecycleLink')).toHaveAttribute('target', '_blank');
+  await expect(research.locator('#researchCheckerLifecycleLink')).toHaveAttribute('rel', 'noopener noreferrer');
   await expect(research.locator('#researchOpsAlert')).toHaveAttribute('role', 'status');
   await expect(research.getByText('Assistant Request Havuzu', { exact: true })).toBeVisible();
   await expect(research.getByText('Gelişmiş kurum / B2C override')).toBeVisible();
@@ -176,6 +179,8 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerState')).toHaveText('Running · etkisiz');
   await expect(research.locator('#researchCheckerFreshness')).toBeHidden();
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
+  await expect(research.locator('#researchCheckerLifecycleAlertLink')).toBeVisible();
+  await expect(research.locator('#researchCheckerLifecycleAlertLink')).toHaveAttribute('target', '_blank');
 
   await page.route('**/api/admin/system-health', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
