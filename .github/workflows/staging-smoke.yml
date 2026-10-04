@@ -152,18 +152,8 @@ jobs:
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
         run: npm run smoke:assistant
 
-      - name: Measure sparse benchmark candidates
-        if: inputs.run_sparse_benchmark
-        env:
-          LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
-          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
-          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
-          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
-          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
-        run: node scripts/research-sparse-benchmark.mjs
-
-      - name: Grant temporary Research entitlement for retrieval benchmark
-        if: inputs.run_retrieval_benchmark
+      - name: Grant temporary Research entitlement for benchmark
+        if: inputs.run_sparse_benchmark || inputs.run_retrieval_benchmark
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -174,7 +164,7 @@ jobs:
           const email = String(process.env.LIBEDGE_SMOKE_EMAIL || '').trim().toLowerCase();
           if (!email) throw new Error('LIBEDGE_SMOKE_EMAIL is required');
           const quoted = email.replaceAll("'", "''");
-          fs.writeFileSync('/tmp/grant-retrieval-benchmark-entitlement.sql', `
+          fs.writeFileSync('/tmp/grant-benchmark-entitlement.sql', `
           INSERT INTO subscriptions (user_id, product_slug, status, start_date, end_date)
           SELECT id, 'research', 'active', '2000-01-01 00:00:00', '2099-12-31 23:59:58'
           FROM users
@@ -187,7 +177,17 @@ jobs:
             );
           `);
           NODE
-          npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --file /tmp/grant-retrieval-benchmark-entitlement.sql
+          npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --file /tmp/grant-benchmark-entitlement.sql
+
+      - name: Measure sparse benchmark candidates
+        if: inputs.run_sparse_benchmark
+        env:
+          LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+        run: node scripts/research-sparse-benchmark.mjs
 
       - name: Run controlled retrieval benchmark
         if: inputs.run_retrieval_benchmark
@@ -199,8 +199,8 @@ jobs:
           LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
         run: node scripts/research-retrieval-benchmark.mjs
 
-      - name: Remove temporary Research entitlement for retrieval benchmark
-        if: always() && inputs.run_retrieval_benchmark
+      - name: Remove temporary Research entitlement for benchmark
+        if: always() && (inputs.run_sparse_benchmark || inputs.run_retrieval_benchmark)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -211,14 +211,14 @@ jobs:
           const email = String(process.env.LIBEDGE_SMOKE_EMAIL || '').trim().toLowerCase();
           if (!email) throw new Error('LIBEDGE_SMOKE_EMAIL is required');
           const quoted = email.replaceAll("'", "''");
-          fs.writeFileSync('/tmp/revoke-retrieval-benchmark-entitlement.sql', `
+          fs.writeFileSync('/tmp/revoke-benchmark-entitlement.sql', `
           DELETE FROM subscriptions
           WHERE product_slug = 'research' AND status = 'active'
             AND start_date = '2000-01-01 00:00:00' AND end_date = '2099-12-31 23:59:58'
             AND user_id IN (SELECT id FROM users WHERE lower(email) = '${quoted}');
           `);
           NODE
-          npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --file /tmp/revoke-retrieval-benchmark-entitlement.sql
+          npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --file /tmp/revoke-benchmark-entitlement.sql
 
       - name: Run frontend browser smoke
         if: inputs.run_frontend
