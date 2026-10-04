@@ -14,6 +14,18 @@ describe('Research Assistant live boundary', () => {
         expect(js).not.toContain('assistant-api.js');
     });
 
+    it('keeps non-Ask modes visual-only and unable to create a live research route', () => {
+        expect(html).toContain('data-mode="compare"');
+        expect(html).toContain('data-mode="summarize"');
+        expect(html).toContain('data-mode="gaps"');
+        expect(html).toContain('data-mode="brief"');
+        expect(js).toContain("if (button.dataset.mode !== 'ask') markComingSoon(button)");
+        expect(js).toContain("if (button.dataset.mode === 'gaps')");
+        expect(js).toContain("if (button.dataset.mode !== 'ask') showToast");
+        expect((js.match(/fetch\('\/api\/assistant\/ask'/g) || []).length).toBe(1);
+        expect(js).not.toMatch(/fetch\s*\(\s*['"]\/api\/assistant\/(compare|summarize|gaps|brief)/);
+    });
+
     it('keeps fixture bibliographic content explicitly non-authoritative', () => {
         expect(html).toContain('fixture içerik yanıt olarak sunulmaz');
         expect(html).toContain('bibliyografik doğruluk iddiası taşımaz');
