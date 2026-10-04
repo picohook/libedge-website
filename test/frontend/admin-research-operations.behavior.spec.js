@@ -70,7 +70,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchUsageScopePauseBtn')).toBeHidden();
   await expect(research.locator('#researchUsageScopeOverrideDailyLimitInput')).toBeHidden();
   await expect(research.locator('#researchUsageScopeSaveBtn')).toHaveText('Varsayılanı kaydet');
-  await expect(research.locator('#researchRetrievalExperimentPanel')).not.toHaveAttribute('open', '');
+  const retrievalPanel = page.locator('section[aria-label="Research diagnostics"] #researchRetrievalExperimentPanel');\n  await expect(retrievalPanel).toHaveCount(1);\n  await expect(retrievalPanel).not.toHaveAttribute('open', '');
   await expect(research.locator('#researchRetrievalMode')).toBeHidden();
   await expect(research.locator('#researchVerificationBreadth')).toBeVisible();
 
