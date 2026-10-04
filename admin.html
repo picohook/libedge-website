@@ -845,21 +845,21 @@
             </div>
             <div class="border-t border-gray-100 pt-4">
                 <div class="flex items-center gap-1 mb-3" role="tablist" aria-label="Research usage breakdown">
-                    <button type="button" id="researchUsageInstitutionsTab" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
-                    <button type="button" id="researchUsageUsersTab" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageInstitutionsTab" role="tab" aria-controls="researchUsageInstitutionsPanel" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageUsersTab" role="tab" aria-controls="researchUsageUsersPanel" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
                 </div>
-                <div id="researchUsageInstitutionsPanel">
+                <div id="researchUsageInstitutionsPanel" role="tabpanel" aria-labelledby="researchUsageInstitutionsTab">
                     <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
                     <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
                 </div>
-                <div id="researchUsageUsersPanel" class="hidden" hidden>
+                <div id="researchUsageUsersPanel" role="tabpanel" aria-labelledby="researchUsageUsersTab" class="hidden" hidden>
                     <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
                     <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
                 </div>
             </div>
         </section>
 <aside id="researchOperationalControls" class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 sm:p-5">
-  <div class="mb-4"><p class="text-[11px] font-semibold uppercase tracking-wide text-indigo-500">Operational Controls</p><h4 class="font-semibold text-gray-900 mt-1">Güvenli müdahale</h4><p class="text-xs text-slate-500 mt-1">İzleme alanından ayrı; staging operasyon kontrolleri.</p></div>
+  <div class="mb-4"><p class="text-[11px] font-semibold uppercase tracking-wide text-indigo-500" lang="en">Operational Controls</p><h4 class="font-semibold text-gray-900 mt-1">Güvenli müdahale</h4><p class="text-xs text-slate-500 mt-1">İzleme alanından ayrı; staging operasyon kontrolleri.</p></div>
   <div class="space-y-4">
     <div class="rounded-xl border border-white bg-white p-4 shadow-sm">
                 <p class="text-gray-500 text-sm">Checker Durumu</p>
@@ -929,7 +929,7 @@
 </aside>
 </div>
         
-        <section class="mt-8 pt-6 border-t border-slate-200" aria-label="Research diagnostics"><div class="mb-3"><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <section class="mt-8 pt-6 border-t border-slate-200" aria-label="Research diagnostics"><div class="mb-3"><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400" lang="en">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <section class="bg-slate-50 rounded-xl border border-slate-200 p-4">
                 <h4 class="font-semibold text-gray-800 mb-3">Katman Bazlı Sonuçlar</h4>
                 <div id="researchLayerRows" class="divide-y divide-gray-100"><p class="text-sm text-gray-400 py-3">Yükleniyor...</p></div>
