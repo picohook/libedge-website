@@ -73,6 +73,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchRetrievalExperimentPanel')).not.toHaveAttribute('open', '');
   await expect(research.locator('#researchRetrievalMode')).toBeHidden();
   await expect(research.locator('#researchVerificationBreadth')).toBeVisible();
+  await expect(research.locator('#researchDiagnosticsShowZero')).not.toBeChecked();
 
   await page.route('**/api/admin/system-health', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
@@ -208,6 +209,11 @@ test('Research operations center renders outcome, pipeline and account controls 
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchBreadthSourcesPerAnswer')).toHaveText('—');
   await expect(research.locator('#researchBreadthSingleSource')).toHaveText('0 · —');
+  await expect(research.locator('#researchGroundingRows')).toContainText('Bu görünümde sıfırdan farklı kayıt yok.');
+  await research.locator('#researchDiagnosticsShowZero').check();
+  await expect(research.locator('#researchGroundingRows')).toContainText('Claim metni eksik');
+  await expect(research.locator('#researchGroundingRows')).toContainText('0');
+
   await expect(research.locator('#researchVerificationBreadth')).not.toContainText('NaN');
 
 });
