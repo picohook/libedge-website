@@ -761,7 +761,7 @@
                 <p id="researchCheckerBudget" class="text-xs text-gray-500 mt-1">—</p>
                 <div class="flex gap-2 mt-3">
                     <button type="button" id="researchCheckerPauseBtn" class="btn bg-red-50 text-red-700 border border-red-200 text-xs">Pause</button>
-                    <button type="button" id="researchCheckerResumeBtn" class="btn bg-green-50 text-green-700 border border-green-200 text-xs">Resume</button>
+                    <button type="button" id="researchCheckerResumeBtn" disabled title="Infrastructure durumu doğrulanana kadar Resume kullanılamaz." class="btn bg-green-50 text-green-700 border border-green-200 text-xs">Resume</button>
                 </div>
                 <div class="flex items-end gap-2 mt-3">
                     <label class="text-xs text-gray-500 flex-1">Günlük checker limiti
@@ -5085,13 +5085,20 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             const infrastructureDetail = document.getElementById('researchCheckerInfrastructureDetail');
             if (infrastructureDetail) {
                 const observed = infrastructure.published_at ? new Date(infrastructure.published_at).toLocaleString('tr-TR') : null;
-                infrastructureDetail.textContent = infrastructureState === 'Available'
+                const pauseDetail = checker.status !== 'ok'
+                    ? ' • pause store unreadable'
+                    : checker.pause_reason === 'PAUSE_STATE_UNSET'
+                        ? ' • Paused (state unset)'
+                        : checker.pause_reason === 'OPERATIONALLY_PAUSED'
+                            ? ' • Paused by operator'
+                            : '';
+                infrastructureDetail.textContent = (infrastructureState === 'Available'
                     ? `${infrastructure.instance_type || 'checker'} • ${infrastructure.instance_count || '—'} instance • doğrulama ${observed || '—'}`
                     : infrastructureState === 'Unavailable'
                         ? `Staging endpoint deployed değil • doğrulama ${observed || '—'}`
                         : infrastructure.stale
                             ? 'Infrastructure bilgisi eksik veya eski; güvenli olarak Unknown gösteriliyor.'
-                            : 'Infrastructure durumu doğrulanamadı.';
+                            : 'Infrastructure durumu doğrulanamadı.') + pauseDetail;
             }
             const resumeBtn = document.getElementById('researchCheckerResumeBtn');
             if (resumeBtn) {
@@ -5165,6 +5172,17 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             }
         } catch (_) {
             if (meta) meta.textContent = 'Research operasyon verisi alınamadı.';
+            const infrastructureStateEl = document.getElementById('researchCheckerInfrastructureState');
+            const verificationStateEl = document.getElementById('researchCheckerState');
+            const infrastructureDetailEl = document.getElementById('researchCheckerInfrastructureDetail');
+            const resumeBtn = document.getElementById('researchCheckerResumeBtn');
+            if (infrastructureStateEl) infrastructureStateEl.textContent = 'Unknown';
+            if (verificationStateEl) verificationStateEl.textContent = 'Unknown';
+            if (infrastructureDetailEl) infrastructureDetailEl.textContent = 'Infrastructure / pause store durumu okunamadı; güvenli olarak Unknown gösteriliyor.';
+            if (resumeBtn) {
+                resumeBtn.disabled = true;
+                resumeBtn.title = 'Infrastructure durumu doğrulanamadığı için Resume kullanılamaz.';
+            }
             const layerRows = document.getElementById('researchLayerRows');
             const groundingRows = document.getElementById('researchGroundingRows');
             if (layerRows) layerRows.innerHTML = '<p class="text-sm text-red-600 py-3">Veri alınamadı.</p>';
