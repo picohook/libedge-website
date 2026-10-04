@@ -94,6 +94,9 @@ describe('system health endpoint', () => {
     expect(body.support_check.infrastructure).toMatchObject({ state: 'available', stale: false, instance_type: 'ml.m5.large', instance_count: 1, hourly_cost_usd: null });
     expect(JSON.stringify(body)).not.toContain('staging-lifecycle-workflow');
 
+    const pricedResponse = await handleSystemHealthRequest(await requestWithRole('super_admin'), createEnv({ RATE_LIMIT_KV: kv, RESEARCH_ASSISTANT_SUPPORT_CHECK_HOURLY_COST_USD: '0.1234' }));
+    expect((await pricedResponse.json()).support_check.infrastructure.hourly_cost_usd).toBe(0.1234);
+
     const staleKv = {
       async get(key) {
         if (key === 'assistant:supportcheck:infrastructure-state') {
