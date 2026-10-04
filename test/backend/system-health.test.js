@@ -105,6 +105,28 @@ describe('system health endpoint', () => {
     const staleResponse = await handleSystemHealthRequest(await requestWithRole('super_admin'), createEnv({ RATE_LIMIT_KV: staleKv }));
     const staleBody = await staleResponse.json();
     expect(staleBody.support_check.infrastructure).toMatchObject({ state: 'unknown', stale: true, instance_type: null, instance_count: null });
+
+    const unavailableKv = {
+      async get(key) {
+        if (key === 'assistant:supportcheck:infrastructure-state') return JSON.stringify({ state: 'unavailable', published_at: new Date().toISOString(), instance_type: null, instance_count: null });
+        return null;
+      },
+    };
+    const unavailableResponse = await handleSystemHealthRequest(await requestWithRole('super_admin'), createEnv({ RATE_LIMIT_KV: unavailableKv }));
+    expect((await unavailableResponse.json()).support_check.infrastructure.state).toBe('unavailable');
+
+    const malformedKv = { async get(key) { return key === 'assistant:supportcheck:infrastructure-state' ? '{bad-json' : null; } };
+    const malformedResponse = await handleSystemHealthRequest(await requestWithRole('super_admin'), createEnv({ RATE_LIMIT_KV: malformedKv }));
+    expect((await malformedResponse.json()).support_check.infrastructure).toMatchObject({ state: 'unknown', stale: true });
+
+    const futureKv = {
+      async get(key) {
+        if (key === 'assistant:supportcheck:infrastructure-state') return JSON.stringify({ state: 'available', published_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(), instance_type: 'ml.m5.large', instance_count: 1 });
+        return null;
+      },
+    };
+    const futureResponse = await handleSystemHealthRequest(await requestWithRole('super_admin'), createEnv({ RATE_LIMIT_KV: futureKv }));
+    expect((await futureResponse.json()).support_check.infrastructure).toMatchObject({ state: 'unknown', stale: true, instance_type: null, instance_count: null });
   });
 
   it('degrades when required Research schema is missing', async () => {
