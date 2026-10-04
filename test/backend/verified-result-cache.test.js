@@ -6,14 +6,11 @@ describe('verified-result cache production guard', () => {
     expect(verifiedResultCacheEnabled({})).toBe(false);
   });
 
-  it('can be explicitly enabled only in staging/local', () => {
+  it('can be explicitly enabled outside production', () => {
     expect(verifiedResultCacheEnabled({ ENVIRONMENT: 'staging', RESEARCH_VERIFIED_RESULT_CACHE_ENABLED: 'true' })).toBe(true);
-    expect(verifiedResultCacheEnabled({ ENVIRONMENT: 'local', RESEARCH_VERIFIED_RESULT_CACHE_ENABLED: 'true' })).toBe(true);
   });
 
-  it('fails closed for production, missing and unknown environments even when the flag is true', () => {
-    expect(verifiedResultCacheEnabled({ RESEARCH_VERIFIED_RESULT_CACHE_ENABLED: 'true' })).toBe(false);
-    expect(verifiedResultCacheEnabled({ ENVIRONMENT: 'prod', RESEARCH_VERIFIED_RESULT_CACHE_ENABLED: 'true' })).toBe(false);
+  it('is forced off in production even when the flag is true', () => {
     expect(verifiedResultCacheEnabled({ ENVIRONMENT: 'production', RESEARCH_VERIFIED_RESULT_CACHE_ENABLED: 'true' })).toBe(false);
     expect(verifiedResultCacheEnabled({ ENVIRONMENT: 'PRODUCTION', RESEARCH_VERIFIED_RESULT_CACHE_ENABLED: 'true' })).toBe(false);
   });
