@@ -53,6 +53,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.getByText('Usage & Cost')).toBeVisible();
   await expect(research.getByText('Pipeline Funnel & Latency')).toBeVisible();
   await expect(research.locator('#researchUsageExactCost')).toBeVisible();
+  await research.locator('#researchUsageDays').selectOption('7');
   await expect(research.locator('#researchUsageExactCost')).toHaveText('$0.013579');
   await expect(research.locator('#researchUsageUsersPanel')).toBeHidden();
   await research.locator('#researchUsageUsersTab').click();
