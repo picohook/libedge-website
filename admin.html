@@ -5012,9 +5012,9 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageLatency').textContent = `${Number(summary.avg_latency_ms || 0).toLocaleString('tr-TR')} ms`;
             document.getElementById('researchUsageInputTokens').textContent = Number(summary.input_tokens || 0).toLocaleString('tr-TR');
             document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');
-            document.getElementById('researchUsageLlmCost').textContent = `${Number(summary.llm_cost_usd || 0).toFixed(6)}`;
-            document.getElementById('researchUsageDiscoveryCost').textContent = `${Number(summary.discovery_cost_usd || 0).toFixed(6)}`;
-            document.getElementById('researchUsageExactCost').textContent = `${(Number(summary.llm_cost_usd || 0) + Number(summary.discovery_cost_usd || 0)).toFixed(6)}`;
+            document.getElementById('researchUsageLlmCost').textContent = '$' + Number(summary.llm_cost_usd || 0).toFixed(6);
+            document.getElementById('researchUsageDiscoveryCost').textContent = '$' + Number(summary.discovery_cost_usd || 0).toFixed(6);
+            document.getElementById('researchUsageExactCost').textContent = '$' + (Number(summary.llm_cost_usd || 0) + Number(summary.discovery_cost_usd || 0)).toFixed(6);
             document.getElementById('researchUsageFunnel').innerHTML = researchUsageFunnel(data.outcomes, summary.requests, summary.stage_latency_ms);
             document.getElementById('researchUsageStageLatency').innerHTML = researchStageLatencyRows(summary.stage_latency_ms);
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
