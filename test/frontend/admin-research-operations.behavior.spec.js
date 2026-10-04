@@ -175,6 +175,8 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unavailable');
   await expect(research.locator('#researchCheckerState')).toHaveText('Running · etkisiz');
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
+  await expect(research.locator('#researchCheckerLifecycleAlertLink')).toBeVisible();
+  await expect(research.locator('#researchCheckerLifecycleAlertLink')).toHaveAttribute('target', '_blank');
 
   await page.route('**/api/admin/system-health', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
