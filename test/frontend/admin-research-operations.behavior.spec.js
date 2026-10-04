@@ -59,4 +59,16 @@ test('Research operations center renders outcome, pipeline and account controls 
   expect(userHeaders).toContain('Verified');
   expect(userHeaders).toContain('Boş');
   expect(userHeaders).toContain('Hata');
+
+  test('checker infrastructure and verification states remain separate and Resume fails closed', () => {
+    expect(html).toContain('id="researchCheckerInfrastructureState"');
+    expect(html).toContain('Endpoint: <span');
+    expect(html).toContain('Verification: <span');
+    expect(html).toContain("infrastructure.state === 'available'");
+    expect(html).toContain("infrastructureState !== 'Available'");
+    expect(html).toContain('Staging endpoint doğrulanmış olarak Available değil.');
+    expect(html).toContain('Infrastructure bilgisi eksik veya eski; güvenli olarak Unknown gösteriliyor.');
+    expect(html).toContain('Resume için staging endpoint durumunun Available olarak doğrulanması gerekir.');
+  });
+
 });
