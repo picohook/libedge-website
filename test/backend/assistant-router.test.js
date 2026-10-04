@@ -82,15 +82,16 @@ describe('public Research summary boundary', () => {
         query: 'private query', arbitrary_count: 999
       },
       diagnostic_grounding: {
-        checked_count: 3, truncated_count: 2, claim_text: 'private claim', support_check_limit: 4
+        checked_count: 3, truncated_count: 2, claim_text: 'private claim', support_check_limit: 4,
+        rejection_counts: { CLAIM_UNSUPPORTED: 2, SUPPORT_CHECK_FAILED_TIMEOUT: 1, PRIVATE_REASON: 99 }
       },
       claims: [{ text: 'Verified claim' }]
     });
     expect(summary).toEqual({
       literature: { retrieved_count: 17, authorized_relevant_count: 6, abstract_bearing_count: 4, metadata_only_count: 2 },
-      verification: { checked_count: 3, verified_count: 1, truncated_count: 2 }
+      verification: { checked_count: 3, verified_count: 1, truncated_count: 2, rejection_counts: { CLAIM_UNSUPPORTED: 2, SUPPORT_CHECK_FAILED_TIMEOUT: 1 } }
     });
-    expect(JSON.stringify(summary)).not.toMatch(/private query|private claim|arbitrary|support_check_limit/);
+    expect(JSON.stringify(summary)).not.toMatch(/private query|private claim|arbitrary|support_check_limit|PRIVATE_REASON/);
   });
 
   it('fails missing, negative, fractional and content-like counts safely to zero', () => {
@@ -100,7 +101,7 @@ describe('public Research summary boundary', () => {
       claims: []
     })).toEqual({
       literature: { retrieved_count: 0, authorized_relevant_count: 0, abstract_bearing_count: 0, metadata_only_count: 0 },
-      verification: { checked_count: 0, verified_count: 0, truncated_count: 0 }
+      verification: { checked_count: 0, verified_count: 0, truncated_count: 0, rejection_counts: {} }
     });
   });
 });
