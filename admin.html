@@ -838,9 +838,10 @@
                     <div><h5 class="font-semibold text-gray-800">Pipeline Funnel & Latency</h5><p class="text-xs text-gray-500 mt-1">Aynı pipeline'ın hacim ve süre görünümü; yalnız ulaşılan aşamalar latency hesabına girer.</p></div>
                     <span class="text-[11px] text-gray-400">Discover → Evidence → Model → Grounding</span>
                 </div>
-                <div class="grid grid-cols-1 gap-5">
-                    <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Funnel</p><div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></div>
-                    <details class="border-t border-gray-200 pt-3"><summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-gray-500">Stage latency</summary><div id="researchUsageStageLatency" class="space-y-2 mt-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></details>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Discover → Evidence → Model → Grounding → Verified</p>
+                    <div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
+                    <div id="researchUsageStageLatency" class="hidden" aria-hidden="true"></div>
                 </div>
             </div>
             <div class="border-t border-gray-100 pt-4">
@@ -4961,19 +4962,21 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             + (counts.INVOCATION_BUDGET_EXHAUSTED || 0)
             + (counts.INVOCATION_BUDGET_STORE_FAILED || 0);
         const enteredPipeline = Math.max(0, total - terminalBeforePipeline);
-        const discoverFailed = counts.DISCOVER_FAILED || 0;
-        const noAuthorizedEvidence = counts.NO_AUTHORIZED_EVIDENCE || 0;
-        const evidenceFailed = counts.EVIDENCE_PACK_FAILED || 0;
-        const modelFailed = (counts.MODEL_ADAPTER_FAILED || 0) + (counts.MODEL_OUTPUT_INVALID || 0);
+        const discoverPassed = Math.max(0, enteredPipeline - (counts.DISCOVER_FAILED || 0));
+        const evidencePassed = Math.max(0, discoverPassed - (counts.NO_AUTHORIZED_EVIDENCE || 0) - (counts.EVIDENCE_PACK_FAILED || 0));
+        const modelPassed = Math.max(0, evidencePassed - (counts.MODEL_ADAPTER_FAILED || 0) - (counts.MODEL_OUTPUT_INVALID || 0));
         const stages = [
-            ['Ask', total],
-            ['Pipeline başladı', enteredPipeline],
-            ['Discover geçti', Math.max(0, enteredPipeline - discoverFailed)],
-            ['Evidence geçti', Math.max(0, enteredPipeline - discoverFailed - noAuthorizedEvidence - evidenceFailed)],
-            ['Model geçti', Math.max(0, enteredPipeline - discoverFailed - noAuthorizedEvidence - evidenceFailed - modelFailed)],
-            ['Grounded / OK', counts.OK || 0]
+            ['Discover', discoverPassed, stageLatency?.discover],
+            ['Evidence', evidencePassed, stageLatency?.evidence],
+            ['Model', modelPassed, stageLatency?.model],
+            ['Grounding', counts.OK || 0, stageLatency?.grounding],
+            ['Verified', counts.OK || 0, null]
         ];
-        return stages.map(([label, value]) => researchMetricRow(label, value)).join('');
+        return stages.map(([label, value, latency], index) => {
+            const latencyText = latency == null ? '' : `<span class="text-xs text-gray-400">${Number(latency).toLocaleString('tr-TR')} ms avg</span>`;
+            const connector = index === stages.length - 1 ? '' : '<div class="ml-4 h-3 border-l border-slate-300" aria-hidden="true"></div>';
+            return `<div class="rounded-lg border border-slate-200 bg-white px-3 py-2"><div class="flex items-center justify-between gap-4"><span class="text-sm font-medium text-gray-700">${escapeHtml(label)}</span><div class="flex items-center gap-3">${latencyText}<span class="text-sm font-semibold text-gray-900">${Number(value || 0).toLocaleString('tr-TR')}</span></div></div></div>${connector}`;
+        }).join('');
     }
 
     function researchStageLatencyRows(stageLatency) {
