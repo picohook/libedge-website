@@ -27,6 +27,7 @@ export function supportCheckLanguageBoundary(claim, evidence = []) {
 
   for (const item of evidence) {
     const evidenceText = [item?.title, item?.abstract].filter(Boolean).join(' ').trim();
+    if (!evidenceText) continue;
     const evidenceResult = boundaryResult(evidenceText, 'evidence');
     if (!evidenceResult.authorized) return evidenceResult;
   }

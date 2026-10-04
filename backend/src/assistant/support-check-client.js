@@ -54,7 +54,7 @@ export function createSupportCheck(env, { fetchImpl = fetch, sagemakerClientFact
     if (!invoke) return null;
     return async function supportCheckSageMaker(claim, citedEvidence) {
       const language = supportCheckLanguageBoundary(claim, citedEvidence);
-      if (!language.authorized) throw new Error(language.reason);
+      if (!language.authorized) throw new Error(`${language.reason}_${String(language.source || 'UNKNOWN').toUpperCase()}`);
       const budget = await reserveSupportCheckInvocation(env);
       if (!budget.allowed) throw new Error(budget.reason);
       return assertPinnedResponse(await invoke(claim, citedEvidence));
@@ -76,7 +76,7 @@ export function createSupportCheck(env, { fetchImpl = fetch, sagemakerClientFact
 
   return async function supportCheck(claim, citedEvidence) {
     const language = supportCheckLanguageBoundary(claim, citedEvidence);
-    if (!language.authorized) throw new Error(language.reason);
+    if (!language.authorized) throw new Error(`${language.reason}_${String(language.source || 'UNKNOWN').toUpperCase()}`);
     const budget = await reserveSupportCheckInvocation(env);
     if (!budget.allowed) throw new Error(budget.reason);
     const controller = new AbortController();

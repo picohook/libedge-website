@@ -36,6 +36,13 @@ describe('D-023 supportCheck language boundary', () => {
     )).toEqual({ authorized: false, reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED', source: 'evidence' });
   });
 
+  it('preserves the prior behavior for evidence items with no title or abstract', () => {
+    expect(supportCheckLanguageBoundary(
+      { text: 'The catalyst improves hydrogen evolution.' },
+      [{ evidence_id: 'doi:10.1/example' }]
+    )).toEqual({ authorized: true, language: 'en' });
+  });
+
   it('identifies accented evidence as the evidence-side rejection without exposing content', () => {
     expect(supportCheckLanguageBoundary(
       { text: 'The archive contains correspondence from the period.' },
