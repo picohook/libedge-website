@@ -23,6 +23,7 @@ const ALLOWED_METRICS = new Set([
   'assistant_evidence_pack_ms_total',
   'assistant_model_ms_total',
   'assistant_grounding_ms_total',
+  'assistant_support_check_ms_total',
   'assistant_outcome_ok',
   'assistant_outcome_no_authorized_evidence',
   'assistant_outcome_no_supportable_claims',
