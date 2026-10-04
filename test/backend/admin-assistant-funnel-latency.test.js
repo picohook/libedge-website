@@ -26,8 +26,8 @@ describe('Assistant admin funnel and stage-latency contract', () => {
   });
 
   it('renders a bounded funnel and stage-latency view without content fields', () => {
-    expect(admin).toContain('Assistant Funnel');
-    expect(admin).toContain('Stage Latency');
+    expect(admin).toContain('Pipeline Funnel & Latency');
+    expect(admin).toContain('Stage latency');
     expect(admin).toContain('researchUsageFunnel(data.outcomes, summary.requests, summary.stage_latency_ms)');
     expect(admin).toContain('researchStageLatencyRows(summary.stage_latency_ms)');
   });

@@ -830,8 +830,8 @@
         <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
             <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
                 <div>
-                    <h4 class="font-semibold text-gray-800">Hesap / Kurum Kullanımı</h4>
-                    <p class="text-xs text-gray-500 mt-1">Son 90 güne kadar operasyonel kullanım; sorgu/yanıt içeriği ve hash gösterilmez. LLM ve discovery exact provider maliyetleri ayrı gösterilir; checker hosting tahmini dahil değildir.</p>
+                    <div class="flex items-center gap-2"><h4 class="font-semibold text-gray-800">Usage & Cost</h4><span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">content-free</span></div>
+                    <p class="text-xs text-gray-500 mt-1">Son 90 güne kadar Research operasyon özeti; sorgu/yanıt içeriği ve hash gösterilmez. Exact cost yalnız LLM + Discovery provider maliyetidir; checker hosting ayrı bir tahmindir ve exact toplama dahil edilmez.</p>
                 </div>
                 <div class="lg:ml-auto">
                     <label for="researchUsageDays" class="block text-xs text-gray-500 mb-1">Dönem</label>
@@ -851,24 +851,31 @@
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Output token</p><p id="researchUsageOutputTokens" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">LLM exact cost</p><p id="researchUsageLlmCost" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Discovery exact cost</p><p id="researchUsageDiscoveryCost" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-blue-100 bg-blue-50/30 p-3"><p class="text-xs text-blue-700">Exact total</p><p id="researchUsageExactCost" class="text-xl font-bold text-blue-800">—</p><p class="text-[11px] text-gray-500 mt-1">LLM + Discovery</p></div>
             </div>
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
-                <div class="rounded-lg border border-gray-100 p-4">
-                    <h5 class="font-semibold text-gray-800 mb-2">Assistant Funnel</h5>
-                    <p class="text-xs text-gray-500 mb-3">Seçili dönemde requestlerin pipeline boyunca ulaştığı aşamalar.</p>
-                    <div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
+            <div class="rounded-xl border border-gray-100 bg-gray-50/40 p-4 mb-5">
+                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 mb-4">
+                    <div><h5 class="font-semibold text-gray-800">Pipeline Funnel & Latency</h5><p class="text-xs text-gray-500 mt-1">Aynı pipeline'ın hacim ve süre görünümü; yalnız ulaşılan aşamalar latency hesabına girer.</p></div>
+                    <span class="text-[11px] text-gray-400">Discover → Evidence → Model → Grounding</span>
                 </div>
-                <div class="rounded-lg border border-gray-100 p-4">
-                    <h5 class="font-semibold text-gray-800 mb-2">Stage Latency</h5>
-                    <p class="text-xs text-gray-500 mb-3">Yalnız ulaşılan aşamaların ortalama süreleri.</p>
-                    <div id="researchUsageStageLatency" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Funnel</p><div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></div>
+                    <div class="xl:border-l xl:border-gray-200 xl:pl-5"><p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Stage latency</p><div id="researchUsageStageLatency" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></div>
                 </div>
             </div>
-            <div class="space-y-6">
-                <div><div class="flex items-center justify-between mb-2"><h5 class="font-semibold text-gray-800">Kurum Bazlı Kullanım</h5><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
-                <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div></div>
-                <div><div class="flex items-center justify-between mb-2"><h5 class="font-semibold text-gray-800">Kişi Bazlı Kullanım</h5><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
-                <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div></div>
+            <div class="border-t border-gray-100 pt-4">
+                <div class="flex items-center gap-1 mb-3" role="tablist" aria-label="Research usage breakdown">
+                    <button type="button" id="researchUsageInstitutionsTab" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageUsersTab" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
+                </div>
+                <div id="researchUsageInstitutionsPanel">
+                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
+                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                </div>
+                <div id="researchUsageUsersPanel" class="hidden" hidden>
+                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
+                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                </div>
             </div>
         </section>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -5005,8 +5012,9 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageLatency').textContent = `${Number(summary.avg_latency_ms || 0).toLocaleString('tr-TR')} ms`;
             document.getElementById('researchUsageInputTokens').textContent = Number(summary.input_tokens || 0).toLocaleString('tr-TR');
             document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');
-            document.getElementById('researchUsageLlmCost').textContent = `${Number(summary.llm_cost_usd || 0).toFixed(6)}`;
-            document.getElementById('researchUsageDiscoveryCost').textContent = `${Number(summary.discovery_cost_usd || 0).toFixed(6)}`;
+            document.getElementById('researchUsageLlmCost').textContent = '$' + Number(summary.llm_cost_usd || 0).toFixed(6);
+            document.getElementById('researchUsageDiscoveryCost').textContent = '$' + Number(summary.discovery_cost_usd || 0).toFixed(6);
+            document.getElementById('researchUsageExactCost').textContent = '$' + (Number(summary.llm_cost_usd || 0) + Number(summary.discovery_cost_usd || 0)).toFixed(6);
             document.getElementById('researchUsageFunnel').innerHTML = researchUsageFunnel(data.outcomes, summary.requests, summary.stage_latency_ms);
             document.getElementById('researchUsageStageLatency').innerHTML = researchStageLatencyRows(summary.stage_latency_ms);
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
@@ -5194,6 +5202,26 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
 
     document.getElementById('researchObservabilityRefreshBtn')?.addEventListener('click', () => { loadResearchObservability(); loadResearchRetrievalControls(); });
     document.getElementById('researchRetrievalControlsSaveBtn')?.addEventListener('click', setResearchRetrievalControls);
+    function setResearchUsageBreakdownTab(tab) {
+        const institutions = tab !== 'users';
+        const institutionPanel = document.getElementById('researchUsageInstitutionsPanel');
+        const userPanel = document.getElementById('researchUsageUsersPanel');
+        institutionPanel?.classList.toggle('hidden', !institutions);
+        userPanel?.classList.toggle('hidden', institutions);
+        if (institutionPanel) institutionPanel.hidden = !institutions;
+        if (userPanel) userPanel.hidden = institutions;
+        const institutionTab = document.getElementById('researchUsageInstitutionsTab');
+        const userTab = document.getElementById('researchUsageUsersTab');
+        [institutionTab, userTab].forEach((button) => button?.classList.remove('bg-gray-900', 'text-white'));
+        [institutionTab, userTab].forEach((button) => button?.classList.add('text-gray-600'));
+        const active = institutions ? institutionTab : userTab;
+        active?.classList.add('bg-gray-900', 'text-white');
+        active?.classList.remove('text-gray-600');
+        institutionTab?.setAttribute('aria-selected', institutions ? 'true' : 'false');
+        userTab?.setAttribute('aria-selected', institutions ? 'false' : 'true');
+    }
+    document.getElementById('researchUsageInstitutionsTab')?.addEventListener('click', () => setResearchUsageBreakdownTab('institutions'));
+    document.getElementById('researchUsageUsersTab')?.addEventListener('click', () => setResearchUsageBreakdownTab('users'));
     document.getElementById('researchUsageDays')?.addEventListener('change', loadResearchAccountUsage);
     async function setResearchCheckerState(action) {
         if (currentAdmin?.role !== 'super_admin') return;
