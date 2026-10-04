@@ -745,7 +745,7 @@
                 <i class="fas fa-rotate mr-2"></i>Yenile
             </button>
         </div>
-        <div id="researchObservabilityMeta" class="text-xs text-gray-500 mb-4">Yükleniyor...</div>
+        <div class="flex items-center gap-2 text-xs text-gray-500 mb-4"><span class="rounded-full bg-gray-100 px-2 py-0.5 font-medium">Bugün · UTC</span><span id="researchObservabilityMeta">Yükleniyor...</span></div>
         <div id="researchOpsAlert" class="hidden mb-5 rounded-lg border p-4" role="status" aria-live="polite"></div>
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mb-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -755,35 +755,7 @@
             </div>
         </div>
         
-        <details id="researchRetrievalExperimentPanel" class="bg-slate-50 rounded-xl border border-slate-200 p-4 mb-6 text-sm">
-            <summary class="cursor-pointer font-semibold text-gray-700">Tanılama: Retrieval Deneyi <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-normal text-gray-500">staging only</span></summary>
-            <div class="mt-4 max-w-xl">
-                <div class="stat-card">
-                    <p class="text-gray-500 text-sm">Retrieval Deneyi</p>
-                    <p class="text-xs text-gray-500 mt-1">Yalnız staging. Candidate depth ve final sonuç hedefi ayrıdır.</p>
-                    <div class="grid grid-cols-1 gap-2 mt-3">
-                        <label class="text-xs text-gray-500">Mode
-                            <select id="researchRetrievalMode" class="mt-1 w-full border rounded px-2 py-1 text-sm">
-                                <option value="lexical">lexical</option><option value="semantic">semantic</option>
-                            </select>
-                        </label>
-                        <label class="text-xs text-gray-500">Lexical candidate depth
-                            <select id="researchLexicalCandidateDepth" class="mt-1 w-full border rounded px-2 py-1 text-sm">
-                                <option value="10">10</option><option value="20">20</option><option value="30">30</option><option value="50">50</option>
-                            </select>
-                        </label>
-                        <label class="text-xs text-gray-500">Final result target
-                            <select id="researchFinalResultTarget" class="mt-1 w-full border rounded px-2 py-1 text-sm">
-                                <option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option>
-                            </select>
-                        </label>
-                        <button type="button" id="researchRetrievalControlsSaveBtn" class="btn bg-blue-50 text-blue-700 border border-blue-200 text-xs">Kaydet</button>
-                    </div>
-                    <p id="researchRetrievalControlsSource" class="text-xs text-gray-400 mt-1"></p>
-                    <p id="researchRetrievalControlsStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
-                </div>
-            </div>
-        </details>
+        
 <div id="researchPrimaryWorkspace" class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start mb-6">
 <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 xl:col-span-2">
             <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
@@ -929,7 +901,35 @@
 </aside>
 </div>
         
-        <section class="mt-8 pt-6 border-t border-slate-200" aria-label="Research diagnostics"><div class="mb-3"><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400" lang="en">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <section class="mt-8 pt-6 border-t border-slate-200" aria-label="Research diagnostics">\n<details id="researchRetrievalExperimentPanel" class="bg-slate-50 rounded-xl border border-slate-200 p-4 mb-4 text-sm">
+            <summary class="cursor-pointer font-semibold text-gray-700">Tanılama: Retrieval Deneyi <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-normal text-gray-500">staging only</span></summary>
+            <div class="mt-4 max-w-xl">
+                <div class="stat-card">
+                    <p class="text-gray-500 text-sm">Retrieval Deneyi</p>
+                    <p class="text-xs text-gray-500 mt-1">Yalnız staging. Candidate depth ve final sonuç hedefi ayrıdır.</p>
+                    <div class="grid grid-cols-1 gap-2 mt-3">
+                        <label class="text-xs text-gray-500">Mode
+                            <select id="researchRetrievalMode" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                                <option value="lexical">lexical</option><option value="semantic">semantic</option>
+                            </select>
+                        </label>
+                        <label class="text-xs text-gray-500">Lexical candidate depth
+                            <select id="researchLexicalCandidateDepth" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                                <option value="10">10</option><option value="20">20</option><option value="30">30</option><option value="50">50</option>
+                            </select>
+                        </label>
+                        <label class="text-xs text-gray-500">Final result target
+                            <select id="researchFinalResultTarget" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                                <option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option>
+                            </select>
+                        </label>
+                        <button type="button" id="researchRetrievalControlsSaveBtn" class="btn bg-blue-50 text-blue-700 border border-blue-200 text-xs">Kaydet</button>
+                    </div>
+                    <p id="researchRetrievalControlsSource" class="text-xs text-gray-400 mt-1"></p>
+                    <p id="researchRetrievalControlsStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
+                </div>
+            </div>
+        </details>\n<div class="mb-3"><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400" lang="en">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <section class="bg-slate-50 rounded-xl border border-slate-200 p-4">
                 <h4 class="font-semibold text-gray-800 mb-3">Katman Bazlı Sonuçlar</h4>
                 <div id="researchLayerRows" class="divide-y divide-gray-100"><p class="text-sm text-gray-400 py-3">Yükleniyor...</p></div>
