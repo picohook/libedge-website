@@ -30,6 +30,12 @@ describe('Assistant admin funnel and stage-latency contract', () => {
     expect(admin).toContain('class="text-xs text-gray-400 uppercase" lang="en">${ext}</span>');
   });
 
+  it('keeps funnel Verified tied to the same OK outcome used by the verified summary', () => {
+    expect(admin).toContain("['Verified', counts.OK || 0, null]");
+    expect(admin).toContain("Number(summary.successes || 0).toLocaleString('tr-TR')");
+    expect(backend).toContain(`const successPredicate = "e.outcome_code = 'OK'"`);
+    expect(backend).toContain('SUM(CASE WHEN ${successPredicate} THEN 1 ELSE 0 END) AS successes');
+  });
   it('renders a bounded funnel and stage-latency view without content fields', () => {
     expect(admin).toContain('Pipeline Funnel & Latency');
     expect(admin).toContain('Discover → Evidence → Model → Grounding → Verified');
