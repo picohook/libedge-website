@@ -173,6 +173,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unavailable');
   await expect(research.locator('#researchCheckerState')).toHaveText('Running · etkisiz');
+  await expect(research.locator('#researchCheckerFreshness')).toBeHidden();
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
 
   await page.route('**/api/admin/system-health', async (route) => {
@@ -210,6 +211,21 @@ test('Research operations center renders outcome, pipeline and account controls 
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchBreadthSourcesPerAnswer')).toHaveText('—');
   await expect(research.locator('#researchBreadthSingleSource')).toHaveText('0 · —');
+  await expect(research.locator('#researchCheckerFreshness')).toBeHidden();
+  await page.route('**/api/admin/system-health', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      status: 'healthy', environment: 'staging',
+      research_telemetry: { snapshot: { date_utc: '2026-10-04', metrics: {} } },
+      support_check: {
+        status: 'ok', paused: false, pause_reason: null,
+        daily_invocations_used: 0, daily_invocation_limit: 100, daily_invocation_limit_source: 'env',
+        infrastructure: { state: 'unknown', stale: true, published_at: null, instance_type: null, instance_count: null },
+      },
+    }) });
+  });
+  await research.locator('#researchObservabilityRefreshBtn').click();
+  await expect(research.locator('#researchCheckerFreshness')).toBeVisible();
+
   await expect(research.locator('#researchVerificationBreadth')).not.toContainText('NaN');
 
 });
