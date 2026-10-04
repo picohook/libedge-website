@@ -119,7 +119,8 @@ export async function handleSystemHealthRequest(request, env) {
           try {
             const parsed = JSON.parse(infrastructureRaw);
             const publishedAtMs = Date.parse(parsed?.published_at || '');
-            const fresh = Number.isFinite(publishedAtMs) && Date.now() - publishedAtMs <= SUPPORT_CHECK_INFRASTRUCTURE_MAX_AGE_MS;
+            const ageMs = Date.now() - publishedAtMs;
+            const fresh = Number.isFinite(publishedAtMs) && ageMs >= -5 * 60 * 1000 && ageMs <= SUPPORT_CHECK_INFRASTRUCTURE_MAX_AGE_MS;
             const observedState = ['available', 'unavailable'].includes(parsed?.state) ? parsed.state : 'unknown';
             infrastructure = {
               state: fresh ? observedState : 'unknown',
