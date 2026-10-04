@@ -756,6 +756,7 @@
         </div>
         
         
+
 <div id="researchPrimaryWorkspace" class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start mb-6">
 <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 xl:col-span-2">
             <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
@@ -902,7 +903,7 @@
 </div>
         
         <section class="mt-8 pt-6 border-t border-slate-200" aria-label="Research diagnostics">
-<details id="researchRetrievalExperimentPanel" class="bg-slate-50 rounded-xl border border-slate-200 p-4 mb-4 text-sm">
+<details id="researchRetrievalExperimentPanel" class="bg-slate-50 rounded-xl border border-slate-200 p-4 mb-6 text-sm">
             <summary class="cursor-pointer font-semibold text-gray-700">Tanılama: Retrieval Deneyi <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-normal text-gray-500">staging only</span></summary>
             <div class="mt-4 max-w-xl">
                 <div class="stat-card">
@@ -7269,12 +7270,12 @@ async function _exportCsv(url, extractFn, columns, filename) {
 
         const escape = (v) => {
             const s = v == null ? '' : String(v);
-            return s.includes(',') || s.includes('"') || s.includes('\\n')
+            return s.includes(',') || s.includes('"') || s.includes('\n')
                 ? `"${s.replace(/"/g, '""')}"` : s;
         };
         const header = columns.join(',');
-        const body   = rows.map(r => columns.map(c => escape(r[c])).join(',')).join('\\n');
-        const csv    = '﻿' + header + '\\n' + body; // BOM for Excel UTF-8
+        const body   = rows.map(r => columns.map(c => escape(r[c])).join(',')).join('\n');
+        const csv    = '﻿' + header + '\n' + body; // BOM for Excel UTF-8
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -8854,7 +8855,7 @@ function showBulkUserStep2() {
 
 function parseBulkUsers() {
     const raw = document.getElementById('bulkUserPasteArea').value;
-    const lines = raw.split('\\n').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
+    const lines = raw.split('\n').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
     if (!lines.length) return;
 
     const isSuper = currentAdmin?.role === 'super_admin';
@@ -8963,7 +8964,7 @@ async function submitBulkUsers() {
     }
 
     let summary = `Tamamlandı: ${ok} eklendi.`;
-    if (errors.length) summary += `\\n\\nBaşarısız (${errors.length}):\\n` + errors.join('\\n');
+    if (errors.length) summary += `\n\nBaşarısız (${errors.length}):\n` + errors.join('\n');
     statusEl.textContent = summary;
     btn.disabled = false;
     loadUsers();
@@ -10918,7 +10919,7 @@ function showBulkStep2() {
 
 function parseBulkPaste() {
     const raw = document.getElementById('bulkPasteArea').value;
-    const lines = raw.split('\\n').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
+    const lines = raw.split('\n').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
     if (!lines.length) return;
 
     const validCategories = INSTITUTION_CATEGORIES.map(c => c.value);
