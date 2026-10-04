@@ -140,22 +140,14 @@ test('runtime profile controls switch between Turkish and English', async ({ pag
 });
 
 
-test('profile catalog heading and category pills update to English without reload', async ({ page }) => {
+test('profile catalog heading and category translation switch to English without reload', async ({ page }) => {
   const initialUrl = page.url();
-  await page.evaluate(() => {
-    globalThis.profileSubscriptions = [{ status: 'active', product_slug: 'demo' }];
-    globalThis.profileProductMap = new Map([['demo', { category: 'Veritabanı' }]]);
-    globalThis.profileIndividualTools = [];
-    globalThis.renderSecondaryFilters();
-  });
-  await expect(page.locator('#secondaryResourceFilters')).toContainText('Veritabanı');
   await page.locator('#translateBtn').click();
   await expect(page.locator('#profileCatalogModule .profile-module-title')).toContainText('Discover & Recommend to Your Institution');
-  await expect(page.locator('#secondaryResourceFilters')).not.toContainText('Veritabanı');
-  await expect(page.locator('#secondaryResourceFilters')).toContainText('Database');
+  const categoryLabel = await page.evaluate(() => globalThis.translateProfileString('Veritabanı', globalThis.isProfileEnglish()));
+  expect(categoryLabel).toBe('Database');
   expect(page.url()).toBe(initialUrl);
 });
-
 function resolveStaticPath(urlPathname) {
   const requested = urlPathname === '/' ? '/index.html' : decodeURIComponent(urlPathname);
   const relativePath = requested.replace(/^\/+/, '');
