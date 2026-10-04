@@ -10,9 +10,9 @@ Today only Ask may invoke the live Research endpoint. Compare, Summarize, Gaps a
 
 Routing is proposition-based.
 
-A **verified transform** may skip new discovery/generation/Fresh-Checker only when every factual proposition rendered to the user is a deterministic or restricted transformation of claims in an explicit prior verified-result bundle.
+A **verified transform** may skip new discovery/generation/Fresh-Checker only when every factual proposition rendered to the user is produced by deterministic/extractive operations over an explicit prior verified-result bundle: verbatim verified claim text, ordering, grouping, filtering, or truncation at claim boundaries. Abstractive rewriting is not checker-free.
 
-Anything that introduces a new factual proposition is **new_claim_grounded** and enters the normal current Research evidence, generation, grounding and Fresh-Checker path. If classification is uncertain, route to new_claim_grounded.
+Anything that introduces a new factual proposition is **new_claim_grounded** and enters the normal current Research evidence, generation, grounding and Fresh-Checker path. Classification is enforced server-side by deterministic rules or an independent verifier, never by the generating model's own label. A model self-report that output is a transform is never sufficient to skip grounding. If classification is uncertain, route to new_claim_grounded.
 
 Gaps is not checker-free by mode. A statement that something is absent, missing, understudied or unsupported is itself a factual proposition and defaults to new_claim_grounded unless that exact absence proposition is already represented in the verified input.
 
@@ -33,17 +33,17 @@ Before transformation, the server MUST reject missing, unknown, expired/stale, u
 
 ## Proposition traceability
 
-Every factual proposition emitted by verified_transform MUST be traceable to one or more verified input claim IDs. Citations may reference only evidence IDs already bound to those claims.
+Every factual proposition emitted by verified_transform MUST be traceable to one or more verified input claim IDs, and that traceability is checked server-side rather than asserted by a model. Citations may reference only evidence IDs already bound to those claims.
 
 The transform path MUST NOT add external evidence IDs, silently perform discovery, or infer a new factual proposition from absence of evidence. If the requested output cannot be produced within those restrictions, fail closed or route the request through new_claim_grounded.
 
-Pure formatting, ordering, shortening and extractive/abstractive compression are allowed only while preserving the supported meaning of the verified claims.
+Checker-free operations are limited to pure formatting, ordering, grouping, filtering, verbatim claim reuse and truncation at claim boundaries. Any abstractive compression or rewrite routes to new_claim_grounded unless a separately reviewed verifier/checker path validates the rewritten propositions.
 
 ## Authorization and freshness
 
 A prior verified identity is not an authorization token. Current Research entitlement and user scope are checked on every request. Revocation blocks reuse.
 
-The implementation must define a bounded freshness window and invalidate reuse when the underlying verified-result contract says the source result is no longer reusable. No production enablement is implied by this document.
+When reuse is backed by the #510 verified-result cache, freshness is exactly that contract's 15-minute TTL and complete trust identity. A checker/generation contract-version change, evidence identity/fingerprint change, authorization change, or any other #510 identity mismatch invalidates reuse. Any future non-cache verified bundle requires its own reviewed freshness contract before use. No production enablement is implied by this document.
 
 ## Telemetry and history
 
