@@ -53,5 +53,17 @@ fi
 status="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" --query EndpointStatus --output text)"
 [[ "$status" == "InService" ]] || { echo "Endpoint did not reach InService" >&2; exit 1; }
 
+observed_config="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" --query EndpointConfigName --output text)"
+observed_model="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$observed_config" --query 'ProductionVariants[0].ModelName' --output text)"
+observed_isolation="$(aws sagemaker describe-model --region "$AWS_REGION" --model-name "$observed_model" --query EnableNetworkIsolation --output text)"
+[[ "$observed_isolation" == "True" || "$observed_isolation" == "true" ]] || { echo "Observed model network isolation is not enabled" >&2; exit 1; }
+observed_capture="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$observed_config" --query 'DataCaptureConfig.EnableCapture' --output text)"
+[[ "$observed_capture" == "None" || "$observed_capture" == "null" || "$observed_capture" == "False" || "$observed_capture" == "false" ]] || { echo "Observed Data Capture is enabled/uncertain" >&2; exit 1; }
+observed_image="$(aws sagemaker describe-model --region "$AWS_REGION" --model-name "$observed_model" --query 'PrimaryContainer.Image' --output text)"
+[[ "$observed_image" == "$IMMUTABLE_IMAGE_URI" ]] || { echo "Observed image does not match requested immutable image" >&2; exit 1; }
+observed_instance_type="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$observed_config" --query 'ProductionVariants[0].InstanceType' --output text)"
+observed_instance_count="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" --query 'ProductionVariants[0].CurrentInstanceCount' --output text)"
+[[ "$observed_instance_count" =~ ^[12]$ ]] || { echo "Observed instance count is outside bounded range 1..2" >&2; exit 1; }
+
 printf 'endpoint_name=%s\nendpoint_config_name=%s\nmodel_name=%s\nimmutable_image_uri=%s\ninstance_type=%s\ninitial_instance_count=%s\nstatus=%s\n' \
-  "$SAGEMAKER_ENDPOINT_NAME" "$SAGEMAKER_ENDPOINT_CONFIG_NAME" "$SAGEMAKER_MODEL_NAME" "$IMMUTABLE_IMAGE_URI" "$SAGEMAKER_INSTANCE_TYPE" "$SAGEMAKER_INITIAL_INSTANCE_COUNT" "$status"
+  "$SAGEMAKER_ENDPOINT_NAME" "$observed_config" "$observed_model" "$observed_image" "$observed_instance_type" "$observed_instance_count" "$status"
