@@ -25,6 +25,11 @@ describe('Assistant admin funnel and stage-latency contract', () => {
     expect(backend).toContain('stage_latency_ms');
   });
 
+  it('marks English uppercase labels with an English language context', () => {
+    expect(admin).toContain('lang="en">Discover → Evidence → Model → Grounding → Verified</p>');
+    expect(admin).toContain('class="text-xs text-gray-400 uppercase" lang="en">${ext}</span>');
+  });
+
   it('renders a bounded funnel and stage-latency view without content fields', () => {
     expect(admin).toContain('Pipeline Funnel & Latency');
     expect(admin).toContain('Discover → Evidence → Model → Grounding → Verified');
