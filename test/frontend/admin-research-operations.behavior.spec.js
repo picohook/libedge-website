@@ -92,7 +92,7 @@ test('Research operations center renders outcome, pipeline and account controls 
       support_check: {
         status: 'ok', paused: false, pause_reason: null,
         daily_invocations_used: 0, daily_invocation_limit: 100, daily_invocation_limit_source: 'env',
-        infrastructure: { state: 'available', stale: false, published_at: new Date().toISOString(), instance_type: 'ml.m5.large', instance_count: 1 },
+        infrastructure: { state: 'available', stale: false, published_at: new Date().toISOString(), instance_type: 'ml.m5.large', instance_count: 1, hourly_cost_usd: 0.1234 },
       },
     }) });
   });
@@ -101,6 +101,8 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchBreadthVerified')).toHaveText('4 yanıt · 11 claim');
   await expect(research.locator('#researchBreadthSourcesPerAnswer')).toHaveText('2,50');
   await expect(research.locator('#researchBreadthSingleSource')).toHaveText('1 · %25,0');
+  await expect(research.locator('#researchCheckerHostingEstimate')).toBeVisible();
+  await expect(research.locator('#researchCheckerHostingEstimateValue')).toHaveText('≈ $2.96 / gün · 1 × ml.m5.large · $0.1234 / saat');
 
   const institutionHeaders = await research.locator('#researchUsageInstitutions').locator('xpath=ancestor::table/thead').innerText();
   expect(institutionHeaders).toContain('Verified');
@@ -180,6 +182,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   });
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unavailable');
+  await expect(research.locator('#researchCheckerHostingEstimate')).toBeHidden();
   await expect(research.locator('#researchCheckerState')).toHaveText('Running · etkisiz');
   await expect(research.locator('#researchCheckerInfrastructureBadge')).toHaveText('Unavailable');
   await expect(research.locator('#researchCheckerVerificationBadge')).toHaveText('Running · etkisiz');
@@ -242,6 +245,13 @@ test('Research operations center renders outcome, pipeline and account controls 
   });
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchCheckerFreshness')).toBeVisible();
+
+  await page.route('**/api/admin/system-health', async (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }));
+  await research.locator('#researchObservabilityRefreshBtn').click();
+  await expect(research.locator('#researchCheckerInfrastructureBadge')).toHaveText('Unknown');
+  await expect(research.locator('#researchCheckerVerificationBadge')).toHaveText('Unknown');
+  await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Unknown · Doğrulama: Unknown');
+  await expect(research.locator('#researchCheckerHostingEstimate')).toBeHidden();
 
   await expect(research.locator('#researchVerificationBreadth')).not.toContainText('NaN');
 
