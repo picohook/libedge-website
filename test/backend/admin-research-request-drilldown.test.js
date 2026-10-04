@@ -28,6 +28,7 @@ describe('content-free per-user request drilldown', () => {
     expect(route).toContain('candidate_depth');
     expect(route).toContain('abstract_bearing_count');
     expect(route).toContain('metadata_only_count');
+    expect(route).toContain('discovery_cost_usd');
   });
 
   it('renders deterministic severity colors and a per-user drilldown control', () => {
