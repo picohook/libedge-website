@@ -5264,6 +5264,12 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             const resumeBtn = document.getElementById('researchCheckerResumeBtn');
             if (infrastructureStateEl) infrastructureStateEl.textContent = 'Unknown';
             if (verificationStateEl) verificationStateEl.textContent = 'Unknown';
+            const infrastructureBadge = document.getElementById('researchCheckerInfrastructureBadge');
+            const verificationBadge = document.getElementById('researchCheckerVerificationBadge');
+            const stateBanner = document.getElementById('researchCheckerStateBanner');
+            if (infrastructureBadge) infrastructureBadge.textContent = 'Unknown';
+            if (verificationBadge) verificationBadge.textContent = 'Unknown';
+            if (stateBanner) stateBanner.textContent = 'Fresh-Checker · Altyapı: Unknown · Doğrulama: Unknown';
             if (infrastructureDetailEl) infrastructureDetailEl.textContent = 'Infrastructure / pause store durumu okunamadı; güvenli olarak Unknown gösteriliyor.';
             if (resumeBtn) {
                 resumeBtn.disabled = true;
