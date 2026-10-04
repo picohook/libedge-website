@@ -30,9 +30,12 @@ describe('SupportCheck staging lifecycle governance', () => {
     expect(workflow).toContain('DataCaptureConfig.EnableCapture');
     expect(workflow).toContain('@sha256:');
     expect(deploy).toContain('describe-endpoint');
-    expect(deploy).toContain('Endpoint already exists; skipping creation and verifying invariants');
+    expect(deploy).toContain('Endpoint already exists; skipping creation. Workflow verification will enforce invariants.');
     expect(workflow).toContain("node-version: '22'");
     expect(workflow).toContain('Checker image does not match the approved staging digest');
     expect(workflow).toContain('OBSERVED_INSTANCE_COUNT');
+    expect(workflow).toContain('outside bounded range 1..2');
+    expect(deploy).toContain('Observed image does not match requested immutable image');
+    expect(deploy).toContain('Observed Data Capture is enabled/uncertain');
   });
 });
