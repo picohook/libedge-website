@@ -42,6 +42,14 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.getByText('Geçerli boş / bulgu yok')).toBeVisible();
   await expect(research.getByText('Kurum Bazlı Kullanım')).toBeVisible();
   await expect(research.getByText('Kişi Bazlı Kullanım')).toBeVisible();
+  await expect(research.getByText('Usage & Cost')).toBeVisible();
+  await expect(research.getByText('Pipeline Funnel & Latency')).toBeVisible();
+  await expect(research.locator('#researchUsageExactCost')).toBeVisible();
+  await expect(research.locator('#researchUsageCheckerEstimatedCost')).toHaveText('Ayrı');
+  await expect(research.locator('#researchUsageUsersPanel')).toBeHidden();
+  await research.locator('#researchUsageUsersTab').click();
+  await expect(research.locator('#researchUsageUsersPanel')).toBeVisible();
+  await expect(research.locator('#researchUsageInstitutionsPanel')).toBeHidden();
   await expect(research.locator('#researchCheckerPauseBtn')).toBeVisible();
   await expect(research.locator('#researchCheckerResumeBtn')).toBeVisible();
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
