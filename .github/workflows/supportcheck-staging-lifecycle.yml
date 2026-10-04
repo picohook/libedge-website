@@ -1,0 +1,112 @@
+name: SupportCheck Staging Lifecycle
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Staging checker lifecycle action'
+        required: true
+        type: choice
+        options: [verify, deploy, teardown]
+      confirmation:
+        description: 'Type SUPPORTCHECK-STAGING-LIFECYCLE'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: supportcheck-staging-lifecycle
+  cancel-in-progress: false
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      AWS_REGION: us-east-1
+      SAGEMAKER_ENDPOINT_NAME: libedge-fresh-checker-staging
+      SAGEMAKER_MODEL_NAME: libedge-fresh-checker-staging
+      SAGEMAKER_ENDPOINT_CONFIG_NAME: libedge-fresh-checker-staging
+      SAGEMAKER_INSTANCE_TYPE: ml.m5.large
+      SAGEMAKER_INITIAL_INSTANCE_COUNT: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate staging-only confirmation
+        id: confirm
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          test "$CONFIRMATION" = "SUPPORTCHECK-STAGING-LIFECYCLE" || {
+            echo "::error::Exact staging lifecycle confirmation required."
+            exit 1
+          }
+          case "${{ inputs.action }}" in verify|deploy|teardown) ;; *) exit 2 ;; esac
+          test "$SAGEMAKER_ENDPOINT_NAME" = "libedge-fresh-checker-staging"
+
+      - name: Configure dedicated staging AWS role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.SUPPORTCHECK_STAGING_LIFECYCLE_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Deploy staging checker
+        if: inputs.action == 'deploy'
+        env:
+          IMMUTABLE_IMAGE_URI: ${{ secrets.SUPPORTCHECK_STAGING_IMMUTABLE_IMAGE_URI }}
+          SAGEMAKER_EXECUTION_ROLE_ARN: ${{ secrets.SUPPORTCHECK_STAGING_EXECUTION_ROLE_ARN }}
+        run: bash scripts/supportcheck-deploy-sagemaker.sh
+
+      - name: Verify staging checker invariants
+        if: inputs.action != 'teardown'
+        env:
+          EXPECTED_IMAGE_URI: ${{ secrets.SUPPORTCHECK_STAGING_IMMUTABLE_IMAGE_URI }}
+        run: |
+          status="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" --query EndpointStatus --output text)"
+          test "$status" = "InService"
+          config="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" --query EndpointConfigName --output text)"
+          model="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$config" --query 'ProductionVariants[0].ModelName' --output text)"
+          isolation="$(aws sagemaker describe-model --region "$AWS_REGION" --model-name "$model" --query EnableNetworkIsolation --output text)"
+          test "$isolation" = "True" -o "$isolation" = "true"
+          capture="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$config" --query 'DataCaptureConfig.EnableCapture' --output text)"
+          case "$capture" in None|null|False|false) ;; *) echo "::error::Data capture is enabled or uncertain"; exit 1 ;; esac
+          image="$(aws sagemaker describe-model --region "$AWS_REGION" --model-name "$model" --query 'PrimaryContainer.Image' --output text)"
+          [[ "$image" =~ @sha256:[0-9a-f]{64}$ ]] || { echo "::error::Checker image is not digest pinned"; exit 1; }
+          test "$image" = "$EXPECTED_IMAGE_URI" || { echo "::error::Checker image does not match the approved staging digest"; exit 1; }
+          instance_type="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$config" --query 'ProductionVariants[0].InstanceType' --output text)"
+          instance_count="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" --query 'ProductionVariants[0].CurrentInstanceCount' --output text)"
+          test "$instance_type" = "$SAGEMAKER_INSTANCE_TYPE" || { echo "::error::Unexpected staging checker instance type: $instance_type"; exit 1; }
+          [[ "$instance_count" =~ ^[12]$ ]] || { echo "::error::Staging checker instance count is outside bounded range 1..2: $instance_count"; exit 1; }
+          printf 'OBSERVED_INSTANCE_TYPE=%s\nOBSERVED_INSTANCE_COUNT=%s\n' "$instance_type" "$instance_count" >> "$GITHUB_ENV"
+
+      - name: Teardown staging checker
+        if: inputs.action == 'teardown'
+        run: bash scripts/supportcheck-delete-sagemaker.sh
+
+      - name: Publish content-free infrastructure state
+        if: always() && steps.confirm.outcome == 'success'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          state=unknown
+          if [ "${{ job.status }}" = "success" ]; then
+            if [ "${{ inputs.action }}" = "teardown" ]; then state=unavailable; else state=available; fi
+          fi
+          published_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          if [ -n "${OBSERVED_INSTANCE_TYPE:-}" ] && [ -n "${OBSERVED_INSTANCE_COUNT:-}" ]; then
+            payload="$(printf '{"state":"%s","published_at":"%s","source":"staging-lifecycle-workflow","instance_type":"%s","instance_count":%s}' "$state" "$published_at" "$OBSERVED_INSTANCE_TYPE" "$OBSERVED_INSTANCE_COUNT")"
+          else
+            payload="$(printf '{"state":"%s","published_at":"%s","source":"staging-lifecycle-workflow","instance_type":null,"instance_count":null}' "$state" "$published_at")"
+          fi
+          if ! npx --yes wrangler@4.131.1 kv key put --binding RATE_LIMIT_KV --env staging --remote "assistant:supportcheck:infrastructure-state" "$payload"; then
+            echo "::error::Checker lifecycle completed but infrastructure state was NOT published to staging KV."
+            exit 1
+          fi
