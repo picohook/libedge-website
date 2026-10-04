@@ -51,6 +51,12 @@ jobs:
       - name: Build CSS
         run: npm run build
 
+      - name: Assert representative generated Tailwind utilities
+        run: |
+          grep -Fq '.xl\\:grid-cols-2' assets/css/tailwind.css
+          grep -Fq '.lg\\:items-end' assets/css/tailwind.css
+          grep -Fq '.gap-5' assets/css/tailwind.css
+
 
   frontend-browser:
     name: Playwright browser regressions
