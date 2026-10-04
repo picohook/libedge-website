@@ -48,6 +48,8 @@ describe('superadmin Research usage aggregate API', () => {
     });
     const sql = e.prepared.join('\n');
     expect(sql).toContain('research_usage_events');
+    expect(sql).toContain('GROUP BY e.retrieval_mode');
+    expect(body).toHaveProperty('retrieval_modes');
     expect(sql.match(/AS valid_empty/g)?.length).toBeGreaterThanOrEqual(3);
     expect(sql).not.toMatch(/query_text|answer_text|claim_text|evidence_text|prompt_text|payload/i);
   });

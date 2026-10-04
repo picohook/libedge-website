@@ -37,7 +37,7 @@ test('Research operations center renders outcome, pipeline and account controls 
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
       window_days: 30,
       summary: { requests: 2, successes: 1, verified_rate: 0.5, valid_empty: 1, valid_empty_rate: 0.5, failures: 0, failure_rate: 0, avg_latency_ms: 1200, input_tokens: 100, output_tokens: 20, llm_cost_usd: 0.012345, discovery_cost_usd: 0.001234, outcome_count_consistent: true, stage_latency_ms: {} },
-      outcomes: [], users: [], institutions: []
+      outcomes: [], retrieval_modes: [{ retrieval_mode: 'lexical', count: 3 }, { retrieval_mode: 'semantic', count: 1 }], users: [], institutions: []
     }) });
   });
   await page.goto(`${baseURL}/admin.html`);
@@ -79,6 +79,8 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchRetrievalMode')).toBeHidden();
   await expect(research.locator('#researchVerificationBreadth')).toBeVisible();
   await expect(research.locator('#researchDiagnosticsShowZero')).not.toBeChecked();
+  await expect(research.locator('#researchRetrievalModeObserved')).toContainText('Lexical');
+  await expect(research.locator('#researchRetrievalModeObserved')).toContainText('%75');
 
   await page.route('**/api/admin/system-health', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
@@ -96,6 +98,12 @@ test('Research operations center renders outcome, pipeline and account controls 
       },
     }) });
   });
+  await page.reload();
+  await research.evaluate((el) => el.classList.remove('hidden'));
+  await research.locator('#researchObservabilityRefreshBtn').click();
+  await expect(research.locator('#researchCheckerStateDetail')).toContainText('calls');
+  await expect(research.locator('#researchCheckerStateDetail')).toContainText('runtime');
+  await expect(research.locator('#researchCheckerStateDetail')).toContainText('hard ceiling');
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchObservabilityLastRefresh')).toContainText(/^son yenileme: \d{2}:\d{2}$/);
   await expect(research.locator('#researchBreadthVerified')).toHaveText('4 yanıt · 11 claim');

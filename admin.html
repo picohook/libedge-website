@@ -934,7 +934,10 @@
                 </div>
             </div>
         </details>
-<div class="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400" lang="en">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><label class="text-xs text-gray-500"><input id="researchDiagnosticsShowZero" type="checkbox" class="mr-1">Tümünü göster</label></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+<div class="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400" lang="en">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><label class="text-xs text-gray-500"><input id="researchDiagnosticsShowZero" type="checkbox" class="mr-1">Tümünü göster</label></div><div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            <div class="rounded-xl border border-slate-200 bg-white p-4"><p class="text-xs text-gray-500" lang="en">Retrieval mode (observed)</p><div id="researchRetrievalModeObserved" class="mt-2 text-sm text-gray-700">—</div></div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4"><p class="text-xs text-gray-500" lang="en">Checker state detail</p><div id="researchCheckerStateDetail" class="mt-2 text-sm text-gray-700">—</div></div>
+        </div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <section class="bg-slate-50 rounded-xl border border-slate-200 p-4">
                 <h4 class="font-semibold text-gray-800 mb-3">Katman Bazlı Sonuçlar</h4>
                 <div id="researchLayerRows" class="divide-y divide-gray-100"><p class="text-sm text-gray-400 py-3">Yükleniyor...</p></div>
@@ -5070,6 +5073,15 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageDiscoveryCost').textContent = '$' + Number(summary.discovery_cost_usd || 0).toFixed(6);
             document.getElementById('researchUsageExactCost').textContent = '$' + (Number(summary.llm_cost_usd || 0) + Number(summary.discovery_cost_usd || 0)).toFixed(6);
             document.getElementById('researchUsageFunnel').innerHTML = researchUsageFunnel(data.outcomes, summary.requests, summary.stage_latency_ms);
+            const retrievalRows = Array.isArray(data.retrieval_modes) ? data.retrieval_modes : [];
+            const retrievalTotal = retrievalRows.reduce((sum, row) => sum + Number(row.count || 0), 0);
+            const retrievalLabels = { lexical: 'Lexical', semantic: 'Semantic', lexical_fallback: 'Lexical fallback', crossref: 'Crossref fallback' };
+            const retrievalObserved = document.getElementById('researchRetrievalModeObserved');
+            if (retrievalObserved) retrievalObserved.innerHTML = retrievalRows.length ? retrievalRows.map((row) => {
+                const count = Number(row.count || 0);
+                const percent = retrievalTotal ? (count / retrievalTotal) * 100 : 0;
+                return `<div class="flex justify-between gap-3"><span>${escapeHtml(retrievalLabels[row.retrieval_mode] || row.retrieval_mode || 'Unknown')}</span><span class="font-medium">${count.toLocaleString('tr-TR')} · %${percent.toLocaleString('tr-TR', { maximumFractionDigits: 1 })}</span></div>`;
+            }).join('') : '<span class="text-gray-400">Gözlenen retrieval mode yok.</span>';
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
             document.getElementById('researchUsageInstitutions').innerHTML = researchUsageRows(data.institutions, 'institution');
             if (meta) meta.textContent = `Son ${data.window_days || days} gün • verified + geçerli boş + başarısız = toplam istek: ${summary.outcome_count_consistent ? 'tutarlı' : 'UYARI: tutarsız'} • 90 gün retention • request detayları en fazla 30 gün`;
@@ -5185,6 +5197,14 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                         : infrastructure.stale
                             ? 'Infrastructure bilgisi eksik veya eski; güvenli olarak Unknown gösteriliyor.'
                             : 'Infrastructure durumu doğrulanamadı.') + pauseDetail;
+            }
+            const checkerDetail = document.getElementById('researchCheckerStateDetail');
+            if (checkerDetail) {
+                const used = Number.isFinite(Number(checker.daily_invocations_used)) ? Number(checker.daily_invocations_used) : null;
+                const runtimeLimit = Number.isFinite(Number(checker.daily_invocation_limit)) ? Number(checker.daily_invocation_limit) : null;
+                const hardCeiling = Number.isFinite(Number(checker.daily_invocation_hard_ceiling)) ? Number(checker.daily_invocation_hard_ceiling) : null;
+                const pauseReason = checker.pause_reason || (checker.status === 'ok' ? 'Running' : (checker.status || 'Unknown'));
+                checkerDetail.textContent = `${pauseReason} · calls ${used ?? '—'} / runtime ${runtimeLimit ?? '—'} · hard ceiling ${hardCeiling ?? '—'}`;
             }
             const resumeBtn = document.getElementById('researchCheckerResumeBtn');
             if (resumeBtn) {
