@@ -237,6 +237,11 @@ describe('assistant orchestration boundary', () => {
 
     expect(result.ok).toBe(true);
     expect(result.code).toBe('OK');
+    expect(result.diagnostic_grounding).toMatchObject({
+      accepted_count: 1,
+      unique_supporting_source_count: 1,
+      single_source_verified_answer: 1
+    });
     expect(result.claims).toEqual([{ index: 0, text: 'Supported claim', evidence_ids: ['pack-1:e1'] }]);
     expect(result.evidence).toEqual([{ evidence_id: 'pack-1:e1', title: 'Accepted evidence' }]);
     expect(result.diagnostic_grounding).toMatchObject({

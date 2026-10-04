@@ -64,7 +64,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
   if (sanitizedDiagnosticReason) payload.diagnostic_reason = sanitizedDiagnosticReason;
 
   const cardinality = {};
-  for (const key of ['claim_count', 'accepted_count', 'rejected_count', 'eligible_count', 'checked_count', 'truncated_count', 'support_check_limit']) {
+  for (const key of ['claim_count', 'accepted_count', 'rejected_count', 'eligible_count', 'checked_count', 'truncated_count', 'support_check_limit', 'unique_supporting_source_count', 'single_source_verified_answer']) {
     const value = Number(groundingDiagnostic?.[key]);
     if (Number.isSafeInteger(value) && value >= 0) cardinality[key] = value;
   }
@@ -111,7 +111,10 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     const groundingCardinalityMetrics = [
       ['assistant_grounding_eligible_claims_total', cardinality.eligible_count],
       ['assistant_grounding_checked_claims_total', cardinality.checked_count],
-      ['assistant_grounding_truncated_claims_total', cardinality.truncated_count]
+      ['assistant_grounding_truncated_claims_total', cardinality.truncated_count],
+      ['assistant_verified_claims_total', payload.code === 'OK' ? cardinality.accepted_count : undefined],
+      ['assistant_unique_supporting_sources_total', payload.code === 'OK' ? cardinality.unique_supporting_source_count : undefined],
+      ['assistant_single_source_verified_answers', payload.code === 'OK' ? cardinality.single_source_verified_answer : undefined]
     ];
     const retrievalMetrics = [
       ['assistant_retrieved_works_total', retrievalCardinality.retrieved_count],

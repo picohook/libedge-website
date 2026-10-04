@@ -132,6 +132,31 @@ describe('assistant privacy-safe telemetry', () => {
     spy.mockRestore();
   });
 
+  it('persists content-free verification breadth counters only for successful verified answers', async () => {
+    const batch = vi.fn().mockResolvedValue([]);
+    const prepare = vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn() })) }));
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await recordAssistantOutcome({ ENVIRONMENT: 'staging', DB: { prepare, batch } }, {
+      code: 'OK',
+      groundingDiagnostic: {
+        accepted_count: 3,
+        unique_supporting_source_count: 2,
+        single_source_verified_answer: 0,
+        claim: 'private claim',
+        evidence: 'private evidence'
+      }
+    });
+    const binds = prepare.mock.results.map((result) => result.value.bind.mock.calls[0]).filter(Boolean);
+    const metrics = Object.fromEntries(binds.map((args) => [args[1], args[2]]));
+    expect(metrics).toMatchObject({
+      assistant_verified_claims_total: 3,
+      assistant_unique_supporting_sources_total: 2
+    });
+    expect(metrics).not.toHaveProperty('assistant_single_source_verified_answers');
+    expect(JSON.stringify(metrics)).not.toMatch(/private claim|private evidence/);
+    spy.mockRestore();
+  });
+
   it('persists only aggregate content-free timing counters', async () => {
     const batch = vi.fn().mockResolvedValue([]);
     const prepare = vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn() })) }));

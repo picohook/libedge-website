@@ -243,9 +243,14 @@ export async function orchestrateResearchAnswer({
     };
   }
 
+  const supportingEvidenceIds = new Set(
+    grounding.acceptedClaims.flatMap((claim) => Array.isArray(claim?.evidence_ids) ? claim.evidence_ids : [])
+  );
   const diagnosticGrounding = {
     ...groundingDiagnosticSummary(grounding.rejectedClaims, claims.length),
-    ...(grounding.diagnostics || {})
+    ...(grounding.diagnostics || {}),
+    unique_supporting_source_count: supportingEvidenceIds.size,
+    single_source_verified_answer: grounding.acceptedClaims.length > 0 && supportingEvidenceIds.size === 1 ? 1 : 0
   };
   const blockingGroundingFailure = hasBlockingGroundingFailure(grounding.rejectedClaims);
 
