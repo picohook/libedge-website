@@ -747,11 +747,122 @@
         </div>
         <div id="researchObservabilityMeta" class="text-xs text-gray-500 mb-4">Yükleniyor...</div>
         <div id="researchOpsAlert" class="hidden mb-5 rounded-lg border p-4" role="status" aria-live="polite"></div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-            <div class="stat-card"><p class="text-gray-500 text-sm">Assistant İstekleri</p><p id="researchAssistantRequests" class="text-2xl font-bold mt-2">—</p></div>
-            <div class="stat-card"><p class="text-gray-500 text-sm">Verified Yanıtlar</p><p id="researchAssistantOk" class="text-2xl font-bold mt-2">—</p></div>
-            <div class="stat-card"><p class="text-gray-500 text-sm">Grounding Reddi</p><p id="researchGroundingRejected" class="text-2xl font-bold mt-2">—</p></div>
-            <div class="stat-card">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="rounded-xl bg-slate-50 border border-slate-100 p-4"><p class="text-gray-500 text-sm">Assistant İstekleri</p><p id="researchAssistantRequests" class="text-2xl font-bold mt-2">—</p></div>
+            <div class="rounded-xl bg-emerald-50/60 border border-emerald-100 p-4"><p class="text-emerald-700 text-sm">Verified Yanıtlar</p><p id="researchAssistantOk" class="text-2xl font-bold mt-2">—</p></div>
+            <div class="rounded-xl bg-amber-50/60 border border-amber-100 p-4"><p class="text-amber-700 text-sm">Grounding Reddi</p><p id="researchGroundingRejected" class="text-2xl font-bold mt-2">—</p></div>
+            
+            
+        </div>
+        
+        <details id="researchRetrievalExperimentPanel" class="bg-slate-50 rounded-xl border border-slate-200 p-4 mb-6 text-sm">
+            <summary class="cursor-pointer font-semibold text-gray-700">Tanılama: Retrieval Deneyi <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-normal text-gray-500">staging only</span></summary>
+            <div class="mt-4 max-w-xl">
+                <div class="stat-card">
+                    <p class="text-gray-500 text-sm">Retrieval Deneyi</p>
+                    <p class="text-xs text-gray-500 mt-1">Yalnız staging. Candidate depth ve final sonuç hedefi ayrıdır.</p>
+                    <div class="grid grid-cols-1 gap-2 mt-3">
+                        <label class="text-xs text-gray-500">Mode
+                            <select id="researchRetrievalMode" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                                <option value="lexical">lexical</option><option value="semantic">semantic</option>
+                            </select>
+                        </label>
+                        <label class="text-xs text-gray-500">Lexical candidate depth
+                            <select id="researchLexicalCandidateDepth" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                                <option value="10">10</option><option value="20">20</option><option value="30">30</option><option value="50">50</option>
+                            </select>
+                        </label>
+                        <label class="text-xs text-gray-500">Final result target
+                            <select id="researchFinalResultTarget" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                                <option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option>
+                            </select>
+                        </label>
+                        <button type="button" id="researchRetrievalControlsSaveBtn" class="btn bg-blue-50 text-blue-700 border border-blue-200 text-xs">Kaydet</button>
+                    </div>
+                    <p id="researchRetrievalControlsSource" class="text-xs text-gray-400 mt-1"></p>
+                    <p id="researchRetrievalControlsStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
+                </div>
+            </div>
+        </details>
+<div id="researchPrimaryWorkspace" class="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start mb-6">
+<section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
+            <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
+                <div>
+                    <div class="flex items-center gap-2"><h4 class="font-semibold text-gray-800">Usage & Cost</h4><span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">content-free</span></div>
+                    <p class="text-xs text-gray-500 mt-1">Son 90 güne kadar Research operasyon özeti; sorgu/yanıt içeriği ve hash gösterilmez. Exact cost yalnız LLM + Discovery provider maliyetidir; checker hosting ayrı bir tahmindir ve exact toplama dahil edilmez.</p>
+                </div>
+                <div class="lg:ml-auto">
+                    <label for="researchUsageDays" class="block text-xs text-gray-500 mb-1">Dönem</label>
+                    <select id="researchUsageDays" class="border rounded px-3 py-2 text-sm bg-white">
+                        <option value="7">7 gün</option><option value="30" selected>30 gün</option><option value="90">90 gün</option>
+                    </select>
+                </div>
+            </div>
+            <div id="researchUsageMeta" class="text-xs text-gray-500 mb-3">Yükleniyor...</div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Toplam istek</p><p id="researchUsageRequests" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-emerald-100 bg-emerald-50/40 p-3"><p class="text-xs text-emerald-700">Verified yanıt</p><p id="researchUsageSuccessRate" class="text-xl font-bold text-emerald-700">—</p><p id="researchUsageSuccessCount" class="text-xs text-gray-500 mt-1">—</p></div>
+                <div class="rounded-lg border border-amber-100 bg-amber-50/40 p-3"><p class="text-xs text-amber-700">Geçerli boş / bulgu yok</p><p id="researchUsageValidEmptyRate" class="text-xl font-bold text-amber-700">—</p><p id="researchUsageValidEmptyCount" class="text-xs text-gray-500 mt-1">—</p></div>
+                <div class="rounded-lg border border-red-100 bg-red-50/40 p-3"><p class="text-xs text-red-700">Başarısız</p><p id="researchUsageFailureRate" class="text-xl font-bold text-red-700">—</p><p id="researchUsageFailureCount" class="text-xs text-gray-500 mt-1">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Ort. latency</p><p id="researchUsageLatency" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Input token</p><p id="researchUsageInputTokens" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Output token</p><p id="researchUsageOutputTokens" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">LLM exact cost</p><p id="researchUsageLlmCost" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Discovery exact cost</p><p id="researchUsageDiscoveryCost" class="text-xl font-bold">—</p></div>
+                <div class="rounded-lg border border-blue-100 bg-blue-50/30 p-3"><p class="text-xs text-blue-700">Exact total</p><p id="researchUsageExactCost" class="text-xl font-bold text-blue-800">—</p><p class="text-[11px] text-gray-500 mt-1">LLM + Discovery</p></div>
+            </div>
+<section id="researchVerificationBreadth" class="rounded-xl border border-slate-200 bg-slate-50/60 p-4 mb-5">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <div>
+                    <h5 class="font-semibold text-gray-800">Verification Breadth</h5>
+                    <p class="text-xs text-gray-500 mt-1">Yalnız aggregate, content-free doğrulama genişliği. Oranların paydası verified yanıtlardır.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="rounded-lg border border-gray-100 p-3">
+                    <p class="text-xs text-gray-500">Verified yanıtlar · claimler</p>
+                    <p id="researchBreadthVerified" class="text-lg font-semibold text-gray-800 mt-1">—</p>
+                </div>
+                <div class="rounded-lg border border-gray-100 p-3">
+                    <p class="text-xs text-gray-500">Yanıt başına unique supporting source</p>
+                    <p id="researchBreadthSourcesPerAnswer" class="text-lg font-semibold text-gray-800 mt-1">—</p>
+                </div>
+                <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p class="text-xs text-amber-700">Single-source verified yanıtlar</p>
+                    <p id="researchBreadthSingleSource" class="text-lg font-semibold text-amber-800 mt-1">—</p>
+                </div>
+            </div>
+        </section>
+            <div class="rounded-xl border border-gray-100 bg-gray-50/40 p-4 mb-5">
+                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 mb-4">
+                    <div><h5 class="font-semibold text-gray-800">Pipeline Funnel & Latency</h5><p class="text-xs text-gray-500 mt-1">Aynı pipeline'ın hacim ve süre görünümü; yalnız ulaşılan aşamalar latency hesabına girer.</p></div>
+                    <span class="text-[11px] text-gray-400">Discover → Evidence → Model → Grounding</span>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Funnel</p><div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></div>
+                    <div class="xl:border-l xl:border-gray-200 xl:pl-5"><p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Stage latency</p><div id="researchUsageStageLatency" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></div>
+                </div>
+            </div>
+            <div class="border-t border-gray-100 pt-4">
+                <div class="flex items-center gap-1 mb-3" role="tablist" aria-label="Research usage breakdown">
+                    <button type="button" id="researchUsageInstitutionsTab" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageUsersTab" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
+                </div>
+                <div id="researchUsageInstitutionsPanel">
+                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
+                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                </div>
+                <div id="researchUsageUsersPanel" class="hidden" hidden>
+                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
+                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                </div>
+            </div>
+        </section>
+<aside id="researchOperationalControls" class="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 sm:p-5 self-start">
+  <div class="mb-4"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-500">Operational Controls</p><h4 class="font-semibold text-slate-900 mt-1">Güvenli müdahale</h4><p class="text-xs text-slate-500 mt-1">İzleme alanından ayrı; staging operasyon kontrolleri.</p></div>
+  <div class="space-y-4">
+    <div class="rounded-xl border border-white/80 bg-white p-4 shadow-sm">
                 <p class="text-gray-500 text-sm">Checker Durumu</p>
                 <div class="mt-2 space-y-1">
                     <p class="text-xs text-gray-500">Endpoint: <span id="researchCheckerInfrastructureState" class="font-semibold text-gray-700">Unknown</span></p>
@@ -772,7 +883,7 @@
                 <p id="researchCheckerLimitSource" class="text-xs text-gray-400 mt-1"></p>
                 <p id="researchCheckerActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
             </div>
-            <div class="stat-card">
+    <div class="rounded-xl border border-white/80 bg-white p-4 shadow-sm">
                 <p class="text-gray-500 text-sm">Assistant Request Havuzu</p>
                 <p class="text-xs text-gray-500 mt-1">Varsayılan günlük request limiti ana kontroldür. Checker çağrı limiti bundan ayrıdır.</p>
                 <div class="grid grid-cols-1 gap-2 mt-3">
@@ -815,120 +926,22 @@
                 <p id="researchUsageScopeLimitSource" class="text-xs text-gray-400 mt-1"></p>
                 <p id="researchUsageScopeActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
             </div>
-        </div>
-        <section id="researchVerificationBreadth" class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
-            <div class="flex items-center justify-between gap-3 mb-4">
-                <div>
-                    <h4 class="font-semibold text-gray-800">Verification Breadth</h4>
-                    <p class="text-xs text-gray-500 mt-1">Yalnız aggregate, content-free doğrulama genişliği. Oranların paydası verified yanıtlardır.</p>
-                </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div class="rounded-lg border border-gray-100 p-3">
-                    <p class="text-xs text-gray-500">Verified yanıtlar · claimler</p>
-                    <p id="researchBreadthVerified" class="text-lg font-semibold text-gray-800 mt-1">—</p>
-                </div>
-                <div class="rounded-lg border border-gray-100 p-3">
-                    <p class="text-xs text-gray-500">Yanıt başına unique supporting source</p>
-                    <p id="researchBreadthSourcesPerAnswer" class="text-lg font-semibold text-gray-800 mt-1">—</p>
-                </div>
-                <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                    <p class="text-xs text-amber-700">Single-source verified yanıtlar</p>
-                    <p id="researchBreadthSingleSource" class="text-lg font-semibold text-amber-800 mt-1">—</p>
-                </div>
-            </div>
-        </section>
-        <details id="researchRetrievalExperimentPanel" class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
-            <summary class="cursor-pointer font-semibold text-gray-700">Tanılama: Retrieval Deneyi <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-normal text-gray-500">staging only</span></summary>
-            <div class="mt-4 max-w-xl">
-                <div class="stat-card">
-                    <p class="text-gray-500 text-sm">Retrieval Deneyi</p>
-                    <p class="text-xs text-gray-500 mt-1">Yalnız staging. Candidate depth ve final sonuç hedefi ayrıdır.</p>
-                    <div class="grid grid-cols-1 gap-2 mt-3">
-                        <label class="text-xs text-gray-500">Mode
-                            <select id="researchRetrievalMode" class="mt-1 w-full border rounded px-2 py-1 text-sm">
-                                <option value="lexical">lexical</option><option value="semantic">semantic</option>
-                            </select>
-                        </label>
-                        <label class="text-xs text-gray-500">Lexical candidate depth
-                            <select id="researchLexicalCandidateDepth" class="mt-1 w-full border rounded px-2 py-1 text-sm">
-                                <option value="10">10</option><option value="20">20</option><option value="30">30</option><option value="50">50</option>
-                            </select>
-                        </label>
-                        <label class="text-xs text-gray-500">Final result target
-                            <select id="researchFinalResultTarget" class="mt-1 w-full border rounded px-2 py-1 text-sm">
-                                <option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option>
-                            </select>
-                        </label>
-                        <button type="button" id="researchRetrievalControlsSaveBtn" class="btn bg-blue-50 text-blue-700 border border-blue-200 text-xs">Kaydet</button>
-                    </div>
-                    <p id="researchRetrievalControlsSource" class="text-xs text-gray-400 mt-1"></p>
-                    <p id="researchRetrievalControlsStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
-                </div>
-            </div>
-        </details>
-        <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
-            <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
-                <div>
-                    <div class="flex items-center gap-2"><h4 class="font-semibold text-gray-800">Usage & Cost</h4><span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">content-free</span></div>
-                    <p class="text-xs text-gray-500 mt-1">Son 90 güne kadar Research operasyon özeti; sorgu/yanıt içeriği ve hash gösterilmez. Exact cost yalnız LLM + Discovery provider maliyetidir; checker hosting ayrı bir tahmindir ve exact toplama dahil edilmez.</p>
-                </div>
-                <div class="lg:ml-auto">
-                    <label for="researchUsageDays" class="block text-xs text-gray-500 mb-1">Dönem</label>
-                    <select id="researchUsageDays" class="border rounded px-3 py-2 text-sm bg-white">
-                        <option value="7">7 gün</option><option value="30" selected>30 gün</option><option value="90">90 gün</option>
-                    </select>
-                </div>
-            </div>
-            <div id="researchUsageMeta" class="text-xs text-gray-500 mb-3">Yükleniyor...</div>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Toplam istek</p><p id="researchUsageRequests" class="text-xl font-bold">—</p></div>
-                <div class="rounded-lg border border-emerald-100 bg-emerald-50/40 p-3"><p class="text-xs text-emerald-700">Verified yanıt</p><p id="researchUsageSuccessRate" class="text-xl font-bold text-emerald-700">—</p><p id="researchUsageSuccessCount" class="text-xs text-gray-500 mt-1">—</p></div>
-                <div class="rounded-lg border border-amber-100 bg-amber-50/40 p-3"><p class="text-xs text-amber-700">Geçerli boş / bulgu yok</p><p id="researchUsageValidEmptyRate" class="text-xl font-bold text-amber-700">—</p><p id="researchUsageValidEmptyCount" class="text-xs text-gray-500 mt-1">—</p></div>
-                <div class="rounded-lg border border-red-100 bg-red-50/40 p-3"><p class="text-xs text-red-700">Başarısız</p><p id="researchUsageFailureRate" class="text-xl font-bold text-red-700">—</p><p id="researchUsageFailureCount" class="text-xs text-gray-500 mt-1">—</p></div>
-                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Ort. latency</p><p id="researchUsageLatency" class="text-xl font-bold">—</p></div>
-                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Input token</p><p id="researchUsageInputTokens" class="text-xl font-bold">—</p></div>
-                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Output token</p><p id="researchUsageOutputTokens" class="text-xl font-bold">—</p></div>
-                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">LLM exact cost</p><p id="researchUsageLlmCost" class="text-xl font-bold">—</p></div>
-                <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Discovery exact cost</p><p id="researchUsageDiscoveryCost" class="text-xl font-bold">—</p></div>
-                <div class="rounded-lg border border-blue-100 bg-blue-50/30 p-3"><p class="text-xs text-blue-700">Exact total</p><p id="researchUsageExactCost" class="text-xl font-bold text-blue-800">—</p><p class="text-[11px] text-gray-500 mt-1">LLM + Discovery</p></div>
-            </div>
-            <div class="rounded-xl border border-gray-100 bg-gray-50/40 p-4 mb-5">
-                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 mb-4">
-                    <div><h5 class="font-semibold text-gray-800">Pipeline Funnel & Latency</h5><p class="text-xs text-gray-500 mt-1">Aynı pipeline'ın hacim ve süre görünümü; yalnız ulaşılan aşamalar latency hesabına girer.</p></div>
-                    <span class="text-[11px] text-gray-400">Discover → Evidence → Model → Grounding</span>
-                </div>
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                    <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Funnel</p><div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></div>
-                    <div class="xl:border-l xl:border-gray-200 xl:pl-5"><p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Stage latency</p><div id="researchUsageStageLatency" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></div>
-                </div>
-            </div>
-            <div class="border-t border-gray-100 pt-4">
-                <div class="flex items-center gap-1 mb-3" role="tablist" aria-label="Research usage breakdown">
-                    <button type="button" id="researchUsageInstitutionsTab" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
-                    <button type="button" id="researchUsageUsersTab" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
-                </div>
-                <div id="researchUsageInstitutionsPanel">
-                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
-                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
-                </div>
-                <div id="researchUsageUsersPanel" class="hidden" hidden>
-                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
-                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
-                </div>
-            </div>
-        </section>
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+  </div>
+</aside>
+</div>
+        
+        <section class="mt-8 pt-5 border-t border-slate-200" aria-label="Research diagnostics"><div class="mb-3"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <section class="bg-slate-50 rounded-xl border border-slate-200 p-4">
                 <h4 class="font-semibold text-gray-800 mb-3">Katman Bazlı Sonuçlar</h4>
                 <div id="researchLayerRows" class="divide-y divide-gray-100"><p class="text-sm text-gray-400 py-3">Yükleniyor...</p></div>
             </section>
-            <section class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
-                <h4 class="font-semibold text-gray-800 mb-3">Grounding / Checker Hataları</h4>
+            <section class="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                <h4 class="font-semibold text-gray-700 mb-3">Grounding / Checker Hataları</h4>
                 <div id="researchGroundingRows" class="divide-y divide-gray-100"><p class="text-sm text-gray-400 py-3">Yükleniyor...</p></div>
             </section>
+        </div></section>
+                </div>
         </div>
-    </div>
 
     <!-- Users Tab -->
     <div id="tab-users" class="tab-content hidden">
