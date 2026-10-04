@@ -246,6 +246,9 @@ export async function orchestrateResearchAnswer({
   const supportingEvidenceIds = new Set(
     grounding.acceptedClaims.flatMap((claim) => Array.isArray(claim?.evidence_ids) ? claim.evidence_ids : [])
   );
+  if (Number.isFinite(Number(grounding?.diagnostics?.support_check_ms))) {
+    diagnosticTimings.support_check_ms = Math.max(0, Math.trunc(Number(grounding.diagnostics.support_check_ms)));
+  }
   const diagnosticGrounding = {
     ...groundingDiagnosticSummary(grounding.rejectedClaims, claims.length),
     ...(grounding.diagnostics || {}),

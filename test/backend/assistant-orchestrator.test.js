@@ -347,6 +347,7 @@ describe('assistant orchestration boundary', () => {
       checked_count: 2,
       truncated_count: 1,
       support_check_limit: 2,
+      support_check_ms: expect.any(Number),
       rejection_counts: { SUPPORT_CHECK_BUDGET_TRUNCATED: 1 }
     });
   });

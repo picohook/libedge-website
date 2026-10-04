@@ -164,7 +164,7 @@ describe('assistant privacy-safe telemetry', () => {
     await recordAssistantOutcome({ ENVIRONMENT: 'staging', DB: { prepare, batch } }, {
       code: 'OK',
       durationMs: 100,
-      stageTimings: { discover_ms: 11, evidence_pack_ms: 2, model_ms: 34, grounding_ms: 51, query: 'private query' }
+      stageTimings: { discover_ms: 11, evidence_pack_ms: 2, model_ms: 34, grounding_ms: 51, support_check_ms: 47, query: 'private query' }
     });
     const binds = prepare.mock.results.map((result) => result.value.bind.mock.calls[0]).filter(Boolean);
     const metricAmounts = Object.fromEntries(binds.map((args) => [args[1], args[2]]));
@@ -174,7 +174,8 @@ describe('assistant privacy-safe telemetry', () => {
       assistant_discover_ms_total: 11,
       assistant_evidence_pack_ms_total: 2,
       assistant_model_ms_total: 34,
-      assistant_grounding_ms_total: 51
+      assistant_grounding_ms_total: 51,
+      assistant_support_check_ms_total: 47
     });
     expect(JSON.stringify(metricAmounts)).not.toContain('private query');
     spy.mockRestore();
@@ -190,6 +191,7 @@ describe('assistant privacy-safe telemetry', () => {
         evidence_pack_ms: 2,
         model_ms: 33.8,
         grounding_ms: 51,
+        support_check_ms: 47.2,
         query: 'private query',
         arbitrary_ms: 999
       }
@@ -199,7 +201,8 @@ describe('assistant privacy-safe telemetry', () => {
       discover_ms: 11,
       evidence_pack_ms: 2,
       model_ms: 34,
-      grounding_ms: 51
+      grounding_ms: 51,
+      support_check_ms: 47
     });
     expect(payload).not.toHaveProperty('query');
     expect(payload).not.toHaveProperty('arbitrary_ms');

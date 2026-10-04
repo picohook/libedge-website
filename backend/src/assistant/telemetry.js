@@ -53,7 +53,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     environment: String(env?.ENVIRONMENT || 'unknown')
   };
   const timings = stageTimings && typeof stageTimings === 'object' ? stageTimings : {};
-  for (const key of ['discover_ms', 'evidence_pack_ms', 'model_ms', 'grounding_ms']) {
+  for (const key of ['discover_ms', 'evidence_pack_ms', 'model_ms', 'grounding_ms', 'support_check_ms']) {
     const value = Number(timings[key]);
     if (Number.isFinite(value) && value >= 0) payload[key] = Math.round(value);
   }
@@ -101,7 +101,8 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
       ['discover_ms', 'assistant_discover_ms_total'],
       ['evidence_pack_ms', 'assistant_evidence_pack_ms_total'],
       ['model_ms', 'assistant_model_ms_total'],
-      ['grounding_ms', 'assistant_grounding_ms_total']
+      ['grounding_ms', 'assistant_grounding_ms_total'],
+      ['support_check_ms', 'assistant_support_check_ms_total']
     ]) {
       if (Object.hasOwn(payload, field)) timingMetrics.push([metric, payload[field]]);
     }

@@ -99,6 +99,7 @@ export async function validateGroundedClaims({ claims, evidencePack, supportChec
     structuralResults[position] = { claim, rejection: { ...claim, code: 'SUPPORT_CHECK_BUDGET_TRUNCATED' } };
   }
 
+  const supportCheckStartedAt = Date.now();
   const semanticResults = await mapWithConcurrency(
     checkable,
     SUPPORT_CHECK_CONCURRENCY,
@@ -117,6 +118,7 @@ export async function validateGroundedClaims({ claims, evidencePack, supportChec
       }
     }
   );
+  const supportCheckMs = Date.now() - supportCheckStartedAt;
 
   const semanticByPosition = new Map(semanticResults.map((result) => [result.position, result]));
   structuralResults.forEach((result, position) => {
@@ -129,6 +131,6 @@ export async function validateGroundedClaims({ claims, evidencePack, supportChec
     ok: rejectedClaims.length === 0,
     acceptedClaims,
     rejectedClaims,
-    diagnostics: { eligible_count: eligible.length, checked_count: checkable.length, truncated_count: truncated.length, support_check_limit: checkLimit }
+    diagnostics: { eligible_count: eligible.length, checked_count: checkable.length, truncated_count: truncated.length, support_check_limit: checkLimit, support_check_ms: supportCheckMs }
   };
 }
