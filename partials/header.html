@@ -277,8 +277,8 @@
 <!-- Login Modal -->
 <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
-        <button onclick="closeLoginModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-            <i class="fas fa-times"></i>
+        <button type="button" onclick="closeLoginModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Kapat">
+            <i class="fas fa-times" aria-hidden="true"></i>
         </button>
         <h2 class="text-2xl font-bold mb-4 text-primary translatable" data-en="Sign In">Giriş Yap</h2>
         <form id="loginForm" class="space-y-4">
@@ -305,8 +305,8 @@
 <!-- Forgot Password Modal -->
 <div id="forgotPasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg">
-        <button onclick="closeForgotPasswordModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-            <i class="fas fa-times"></i>
+        <button type="button" onclick="closeForgotPasswordModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Kapat">
+            <i class="fas fa-times" aria-hidden="true"></i>
         </button>
         <h2 class="text-2xl font-bold mb-2 text-primary translatable" data-en="Reset your password">Şifreyi sıfırla</h2>
         <p class="text-sm text-gray-600 mb-4 translatable" data-en="Enter your email address and we'll send you a link to reset your password.">E-posta adresinizi girin, şifre sıfırlama bağlantısı göndereceğiz.</p>
@@ -326,8 +326,8 @@
 <!-- Register Modal -->
 <div id="registerModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-6 max-w-md w-full relative shadow-lg max-h-[90vh] overflow-y-auto">
-        <button onclick="closeRegisterModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-            <i class="fas fa-times"></i>
+        <button type="button" onclick="closeRegisterModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" aria-label="Kapat">
+            <i class="fas fa-times" aria-hidden="true"></i>
         </button>
         <h2 class="text-2xl font-bold mb-4 text-primary translatable" data-en="Sign Up">Kayıt Ol</h2>
         <form id="registerForm" class="space-y-4">
