@@ -745,7 +745,8 @@
                 <i class="fas fa-rotate mr-2"></i>Yenile
             </button>
         </div>
-        <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-4"><span class="rounded-full bg-gray-100 px-2 py-0.5 font-medium">Bugün · UTC</span><span id="researchObservabilityMeta">Yükleniyor...</span><span id="researchObservabilityLastRefresh">son yenileme: —</span><span id="researchCheckerFreshness" class="hidden rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Checker altyapı kaydı eski</span></div>
+        <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-2"><span class="rounded-full bg-gray-100 px-2 py-0.5 font-medium">Bugün · UTC</span><span id="researchObservabilityMeta">Yükleniyor...</span><span id="researchObservabilityLastRefresh">son yenileme: —</span><span id="researchCheckerFreshness" class="hidden rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Checker altyapı kaydı eski</span><span class="rounded-full border border-slate-200 bg-white px-2 py-0.5">Altyapı: <strong id="researchCheckerInfrastructureBadge">Unknown</strong></span><span class="rounded-full border border-slate-200 bg-white px-2 py-0.5">Doğrulama: <strong id="researchCheckerVerificationBadge">Unknown</strong></span></div>
+        <div id="researchCheckerStateBanner" class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700" role="status">Fresh-Checker durumu yükleniyor…</div>
         <div id="researchOpsAlert" class="hidden mb-5 rounded-lg border p-4" role="status" aria-live="polite"></div>
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mb-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -5158,6 +5159,13 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             const checkerStateEl = document.getElementById('researchCheckerState');
             document.getElementById('researchCheckerInfrastructureState').textContent = infrastructureState;
             checkerStateEl.textContent = checker.status !== 'ok' ? 'Unknown' : checker.paused ? 'Paused' : infrastructureState === 'Available' ? 'Running' : 'Running · etkisiz';
+            const verificationState = checker.status !== 'ok' ? 'Unknown' : checker.paused ? 'Paused' : infrastructureState === 'Available' ? 'Running' : 'Running · etkisiz';
+            const infrastructureBadge = document.getElementById('researchCheckerInfrastructureBadge');
+            const verificationBadge = document.getElementById('researchCheckerVerificationBadge');
+            const stateBanner = document.getElementById('researchCheckerStateBanner');
+            if (infrastructureBadge) infrastructureBadge.textContent = infrastructureState;
+            if (verificationBadge) verificationBadge.textContent = verificationState;
+            if (stateBanner) stateBanner.textContent = `Fresh-Checker · Altyapı: ${infrastructureState} · Doğrulama: ${verificationState}`;
             checkerStateEl.classList.toggle('text-green-700', checker.status === 'ok' && !checker.paused && infrastructureState === 'Available');
             checkerStateEl.classList.toggle('text-gray-700', checker.status !== 'ok' || checker.paused || infrastructureState !== 'Available');
             const infrastructureDetail = document.getElementById('researchCheckerInfrastructureDetail');
@@ -5256,6 +5264,12 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             const resumeBtn = document.getElementById('researchCheckerResumeBtn');
             if (infrastructureStateEl) infrastructureStateEl.textContent = 'Unknown';
             if (verificationStateEl) verificationStateEl.textContent = 'Unknown';
+            const infrastructureBadge = document.getElementById('researchCheckerInfrastructureBadge');
+            const verificationBadge = document.getElementById('researchCheckerVerificationBadge');
+            const stateBanner = document.getElementById('researchCheckerStateBanner');
+            if (infrastructureBadge) infrastructureBadge.textContent = 'Unknown';
+            if (verificationBadge) verificationBadge.textContent = 'Unknown';
+            if (stateBanner) stateBanner.textContent = 'Fresh-Checker · Altyapı: Unknown · Doğrulama: Unknown';
             if (infrastructureDetailEl) infrastructureDetailEl.textContent = 'Infrastructure / pause store durumu okunamadı; güvenli olarak Unknown gösteriliyor.';
             if (resumeBtn) {
                 resumeBtn.disabled = true;
