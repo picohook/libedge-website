@@ -43,4 +43,45 @@ status="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name
 [[ "$status" == "InService" ]] || { echo "Endpoint did not reach InService" >&2; exit 1; }
 
 printf 'endpoint_name=%s\nendpoint_config_name=%s\nmodel_name=%s\nimmutable_image_uri=%s\ninstance_type=%s\ninitial_instance_count=%s\nstatus=%s\n' \
+  "$SAGEMAKER_ENDPOINT_NAME" "$SAGEMAKER_ENDPOINT_CONFIG_NAME" "$SAGEMAKER_MODEL_NAME" "$IMMUTABLE_IMAGE_URI" "$SAGEMAKER_INSTANCE_TYPE" "$SAGEMAKER_INITIAL_INSTANCE_COUNT" "$status"if aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" >/dev/null 2>&1; then
+  status="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" --query EndpointStatus --output text)"
+  [[ "$status" == "InService" ]] || { echo "Existing endpoint is not InService: $status. Run teardown before redeploy." >&2; exit 1; }
+  echo "Endpoint already exists; skipping creation and verifying invariants." >&2
+else
+  if aws sagemaker describe-model --region "$AWS_REGION" --model-name "$SAGEMAKER_MODEL_NAME" >/dev/null 2>&1 || \
+     aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$SAGEMAKER_ENDPOINT_CONFIG_NAME" >/dev/null 2>&1; then
+    echo "Partial staging deployment exists without endpoint. Run teardown before redeploy." >&2
+    exit 1
+  fi
+
+  aws sagemaker create-model \
+    --region "$AWS_REGION" \
+    --model-name "$SAGEMAKER_MODEL_NAME" \
+    --primary-container "Image=$IMMUTABLE_IMAGE_URI" \
+    --execution-role-arn "$SAGEMAKER_EXECUTION_ROLE_ARN" \
+    --enable-network-isolation >/dev/null
+model_isolation="$(aws sagemaker describe-model --region "$AWS_REGION" --model-name "$SAGEMAKER_MODEL_NAME" --query EnableNetworkIsolation --output text)"
+[[ "$model_isolation" == "True" || "$model_isolation" == "true" ]] || { echo "Model network isolation is not enabled; refusing endpoint creation" >&2; exit 1; }
+
+aws sagemaker create-endpoint-config \
+  --region "$AWS_REGION" \
+  --endpoint-config-name "$SAGEMAKER_ENDPOINT_CONFIG_NAME" \
+  --production-variants "VariantName=checker,ModelName=$SAGEMAKER_MODEL_NAME,InitialInstanceCount=$SAGEMAKER_INITIAL_INSTANCE_COUNT,InstanceType=$SAGEMAKER_INSTANCE_TYPE,InitialVariantWeight=1" >/dev/null
+
+capture_enabled="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$SAGEMAKER_ENDPOINT_CONFIG_NAME" --query 'DataCaptureConfig.EnableCapture' --output text)"
+
+[[ "$capture_enabled" == "None" || "$capture_enabled" == "null" || "$capture_enabled" == "False" || "$capture_enabled" == "false" ]] || { echo "Data Capture is enabled/uncertain; refusing endpoint creation" >&2; exit 1; }
+
+aws sagemaker create-endpoint \
+  --region "$AWS_REGION" \
+  --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" \
+  --endpoint-config-name "$SAGEMAKER_ENDPOINT_CONFIG_NAME" >/dev/null
+
+  aws sagemaker wait endpoint-in-service --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME"
+fi
+
+status="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" --query EndpointStatus --output text)"
+[[ "$status" == "InService" ]] || { echo "Endpoint did not reach InService" >&2; exit 1; }
+
+printf 'endpoint_name=%s\nendpoint_config_name=%s\nmodel_name=%s\nimmutable_image_uri=%s\ninstance_type=%s\ninitial_instance_count=%s\nstatus=%s\n' \
   "$SAGEMAKER_ENDPOINT_NAME" "$SAGEMAKER_ENDPOINT_CONFIG_NAME" "$SAGEMAKER_MODEL_NAME" "$IMMUTABLE_IMAGE_URI" "$SAGEMAKER_INSTANCE_TYPE" "$SAGEMAKER_INITIAL_INSTANCE_COUNT" "$status"
