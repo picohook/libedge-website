@@ -745,7 +745,7 @@
                 <i class="fas fa-rotate mr-2"></i>Yenile
             </button>
         </div>
-        <div id="researchObservabilityMeta" class="text-xs text-gray-500 mb-4">Yükleniyor...</div>
+        <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-4"><span id="researchObservabilityMeta">Yükleniyor...</span><span id="researchObservabilityLastRefresh">son yenileme: —</span></div>
         <div id="researchOpsAlert" class="hidden mb-5 rounded-lg border p-4" role="status" aria-live="polite"></div>
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mb-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -5137,6 +5137,8 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchBreadthSingleSource').textContent = verifiedAnswers > 0
                 ? `${singleSourceVerifiedAnswers.toLocaleString('tr-TR')} · %${((singleSourceVerifiedAnswers / verifiedAnswers) * 100).toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`
                 : `${singleSourceVerifiedAnswers.toLocaleString('tr-TR')} · —`;
+            const lastRefreshEl = document.getElementById('researchObservabilityLastRefresh');
+            if (lastRefreshEl) lastRefreshEl.textContent = 'son yenileme: şimdi';
             const infrastructure = checker.infrastructure || { state: 'unknown', stale: true };
             const infrastructureState = infrastructure.state === 'available' ? 'Available' : infrastructure.state === 'unavailable' ? 'Unavailable' : 'Unknown';
             const checkerStateEl = document.getElementById('researchCheckerState');
