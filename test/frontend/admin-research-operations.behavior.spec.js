@@ -64,6 +64,14 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unknown');
   await expect(research.locator('#researchOpsAlert')).toHaveAttribute('role', 'status');
+  await expect(research.getByText('Assistant Request Havuzu', { exact: true })).toBeVisible();
+  await expect(research.getByText('Gelişmiş kurum / B2C override')).toBeVisible();
+  await expect(research.locator('#researchUsageScopeId')).toBeHidden();
+  await expect(research.locator('#researchUsageScopePauseBtn')).toBeHidden();
+  await expect(research.locator('#researchUsageScopeOverrideDailyLimitInput')).toBeHidden();
+  await expect(research.locator('#researchUsageScopeSaveBtn')).toHaveText('Varsayılanı kaydet');
+  await expect(research.locator('#researchRetrievalExperimentPanel')).not.toHaveAttribute('open', '');
+  await expect(research.locator('#researchRetrievalMode')).toBeHidden();
 
   const institutionHeaders = await research.locator('#researchUsageInstitutions').locator('xpath=ancestor::table/thead').innerText();
   expect(institutionHeaders).toContain('Verified');
@@ -111,5 +119,52 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerState')).toHaveText('Paused');
   await expect(research.locator('#researchCheckerResumeBtn')).toBeEnabled();
   await expect(research.locator('#researchCheckerInfrastructureDetail')).toContainText('Paused by operator');
+
+  await page.route('**/api/admin/system-health', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      status: 'healthy', environment: 'staging',
+      research_telemetry: { snapshot: { date_utc: '2026-10-04', metrics: {} } },
+      support_check: {
+        status: 'ok', paused: false, pause_reason: null,
+        daily_invocations_used: 0, daily_invocation_limit: 100, daily_invocation_limit_source: 'env',
+        infrastructure: { state: 'available', stale: false, published_at: new Date().toISOString(), instance_type: 'ml.m5.large', instance_count: 1 },
+      },
+    }) });
+  });
+  await research.locator('#researchObservabilityRefreshBtn').click();
+  await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Available');
+  await expect(research.locator('#researchCheckerState')).toHaveText('Running');
+  await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
+  await page.route('**/api/admin/system-health', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      status: 'healthy', environment: 'staging',
+      research_telemetry: { snapshot: { date_utc: '2026-10-04', metrics: {} } },
+      support_check: {
+        status: 'ok', paused: false, pause_reason: null,
+        daily_invocations_used: 0, daily_invocation_limit: 100, daily_invocation_limit_source: 'env',
+        infrastructure: { state: 'unavailable', stale: false, published_at: new Date().toISOString(), instance_type: null, instance_count: null },
+      },
+    }) });
+  });
+  await research.locator('#researchObservabilityRefreshBtn').click();
+  await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unavailable');
+  await expect(research.locator('#researchCheckerState')).toHaveText('Running · etkisiz');
+  await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
+
+  await page.route('**/api/admin/system-health', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      status: 'healthy', environment: 'staging',
+      research_telemetry: { snapshot: { date_utc: '2026-10-04', metrics: {} } },
+      support_check: {
+        status: 'ok', paused: false, pause_reason: null,
+        daily_invocations_used: 0, daily_invocation_limit: 100, daily_invocation_limit_source: 'env',
+        infrastructure: { state: 'unknown', stale: false, published_at: null, instance_type: null, instance_count: null },
+      },
+    }) });
+  });
+  await research.locator('#researchObservabilityRefreshBtn').click();
+  await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unknown');
+  await expect(research.locator('#researchCheckerState')).toHaveText('Running · etkisiz');
+  await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
 
 });
