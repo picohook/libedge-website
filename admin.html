@@ -750,8 +750,8 @@
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mb-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-4"><p class="text-gray-500 text-sm">Assistant İstekleri</p><p id="researchAssistantRequests" class="text-2xl font-bold mt-2">—</p></div>
-            <div class="rounded-xl bg-emerald-50/60 border border-emerald-100 p-4"><p class="text-emerald-700 text-sm">Verified Yanıtlar</p><p id="researchAssistantOk" class="text-2xl font-bold mt-2">—</p></div>
-            <div class="rounded-xl bg-amber-50/60 border border-amber-100 p-4"><p class="text-amber-700 text-sm">Grounding Reddi</p><p id="researchGroundingRejected" class="text-2xl font-bold mt-2">—</p></div>
+            <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-4"><p class="text-emerald-700 text-sm">Verified Yanıtlar</p><p id="researchAssistantOk" class="text-2xl font-bold mt-2">—</p></div>
+            <div class="rounded-xl bg-amber-50 border border-amber-100 p-4"><p class="text-amber-700 text-sm">Grounding Reddi</p><p id="researchGroundingRejected" class="text-2xl font-bold mt-2">—</p></div>
             </div>
         </div>
         
@@ -784,8 +784,8 @@
                 </div>
             </div>
         </details>
-<div id="researchPrimaryWorkspace" class="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start mb-6">
-<section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
+<div id="researchPrimaryWorkspace" class="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start mb-6">
+<section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 xl:col-span-2">
             <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
                 <div>
                     <div class="flex items-center gap-2"><h4 class="font-semibold text-gray-800">Usage & Cost</h4><span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">content-free</span></div>
@@ -811,7 +811,7 @@
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Discovery exact cost</p><p id="researchUsageDiscoveryCost" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-blue-100 bg-blue-50/30 p-3"><p class="text-xs text-blue-700">Exact total</p><p id="researchUsageExactCost" class="text-xl font-bold text-blue-800">—</p><p class="text-[11px] text-gray-500 mt-1">LLM + Discovery</p></div>
             </div>
-<section id="researchVerificationBreadth" class="rounded-xl border border-slate-200 bg-slate-50/60 p-4 mb-5">
+<section id="researchVerificationBreadth" class="rounded-xl border border-slate-200 bg-slate-50 p-4 mb-5">
             <div class="flex items-center justify-between gap-3 mb-4">
                 <div>
                     <h5 class="font-semibold text-gray-800">Verification Breadth</h5>
@@ -858,10 +858,10 @@
                 </div>
             </div>
         </section>
-<aside id="researchOperationalControls" class="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 sm:p-5 self-start">
-  <div class="mb-4"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-500">Operational Controls</p><h4 class="font-semibold text-slate-900 mt-1">Güvenli müdahale</h4><p class="text-xs text-slate-500 mt-1">İzleme alanından ayrı; staging operasyon kontrolleri.</p></div>
+<aside id="researchOperationalControls" class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 sm:p-5">
+  <div class="mb-4"><p class="text-[11px] font-semibold uppercase tracking-wide text-indigo-500">Operational Controls</p><h4 class="font-semibold text-gray-900 mt-1">Güvenli müdahale</h4><p class="text-xs text-slate-500 mt-1">İzleme alanından ayrı; staging operasyon kontrolleri.</p></div>
   <div class="space-y-4">
-    <div class="rounded-xl border border-white/80 bg-white p-4 shadow-sm">
+    <div class="rounded-xl border border-white bg-white p-4 shadow-sm">
                 <p class="text-gray-500 text-sm">Checker Durumu</p>
                 <div class="mt-2 space-y-1">
                     <p class="text-xs text-gray-500">Endpoint: <span id="researchCheckerInfrastructureState" class="font-semibold text-gray-700">Unknown</span></p>
@@ -882,7 +882,7 @@
                 <p id="researchCheckerLimitSource" class="text-xs text-gray-400 mt-1"></p>
                 <p id="researchCheckerActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
             </div>
-    <div class="rounded-xl border border-white/80 bg-white p-4 shadow-sm">
+    <div class="rounded-xl border border-white bg-white p-4 shadow-sm">
                 <p class="text-gray-500 text-sm">Assistant Request Havuzu</p>
                 <p class="text-xs text-gray-500 mt-1">Varsayılan günlük request limiti ana kontroldür. Checker çağrı limiti bundan ayrıdır.</p>
                 <div class="grid grid-cols-1 gap-2 mt-3">
@@ -929,7 +929,7 @@
 </aside>
 </div>
         
-        <section class="mt-8 pt-5 border-t border-slate-200" aria-label="Research diagnostics"><div class="mb-3"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <section class="mt-8 pt-5 border-t border-slate-200" aria-label="Research diagnostics"><div class="mb-3"><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <section class="bg-slate-50 rounded-xl border border-slate-200 p-4">
                 <h4 class="font-semibold text-gray-800 mb-3">Katman Bazlı Sonuçlar</h4>
                 <div id="researchLayerRows" class="divide-y divide-gray-100"><p class="text-sm text-gray-400 py-3">Yükleniyor...</p></div>
@@ -11333,7 +11333,7 @@ async function loadSupport() {
         }
 
         tbody.innerHTML = data.map((t) => `
-            <tr id="support-row-${t.id}" class="hover:bg-gray-50 cursor-pointer support-row ${t.has_unread_user_reply ? 'bg-amber-50/60' : ''}" data-ticket-id="${t.id}">
+            <tr id="support-row-${t.id}" class="hover:bg-gray-50 cursor-pointer support-row ${t.has_unread_user_reply ? 'bg-amber-50' : ''}" data-ticket-id="${t.id}">
                 <td class="text-gray-400">#${t.id}</td>
                 <td class="font-medium max-w-xs truncate">${escapeHtml(t.subject)}</td>
                 <td>${escapeHtml(t.user_name || t.user_email || '')}</td>
@@ -11383,7 +11383,7 @@ async function openSupportModal(id) {
 
     const row = document.getElementById(`support-row-${id}`);
     row?.querySelector('[data-unread-marker]')?.remove();
-    row?.classList.remove('bg-amber-50/60');
+    row?.classList.remove('bg-amber-50');
 
     try {
         const res = await fetch(`${API_BASE}/api/admin/support/tickets/${id}`, { credentials: 'include' });
