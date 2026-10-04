@@ -812,7 +812,7 @@
                     <span class="text-[11px] text-gray-400">Discover → Evidence → Model → Grounding</span>
                 </div>
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Discover → Evidence → Model → Grounding → Verified</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2" lang="en">Discover → Evidence → Model → Grounding → Verified</p>
                     <div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
                 </div>
             </div>
@@ -9292,7 +9292,7 @@ function instFilesRender(folderFilter, fileFilter) {
         const selectableCheckbox = isSelect ? `<input type="checkbox" class="ift-file-cb touch-checkbox flex-shrink-0" data-id="${f.id}" data-name="${escapeHtml(name)}">` : '';
         const nameHtml = `<a href="javascript:void(0)"
                class="inst-file-preview font-medium text-primary hover:underline text-sm truncate block">${escapeHtml(name)}${isNew ? ' <span class="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded-full font-normal align-middle ml-1">Yeni</span>' : ''}</a>`;
-        const metaHtml = `<span class="text-xs text-gray-400 uppercase">${ext}</span>`;
+        const metaHtml = `<span class="text-xs text-gray-400 uppercase" lang="en">${ext}</span>`;
         const actionsHtml = !isSelect ? `
             <div class="flex items-center gap-2 ml-1 flex-shrink-0">
                 <button type="button" class="inst-file-send-btn touch-target text-blue-400 hover:text-blue-600 flex items-center justify-center" title="Kişilere Gönder"><i class="fas fa-paper-plane text-sm"></i></button>
