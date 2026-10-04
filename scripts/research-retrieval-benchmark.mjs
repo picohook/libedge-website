@@ -27,7 +27,7 @@ try {
   for (const config of CONFIGS) {
     await setControls(config);
     for (const candidate of CASES) {
-      const costBefore = await usageSummary();
+      const beforeRequestId = await latestRequestId(userId);
       const response = await fetch(`${BASE_URL}/api/assistant/ask`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie: cookieHeader(userCookies) },
@@ -36,8 +36,7 @@ try {
       });
       const body = await response.json();
       if (response.status !== 200) throw new Error(`${config.name}/${candidate.name} HTTP ${response.status}`);
-      const request = await latestRequest(userId);
-      const costAfter = await usageSummary();
+      const request = await latestNewRequest(userId, beforeRequestId);
       const verification = body?.research_summary?.verification || {};
       const supporting = new Set(
         (Array.isArray(body?.claims) ? body.claims : [])
@@ -58,7 +57,7 @@ try {
         unique_supporting_source_count: supporting.size,
         discover_ms: request.stage_latency_ms?.discover ?? null,
         total_latency_ms: request.latency_ms ?? null,
-        discovery_cost_usd: deltaCost(costBefore.discovery_cost_usd, costAfter.discovery_cost_usd)
+        discovery_cost_usd: finiteOrNull(request.discovery_cost_usd)
       }));
     }
   }
@@ -94,10 +93,6 @@ async function setControls(config) {
     throw new Error('retrieval control read-back mismatch');
   }
 }
-async function usageSummary() {
-  const body = await adminJson('/api/admin/research/usage?days=1');
-  return body.summary || body;
-}
 async function smokeUserId() {
   const body = await adminJson('/api/admin/research/usage?days=30');
   const row = (body.users || []).find((item) => String(item.email || '').toLowerCase() === EMAIL.toLowerCase());
@@ -105,9 +100,13 @@ async function smokeUserId() {
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('smoke user not found in Research usage');
   return id;
 }
-async function latestRequest(userId) {
+async function latestRequestId(userId) {
   const body = await adminJson(`/api/admin/research/usage/requests?user_id=${userId}&days=1&limit=1`);
-  const request = body.requests?.[0];
+  return body.requests?.[0]?.request_id || null;
+}
+async function latestNewRequest(userId, beforeRequestId) {
+  const body = await adminJson(`/api/admin/research/usage/requests?user_id=${userId}&days=1&limit=5`);
+  const request = (body.requests || []).find((row) => row.request_id !== beforeRequestId);
   if (!request) throw new Error('benchmark request drilldown missing');
   return request;
 }
@@ -121,11 +120,9 @@ async function adminJson(path, init = {}) {
   if (!response.ok) throw new Error(`${path} failed: ${response.status}`);
   return body;
 }
-function deltaCost(before, after) {
-  const a = Number(after);
-  const b = Number(before);
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
-  return Number(Math.max(0, a - b).toFixed(8));
+function finiteOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
 }
 function countOrNull(value) {
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
