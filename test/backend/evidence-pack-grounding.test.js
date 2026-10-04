@@ -256,7 +256,7 @@ describe('grounding validator', () => {
 
 
   it('preserves evidence-side language rejection through grounding validation', async () => {
-    const evidencePack = createEvidencePack([{ id: 'e1', title: 'Paper', abstract: 'Evidence text.' }]);
+    const evidencePack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-language-evidence' });
     const evidenceId = evidencePack.evidence[0].evidence_id;
     const result = await validateGroundedClaims({
       claims: [{ text: 'Claim text.', evidence_ids: [evidenceId] }],
