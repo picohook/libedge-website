@@ -816,6 +816,28 @@
                 <p id="researchUsageScopeActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
             </div>
         </div>
+        <section id="researchVerificationBreadth" class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <div>
+                    <h4 class="font-semibold text-gray-800">Verification Breadth</h4>
+                    <p class="text-xs text-gray-500 mt-1">Yalnız aggregate, content-free doğrulama genişliği. Oranların paydası verified yanıtlardır.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="rounded-lg border border-gray-100 p-3">
+                    <p class="text-xs text-gray-500">Verified yanıtlar · claimler</p>
+                    <p id="researchBreadthVerified" class="text-lg font-semibold text-gray-800 mt-1">—</p>
+                </div>
+                <div class="rounded-lg border border-gray-100 p-3">
+                    <p class="text-xs text-gray-500">Yanıt başına unique supporting source</p>
+                    <p id="researchBreadthSourcesPerAnswer" class="text-lg font-semibold text-gray-800 mt-1">—</p>
+                </div>
+                <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p class="text-xs text-amber-700">Single-source verified yanıtlar</p>
+                    <p id="researchBreadthSingleSource" class="text-lg font-semibold text-amber-800 mt-1">—</p>
+                </div>
+            </div>
+        </section>
         <details id="researchRetrievalExperimentPanel" class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
             <summary class="cursor-pointer font-semibold text-gray-700">Tanılama: Retrieval Deneyi <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-normal text-gray-500">staging only</span></summary>
             <div class="mt-4 max-w-xl">
@@ -5104,6 +5126,17 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchAssistantRequests').textContent = Number(metrics.assistant_requests || 0).toLocaleString('tr-TR');
             document.getElementById('researchAssistantOk').textContent = Number(metrics.assistant_outcome_ok || 0).toLocaleString('tr-TR');
             document.getElementById('researchGroundingRejected').textContent = Number(metrics.assistant_outcome_grounding_rejected || 0).toLocaleString('tr-TR');
+            const verifiedAnswers = Number(metrics.assistant_outcome_ok || 0);
+            const verifiedClaims = Number(metrics.assistant_verified_claims_total || 0);
+            const uniqueSupportingSources = Number(metrics.assistant_unique_supporting_sources_total || 0);
+            const singleSourceVerifiedAnswers = Number(metrics.assistant_single_source_verified_answers || 0);
+            document.getElementById('researchBreadthVerified').textContent = `${verifiedAnswers.toLocaleString('tr-TR')} yanıt · ${verifiedClaims.toLocaleString('tr-TR')} claim`;
+            document.getElementById('researchBreadthSourcesPerAnswer').textContent = verifiedAnswers > 0
+                ? (uniqueSupportingSources / verifiedAnswers).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : '—';
+            document.getElementById('researchBreadthSingleSource').textContent = verifiedAnswers > 0
+                ? `${singleSourceVerifiedAnswers.toLocaleString('tr-TR')} · %${((singleSourceVerifiedAnswers / verifiedAnswers) * 100).toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`
+                : `${singleSourceVerifiedAnswers.toLocaleString('tr-TR')} · —`;
             const infrastructure = checker.infrastructure || { state: 'unknown', stale: true };
             const infrastructureState = infrastructure.state === 'available' ? 'Available' : infrastructure.state === 'unavailable' ? 'Unavailable' : 'Unknown';
             const checkerStateEl = document.getElementById('researchCheckerState');
