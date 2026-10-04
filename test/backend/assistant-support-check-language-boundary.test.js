@@ -24,7 +24,8 @@ describe('D-023 supportCheck language boundary', () => {
   ])('fails closed for %s input', (_label, text) => {
     expect(supportCheckLanguageBoundary({ text }, [])).toEqual({
       authorized: false,
-      reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED'
+      reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED',
+      source: 'claim'
     });
   });
 
@@ -32,6 +33,13 @@ describe('D-023 supportCheck language boundary', () => {
     expect(supportCheckLanguageBoundary(
       { text: 'The catalyst improves hydrogen evolution.' },
       [{ title: 'Çalışma', abstract: 'Katalizör aktiviteyi artırdı.' }]
-    ).authorized).toBe(false);
+    )).toEqual({ authorized: false, reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED', source: 'evidence' });
+  });
+
+  it('identifies accented evidence as the evidence-side rejection without exposing content', () => {
+    expect(supportCheckLanguageBoundary(
+      { text: 'The archive contains correspondence from the period.' },
+      [{ title: 'José Martínez archive study', abstract: 'The archive contains correspondence and catalog records.' }]
+    )).toEqual({ authorized: false, reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED', source: 'evidence' });
   });
 });
