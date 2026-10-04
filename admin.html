@@ -901,7 +901,8 @@
 </aside>
 </div>
         
-        <section class="mt-8 pt-6 border-t border-slate-200" aria-label="Research diagnostics">\n<details id="researchRetrievalExperimentPanel" class="bg-slate-50 rounded-xl border border-slate-200 p-4 mb-4 text-sm">
+        <section class="mt-8 pt-6 border-t border-slate-200" aria-label="Research diagnostics">
+<details id="researchRetrievalExperimentPanel" class="bg-slate-50 rounded-xl border border-slate-200 p-4 mb-4 text-sm">
             <summary class="cursor-pointer font-semibold text-gray-700">Tanılama: Retrieval Deneyi <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-normal text-gray-500">staging only</span></summary>
             <div class="mt-4 max-w-xl">
                 <div class="stat-card">
@@ -929,7 +930,8 @@
                     <p id="researchRetrievalControlsStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
                 </div>
             </div>
-        </details>\n<div class="mb-3"><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400" lang="en">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        </details>
+<div class="mb-3"><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400" lang="en">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <section class="bg-slate-50 rounded-xl border border-slate-200 p-4">
                 <h4 class="font-semibold text-gray-800 mb-3">Katman Bazlı Sonuçlar</h4>
                 <div id="researchLayerRows" class="divide-y divide-gray-100"><p class="text-sm text-gray-400 py-3">Yükleniyor...</p></div>
@@ -7267,12 +7269,15 @@ async function _exportCsv(url, extractFn, columns, filename) {
 
         const escape = (v) => {
             const s = v == null ? '' : String(v);
-            return s.includes(',') || s.includes('"') || s.includes('\n')
+            return s.includes(',') || s.includes('"') || s.includes('
+')
                 ? `"${s.replace(/"/g, '""')}"` : s;
         };
         const header = columns.join(',');
-        const body   = rows.map(r => columns.map(c => escape(r[c])).join(',')).join('\n');
-        const csv    = '﻿' + header + '\n' + body; // BOM for Excel UTF-8
+        const body   = rows.map(r => columns.map(c => escape(r[c])).join(',')).join('
+');
+        const csv    = '﻿' + header + '
+' + body; // BOM for Excel UTF-8
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -8852,7 +8857,8 @@ function showBulkUserStep2() {
 
 function parseBulkUsers() {
     const raw = document.getElementById('bulkUserPasteArea').value;
-    const lines = raw.split('\n').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
+    const lines = raw.split('
+').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
     if (!lines.length) return;
 
     const isSuper = currentAdmin?.role === 'super_admin';
@@ -8961,7 +8967,11 @@ async function submitBulkUsers() {
     }
 
     let summary = `Tamamlandı: ${ok} eklendi.`;
-    if (errors.length) summary += `\n\nBaşarısız (${errors.length}):\n` + errors.join('\n');
+    if (errors.length) summary += `
+
+Başarısız (${errors.length}):
+` + errors.join('
+');
     statusEl.textContent = summary;
     btn.disabled = false;
     loadUsers();
@@ -10916,7 +10926,8 @@ function showBulkStep2() {
 
 function parseBulkPaste() {
     const raw = document.getElementById('bulkPasteArea').value;
-    const lines = raw.split('\n').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
+    const lines = raw.split('
+').map(l => l.trimEnd()).filter(l => l.trim().length > 0);
     if (!lines.length) return;
 
     const validCategories = INSTITUTION_CATEGORIES.map(c => c.value);
