@@ -27,7 +27,7 @@ function groundingDiagnosticSummary(rejectedClaims = [], totalClaims = 0) {
       const reasonKey = `CLAIM_UNSUPPORTED_${reason}`;
       counts[reasonKey] = (counts[reasonKey] || 0) + 1;
     }
-    if (key === 'SUPPORT_CHECK_FAILED' && /^(TIMEOUT|BUDGET|LANGUAGE|PIN_OR_RESPONSE|TRANSPORT_OR_OTHER)$/.test(reason)) {
+    if (key === 'SUPPORT_CHECK_FAILED' && /^(TIMEOUT|BUDGET|LANGUAGE|LANGUAGE_CLAIM|LANGUAGE_EVIDENCE|PIN_OR_RESPONSE|TRANSPORT_OR_OTHER)$/.test(reason)) {
       const reasonKey = `SUPPORT_CHECK_FAILED_${reason}`;
       counts[reasonKey] = (counts[reasonKey] || 0) + 1;
     }

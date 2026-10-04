@@ -42,6 +42,10 @@ function supportCheckFailureReason(error) {
   const name = String(error?.name || '').trim();
   if (name === 'AbortError' || /abort|timeout/i.test(message)) return 'TIMEOUT';
   if (/^(INVOCATION_LIMIT_REQUIRED|INVOCATION_BUDGET_(STORE_UNAVAILABLE|INVALID|EXHAUSTED|STORE_FAILED))$/.test(message)) return 'BUDGET';
+  if (message === 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED_CLAIM') return 'LANGUAGE_CLAIM';
+  if (message === 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED_EVIDENCE') return 'LANGUAGE_EVIDENCE';
+  if (message === 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED_CLAIM') return 'LANGUAGE_CLAIM';
+  if (message === 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED_EVIDENCE') return 'LANGUAGE_EVIDENCE';
   if (/^SUPPORT_CHECK_LANGUAGE_/.test(message)) return 'LANGUAGE';
   if (/^SUPPORT_CHECK_(MODEL_MISMATCH|REVISION_MISMATCH|MANIFEST_MISMATCH|INVALID_DECISION|INVALID_RESULT)$/.test(message)) return 'PIN_OR_RESPONSE';
   if (name === 'ModelError') return 'TRANSPORT_MODEL_ERROR';

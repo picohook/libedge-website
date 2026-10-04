@@ -14,21 +14,22 @@ function hasUnauthorizedNonAsciiLetter(value) {
   return false;
 }
 
-export function supportCheckLanguageBoundary(claim, evidence = []) {
-  const text = [
-    claim?.text,
-    ...evidence.flatMap((item) => [item?.title, item?.abstract])
-  ].filter(Boolean).join(' ').trim();
-
-  if (!text || !ASCII_LETTER.test(text)) {
-    return { authorized: false, reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED' };
+function boundaryResult(text, source) {
+  if (!text || !ASCII_LETTER.test(text) || hasUnauthorizedNonAsciiLetter(text)) {
+    return { authorized: false, reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED', source };
   }
+  return { authorized: true, language: 'en' };
+}
 
-  // D-023 authorizes English only. Do not equate harmless academic Unicode
-  // with non-English prose, while continuing to fail closed for non-ASCII
-  // natural-language letters outside the narrowly allowlisted notation above.
-  if (hasUnauthorizedNonAsciiLetter(text)) {
-    return { authorized: false, reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED' };
+export function supportCheckLanguageBoundary(claim, evidence = []) {
+  const claimResult = boundaryResult(String(claim?.text || '').trim(), 'claim');
+  if (!claimResult.authorized) return claimResult;
+
+  for (const item of evidence) {
+    const evidenceText = [item?.title, item?.abstract].filter(Boolean).join(' ').trim();
+    if (!evidenceText) continue;
+    const evidenceResult = boundaryResult(evidenceText, 'evidence');
+    if (!evidenceResult.authorized) return evidenceResult;
   }
 
   return { authorized: true, language: 'en' };
