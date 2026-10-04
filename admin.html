@@ -845,10 +845,10 @@
             </div>
             <div class="border-t border-gray-100 pt-4">
                 <div class="flex items-center gap-1 mb-3" role="tablist" aria-label="Research usage breakdown">
-                    <button type="button" id="researchUsageInstitutionsTab" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
-                    <button type="button" id="researchUsageUsersTab" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageInstitutionsTab" role="tab" aria-controls="researchUsageInstitutionsPanel" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageUsersTab" role="tab" aria-controls="researchUsageUsersPanel" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
                 </div>
-                <div id="researchUsageInstitutionsPanel">
+                <div id="researchUsageInstitutionsPanel" role="tabpanel" aria-labelledby="researchUsageInstitutionsTab">
                     <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
                     <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
                 </div>
