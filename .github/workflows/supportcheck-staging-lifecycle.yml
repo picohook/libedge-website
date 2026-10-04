@@ -40,6 +40,7 @@ jobs:
           node-version: '22'
 
       - name: Validate staging-only confirmation
+        id: confirm
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
@@ -81,6 +82,8 @@ jobs:
           test "$image" = "$EXPECTED_IMAGE_URI" || { echo "::error::Checker image does not match the approved staging digest"; exit 1; }
           instance_type="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$config" --query 'ProductionVariants[0].InstanceType' --output text)"
           instance_count="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" --query 'ProductionVariants[0].CurrentInstanceCount' --output text)"
+          test "$instance_type" = "$SAGEMAKER_INSTANCE_TYPE" || { echo "::error::Unexpected staging checker instance type: $instance_type"; exit 1; }
+          [[ "$instance_count" =~ ^[12]$ ]] || { echo "::error::Staging checker instance count is outside bounded range 1..2: $instance_count"; exit 1; }
           printf 'OBSERVED_INSTANCE_TYPE=%s\nOBSERVED_INSTANCE_COUNT=%s\n' "$instance_type" "$instance_count" >> "$GITHUB_ENV"
 
       - name: Teardown staging checker
@@ -88,7 +91,7 @@ jobs:
         run: bash scripts/supportcheck-delete-sagemaker.sh
 
       - name: Publish content-free infrastructure state
-        if: always()
+        if: always() && steps.confirm.outcome == 'success'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -98,9 +101,11 @@ jobs:
             if [ "${{ inputs.action }}" = "teardown" ]; then state=unavailable; else state=available; fi
           fi
           published_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          instance_type="${OBSERVED_INSTANCE_TYPE:-$SAGEMAKER_INSTANCE_TYPE}"
-          instance_count="${OBSERVED_INSTANCE_COUNT:-$SAGEMAKER_INITIAL_INSTANCE_COUNT}"
-          payload="$(printf '{"state":"%s","published_at":"%s","source":"staging-lifecycle-workflow","instance_type":"%s","instance_count":%s}' "$state" "$published_at" "$instance_type" "$instance_count")"
+          if [ -n "${OBSERVED_INSTANCE_TYPE:-}" ] && [ -n "${OBSERVED_INSTANCE_COUNT:-}" ]; then
+            payload="$(printf '{"state":"%s","published_at":"%s","source":"staging-lifecycle-workflow","instance_type":"%s","instance_count":%s}' "$state" "$published_at" "$OBSERVED_INSTANCE_TYPE" "$OBSERVED_INSTANCE_COUNT")"
+          else
+            payload="$(printf '{"state":"%s","published_at":"%s","source":"staging-lifecycle-workflow","instance_type":null,"instance_count":null}' "$state" "$published_at")"
+          fi
           if ! npx --yes wrangler@4.131.1 kv key put --binding RATE_LIMIT_KV --env staging --remote "assistant:supportcheck:infrastructure-state" "$payload"; then
             echo "::error::Checker lifecycle completed but infrastructure state was NOT published to staging KV."
             exit 1
