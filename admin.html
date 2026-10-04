@@ -745,7 +745,7 @@
                 <i class="fas fa-rotate mr-2"></i>Yenile
             </button>
         </div>
-        <div class="flex items-center gap-2 text-xs text-gray-500 mb-4"><span class="rounded-full bg-gray-100 px-2 py-0.5 font-medium">Bugün · UTC</span><span id="researchObservabilityMeta">Yükleniyor...</span></div>
+        <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-4"><span class="rounded-full bg-gray-100 px-2 py-0.5 font-medium">Bugün · UTC</span><span id="researchObservabilityMeta">Yükleniyor...</span><span id="researchCheckerFreshness" class="hidden rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Checker altyapı kaydı eski</span></div>
         <div id="researchOpsAlert" class="hidden mb-5 rounded-lg border p-4" role="status" aria-live="polite"></div>
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mb-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -5142,6 +5142,8 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 : `${singleSourceVerifiedAnswers.toLocaleString('tr-TR')} · —`;
             const infrastructure = checker.infrastructure || { state: 'unknown', stale: true };
             const infrastructureState = infrastructure.state === 'available' ? 'Available' : infrastructure.state === 'unavailable' ? 'Unavailable' : 'Unknown';
+            const freshnessEl = document.getElementById('researchCheckerFreshness');
+            if (freshnessEl) freshnessEl.classList.toggle('hidden', !infrastructure.stale);
             const checkerStateEl = document.getElementById('researchCheckerState');
             document.getElementById('researchCheckerInfrastructureState').textContent = infrastructureState;
             checkerStateEl.textContent = checker.status !== 'ok' ? 'Unknown' : checker.paused ? 'Paused' : infrastructureState === 'Available' ? 'Running' : 'Running · etkisiz';
