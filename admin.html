@@ -864,11 +864,19 @@
                     <div class="xl:border-l xl:border-gray-200 xl:pl-5"><p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Stage latency</p><div id="researchUsageStageLatency" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div></div>
                 </div>
             </div>
-            <div class="space-y-6">
-                <div><div class="flex items-center justify-between mb-2"><h5 class="font-semibold text-gray-800">Kurum Bazlı Kullanım</h5><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
-                <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div></div>
-                <div><div class="flex items-center justify-between mb-2"><h5 class="font-semibold text-gray-800">Kişi Bazlı Kullanım</h5><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
-                <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div></div>
+            <div class="border-t border-gray-100 pt-4">
+                <div class="flex items-center gap-1 mb-3" role="tablist" aria-label="Research usage breakdown">
+                    <button type="button" id="researchUsageInstitutionsTab" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageUsersTab" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
+                </div>
+                <div id="researchUsageInstitutionsPanel">
+                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
+                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                </div>
+                <div id="researchUsageUsersPanel" class="hidden">
+                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
+                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                </div>
             </div>
         </section>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -5194,6 +5202,22 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
 
     document.getElementById('researchObservabilityRefreshBtn')?.addEventListener('click', () => { loadResearchObservability(); loadResearchRetrievalControls(); });
     document.getElementById('researchRetrievalControlsSaveBtn')?.addEventListener('click', setResearchRetrievalControls);
+    function setResearchUsageBreakdownTab(tab) {
+        const institutions = tab !== 'users';
+        document.getElementById('researchUsageInstitutionsPanel')?.classList.toggle('hidden', !institutions);
+        document.getElementById('researchUsageUsersPanel')?.classList.toggle('hidden', institutions);
+        const institutionTab = document.getElementById('researchUsageInstitutionsTab');
+        const userTab = document.getElementById('researchUsageUsersTab');
+        [institutionTab, userTab].forEach((button) => button?.classList.remove('bg-gray-900', 'text-white'));
+        [institutionTab, userTab].forEach((button) => button?.classList.add('text-gray-600'));
+        const active = institutions ? institutionTab : userTab;
+        active?.classList.add('bg-gray-900', 'text-white');
+        active?.classList.remove('text-gray-600');
+        institutionTab?.setAttribute('aria-selected', institutions ? 'true' : 'false');
+        userTab?.setAttribute('aria-selected', institutions ? 'false' : 'true');
+    }
+    document.getElementById('researchUsageInstitutionsTab')?.addEventListener('click', () => setResearchUsageBreakdownTab('institutions'));
+    document.getElementById('researchUsageUsersTab')?.addEventListener('click', () => setResearchUsageBreakdownTab('users'));
     document.getElementById('researchUsageDays')?.addEventListener('change', loadResearchAccountUsage);
     async function setResearchCheckerState(action) {
         if (currentAdmin?.role !== 'super_admin') return;
