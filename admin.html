@@ -797,20 +797,10 @@
                 <p id="researchRetrievalControlsStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
             </div>
             <div class="stat-card">
-                <p class="text-gray-500 text-sm">Assistant Ortak Request Havuzu</p>
-                <p class="text-xs text-gray-500 mt-1">Kurum kullanıcıları aynı havuzu paylaşır; B2C kullanıcı user-scope havuzu kullanır. Checker çağrı limiti bundan ayrıdır.</p>
+                <p class="text-gray-500 text-sm">Assistant Request Havuzu</p>
+                <p class="text-xs text-gray-500 mt-1">Varsayılan günlük request limiti ana kontroldür. Checker çağrı limiti bundan ayrıdır.</p>
                 <div class="grid grid-cols-1 gap-2 mt-3">
-                    <label class="text-xs text-gray-500">Scope
-                        <select id="researchUsageScopeType" class="mt-1 w-full border rounded px-2 py-1 text-sm">
-                            <option value="">Varsayılan</option>
-                            <option value="institution">Kurum</option>
-                            <option value="user">B2C kullanıcı</option>
-                        </select>
-                    </label>
-                    <label class="text-xs text-gray-500">Scope ID (varsayılan için boş)
-                        <input id="researchUsageScopeId" type="text" class="mt-1 w-full border rounded px-2 py-1 text-sm" aria-label="Assistant usage scope ID">
-                    </label>
-                    <label class="text-xs text-gray-500">Günlük Assistant request limiti
+                    <label class="text-xs text-gray-500">Varsayılan günlük Assistant request limiti
                         <input id="researchUsageScopeDailyLimitInput" type="number" min="1" max="100000" step="1" class="mt-1 w-full border rounded px-2 py-1 text-sm" aria-label="Günlük Assistant request limiti">
                     </label>
                     <div class="flex gap-2">
@@ -822,6 +812,22 @@
                         <button type="button" id="researchUsageScopePauseBtn" class="btn bg-amber-50 text-amber-700 border border-amber-200 text-xs">Pause</button>
                         <button type="button" id="researchUsageScopeResumeBtn" class="btn bg-green-50 text-green-700 border border-green-200 text-xs">Resume</button>
                     </div>
+                    <details class="pt-2 border-t">
+                        <summary class="cursor-pointer text-xs font-medium text-gray-600">Gelişmiş kurum / B2C override</summary>
+                        <p class="text-[11px] text-gray-400 mt-1">Yalnız belirli bir kurum veya B2C kullanıcı için override gerektiğinde açın.</p>
+                        <div class="grid grid-cols-1 gap-2 mt-2">
+                            <label class="text-xs text-gray-500">Scope
+                                <select id="researchUsageScopeType" class="mt-1 w-full border rounded px-2 py-1 text-sm">
+                                    <option value="">Varsayılan</option>
+                                    <option value="institution">Kurum</option>
+                                    <option value="user">B2C kullanıcı</option>
+                                </select>
+                            </label>
+                            <label class="text-xs text-gray-500">Scope ID
+                                <input id="researchUsageScopeId" type="text" class="mt-1 w-full border rounded px-2 py-1 text-sm" aria-label="Assistant usage scope ID">
+                            </label>
+                        </div>
+                    </details>
                 </div>
                 <p id="researchUsageScopeLimitSource" class="text-xs text-gray-400 mt-1"></p>
                 <p id="researchUsageScopeActionStatus" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
