@@ -932,7 +932,7 @@
                 </div>
             </div>
         </details>
-<div class="mb-3"><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400" lang="en">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+<div class="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400" lang="en">Diagnostics & error analysis</p><p class="text-xs text-slate-400 mt-1">İkincil teknik tanılama; content-free.</p></div><label class="text-xs text-gray-500"><input id="researchDiagnosticsShowZero" type="checkbox" class="mr-1">Tümünü göster</label></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <section class="bg-slate-50 rounded-xl border border-slate-200 p-4">
                 <h4 class="font-semibold text-gray-800 mb-3">Katman Bazlı Sonuçlar</h4>
                 <div id="researchLayerRows" class="divide-y divide-gray-100"><p class="text-sm text-gray-400 py-3">Yükleniyor...</p></div>
@@ -4930,6 +4930,14 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
         return `<div class="flex items-center justify-between gap-4 py-2"><span class="text-sm text-gray-600">${escapeHtml(label)}</span><span class="text-sm font-semibold text-gray-800">${Number(value || 0).toLocaleString('tr-TR')}</span></div>`;
     }
 
+    function researchMetricRows(rows) {
+        const showZero = document.getElementById('researchDiagnosticsShowZero')?.checked;
+        const visibleRows = showZero ? rows : rows.filter(([, value]) => Number(value || 0) !== 0);
+        return visibleRows.length
+            ? visibleRows.map(([label, value]) => researchMetricRow(label, value)).join('')
+            : '<p class="text-sm text-gray-400 py-3">Bu görünümde sıfırdan farklı kayıt yok.</p>';
+    }
+
     function researchUsagePercent(successes, requests) {
         const total = Number(requests || 0);
         return total ? `${Math.round((Number(successes || 0) / total) * 100)}%` : '—';
@@ -5201,7 +5209,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 ['Model output geçersiz', metrics.assistant_outcome_model_output_invalid],
                 ['Grounding validation hatası', metrics.assistant_outcome_grounding_validation_failed],
             ];
-            document.getElementById('researchLayerRows').innerHTML = layers.map(([label, value]) => researchMetricRow(label, value)).join('');
+            document.getElementById('researchLayerRows').innerHTML = researchMetricRows(layers);
 
             const grounding = [
                 ['Claim metni eksik', metrics.assistant_grounding_rejection_claim_text_required],
@@ -5215,7 +5223,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 ['Checker pin/yanıt', metrics.assistant_grounding_rejection_support_check_failed_pin_or_response],
                 ['Checker transport/diğer', metrics.assistant_grounding_rejection_support_check_failed_transport_or_other],
             ];
-            document.getElementById('researchGroundingRows').innerHTML = grounding.map(([label, value]) => researchMetricRow(label, value)).join('');
+            document.getElementById('researchGroundingRows').innerHTML = researchMetricRows(grounding);
             const alert = document.getElementById('researchOpsAlert');
             const blockers = [];
             if (checker.status !== 'ok') blockers.push('Fresh-Checker verification durumu okunamıyor.');
