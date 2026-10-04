@@ -44,6 +44,8 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.getByText('Kişi Bazlı Kullanım')).toBeVisible();
   await expect(research.locator('#researchCheckerPauseBtn')).toBeVisible();
   await expect(research.locator('#researchCheckerResumeBtn')).toBeVisible();
+  await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
+  await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unknown');
   await expect(research.locator('#researchOpsAlert')).toHaveAttribute('role', 'status');
 
   const institutionHeaders = await research.locator('#researchUsageInstitutions').locator('xpath=ancestor::table/thead').innerText();
@@ -61,5 +63,36 @@ test('Research operations center renders outcome, pipeline and account controls 
   expect(userHeaders).toContain('Hata');
 
 
+  await page.route('**/api/admin/system-health', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'healthy',
+        environment: 'staging',
+        research_telemetry: { snapshot: { date_utc: '2026-10-04', metrics: {} } },
+        support_check: {
+          status: 'ok',
+          paused: true,
+          pause_reason: 'OPERATIONALLY_PAUSED',
+          daily_invocations_used: 0,
+          daily_invocation_limit: 100,
+          daily_invocation_limit_source: 'env',
+          infrastructure: {
+            state: 'available',
+            stale: false,
+            published_at: new Date().toISOString(),
+            instance_type: 'ml.m5.large',
+            instance_count: 1,
+          },
+        },
+      }),
+    });
+  });
+  await research.locator('#researchObservabilityRefreshBtn').click();
+  await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Available');
+  await expect(research.locator('#researchCheckerState')).toHaveText('Paused');
+  await expect(research.locator('#researchCheckerResumeBtn')).toBeEnabled();
+  await expect(research.locator('#researchCheckerInfrastructureDetail')).toContainText('Paused by operator');
 
 });
