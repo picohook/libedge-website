@@ -46,4 +46,28 @@ describe('profile social-link translation gaps', () => {
     expect(profileSource).not.toMatch(/profile(?:Link|Social)Translations/);
     expect(profileSource).not.toMatch(/extraProfileTranslations|profileTranslationsExtension|profileTranslationExtension/);
   });
+
+  it('covers dynamic user-card and profile runtime strings', () => {
+    const dictionary = getProfileTranslationBlock();
+    const expectedEntries = {
+      'Neden bu ürünü öneriyorsunuz? Kurumunuza nasıl katkı sağlar?': 'Why do you recommend this product? How would it benefit your organization?',
+      'Öneri Gönder': 'Send Suggestion',
+      'Bu kategoride araç yok.': 'No tools in this category.',
+      'Aboneliği İptal Et': 'Unsubscribe',
+      'Abone Ol': 'Subscribe',
+      'Kurumsal giriş bağlantısı henüz tanımlı değil.': 'The organization login link has not been configured yet.',
+      'Bu abonelik için erişim bağlantısı henüz tanımlı değil.': 'The access link for this subscription has not been configured yet.',
+      'Profil bilgileriniz güncellendi!': 'Your profile has been updated!',
+      'Hesabınız silindi.': 'Your account has been deleted.',
+      'Yanıt gönderildi.': 'Reply sent.',
+      'Destek talebi oluşturuldu.': 'Support request created.',
+    };
+    for (const [turkish, english] of Object.entries(expectedEntries)) {
+      expect(dictionary).toContain(`'${turkish}': '${english}'`);
+    }
+    expect(profileSource).toContain("translateProfileString(`${email} adresiyle e-bülten aboneliğiniz aktif.`, isProfileEnglish())");
+    expect(profileSource).toContain("translateProfileString('Kurumsal giriş bağlantısı henüz tanımlı değil.', isProfileEnglish())");
+    expect(profileSource).toContain("showToast(translateProfileString('Profil bilgileriniz güncellendi!', isProfileEnglish()), 'success')");
+  });
+
 });

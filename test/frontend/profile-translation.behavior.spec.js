@@ -116,6 +116,29 @@ test('fallback profile UI remains translatable when no user name is present', as
   await expect(profileName).not.toHaveText('Kullanıcı');
 });
 
+
+test('runtime profile controls switch between Turkish and English', async ({ page }) => {
+  const recommendationPlaceholder = page.locator('#profileRecommendNote');
+  await expect(recommendationPlaceholder).toHaveAttribute('placeholder', 'Neden bu ürünü öneriyorsunuz? Kurumunuza nasıl katkı sağlar?');
+
+  await page.locator('#translateBtn').click();
+  await expect(recommendationPlaceholder).toHaveAttribute('placeholder', 'Why do you recommend this product? How would it benefit your organization?');
+
+  const runtimeTranslations = await page.evaluate(() => ({
+    subscribe: globalThis.translateProfileString('Abone Ol', globalThis.isProfileEnglish()),
+    sending: globalThis.translateProfileString('Gönderiliyor...', globalThis.isProfileEnglish()),
+    folderPrompt: globalThis.translateProfileString('Klasör adını girin:', globalThis.isProfileEnglish()),
+  }));
+  expect(runtimeTranslations).toEqual({
+    subscribe: 'Subscribe',
+    sending: 'Sending...',
+    folderPrompt: 'Enter the folder name:',
+  });
+
+  await page.locator('#translateBtn').click();
+  await expect(recommendationPlaceholder).toHaveAttribute('placeholder', 'Neden bu ürünü öneriyorsunuz? Kurumunuza nasıl katkı sağlar?');
+});
+
 function resolveStaticPath(urlPathname) {
   const requested = urlPathname === '/' ? '/index.html' : decodeURIComponent(urlPathname);
   const relativePath = requested.replace(/^\/+/, '');

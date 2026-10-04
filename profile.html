@@ -1455,8 +1455,8 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
         const errDiv = document.createElement('div');
         errDiv.className = 'bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 text-sm mt-4';
         const label = document.createElement('strong');
-        label.textContent = 'Sistem Hatası:';
-        errDiv.append(label, document.createTextNode(` ${String(msg || '')} (Satır: ${lineNo})`));
+        label.textContent = translateProfileString('Sistem Hatası:', isProfileEnglish());
+        errDiv.append(label, document.createTextNode(` ${String(msg || '')} (${translateProfileString('Satır:', isProfileEnglish())} ${lineNo})`));
         welcome.appendChild(errDiv);
     }
     return false;
@@ -1666,7 +1666,67 @@ const profileTranslations = {
     'Profil linkleri kaydedilemedi.': 'Profile links could not be saved.',
     'Oturum yenileme çok sık denendi. Biraz bekleyip tekrar kontrol edeceğim.': 'Session refresh was attempted too often. I will wait a bit and check again.',
     'Geçici bağlantı sorunu var. Oturum kapatılmadı.': 'There is a temporary connection issue. Your session was not signed out.',
-    'Klasörler yüklenemedi.': 'Folders could not be loaded.'
+    'Klasörler yüklenemedi.': 'Folders could not be loaded.',
+    'Not': 'Note',
+    '(isteğe bağlı)': '(optional)',
+    'Neden bu ürünü öneriyorsunuz? Kurumunuza nasıl katkı sağlar?': 'Why do you recommend this product? How would it benefit your organization?',
+    'Öneri Gönder': 'Send Suggestion',
+    'Bu kategoride araç yok.': 'No tools in this category.',
+    'Durum yükleniyor...': 'Loading status...',
+    'Aboneliği İptal Et': 'Unsubscribe',
+    'Abone Ol': 'Subscribe',
+    'Durum öğrenilemedi.': 'Could not retrieve status.',
+    'Kurumsal giriş bağlantısı henüz tanımlı değil.': 'The organization login link has not been configured yet.',
+    'Bu abonelik için erişim bağlantısı henüz tanımlı değil.': 'The access link for this subscription has not been configured yet.',
+    'E-bülten aboneliğiniz aktif edildi.': 'Your newsletter subscription is now active.',
+    'E-bülten aboneliği sırasında hata oluştu.': 'An error occurred while subscribing to the newsletter.',
+    'E-bülten aboneliğiniz iptal edildi.': 'Your newsletter subscription has been cancelled.',
+    'E-bülten aboneliği iptal edilirken hata oluştu.': 'An error occurred while cancelling the newsletter subscription.',
+    'Profil bilgileriniz güncellendi!': 'Your profile has been updated!',
+    'Güncelleme başarısız oldu!': 'Update failed!',
+    'Hesabınız silindi.': 'Your account has been deleted.',
+    'Silme işlemi başarısız oldu!': 'Deletion failed!',
+    'Klasör adı güncellendi.': 'Folder name updated.',
+    'İşlem başarısız oldu!': 'Operation failed!',
+    'Klasör silindi.': 'Folder deleted.',
+    'Dosya taşındı.': 'File moved.',
+    'Dosya taşınamadı.': 'File could not be moved.',
+    'Yeni klasör adı gerekli.': 'A new folder name is required.',
+    'Klasör oluşturulamadı.': 'Folder could not be created.',
+    'Klasör oluşturuldu.': 'Folder created.',
+    'Klasör adı boş olamaz.': 'Folder name cannot be empty.',
+    'Klasör başarıyla oluşturuldu!': 'Folder created successfully!',
+    'Lütfen bir dosya seçin.': 'Please select a file.',
+    'Lütfen bir URL girin.': 'Please enter a URL.',
+    'Dosya başarıyla yüklendi!': 'File uploaded successfully!',
+    'Kurum bilgisi bulunamadı.': 'Organization information was not found.',
+    'Bir hata oluştu.': 'An error occurred.',
+    'Görünürlük güncellendi!': 'Visibility updated!',
+    'Dosya başarıyla silindi!': 'File deleted successfully!',
+    'Klasör başarıyla silindi!': 'Folder deleted successfully!',
+    'Dosya adı güncellendi.': 'File name updated.',
+    'Dosya adı güncellenemedi.': 'File name could not be updated.',
+    'Taşınabilecek klasör bulunamadı.': 'No destination folder is available.',
+    'Dosya kaldırıldı.': 'File removed.',
+    'Dosya kaldırılamadı.': 'File could not be removed.',
+    'Yanıt veya dosya gerekli.': 'A reply or file is required.',
+    'Yanıt gönderildi.': 'Reply sent.',
+    'Destek talebi oluşturuldu.': 'Support request created.',
+    'Dosya yükleme sadece Super Admin yetkisindedir.': 'File upload is restricted to Super Admins.',
+    'URL ile ekleme bu yeni dosya yapısında kapalı. Lütfen dosyayı bilgisayarınızdan yükleyin.': 'Adding by URL is disabled in the new file structure. Please upload the file from your computer.',
+    'Dosya 50MB sınırını aşıyor.': 'The file exceeds the 50 MB limit.',
+    'Klasör adını girin:': 'Enter the folder name:',
+    'Yeni dosya adı:': 'New file name:',
+    'Bu dosyayı silmek istediğinize emin misiniz?': 'Are you sure you want to delete this file?',
+    'Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?': 'This folder and all files inside it will be deleted. Are you sure?',
+    'Bu dosya referansını kaldırmak istiyor musunuz?': 'Do you want to remove this file reference?',
+    'Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!': 'Are you sure you want to delete your account? This action cannot be undone.',
+    'Sistem Hatası:': 'System Error:',
+    'Satır:': 'Line:',
+    'Dosyalarım': 'My Files',
+    'Dosyayı kullanıcı klasörleri arasında taşı.': 'Move the file between your folders.',
+    'Dosyayı merkezi klasörler arasında taşı.': 'Move the file between central folders.',
+    'Dosyayı kurum klasörleri arasında taşı.': 'Move the file between organization folders.'
 };
 const profileTranslationsReverse = Object.fromEntries(
     Object.entries(profileTranslations).map(([tr, en]) => [en, tr])
@@ -1682,7 +1742,9 @@ const profilePatternTranslations = {
         { pattern: /(\d+)\s*gün kaldı\b/gi, replacement: '$1 days left' },
         { pattern: /Üye\s+/g, replacement: 'Member since ' },
         { pattern: /Abonelikler yüklenemedi:/g, replacement: 'Subscriptions could not be loaded:' },
-        { pattern: /Araçlar yüklenemedi:/g, replacement: 'Tools could not be loaded:' }
+        { pattern: /Araçlar yüklenemedi:/g, replacement: 'Tools could not be loaded:' },
+        { pattern: /(.+?) adresiyle e-bülten aboneliğiniz aktif\./g, replacement: '$1 is subscribed to the newsletter.' },
+        { pattern: /(.+?) adresiyle e-bültene henüz abone değilsiniz\./g, replacement: '$1 is not subscribed to the newsletter yet.' }
     ],
     toTurkish: [
         { pattern: /(\d+)\s*resources\b/gi, replacement: '$1 kaynak' },
@@ -1691,7 +1753,9 @@ const profilePatternTranslations = {
         { pattern: /(\d+)\s*days left\b/gi, replacement: '$1 gün kaldı' },
         { pattern: /Member since\s+/g, replacement: 'Üye ' },
         { pattern: /Subscriptions could not be loaded:/g, replacement: 'Abonelikler yüklenemedi:' },
-        { pattern: /Tools could not be loaded:/g, replacement: 'Araçlar yüklenemedi:' }
+        { pattern: /Tools could not be loaded:/g, replacement: 'Araçlar yüklenemedi:' },
+        { pattern: /(.+?) is subscribed to the newsletter\./g, replacement: '$1 adresiyle e-bülten aboneliğiniz aktif.' },
+        { pattern: /(.+?) is not subscribed to the newsletter yet\./g, replacement: '$1 adresiyle e-bültene henüz abone değilsiniz.' }
     ]
 };
 let profileLanguageApplying = false;
@@ -2051,10 +2115,10 @@ function updateFileTabMode() {
     const title = document.getElementById('filesTabTitle');
     if (!title) return;
     if (isProfileUserMode()) {
-        title.textContent = 'Dosyalarım';
+        title.textContent = translateProfileString('Dosyalarım', isProfileEnglish());
         return;
     }
-    title.textContent = isProfileSystemMode() ? 'Merkezi Dosyalar' : 'Kurum Dosyaları';
+    title.textContent = translateProfileString(isProfileSystemMode() ? 'Merkezi Dosyalar' : 'Kurum Dosyaları', isProfileEnglish());
 }
 
 async function loadNotifications() {
@@ -2332,7 +2396,7 @@ function _renderIndividualToolsWithFilter() {
         : profileIndividualTools;
     el.innerHTML = tools.length
         ? tools.filter(Boolean).map(renderProfileIndividualToolCard).join('')
-        : '<p class="text-gray-500 text-sm">Bu kategoride araç yok.</p>';
+        : `<p class="text-gray-500 text-sm">${translateProfileString('Bu kategoride araç yok.', isProfileEnglish())}</p>`;
 }
 
 function _buildIndividualCategoryFilter() {
@@ -2645,7 +2709,7 @@ async function saveProfileLinks() {
     const links = collectAllLinksFromEditors();
     const invalid = links.find((link) => !/^https?:\/\//i.test(link.url));
     if (invalid) {
-        showToast('Linkler http:// veya https:// ile başlamalı.', 'warning');
+        showToast(translateProfileString('Linkler http:// veya https:// ile başlamalı.', isProfileEnglish()), 'warning');
         return;
     }
     try {
@@ -2761,7 +2825,7 @@ function openSubscriptionAccess(btn) {
     if (accessType === 'institution_link') {
         if (accessUrl) { openUrl(accessUrl); return; }
         if (typeof window.showToast === 'function')
-            window.showToast('Kurumsal giriş bağlantısı henüz tanımlı değil.', 'warning');
+            window.showToast(translateProfileString('Kurumsal giriş bağlantısı henüz tanımlı değil.', isProfileEnglish()), 'warning');
         return;
     }
 
@@ -2769,7 +2833,7 @@ function openSubscriptionAccess(btn) {
     if (accessUrl) { openUrl(accessUrl); return; }
 
     if (typeof window.showToast === 'function')
-        window.showToast('Bu abonelik için erişim bağlantısı henüz tanımlı değil.', 'warning');
+        window.showToast(translateProfileString('Bu abonelik için erişim bağlantısı henüz tanımlı değil.', isProfileEnglish()), 'warning');
 }
 window.openSubscriptionAccess = openSubscriptionAccess;
 
@@ -3593,8 +3657,8 @@ async function loadNewsletterSubscription() {
     if (!textEl || !btn) return;
 
     btn.disabled = true;
-    textEl.textContent = 'Durum yükleniyor...';
-    btn.textContent = 'Yükleniyor...';
+    textEl.textContent = translateProfileString('Durum yükleniyor...', isProfileEnglish());
+    btn.textContent = translateProfileString('Yükleniyor...', isProfileEnglish());
 
     try {
         const res = await fetch('/api/newsletter/status', { credentials: 'include' });
@@ -3602,15 +3666,15 @@ async function loadNewsletterSubscription() {
         const email = data.email || window.currentUser?.email || '-';
 
         if (data.subscribed) {
-            textEl.textContent = `${email} adresiyle e-bülten aboneliğiniz aktif.`;
-            btn.textContent = 'Aboneliği İptal Et';
+            textEl.textContent = translateProfileString(`${email} adresiyle e-bülten aboneliğiniz aktif.`, isProfileEnglish());
+            btn.textContent = translateProfileString('Aboneliği İptal Et', isProfileEnglish());
             btn.classList.remove('bg-primary');
             btn.classList.add('bg-red-600', 'hover:bg-red-700');
             btn.disabled = false;
             btn.onclick = unsubscribeNewsletter;
         } else {
-            textEl.textContent = `${email} adresiyle e-bültene henüz abone değilsiniz.`;
-            btn.textContent = 'Abone Ol';
+            textEl.textContent = translateProfileString(`${email} adresiyle e-bültene henüz abone değilsiniz.`, isProfileEnglish());
+            btn.textContent = translateProfileString('Abone Ol', isProfileEnglish());
             btn.classList.remove('bg-red-600', 'hover:bg-red-700');
             btn.classList.add('bg-primary');
             btn.disabled = false;
@@ -3618,7 +3682,7 @@ async function loadNewsletterSubscription() {
         }
     } catch (err) {
         console.error('loadNewsletterSubscription error:', err);
-        if (textEl) textEl.textContent = 'Durum öğrenilemedi.';
+        if (textEl) textEl.textContent = translateProfileString('Durum öğrenilemedi.', isProfileEnglish());
         if (btn) btn.disabled = true;
     }
 }
@@ -3639,12 +3703,12 @@ async function subscribeNewsletterFromProfile() {
             body: JSON.stringify({})
         });
         if (!res.ok) throw new Error('subscribe failed');
-        showToast('E-bülten aboneliğiniz aktif edildi.', 'success');
+        showToast(translateProfileString('E-bülten aboneliğiniz aktif edildi.', isProfileEnglish()), 'success');
         await loadNewsletterSubscription();
     } catch (error) {
         btn.disabled = false;
         btn.textContent = originalText;
-        showToast('E-bülten aboneliği sırasında hata oluştu.', 'error');
+        showToast(translateProfileString('E-bülten aboneliği sırasında hata oluştu.', isProfileEnglish()), 'error');
     }
 }
 
@@ -3661,12 +3725,12 @@ async function unsubscribeNewsletter() {
             credentials: 'include'
         });
         if (!res.ok) throw new Error('unsubscribe failed');
-        showToast('E-bülten aboneliğiniz iptal edildi.', 'success');
+        showToast(translateProfileString('E-bülten aboneliğiniz iptal edildi.', isProfileEnglish()), 'success');
         await loadNewsletterSubscription();
     } catch (error) {
         btn.disabled = false;
         btn.textContent = originalText;
-        showToast('E-bülten aboneliği iptal edilirken hata oluştu.', 'error');
+        showToast(translateProfileString('E-bülten aboneliği iptal edilirken hata oluştu.', isProfileEnglish()), 'error');
     }
 }
 
@@ -4062,7 +4126,7 @@ function setProfileSort(key) {
 }
 
 async function renameUserFolder(folderId, currentName) {
-    const newName = prompt('Klasör adını girin:', currentName);
+    const newName = prompt(translateProfileString('Klasör adını girin:', isProfileEnglish()), currentName);
     if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
     const res = await fetch(`${window.API_BASE || ""}/api/user/collections/${folderId}`, {
         method: 'PUT',
@@ -4071,31 +4135,31 @@ async function renameUserFolder(folderId, currentName) {
         body: JSON.stringify({ name: newName.trim() })
     });
     if (res.ok) {
-        showToast('Klasör adı güncellendi.', 'success');
+        showToast(translateProfileString('Klasör adı güncellendi.', isProfileEnglish()), 'success');
         loadFolders(currentFolderId);
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'İşlem başarısız oldu!', 'error');
+        showToast(data.error || translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error');
     }
 }
 
 async function deleteUserFolder(folderId, folderName) {
-    if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\İçindeki dosyalar da silinecektir.`)) return;
+    if (!confirm(isProfileEnglish() ? `Are you sure you want to delete the "${folderName}" folder?\nFiles inside it will also be deleted.` : `"${folderName}" klasörünü silmek istediğinize emin misiniz?\nİçindeki dosyalar da silinecektir.`)) return;
     const res = await fetch(`${window.API_BASE || ""}/api/user/collections/${folderId}`, {
         method: 'DELETE',
         credentials: 'include'
     });
     if (res.ok) {
-        showToast('Klasör silindi.', 'success');
+        showToast(translateProfileString('Klasör silindi.', isProfileEnglish()), 'success');
         loadFolders(currentFolderId);
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'İşlem başarısız oldu!', 'error');
+        showToast(data.error || translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error');
     }
 }
 
 async function renameSystemFolder(folderId, currentName) {
-    const newName = prompt('Klasör adını girin:', currentName);
+    const newName = prompt(translateProfileString('Klasör adını girin:', isProfileEnglish()), currentName);
     if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
     const res = await fetch(`${window.API_BASE || ""}/api/collections/${folderId}`, {
         method: 'PUT',
@@ -4104,32 +4168,32 @@ async function renameSystemFolder(folderId, currentName) {
         body: JSON.stringify({ name: newName.trim() })
     });
     if (res.ok) {
-        showToast('Klasör adı güncellendi.', 'success');
+        showToast(translateProfileString('Klasör adı güncellendi.', isProfileEnglish()), 'success');
         loadFolders(currentFolderId);
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'İşlem başarısız oldu!', 'error');
+        showToast(data.error || translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error');
     }
 }
 
 async function deleteSystemFolder(folderId, folderName) {
-    if (!confirm(`"${folderName}" klasörünü silmek istediğinize emin misiniz?\İçindeki dosyalar da silinecektir.`)) return;
+    if (!confirm(isProfileEnglish() ? `Are you sure you want to delete the "${folderName}" folder?\nFiles inside it will also be deleted.` : `"${folderName}" klasörünü silmek istediğinize emin misiniz?\nİçindeki dosyalar da silinecektir.`)) return;
     const res = await fetch(`${window.API_BASE || ""}/api/collections/${folderId}`, {
         method: 'DELETE',
         credentials: 'include'
     });
     if (res.ok) {
-        showToast('Klasör silindi.', 'success');
+        showToast(translateProfileString('Klasör silindi.', isProfileEnglish()), 'success');
         loadFolders(currentFolderId);
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'İşlem başarısız oldu!', 'error');
+        showToast(data.error || translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error');
     }
 }
 
 function openFileModal() {
     if (window.currentUser?.role !== 'super_admin') {
-        showToast('Dosya yükleme sadece Super Admin yetkisindedir.', 'warning');
+        showToast(translateProfileString('Dosya yükleme sadece Super Admin yetkisindedir.', isProfileEnglish()), 'warning');
         return;
     }
     document.getElementById('addFileModal').classList.remove('hidden');
@@ -4144,7 +4208,7 @@ function closeFileModal() {
 // ====================== UPLOAD TAB ======================
 function switchUploadTab(tab) {
     if (tab === 'url') {
-        showToast('URL ile ekleme bu yeni dosya yapısında kapalı. Lütfen dosyayı bilgisayarınızdan yükleyin.', 'warning');
+        showToast(translateProfileString('URL ile ekleme bu yeni dosya yapısında kapalı. Lütfen dosyayı bilgisayarınızdan yükleyin.', isProfileEnglish()), 'warning');
         tab = 'computer';
     }
     profileUploadTab = tab;
@@ -4161,7 +4225,7 @@ function handleFileDrop(event) {
 }
 function handleFileSelect(file) {
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) { showToast('Dosya 50MB sınırını aşıyor.', 'error'); return; }
+    if (file.size > 50 * 1024 * 1024) { showToast(translateProfileString('Dosya 50MB sınırını aşıyor.', isProfileEnglish()), 'error'); return; }
     profileSelectedFile = file;
     const icons = { pdf:'fa-file-pdf', doc:'fa-file-word', docx:'fa-file-word', xls:'fa-file-excel', xlsx:'fa-file-excel', jpg:'fa-file-image', jpeg:'fa-file-image', png:'fa-file-image', zip:'fa-file-archive', mp4:'fa-file-video', mp3:'fa-file-audio' };
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -4350,7 +4414,7 @@ async function submitMoveModal() {
         ? '(Ana dizin)'
         : (moveModalState.folders.find((item) => Number(item.id) === Number(moveModalState.selectedTargetId))?.name || 'seçilen klasör');
 
-    if (!confirm(`"${moveModalState.fileName || 'Dosya'}" dosyasını "${targetName}" klasörüne taşımak istiyor musunuz?`)) {
+    if (!confirm(isProfileEnglish() ? `Do you want to move "${moveModalState.fileName || 'File'}" to the "${targetName}" folder?` : `"${moveModalState.fileName || 'Dosya'}" dosyasını "${targetName}" klasörüne taşımak istiyor musunuz?`)) {
         return;
     }
 
@@ -4366,12 +4430,12 @@ async function submitMoveModal() {
     });
 
     if (res.ok) {
-        showToast('Dosya taşındı.', 'success');
+        showToast(translateProfileString('Dosya taşındı.', isProfileEnglish()), 'success');
         closeMoveModal();
         loadFolders(currentFolderId); // hem klasör sayılarını hem dosya listesini günceller
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Dosya taşınamadı.', 'error');
+        showToast(data.error || translateProfileString('Dosya taşınamadı.', isProfileEnglish()), 'error');
     }
 }
 
@@ -4380,7 +4444,7 @@ async function createMoveModalFolder() {
     const button = document.getElementById('moveModalCreateFolderBtn');
     const folderName = input?.value.trim();
     if (!folderName) {
-        showToast('Yeni klasör adı gerekli.', 'warning');
+        showToast(translateProfileString('Yeni klasör adı gerekli.', isProfileEnglish()), 'warning');
         return;
     }
 
@@ -4432,7 +4496,7 @@ async function createMoveModalFolder() {
 
     if (!res?.ok) {
         const data = await res?.json().catch(() => ({}));
-        showToast(data?.error || 'Klasör oluşturulamadı.', 'error');
+        showToast(data?.error || translateProfileString('Klasör oluşturulamadı.', isProfileEnglish()), 'error');
         return;
     }
 
@@ -4468,7 +4532,7 @@ async function createMoveModalFolder() {
     moveModalState.selectedTargetId = Number(createData.id || 0) || moveModalState.selectedTargetId;
     if (input) input.value = '';
     renderMoveModalFolders();
-    showToast('Klasör oluşturuldu.', 'success');
+    showToast(translateProfileString('Klasör oluşturuldu.', isProfileEnglish()), 'success');
 }
 
 // ====================== CRUD İŞLEMLERİ ======================
@@ -4476,7 +4540,7 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
     e.preventDefault();
     if (isProfileUserMode()) {
         const folderName = document.getElementById('folderName').value.trim();
-        if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
+        if (!folderName) { showToast(translateProfileString('Klasör adı boş olamaz.', isProfileEnglish()), 'warning'); return; }
 
         const res = await fetch(`${window.API_BASE || ""}/api/user/collections`, {
             method: 'POST',
@@ -4486,18 +4550,18 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
         });
 
         if (res.ok) {
-            showToast('Klasör başarıyla oluşturuldu!', 'success');
+            showToast(translateProfileString('Klasör başarıyla oluşturuldu!', isProfileEnglish()), 'success');
             closeFolderModal();
             loadFolders(currentFolderId);
         } else {
             const data = await res.json().catch(() => ({}));
-            showToast(data.error || 'İşlem başarısız oldu!', 'error');
+            showToast(data.error || translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error');
         }
         return;
     }
     if (isProfileSystemMode()) {
         const folderName = document.getElementById('folderName').value.trim();
-        if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
+        if (!folderName) { showToast(translateProfileString('Klasör adı boş olamaz.', isProfileEnglish()), 'warning'); return; }
 
         const parentId = currentFolderId ?? systemRootCollectionId ?? null;
         const res = await fetch(`${window.API_BASE || ""}/api/collections`, {
@@ -4515,26 +4579,26 @@ document.getElementById('addFolderForm')?.addEventListener('submit', async (e) =
         });
 
         if (res.ok) {
-            showToast('Klasör başarıyla oluşturuldu!', 'success');
+            showToast(translateProfileString('Klasör başarıyla oluşturuldu!', isProfileEnglish()), 'success');
             closeFolderModal();
             loadFolders(currentFolderId);
         } else {
             const data = await res.json().catch(() => ({}));
-            showToast(data.error || 'İşlem başarısız oldu!', 'error');
+            showToast(data.error || translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error');
         }
         return;
     }
 
     const folderName = document.getElementById('folderName').value.trim();
     const isPublic = parseInt(document.getElementById('folderVisibility').value);
-    if (!folderName) { showToast('Klasör adı boş olamaz.', 'warning'); return; }
+    if (!folderName) { showToast(translateProfileString('Klasör adı boş olamaz.', isProfileEnglish()), 'warning'); return; }
     const instKey = window.currentUser?.institution_id || window.currentUser?.institution;
     const res = await fetch(`${window.API_BASE || ""}/api/institution/${encodeURIComponent(instKey)}/folder`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ folder_name: folderName, parent_folder_id: currentFolderId, is_public: isPublic })
     });
-    if (res.ok) { showToast('Klasör başarıyla oluşturuldu!', 'success'); closeFolderModal(); loadFolders(currentFolderId); }
-    else { const d = await res.json().catch(()=>({})); showToast(d.error || 'İşlem başarısız oldu!', 'error'); }
+    if (res.ok) { showToast(translateProfileString('Klasör başarıyla oluşturuldu!', isProfileEnglish()), 'success'); closeFolderModal(); loadFolders(currentFolderId); }
+    else { const d = await res.json().catch(()=>({})); showToast(d.error || translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error'); }
 });
 
 document.getElementById('addFileForm')?.addEventListener('submit', async (e) => {
@@ -4545,7 +4609,7 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
     let fileName = document.getElementById('profileFileName').value.trim();
     try {
         if (profileUploadTab === 'computer') {
-            if (!profileSelectedFile) { showToast('Lütfen bir dosya seçin.', 'warning'); return; }
+            if (!profileSelectedFile) { showToast(translateProfileString('Lütfen bir dosya seçin.', isProfileEnglish()), 'warning'); return; }
             const fd = new FormData();
             fd.append('file', profileSelectedFile);
             document.getElementById('uploadProgress').classList.remove('hidden');
@@ -4559,7 +4623,7 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
             document.getElementById('uploadProgressBar').style.width = '100%';
         } else {
             fileUrl = document.getElementById('profileFileUrl').value.trim();
-            if (!fileUrl) { showToast('Lütfen bir URL girin.', 'warning'); return; }
+            if (!fileUrl) { showToast(translateProfileString('Lütfen bir URL girin.', isProfileEnglish()), 'warning'); return; }
             fileType = fileUrl.split('.').pop()?.split('?')[0].toLowerCase() || 'other';
         }
         if (!fileName) fileName = fileUrl.split('/').pop()?.split('?')[0] || 'Dosya';
@@ -4575,12 +4639,12 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
                     category: document.getElementById('profileFileCategory').value
                 })
             });
-            if (res.ok) { showToast('Dosya başarıyla yüklendi!', 'success'); closeFileModal(); loadFolders(currentFolderId); }
-            else { const d = await res.json().catch(()=>({})); showToast(d.error || 'İşlem başarısız oldu!', 'error'); }
+            if (res.ok) { showToast(translateProfileString('Dosya başarıyla yüklendi!', isProfileEnglish()), 'success'); closeFileModal(); loadFolders(currentFolderId); }
+            else { const d = await res.json().catch(()=>({})); showToast(d.error || translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error'); }
             return;
         }
         const inst = window.currentUser?.institution_id || window.currentUser?.institution;
-        if (!inst) { showToast('Kurum bilgisi bulunamadı.', 'error'); return; }
+        if (!inst) { showToast(translateProfileString('Kurum bilgisi bulunamadı.', isProfileEnglish()), 'error'); return; }
         const res = await fetch(`${window.API_BASE || ""}/api/institution/${encodeURIComponent(inst)}/file`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
             body: JSON.stringify({
@@ -4590,10 +4654,10 @@ document.getElementById('addFileForm')?.addEventListener('submit', async (e) => 
                 is_public: parseInt(document.getElementById('profileFileVisibility').value)
             })
         });
-        if (res.ok) { showToast('Dosya başarıyla yüklendi!', 'success'); closeFileModal(); loadFolders(currentFolderId); }
-        else { const d = await res.json().catch(()=>({})); showToast(d.error || 'İşlem başarısız oldu!', 'error'); }
+        if (res.ok) { showToast(translateProfileString('Dosya başarıyla yüklendi!', isProfileEnglish()), 'success'); closeFileModal(); loadFolders(currentFolderId); }
+        else { const d = await res.json().catch(()=>({})); showToast(d.error || translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error'); }
     } catch (err) {
-        showToast(err.message || 'Bir hata oluştu.', 'error');
+        showToast(err.message || translateProfileString('Bir hata oluştu.', isProfileEnglish()), 'error');
     } finally {
         btn.disabled = false; btn.textContent = 'Kaydet';
         document.getElementById('uploadProgress')?.classList.add('hidden');
@@ -4605,25 +4669,25 @@ async function toggleFilePublic(fileId, currentStatus) {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ is_public: !currentStatus })
     });
-    if (res.ok) { showToast('Görünürlük güncellendi!', 'success'); loadFiles(currentFolderId); }
-    else showToast('İşlem başarısız oldu!', 'error');
+    if (res.ok) { showToast(translateProfileString('Görünürlük güncellendi!', isProfileEnglish()), 'success'); loadFiles(currentFolderId); }
+    else showToast(translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error');
 }
 
 async function deleteFile(fileId) {
-    if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
+    if (!confirm(translateProfileString('Bu dosyayı silmek istediğinize emin misiniz?', isProfileEnglish()))) return;
     const url = isProfileSystemMode()
         ? `${API_BASE}/api/system/file/${fileId}`
         : `${API_BASE}/api/institution/file/${fileId}`;
     const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Dosya başarıyla silindi!', 'success'); loadFolders(currentFolderId); }
-    else showToast('İşlem başarısız oldu!', 'error');
+    if (res.ok) { showToast(translateProfileString('Dosya başarıyla silindi!', isProfileEnglish()), 'success'); loadFolders(currentFolderId); }
+    else showToast(translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error');
 }
 
 async function deleteFolder(folderId) {
-    if (!confirm('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?')) return;
+    if (!confirm(translateProfileString('Bu klasör ve içindeki tüm dosyalar silinecek. Emin misiniz?', isProfileEnglish()))) return;
     const res = await fetch(`${window.API_BASE || ""}/api/institution/folder/${folderId}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Klasör başarıyla silindi!', 'success'); loadFolders(currentFolderId); }
-    else showToast('İşlem başarısız oldu!', 'error');
+    if (res.ok) { showToast(translateProfileString('Klasör başarıyla silindi!', isProfileEnglish()), 'success'); loadFolders(currentFolderId); }
+    else showToast(translateProfileString('İşlem başarısız oldu!', isProfileEnglish()), 'error');
 }
 
 async function markUserFileRead(fileId) {
@@ -4635,12 +4699,12 @@ async function markUserFileRead(fileId) {
         await loadFiles(currentFolderId);
         await loadNotifications();
     } else {
-        showToast('Dosya okundu olarak işaretlenemedi.', 'error');
+        showToast(translateProfileString('Dosya okundu olarak işaretlenemedi.', isProfileEnglish()), 'error');
     }
 }
 
 async function renameUserFile(fileId, currentName) {
-    const displayName = prompt('Yeni dosya adı:', currentName);
+    const displayName = prompt(translateProfileString('Yeni dosya adı:', isProfileEnglish()), currentName);
     if (!displayName || !displayName.trim()) return;
 
     const res = await fetch(`${window.API_BASE || ""}/api/user/files/${fileId}/rename`, {
@@ -4651,10 +4715,10 @@ async function renameUserFile(fileId, currentName) {
     });
 
     if (res.ok) {
-        showToast('Dosya adı güncellendi.', 'success');
+        showToast(translateProfileString('Dosya adı güncellendi.', isProfileEnglish()), 'success');
         loadFiles(currentFolderId);
     } else {
-        showToast('Dosya adı güncellenemedi.', 'error');
+        showToast(translateProfileString('Dosya adı güncellenemedi.', isProfileEnglish()), 'error');
     }
 }
 
@@ -4666,7 +4730,7 @@ async function moveUserFile(fileId, fileName) {
     const root = folders.find((item) => item.parent_id == null) || null;
 
     if (!folders.length || !root) {
-        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
+        showToast(translateProfileString('Taşınabilecek klasör bulunamadı.', isProfileEnglish()), 'warning');
         return;
     }
 
@@ -4681,7 +4745,7 @@ async function moveUserFile(fileId, fileName) {
         search: ''
     };
 
-    document.getElementById('moveModalSubtitle').textContent = 'Dosyayı kullanıcı klasörleri arasında taşı.';
+    document.getElementById('moveModalSubtitle').textContent = translateProfileString('Dosyayı kullanıcı klasörleri arasında taşı.', isProfileEnglish());
     const searchInput = document.getElementById('moveModalSearch');
     if (searchInput) searchInput.value = '';
     renderMoveModalFolders();
@@ -4697,7 +4761,7 @@ async function moveSystemFile(fileId, fileName) {
     const root = (folders || []).find((item) => item.kind === 'root') || null;
 
     if (!folders.length || !root) {
-        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
+        showToast(translateProfileString('Taşınabilecek klasör bulunamadı.', isProfileEnglish()), 'warning');
         return;
     }
 
@@ -4713,7 +4777,7 @@ async function moveSystemFile(fileId, fileName) {
         search: ''
     };
 
-    document.getElementById('moveModalSubtitle').textContent = 'Dosyayı merkezi klasörler arasında taşı.';
+    document.getElementById('moveModalSubtitle').textContent = translateProfileString('Dosyayı merkezi klasörler arasında taşı.', isProfileEnglish());
     const searchInput = document.getElementById('moveModalSearch');
     if (searchInput) searchInput.value = '';
     renderMoveModalFolders();
@@ -4721,7 +4785,7 @@ async function moveSystemFile(fileId, fileName) {
 }
 
 async function renameSystemFile(refId, currentName) {
-    const displayName = prompt('Yeni dosya adı:', currentName);
+    const displayName = prompt(translateProfileString('Yeni dosya adı:', isProfileEnglish()), currentName);
     if (!displayName || !displayName.trim()) return;
 
     const res = await fetch(`${window.API_BASE || ""}/api/collection_files/${refId}/rename`, {
@@ -4732,25 +4796,25 @@ async function renameSystemFile(refId, currentName) {
     });
 
     if (res.ok) {
-        showToast('Dosya adı güncellendi.', 'success');
+        showToast(translateProfileString('Dosya adı güncellendi.', isProfileEnglish()), 'success');
         loadFiles(currentFolderId);
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Dosya adı güncellenemedi.', 'error');
+        showToast(data.error || translateProfileString('Dosya adı güncellenemedi.', isProfileEnglish()), 'error');
     }
 }
 
 async function deleteUserFile(fileId) {
-    if (!confirm('Bu dosya referansını kaldırmak istiyor musunuz?')) return;
+    if (!confirm(translateProfileString('Bu dosya referansını kaldırmak istiyor musunuz?', isProfileEnglish()))) return;
     const res = await fetch(`${window.API_BASE || ""}/api/user/files/${fileId}`, {
         method: 'DELETE',
         credentials: 'include'
     });
     if (res.ok) {
-        showToast('Dosya kaldırıldı.', 'success');
+        showToast(translateProfileString('Dosya kaldırıldı.', isProfileEnglish()), 'success');
         loadFiles(currentFolderId);
     } else {
-        showToast('Dosya kaldırılamadı.', 'error');
+        showToast(translateProfileString('Dosya kaldırılamadı.', isProfileEnglish()), 'error');
     }
 }
 
@@ -4787,7 +4851,7 @@ function hydrateInstitutionFileActions(files) {
 }
 
 async function renameInstitutionFileRef(refId, currentName) {
-    const displayName = prompt('Yeni dosya adı:', currentName);
+    const displayName = prompt(translateProfileString('Yeni dosya adı:', isProfileEnglish()), currentName);
     if (!displayName || !displayName.trim()) return;
 
     const res = await fetch(`${window.API_BASE || ""}/api/collection_files/${refId}/rename`, {
@@ -4798,17 +4862,17 @@ async function renameInstitutionFileRef(refId, currentName) {
     });
 
     if (res.ok) {
-        showToast('Dosya adı güncellendi.', 'success');
+        showToast(translateProfileString('Dosya adı güncellendi.', isProfileEnglish()), 'success');
         loadFiles(currentFolderId);
     } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Dosya adı güncellenemedi.', 'error');
+        showToast(data.error || translateProfileString('Dosya adı güncellenemedi.', isProfileEnglish()), 'error');
     }
 }
 
 async function moveInstitutionFileRef(refId, institutionId, fileName) {
     if (!institutionId) {
-        showToast('Kurum bilgisi bulunamadı.', 'error');
+        showToast(translateProfileString('Kurum bilgisi bulunamadı.', isProfileEnglish()), 'error');
         return;
     }
 
@@ -4822,7 +4886,7 @@ async function moveInstitutionFileRef(refId, institutionId, fileName) {
     const allFolders = rootCol ? [{ ...rootCol, name: '(Ana Dizin)' }, ...subfolders] : subfolders;
 
     if (!allFolders.length) {
-        showToast('Taşınabilecek klasör bulunamadı.', 'warning');
+        showToast(translateProfileString('Taşınabilecek klasör bulunamadı.', isProfileEnglish()), 'warning');
         return;
     }
 
@@ -4842,7 +4906,7 @@ async function moveInstitutionFileRef(refId, institutionId, fileName) {
         search: ''
     };
 
-    document.getElementById('moveModalSubtitle').textContent = 'Dosyayı kurum klasörleri arasında taşı.';
+    document.getElementById('moveModalSubtitle').textContent = translateProfileString('Dosyayı kurum klasörleri arasında taşı.', isProfileEnglish());
     const searchInput = document.getElementById('moveModalSearch');
     if (searchInput) searchInput.value = '';
     renderMoveModalFolders();
@@ -4869,19 +4933,19 @@ document.getElementById('profileUpdateForm')?.addEventListener('submit', async (
         credentials: 'include', body: JSON.stringify(data)
     });
     if (res.ok) {
-        showToast('Profil bilgileriniz güncellendi!', 'success');
+        showToast(translateProfileString('Profil bilgileriniz güncellendi!', isProfileEnglish()), 'success');
         setTimeout(() => data.new_password ? (window.location.href = 'index.html') : location.reload(), 1200);
     } else {
-        showToast('Güncelleme başarısız oldu!', 'error');
+        showToast(translateProfileString('Güncelleme başarısız oldu!', isProfileEnglish()), 'error');
     }
 });
 
 // Hesap silme
 document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
-    if (!confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
+    if (!confirm(translateProfileString('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!', isProfileEnglish()))) return;
     const res = await fetch(`${window.API_BASE || ""}/api/user/delete`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) { showToast('Hesabınız silindi.', 'info'); setTimeout(() => { window.location.href = 'index.html'; }, 1200); }
-    else showToast('Silme işlemi başarısız oldu!', 'error');
+    if (res.ok) { showToast(translateProfileString('Hesabınız silindi.', isProfileEnglish()), 'info'); setTimeout(() => { window.location.href = 'index.html'; }, 1200); }
+    else showToast(translateProfileString('Silme işlemi başarısız oldu!', isProfileEnglish()), 'error');
 });
 
 // ====================== FILE VIEWER ======================
@@ -5332,7 +5396,7 @@ async function sendTicketReply() {
     const file = fileEl?.files?.[0] || null;
 
     if (!message && !file) {
-        showToast('Yanıt veya dosya gerekli.', 'warning');
+        showToast(translateProfileString('Yanıt veya dosya gerekli.', isProfileEnglish()), 'warning');
         return;
     }
     if (file && file.size > 10 * 1024 * 1024) {
@@ -5355,7 +5419,7 @@ async function sendTicketReply() {
 
         messageEl.value = '';
         if (fileEl) fileEl.value = '';
-        showToast('Yanıt gönderildi.', 'success');
+        showToast(translateProfileString('Yanıt gönderildi.', isProfileEnglish()), 'success');
         await openTicketDetail(currentTicketId);
         await loadMyTickets();
     } catch (err) {
@@ -5382,7 +5446,7 @@ async function submitNewTicket(e) {
     const btn = document.getElementById('newTicketSubmitBtn');
 
     btn.disabled = true;
-    btn.textContent = 'Gönderiliyor...';
+    btn.textContent = translateProfileString('Gönderiliyor...', isProfileEnglish());
 
     try {
         const res = await fetch('/api/support/tickets', {
@@ -5395,13 +5459,13 @@ async function submitNewTicket(e) {
         if (!res.ok) throw new Error((await res.json()).error || 'Talep gönderilemedi');
 
         closeNewTicketModal();
-        showToast('Destek talebi oluşturuldu.', 'success');
+        showToast(translateProfileString('Destek talebi oluşturuldu.', isProfileEnglish()), 'success');
         await loadMyTickets();
     } catch (err) {
         showToast(err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Gönder';
+        btn.textContent = translateProfileString('Gönder', isProfileEnglish());
     }
 }
 
