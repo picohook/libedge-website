@@ -64,6 +64,11 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unknown');
   await expect(research.locator('#researchOpsAlert')).toHaveAttribute('role', 'status');
+  await expect(research.getByText('Assistant Request Havuzu', { exact: true })).toBeVisible();
+  await expect(research.getByText('Gelişmiş kurum / B2C override')).toBeVisible();
+  await expect(research.locator('#researchUsageScopeId')).toBeHidden();
+  await expect(research.locator('#researchRetrievalExperimentPanel')).not.toHaveAttribute('open', '');
+  await expect(research.locator('#researchRetrievalMode')).toBeHidden();
 
   const institutionHeaders = await research.locator('#researchUsageInstitutions').locator('xpath=ancestor::table/thead').innerText();
   expect(institutionHeaders).toContain('Verified');
