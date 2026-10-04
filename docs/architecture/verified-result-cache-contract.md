@@ -6,14 +6,14 @@ Status: staging design contract for #502. This document does not enable caching.
 
 The first verified-result cache MUST be **user-scoped**. Institution-wide and global reuse are explicitly out of scope until a separate privacy and authorization review approves them.
 
-The first staging implementation MUST be disabled by default and MUST use a bounded TTL of **15 minutes**. TTL expiry is a cache miss; it is never permission to reuse a stale verification result.
+The first staging implementation MUST be disabled by default and MUST use a bounded TTL of **15 minutes**. The implementation flag MUST be forced off in code whenever `ENVIRONMENT` is production, with a regression test; production enablement therefore requires a reviewed code change under #399 rather than a configuration flip. TTL expiry is a cache miss; it is never permission to reuse a stale verification result.
 
 ## Trust identity
 
 A reusable entry MUST bind all of the following in one versioned identity:
 
 - user scope identifier;
-- opaque cryptographic digest of the canonical research query; query text MUST NOT be persisted in the cache key;
+- HMAC-SHA-256 of the canonical research query using a server-side secret that is not stored alongside the cache; neither query text, cache keys nor query digests may be written to telemetry or logs;
 - ordered/canonical evidence identities and evidence content/version fingerprints;
 - generation model ID and prompt/generation-contract version;
 - Fresh-Checker model, revision and manifest identity;
@@ -21,7 +21,7 @@ A reusable entry MUST bind all of the following in one versioned identity:
 - evidence-policy version and cache-schema version;
 - relevant language and evidence-depth policy version.
 
-The cache key MUST be derived from a canonical serialization of the complete identity. Missing fields, unknown versions, parse/schema failures, corruption, identity mismatch, authorization mismatch or TTL expiry MUST produce a cache miss.
+The cache key MUST be derived from a canonical serialization of the complete identity. Lookup occurs only after current-request Discover and evidence-pack construction/authorization have completed; a hit may skip generation and Fresh-Checker only, never discovery, evidence authorization or entitlement checks. Query-digest-only pre-lookup is forbidden. Missing fields, unknown versions, parse/schema failures, corruption, identity mismatch, authorization mismatch or TTL expiry MUST produce a cache miss.
 
 ## Authorization and fail-closed rules
 
@@ -29,15 +29,17 @@ A hit is usable only if the current requester is still authorized for the bound 
 
 Any uncertainty is a miss followed by the normal live path. Cache failure MUST NOT turn a rejected or unverifiable request into an accepted answer.
 
-## Payload and privacy
+## Storage, deletion, payload and privacy
+
+The first implementation uses KV native expiration. Entries MUST be user-scoped at the storage-key level in addition to carrying user scope in the trust identity. Research entitlement revocation is enforced by the mandatory current-request authorization re-check, so a revoked user cannot consume a cached hit. Account deletion should purge known user-scoped cache entries where the platform deletion path can enumerate them; regardless, native expiration bounds residual storage to 15 minutes and authorization remains mandatory during that bound.
 
 The cached payload may contain generated/verified research content, so it is not operational telemetry. It MUST remain within the user scope selected above and MUST NOT be copied into content-free Admin telemetry.
 
-Operational telemetry may record only content-free cache outcomes such as hit, miss, stale, invalid and disabled.
+Operational telemetry may record only content-free cache outcomes such as hit, miss, stale, invalid and disabled. These metrics must be explicitly allowlisted before use; cache keys and digests are never telemetry.
 
 ## Budget and UX semantics
 
-A valid hit consumes zero new Fresh-Checker invocations. A hit MUST be labeled operationally as reused verification; the UI MUST NOT imply that Fresh-Checker ran for the current request.
+A valid hit consumes zero new Fresh-Checker invocations. A hit MUST be labeled operationally as reused verification; the UI MUST NOT imply that Fresh-Checker ran for the current request. If the result is saved to Assistant history, that record MUST retain the same reused-verification marker.
 
 Cost and latency accounting MUST distinguish a verified-result cache hit from a live generation/check path.
 
