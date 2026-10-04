@@ -662,12 +662,11 @@ function updateAuthUI(isLoggedIn) {
         if (dropdownName) dropdownName.textContent = fullName;
         if (dropdownEmail) dropdownEmail.textContent = currentUser.email;
 
-        const roleNameMap = {
-            super_admin: 'Super Admin',
-            admin: 'Kurum Yöneticisi',
-            user: 'Kullanıcı'
-        };
-        const roleName = roleNameMap[currentUser.role] || 'Kullanıcı';
+        const useEnglish = localStorage.getItem('language') === 'en';
+        const roleNameMap = useEnglish
+            ? { super_admin: 'Super Admin', admin: 'Organization Admin', user: 'User' }
+            : { super_admin: 'Super Admin', admin: 'Kurum Yöneticisi', user: 'Kullanıcı' };
+        const roleName = roleNameMap[currentUser.role] || (useEnglish ? 'User' : 'Kullanıcı');
 
         if (dropdownRole) {
             dropdownRole.textContent = roleName;
