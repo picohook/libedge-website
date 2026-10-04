@@ -841,6 +841,7 @@
                     <p class="text-xs text-gray-500">Verification: <span id="researchCheckerState" class="font-semibold text-gray-700">—</span></p>
                 </div>
                 <p id="researchCheckerInfrastructureDetail" class="text-xs text-gray-400 mt-1">Infrastructure state bekleniyor.</p>
+                <p class="text-xs text-gray-500 mt-2"><a id="researchCheckerLifecycleLink" href="https://github.com/picohook/libedge-website/actions/workflows/supportcheck-staging-lifecycle.yml" target="_blank" rel="noopener noreferrer" class="underline">Aç / Kapat → GitHub’da çalıştır</a></p>
                 <p id="researchCheckerBudget" class="text-xs text-gray-500 mt-1">—</p>
                 <div class="flex gap-2 mt-3">
                     <button type="button" id="researchCheckerPauseBtn" class="btn bg-red-50 text-red-700 border border-red-200 text-xs">Pause</button>
@@ -5231,7 +5232,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             if (alert) {
                 if (blockers.length) {
                     alert.className = 'mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900';
-                    alert.innerHTML = `<div class="font-semibold mb-1">Müdahale / inceleme gerekiyor</div><ul class="text-sm list-disc pl-5 space-y-1">${blockers.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+                    alert.innerHTML = `<div class="font-semibold mb-1">Müdahale / inceleme gerekiyor</div><ul class="text-sm list-disc pl-5 space-y-1">${blockers.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>${infrastructureState !== 'Available' ? '<div class="mt-2 text-sm"><a id="researchCheckerLifecycleAlertLink" href="https://github.com/picohook/libedge-website/actions/workflows/supportcheck-staging-lifecycle.yml" target="_blank" rel="noopener noreferrer" class="underline">Aç / Kapat → GitHub’da çalıştır</a></div>' : ''}`;
                 } else {
                     alert.className = 'mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900';
                     alert.innerHTML = '<div class="font-semibold">Aktif operasyonel blocker görünmüyor.</div><div class="text-sm mt-1">Pipeline ve Fresh-Checker sayaçlarında müdahale gerektiren bir durum saptanmadı.</div>';
