@@ -5138,7 +5138,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 ? `${singleSourceVerifiedAnswers.toLocaleString('tr-TR')} · %${((singleSourceVerifiedAnswers / verifiedAnswers) * 100).toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`
                 : `${singleSourceVerifiedAnswers.toLocaleString('tr-TR')} · —`;
             const lastRefreshEl = document.getElementById('researchObservabilityLastRefresh');
-            if (lastRefreshEl) lastRefreshEl.textContent = 'son yenileme: şimdi';
+            if (lastRefreshEl) lastRefreshEl.textContent = `son yenileme: ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
             const infrastructure = checker.infrastructure || { state: 'unknown', stale: true };
             const infrastructureState = infrastructure.state === 'available' ? 'Available' : infrastructure.state === 'unavailable' ? 'Unavailable' : 'Unknown';
             const checkerStateEl = document.getElementById('researchCheckerState');
