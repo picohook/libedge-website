@@ -5177,7 +5177,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 && Number.isFinite(hourlyUsd) && hourlyUsd > 0;
             if (hostingEstimate) hostingEstimate.classList.toggle('hidden', !showHostingEstimate);
             if (hostingEstimateValue) hostingEstimateValue.textContent = showHostingEstimate
-                ? `≈ ${(instanceCount * hourlyUsd * 24).toFixed(2)} / gün · ${instanceCount} × ${infrastructure.instance_type} · ${hourlyUsd.toFixed(4)} / saat`
+                ? `≈ \${(instanceCount * hourlyUsd * 24).toFixed(2)} / gün · ${instanceCount} × ${infrastructure.instance_type} · \${hourlyUsd.toFixed(4)} / saat`
                 : '—';
             checkerStateEl.classList.toggle('text-green-700', checker.status === 'ok' && !checker.paused && infrastructureState === 'Available');
             checkerStateEl.classList.toggle('text-gray-700', checker.status !== 'ok' || checker.paused || infrastructureState !== 'Available');
