@@ -6,9 +6,9 @@ const ADMIN_PASSWORD = process.env.LIBEDGE_SMOKE_ADMIN_PASSWORD;
 if (!EMAIL || !PASSWORD || !ADMIN_EMAIL || !ADMIN_PASSWORD) throw new Error('Missing benchmark credentials');
 
 const CASES = [
-  { name: 'humanities', query: 'Ottoman Empire print culture' },
-  { name: 'social-science', query: 'remote work productivity randomized' },
-  { name: 'biomedical', query: 'CRISPR base editing sickle cell' }
+  { name: 'ottoman-periodical-typography', query: 'Ottoman Turkish periodical typography 1860s' },
+  { name: 'alkaline-fuel-cell-membrane', query: 'alkaline fuel cell asbestos membrane potassium hydroxide' },
+  { name: 'radiation-grafted-membrane', query: 'radiation grafted polyethylene styrene ion exchange membrane 1970' }
 ];
 
 const cookies = new Map();
