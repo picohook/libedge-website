@@ -10,6 +10,7 @@ Initial staging envelope:
 
 - minimum capacity: 1 instance while the bounded experiment is running;
 - maximum capacity: 2 instances;
+- target: **1 invocation per instance per minute** for the first staging experiment; this is deliberately conservative and MUST be recalibrated from observed single-instance throughput at an acceptable p95 before any later production proposal;
 - scale-out cooldown: 60 seconds;
 - scale-in cooldown: 300 seconds;
 - no autoscaling change may increase the per-request support-check cap or the daily invocation budget.
@@ -34,11 +35,17 @@ A rise in application support-check time without a comparable rise in model late
 
 Before any staging experiment, record the current hourly price assumption for the selected instance type and calculate the maximum incremental hourly and monthly exposure at the proposed max capacity. The experiment MUST fit inside the existing staging budget/alarm envelope. If the envelope cannot be demonstrated from current billing configuration, do not enable autoscaling.
 
-Autoscaling MUST NOT modify budgets or alarms.
+Autoscaling MUST NOT modify pre-existing budget or billing alarms. SageMaker/Application Auto Scaling target tracking is expected to create policy-managed CloudWatch metric alarms; those alarms are part of the scaling policy lifecycle and MUST be removed with the policy during rollback.
+
+## Permissions and governed lifecycle
+
+Registering a scalable target and scaling policy requires Application Auto Scaling permissions and its service-linked role. Existing lifecycle permissions are not assumed to include them. The staging experiment must name the maintainer-authorized principal that performs these calls; granting or widening those permissions is a separate maintainer decision and is not authorized by this record.
+
+The experiment must integrate with the governed staging checker lifecycle (#487): deregister the scaling policy and scalable target before endpoint teardown (or add an explicitly reviewed teardown step that does so). Teardown must verify no orphaned scalable target remains. While autoscaling is active, the published infrastructure record must report the observed/current instance count rather than a stale configured minimum, because Admin and any hosting-cost estimate consume that record.
 
 ## Staging experiment
 
-Use a bounded, synthetic, content-free load against staging only. Compare fixed capacity 1 versus autoscaling 1–2 using the same admitted workload and checker contract.
+Use a bounded, synthetic, content-free load against staging only. Before starting, calculate the maximum checker invocations for the load and prove it fits inside the remaining staging daily invocation budget without changing that budget. Compare fixed capacity 1 versus autoscaling 1–2 using the same admitted workload and checker contract.
 
 Collect p50/p95 support-check wall-clock latency, model/invocation latency, error/throttle rate, scale-out time, time spent at two instances, and estimated incremental cost.
 
