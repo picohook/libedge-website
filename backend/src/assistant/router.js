@@ -46,6 +46,35 @@ function safeCount(value) {
   return Number.isSafeInteger(number) && number >= 0 ? number : 0;
 }
 
+const PUBLIC_GROUNDING_REJECTION_CODES = new Set([
+  'CLAIM_TEXT_REQUIRED',
+  'EVIDENCE_ID_REQUIRED',
+  'EVIDENCE_ID_UNKNOWN',
+  'SUPPORT_CHECK_REQUIRED',
+  'SUPPORT_CHECK_BUDGET_TRUNCATED',
+  'CLAIM_UNSUPPORTED',
+  'SUPPORT_CHECK_FAILED',
+  'CLAIM_UNSUPPORTED_SUPPORT',
+  'CLAIM_UNSUPPORTED_NOT_SUPPORTED',
+  'CLAIM_UNSUPPORTED_UNSUPPORTED',
+  'SUPPORT_CHECK_FAILED_TIMEOUT',
+  'SUPPORT_CHECK_FAILED_BUDGET',
+  'SUPPORT_CHECK_FAILED_LANGUAGE',
+  'SUPPORT_CHECK_FAILED_PIN_OR_RESPONSE',
+  'SUPPORT_CHECK_FAILED_TRANSPORT_OR_OTHER'
+]);
+
+function publicGroundingRejectionCounts(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const counts = {};
+  for (const [code, amount] of Object.entries(value)) {
+    if (!PUBLIC_GROUNDING_REJECTION_CODES.has(code)) continue;
+    const count = Number(amount);
+    if (Number.isSafeInteger(count) && count > 0) counts[code] = count;
+  }
+  return counts;
+}
+
 export function publicResearchSummary(result = {}) {
   const retrieval = result?.diagnostic_retrieval || {};
   const grounding = result?.diagnostic_grounding || {};
@@ -59,7 +88,8 @@ export function publicResearchSummary(result = {}) {
     verification: {
       checked_count: safeCount(grounding.checked_count),
       verified_count: Array.isArray(result?.claims) ? result.claims.length : 0,
-      truncated_count: safeCount(grounding.truncated_count)
+      truncated_count: safeCount(grounding.truncated_count),
+      rejection_counts: publicGroundingRejectionCounts(grounding.rejection_counts)
     }
   };
 }
