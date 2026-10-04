@@ -5178,7 +5178,6 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             if (hostingEstimate) hostingEstimate.classList.toggle('hidden', !showHostingEstimate);
             if (hostingEstimateValue) hostingEstimateValue.textContent = showHostingEstimate
                 ? '≈ 
-                : '—';
             checkerStateEl.classList.toggle('text-green-700', checker.status === 'ok' && !checker.paused && infrastructureState === 'Available');
             checkerStateEl.classList.toggle('text-gray-700', checker.status !== 'ok' || checker.paused || infrastructureState !== 'Available');
             const infrastructureDetail = document.getElementById('researchCheckerInfrastructureDetail');
@@ -12841,7 +12840,6 @@ async function moveAdminFileRef(refId, fileName) {
 </body>
 </html>
  + (instanceCount * hourlyUsd * 24).toFixed(2) + ' / gün · ' + instanceCount + ' × ' + infrastructure.instance_type + ' · 
-                : '—';
             checkerStateEl.classList.toggle('text-green-700', checker.status === 'ok' && !checker.paused && infrastructureState === 'Available');
             checkerStateEl.classList.toggle('text-gray-700', checker.status !== 'ok' || checker.paused || infrastructureState !== 'Available');
             const infrastructureDetail = document.getElementById('researchCheckerInfrastructureDetail');
@@ -12946,8 +12944,6 @@ async function moveAdminFileRef(refId, fileName) {
             if (infrastructureBadge) infrastructureBadge.textContent = 'Unknown';
             if (verificationBadge) verificationBadge.textContent = 'Unknown';
             if (stateBanner) stateBanner.textContent = 'Fresh-Checker · Altyapı: Unknown · Doğrulama: Unknown';
-            const hostingEstimate = document.getElementById('researchCheckerHostingEstimate');
-            if (hostingEstimate) hostingEstimate.classList.add('hidden');
             if (infrastructureDetailEl) infrastructureDetailEl.textContent = 'Infrastructure / pause store durumu okunamadı; güvenli olarak Unknown gösteriliyor.';
             if (resumeBtn) {
                 resumeBtn.disabled = true;
@@ -20609,8 +20605,6 @@ async function moveAdminFileRef(refId, fileName) {
             if (infrastructureBadge) infrastructureBadge.textContent = 'Unknown';
             if (verificationBadge) verificationBadge.textContent = 'Unknown';
             if (stateBanner) stateBanner.textContent = 'Fresh-Checker · Altyapı: Unknown · Doğrulama: Unknown';
-            const hostingEstimate = document.getElementById('researchCheckerHostingEstimate');
-            if (hostingEstimate) hostingEstimate.classList.add('hidden');
             if (infrastructureDetailEl) infrastructureDetailEl.textContent = 'Infrastructure / pause store durumu okunamadı; güvenli olarak Unknown gösteriliyor.';
             if (resumeBtn) {
                 resumeBtn.disabled = true;
