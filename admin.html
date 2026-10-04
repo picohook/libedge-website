@@ -852,7 +852,6 @@
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">LLM exact cost</p><p id="researchUsageLlmCost" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-gray-100 p-3"><p class="text-xs text-gray-500">Discovery exact cost</p><p id="researchUsageDiscoveryCost" class="text-xl font-bold">—</p></div>
                 <div class="rounded-lg border border-blue-100 bg-blue-50/30 p-3"><p class="text-xs text-blue-700">Exact total</p><p id="researchUsageExactCost" class="text-xl font-bold text-blue-800">—</p><p class="text-[11px] text-gray-500 mt-1">LLM + Discovery</p></div>
-                <div class="rounded-lg border border-dashed border-gray-200 p-3"><p class="text-xs text-gray-500">Checker hosting</p><p id="researchUsageCheckerEstimatedCost" class="text-xl font-bold text-gray-500">Ayrı</p><p class="text-[11px] text-gray-400 mt-1">Estimated • exact toplama dahil değil</p></div>
             </div>
             <div class="rounded-xl border border-gray-100 bg-gray-50/40 p-4 mb-5">
                 <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 mb-4">
@@ -5015,6 +5014,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             document.getElementById('researchUsageOutputTokens').textContent = Number(summary.output_tokens || 0).toLocaleString('tr-TR');
             document.getElementById('researchUsageLlmCost').textContent = `${Number(summary.llm_cost_usd || 0).toFixed(6)}`;
             document.getElementById('researchUsageDiscoveryCost').textContent = `${Number(summary.discovery_cost_usd || 0).toFixed(6)}`;
+            document.getElementById('researchUsageExactCost').textContent = `${(Number(summary.llm_cost_usd || 0) + Number(summary.discovery_cost_usd || 0)).toFixed(6)}`;
             document.getElementById('researchUsageFunnel').innerHTML = researchUsageFunnel(data.outcomes, summary.requests, summary.stage_latency_ms);
             document.getElementById('researchUsageStageLatency').innerHTML = researchStageLatencyRows(summary.stage_latency_ms);
             document.getElementById('researchUsageUsers').innerHTML = researchUsageRows(data.users, 'user');
