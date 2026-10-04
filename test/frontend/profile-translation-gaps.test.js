@@ -63,9 +63,9 @@ describe('profile social-link translation gaps', () => {
       'Destek talebi oluşturuldu.': 'Support request created.',
     };
     for (const [turkish, english] of Object.entries(expectedEntries)) {
-      expect(dictionary).toContain(\`'\${turkish}': '\${english}'\`);
+      expect(dictionary).toContain(`'${turkish}': '${english}'`);
     }
-    expect(profileSource).toContain("translateProfileString(\`\${email} adresiyle e-bülten aboneliğiniz aktif.\`, isProfileEnglish())");
+    expect(profileSource).toContain("translateProfileString(`${email} adresiyle e-bülten aboneliğiniz aktif.`, isProfileEnglish())");
     expect(profileSource).toContain("translateProfileString('Kurumsal giriş bağlantısı henüz tanımlı değil.', isProfileEnglish())");
     expect(profileSource).toContain("showToast(translateProfileString('Profil bilgileriniz güncellendi!', isProfileEnglish()), 'success')");
   });
