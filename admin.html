@@ -5084,6 +5084,8 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     async function loadResearchAccountUsage() {
         if (currentAdmin?.role !== 'super_admin') return;
         const days = document.getElementById('researchUsageDays')?.value || '30';
+        const usagePeriodBadge = document.getElementById('researchUsagePeriodBadge');
+        if (usagePeriodBadge) usagePeriodBadge.textContent = `Son ${days} gün`;
         const meta = document.getElementById('researchUsageMeta');
         try {
             const res = await fetch(`${API_BASE}/api/admin/research/usage?days=${encodeURIComponent(days)}`, { credentials: 'include' });
