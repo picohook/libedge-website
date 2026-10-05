@@ -114,7 +114,9 @@ export async function handleSystemHealthRequest(request, env) {
         const paused = !['false', '0', 'resume'].includes(pauseValue);
         const used = Number(invocationRaw || 0);
         const limitState = await supportCheckInvocationLimit(env);
-        let infrastructure = { state: 'unknown', published_at: null, stale: true, instance_type: null, instance_count: null };
+        const configuredHourlyCost = Number(env.RESEARCH_ASSISTANT_SUPPORT_CHECK_HOURLY_COST_USD);
+        const hourlyCostUsd = Number.isFinite(configuredHourlyCost) && configuredHourlyCost > 0 ? configuredHourlyCost : null;
+        let infrastructure = { state: 'unknown', published_at: null, stale: true, instance_type: null, instance_count: null, hourly_cost_usd: null };
         if (infrastructureRaw) {
           try {
             const parsed = JSON.parse(infrastructureRaw);
@@ -128,6 +130,7 @@ export async function handleSystemHealthRequest(request, env) {
               stale: !fresh,
               instance_type: fresh && typeof parsed?.instance_type === 'string' ? parsed.instance_type : null,
               instance_count: fresh && [1, 2].includes(Number(parsed?.instance_count)) ? Number(parsed.instance_count) : null,
+              hourly_cost_usd: fresh ? hourlyCostUsd : null,
             };
           } catch {
             // Malformed operational state fails closed to Unknown without exposing raw KV content.
