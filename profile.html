@@ -1017,8 +1017,8 @@
 
                     <article class="profile-module hidden" id="profileCatalogModule" style="--module-tint:#fefce8;--module-icon-bg:#fef08a;--module-icon:#ca8a04">
                         <div class="profile-module-header">
-                            <h2 class="profile-module-title"><i class="fas fa-star"></i>Keşfet & Kurumunuza Önerin</h2>
-                            <span class="text-xs text-gray-400 font-medium">Kurumunuzun henüz sahip olmadığı LibEdge ürünleri</span>
+                            <h2 class="profile-module-title"><i class="fas fa-star"></i><span class="translatable" data-en="Discover & Recommend to Your Organization">Keşfet & Kurumunuza Önerin</span></h2>
+                            <span class="text-xs text-gray-400 font-medium translatable" data-en="LibEdge products your organization does not have yet">Kurumunuzun henüz sahip olmadığı LibEdge ürünleri</span>
                         </div>
                         <div class="profile-module-body">
                             <div id="profileCatalogList" class="profile-product-grid"></div>
@@ -1542,6 +1542,8 @@ const profileTranslations = {
     'Kurum İçi': 'Organization-only',
     'İçi': 'Internal',
     'Kategori': 'Category',
+    'Veritabanı': 'Database',
+    'Veri Tabanı': 'Database',
     'Sözleşme': 'Contract',
     'Fatura': 'Invoice',
     'Lisans': 'License',
@@ -1851,7 +1853,17 @@ function bindProfileLanguageButton() {
     if (!translateBtn || translateBtn.dataset.profileLanguageBound) return;
     translateBtn.dataset.profileLanguageBound = 'true';
     translateBtn.addEventListener('click', () => {
-        setTimeout(applyProfileLanguageFromStorage, 0);
+        setTimeout(() => {
+            applyProfileLanguageFromStorage();
+            renderSecondaryFilters();
+            _renderCatalog();
+            loadSubscriptions();
+            _renderIndividualToolsWithFilter();
+            _buildIndividualCategoryFilter();
+            renderProfilePersonalTools();
+            _buildPersonalCategoryFilter();
+            if (_profileViewMode === 'mosaic') _renderMosaicTiles();
+        }, 0);
     });
 }
 
@@ -3128,11 +3140,11 @@ function renderSecondaryFilters() {
     const isAll = _activeCatsGlobal.size === 0;
     let html = `<div class="flex flex-wrap gap-1.5">
         ${pill(useEn ? 'All' : 'Tümü', isAll, '__all__')}
-        ${instCats.map(c => pill(c, _activeCatsGlobal.has(c), c)).join('')}
+        ${instCats.map(c => pill(translateProfileString(c, useEn), _activeCatsGlobal.has(c), c)).join('')}
     </div>`;
     if (indivCats.length) {
         html += `<div class="flex flex-wrap gap-1.5">
-            ${indivCats.map(c => pill(c, _activeCatsGlobal.has(c), c)).join('')}
+            ${indivCats.map(c => pill(translateProfileString(c, useEn), _activeCatsGlobal.has(c), c)).join('')}
         </div>`;
     }
     el.innerHTML = html;
