@@ -2,9 +2,11 @@ import { Hono } from 'hono';
 import { requireAuth } from '../auth/middleware.js';
 import { checkProtectedRateLimit } from '../auth/rate-limit.js';
 import { orchestrateResearchAnswer } from '../research/assistant-orchestrator.js';
-import { createBedrockModelAdapter } from './bedrock-model-adapter.js';
+import { bedrockAdapterConfig, createBedrockModelAdapter } from './bedrock-model-adapter.js';
 import { recordAssistantOutcome } from './telemetry.js';
 import { createSupportCheck } from './support-check-client.js';
+import { SUPPORT_CHECK_PIN } from './support-check-config.js';
+import { VERIFIED_RESULT_CACHE_SCHEMA } from './verified-result-cache.js';
 import { preflightSupportCheckInvocation } from './support-check-invocation-budget.js';
 import { supportCheckRuntimePause } from './support-check-runtime-pause.js';
 import { reserveAssistantUsageScopeRequest, resolveAssistantUsageScope } from './usage-scope-quota.js';
@@ -17,6 +19,11 @@ import { deleteAssistantHistory, getAssistantHistory, listAssistantHistory, sani
 const app = new Hono();
 const DEFAULT_ASSISTANT_USER_LIMIT = 10;
 const DEFAULT_ASSISTANT_USER_WINDOW_SECONDS = 300;
+const VERIFIED_CACHE_GENERATION_CONTRACT_VERSION = 'bedrock-claims-v1';
+const VERIFIED_CACHE_DECISION_CONTRACT_VERSION = 'd023-path-b-v1';
+const VERIFIED_CACHE_EVIDENCE_POLICY_VERSION = 'evidence-pack-v1';
+const VERIFIED_CACHE_LANGUAGE_POLICY_VERSION = 'text-detected-en-v2';
+const VERIFIED_CACHE_EVIDENCE_DEPTH_POLICY_VERSION = 'relevance-metadata-fallback-v1';
 
 async function recordOperationalOutcome(env, user, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, retrievalDiagnostic, stageTimings, usage, costs } = {}) {
   await Promise.all([
@@ -162,27 +169,41 @@ app.post('/api/assistant/ask', async (c) => {
   }
 
   const runtimePause = await supportCheckRuntimePause(c.env);
-  if (!runtimePause.paused) {
-    const budget = await preflightSupportCheckInvocation(c.env);
-    if (!budget.allowed) {
-      await recordOperationalOutcome(c.env, auth.user, { code: budget.reason, durationMs: Date.now() - startedAt });
-      return c.json({ ok: false, error: 'Assistant doğrulama bütçesi şu anda kullanılamıyor', code: budget.reason, claims: [], evidence: [] }, 503);
-    }
-  }
-
   const providerGate = providerGateFromEnv(c.env);
   const modelAdapter = providerGate.status === 'PASS'
     ? createBedrockModelAdapter(c.env)
     : null;
-
   const supportCheck = runtimePause.paused ? null : createSupportCheck(c.env);
+  const userId = Number(auth.user?.user_id);
+  const cacheScope = Number.isSafeInteger(userId) && userId > 0 ? `user:${userId}` : null;
+  const modelConfig = bedrockAdapterConfig(c.env);
+  const cacheIdentityContext = {
+    generation_model_id: modelConfig.modelId,
+    generation_contract_version: VERIFIED_CACHE_GENERATION_CONTRACT_VERSION,
+    checker_model: SUPPORT_CHECK_PIN.model,
+    checker_revision: SUPPORT_CHECK_PIN.revision,
+    checker_manifest: SUPPORT_CHECK_PIN.engineManifestSha256,
+    checker_threshold: SUPPORT_CHECK_PIN.entailmentThreshold,
+    decision_contract_version: VERIFIED_CACHE_DECISION_CONTRACT_VERSION,
+    evidence_policy_version: VERIFIED_CACHE_EVIDENCE_POLICY_VERSION,
+    cache_schema_version: VERIFIED_RESULT_CACHE_SCHEMA,
+    language_policy_version: VERIFIED_CACHE_LANGUAGE_POLICY_VERSION,
+    evidence_depth_policy_version: VERIFIED_CACHE_EVIDENCE_DEPTH_POLICY_VERSION
+  };
 
   const result = await orchestrateResearchAnswer({
     query,
     env: c.env,
     providerGate,
     modelAdapter,
-    supportCheck
+    supportCheck,
+    cacheScope,
+    cacheIdentityContext,
+    beforeLiveVerification: async () => {
+      if (runtimePause.paused) return { allowed: false, reason: 'SUPPORT_CHECK_RUNTIME_PAUSED' };
+      const budget = await preflightSupportCheckInvocation(c.env);
+      return budget.allowed ? { allowed: true } : { allowed: false, reason: budget.reason };
+    }
   });
 
   await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding, retrievalDiagnostic: result?.diagnostic_retrieval, stageTimings: result?.diagnostic_timings, usage: result?.diagnostic_usage, costs: result?.diagnostic_costs });
