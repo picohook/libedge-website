@@ -62,6 +62,7 @@ describe('verified-result cache identity', () => {
     expect(canonicalVerifiedResultIdentity({ ...identity(), evidence: [] })).toBeNull();
     expect(canonicalVerifiedResultIdentity({ ...identity(), evidence: [null] })).toBeNull();
     expect(canonicalVerifiedResultIdentity({ ...identity(), evidence: [{ evidence_id: 'e1' }] })).toBeNull();
+    expect(canonicalVerifiedResultIdentity({ ...identity(), evidence: [{ evidence_id: 'e1', fingerprint: undefined }] })).toBeNull();
   });
 
   it('fails closed for non-finite thresholds and invalid string fields', () => {
