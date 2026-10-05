@@ -232,4 +232,22 @@ describe('assistant privacy-safe telemetry', () => {
     spy.mockRestore();
   });
 
+  it('persists cache-hit telemetry only for explicit verification reuse', async () => {
+    const collect = async (verificationReused) => {
+      const batch = vi.fn().mockResolvedValue([]);
+      const prepare = vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn() })) }));
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await recordAssistantOutcome({ ENVIRONMENT: 'staging', DB: { prepare, batch } }, {
+        code: 'OK',
+        verificationReused
+      });
+      const binds = prepare.mock.results.map((result) => result.value.bind.mock.calls[0]).filter(Boolean);
+      spy.mockRestore();
+      return Object.fromEntries(binds.map((args) => [args[1], args[2]]));
+    };
+    expect(await collect(true)).toMatchObject({ assistant_verified_result_cache_hit: 1 });
+    expect(await collect(false)).not.toHaveProperty('assistant_verified_result_cache_hit');
+    expect(await collect(undefined)).not.toHaveProperty('assistant_verified_result_cache_hit');
+  });
+
 });
