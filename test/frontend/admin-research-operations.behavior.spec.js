@@ -161,7 +161,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerState')).toHaveText('Duraklatıldı');
   await expect(research.locator('#researchCheckerInfrastructureBadge')).toHaveText('Available');
   await expect(research.locator('#researchCheckerVerificationBadge')).toHaveText('Duraklatıldı');
-  await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Available · Doğrulama: Paused');
+  await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Hazır · Duraklatıldı');
   await expect(research.locator('#researchCheckerResumeBtn')).toBeEnabled();
   await expect(research.locator('#researchCheckerInfrastructureDetail')).toContainText('Paused by operator');
   await expect(research.locator('#researchCheckerHostingEstimate')).toBeHidden();
@@ -198,7 +198,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerInfrastructureBadge')).toHaveText('Unavailable');
   await expect(research.locator('#researchCheckerHostingEstimate')).toBeHidden();
   await expect(research.locator('#researchCheckerVerificationBadge')).toHaveText('Doğrulama kullanılamıyor');
-  await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Unavailable · Doğrulama: Running · etkisiz');
+  await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Kapalı · Doğrulama kullanılamıyor');
   await expect(research.locator('#researchCheckerFreshness')).toBeHidden();
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
   await expect(research.locator('#researchCheckerLifecycleAlertLink')).toBeVisible();
