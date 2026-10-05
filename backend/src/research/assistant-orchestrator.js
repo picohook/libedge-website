@@ -227,6 +227,16 @@ export async function orchestrateResearchAnswer({
       diagnostic_retrieval: diagnosticRetrieval, claims: [] };
   }
 
+  if (!gatePassed(providerGate)) {
+    return {
+      ok: false,
+      code: 'PROVIDER_PRIVACY_GATE_REQUIRED',
+      diagnostic_timings: diagnosticTimings,
+      claims: [],
+      evidence_pack_id: evidencePack.pack_id
+    };
+  }
+
   const cacheIdentity = await cacheIdentityFor({ task, env, cacheScope, cacheIdentityContext, evidencePack });
   if (cacheIdentity) {
     const cached = await readVerifiedResultCache({ env, identity: cacheIdentity });
@@ -238,16 +248,6 @@ export async function orchestrateResearchAnswer({
       });
       if (restored) return restored;
     }
-  }
-
-  if (!gatePassed(providerGate)) {
-    return {
-      ok: false,
-      code: 'PROVIDER_PRIVACY_GATE_REQUIRED',
-      diagnostic_timings: diagnosticTimings,
-      claims: [],
-      evidence_pack_id: evidencePack.pack_id
-    };
   }
 
   if (!modelAdapter || typeof modelAdapter.generateClaims !== 'function') {
