@@ -228,6 +228,7 @@ describe('assistant ask endpoint', () => {
           RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'https://checker.example.test/v1/support',
           RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'test-token',
           RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '1',
+          RESEARCH_ASSISTANT_SUPPORT_CHECK_RUNTIME_PAUSED: 'false',
           RATE_LIMIT_KV: { get: vi.fn(async () => null), put: vi.fn(async () => {}) }
         })
       );
