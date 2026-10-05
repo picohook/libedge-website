@@ -25,9 +25,9 @@ const VERIFIED_CACHE_EVIDENCE_POLICY_VERSION = 'evidence-pack-v1';
 const VERIFIED_CACHE_LANGUAGE_POLICY_VERSION = 'text-detected-en-v2';
 const VERIFIED_CACHE_EVIDENCE_DEPTH_POLICY_VERSION = 'relevance-metadata-fallback-v1';
 
-async function recordOperationalOutcome(env, user, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, retrievalDiagnostic, stageTimings, usage, costs } = {}) {
+async function recordOperationalOutcome(env, user, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, retrievalDiagnostic, stageTimings, usage, costs, verificationReused } = {}) {
   await Promise.all([
-    recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, retrievalDiagnostic, stageTimings }),
+    recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, retrievalDiagnostic, stageTimings, verificationReused }),
     recordResearchUsageEvent(env, {
       userId: user?.user_id,
       institutionId: user?.institution_id,
@@ -213,7 +213,7 @@ app.post('/api/assistant/ask', async (c) => {
     }
   });
 
-  await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding, retrievalDiagnostic: result?.diagnostic_retrieval, stageTimings: result?.diagnostic_timings, usage: result?.diagnostic_usage, costs: result?.diagnostic_costs });
+  await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding, retrievalDiagnostic: result?.diagnostic_retrieval, stageTimings: result?.diagnostic_timings, usage: result?.diagnostic_usage, costs: result?.diagnostic_costs, verificationReused: result?.verification_reused === true });
   if (result?.code === 'SUPPORT_CHECK_RUNTIME_PAUSED') {
     return c.json({ ok: false, error: 'Doğrulama servisi geçici olarak duraklatıldı', code: result.code, claims: [], evidence: [] }, 503);
   }

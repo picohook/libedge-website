@@ -208,4 +208,46 @@ describe('assistant privacy-safe telemetry', () => {
     expect(payload).not.toHaveProperty('arbitrary_ms');
     spy.mockRestore();
   });
+  it('preserves content-free language-source and unsupported-reason counters', async () => {
+    const batch = vi.fn().mockResolvedValue([]);
+    const prepare = vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn() })) }));
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await recordAssistantOutcome({ ENVIRONMENT: 'staging', DB: { prepare, batch } }, {
+      code: 'GROUNDING_REJECTED',
+      groundingDiagnostic: {
+        rejection_counts: {
+          SUPPORT_CHECK_FAILED_LANGUAGE_CLAIM: 2,
+          SUPPORT_CHECK_FAILED_LANGUAGE_EVIDENCE: 1,
+          CLAIM_UNSUPPORTED_NOT_SUPPORTED: 3
+        }
+      }
+    });
+    const binds = prepare.mock.results.map((result) => result.value.bind.mock.calls[0]).filter(Boolean);
+    const metrics = Object.fromEntries(binds.map((args) => [args[1], args[2]]));
+    expect(metrics).toMatchObject({
+      assistant_grounding_rejection_support_check_failed_language_claim: 2,
+      assistant_grounding_rejection_support_check_failed_language_evidence: 1,
+      assistant_grounding_rejection_claim_unsupported_not_supported: 3
+    });
+    spy.mockRestore();
+  });
+
+  it('persists cache-hit telemetry only for explicit verification reuse', async () => {
+    const collect = async (verificationReused) => {
+      const batch = vi.fn().mockResolvedValue([]);
+      const prepare = vi.fn(() => ({ bind: vi.fn(() => ({ run: vi.fn() })) }));
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await recordAssistantOutcome({ ENVIRONMENT: 'staging', DB: { prepare, batch } }, {
+        code: 'OK',
+        verificationReused
+      });
+      const binds = prepare.mock.results.map((result) => result.value.bind.mock.calls[0]).filter(Boolean);
+      spy.mockRestore();
+      return Object.fromEntries(binds.map((args) => [args[1], args[2]]));
+    };
+    expect(await collect(true)).toMatchObject({ assistant_verified_result_cache_hit: 1 });
+    expect(await collect(false)).not.toHaveProperty('assistant_verified_result_cache_hit');
+    expect(await collect(undefined)).not.toHaveProperty('assistant_verified_result_cache_hit');
+  });
+
 });
