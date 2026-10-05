@@ -60,6 +60,7 @@ const ALLOWED_METRICS = new Set([
   'assistant_model_failure_service_unavailable_exception',
   'assistant_model_failure_timeout_error',
   'assistant_model_failure_other',
+  'assistant_verified_result_cache_hit',
   'assistant_grounding_rejection_claim_text_required',
   'assistant_grounding_rejection_evidence_id_required',
   'assistant_grounding_rejection_evidence_id_unknown',
