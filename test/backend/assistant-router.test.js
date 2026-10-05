@@ -202,7 +202,8 @@ describe('assistant ask endpoint', () => {
       code: 'SUPPORT_CHECK_RUNTIME_PAUSED',
       claims: []
     });
-    expect(body).not.toHaveProperty('evidence');
+    expect(body).toHaveProperty('evidence');
+    expect(generateClaimsMock).not.toHaveBeenCalled();
   });
 
   it('preserves 503 for exhausted live checker budget before model spend', async () => {
@@ -312,9 +313,7 @@ describe('assistant ask endpoint', () => {
       expect(activeBody.evidence).toHaveLength(1);
 
       discoverMock.mockResolvedValueOnce([work()]);
-      generateClaimsMock.mockImplementationOnce(async ({ evidencePack }) => ({
-        claims: [{ text: 'Claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }]
-      }));
+      generateClaimsMock.mockClear();
       const pausedBody = await (await request(
         { query: 'hydrogen catalyst' },
         { ...activeEnv, RATE_LIMIT_KV: { get: vi.fn(async (key) => String(key).startsWith('assistant:usage-scope:state:') ? null : 'true'), put: vi.fn(async () => {}) } }
