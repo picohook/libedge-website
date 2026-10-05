@@ -13,6 +13,8 @@ const REQUIRED_STRING_FIELDS = [
   'evidence_depth_policy_version'
 ];
 
+const textEncoder = new TextEncoder();
+
 function nonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
@@ -23,6 +25,70 @@ function stable(value) {
     return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])]));
   }
   return value;
+}
+
+function hex(bytes) {
+  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function hmac(secret, domain, value) {
+  if (!nonEmptyString(secret)) return null;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    textEncoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(`${domain}\0${value}`));
+  return hex(signature);
+}
+
+async function sha256(value) {
+  return hex(await crypto.subtle.digest('SHA-256', textEncoder.encode(value)));
+}
+
+function stableEvidenceSnapshot(item) {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+  const workId = String(item.work_id || '').trim();
+  if (!workId) return null;
+  return {
+    work_id: workId,
+    language_authorized: item.language_authorized === true,
+    title: String(item.title || ''),
+    authors: Array.isArray(item.authors) ? item.authors : [],
+    publicationDate: item.publicationDate ?? null,
+    publicationYear: item.publicationYear ?? null,
+    doi: item.doi ?? null,
+    venue: item.venue ?? null,
+    abstract: item.abstract ?? null,
+    evidence: item.evidence ?? null,
+    urls: item.urls ?? null,
+    flags: item.flags ?? null,
+    provenance: item.provenance ?? null
+  };
+}
+
+export async function verifiedResultQueryDigest(query, secret) {
+  const canonicalQuery = String(query ?? '').trim().replace(/\s+/g, ' ');
+  if (!canonicalQuery) return null;
+  const digest = await hmac(secret, 'libedge:research-query:v1', canonicalQuery);
+  return digest ? `hmac-sha256:${digest}` : null;
+}
+
+export async function verifiedResultEvidenceIdentity(evidencePack) {
+  const evidence = Array.isArray(evidencePack?.evidence) ? evidencePack.evidence : [];
+  if (!evidence.length) return null;
+  const identities = [];
+  for (const item of evidence) {
+    const snapshot = stableEvidenceSnapshot(item);
+    if (!snapshot || snapshot.language_authorized !== true) return null;
+    identities.push({
+      evidence_id: snapshot.work_id,
+      fingerprint: `sha256:${await sha256(JSON.stringify(stable(snapshot)))}`
+    });
+  }
+  return identities;
 }
 
 export function canonicalVerifiedResultIdentity(identity) {
