@@ -1862,6 +1862,7 @@ function bindProfileLanguageButton() {
             _buildIndividualCategoryFilter();
             renderProfilePersonalTools();
             _buildPersonalCategoryFilter();
+            renderDashboardAnnouncements();
             if (_profileViewMode === 'mosaic') _renderMosaicTiles();
         }, 0);
     });
@@ -2520,7 +2521,7 @@ function renderDashboardAnnouncementItem(announcement) {
     return `
         <button type="button" class="profile-announcement-item" onclick="openProfileAnnouncementDetail(${Number.isFinite(id) ? id : 0})">
             <div class="profile-announcement-meta">
-                <span class="${important ? 'profile-announcement-priority' : ''}">${important ? 'Important' : escapeHtml(translateProfileString(category, useEn))}</span>
+                <span class="${important ? 'profile-announcement-priority' : ''}">${important ? (useEn ? 'Important' : 'Önemli') : escapeHtml(translateProfileString(category, useEn))}</span>
                 <span>${date ? escapeHtml(new Date(date).toLocaleDateString(locale, { day: 'numeric', month: 'short' })) : ''}</span>
             </div>
             <h4>${escapeHtml(announcement.title || (useEn ? 'Announcement' : 'Duyuru'))}</h4>
