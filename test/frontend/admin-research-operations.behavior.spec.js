@@ -286,24 +286,24 @@ test('dashboard System Health reflects checker infrastructure state without trea
   const status = page.locator('#systemHealthStatus');
   const sub = page.locator('#systemHealthSub');
 
-  await page.evaluate(() => loadSystemHealth());
+  await page.evaluate(() => window.loadSystemHealth());
   await expect(status).toHaveText('Sağlıklı');
   await expect(sub).toContainText('Checker: çalışıyor • 3 / 100 bugün');
 
   health = { ...health, support_check: { ...health.support_check, paused: true } };
-  await page.evaluate(() => loadSystemHealth());
+  await page.evaluate(() => window.loadSystemHealth());
   await expect(status).toHaveText('Sağlıklı');
   await expect(sub).toContainText('Checker: duraklatıldı');
   await expect(sub).not.toContainText('bugün');
 
   health = { ...health, support_check: { ...health.support_check, paused: false, infrastructure: { state: 'unavailable', stale: false } } };
-  await page.evaluate(() => loadSystemHealth());
+  await page.evaluate(() => window.loadSystemHealth());
   await expect(status).toHaveText('Sağlıklı');
   await expect(sub).toContainText('Checker: kapalı');
   await expect(sub).not.toContainText('bugün');
 
   health = { ...health, support_check: { ...health.support_check, infrastructure: { state: 'unknown', stale: true } } };
-  await page.evaluate(() => loadSystemHealth());
+  await page.evaluate(() => window.loadSystemHealth());
   await expect(status).toHaveText('Kontrol gerekli');
   await expect(sub).toContainText('Checker: bilinmiyor');
   await expect(sub).not.toContainText('bugün');
