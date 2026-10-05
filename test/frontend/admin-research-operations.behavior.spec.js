@@ -52,6 +52,8 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.getByText('Kişi Bazlı Kullanım')).toBeVisible();
   await expect(research.getByText('Usage & Cost')).toBeVisible();
   await expect(research.getByText('Pipeline Funnel & Latency')).toBeVisible();
+  await expect(research.locator('#researchUsageBreakdownCard')).toBeVisible();
+  await expect(research.locator('#researchUsageFunnel [role="progressbar"]')).toHaveCount(5);
   await expect(research.locator('#researchUsageExactCost')).toBeVisible();
   await research.locator('#researchUsageDays').selectOption('7');
   await expect(research.locator('#researchUsageExactCost')).toHaveText('$0.013579');
@@ -94,7 +96,7 @@ test('Research operations center renders outcome, pipeline and account controls 
       support_check: {
         status: 'ok', paused: false, pause_reason: null,
         daily_invocations_used: 0, daily_invocation_limit: 100, daily_invocation_limit_source: 'env',
-        infrastructure: { state: 'available', stale: false, published_at: new Date().toISOString(), instance_type: 'ml.m5.large', instance_count: 1 },
+        infrastructure: { state: 'available', stale: false, published_at: new Date().toISOString(), instance_type: 'ml.m5.large', instance_count: 1, hourly_cost_usd: 0.25 },
       },
     }) });
   });
@@ -109,6 +111,9 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchBreadthVerified')).toHaveText('4 yanıt · 11 claim');
   await expect(research.locator('#researchBreadthSourcesPerAnswer')).toHaveText('2,50');
   await expect(research.locator('#researchBreadthSingleSource')).toHaveText('1 · %25,0');
+  await expect(research.locator('#researchCheckerHostingEstimate')).toBeVisible();
+  await expect(research.locator('#researchCheckerHostingEstimateValue')).toContainText('$0.2500/saat');
+  await expect(research.locator('#researchCheckerHostingEstimateValue')).toContainText('~$ 6.00/gün');
 
   const institutionHeaders = await research.locator('#researchUsageInstitutions').locator('xpath=ancestor::table/thead').innerText();
   expect(institutionHeaders).toContain('Verified');
@@ -159,6 +164,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Available · Doğrulama: Paused');
   await expect(research.locator('#researchCheckerResumeBtn')).toBeEnabled();
   await expect(research.locator('#researchCheckerInfrastructureDetail')).toContainText('Paused by operator');
+  await expect(research.locator('#researchCheckerHostingEstimate')).toBeHidden();
 
   await page.route('**/api/admin/system-health', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
