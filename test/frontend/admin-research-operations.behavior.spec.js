@@ -196,6 +196,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unavailable');
   await expect(research.locator('#researchCheckerState')).toHaveText('Running · etkisiz');
   await expect(research.locator('#researchCheckerInfrastructureBadge')).toHaveText('Unavailable');
+  await expect(research.locator('#researchCheckerHostingEstimate')).toBeHidden();
   await expect(research.locator('#researchCheckerVerificationBadge')).toHaveText('Running · etkisiz');
   await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Unavailable · Doğrulama: Running · etkisiz');
   await expect(research.locator('#researchCheckerFreshness')).toBeHidden();
