@@ -5242,7 +5242,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 && Number.isFinite(hourlyUnitCost) && hourlyUnitCost > 0;
             if (hostingEstimate) hostingEstimate.classList.toggle('hidden', !canEstimateHosting);
             if (hostingEstimateValue) hostingEstimateValue.textContent = canEstimateHosting
-                ? `${instanceCount.toLocaleString('tr-TR')} × ${escapeHtml(infrastructure.instance_type)} · ${(instanceCount * hourlyUnitCost).toFixed(4)}/saat · ~$ ${(instanceCount * hourlyUnitCost * 24).toFixed(2)}/gün`
+                ? `${instanceCount.toLocaleString('tr-TR')} × ${infrastructure.instance_type} · ${(instanceCount * hourlyUnitCost).toFixed(4)}/saat · ~${(instanceCount * hourlyUnitCost * 24).toFixed(2)}/gün`
                 : '—';
             const limitInput = document.getElementById('researchCheckerDailyLimitInput');
             if (limitInput && checker.daily_invocation_limit != null) limitInput.value = checker.daily_invocation_limit;
