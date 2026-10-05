@@ -37,6 +37,7 @@ describe('Research exact provider cost attribution', () => {
     expect(admin).toContain('Discovery exact cost');
     expect(admin).toContain('checker hosting ayrı bir tahmindir ve exact toplama dahil edilmez');
     expect(admin).toContain('Exact total');
-    expect(admin).toContain("Number(summary.llm_cost_usd || 0) + Number(summary.discovery_cost_usd || 0)");
+    expect(admin).toContain("const exactCost = llmCost + discoveryCost;");
+    expect(admin).toContain("exactCost.toFixed(6)");
   });
 });
