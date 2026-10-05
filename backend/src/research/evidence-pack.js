@@ -1,3 +1,4 @@
+import { textDetectedEnglish } from './language-eligibility.js';
 import { parseResearchWork } from './research-work.js';
 
 function defaultPackId() {
@@ -14,6 +15,7 @@ function deepFreeze(value) {
 function evidenceSnapshot(work, evidenceId) {
   return {
     evidence_id: evidenceId,
+    language_authorized: textDetectedEnglish(work),
     work_id: work.id,
     title: work.title,
     authors: work.authors.map(({ name, orcid }) => ({ name, orcid })),
