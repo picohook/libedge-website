@@ -301,6 +301,10 @@ test('dashboard System Health reflects checker infrastructure state without trea
   await expect(status).toHaveText('Sağlıklı');
   await expect(sub).toContainText('Checker: kapalı');
   await expect(sub).not.toContainText('bugün');
+  await expect(sub).toBeEnabled();
+  await sub.click();
+  await expect(page.locator('#tab-research')).toBeVisible();
+  await expect(page.locator('#researchOperationalControls')).toBeVisible();
 
   health = { ...health, support_check: { ...health.support_check, infrastructure: { state: 'unknown', stale: true } } };
   await page.evaluate(() => globalThis.loadSystemHealth());
