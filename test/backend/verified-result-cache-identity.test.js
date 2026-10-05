@@ -94,6 +94,16 @@ describe('verified-result cache identity', () => {
     expect(a[0].evidence_id).toBe('work-1');
   });
 
+  it('ignores volatile retrieval timestamps while retaining stable evidence content identity', async () => {
+    const a = evidencePack('pack-a');
+    a.evidence[0].evidence.sources[0].retrievedAt = '2026-10-01T00:00:00.000Z';
+    a.evidence[0].provenance[0].retrievedAt = '2026-10-01T00:00:00.000Z';
+    const b = evidencePack('pack-b');
+    b.evidence[0].evidence.sources[0].retrievedAt = '2026-10-05T00:00:00.000Z';
+    b.evidence[0].provenance[0].retrievedAt = '2026-10-05T00:00:00.000Z';
+    expect(await verifiedResultEvidenceIdentity(a)).toEqual(await verifiedResultEvidenceIdentity(b));
+  });
+
   it('invalidates evidence identity when authorized content changes', async () => {
     const a = await verifiedResultEvidenceIdentity(evidencePack('pack-a', 'Stable title'));
     const b = await verifiedResultEvidenceIdentity(evidencePack('pack-b', 'Changed title'));
