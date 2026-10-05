@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { supportCheckLanguageBoundary } from '../../backend/src/assistant/support-check-language-boundary.js';
+import { createEvidencePack } from '../../backend/src/research/evidence-pack.js';
 
 describe('D-023 supportCheck language boundary', () => {
   it('allows plain English checker input', () => {
@@ -49,4 +50,37 @@ describe('D-023 supportCheck language boundary', () => {
       [{ title: 'José Martínez archive study', abstract: 'The archive contains correspondence and catalog records.' }]
     )).toEqual({ authorized: false, reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED', source: 'evidence' });
   });
+
+  it('allows accented proper names only when the evidence text itself is detected as English', () => {
+    const item = {
+      id: 'w-en', title: 'José García archive study', authors: [], publicationDate: null, publicationYear: 2026,
+      type: null, language: 'en', doi: null, identifiers: {}, venue: { name: null, issn: [], publisher: null },
+      abstract: 'This English abstract reports archive correspondence, catalog records, historical context, research methods, primary sources, and measured findings. The study discusses the archive material and explains the evidence in clear English sentences.',
+      evidence: { level: 'ABSTRACT', sources: [] }, openAccess: { isOa: null, status: null, url: null, source: null },
+      licenses: [], citations: { preferredCount: null, preferredSource: null, observations: [] },
+      urls: { doi: null, publisher: null, openAccess: null }, flags: { retracted: null }, provenance: []
+    };
+    const pack = createEvidencePack([item], { packIdFactory: () => 'pack-en' });
+    expect(pack.evidence[0].language_authorized).toBe(true);
+    expect(supportCheckLanguageBoundary(
+      { text: 'The archive contains correspondence from the period.' }, pack.evidence
+    )).toEqual({ authorized: true, language: 'en' });
+  });
+
+  it('does not trust provider English metadata when the evidence text is Turkish', () => {
+    const item = {
+      id: 'w-tr', title: 'Çalışma', authors: [], publicationDate: null, publicationYear: 2026,
+      type: null, language: 'en', doi: null, identifiers: {}, venue: { name: null, issn: [], publisher: null },
+      abstract: 'Bu çalışma Türkçe bir özettir ve araştırma sonuçlarını, kullanılan yöntemleri, kaynakları, tarihsel bağlamı ve ölçülen bulguları ayrıntılı olarak açıklamaktadır. Bulgular çalışmanın temel sonuçlarını desteklemektedir.',
+      evidence: { level: 'ABSTRACT', sources: [] }, openAccess: { isOa: null, status: null, url: null, source: null },
+      licenses: [], citations: { preferredCount: null, preferredSource: null, observations: [] },
+      urls: { doi: null, publisher: null, openAccess: null }, flags: { retracted: null }, provenance: []
+    };
+    const pack = createEvidencePack([item], { packIdFactory: () => 'pack-tr' });
+    expect(pack.evidence[0].language_authorized).toBe(false);
+    expect(supportCheckLanguageBoundary(
+      { text: 'The study reports a measurable effect.' }, pack.evidence
+    )).toEqual({ authorized: false, reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED', source: 'evidence' });
+  });
+
 });
