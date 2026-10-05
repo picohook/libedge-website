@@ -193,6 +193,12 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchCheckerVerificationBadge')).toHaveText('Running · etkisiz');
   await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Unavailable · Doğrulama: Running · etkisiz');
   await expect(research.locator('#researchCheckerFreshness')).toBeHidden();
+  const hostingEstimate = research.locator('#researchCheckerHostingEstimate');
+  await expect(hostingEstimate).toBeVisible();
+  await expect(hostingEstimate).toContainText('≈ $2.96 / day');
+  await expect(hostingEstimate).toContainText('1 × ml.m5.large');
+  await expect(hostingEstimate).toContainText('$0.1234 / hour');
+  await expect(research.locator('#researchUsageExactCost')).not.toContainText('2.96');
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
   await expect(research.locator('#researchCheckerLifecycleAlertLink')).toBeVisible();
   await expect(research.locator('#researchCheckerLifecycleAlertLink')).toHaveAttribute('target', '_blank');
@@ -253,15 +259,4 @@ test('Research operations center renders outcome, pipeline and account controls 
 
   await expect(research.locator('#researchVerificationBreadth')).not.toContainText('NaN');
 
-
-  test('shows configured checker hosting estimate and never folds it into exact cost', async ({ page }) => {
-    await page.locator('#tab-research').evaluate((el) => el.classList.remove('hidden'));
-    await page.locator('#researchObservabilityRefreshBtn').click();
-    const estimate = page.locator('#researchCheckerHostingEstimate');
-    await expect(estimate).toBeVisible();
-    await expect(estimate).toContainText('≈ $2.96 / day');
-    await expect(estimate).toContainText('1 × ml.m5.large');
-    await expect(estimate).toContainText('$0.1234 / hour');
-    await expect(page.locator('#researchUsageExactCost')).not.toContainText('2.96');
-  });
 });
