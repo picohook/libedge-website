@@ -653,7 +653,7 @@
                 <div>
                     <p class="text-gray-500 text-sm">Sistem Sağlığı</p>
                     <p id="systemHealthStatus" class="text-xl font-bold text-gray-500">Kontrol ediliyor</p>
-                    <p id="systemHealthSub" class="text-xs text-gray-400 mt-0.5">D1 • R2 • KV</p>
+                    <button type="button" id="systemHealthSub" data-admin-action="open-research-checker-controls" class="text-left text-xs text-gray-400 mt-0.5 disabled:cursor-default" disabled>D1 • R2 • KV</button>
                 </div>
                 <i id="systemHealthIcon" class="fas fa-shield-alt text-3xl text-gray-400 opacity-60"></i>
             </div>
@@ -4942,6 +4942,9 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             statusEl.textContent = needsCheck ? 'Kontrol gerekli' : 'Sağlıklı';
             statusEl.className = `text-xl font-bold ${needsCheck ? 'text-amber-600' : 'text-emerald-600'}`;
             subEl.textContent = `D1 • R2 • KV • ${checkerLabel}`;
+            subEl.disabled = !(checkerUnknown || infrastructureState === 'unavailable');
+            subEl.classList.toggle('underline', !subEl.disabled);
+            subEl.classList.toggle('cursor-pointer', !subEl.disabled);
             icon.className = `fas fa-shield-alt text-3xl ${needsCheck ? 'text-amber-500' : 'text-emerald-500'} opacity-60`;
         } catch (_) {
             statusEl.textContent = 'Kontrol edilemedi';
@@ -6733,6 +6736,13 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
     });
     refreshAdminAccessGuides();
 
+function openResearchCheckerControls() {
+    const researchLink = document.querySelector('.sidebar-link[data-tab="research"]');
+    if (!researchLink || researchLink.classList.contains('hidden')) return;
+    researchLink.click();
+    document.getElementById('researchOperationalControls')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // Tab geçişleri
 document.querySelectorAll('.sidebar-link').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -6808,6 +6818,7 @@ document.addEventListener('click', (e) => {
         case 'open-institution-dashboard': openInstitutionModalFromDashboard(); break;
         case 'open-announcement-dashboard': openAnnouncementModalFromDashboard(); break;
         case 'run-airtable-sync-dashboard': runDashboardAirtableSync(); break;
+        case 'open-research-checker-controls': openResearchCheckerControls(); break;
         case 'sync-contacts': syncAirtableContactsToUsers(); break;
         case 'open-bulk-user-modal': openBulkUserModal(); break;
         case 'open-user-modal': openUserModal(); break;
