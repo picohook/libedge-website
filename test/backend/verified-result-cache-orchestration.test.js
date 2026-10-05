@@ -139,6 +139,8 @@ describe('verified-result cache orchestration', () => {
       discover: vi.fn(async () => [work()]), packOptions: { packIdFactory: () => 'pack-warm' }
     });
     generateClaims.mockClear();
+    RATE_LIMIT_KV.get.mockClear();
+    RATE_LIMIT_KV.put.mockClear();
     const blocked = await orchestrateResearchAnswer({
       query: 'hydrogen membrane durability', env, providerGate: { status: 'UNVERIFIED' },
       modelAdapter: { generateClaims }, supportCheck: async () => true,
