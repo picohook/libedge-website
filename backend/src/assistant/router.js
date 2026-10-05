@@ -214,6 +214,13 @@ app.post('/api/assistant/ask', async (c) => {
   });
 
   await recordOperationalOutcome(c.env, auth.user, { code: result?.code, durationMs: Date.now() - startedAt, errorClass: result?.diagnostic_error_class, diagnosticReason: result?.diagnostic_reason, groundingDiagnostic: result?.diagnostic_grounding, retrievalDiagnostic: result?.diagnostic_retrieval, stageTimings: result?.diagnostic_timings, usage: result?.diagnostic_usage, costs: result?.diagnostic_costs });
+  if (result?.code === 'SUPPORT_CHECK_RUNTIME_PAUSED') {
+    return c.json({ ok: false, error: 'Doğrulama servisi geçici olarak duraklatıldı', code: result.code, claims: [], evidence: [] }, 503);
+  }
+  if (String(result?.code || '').startsWith('INVOCATION_') || String(result?.code || '').startsWith('RUNTIME_LIMIT_')) {
+    return c.json({ ok: false, error: 'Assistant doğrulama kapasitesi şu anda kullanılamıyor', code: result.code, claims: [], evidence: [] }, 503);
+  }
+
   result.research_summary = publicResearchSummary(result);
   if (result?.code === 'OK') {
     await saveAssistantHistory(c.env, auth.user?.user_id, query, result);
