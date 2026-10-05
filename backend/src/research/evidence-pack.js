@@ -11,9 +11,10 @@ function deepFreeze(value) {
   return value;
 }
 
-function evidenceSnapshot(work, evidenceId) {
+function evidenceSnapshot(work, evidenceId, languageAuthorized) {
   return {
     evidence_id: evidenceId,
+    language_authorized: languageAuthorized === true,
     work_id: work.id,
     title: work.title,
     authors: work.authors.map(({ name, orcid }) => ({ name, orcid })),
@@ -40,7 +41,7 @@ function evidenceSnapshot(work, evidenceId) {
  * The pack intentionally carries no raw query, user identity, session, quota,
  * or search-history context.
  */
-export function createEvidencePack(works, { packIdFactory = defaultPackId } = {}) {
+export function createEvidencePack(works, { packIdFactory = defaultPackId, languageAuthorized = false } = {}) {
   if (!Array.isArray(works)) throw new TypeError('EVIDENCE_PACK_WORKS_REQUIRED');
   const packId = String(packIdFactory()).trim();
   if (!packId) throw new Error('EVIDENCE_PACK_ID_INVALID');
@@ -48,7 +49,7 @@ export function createEvidencePack(works, { packIdFactory = defaultPackId } = {}
   const evidence = works.map((input, index) => {
     const work = parseResearchWork(input);
     const evidenceId = `${packId}:e${index + 1}`;
-    return evidenceSnapshot(work, evidenceId);
+    return evidenceSnapshot(work, evidenceId, languageAuthorized);
   });
 
   return deepFreeze({
