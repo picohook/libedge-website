@@ -63,6 +63,12 @@ try {
         discover_ms: request.stage_latency_ms?.discover ?? null,
         grounding_ms: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_ms_total'),
         support_check_ms: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_ms_total'),
+        verification_reused: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_verified_result_cache_hit') > 0,
+        language_claim_rejections: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_rejection_support_check_failed_language_claim'),
+        language_evidence_rejections: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_rejection_support_check_failed_language_evidence'),
+        unsupported_support_rejections: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_rejection_claim_unsupported_support'),
+        unsupported_not_supported_rejections: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_rejection_claim_unsupported_not_supported'),
+        unsupported_unspecified_rejections: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_rejection_claim_unsupported_unsupported'),
         total_latency_ms: request.latency_ms ?? null,
         discovery_cost_usd: finiteOrNull(request.discovery_cost_usd)
       }));
