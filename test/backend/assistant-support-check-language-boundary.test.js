@@ -49,4 +49,19 @@ describe('D-023 supportCheck language boundary', () => {
       [{ title: 'José Martínez archive study', abstract: 'The archive contains correspondence and catalog records.' }]
     )).toEqual({ authorized: false, reason: 'SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED', source: 'evidence' });
   });
+
+  it('accepts retrieval-authorized English evidence with accented proper names', () => {
+    expect(supportCheckLanguageBoundary(
+      { text: 'The study reports a measurable effect.' },
+      [{ title: 'José García cohort study', abstract: 'The English abstract reports the measured outcome.', language_authorized: true }]
+    )).toEqual({ authorized: true, language: 'en' });
+  });
+
+  it('still rejects non-English evidence without prior retrieval authorization', () => {
+    const result = supportCheckLanguageBoundary(
+      { text: 'The study reports a measurable effect.' },
+      [{ title: 'Çalışma', abstract: 'Bu çalışma Türkçe bir özettir.', language_authorized: false }]
+    );
+    expect(result).toMatchObject({ authorized: false, source: 'evidence' });
+  });
 });
