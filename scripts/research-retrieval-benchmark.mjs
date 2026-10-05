@@ -63,6 +63,10 @@ try {
         discover_ms: request.stage_latency_ms?.discover ?? null,
         grounding_ms: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_ms_total'),
         support_check_ms: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_ms_total'),
+        grounding_overhead_ms: nonNegativeDifference(
+          metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_ms_total'),
+          metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_ms_total')
+        ),
         verification_reused: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_verified_result_cache_hit') > 0,
         language_claim_rejections: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_rejection_support_check_failed_language_claim'),
         language_evidence_rejections: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_rejection_support_check_failed_language_evidence'),
@@ -128,6 +132,9 @@ async function telemetrySnapshot() {
   const metrics = body?.research_telemetry?.snapshot?.metrics;
   if (!metrics || typeof metrics !== 'object') throw new Error('research telemetry snapshot unavailable');
   return metrics;
+}
+function nonNegativeDifference(total, part) {
+  return Number.isFinite(total) && Number.isFinite(part) && total >= part ? total - part : null;
 }
 function metricDelta(before, after, key) {
   const start = Number(before?.[key] || 0);
