@@ -94,7 +94,7 @@ test('Research operations center renders outcome, pipeline and account controls 
       support_check: {
         status: 'ok', paused: false, pause_reason: null,
         daily_invocations_used: 0, daily_invocation_limit: 100, daily_invocation_limit_source: 'env',
-        infrastructure: { state: 'available', stale: false, published_at: new Date().toISOString(), instance_type: 'ml.m5.large', instance_count: 1 },
+        infrastructure: { state: 'available', stale: false, published_at: new Date().toISOString(), instance_type: 'ml.m5.large', instance_count: 1, hourly_cost_usd: 0.1234 },
       },
     }) });
   });
@@ -253,4 +253,15 @@ test('Research operations center renders outcome, pipeline and account controls 
 
   await expect(research.locator('#researchVerificationBreadth')).not.toContainText('NaN');
 
+
+  test('shows configured checker hosting estimate and never folds it into exact cost', async ({ page }) => {
+    await page.locator('#tab-research').evaluate((el) => el.classList.remove('hidden'));
+    await page.locator('#researchObservabilityRefreshBtn').click();
+    const estimate = page.locator('#researchCheckerHostingEstimate');
+    await expect(estimate).toBeVisible();
+    await expect(estimate).toContainText('≈ $2.96 / day');
+    await expect(estimate).toContainText('1 × ml.m5.large');
+    await expect(estimate).toContainText('$0.1234 / hour');
+    await expect(page.locator('#researchUsageExactCost')).not.toContainText('2.96');
+  });
 });
