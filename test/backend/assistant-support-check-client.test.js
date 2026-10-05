@@ -118,6 +118,20 @@ describe('Fresh-Checker pin', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
+  it('propagates a content-free claim-side language rejection code before transport', async () => {
+    const fetchImpl = vi.fn(async () => response(pinnedResult()));
+    const check = createSupportCheck(enabledEnv(), { fetchImpl });
+    await expect(check({ text: 'Bu bir Türkçe iddiadır.' }, evidence)).rejects.toThrow('SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED_CLAIM');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('propagates a content-free evidence-side language rejection code before transport', async () => {
+    const fetchImpl = vi.fn(async () => response(pinnedResult()));
+    const check = createSupportCheck(enabledEnv(), { fetchImpl });
+    await expect(check(claim, [{ evidence_id: 'p:e2', title: 'José archive', abstract: 'Evidence text.' }])).rejects.toThrow('SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED_EVIDENCE');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it('refuses non-HTTPS checker endpoints', () => {
     expect(createSupportCheck(enabledEnv({
       RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'http://checker.example.test/v1/support'
