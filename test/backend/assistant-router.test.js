@@ -196,13 +196,40 @@ describe('assistant ask endpoint', () => {
       })
     );
     const body = await response.json();
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(503);
     expect(body).toMatchObject({
       ok: false,
       code: 'SUPPORT_CHECK_RUNTIME_PAUSED',
       claims: []
     });
     expect(body).not.toHaveProperty('evidence');
+  });
+
+  it('preserves 503 for exhausted live checker budget before model spend', async () => {
+    discoverMock.mockClear();
+    generateClaimsMock.mockClear();
+    discoverMock.mockResolvedValueOnce([work()]);
+    const response = await request(
+      { query: 'hydrogen catalyst' },
+      createEnv({
+        RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS',
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
+        RATE_LIMIT_KV: {
+          get: vi.fn(async (key) => {
+            if (key === 'assistant:supportcheck:paused') return 'resume';
+            if (key === 'assistant:supportcheck:daily-invocation-limit') return null;
+            if (String(key).startsWith('assistant:usage-scope:state:')) return null;
+            if (String(key).startsWith('assistant:supportcheck:invocations:')) return '100';
+            return '0';
+          }),
+          put: vi.fn(async () => {})
+        }
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({ ok: false, code: 'INVOCATION_BUDGET_EXHAUSTED', claims: [], evidence: [] });
+    expect(generateClaimsMock).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -294,7 +321,8 @@ describe('assistant ask endpoint', () => {
       )).json();
 
       expect(pausedBody).toMatchObject({ ok: false, code: 'SUPPORT_CHECK_RUNTIME_PAUSED', claims: [] });
-      expect(pausedBody).not.toHaveProperty('evidence');
+      expect(pausedBody).toHaveProperty('evidence');
+      expect(generateClaimsMock).not.toHaveBeenCalled();
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     } finally {
       globalThis.fetch = originalFetch;
