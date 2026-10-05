@@ -817,20 +817,6 @@
                     <div id="researchUsageFunnel" class="space-y-2"><p class="text-sm text-gray-400">Yükleniyor...</p></div>
                 </div>
             </div>
-            <div class="border-t border-gray-100 pt-4">
-                <div class="flex items-center gap-1 mb-3" role="tablist" aria-label="Research usage breakdown">
-                    <button type="button" id="researchUsageInstitutionsTab" role="tab" aria-controls="researchUsageInstitutionsPanel" tabindex="0" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
-                    <button type="button" id="researchUsageUsersTab" role="tab" aria-controls="researchUsageUsersPanel" tabindex="-1" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
-                </div>
-                <div id="researchUsageInstitutionsPanel" role="tabpanel" aria-labelledby="researchUsageInstitutionsTab">
-                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
-                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
-                </div>
-                <div id="researchUsageUsersPanel" role="tabpanel" aria-labelledby="researchUsageUsersTab" class="hidden" hidden>
-                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
-                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
-                </div>
-            </div>
         </section>
 <aside id="researchOperationalControls" class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 sm:p-5">
   <div class="mb-4"><p class="text-[11px] font-semibold uppercase tracking-wide text-indigo-500" lang="en">Operational Controls</p><h4 class="font-semibold text-gray-900 mt-1">Güvenli müdahale</h4><p class="text-xs text-slate-500 mt-1">İzleme alanından ayrı; staging operasyon kontrolleri.</p></div>
@@ -844,6 +830,11 @@
                 <p id="researchCheckerInfrastructureDetail" class="text-xs text-gray-400 mt-1">Infrastructure state bekleniyor.</p>
                 <p class="text-xs text-gray-500 mt-2"><a id="researchCheckerLifecycleLink" href="https://github.com/picohook/libedge-website/actions/workflows/supportcheck-staging-lifecycle.yml" target="_blank" rel="noopener noreferrer" class="underline">Aç / Kapat → GitHub’da çalıştır</a></p>
                 <p id="researchCheckerBudget" class="text-xs text-gray-500 mt-1">—</p>
+                <div id="researchCheckerHostingEstimate" class="hidden mt-3 rounded-lg border border-violet-100 bg-violet-50/60 px-3 py-2">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-violet-700" lang="en">Estimated Checker Hosting Cost</p>
+                    <p id="researchCheckerHostingEstimateValue" class="mt-1 text-sm font-semibold text-violet-900">—</p>
+                    <p class="text-[11px] text-violet-700/80 mt-1">Tahmindir; Exact Cost toplamına dahil edilmez.</p>
+                </div>
                 <div class="flex gap-2 mt-3">
                     <button type="button" id="researchCheckerPauseBtn" class="btn bg-red-50 text-red-700 border border-red-200 text-xs">Pause</button>
                     <button type="button" id="researchCheckerResumeBtn" disabled title="Infrastructure durumu doğrulanana kadar Resume kullanılamaz." class="btn bg-green-50 text-green-700 border border-green-200 text-xs">Resume</button>
@@ -903,6 +894,27 @@
   </div>
 </aside>
 </div>
+
+<section id="researchUsageBreakdownCard" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-4">
+    <div><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400" lang="en">Usage by account</p><h4 class="font-semibold text-gray-900 mt-1">Kurum & Kişi Kullanımı</h4><p class="text-xs text-gray-500 mt-1">Kullanım, doğrulama, latency, maliyet, seat ve havuz durumu tek görünümde.</p></div>
+  </div>
+            <div class="border-t border-gray-100 pt-4">
+                <div class="flex items-center gap-1 mb-3" role="tablist" aria-label="Research usage breakdown">
+                    <button type="button" id="researchUsageInstitutionsTab" role="tab" aria-controls="researchUsageInstitutionsPanel" tabindex="0" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageUsersTab" role="tab" aria-controls="researchUsageUsersPanel" tabindex="-1" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
+                </div>
+                <div id="researchUsageInstitutionsPanel" role="tabpanel" aria-labelledby="researchUsageInstitutionsTab">
+                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
+                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                </div>
+                <div id="researchUsageUsersPanel" role="tabpanel" aria-labelledby="researchUsageUsersTab" class="hidden" hidden>
+                    <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
+                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                </div>
+            </div>
+
+</section>
         
         <section class="mt-8 pt-6 border-t border-slate-200" aria-label="Research diagnostics">
 <details id="researchRetrievalExperimentPanel" class="bg-slate-50 rounded-xl border border-slate-200 p-4 mb-6 text-sm">
@@ -4988,9 +5000,15 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             ['Verified', counts.OK || 0, null]
         ];
         return stages.map(([label, value, latency], index) => {
-            const latencyText = latency == null ? '' : `<span class="text-xs text-gray-400">${Number(latency).toLocaleString('tr-TR')} ms avg</span>`;
-            const connector = index === stages.length - 1 ? '' : '<div class="ml-4 h-3 border-l border-slate-300" aria-hidden="true"></div>';
-            return `<div class="rounded-lg border border-slate-200 bg-white px-3 py-2"><div class="flex items-center justify-between gap-4"><span class="text-sm font-medium text-gray-700">${escapeHtml(label)}</span><div class="flex items-center gap-3">${latencyText}<span class="text-sm font-semibold text-gray-900">${Number(value || 0).toLocaleString('tr-TR')}</span></div></div></div>${connector}`;
+            const numericValue = Number(value || 0);
+            const percent = total > 0 ? Math.max(0, Math.min(100, (numericValue / total) * 100)) : 0;
+            const latencyText = latency == null ? '' : ` · ${Number(latency).toLocaleString('tr-TR')} ms avg`;
+            const barClass = label === 'Verified' ? 'bg-emerald-500' : label === 'Grounding' ? 'bg-indigo-500' : 'bg-violet-500';
+            return `<div class="grid grid-cols-[82px_1fr_auto] sm:grid-cols-[92px_1fr_auto] items-center gap-3 py-1.5">
+                <span class="text-xs font-medium text-gray-700">${escapeHtml(label)}</span>
+                <div class="h-2.5 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label="${escapeHtml(label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><div class="h-full rounded-full ${barClass}" style="width: ${percent.toFixed(1)}%"></div></div>
+                <span class="min-w-[132px] text-right text-[11px] text-gray-500"><strong class="text-gray-800">${numericValue.toLocaleString('tr-TR')}</strong> · %${percent.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}${latencyText}</span>
+            </div>`;
         }).join('');
     }
 
@@ -5212,6 +5230,20 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
                 resumeBtn.title = infrastructureState === 'Available' ? '' : 'Staging endpoint doğrulanmış olarak Available değil.';
             }
             document.getElementById('researchCheckerBudget').textContent = `${checker.daily_invocations_used ?? '—'} / ${checker.daily_invocation_limit ?? '—'} günlük çağrı`;
+            const hostingEstimate = document.getElementById('researchCheckerHostingEstimate');
+            const hostingEstimateValue = document.getElementById('researchCheckerHostingEstimateValue');
+            const instanceCount = Number(infrastructure.instance_count);
+            const hourlyUnitCost = Number(infrastructure.hourly_cost_usd);
+            const canEstimateHosting = infrastructureState === 'Available'
+                && infrastructure.stale === false
+                && typeof infrastructure.instance_type === 'string'
+                && infrastructure.instance_type.trim().length > 0
+                && Number.isFinite(instanceCount) && instanceCount > 0
+                && Number.isFinite(hourlyUnitCost) && hourlyUnitCost > 0;
+            if (hostingEstimate) hostingEstimate.classList.toggle('hidden', !canEstimateHosting);
+            if (hostingEstimateValue) hostingEstimateValue.textContent = canEstimateHosting
+                ? `${instanceCount.toLocaleString('tr-TR')} × ${infrastructure.instance_type} · ${(instanceCount * hourlyUnitCost).toFixed(4)}/saat · ~${(instanceCount * hourlyUnitCost * 24).toFixed(2)}/gün`
+                : '—';
             const limitInput = document.getElementById('researchCheckerDailyLimitInput');
             if (limitInput && checker.daily_invocation_limit != null) limitInput.value = checker.daily_invocation_limit;
             const limitSource = document.getElementById('researchCheckerLimitSource');
