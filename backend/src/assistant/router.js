@@ -176,20 +176,27 @@ app.post('/api/assistant/ask', async (c) => {
   const supportCheck = runtimePause.paused ? null : createSupportCheck(c.env);
   const userId = Number(auth.user?.user_id);
   const cacheScope = Number.isSafeInteger(userId) && userId > 0 ? `user:${userId}` : null;
-  const modelConfig = bedrockAdapterConfig(c.env);
-  const cacheIdentityContext = {
-    generation_model_id: modelConfig.modelId,
-    generation_contract_version: VERIFIED_CACHE_GENERATION_CONTRACT_VERSION,
-    checker_model: SUPPORT_CHECK_PIN.model,
-    checker_revision: SUPPORT_CHECK_PIN.revision,
-    checker_manifest: SUPPORT_CHECK_PIN.engineManifestSha256,
-    checker_threshold: SUPPORT_CHECK_PIN.entailmentThreshold,
-    decision_contract_version: VERIFIED_CACHE_DECISION_CONTRACT_VERSION,
-    evidence_policy_version: VERIFIED_CACHE_EVIDENCE_POLICY_VERSION,
-    cache_schema_version: VERIFIED_RESULT_CACHE_SCHEMA,
-    language_policy_version: VERIFIED_CACHE_LANGUAGE_POLICY_VERSION,
-    evidence_depth_policy_version: VERIFIED_CACHE_EVIDENCE_DEPTH_POLICY_VERSION
-  };
+  let cacheIdentityContext = null;
+  if (providerGate.status === 'PASS') {
+    try {
+      const modelConfig = bedrockAdapterConfig(c.env);
+      cacheIdentityContext = {
+        generation_model_id: modelConfig.modelId,
+        generation_contract_version: VERIFIED_CACHE_GENERATION_CONTRACT_VERSION,
+        checker_model: SUPPORT_CHECK_PIN.model,
+        checker_revision: SUPPORT_CHECK_PIN.revision,
+        checker_manifest: SUPPORT_CHECK_PIN.engineManifestSha256,
+        checker_threshold: SUPPORT_CHECK_PIN.entailmentThreshold,
+        decision_contract_version: VERIFIED_CACHE_DECISION_CONTRACT_VERSION,
+        evidence_policy_version: VERIFIED_CACHE_EVIDENCE_POLICY_VERSION,
+        cache_schema_version: VERIFIED_RESULT_CACHE_SCHEMA,
+        language_policy_version: VERIFIED_CACHE_LANGUAGE_POLICY_VERSION,
+        evidence_depth_policy_version: VERIFIED_CACHE_EVIDENCE_DEPTH_POLICY_VERSION
+      };
+    } catch {
+      cacheIdentityContext = null;
+    }
+  }
 
   const result = await orchestrateResearchAnswer({
     query,
