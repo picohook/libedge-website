@@ -12,6 +12,7 @@ vi.mock('../../backend/src/research/discover.js', async (importOriginal) => {
 });
 
 vi.mock('../../backend/src/assistant/bedrock-model-adapter.js', () => ({
+  bedrockAdapterConfig: () => ({ region: 'us-east-1', modelId: 'test-model' }),
   createBedrockModelAdapter: () => ({ generateClaims: generateClaimsMock })
 }));
 
@@ -195,13 +196,41 @@ describe('assistant ask endpoint', () => {
       })
     );
     const body = await response.json();
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(503);
     expect(body).toMatchObject({
       ok: false,
-      code: 'GROUNDING_REJECTED',
+      code: 'SUPPORT_CHECK_RUNTIME_PAUSED',
       claims: []
     });
-    expect(body).not.toHaveProperty('evidence');
+    expect(body).toHaveProperty('evidence');
+    expect(generateClaimsMock).not.toHaveBeenCalled();
+  });
+
+  it('preserves 503 for exhausted live checker budget before model spend', async () => {
+    discoverMock.mockClear();
+    generateClaimsMock.mockClear();
+    discoverMock.mockResolvedValueOnce([work()]);
+    const response = await request(
+      { query: 'hydrogen catalyst' },
+      createEnv({
+        RESEARCH_ASSISTANT_PROVIDER_GATE_STATUS: 'PASS',
+        RESEARCH_ASSISTANT_SUPPORT_CHECK_PRIVACY_GATE_STATUS: 'PASS',
+        RATE_LIMIT_KV: {
+          get: vi.fn(async (key) => {
+            if (key === 'assistant:supportcheck:paused') return 'resume';
+            if (key === 'assistant:supportcheck:daily-invocation-limit') return null;
+            if (String(key).startsWith('assistant:usage-scope:state:')) return null;
+            if (String(key).startsWith('assistant:supportcheck:invocations:')) return '100';
+            return '0';
+          }),
+          put: vi.fn(async () => {})
+        }
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({ ok: false, code: 'INVOCATION_BUDGET_EXHAUSTED', claims: [], evidence: [] });
+    expect(generateClaimsMock).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -227,7 +256,15 @@ describe('assistant ask endpoint', () => {
           RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'https://checker.example.test/v1/support',
           RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'test-token',
           RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '1',
-          RATE_LIMIT_KV: { get: vi.fn(async () => null), put: vi.fn(async () => {}) }
+          RATE_LIMIT_KV: {
+            get: vi.fn(async (key) => {
+              if (key === 'assistant:supportcheck:paused') return 'resume';
+              if (key === 'assistant:supportcheck:daily-invocation-limit') return null;
+              if (String(key).startsWith('assistant:usage-scope:state:')) return null;
+              return '0';
+            }),
+            put: vi.fn(async () => {})
+          }
         })
       );
       const body = await response.json();
@@ -276,16 +313,15 @@ describe('assistant ask endpoint', () => {
       expect(activeBody.evidence).toHaveLength(1);
 
       discoverMock.mockResolvedValueOnce([work()]);
-      generateClaimsMock.mockImplementationOnce(async ({ evidencePack }) => ({
-        claims: [{ text: 'Claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }]
-      }));
+      generateClaimsMock.mockClear();
       const pausedBody = await (await request(
         { query: 'hydrogen catalyst' },
         { ...activeEnv, RATE_LIMIT_KV: { get: vi.fn(async (key) => String(key).startsWith('assistant:usage-scope:state:') ? null : 'true'), put: vi.fn(async () => {}) } }
       )).json();
 
-      expect(pausedBody).toMatchObject({ ok: false, code: 'GROUNDING_REJECTED', claims: [] });
-      expect(pausedBody).not.toHaveProperty('evidence');
+      expect(pausedBody).toMatchObject({ ok: false, code: 'SUPPORT_CHECK_RUNTIME_PAUSED', claims: [] });
+      expect(pausedBody).toHaveProperty('evidence');
+      expect(generateClaimsMock).not.toHaveBeenCalled();
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     } finally {
       globalThis.fetch = originalFetch;

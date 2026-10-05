@@ -48,6 +48,18 @@ async function sha256(value) {
   return hex(await crypto.subtle.digest('SHA-256', textEncoder.encode(value)));
 }
 
+function stripVolatileRetrievalFields(value) {
+  if (Array.isArray(value)) return value.map(stripVolatileRetrievalFields);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !['retrievedAt', 'retrieved_at'].includes(key))
+        .map(([key, child]) => [key, stripVolatileRetrievalFields(child)])
+    );
+  }
+  return value;
+}
+
 function stableEvidenceSnapshot(item) {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
   const workId = String(item.work_id || '').trim();
@@ -62,10 +74,10 @@ function stableEvidenceSnapshot(item) {
     doi: item.doi ?? null,
     venue: item.venue ?? null,
     abstract: item.abstract ?? null,
-    evidence: item.evidence ?? null,
+    evidence: stripVolatileRetrievalFields(item.evidence ?? null),
     urls: item.urls ?? null,
     flags: item.flags ?? null,
-    provenance: item.provenance ?? null
+    provenance: stripVolatileRetrievalFields(item.provenance ?? null)
   };
 }
 

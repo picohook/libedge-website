@@ -2,6 +2,8 @@ import { Discover } from './discover.js';
 import { createEvidencePack } from './evidence-pack.js';
 import { validateGroundedClaims } from './grounding-validator.js';
 import { filterEnglishEligibleWorks, filterRelevantWorks } from './relevance.js';
+import { readVerifiedResultCache, writeVerifiedResultCache } from '../assistant/verified-result-cache.js';
+import { canonicalVerifiedResultIdentity, verifiedResultEvidenceIdentity, verifiedResultQueryDigest } from '../assistant/verified-result-cache-identity.js';
 
 function safeErrorClass(error) {
   const name = typeof error?.name === 'string' ? error.name.trim() : '';
@@ -67,6 +69,72 @@ function evidenceForAcceptedClaims(evidence = [], acceptedClaims = []) {
   return evidence.filter((item) => citedIds.has(item.evidence_id));
 }
 
+function stableCachedResult(result, evidencePack) {
+  if (result?.code !== 'OK' || !Array.isArray(result.claims) || !Array.isArray(result.evidence)) return null;
+  const workByPackId = new Map((evidencePack?.evidence || []).map((item) => [item.evidence_id, item.work_id]));
+  const claims = result.claims.map((claim) => {
+    const evidence_work_ids = (claim.evidence_ids || []).map((id) => workByPackId.get(id)).filter(Boolean);
+    return evidence_work_ids.length === (claim.evidence_ids || []).length
+      ? { index: claim.index, text: claim.text, evidence_work_ids }
+      : null;
+  });
+  if (claims.some((claim) => !claim)) return null;
+  return { claims };
+}
+
+function restoreCachedResult(cached, evidencePack, diagnostics) {
+  if (!cached || !Array.isArray(cached.claims) || !cached.claims.length) return null;
+  const currentByWorkId = new Map((evidencePack?.evidence || []).map((item) => [item.work_id, item]));
+  const claims = [];
+  const citedIds = new Set();
+  for (const cachedClaim of cached.claims) {
+    if (!cachedClaim || typeof cachedClaim.text !== 'string' || !Array.isArray(cachedClaim.evidence_work_ids) || !cachedClaim.evidence_work_ids.length) return null;
+    const evidenceIds = [];
+    for (const workId of cachedClaim.evidence_work_ids) {
+      const item = currentByWorkId.get(workId);
+      if (!item || item.language_authorized !== true) return null;
+      evidenceIds.push(item.evidence_id);
+      citedIds.add(item.evidence_id);
+    }
+    claims.push({ index: Number.isSafeInteger(cachedClaim.index) ? cachedClaim.index : claims.length, text: cachedClaim.text, evidence_ids: evidenceIds });
+  }
+  return {
+    ok: true,
+    code: 'OK',
+    diagnostic_timings: diagnostics.timings,
+    diagnostic_costs: diagnostics.costs,
+    diagnostic_retrieval: diagnostics.retrieval,
+    diagnostic_verified_result_cache: 'hit',
+    verification_reused: true,
+    claims,
+    evidence_pack_id: evidencePack.pack_id,
+    diagnostic_grounding: {
+      claim_count: claims.length,
+      accepted_count: claims.length,
+      rejected_count: 0,
+      checked_count: 0,
+      truncated_count: 0,
+      rejection_counts: {},
+      unique_supporting_source_count: citedIds.size,
+      single_source_verified_answer: claims.length > 0 && citedIds.size === 1 ? 1 : 0
+    },
+    evidence: evidencePack.evidence.filter((item) => citedIds.has(item.evidence_id))
+  };
+}
+
+async function cacheIdentityFor({ task, env, cacheScope, cacheIdentityContext, evidencePack }) {
+  const secret = String(env?.RESEARCH_VERIFIED_RESULT_CACHE_HMAC_SECRET || '');
+  const queryDigest = await verifiedResultQueryDigest(task, secret);
+  const evidence = await verifiedResultEvidenceIdentity(evidencePack);
+  if (!queryDigest || !evidence || !cacheScope || !cacheIdentityContext) return null;
+  return canonicalVerifiedResultIdentity({
+    user_scope: cacheScope,
+    query_digest: queryDigest,
+    evidence,
+    ...cacheIdentityContext
+  });
+}
+
 function evidenceDepthDiagnostic(works = []) {
   const abstractBearing = works.filter((work) => Boolean(String(work?.abstract || '').trim())).length;
   return {
@@ -95,6 +163,9 @@ export async function orchestrateResearchAnswer({
   providerGate,
   modelAdapter,
   supportCheck,
+  cacheScope,
+  cacheIdentityContext,
+  beforeLiveVerification,
   discover = Discover,
   packFactory = createEvidencePack,
   packOptions
@@ -166,6 +237,19 @@ export async function orchestrateResearchAnswer({
     };
   }
 
+  const cacheIdentity = await cacheIdentityFor({ task, env, cacheScope, cacheIdentityContext, evidencePack });
+  if (cacheIdentity) {
+    const cached = await readVerifiedResultCache({ env, identity: cacheIdentity });
+    if (cached.hit) {
+      const restored = restoreCachedResult(cached.result, evidencePack, {
+        timings: diagnosticTimings,
+        costs: diagnosticCosts,
+        retrieval: diagnosticRetrieval
+      });
+      if (restored) return restored;
+    }
+  }
+
   if (!modelAdapter || typeof modelAdapter.generateClaims !== 'function') {
     return {
       ok: false,
@@ -174,6 +258,21 @@ export async function orchestrateResearchAnswer({
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
+  }
+
+  if (typeof beforeLiveVerification === 'function') {
+    const readiness = await beforeLiveVerification();
+    if (!readiness?.allowed) {
+      return {
+        ok: false,
+        code: readiness?.reason || 'SUPPORT_CHECK_UNAVAILABLE',
+        diagnostic_timings: diagnosticTimings,
+        diagnostic_costs: diagnosticCosts,
+        diagnostic_retrieval: diagnosticRetrieval,
+        claims: [],
+        evidence_pack_id: evidencePack.pack_id
+      };
+    }
   }
 
   let modelResult;
@@ -271,7 +370,7 @@ export async function orchestrateResearchAnswer({
     };
   }
 
-  return {
+  const verifiedResult = {
     ok: true,
     code: 'OK',
     diagnostic_usage: diagnosticUsage,
@@ -281,6 +380,12 @@ export async function orchestrateResearchAnswer({
     claims: grounding.acceptedClaims,
     evidence_pack_id: evidencePack.pack_id,
     diagnostic_grounding: diagnosticGrounding,
-    evidence: evidenceForAcceptedClaims(evidencePack.evidence, grounding.acceptedClaims)
+    evidence: evidenceForAcceptedClaims(evidencePack.evidence, grounding.acceptedClaims),
+    verification_reused: false
   };
+  if (cacheIdentity) {
+    const cachePayload = stableCachedResult(verifiedResult, evidencePack);
+    if (cachePayload) await writeVerifiedResultCache({ env, identity: cacheIdentity, result: cachePayload });
+  }
+  return verifiedResult;
 }
