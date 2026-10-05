@@ -261,3 +261,50 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchVerificationBreadth')).not.toContainText('NaN');
 
 });
+
+
+test('dashboard System Health reflects checker infrastructure state without treating teardown as unhealthy', async ({ page }) => {
+  await page.route('**/api/user/profile', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 1, role: 'super_admin', full_name: 'Test Super Admin', email: 'admin@example.test' }) });
+  });
+  await page.route('**/api/admin/research/usage?**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ window_days: 30, summary: {}, outcomes: [], retrieval_modes: [], users: [], institutions: [] }) });
+  });
+
+  let health = {
+    status: 'healthy',
+    support_check: {
+      status: 'ok', paused: false, daily_invocations_used: 3, daily_invocation_limit: 100,
+      infrastructure: { state: 'available', stale: false },
+    },
+  };
+  await page.route('**/api/admin/system-health', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(health) });
+  });
+
+  await page.goto(`${baseURL}/admin.html`);
+  const status = page.locator('#systemHealthStatus');
+  const sub = page.locator('#systemHealthSub');
+
+  await page.evaluate(() => loadSystemHealth());
+  await expect(status).toHaveText('Sağlıklı');
+  await expect(sub).toContainText('Checker: çalışıyor • 3 / 100 bugün');
+
+  health = { ...health, support_check: { ...health.support_check, paused: true } };
+  await page.evaluate(() => loadSystemHealth());
+  await expect(status).toHaveText('Sağlıklı');
+  await expect(sub).toContainText('Checker: duraklatıldı');
+  await expect(sub).not.toContainText('bugün');
+
+  health = { ...health, support_check: { ...health.support_check, paused: false, infrastructure: { state: 'unavailable', stale: false } } };
+  await page.evaluate(() => loadSystemHealth());
+  await expect(status).toHaveText('Sağlıklı');
+  await expect(sub).toContainText('Checker: kapalı');
+  await expect(sub).not.toContainText('bugün');
+
+  health = { ...health, support_check: { ...health.support_check, infrastructure: { state: 'unknown', stale: true } } };
+  await page.evaluate(() => loadSystemHealth());
+  await expect(status).toHaveText('Kontrol gerekli');
+  await expect(sub).toContainText('Checker: bilinmiyor');
+  await expect(sub).not.toContainText('bugün');
+});
