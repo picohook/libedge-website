@@ -147,6 +147,30 @@ describe('verified-result cache orchestration', () => {
     });
     expect(blocked).toMatchObject({ ok: false, code: 'PROVIDER_PRIVACY_GATE_REQUIRED', claims: [] });
     expect(blocked).not.toHaveProperty('verification_reused', true);
+    expect(RATE_LIMIT_KV.get.mock.calls.some(([key]) => String(key).startsWith('research:verified-result:'))).toBe(false);
+    expect(generateClaims).not.toHaveBeenCalled();
+  });
+
+  it('serves a valid verified cache hit while live checker verification is paused', async () => {
+    const RATE_LIMIT_KV = kv();
+    const env = { ENVIRONMENT: 'staging', RESEARCH_VERIFIED_RESULT_CACHE_ENABLED: 'true', RESEARCH_VERIFIED_RESULT_CACHE_HMAC_SECRET: 'test-secret', RATE_LIMIT_KV };
+    const generateClaims = vi.fn(async ({ evidencePack }) => ({ claims: [{ text: 'Supported claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }] }));
+    await orchestrateResearchAnswer({
+      query: 'hydrogen membrane durability', env, providerGate: { status: 'PASS' },
+      modelAdapter: { generateClaims }, supportCheck: async () => true,
+      cacheScope: 'user:10', cacheIdentityContext, beforeLiveVerification: async () => ({ allowed: true }),
+      discover: vi.fn(async () => [work()]), packOptions: { packIdFactory: () => 'pack-live' }
+    });
+    generateClaims.mockClear();
+    const pausedPreflight = vi.fn(async () => ({ allowed: false, reason: 'SUPPORT_CHECK_RUNTIME_PAUSED' }));
+    const hit = await orchestrateResearchAnswer({
+      query: 'hydrogen membrane durability', env, providerGate: { status: 'PASS' },
+      modelAdapter: { generateClaims }, supportCheck: null,
+      cacheScope: 'user:10', cacheIdentityContext, beforeLiveVerification: pausedPreflight,
+      discover: vi.fn(async () => [work()]), packOptions: { packIdFactory: () => 'pack-paused-hit' }
+    });
+    expect(hit).toMatchObject({ ok: true, code: 'OK', verification_reused: true, evidence_pack_id: 'pack-paused-hit' });
+    expect(pausedPreflight).not.toHaveBeenCalled();
     expect(generateClaims).not.toHaveBeenCalled();
   });
 
