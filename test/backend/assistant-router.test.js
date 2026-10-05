@@ -12,6 +12,7 @@ vi.mock('../../backend/src/research/discover.js', async (importOriginal) => {
 });
 
 vi.mock('../../backend/src/assistant/bedrock-model-adapter.js', () => ({
+  bedrockAdapterConfig: () => ({ region: 'us-east-1', modelId: 'test-model' }),
   createBedrockModelAdapter: () => ({ generateClaims: generateClaimsMock })
 }));
 
@@ -198,7 +199,7 @@ describe('assistant ask endpoint', () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       ok: false,
-      code: 'GROUNDING_REJECTED',
+      code: 'SUPPORT_CHECK_RUNTIME_PAUSED',
       claims: []
     });
     expect(body).not.toHaveProperty('evidence');
@@ -232,7 +233,7 @@ describe('assistant ask endpoint', () => {
       );
       const body = await response.json();
       expect(response.status).toBe(200);
-      expect(body).toMatchObject({ ok: false, code: 'GROUNDING_REJECTED', claims: [] });
+      expect(body).toMatchObject({ ok: false, code: 'SUPPORT_CHECK_RUNTIME_PAUSED', claims: [] });
       expect(body).not.toHaveProperty('evidence');
       expect(body.code).not.toBe('OK');
     } finally {
@@ -284,7 +285,7 @@ describe('assistant ask endpoint', () => {
         { ...activeEnv, RATE_LIMIT_KV: { get: vi.fn(async (key) => String(key).startsWith('assistant:usage-scope:state:') ? null : 'true'), put: vi.fn(async () => {}) } }
       )).json();
 
-      expect(pausedBody).toMatchObject({ ok: false, code: 'GROUNDING_REJECTED', claims: [] });
+      expect(pausedBody).toMatchObject({ ok: false, code: 'SUPPORT_CHECK_RUNTIME_PAUSED', claims: [] });
       expect(pausedBody).not.toHaveProperty('evidence');
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     } finally {
