@@ -228,8 +228,15 @@ describe('assistant ask endpoint', () => {
           RESEARCH_ASSISTANT_SUPPORT_CHECK_URL: 'https://checker.example.test/v1/support',
           RESEARCH_ASSISTANT_SUPPORT_CHECK_TOKEN: 'test-token',
           RESEARCH_ASSISTANT_SUPPORT_CHECK_TIMEOUT_MS: '1',
-          RESEARCH_ASSISTANT_SUPPORT_CHECK_RUNTIME_PAUSED: 'false',
-          RATE_LIMIT_KV: { get: vi.fn(async () => null), put: vi.fn(async () => {}) }
+          RATE_LIMIT_KV: {
+            get: vi.fn(async (key) => {
+              if (key === 'assistant:supportcheck:paused') return 'resume';
+              if (key === 'assistant:supportcheck:daily-invocation-limit') return null;
+              if (String(key).startsWith('assistant:usage-scope:state:')) return null;
+              return '0';
+            }),
+            put: vi.fn(async () => {})
+          }
         })
       );
       const body = await response.json();
