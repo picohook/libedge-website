@@ -233,7 +233,7 @@ describe('assistant ask endpoint', () => {
       );
       const body = await response.json();
       expect(response.status).toBe(200);
-      expect(body).toMatchObject({ ok: false, code: 'SUPPORT_CHECK_RUNTIME_PAUSED', claims: [] });
+      expect(body).toMatchObject({ ok: false, code: 'GROUNDING_REJECTED', claims: [] });
       expect(body).not.toHaveProperty('evidence');
       expect(body.code).not.toBe('OK');
     } finally {
