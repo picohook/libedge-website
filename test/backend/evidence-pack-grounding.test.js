@@ -41,6 +41,7 @@ describe('EvidencePack', () => {
   });
 });
 
+
 describe('grounding validator', () => {
   it('fails closed when no semantic support checker is supplied', async () => {
     const pack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-3' });
@@ -253,4 +254,15 @@ describe('grounding validator', () => {
     expect(result.rejectedClaims.map((claim) => claim.index)).toEqual([0, 1]);
   });
 
+
+  it('preserves evidence-side language rejection through grounding validation', async () => {
+    const evidencePack = createEvidencePack([makeWork()], { packIdFactory: () => 'pack-language-evidence' });
+    const evidenceId = evidencePack.evidence[0].evidence_id;
+    const result = await validateGroundedClaims({
+      claims: [{ text: 'Claim text.', evidence_ids: [evidenceId] }],
+      evidencePack,
+      supportCheck: async () => { throw new Error('SUPPORT_CHECK_LANGUAGE_UNAUTHORIZED_EVIDENCE'); }
+    });
+    expect(result.rejectedClaims[0]).toMatchObject({ code: 'SUPPORT_CHECK_FAILED', reason: 'LANGUAGE_EVIDENCE' });
+  });
 });
