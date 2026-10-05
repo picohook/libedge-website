@@ -145,7 +145,7 @@ describe('verified-result cache orchestration', () => {
       cacheScope: 'user:9', cacheIdentityContext, beforeLiveVerification: async () => ({ allowed: true }),
       discover: vi.fn(async () => [work()]), packOptions: { packIdFactory: () => 'pack-blocked' }
     });
-    expect(blocked).toMatchObject({ ok: false, code: 'RESEARCH_PRIVACY_GATE_REQUIRED', claims: [] });
+    expect(blocked).toMatchObject({ ok: false, code: 'PROVIDER_PRIVACY_GATE_REQUIRED', claims: [] });
     expect(blocked).not.toHaveProperty('verification_reused', true);
     expect(generateClaims).not.toHaveBeenCalled();
   });
