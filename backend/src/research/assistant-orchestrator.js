@@ -148,7 +148,7 @@ export async function orchestrateResearchAnswer({
   let evidencePack;
   stageStartedAt = Date.now();
   try {
-    evidencePack = packFactory(relevantWorks, packOptions);
+    evidencePack = packFactory(relevantWorks, { ...packOptions, languageAuthorized: true });
     diagnosticTimings.evidence_pack_ms = Date.now() - stageStartedAt;
   } catch {
     diagnosticTimings.evidence_pack_ms = Date.now() - stageStartedAt;
