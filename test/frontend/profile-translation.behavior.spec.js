@@ -37,6 +37,10 @@ test.beforeAll(async () => {
       });
     }
 
+    if (url.pathname === '/api/subscription/list') return sendJson(res, { subscriptions: [] });
+    if (url.pathname === '/api/catalog') return sendJson(res, { products: [{ slug: 'db-demo', name: 'Veritabanı Demo', name_en: 'Database Demo', category: 'Veritabanı', short_description_tr: 'Demo', short_description_en: 'Demo' }] });
+    if (url.pathname === '/api/recommendations/mine') return sendJson(res, { recommendations: [] });
+
     if (url.pathname === '/api/auth/refresh' && req.method === 'POST') {
       return sendJson(res, { success: true });
     }
@@ -139,7 +143,19 @@ test('runtime profile controls switch between Turkish and English', async ({ pag
   await expect(recommendationPlaceholder).toHaveAttribute('placeholder', 'Neden bu ürünü öneriyorsunuz? Kurumunuza nasıl katkı sağlar?');
 });
 
-function resolveStaticPath(urlPathname) {
+
+test('profile catalog rerenders to English without reload or page error', async ({ page }) => {
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  const initialUrl = page.url();
+  await expect(page.locator('#profileCatalogList .profile-action span')).toHaveText('Kuruma Önerin');
+  await page.locator('#translateBtn').click();
+  await expect(page.locator('#profileCatalogModule .profile-module-title')).toContainText('Discover & Recommend to Your Organization');
+  await expect(page.locator('#profileCatalogList .profile-action span')).toHaveText('Recommend');
+  await expect(page.locator('#profileCatalogList .profile-tag')).toHaveText('Database');
+  expect(page.url()).toBe(initialUrl);
+  expect(pageErrors).toEqual([]);
+});function resolveStaticPath(urlPathname) {
   const requested = urlPathname === '/' ? '/index.html' : decodeURIComponent(urlPathname);
   const relativePath = requested.replace(/^\/+/, '');
   const filePath = path.resolve(rootDir, relativePath);
