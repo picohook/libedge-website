@@ -113,7 +113,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   await expect(research.locator('#researchBreadthSingleSource')).toHaveText('1 · %25,0');
   await expect(research.locator('#researchCheckerHostingEstimate')).toBeVisible();
   await expect(research.locator('#researchCheckerHostingEstimateValue')).toContainText('$0.2500/saat');
-  await expect(research.locator('#researchCheckerHostingEstimateValue')).toContainText('~$ 6.00/gün');
+  await expect(research.locator('#researchCheckerHostingEstimateValue')).toContainText('~$6.00/gün');
 
   const institutionHeaders = await research.locator('#researchUsageInstitutions').locator('xpath=ancestor::table/thead').innerText();
   expect(institutionHeaders).toContain('Verified');
