@@ -55,7 +55,7 @@ function safeCode(code) {
  * credentials, or provider payloads. Logging is best-effort and must not
  * change the assistant response path.
  */
-export async function recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, retrievalDiagnostic, stageTimings } = {}) {
+export async function recordAssistantOutcome(env, { code, durationMs, errorClass, diagnosticReason, groundingDiagnostic, retrievalDiagnostic, stageTimings, verificationReused } = {}) {
   const payload = {
     event: 'research_assistant_outcome',
     code: safeCode(code),
@@ -86,6 +86,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     if (Number.isSafeInteger(value) && value >= 0) retrievalCardinality[key] = value;
   }
   if (Object.keys(retrievalCardinality).length) payload.retrieval_cardinality = retrievalCardinality;
+  if (verificationReused === true) payload.verification_reused = true;
 
   const groundingCounts = groundingDiagnostic?.rejection_counts && typeof groundingDiagnostic.rejection_counts === 'object'
     ? groundingDiagnostic.rejection_counts : {};
@@ -138,6 +139,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     await recordResearchMetrics(env, [
       ['assistant_requests', 1],
       [`assistant_outcome_${metricCode}`, 1],
+      ...(payload.verification_reused === true ? [['assistant_verified_result_cache_hit', 1]] : []),
       ...timingMetrics,
       ...retrievalMetrics,
       ...groundingCardinalityMetrics,
