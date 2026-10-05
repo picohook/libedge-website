@@ -128,6 +128,28 @@ describe('verified-result cache orchestration', () => {
     expect(order.slice(0, 2)).toEqual(['preflight', 'model']);
   });
 
+  it('honors the provider gate before reading a warm cache entry', async () => {
+    const RATE_LIMIT_KV = kv();
+    const env = { ENVIRONMENT: 'staging', RESEARCH_VERIFIED_RESULT_CACHE_ENABLED: 'true', RESEARCH_VERIFIED_RESULT_CACHE_HMAC_SECRET: 'test-secret', RATE_LIMIT_KV };
+    const generateClaims = vi.fn(async ({ evidencePack }) => ({ claims: [{ text: 'Supported claim', evidence_ids: [evidencePack.evidence[0].evidence_id] }] }));
+    await orchestrateResearchAnswer({
+      query: 'hydrogen membrane durability', env, providerGate: { status: 'PASS' },
+      modelAdapter: { generateClaims }, supportCheck: async () => true,
+      cacheScope: 'user:9', cacheIdentityContext, beforeLiveVerification: async () => ({ allowed: true }),
+      discover: vi.fn(async () => [work()]), packOptions: { packIdFactory: () => 'pack-warm' }
+    });
+    generateClaims.mockClear();
+    const blocked = await orchestrateResearchAnswer({
+      query: 'hydrogen membrane durability', env, providerGate: { status: 'UNVERIFIED' },
+      modelAdapter: { generateClaims }, supportCheck: async () => true,
+      cacheScope: 'user:9', cacheIdentityContext, beforeLiveVerification: async () => ({ allowed: true }),
+      discover: vi.fn(async () => [work()]), packOptions: { packIdFactory: () => 'pack-blocked' }
+    });
+    expect(blocked).toMatchObject({ ok: false, code: 'RESEARCH_PRIVACY_GATE_REQUIRED', claims: [] });
+    expect(blocked).not.toHaveProperty('verification_reused', true);
+    expect(generateClaims).not.toHaveBeenCalled();
+  });
+
   it('fails before model spend when live-verification preflight is unavailable', async () => {
     const generateClaims = vi.fn();
     const result = await orchestrateResearchAnswer({
