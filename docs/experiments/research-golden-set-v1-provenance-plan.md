@@ -22,10 +22,10 @@ The held-out manifest will contain exactly 90 questions:
 
 Each cell must use exactly one recorded provenance class per question:
 
-- `PILOT_NEED`: an authentic information need supplied from the intended pilot university-library/user context, collected without running it through Research.
+- `PILOT_NEED`: an authentic information need supplied from the intended pilot university-library/user context, collected without running it through Research. It may be collected only through an institution-approved process for this evaluation: no names, emails, account IDs, free-text personal identifiers, or other personal data are stored in the Golden Set; the institution/user contributor must understand that the de-identified research question may be used for evaluation. If a need cannot be safely de-identified without changing its substance, exclude it from `PILOT_NEED` and fill that quota independently.
 - `INDEPENDENT_AUTHORED`: authored by an independent subject-informed person who has not implemented or tuned Research retrieval, generation, grounding, checker behavior, thresholds, #536 diagnostic cases, or the measured candidate.
 
-No synthetic question may be relabeled as `PILOT_NEED`.
+No synthetic question may be relabeled as `PILOT_NEED`. The provenance record stores only the class, domain/language cell and non-identifying source role/context needed for audit; it must not contain a user identity or link a question back to a person.
 
 ## Allocation freeze
 
