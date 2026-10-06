@@ -34,7 +34,9 @@ describe('SupportCheck staging lifecycle governance', () => {
     expect(workflow).toContain("node-version: '22'");
     expect(workflow).toContain('Checker image does not match the approved staging digest');
     expect(workflow).toContain('OBSERVED_INSTANCE_COUNT');
-    expect(workflow).toContain('outside bounded range 1..2');
+    expect(workflow).toContain("SAGEMAKER_INITIAL_INSTANCE_COUNT: '2'");
+    expect(workflow).toContain('test "$instance_count" = "$SAGEMAKER_INITIAL_INSTANCE_COUNT"');
+    expect(workflow).toContain('Unexpected staging checker instance count');
     expect(deploy).toContain('Observed image does not match requested immutable image');
     expect(deploy).toContain('Observed Data Capture is enabled/uncertain');
   });
