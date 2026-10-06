@@ -69,7 +69,9 @@ Any material change after held-out execution begins closes v1. A changed candida
 
 For each domain independently:
 
-`verified_answer_rate = queries ending in the normal verified answer outcome / 30 held-out queries`
+`verified_answer_rate = held-out queries whose frozen Research response contract ends with \`ok: true, code: OK\` / 30 held-out queries`
+
+Only the existing outward success contract (`ok: true`, `code: OK`) enters the numerator. No reviewer judgment, partial answer, cached result, or diagnostic interpretation may promote another outcome into the numerator.
 
 The denominator is always all 30 frozen held-out questions for that domain. Grounding rejection, provider/retrieval failure, malformed output, timeout/error, or another fail-closed no-answer outcome is not a verified answer and remains in the denominator.
 
@@ -80,6 +82,8 @@ A domain is eligible for inclusion in the declared pilot scope only if:
 **verified_answer_rate >= 70% (at least 21/30 held-out queries).**
 
 This threshold is frozen before held-out results. It may not be relaxed after results are observed.
+
+**Pre-result product rationale for 70%.** Golden Set v1 is a pilot-scope screen, not D-022 checker safety certification and not a claim of domain-wide research reliability. For a small supervised university-library pilot, the product owner requires a clear majority with margin above a bare 50% success rate while still allowing a deliberately fail-closed experimental system to reject difficult questions. With 30 frozen questions/domain, 70% maps to an auditable integer gate of 21 successes. The threshold is intentionally applied separately by domain and is paired with transparent rejection rates, Wilson uncertainty, and blind rejection audit; it must not be marketed as “70% accurate.” A future broader/public release requires a separately preregistered standard rather than inheriting this pilot threshold automatically.
 
 Report exact numerator/denominator and a two-sided 95% Wilson interval as uncertainty context. The 70% point threshold is the v1 product decision rule; the confidence interval is reported and must not be hidden, but is not a second unregistered pass/fail rule.
 
@@ -146,7 +150,7 @@ Report counts and denominators. Categories 1–3 test the #495/#536 abstract-dep
 
 ## Cache and run integrity
 
-Measured acceptance runs MUST have verified-result cache disabled.
+Measured acceptance runs MUST have verified-result cache disabled at the deployed staging configuration **and** verified disabled immediately before the first measured request. The benchmark-window staging config PR must set `RESEARCH_VERIFIED_RESULT_CACHE_ENABLED = "false"`; the post-benchmark rollback restores its prior staging value.
 
 For every held-out row:
 - `verification_reused === false` is mandatory;
@@ -175,8 +179,8 @@ Before execution:
 
 After the Golden Set v1/#579 measurement window:
 1. teardown the checker endpoint;
-2. restore the staging hard ceiling to 100 through the normal reviewed path;
-3. verify the effective runtime limit no longer exceeds the restored ceiling.
+2. restore the staging hard ceiling to 100 **and restore the pre-benchmark staging verified-result-cache setting** through the normal reviewed path;
+3. verify the effective runtime limit no longer exceeds the restored ceiling and verify the cache setting matches the pre-benchmark state.
 
 The 500 ceiling is headroom, not a target. Stop the run after the frozen work completes; unused capacity must not be consumed.
 
