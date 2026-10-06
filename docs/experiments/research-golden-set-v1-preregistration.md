@@ -89,7 +89,7 @@ A technically verified but trivial answer must not satisfy the pilot gate. For v
 - **at least 2 verified claims**, and
 - those counted claims collectively cite **at least 2 unique authorized supporting sources**.
 
-An `OK` response below either floor is recorded as `OK_THIN`: it remains visible in the raw outcome/usefulness report but contributes **zero** to the acceptance numerator. This floor is a pilot-usefulness rule, not a checker-threshold change.
+An `OK` response below either floor is classified by the **benchmark artifact** as `OK_THIN`: it remains an application-level `ok:true, code:OK` response and remains visible in the raw outcome/usefulness report, but contributes **zero** to the acceptance numerator. `OK_THIN` is not a new API/outcome code and requires no production contract change. The benchmark derives the floor from returned accepted claims and their unique `evidence_ids`. This floor is a pilot-usefulness rule, not a checker-threshold change.
 
 For every `OK`/`OK_THIN` response report, per domain and language stratum, the distribution of verified-claim count and unique-supporting-source count, including the existing single-source-verified-answer diagnostic where available. Do not infer unique support from citation count alone.
 
