@@ -14,9 +14,9 @@ function tokens(value) {
 
 function francSignal(text) {
   if (String(text || '').trim().length < 10) return 'und';
-  const ranked = francAll(text, { minLength: 10 }).slice(0, 3).map(([language]) => language);
-  if (ranked[0] === 'eng') return 'en';
-  if (ranked.includes('tur')) return 'tr';
+  const ranked = francAll(text, { minLength: 10 }).slice(0, 3);
+  if (ranked[0]?.[0] === 'eng' && Number(ranked[0]?.[1]) >= 0.7) return 'en';
+  if (ranked[0]?.[0] === 'tur' && Number(ranked[0]?.[1]) >= 0.7) return 'tr';
   return 'und';
 }
 
