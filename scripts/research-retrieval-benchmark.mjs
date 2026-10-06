@@ -63,6 +63,10 @@ try {
         discover_ms: request.stage_latency_ms?.discover ?? null,
         grounding_ms: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_ms_total'),
         support_check_ms: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_ms_total'),
+        support_check_call_ms_total: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_call_ms_total'),
+        support_check_call_ms_max: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_call_ms_max_total'),
+        support_check_queue_wait_ms_total: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_queue_wait_ms_total'),
+        support_check_queue_wait_ms_max: metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_queue_wait_ms_max_total'),
         grounding_overhead_ms: nonNegativeDifference(
           metricDelta(beforeTelemetry, afterTelemetry, 'assistant_grounding_ms_total'),
           metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_ms_total')
