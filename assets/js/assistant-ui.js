@@ -401,6 +401,12 @@ requireResearchLogin().then((authorized) => {
                 'This pilot accepts the Turkish question; verification uses English-language literature/evidence and English verification claims. The answer is currently in English.'
             );
             overview.appendChild(languageNote);
+            if (language.retrieval_query) {
+                const searchedFor = document.createElement('p');
+                searchedFor.className = 'evidence-support-note';
+                searchedFor.textContent = `${t('Aranan İngilizce sorgu', 'Searched for')}: ${language.retrieval_query}`;
+                overview.appendChild(searchedFor);
+            }
         }
         const literature = summary?.literature;
         const verification = summary?.verification;
