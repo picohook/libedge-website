@@ -93,8 +93,8 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
       query_language: ['tr', 'en', 'und'].includes(languageDiagnostic.query_language) ? languageDiagnostic.query_language : 'und',
       evidence_languages: Array.isArray(languageDiagnostic.evidence_languages) && languageDiagnostic.evidence_languages.every((item) => item === 'en') ? ['en'] : [],
       answer_language: languageDiagnostic.answer_language === 'en' ? 'en' : 'und',
-      query_normalized: languageDiagnostic.query_normalized === true,
-      query_normalization_version: String(languageDiagnostic.query_normalization_version || '').slice(0, 64)
+      query_normalized: languageDiagnostic.query_normalized === true
+      ,query_normalization_version: String(languageDiagnostic.query_normalization_version || '').slice(0, 64)
     };
   }
 
