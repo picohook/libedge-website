@@ -164,7 +164,7 @@ describe('assistant privacy-safe telemetry', () => {
     await recordAssistantOutcome({ ENVIRONMENT: 'staging', DB: { prepare, batch } }, {
       code: 'OK',
       durationMs: 100,
-      stageTimings: { discover_ms: 11, evidence_pack_ms: 2, model_ms: 34, grounding_ms: 51, support_check_ms: 47, query: 'private query' }
+      stageTimings: { discover_ms: 11, evidence_pack_ms: 2, model_ms: 34, grounding_ms: 51, support_check_ms: 47, support_check_call_ms_total: 80, support_check_call_ms_max: 25, support_check_queue_wait_ms_total: 40, support_check_queue_wait_ms_max: 20, query: 'private query' }
     });
     const binds = prepare.mock.results.map((result) => result.value.bind.mock.calls[0]).filter(Boolean);
     const metricAmounts = Object.fromEntries(binds.map((args) => [args[1], args[2]]));
@@ -175,7 +175,11 @@ describe('assistant privacy-safe telemetry', () => {
       assistant_evidence_pack_ms_total: 2,
       assistant_model_ms_total: 34,
       assistant_grounding_ms_total: 51,
-      assistant_support_check_ms_total: 47
+      assistant_support_check_ms_total: 47,
+      assistant_support_check_call_ms_total: 80,
+      assistant_support_check_call_ms_max_total: 25,
+      assistant_support_check_queue_wait_ms_total: 40,
+      assistant_support_check_queue_wait_ms_max_total: 20
     });
     expect(JSON.stringify(metricAmounts)).not.toContain('private query');
     spy.mockRestore();
