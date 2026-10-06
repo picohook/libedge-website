@@ -31,7 +31,7 @@ jobs:
       SAGEMAKER_MODEL_NAME: libedge-fresh-checker-staging
       SAGEMAKER_ENDPOINT_CONFIG_NAME: libedge-fresh-checker-staging
       SAGEMAKER_INSTANCE_TYPE: ml.m5.large
-      SAGEMAKER_INITIAL_INSTANCE_COUNT: '1'
+      SAGEMAKER_INITIAL_INSTANCE_COUNT: '2'
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +83,7 @@ jobs:
           instance_type="$(aws sagemaker describe-endpoint-config --region "$AWS_REGION" --endpoint-config-name "$config" --query 'ProductionVariants[0].InstanceType' --output text)"
           instance_count="$(aws sagemaker describe-endpoint --region "$AWS_REGION" --endpoint-name "$SAGEMAKER_ENDPOINT_NAME" --query 'ProductionVariants[0].CurrentInstanceCount' --output text)"
           test "$instance_type" = "$SAGEMAKER_INSTANCE_TYPE" || { echo "::error::Unexpected staging checker instance type: $instance_type"; exit 1; }
-          [[ "$instance_count" =~ ^[12]$ ]] || { echo "::error::Staging checker instance count is outside bounded range 1..2: $instance_count"; exit 1; }
+          test "$instance_count" = "$SAGEMAKER_INITIAL_INSTANCE_COUNT" || { echo "::error::Unexpected staging checker instance count: $instance_count"; exit 1; }
           printf 'OBSERVED_INSTANCE_TYPE=%s\nOBSERVED_INSTANCE_COUNT=%s\n' "$instance_type" "$instance_count" >> "$GITHUB_ENV"
 
       - name: Teardown staging checker
