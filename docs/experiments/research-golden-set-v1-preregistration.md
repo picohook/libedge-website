@@ -145,13 +145,28 @@ Do not alter production cache behavior. This is a staging benchmark condition on
 
 ## Checker-call budget and staging schedule
 
-The held-out set can require up to 90 × 4 = 360 supportCheck invocations, before development runs or diagnostics. It therefore MUST NOT be forced into the normal 300-invocation UTC-day envelope.
+Repository configuration at preregistration time has separate ceilings: **staging = 100 supportCheck invocations per UTC day** and **production = 300/day**. The runtime KV limit may only lower the environment ceiling; it cannot raise it.
 
-Default v1 plan: **split execution across at least two UTC days while retaining the existing staging guardrail.** Do not raise the guardrail merely for convenience.
+The held-out set can require up to 90 × 4 = 360 supportCheck invocations, before the bounded #579 latency sample and smoke/error margin. To complete the frozen benchmark promptly, the product owner authorizes a **temporary staging-only hard ceiling of 500 supportCheck invocations per UTC day for the Golden Set v1 measurement window**.
 
-Before each execution window calculate remaining daily call budget from the frozen run plan. Stop rather than exceed the guardrail.
+This authorization does **not** change:
+- production's 300/day ceiling;
+- #399's production/pilot capacity assumption;
+- checker thresholds, pins, fail-closed behavior, or support-check concurrency;
+- the requirement to account for actual calls/cost.
 
-A temporary staging-only limit change, if ever proposed instead, requires a separate explicit authorization and documented cost/risk rationale before execution; it is not authorized by this protocol.
+Before execution:
+1. change only the staging environment ceiling from 100 to 500 through a reviewed config PR;
+2. deploy the exact reviewed staging candidate;
+3. set/verify the runtime staging limit at <=500 as required for the run;
+4. record the effective limit in the run artifact.
+
+After the Golden Set v1/#579 measurement window:
+1. teardown the checker endpoint;
+2. restore the staging hard ceiling to 100 through the normal reviewed path;
+3. verify the effective runtime limit no longer exceeds the restored ceiling.
+
+The 500 ceiling is headroom, not a target. Stop the run after the frozen work completes; unused capacity must not be consumed.
 
 ## Combined #579 + golden-set staging window
 
