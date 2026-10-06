@@ -102,10 +102,14 @@ export async function validateGroundedClaims({ claims, evidencePack, supportChec
   }
 
   const supportCheckStartedAt = Date.now();
+  const supportCheckCallMs = [];
+  const supportCheckQueueWaitMs = [];
   const semanticResults = await mapWithConcurrency(
     checkable,
     SUPPORT_CHECK_CONCURRENCY,
     async ({ claim, citedEvidence, position }) => {
+      const callStartedAt = Date.now();
+      supportCheckQueueWaitMs.push(Math.max(0, callStartedAt - supportCheckStartedAt));
       try {
         const verdict = normalizeSupportResult(await supportCheck(claim, citedEvidence));
         return verdict.supported
@@ -117,10 +121,16 @@ export async function validateGroundedClaims({ claims, evidencePack, supportChec
           claim,
           rejection: { ...claim, code: 'SUPPORT_CHECK_FAILED', reason: supportCheckFailureReason(error) }
         };
+      } finally {
+        supportCheckCallMs.push(Math.max(0, Date.now() - callStartedAt));
       }
     }
   );
   const supportCheckMs = Date.now() - supportCheckStartedAt;
+  const supportCheckCallMsTotal = supportCheckCallMs.reduce((sum, value) => sum + value, 0);
+  const supportCheckCallMsMax = supportCheckCallMs.length ? Math.max(...supportCheckCallMs) : 0;
+  const supportCheckQueueWaitMsTotal = supportCheckQueueWaitMs.reduce((sum, value) => sum + value, 0);
+  const supportCheckQueueWaitMsMax = supportCheckQueueWaitMs.length ? Math.max(...supportCheckQueueWaitMs) : 0;
 
   const semanticByPosition = new Map(semanticResults.map((result) => [result.position, result]));
   structuralResults.forEach((result, position) => {
@@ -133,6 +143,16 @@ export async function validateGroundedClaims({ claims, evidencePack, supportChec
     ok: rejectedClaims.length === 0,
     acceptedClaims,
     rejectedClaims,
-    diagnostics: { eligible_count: eligible.length, checked_count: checkable.length, truncated_count: truncated.length, support_check_limit: checkLimit, support_check_ms: supportCheckMs }
+    diagnostics: {
+      eligible_count: eligible.length,
+      checked_count: checkable.length,
+      truncated_count: truncated.length,
+      support_check_limit: checkLimit,
+      support_check_ms: supportCheckMs,
+      support_check_call_ms_total: supportCheckCallMsTotal,
+      support_check_call_ms_max: supportCheckCallMsMax,
+      support_check_queue_wait_ms_total: supportCheckQueueWaitMsTotal,
+      support_check_queue_wait_ms_max: supportCheckQueueWaitMsMax
+    }
   };
 }
