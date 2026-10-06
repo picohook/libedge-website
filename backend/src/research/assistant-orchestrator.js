@@ -183,6 +183,7 @@ export async function orchestrateResearchAnswer({
   const diagnosticCosts = { discovery_cost_usd: 0, normalization_cost_usd: 0 };
   const queryLanguage = researchQueryLanguage(task);
   let retrievalTask = task;
+  let normalizationUsage = null;
   const diagnosticLanguage = {
     query_language: queryLanguage,
     evidence_languages: ['en'],
@@ -204,7 +205,8 @@ export async function orchestrateResearchAnswer({
       diagnosticTimings.normalization_ms = Date.now() - normalizationStartedAt;
       retrievalTask = String(normalized?.query || '').trim();
       if (!retrievalTask) throw new Error('QUERY_NORMALIZATION_EMPTY');
-      diagnosticCosts.normalization_cost_usd = Number(normalized?.usage?.llm_cost_usd) || 0;
+      normalizationUsage = normalized?.usage || null;
+      diagnosticCosts.normalization_cost_usd = Number(normalizationUsage?.llm_cost_usd) || 0;
       diagnosticLanguage.query_normalized = true;
     } catch (error) {
       diagnosticTimings.normalization_ms = Date.now() - normalizationStartedAt;
@@ -329,8 +331,13 @@ export async function orchestrateResearchAnswer({
     };
   }
 
-  const diagnosticUsage = modelResult?.usage || null;
-  if (Number.isFinite(Number(diagnosticUsage?.llm_cost_usd))) diagnosticCosts.llm_cost_usd = Number(diagnosticUsage.llm_cost_usd) + diagnosticCosts.normalization_cost_usd;
+  const generationUsage = modelResult?.usage || null;
+  const diagnosticUsage = generationUsage || normalizationUsage ? {
+    input_tokens: (Number(normalizationUsage?.input_tokens) || 0) + (Number(generationUsage?.input_tokens) || 0),
+    output_tokens: (Number(normalizationUsage?.output_tokens) || 0) + (Number(generationUsage?.output_tokens) || 0),
+    llm_cost_usd: (Number(normalizationUsage?.llm_cost_usd) || 0) + (Number(generationUsage?.llm_cost_usd) || 0)
+  } : null;
+  if (Number.isFinite(Number(diagnosticUsage?.llm_cost_usd))) diagnosticCosts.llm_cost_usd = Number(diagnosticUsage.llm_cost_usd);
   const claims = normalizeModelClaims(modelResult);
   if (!claims) {
     return {
