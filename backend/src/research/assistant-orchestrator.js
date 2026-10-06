@@ -4,6 +4,7 @@ import { validateGroundedClaims } from './grounding-validator.js';
 import { filterEnglishEligibleWorks, filterRelevantWorks } from './relevance.js';
 import { readVerifiedResultCache, writeVerifiedResultCache } from '../assistant/verified-result-cache.js';
 import { canonicalVerifiedResultIdentity, verifiedResultEvidenceIdentity, verifiedResultQueryDigest } from '../assistant/verified-result-cache-identity.js';
+import { QUERY_NORMALIZATION_VERSION, researchQueryLanguage, requiresEnglishQueryNormalization } from './query-language.js';
 
 function safeErrorClass(error) {
   const name = typeof error?.name === 'string' ? error.name.trim() : '';
@@ -122,14 +123,17 @@ function restoreCachedResult(cached, evidencePack, diagnostics) {
   };
 }
 
-async function cacheIdentityFor({ task, env, cacheScope, cacheIdentityContext, evidencePack }) {
+async function cacheIdentityFor({ task, retrievalTask, env, cacheScope, cacheIdentityContext, evidencePack }) {
   const secret = String(env?.RESEARCH_VERIFIED_RESULT_CACHE_HMAC_SECRET || '');
   const queryDigest = await verifiedResultQueryDigest(task, secret);
+  const normalizedQueryDigest = await verifiedResultQueryDigest(retrievalTask, secret);
   const evidence = await verifiedResultEvidenceIdentity(evidencePack);
-  if (!queryDigest || !evidence || !cacheScope || !cacheIdentityContext) return null;
+  if (!queryDigest || !normalizedQueryDigest || !evidence || !cacheScope || !cacheIdentityContext) return null;
   return canonicalVerifiedResultIdentity({
     user_scope: cacheScope,
     query_digest: queryDigest,
+    normalized_query_digest: normalizedQueryDigest,
+    query_normalization_version: QUERY_NORMALIZATION_VERSION,
     evidence,
     ...cacheIdentityContext
   });
@@ -176,12 +180,42 @@ export async function orchestrateResearchAnswer({
   }
 
   const diagnosticTimings = {};
-  const diagnosticCosts = { discovery_cost_usd: 0 };
+  const diagnosticCosts = { discovery_cost_usd: 0, normalization_cost_usd: 0 };
+  const queryLanguage = researchQueryLanguage(task);
+  let retrievalTask = task;
+  const diagnosticLanguage = {
+    query_language: queryLanguage,
+    evidence_languages: ['en'],
+    answer_language: 'en',
+    query_normalization_version: QUERY_NORMALIZATION_VERSION,
+    query_normalized: false
+  };
+
+  if (requiresEnglishQueryNormalization(task)) {
+    if (!gatePassed(providerGate)) {
+      return { ok: false, code: 'PROVIDER_PRIVACY_GATE_REQUIRED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, diagnostic_language: diagnosticLanguage, claims: [] };
+    }
+    if (!modelAdapter || typeof modelAdapter.normalizeQueryToEnglish !== 'function') {
+      return { ok: false, code: 'MODEL_ADAPTER_REQUIRED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, diagnostic_language: diagnosticLanguage, claims: [] };
+    }
+    const normalizationStartedAt = Date.now();
+    try {
+      const normalized = await modelAdapter.normalizeQueryToEnglish({ task });
+      diagnosticTimings.normalization_ms = Date.now() - normalizationStartedAt;
+      retrievalTask = String(normalized?.query || '').trim();
+      if (!retrievalTask) throw new Error('QUERY_NORMALIZATION_EMPTY');
+      diagnosticCosts.normalization_cost_usd = Number(normalized?.usage?.llm_cost_usd) || 0;
+      diagnosticLanguage.query_normalized = true;
+    } catch (error) {
+      diagnosticTimings.normalization_ms = Date.now() - normalizationStartedAt;
+      return { ok: false, code: 'QUERY_NORMALIZATION_FAILED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, diagnostic_language: diagnosticLanguage, diagnostic_error_class: safeErrorClass(error), claims: [] };
+    }
+  }
   let diagnosticRetrieval = { retrieved_count: 0, relevant_count: 0, language_eligible_count: 0, authorized_relevant_count: 0 };
   let stageStartedAt = Date.now();
   let works;
   try {
-    works = await discover(task, { env, perPage });
+    works = await discover(retrievalTask, { env, perPage });
     diagnosticTimings.discover_ms = Date.now() - stageStartedAt;
   } catch {
     diagnosticTimings.discover_ms = Date.now() - stageStartedAt;
@@ -191,9 +225,9 @@ export async function orchestrateResearchAnswer({
 
   diagnosticCosts.discovery_cost_usd = Number(works?.diagnostic_discovery_cost_usd) || 0;
   const discoveredWorks = Array.isArray(works) ? works : [];
-  const relevantBeforeLanguage = filterRelevantWorks(task, discoveredWorks);
+  const relevantBeforeLanguage = filterRelevantWorks(retrievalTask, discoveredWorks);
   const languageEligibleWorks = filterEnglishEligibleWorks(discoveredWorks);
-  const relevantWorks = filterRelevantWorks(task, languageEligibleWorks);
+  const relevantWorks = filterRelevantWorks(retrievalTask, languageEligibleWorks);
   diagnosticRetrieval = {
     retrieval_mode: String(works?.diagnostic_retrieval_mode || 'unknown'),
     candidate_depth: Number(works?.diagnostic_candidate_depth) || discoveredWorks.length,
@@ -210,6 +244,7 @@ export async function orchestrateResearchAnswer({
       diagnostic_timings: diagnosticTimings,
       diagnostic_costs: diagnosticCosts,
       diagnostic_retrieval: diagnosticRetrieval,
+      diagnostic_language: diagnosticLanguage,
       claims: [],
       evidence: [],
       evidence_pack_id: null
@@ -237,14 +272,15 @@ export async function orchestrateResearchAnswer({
     };
   }
 
-  const cacheIdentity = await cacheIdentityFor({ task, env, cacheScope, cacheIdentityContext, evidencePack });
+  const cacheIdentity = await cacheIdentityFor({ task, retrievalTask, env, cacheScope, cacheIdentityContext, evidencePack });
   if (cacheIdentity) {
     const cached = await readVerifiedResultCache({ env, identity: cacheIdentity });
     if (cached.hit) {
       const restored = restoreCachedResult(cached.result, evidencePack, {
         timings: diagnosticTimings,
         costs: diagnosticCosts,
-        retrieval: diagnosticRetrieval
+        retrieval: diagnosticRetrieval,
+        language: diagnosticLanguage
       });
       if (restored) return restored;
     }
@@ -278,7 +314,7 @@ export async function orchestrateResearchAnswer({
   let modelResult;
   stageStartedAt = Date.now();
   try {
-    modelResult = await modelAdapter.generateClaims({ task, evidencePack });
+    modelResult = await modelAdapter.generateClaims({ task: retrievalTask, evidencePack });
     diagnosticTimings.model_ms = Date.now() - stageStartedAt;
   } catch (error) {
     diagnosticTimings.model_ms = Date.now() - stageStartedAt;
@@ -294,7 +330,7 @@ export async function orchestrateResearchAnswer({
   }
 
   const diagnosticUsage = modelResult?.usage || null;
-  if (Number.isFinite(Number(diagnosticUsage?.llm_cost_usd))) diagnosticCosts.llm_cost_usd = Number(diagnosticUsage.llm_cost_usd);
+  if (Number.isFinite(Number(diagnosticUsage?.llm_cost_usd))) diagnosticCosts.llm_cost_usd = Number(diagnosticUsage.llm_cost_usd) + diagnosticCosts.normalization_cost_usd;
   const claims = normalizeModelClaims(modelResult);
   if (!claims) {
     return {
@@ -304,6 +340,7 @@ export async function orchestrateResearchAnswer({
       diagnostic_timings: diagnosticTimings,
       diagnostic_costs: diagnosticCosts,
       diagnostic_retrieval: diagnosticRetrieval,
+      diagnostic_language: diagnosticLanguage,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -317,6 +354,7 @@ export async function orchestrateResearchAnswer({
       diagnostic_timings: diagnosticTimings,
       diagnostic_costs: diagnosticCosts,
       diagnostic_retrieval: diagnosticRetrieval,
+      diagnostic_language: diagnosticLanguage,
       claims: [],
       evidence: [],
       evidence_pack_id: evidencePack.pack_id
@@ -337,6 +375,7 @@ export async function orchestrateResearchAnswer({
       diagnostic_timings: diagnosticTimings,
       diagnostic_costs: diagnosticCosts,
       diagnostic_retrieval: diagnosticRetrieval,
+      diagnostic_language: diagnosticLanguage,
       claims: [],
       evidence_pack_id: evidencePack.pack_id
     };
@@ -366,6 +405,7 @@ export async function orchestrateResearchAnswer({
       diagnostic_timings: diagnosticTimings,
       diagnostic_costs: diagnosticCosts,
       diagnostic_retrieval: diagnosticRetrieval,
+      diagnostic_language: diagnosticLanguage,
       claims: [],
       evidence_pack_id: evidencePack.pack_id,
       diagnostic_grounding: diagnosticGrounding
@@ -379,6 +419,7 @@ export async function orchestrateResearchAnswer({
     diagnostic_timings: diagnosticTimings,
     diagnostic_costs: diagnosticCosts,
       diagnostic_retrieval: diagnosticRetrieval,
+    diagnostic_language: diagnosticLanguage,
     claims: grounding.acceptedClaims,
     evidence_pack_id: evidencePack.pack_id,
     diagnostic_grounding: diagnosticGrounding,
