@@ -15,8 +15,10 @@ function tokens(value) {
 function francSignal(text) {
   if (String(text || '').trim().length < 10) return 'und';
   const ranked = francAll(text, { minLength: 10 }).slice(0, 3);
-  if (ranked[0]?.[0] === 'eng' && Number(ranked[0]?.[1]) >= 0.7) return 'en';
-  if (ranked[0]?.[0] === 'tur' && Number(ranked[0]?.[1]) >= 0.7) return 'tr';
+  const [best, second] = ranked;
+  const margin = Number(best?.[1]) - Number(second?.[1]);
+  if (Number.isFinite(margin) && margin >= 0.02 && best?.[0] === 'eng') return 'en';
+  if (Number.isFinite(margin) && margin >= 0.02 && best?.[0] === 'tur') return 'tr';
   return 'und';
 }
 
