@@ -123,17 +123,14 @@ function restoreCachedResult(cached, evidencePack, diagnostics) {
   };
 }
 
-async function cacheIdentityFor({ task, retrievalTask, env, cacheScope, cacheIdentityContext, evidencePack }) {
+async function cacheIdentityFor({ task, env, cacheScope, cacheIdentityContext, evidencePack }) {
   const secret = String(env?.RESEARCH_VERIFIED_RESULT_CACHE_HMAC_SECRET || '');
   const queryDigest = await verifiedResultQueryDigest(task, secret);
-  const normalizedQueryDigest = await verifiedResultQueryDigest(retrievalTask, secret);
   const evidence = await verifiedResultEvidenceIdentity(evidencePack);
-  if (!queryDigest || !normalizedQueryDigest || !evidence || !cacheScope || !cacheIdentityContext) return null;
+  if (!queryDigest || !evidence || !cacheScope || !cacheIdentityContext) return null;
   return canonicalVerifiedResultIdentity({
     user_scope: cacheScope,
     query_digest: queryDigest,
-    normalized_query_digest: normalizedQueryDigest,
-    query_normalization_version: QUERY_NORMALIZATION_VERSION,
     evidence,
     ...cacheIdentityContext
   });
@@ -274,7 +271,7 @@ export async function orchestrateResearchAnswer({
     };
   }
 
-  const cacheIdentity = await cacheIdentityFor({ task, retrievalTask, env, cacheScope, cacheIdentityContext, evidencePack });
+  const cacheIdentity = await cacheIdentityFor({ task, env, cacheScope, cacheIdentityContext, evidencePack });
   if (cacheIdentity) {
     const cached = await readVerifiedResultCache({ env, identity: cacheIdentity });
     if (cached.hit) {
