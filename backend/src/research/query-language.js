@@ -25,11 +25,11 @@ function francSignal(text) {
 export function researchQueryLanguage(query) {
   const text = String(query || '').trim();
   if (!text) return 'und';
+  const cueCount = tokens(text).filter((token) => TURKISH_COMMON_WORDS.has(token)).length;
+  if (cueCount >= 2) return 'tr';
   const signal = francSignal(text);
   if (signal === 'en') return 'en';
   if (signal === 'tr') return 'tr';
-  const cueCount = tokens(text).filter((token) => TURKISH_COMMON_WORDS.has(token)).length;
-  if (cueCount >= 2) return 'tr';
   if (TURKISH_DISTINCTIVE.test(text) && cueCount >= 1) return 'tr';
   return 'und';
 }
