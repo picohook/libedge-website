@@ -26,10 +26,22 @@ function promptFor(task, evidencePack) {
     'Keep each claim as close as possible to what the cited evidence actually states; do not infer causes, mechanisms, comparisons, safety, efficacy, or general conclusions unless the cited text explicitly states them.',
     'Use the minimum evidence_ids needed for each claim. Omit any claim if support is ambiguous or only indirect.',
     'Do not cite identifiers that are not present. Do not add unsupported facts.',
+    'Write every verification claim in English, regardless of the language of the research task. Do not translate evidence text.',
     '',
     `Research task: ${task}`,
     '',
     `EvidencePack: ${JSON.stringify(evidencePack)}`
+  ].join('\n');
+}
+
+function normalizationPromptFor(task) {
+  return [
+    'Return JSON only with shape {"query":"..."}.',
+    'Translate or normalize the research query into concise academic English for literature retrieval.',
+    'Preserve named entities, technical terms, numbers, negation, population qualifiers and scope.',
+    'Do not answer the question and do not add concepts that are absent from the query.',
+    '',
+    `Research query: ${task}`
   ].join('\n');
 }
 
@@ -106,6 +118,34 @@ export function createBedrockModelAdapter(env, { clientFactory } = {}) {
   const client = makeClient({ region, credentials });
 
   return {
+    async normalizeQueryToEnglish({ task }) {
+      const body = {
+        anthropic_version: 'bedrock-2023-05-31',
+        max_tokens: 220,
+        temperature: 0,
+        messages: [{ role: 'user', content: [{ type: 'text', text: normalizationPromptFor(task) }] }]
+      };
+      const response = await client.send(new InvokeModelCommand({
+        modelId,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: new TextEncoder().encode(JSON.stringify(body))
+      }));
+      const payload = JSON.parse(new TextDecoder().decode(response.body));
+      const blocks = Array.isArray(payload?.content) ? payload.content : [];
+      const text = blocks.filter((block) => block?.type === 'text').map((block) => block.text).join('').trim();
+      const parsed = parseModelJson(text);
+      const query = configured(parsed?.query).replace(/\s+/g, ' ');
+      if (!query) throw diagnosticError('MODEL_OUTPUT_EMPTY');
+      return {
+        query,
+        usage: {
+          input_tokens: nonNegativeInteger(payload?.usage?.input_tokens),
+          output_tokens: nonNegativeInteger(payload?.usage?.output_tokens),
+          llm_cost_usd: exactUsageCostUsd(payload?.usage)
+        }
+      };
+    },
     async generateClaims({ task, evidencePack }) {
       const body = {
         anthropic_version: 'bedrock-2023-05-31',
@@ -127,4 +167,4 @@ export function createBedrockModelAdapter(env, { clientFactory } = {}) {
   };
 }
 
-export const __test = { parseClaimsPayload, parseModelJson, promptFor, credentialsFromEnv, diagnosticError, exactUsageCostUsd };
+export const __test = { parseClaimsPayload, parseModelJson, promptFor, normalizationPromptFor, credentialsFromEnv, diagnosticError, exactUsageCostUsd };
