@@ -13,7 +13,7 @@ A first attempt is executed against the exact frozen candidate. Application `ok:
 - at least 2 returned verified/accepted claims; and
 - those claims collectively map to at least 2 **distinct scholarly works**.
 
-The distinct-work identity is `work_id` from the authorized EvidencePack/returned evidence mapping. If a stable DOI is available it may be reported as an audit aid, but DOI absence does not merge distinct `work_id`s. Multiple evidence items referring to the same `work_id` count as one source. Distinct `evidence_id` alone is not sufficient for this floor.
+The distinct-work identity is `work_id` from the returned authorized `evidence` objects. For each accepted claim, map its returned `evidence_ids` to those evidence objects and count the union of distinct non-empty `work_id` values. If any cited evidence ID cannot be mapped to exactly one returned evidence object with a non-empty `work_id`, the row cannot satisfy the usefulness floor and is flagged for integrity review; do not fall back to counting evidence IDs. If a stable DOI is available it may be reported as an audit aid, but DOI absence does not merge distinct `work_id`s. Multiple evidence items referring to the same `work_id` count as one source.
 
 An application-level OK below the floor is benchmark-classified `OK_THIN`; it remains API `OK` but contributes zero to acceptance numerators.
 
