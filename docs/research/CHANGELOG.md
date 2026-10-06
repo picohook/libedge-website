@@ -42,13 +42,13 @@ Controlled retrieval-mode/depth benchmark capability.
 - Established controlled lexical/semantic candidate-depth measurement used for lexical-10, lexical-50 and semantic-50 comparisons.
 - Retrieval configuration became measurable independently from grounding outcome; subsequent #536 evidence showed mode/depth alone did not resolve the observed humanities/biomedical failures.
 
-## 0.5.0 — 2026-10-02 — experimental
+## 0.5.0 — 2026-10-01 — experimental
 
 ### Milestone
 Operational readiness evidence and bounded pilot governance.
 
-- Research operational telemetry, usage/cost evidence, checker invocation controls, lifecycle/teardown discipline and bounded pilot capacity evidence were consolidated.
-- Production activation was separated from readiness evidence through #399 authorization governance.
+- Added content-free Research usage-event observability (#338; `5e5662f`) on top of the fail-closed supportCheck daily invocation circuit breaker (#229; `e891d3a`).
+- This milestone represents the transition from functional verification to measurable operational/pilot-readiness evidence; later #399 governance keeps production activation separate.
 
 ## 0.4.0 — 2026-09-28 — experimental
 
