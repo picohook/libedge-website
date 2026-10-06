@@ -8,6 +8,8 @@ import {
 const identity = () => ({
   user_scope: 'user:7',
   query_digest: 'hmac:abc',
+  retrieval_query_digest: 'hmac:def',
+  query_normalization_version: 'query-en-normalization-v1',
   evidence: [{ evidence_id: 'e2', fingerprint: 'f2' }, { evidence_id: 'e1', fingerprint: 'f1' }],
   generation_model_id: 'model',
   generation_contract_version: 'g1',
@@ -119,4 +121,11 @@ describe('verified-result cache identity', () => {
     unauthorized.evidence[0].language_authorized = false;
     expect(await verifiedResultEvidenceIdentity(unauthorized)).toBeNull();
   });
+  it('changes identity when normalized retrieval query or normalization version changes', async () => {
+    const base = { ...identity, evidence: [{ ...identity.evidence[0] }] };
+    const key = await canonicalVerifiedResultIdentity(base);
+    await expect(canonicalVerifiedResultIdentity({ ...base, retrieval_query_digest: 'hmac:other' })).resolves.not.toBe(key);
+    await expect(canonicalVerifiedResultIdentity({ ...base, query_normalization_version: 'query-en-normalization-v2' })).resolves.not.toBe(key);
+  });
+
 });
