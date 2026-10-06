@@ -121,11 +121,11 @@ describe('verified-result cache identity', () => {
     unauthorized.evidence[0].language_authorized = false;
     expect(await verifiedResultEvidenceIdentity(unauthorized)).toBeNull();
   });
-  it('changes identity when normalized retrieval query or normalization version changes', async () => {
+  it('changes identity when normalized retrieval query or normalization version changes', () => {
     const base = { ...identity, evidence: [{ ...identity.evidence[0] }] };
     const key = await canonicalVerifiedResultIdentity(base);
-    await expect(canonicalVerifiedResultIdentity({ ...base, retrieval_query_digest: 'hmac:other' })).resolves.not.toBe(key);
-    await expect(canonicalVerifiedResultIdentity({ ...base, query_normalization_version: 'query-en-normalization-v2' })).resolves.not.toBe(key);
+    expect(canonicalVerifiedResultIdentity({ ...base, retrieval_query_digest: 'hmac:other' })).not.toBe(key);
+    expect(canonicalVerifiedResultIdentity({ ...base, query_normalization_version: 'query-en-normalization-v2' })).not.toBe(key);
   });
 
 });
