@@ -158,10 +158,10 @@ test('Research operations center renders outcome, pipeline and account controls 
   });
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Available');
-  await expect(research.locator('#researchCheckerState')).toHaveText('Paused');
+  await expect(research.locator('#researchCheckerState')).toHaveText('Duraklatıldı');
   await expect(research.locator('#researchCheckerInfrastructureBadge')).toHaveText('Available');
-  await expect(research.locator('#researchCheckerVerificationBadge')).toHaveText('Paused');
-  await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Available · Doğrulama: Paused');
+  await expect(research.locator('#researchCheckerVerificationBadge')).toHaveText('Duraklatıldı');
+  await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Hazır · Duraklatıldı');
   await expect(research.locator('#researchCheckerResumeBtn')).toBeEnabled();
   await expect(research.locator('#researchCheckerInfrastructureDetail')).toContainText('Paused by operator');
   await expect(research.locator('#researchCheckerHostingEstimate')).toBeHidden();
@@ -179,7 +179,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   });
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Available');
-  await expect(research.locator('#researchCheckerState')).toHaveText('Running');
+  await expect(research.locator('#researchCheckerState')).toHaveText('Doğrulama kullanılabilir');
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
   await page.route('**/api/admin/system-health', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
@@ -194,11 +194,11 @@ test('Research operations center renders outcome, pipeline and account controls 
   });
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unavailable');
-  await expect(research.locator('#researchCheckerState')).toHaveText('Running · etkisiz');
+  await expect(research.locator('#researchCheckerState')).toHaveText('Doğrulama kullanılamıyor');
   await expect(research.locator('#researchCheckerInfrastructureBadge')).toHaveText('Unavailable');
   await expect(research.locator('#researchCheckerHostingEstimate')).toBeHidden();
-  await expect(research.locator('#researchCheckerVerificationBadge')).toHaveText('Running · etkisiz');
-  await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Unavailable · Doğrulama: Running · etkisiz');
+  await expect(research.locator('#researchCheckerVerificationBadge')).toHaveText('Doğrulama kullanılamıyor');
+  await expect(research.locator('#researchCheckerStateBanner')).toHaveText('Fresh-Checker · Altyapı: Kapalı · Doğrulama kullanılamıyor');
   await expect(research.locator('#researchCheckerFreshness')).toBeHidden();
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
   await expect(research.locator('#researchCheckerLifecycleAlertLink')).toBeVisible();
@@ -217,7 +217,7 @@ test('Research operations center renders outcome, pipeline and account controls 
   });
   await research.locator('#researchObservabilityRefreshBtn').click();
   await expect(research.locator('#researchCheckerInfrastructureState')).toHaveText('Unknown');
-  await expect(research.locator('#researchCheckerState')).toHaveText('Running · etkisiz');
+  await expect(research.locator('#researchCheckerState')).toHaveText('Doğrulama kullanılamıyor');
   await expect(research.locator('#researchCheckerResumeBtn')).toBeDisabled();
 
   await page.route('**/api/admin/system-health', async (route) => {

@@ -749,6 +749,7 @@
         <div id="researchCheckerStateBanner" class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700" role="status">Fresh-Checker durumu yükleniyor…</div>
         <div id="researchOpsAlert" class="hidden mb-5 rounded-lg border p-4" role="status" aria-live="polite"></div>
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mb-6">
+            <div class="flex items-center justify-between gap-3 mb-3"><div><p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bugünkü operasyon</p><p class="text-[11px] text-slate-400 mt-0.5">UTC gün özeti</p></div></div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div class="rounded-xl bg-slate-50 border border-gray-100 p-4"><p class="text-gray-500 text-sm">Assistant İstekleri</p><p id="researchAssistantRequests" class="text-2xl font-bold mt-2">—</p></div>
             <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-4"><p class="text-emerald-700 text-sm">Verified Yanıtlar</p><p id="researchAssistantOk" class="text-2xl font-bold mt-2">—</p></div>
@@ -762,7 +763,7 @@
 <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 xl:col-span-2">
             <div class="flex flex-col lg:flex-row lg:items-end gap-3 mb-4">
                 <div>
-                    <div class="flex items-center gap-2"><h4 class="font-semibold text-gray-800">Usage & Cost</h4><span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">content-free</span></div>
+                    <div class="flex items-center gap-2"><h4 class="font-semibold text-gray-800">Usage & Cost</h4><span id="researchUsagePeriodBadge" class="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">Son 30 gün</span><span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">content-free</span></div>
                     <p class="text-xs text-gray-500 mt-1">Son 90 güne kadar Research operasyon özeti; sorgu/yanıt içeriği ve hash gösterilmez. Exact cost yalnız LLM + Discovery provider maliyetidir; checker hosting ayrı bir tahmindir ve exact toplama dahil edilmez.</p>
                 </div>
                 <div class="lg:ml-auto">
@@ -5083,6 +5084,8 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     async function loadResearchAccountUsage() {
         if (currentAdmin?.role !== 'super_admin') return;
         const days = document.getElementById('researchUsageDays')?.value || '30';
+        const usagePeriodBadge = document.getElementById('researchUsagePeriodBadge');
+        if (usagePeriodBadge) usagePeriodBadge.textContent = `Son ${days} gün`;
         const meta = document.getElementById('researchUsageMeta');
         try {
             const res = await fetch(`${API_BASE}/api/admin/research/usage?days=${encodeURIComponent(days)}`, { credentials: 'include' });
@@ -5199,14 +5202,23 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             if (freshnessEl) freshnessEl.classList.toggle('hidden', !infrastructure.stale);
             const checkerStateEl = document.getElementById('researchCheckerState');
             document.getElementById('researchCheckerInfrastructureState').textContent = infrastructureState;
-            checkerStateEl.textContent = checker.status !== 'ok' ? 'Unknown' : checker.paused ? 'Paused' : infrastructureState === 'Available' ? 'Running' : 'Running · etkisiz';
-            const verificationState = checker.status !== 'ok' ? 'Unknown' : checker.paused ? 'Paused' : infrastructureState === 'Available' ? 'Running' : 'Running · etkisiz';
+            const verificationState = checker.status !== 'ok'
+                ? 'Durum bilinmiyor'
+                : checker.paused
+                  ? 'Duraklatıldı'
+                  : infrastructureState === 'Available'
+                    ? 'Doğrulama kullanılabilir'
+                    : 'Doğrulama kullanılamıyor';
+            checkerStateEl.textContent = verificationState;
             const infrastructureBadge = document.getElementById('researchCheckerInfrastructureBadge');
             const verificationBadge = document.getElementById('researchCheckerVerificationBadge');
             const stateBanner = document.getElementById('researchCheckerStateBanner');
             if (infrastructureBadge) infrastructureBadge.textContent = infrastructureState;
             if (verificationBadge) verificationBadge.textContent = verificationState;
-            if (stateBanner) stateBanner.textContent = `Fresh-Checker · Altyapı: ${infrastructureState} · Doğrulama: ${verificationState}`;
+            if (stateBanner) {
+                const infrastructureLabel = infrastructureState === 'Available' ? 'Hazır' : infrastructureState === 'Unavailable' ? 'Kapalı' : 'Bilinmiyor';
+                stateBanner.textContent = `Fresh-Checker · Altyapı: ${infrastructureLabel} · ${verificationState}`;
+            }
             checkerStateEl.classList.toggle('text-green-700', checker.status === 'ok' && !checker.paused && infrastructureState === 'Available');
             checkerStateEl.classList.toggle('text-gray-700', checker.status !== 'ok' || checker.paused || infrastructureState !== 'Available');
             const infrastructureDetail = document.getElementById('researchCheckerInfrastructureDetail');
