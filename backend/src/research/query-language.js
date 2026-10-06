@@ -1,6 +1,10 @@
+import { francAll } from 'franc-min';
+
 const TURKISH_DISTINCTIVE = /[çğıöşüÇĞİÖŞÜ]/;
 const TURKISH_COMMON_WORDS = new Set([
-  'bir','bu','ve','ile','için','nedir','nasıl','etkisi','etkileri','üzerindeki','çalışma','eğitim','saatlerinin','iş','yaşam'
+  'bir','bu','ve','ile','icin','için','nedir','nasil','nasıl','etkisi','etkileri','uzerindeki','üzerindeki',
+  'calisma','çalışma','egitim','eğitim','saatlerinin','is','iş','yasam','yaşam','turkiye','türkiye','ogretmen',
+  'öğretmen','yetistirme','yetiştirme','reformu','universite','üniversite','ogrenci','öğrenci'
 ]);
 const NORMALIZATION_VERSION = 'query-en-normalization-v1';
 
@@ -8,12 +12,23 @@ function tokens(value) {
   return String(value || '').toLocaleLowerCase('tr-TR').match(/[a-zçğıöşü]+/gu) || [];
 }
 
+function francSignal(text) {
+  if (String(text || '').trim().length < 10) return 'und';
+  const ranked = francAll(text, { minLength: 10 }).slice(0, 3).map(([language]) => language);
+  if (ranked[0] === 'eng') return 'en';
+  if (ranked.includes('tur')) return 'tr';
+  return 'und';
+}
+
 export function researchQueryLanguage(query) {
   const text = String(query || '').trim();
   if (!text) return 'und';
-  if (TURKISH_DISTINCTIVE.test(text)) return 'tr';
-  const tokenList = tokens(text);
-  if (tokenList.filter((token) => TURKISH_COMMON_WORDS.has(token)).length >= 2) return 'tr';
+  const signal = francSignal(text);
+  if (signal === 'en') return 'en';
+  if (signal === 'tr') return 'tr';
+  const cueCount = tokens(text).filter((token) => TURKISH_COMMON_WORDS.has(token)).length;
+  if (cueCount >= 2) return 'tr';
+  if (TURKISH_DISTINCTIVE.test(text) && cueCount >= 1) return 'tr';
   return 'und';
 }
 
@@ -22,4 +37,4 @@ export function requiresEnglishQueryNormalization(query) {
 }
 
 export const QUERY_NORMALIZATION_VERSION = NORMALIZATION_VERSION;
-export const __test = { TURKISH_DISTINCTIVE, TURKISH_COMMON_WORDS };
+export const __test = { TURKISH_DISTINCTIVE, TURKISH_COMMON_WORDS, francSignal };
