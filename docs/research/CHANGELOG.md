@@ -33,11 +33,12 @@ Language-path hardening and Research operations observability.
 - Narrowed the evidence-language exception to text-detected English (#564; `266c44a`).
 - Aligned the Research operations dashboard and checker health with infrastructure state (#566/#568; `1564653`, `e66e9af`).
 
-## 0.6.0 — 2026-10-04 — experimental
+## 0.6.0 — 2026-10-03 — experimental
 
 ### Milestone
 Controlled retrieval-mode/depth benchmark capability.
 
+- Separated lexical candidate depth from final Research result depth (#473; `1b3eb92`) and pinned the staging candidate-depth baseline (#479; `4e1948c`).
 - Established controlled lexical/semantic candidate-depth measurement used for lexical-10, lexical-50 and semantic-50 comparisons.
 - Retrieval configuration became measurable independently from grounding outcome; subsequent #536 evidence showed mode/depth alone did not resolve the observed humanities/biomedical failures.
 
