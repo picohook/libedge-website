@@ -17,6 +17,8 @@ The distinct-work identity is `work_id` from the returned authorized `evidence` 
 
 An application-level OK below the floor is benchmark-classified `OK_THIN`; it remains API `OK` but contributes zero to acceptance numerators.
 
+The final report must state that the preregistered 21/30 domain and 7/10 Turkish gate operating characteristics apply to the **floor-adjusted qualifying-answer rate**, not raw API-`OK` frequency; do not reuse the earlier raw-rate interpretation as if thin answers still counted.
+
 ## Retry eligibility
 
 A row gets at most one retry, and only when the first attempt has **no semantic checker decision and no semantic/policy/evidence rejection**.
