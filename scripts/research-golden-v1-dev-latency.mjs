@@ -6,6 +6,10 @@ const PASSWORD = process.env.LIBEDGE_SMOKE_PASSWORD;
 const ADMIN_EMAIL = process.env.LIBEDGE_SMOKE_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.LIBEDGE_SMOKE_ADMIN_PASSWORD;
 const MANIFEST = process.env.GOLDEN_DEV_MANIFEST || 'docs/experiments/research-golden-set-v1-development-set.json';
+const START_INDEX = Number(process.env.GOLDEN_DEV_START_INDEX || 0);
+const REQUEST_SPACING_MS = Number(process.env.GOLDEN_DEV_REQUEST_SPACING_MS || 31000);
+if (!Number.isSafeInteger(START_INDEX) || START_INDEX < 0 || START_INDEX > 14) throw new Error('GOLDEN_DEV_START_INDEX must be 0..14');
+if (!Number.isFinite(REQUEST_SPACING_MS) || REQUEST_SPACING_MS < 30000) throw new Error('GOLDEN_DEV_REQUEST_SPACING_MS must be >=30000');
 if (!EMAIL || !PASSWORD || !ADMIN_EMAIL || !ADMIN_PASSWORD) throw new Error('Missing calibration credentials');
 
 const parsed = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
@@ -18,7 +22,9 @@ await login(EMAIL, PASSWORD, userCookies);
 await login(ADMIN_EMAIL, ADMIN_PASSWORD, adminCookies);
 const userId = await smokeUserId();
 
-for (const candidate of CASES) {
+for (let index = START_INDEX; index < CASES.length; index += 1) {
+  const candidate = CASES[index];
+  if (index > START_INDEX) await sleep(REQUEST_SPACING_MS);
   const beforeTelemetry = await telemetrySnapshot();
   const beforeRequestId = await latestRequestId(userId);
   const response = await fetch(`${BASE_URL}/api/assistant/ask`, {
@@ -28,7 +34,16 @@ for (const candidate of CASES) {
     redirect: 'manual'
   });
   const body = await response.json().catch(() => ({}));
-  if (response.status !== 200) throw new Error(`${candidate.id} HTTP ${response.status}`);
+  if (response.status === 429) {
+    console.error(`GOLDEN_V1_DEV_STOP row=${index} case=${candidate.id} reason=RATE_LIMIT resume_with=GOLDEN_DEV_START_INDEX=${index}`);
+    process.exitCode = 75;
+    break;
+  }
+  if (response.status !== 200) {
+    console.error(`GOLDEN_V1_DEV_STOP row=${index} case=${candidate.id} HTTP=${response.status}`);
+    process.exitCode = 1;
+    break;
+  }
   const request = await latestNewRequest(userId, beforeRequestId);
   const afterTelemetry = await telemetrySnapshot();
   const verification = body?.research_summary?.verification || {};
@@ -36,11 +51,16 @@ for (const candidate of CASES) {
   const callMax = metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_call_ms_max_total');
   const queueTotal = metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_queue_wait_ms_total');
   const queueMax = metricDelta(beforeTelemetry, afterTelemetry, 'assistant_support_check_queue_wait_ms_max_total');
-  const reused = metricDelta(beforeTelemetry, afterTelemetry, 'assistant_verified_result_cache_hit') > 0;
+  const requestDelta = metricDelta(beforeTelemetry, afterTelemetry, 'assistant_requests');
+  if (requestDelta !== 1) throw new Error(`${candidate.id} invalid calibration row: assistant_requests delta=${requestDelta}`);
+  const cacheHitDelta = metricDelta(beforeTelemetry, afterTelemetry, 'assistant_verified_result_cache_hit');
+  if (cacheHitDelta === null) throw new Error(`${candidate.id} invalid calibration row: cache-hit counter delta unavailable`);
+  const reused = cacheHitDelta > 0;
   if (reused) throw new Error(`${candidate.id} invalid calibration row: verification_reused=true`);
 
   console.log('GOLDEN_V1_DEV_LATENCY', JSON.stringify({
     schema_version: 'golden-v1-dev-latency-v1',
+    row_index: index,
     case_id: candidate.id,
     domain: candidate.domain,
     language: candidate.language,
@@ -140,4 +160,5 @@ function applyCookies(response, jar) {
     if (match?.[2]) jar.set(match[1], match[2]);
   }
 }
-function split(value) { return value ? value.split(/,(?=\s*[^;,=]+=[^;,]+)/g).map((x) => x.trim()) : []; }
+function split(value) { return value ? value.split(/,(?=\\s*[^;,=]+=[^;,]+)/g).map((x) => x.trim()) : []; }
+function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
