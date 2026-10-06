@@ -21,23 +21,21 @@ An application-level OK below the floor is benchmark-classified `OK_THIN`; it re
 
 A row gets at most one retry, and only when the first attempt has **no semantic checker decision and no semantic/policy/evidence rejection**.
 
-Retry-eligible infrastructure reasons are limited to:
-- `SUPPORT_CHECK_FAILED/TIMEOUT`;
-- a transport failure that the frozen harness can identify unambiguously as endpoint/network transport failure from the content-free request diagnostic.
+For Golden Set v1, the **only retry-eligible public reason is `SUPPORT_CHECK_FAILED_TIMEOUT`**. This deliberately uses the existing public content-free rejection diagnostic and avoids post-hoc interpretation of internal exception classes.
 
 Explicitly **not retry-eligible**:
 - `CLAIM_UNSUPPORTED` with any reason;
 - any mixture containing `CLAIM_UNSUPPORTED` plus timeout/transport;
 - `SUPPORT_CHECK_FAILED/LANGUAGE`, `LANGUAGE_CLAIM`, `LANGUAGE_EVIDENCE`, or `PIN_OR_RESPONSE`;
 - `SUPPORT_CHECK_FAILED/BUDGET`;
-- `SUPPORT_CHECK_FAILED/TRANSPORT_OR_OTHER` **unless** the frozen pre-run diagnostic schema has been narrowed to prove transport-only semantics before execution;
+- `SUPPORT_CHECK_FAILED_TRANSPORT_OR_OTHER` and all other transport/error catch-alls;
 - support-check budget truncation;
 - retrieval/evidence insufficiency;
 - malformed model/checker content;
 - provider/privacy/policy failures;
 - `OK_THIN`.
 
-Eligibility is row-level: **every rejection/failure on the row must be in the retry-eligible infrastructure class**. If any non-eligible reason is present, the row is not retried.
+Eligibility is row-level: **every rejection/failure on the row must be `SUPPORT_CHECK_FAILED_TIMEOUT`**. If any other rejection/failure reason is present, the row is not retried. No internal exception name or operator judgment may expand retry eligibility during v1.
 
 For an eligible retry, preserve both attempts; execute the identical question/candidate once more with no tuning/intervention; the second attempt is the product outcome used for the gate. A second infrastructure failure is a fail-closed non-success. No third attempt.
 
