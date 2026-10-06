@@ -19,9 +19,9 @@ It is not a claim that all of social science, humanities, or biomedicine “work
 ### Development/tuning set — 15 questions
 
 Exactly 15 questions:
-- 5 humanities;
-- 5 biomedical;
-- 5 social-science.
+- 5 humanities: 3 English + 2 Turkish;
+- 5 biomedical: 3 English + 2 Turkish;
+- 5 social-science: 3 English + 2 Turkish.
 
 This set may be used for diagnosis and targeted engineering. Its results are never included in acceptance denominators.
 
@@ -42,7 +42,9 @@ Within **each 30-question domain block** freeze:
 
 Thus the 90-question held-out contains exactly **60 English + 30 Turkish queries**, with Turkish represented equally across humanities, biomedical and social science. Questions must be authored naturally in the target language; the Turkish stratum must not be produced by mechanically translating an already-executed English question.
 
-The existing domain gate remains primary and unchanged. In addition, report verified-answer numerator/denominator separately for English and Turkish within every domain, plus language-policy rejection counts. **No language stratum may be hidden by an aggregate domain result.** Golden Set v1 does not add a post-hoc language-specific pass threshold; the language breakdown is mandatory evidence for #399 pilot-scope and Turkish-UI decisions.
+The existing 30-question domain gate remains primary and unchanged. In addition, report verified-answer numerator/denominator separately for English and Turkish within every domain, plus language-policy rejection counts. **No language stratum may be hidden by an aggregate domain result.**
+
+Because the intended pilot UI is Turkish, a domain may be declared **Turkish-supported** only if its frozen Turkish stratum independently reaches **>=70% (at least 7/10)**. This language gate is frozen before results and uses the same outward `ok: true, code: OK` numerator contract. A domain can therefore pass the 21/30 domain gate yet still be excluded from Turkish-supported pilot scope if it fails 7/10 Turkish. Report a two-sided 95% Wilson interval for the small 10-query language stratum as uncertainty context; do not present 7/10 as a precise estimate of language-wide reliability.
 
 The held-out questions MUST NOT be exposed to retrieval/generation/checker tuning before candidate freeze. They must not reuse the three diagnostic queries from #536 or questions used in earlier retrieval experiments.
 
@@ -219,8 +221,9 @@ The later pilot UI/polish work MUST consume Golden Set/#399 scope evidence rathe
 ## Decision matrix
 
 For each domain:
-- **PASS (>=21/30):** eligible to be named in the proposed pilot scope, subject to the rest of #399.
-- **FAIL (<21/30):** exclude or explicitly limit that domain in the pilot scope; document rejected-query UX under #399 item 13.
+- **DOMAIN PASS (>=21/30):** eligible to be named in the proposed pilot scope, subject to the rest of #399.
+- **TURKISH-SUPPORTED PASS:** requires both DOMAIN PASS and >=7/10 on that domain's frozen Turkish stratum before the product may claim Turkish support for that domain.
+- **DOMAIN FAIL (<21/30) or TURKISH FAIL (<7/10):** exclude or explicitly limit the corresponding domain/language scope; document rejected-query UX under #399 item 13.
 - **INVALID:** protocol/candidate/cache/blinding integrity failure; no product conclusion. Close the round and preregister a successor.
 
 A limited-domain pilot is a legitimate outcome, not a failed project.
