@@ -1,6 +1,6 @@
 # LibEdge Research Version Governance
 
-Status: `ADOPTED / PRE-1.0`
+Status: `PROPOSED / PRE-1.0 — becomes canonical when this PR is independently approved and merged`
 
 Date: 2026-10-06
 
@@ -50,4 +50,4 @@ Research `1.0.0` is reserved for a pilot-ready declared scope. It requires, at m
 
 Versions 0.1.0–0.9.0 are a retrospective governance baseline reconstructed from repository evidence. Dates in the ledger are tied to real commits/merged milestones; they are not claims that formal Research releases or Git tags existed on those dates.
 
-Future versions MUST be recorded prospectively in the Research changelog when the milestone is accepted.
+After adoption, future versions MUST be recorded prospectively in the Research changelog when the milestone is accepted.
