@@ -1,8 +1,6 @@
 const REQUIRED_STRING_FIELDS = [
   'user_scope',
   'query_digest',
-  'normalized_query_digest',
-  'query_normalization_version',
   'generation_model_id',
   'generation_contract_version',
   'checker_model',
@@ -119,8 +117,6 @@ export function canonicalVerifiedResultIdentity(identity) {
   const required = {
     user_scope: identity.user_scope,
     query_digest: identity.query_digest,
-    normalized_query_digest: identity.normalized_query_digest,
-    query_normalization_version: identity.query_normalization_version,
     evidence: identity.evidence,
     generation_model_id: identity.generation_model_id,
     generation_contract_version: identity.generation_contract_version,
