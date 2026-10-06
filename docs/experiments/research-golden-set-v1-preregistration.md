@@ -62,6 +62,12 @@ Within each domain, question construction must deliberately vary topic, wording,
 
 Question bundle, IDs, provenance class, author-role independence attestation, domain/language allocation, rubric, exact candidate/config fingerprint, and this acceptance contract are frozen and independently reviewed before the first held-out execution.
 
+## Pre-freeze development latency calibration
+
+Before the exact candidate fingerprint is frozen, run the bounded #579 latency sample on the **15-question development/tuning set only**, with the reviewed **2 x ml.m5.large** staging checker shape and cache OFF. Use its individual-call and application queue-wait diagnostics to decide whether the intended timeout/concurrency values are viable. Any pre-freeze adjustment must stay within reviewed implementation bounds and be reconciled with #399's capacity/cost boundary. Held-out questions remain sealed.
+
+After that diagnostic decision, freeze the exact candidate. Held-out results may not be used to tune timeout or concurrency.
+
 ## Exact candidate freeze
 
 Before execution record:
@@ -91,7 +97,7 @@ A technically verified but trivial answer must not satisfy the pilot gate. For v
 - **at least 2 verified claims**, and
 - those counted claims collectively cite **at least 2 unique authorized supporting sources**.
 
-An `OK` response below either floor is classified by the **benchmark artifact** as `OK_THIN`: it remains an application-level `ok:true, code:OK` response and remains visible in the raw outcome/usefulness report, but contributes **zero** to the acceptance numerator. `OK_THIN` is not a new API/outcome code and requires no production contract change. The benchmark derives the floor from returned accepted claims and their unique `evidence_ids`. This floor is a pilot-usefulness rule, not a checker-threshold change.
+An `OK` response below either floor is classified by the **benchmark artifact** as `OK_THIN`: it remains an application-level `ok:true, code:OK` response and remains visible in the raw outcome/usefulness report, but contributes **zero** to the acceptance numerator. `OK_THIN` is not a new API/outcome code and requires no production contract change. The benchmark derives the source floor by mapping returned accepted-claim `evidence_ids` to returned authorized evidence objects and counting **distinct non-empty `work_id` values**; distinct `evidence_id` values alone do not satisfy the floor. The frozen harness specification defines the integrity behavior for missing/ambiguous mappings. This floor is a pilot-usefulness rule, not a checker-threshold change.
 
 For every `OK`/`OK_THIN` response report, per domain and language stratum, the distribution of verified-claim count and unique-supporting-source count, including the existing single-source-verified-answer diagnostic where available. Do not infer unique support from citation count alone.
 
@@ -117,16 +123,17 @@ If a domain fails, the valid v1 outcome is to exclude/limit that domain in the p
 
 For every held-out query record content-free:
 - final outcome code;
+- first-attempt outcome code and whether an evaluation timeout retry occurred;
 - retrieved/relevant/language-eligible/authorized counts;
 - evidence-depth counts;
 - eligible/checked/verified claim counts;
-- grounding rejection reason counts;
+- grounding rejection reason counts, including support-check budget truncation separately;
 - discover, generation, grounding/support-check and total latency;
 - #579 support-check call-duration and application queue-wait diagnostics;
 - exact candidate/config identity;
 - `verification_reused`.
 
-Report per-domain and overall distributions. Do not invent a composite quality score.
+Report per-domain and overall distributions, plus truncation counts/rates by domain and language so generation beyond the four-check cap is not misread as checker rejection. Do not invent a composite quality score.
 
 ## Blind human audit of checker rejections
 
@@ -152,7 +159,7 @@ Raters must not be the implementer who tuned the measured candidate and must not
 
 The deterministic audit seed is supplied by the maintainer/product owner or independent reviewer — **never by the implementer** — only after the complete held-out raw run artifact and eligible-rejection population have been frozen and hashed. Record the artifact hash, seed provider, seed, and sampling-script revision before opening the sampled items to raters.
 
-Use **two independent human raters** for every sampled item. Each rater locks their rating before seeing the other rater's output. Raters receive the claim and the exact evidence supplied to the checker, but not:
+Each rater locks their rating before seeing the other rater's output. Raters receive the claim and the exact evidence supplied to the checker, but not:
 - checker decision/reason;
 - domain acceptance result;
 - retrieval configuration label beyond what is needed to interpret evidence;
@@ -187,16 +194,18 @@ Report counts and denominators. Categories 1–3 test the #495/#536 abstract-dep
 
 ## Infrastructure-failure rerun policy
 
-A held-out question receives **at most one retry** only when the first attempt ends before a semantic verification decision because of a clearly classified infrastructure/transport failure (for example checker transport error, endpoint timeout/unavailability, or equivalent provider transport failure). Grounding rejection, `CLAIM_UNSUPPORTED`, language-policy rejection, retrieval/evidence insufficiency, malformed model/checker content, or an `OK_THIN` usefulness failure is **not** retry-eligible.
+A held-out question receives **at most one retry**, and for Golden Set v1 the only retry-eligible public rejection reason is `SUPPORT_CHECK_FAILED_TIMEOUT`. Eligibility is row-level: **every** rejection/failure on the first attempt must be `SUPPORT_CHECK_FAILED_TIMEOUT`; any mixed semantic, policy, evidence, budget, malformed-response, provider, transport catch-all, or other reason makes the row non-retryable. In particular, `CLAIM_UNSUPPORTED`, `SUPPORT_CHECK_FAILED_BUDGET`, `SUPPORT_CHECK_FAILED_TRANSPORT_OR_OTHER`, language/pin failures, retrieval/evidence insufficiency, malformed model/checker content, support-check truncation, and `OK_THIN` are **not** retry-eligible. Internal exception names or operator judgment may not expand this class during v1.
 
 For a retry-eligible row:
 - preserve both attempt records and the original failure code/timings;
 - retry the identical frozen question and candidate/config once, with no intervention or tuning between attempts;
 - the second attempt is the row's product outcome for the primary gate;
-- if the retry is also an infrastructure/transport failure, the row is a fail-closed non-success in the denominator; no third attempt;
-- report first-attempt and final timeout/transport counts per domain/language next to verified-answer rates.
+- if the retry is also an infrastructure failure, the row is a fail-closed non-success in the denominator; no third attempt;
+- report first-attempt and final timeout counts per domain/language next to verified-answer rates.
 
-If infrastructure failures show a systemic pattern rather than isolated noise, stop the round for review instead of repeatedly consuming the one-retry allowance.
+A systemic infrastructure pattern is defined before results as either **2 consecutive held-out first-attempt retry-eligible timeouts**, or, after at least **5 first attempts in a domain x language cell**, **>=40% first-attempt timeout rows** in that cell. Evaluate this immediately after each first attempt and before an evaluation retry. If triggered, stop the round, preserve artifacts and teardown; do not consume further held-out rows/retries. A timeout/concurrency/capacity change requires a successor freeze/version.
+
+Because the product support-check path does not automatically retry timeout failures, the final report also shows the **first-attempt-only qualifying-answer rate** per domain/language as a non-gating sensitivity figure alongside the retry-policy product outcome.
 
 ## Cache and run integrity
 
@@ -252,7 +261,7 @@ To minimize endpoint uptime and teardown risk, each checker-on window follows:
 
 1. deploy/verify staging Fresh-Checker;
 2. confirm exact frozen candidate/config and cache OFF;
-3. run the bounded #579 latency measurement first;
+3. confirm the **pre-freeze development-set #579 latency calibration** and its frozen timeout/concurrency decision are recorded; do not rerun #579 on held-out questions as a tuning step;
 4. run the scheduled golden-set shard while daily invocation budget permits;
 5. preserve content-free raw results and run IDs;
 6. teardown the endpoint in the same window;
