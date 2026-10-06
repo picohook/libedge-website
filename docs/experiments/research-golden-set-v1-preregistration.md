@@ -121,7 +121,7 @@ For each domain:
 
 ### Blinding and rubric
 
-The human evaluator receives the claim and the exact evidence supplied to the checker, but not:
+Use **two independent human raters** for every sampled item. Each rater locks their rating before seeing the other rater's output. Raters receive the claim and the exact evidence supplied to the checker, but not:
 - checker decision/reason;
 - domain acceptance result;
 - retrieval configuration label beyond what is needed to interpret evidence;
@@ -133,7 +133,13 @@ Each item is rated:
 - `UNSUPPORTED`: supplied evidence does not support the material claim;
 - `UNRATABLE`: evidence/rendering defect prevents a judgment.
 
-For the false-negative diagnostic, only blind-human `SUPPORTED` among semantic checker rejects counts as an apparent checker false negative. Report numerator/denominator by domain with Wilson interval. `PARTIALLY_SUPPORTED` remains separate and is not promoted to supported.
+Primary human-audit classification uses **exact agreement only**:
+- both raters `SUPPORTED` -> consensus-supported apparent checker false negative;
+- both raters `PARTIALLY_SUPPORTED` -> consensus-partial;
+- both raters `UNSUPPORTED` -> consensus-unsupported;
+- any disagreement, or any `UNRATABLE`, remains a separate challenge/unratable stratum and is not post-hoc adjudicated inside v1.
+
+For the false-negative diagnostic, only consensus-`SUPPORTED` among semantic checker rejects counts as an apparent checker false negative. Report numerator/denominator by domain with Wilson interval and report raw rater agreement plus challenge/unratable counts. `PARTIALLY_SUPPORTED` remains separate and is not promoted to supported.
 
 This audit is diagnostic and cannot override the primary query-level product gate in v1. A concerning false-negative pattern may justify a separately preregistered checker/calibration investigation, but checker thresholds/pins are not changed inside this round.
 
@@ -227,7 +233,7 @@ A limited-domain pilot is a legitimate outcome, not a failed project.
 4. question-construction/diversity QA record;
 5. exact candidate/config fingerprint;
 6. frozen harness and raw-results schema;
-7. human-audit sampling script/spec and rating form;
+7. human-audit sampling script/spec, two-rater assignment/blinding record, and rating form;
 8. daily call-budget/shard plan;
 9. reviewer sign-off that no held-out results were inspected before freeze.
 
