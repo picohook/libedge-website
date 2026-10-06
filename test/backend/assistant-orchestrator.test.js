@@ -454,7 +454,11 @@ describe('assistant orchestration boundary', () => {
   it('uses the normalized English query for both discovery and model claim generation on Turkish input', async () => {
     const discover = vi.fn(async (query) => {
       expect(query).toBe('flexible work hours work-life balance');
-      return [work()];
+      return [{
+        ...work(),
+        title: 'Flexible work hours and work-life balance',
+        abstract: 'Flexible work arrangements are associated with work-life balance outcomes.'
+      }];
     });
     const generateClaims = vi.fn(async ({ task, evidencePack }) => {
       expect(task).toBe('flexible work hours work-life balance');
