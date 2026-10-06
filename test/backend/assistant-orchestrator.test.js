@@ -451,4 +451,60 @@ describe('assistant orchestration boundary', () => {
     expect(result.evidence[0]).not.toHaveProperty('citations');
     expect(JSON.stringify(result.evidence)).not.toContain('hydrogen membranes');
   });
+  it('uses the normalized English query for both discovery and model claim generation on Turkish input', async () => {
+    const discover = vi.fn(async (query) => {
+      expect(query).toBe('flexible work hours work-life balance');
+      return [work()];
+    });
+    const generateClaims = vi.fn(async ({ task, evidencePack }) => {
+      expect(task).toBe('flexible work hours work-life balance');
+      return { claims: [{ text: 'Flexible work arrangements are associated with work-life balance outcomes.', evidence_ids: [evidencePack.evidence[0].evidence_id] }] };
+    });
+    const result = await orchestrateResearchAnswer({
+      query: 'Esnek çalışma saatlerinin iş-yaşam dengesi üzerindeki etkisi nedir?',
+      env: {},
+      providerGate: passGate,
+      modelAdapter: {
+        normalizeQueryToEnglish: async () => ({ query: 'flexible work hours work-life balance', usage: { llm_cost_usd: 0.001 } }),
+        generateClaims
+      },
+      discover,
+      supportCheck: () => ({ supported: true }),
+      packOptions
+    });
+
+    expect(discover).toHaveBeenCalledTimes(1);
+    expect(generateClaims).toHaveBeenCalledTimes(1);
+    expect(result.code).toBe('OK');
+    expect(result.diagnostic_language).toMatchObject({
+      query_language: 'tr',
+      evidence_languages: ['en'],
+      answer_language: 'en',
+      query_normalized: true,
+      query_normalization_version: 'query-en-normalization-v1'
+    });
+    expect(result.diagnostic_costs.normalization_cost_usd).toBe(0.001);
+  });
+
+  it('fails closed when Turkish query normalization fails and never reaches discovery or checker', async () => {
+    const discover = vi.fn();
+    const supportCheck = vi.fn();
+    const result = await orchestrateResearchAnswer({
+      query: 'Çevrimiçi eğitimin akademik katılıma etkisi nedir?',
+      env: {},
+      providerGate: passGate,
+      modelAdapter: {
+        normalizeQueryToEnglish: async () => { throw new Error('normalization unavailable'); },
+        generateClaims: vi.fn()
+      },
+      discover,
+      supportCheck,
+      packOptions
+    });
+
+    expect(result.code).toBe('QUERY_NORMALIZATION_FAILED');
+    expect(discover).not.toHaveBeenCalled();
+    expect(supportCheck).not.toHaveBeenCalled();
+  });
+
 });
