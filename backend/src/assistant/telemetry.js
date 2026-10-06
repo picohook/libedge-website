@@ -5,6 +5,7 @@ const OUTCOME_CODES = new Set([
   'NO_SUPPORTABLE_CLAIMS',
   'ASSISTANT_QUERY_REQUIRED',
   'DISCOVER_FAILED',
+  'QUERY_NORMALIZATION_FAILED',
   'EVIDENCE_PACK_FAILED',
   'PROVIDER_PRIVACY_GATE_REQUIRED',
   'MODEL_ADAPTER_REQUIRED',
@@ -63,7 +64,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     environment: String(env?.ENVIRONMENT || 'unknown')
   };
   const timings = stageTimings && typeof stageTimings === 'object' ? stageTimings : {};
-  for (const key of ['discover_ms', 'evidence_pack_ms', 'model_ms', 'grounding_ms', 'support_check_ms', 'support_check_call_ms_total', 'support_check_call_ms_max', 'support_check_queue_wait_ms_total', 'support_check_queue_wait_ms_max']) {
+  for (const key of ['normalization_ms', 'discover_ms', 'evidence_pack_ms', 'model_ms', 'grounding_ms', 'support_check_ms', 'support_check_call_ms_total', 'support_check_call_ms_max', 'support_check_queue_wait_ms_total', 'support_check_queue_wait_ms_max']) {
     const value = Number(timings[key]);
     if (Number.isFinite(value) && value >= 0) payload[key] = Math.round(value);
   }
@@ -110,6 +111,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     const metricCode = payload.code.toLowerCase();
     const timingMetrics = [['assistant_duration_ms_total', payload.duration_ms]];
     for (const [field, metric] of [
+      ['normalization_ms', 'assistant_query_normalization_ms_total'],
       ['discover_ms', 'assistant_discover_ms_total'],
       ['evidence_pack_ms', 'assistant_evidence_pack_ms_total'],
       ['model_ms', 'assistant_model_ms_total'],
