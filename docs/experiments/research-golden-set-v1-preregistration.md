@@ -62,6 +62,12 @@ Within each domain, question construction must deliberately vary topic, wording,
 
 Question bundle, IDs, provenance class, author-role independence attestation, domain/language allocation, rubric, exact candidate/config fingerprint, and this acceptance contract are frozen and independently reviewed before the first held-out execution.
 
+## Pre-freeze development latency calibration
+
+Before the exact candidate fingerprint is frozen, run the bounded #579 latency sample on the **15-question development/tuning set only**, with the reviewed **2 x ml.m5.large** staging checker shape and cache OFF. Use its individual-call and application queue-wait diagnostics to decide whether the intended timeout/concurrency values are viable. Any pre-freeze adjustment must stay within reviewed implementation bounds and be reconciled with #399's capacity/cost boundary. Held-out questions remain sealed.
+
+After that diagnostic decision, freeze the exact candidate. Held-out results may not be used to tune timeout or concurrency.
+
 ## Exact candidate freeze
 
 Before execution record:
@@ -117,16 +123,17 @@ If a domain fails, the valid v1 outcome is to exclude/limit that domain in the p
 
 For every held-out query record content-free:
 - final outcome code;
+- first-attempt outcome code and whether an evaluation timeout retry occurred;
 - retrieved/relevant/language-eligible/authorized counts;
 - evidence-depth counts;
 - eligible/checked/verified claim counts;
-- grounding rejection reason counts;
+- grounding rejection reason counts, including support-check budget truncation separately;
 - discover, generation, grounding/support-check and total latency;
 - #579 support-check call-duration and application queue-wait diagnostics;
 - exact candidate/config identity;
 - `verification_reused`.
 
-Report per-domain and overall distributions. Do not invent a composite quality score.
+Report per-domain and overall distributions, plus truncation counts/rates by domain and language so generation beyond the four-check cap is not misread as checker rejection. Do not invent a composite quality score.
 
 ## Blind human audit of checker rejections
 
@@ -196,7 +203,9 @@ For a retry-eligible row:
 - if the retry is also an infrastructure failure, the row is a fail-closed non-success in the denominator; no third attempt;
 - report first-attempt and final timeout counts per domain/language next to verified-answer rates.
 
-If infrastructure failures show a systemic pattern rather than isolated noise, stop the round for review instead of repeatedly consuming the one-retry allowance.
+A systemic infrastructure pattern is defined before results as either **2 consecutive held-out first-attempt retry-eligible timeouts**, or, after at least **5 first attempts in a domain x language cell**, **>=40% first-attempt timeout rows** in that cell. Evaluate this immediately after each first attempt and before an evaluation retry. If triggered, stop the round, preserve artifacts and teardown; do not consume further held-out rows/retries. A timeout/concurrency/capacity change requires a successor freeze/version.
+
+Because the product support-check path does not automatically retry timeout failures, the final report also shows the **first-attempt-only qualifying-answer rate** per domain/language as a non-gating sensitivity figure alongside the retry-policy product outcome.
 
 ## Cache and run integrity
 
@@ -252,7 +261,7 @@ To minimize endpoint uptime and teardown risk, each checker-on window follows:
 
 1. deploy/verify staging Fresh-Checker;
 2. confirm exact frozen candidate/config and cache OFF;
-3. run the bounded #579 latency measurement first;
+3. confirm the **pre-freeze development-set #579 latency calibration** and its frozen timeout/concurrency decision are recorded; do not rerun #579 on held-out questions as a tuning step;
 4. run the scheduled golden-set shard while daily invocation budget permits;
 5. preserve content-free raw results and run IDs;
 6. teardown the endpoint in the same window;
