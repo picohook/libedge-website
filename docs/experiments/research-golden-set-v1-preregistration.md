@@ -91,7 +91,7 @@ A technically verified but trivial answer must not satisfy the pilot gate. For v
 - **at least 2 verified claims**, and
 - those counted claims collectively cite **at least 2 unique authorized supporting sources**.
 
-An `OK` response below either floor is classified by the **benchmark artifact** as `OK_THIN`: it remains an application-level `ok:true, code:OK` response and remains visible in the raw outcome/usefulness report, but contributes **zero** to the acceptance numerator. `OK_THIN` is not a new API/outcome code and requires no production contract change. The benchmark derives the floor from returned accepted claims and their unique `evidence_ids`. This floor is a pilot-usefulness rule, not a checker-threshold change.
+An `OK` response below either floor is classified by the **benchmark artifact** as `OK_THIN`: it remains an application-level `ok:true, code:OK` response and remains visible in the raw outcome/usefulness report, but contributes **zero** to the acceptance numerator. `OK_THIN` is not a new API/outcome code and requires no production contract change. The benchmark derives the source floor by mapping returned accepted-claim `evidence_ids` to returned authorized evidence objects and counting **distinct non-empty `work_id` values**; distinct `evidence_id` values alone do not satisfy the floor. The frozen harness specification defines the integrity behavior for missing/ambiguous mappings. This floor is a pilot-usefulness rule, not a checker-threshold change.
 
 For every `OK`/`OK_THIN` response report, per domain and language stratum, the distribution of verified-claim count and unique-supporting-source count, including the existing single-source-verified-answer diagnostic where available. Do not infer unique support from citation count alone.
 
@@ -152,7 +152,7 @@ Raters must not be the implementer who tuned the measured candidate and must not
 
 The deterministic audit seed is supplied by the maintainer/product owner or independent reviewer — **never by the implementer** — only after the complete held-out raw run artifact and eligible-rejection population have been frozen and hashed. Record the artifact hash, seed provider, seed, and sampling-script revision before opening the sampled items to raters.
 
-Use **two independent human raters** for every sampled item. Each rater locks their rating before seeing the other rater's output. Raters receive the claim and the exact evidence supplied to the checker, but not:
+Each rater locks their rating before seeing the other rater's output. Raters receive the claim and the exact evidence supplied to the checker, but not:
 - checker decision/reason;
 - domain acceptance result;
 - retrieval configuration label beyond what is needed to interpret evidence;
@@ -187,14 +187,14 @@ Report counts and denominators. Categories 1–3 test the #495/#536 abstract-dep
 
 ## Infrastructure-failure rerun policy
 
-A held-out question receives **at most one retry** only when the first attempt ends before a semantic verification decision because of a clearly classified infrastructure/transport failure (for example checker transport error, endpoint timeout/unavailability, or equivalent provider transport failure). Grounding rejection, `CLAIM_UNSUPPORTED`, language-policy rejection, retrieval/evidence insufficiency, malformed model/checker content, or an `OK_THIN` usefulness failure is **not** retry-eligible.
+A held-out question receives **at most one retry**, and for Golden Set v1 the only retry-eligible public rejection reason is `SUPPORT_CHECK_FAILED_TIMEOUT`. Eligibility is row-level: **every** rejection/failure on the first attempt must be `SUPPORT_CHECK_FAILED_TIMEOUT`; any mixed semantic, policy, evidence, budget, malformed-response, provider, transport catch-all, or other reason makes the row non-retryable. In particular, `CLAIM_UNSUPPORTED`, `SUPPORT_CHECK_FAILED_BUDGET`, `SUPPORT_CHECK_FAILED_TRANSPORT_OR_OTHER`, language/pin failures, retrieval/evidence insufficiency, malformed model/checker content, support-check truncation, and `OK_THIN` are **not** retry-eligible. Internal exception names or operator judgment may not expand this class during v1.
 
 For a retry-eligible row:
 - preserve both attempt records and the original failure code/timings;
 - retry the identical frozen question and candidate/config once, with no intervention or tuning between attempts;
 - the second attempt is the row's product outcome for the primary gate;
-- if the retry is also an infrastructure/transport failure, the row is a fail-closed non-success in the denominator; no third attempt;
-- report first-attempt and final timeout/transport counts per domain/language next to verified-answer rates.
+- if the retry is also an infrastructure failure, the row is a fail-closed non-success in the denominator; no third attempt;
+- report first-attempt and final timeout counts per domain/language next to verified-answer rates.
 
 If infrastructure failures show a systemic pattern rather than isolated noise, stop the round for review instead of repeatedly consuming the one-retry allowance.
 
