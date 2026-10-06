@@ -48,9 +48,17 @@ Because the intended pilot UI is Turkish, a domain may be declared **Turkish-sup
 
 The held-out questions MUST NOT be exposed to retrieval/generation/checker tuning before candidate freeze. They must not reuse the three diagnostic queries from #536 or questions used in earlier retrieval experiments.
 
+### Held-out authorship and representativeness
+
+The 90 held-out questions MUST be authored/curated by people who did **not** implement or tune Research retrieval, generation, grounding, checker behavior, thresholds, or the #536 diagnostic cases. The implementer may provide the frozen schema/template but may not select, rewrite, substitute, or remove held-out questions after seeing system behavior.
+
+Prefer authentic pilot-user information needs supplied by the intended university-library context (for example, library/user research needs collected without running them through Research). Where a domain/language quota requires supplemental authoring, use an independent subject-informed author who has not participated in system tuning. Record question provenance class and author role in the sealed manifest without exposing answer-bearing expectations.
+
+Turkish held-out questions must be authored naturally by a Turkish-competent author; they must not be machine translations or translations of previously executed English questions.
+
 Within each domain, question construction must deliberately vary topic, wording, answer shape, specificity, and expected evidence availability. The construction manifest must record only non-answer-bearing strata needed to prove diversity. No question may be selected because its result is already known.
 
-Question bundle, IDs, domain allocation, rubric, exact candidate/config fingerprint, and this acceptance contract are frozen and independently reviewed before the first held-out execution.
+Question bundle, IDs, provenance class, author-role independence attestation, domain/language allocation, rubric, exact candidate/config fingerprint, and this acceptance contract are frozen and independently reviewed before the first held-out execution.
 
 ## Exact candidate freeze
 
@@ -74,6 +82,16 @@ For each domain independently:
 `verified_answer_rate = held-out queries whose frozen Research response contract ends with \`ok: true, code: OK\` / 30 held-out queries`
 
 Only the existing outward success contract (`ok: true`, `code: OK`) enters the numerator. No reviewer judgment, partial answer, cached result, or diagnostic interpretation may promote another outcome into the numerator.
+
+### Usefulness floor for an OK answer
+
+A technically verified but trivial answer must not satisfy the pilot gate. For v1, an `OK` row counts toward the 21/30 (and 7/10 Turkish) numerator only when the outward verified answer contains:
+- **at least 2 verified claims**, and
+- those counted claims collectively cite **at least 2 unique authorized supporting sources**.
+
+An `OK` response below either floor is recorded as `OK_THIN`: it remains visible in the raw outcome/usefulness report but contributes **zero** to the acceptance numerator. This floor is a pilot-usefulness rule, not a checker-threshold change.
+
+For every `OK`/`OK_THIN` response report, per domain and language stratum, the distribution of verified-claim count and unique-supporting-source count, including the existing single-source-verified-answer diagnostic where available. Do not infer unique support from citation count alone.
 
 The denominator is always all 30 frozen held-out questions for that domain. Grounding rejection, provider/retrieval failure, malformed output, timeout/error, or another fail-closed no-answer outcome is not a verified answer and remains in the denominator.
 
@@ -121,7 +139,16 @@ For each domain:
 - if there are >20, select exactly 20 using a preregistered deterministic hash ranking over frozen run ID + audit seed + claim ID.
 - the audit seed is supplied only after the run artifact is frozen.
 
-### Blinding and rubric
+### Rater qualification, seed custody, blinding and rubric
+
+Use **two independent human raters** for every sampled item. Before ratings begin, record a qualification statement for each rater:
+- biomedical items require at least one rater with demonstrated biomedical/life-science research competence, and the second rater must be able to assess scholarly evidence in that domain;
+- humanities/social-science items require raters able to assess scholarly evidence in the relevant broad domain;
+- every Turkish item must be rated by two raters competent to read the Turkish claim/question context and the supplied scholarly evidence.
+
+Raters must not be the implementer who tuned the measured candidate and must not have access to held-out system outcomes before their ratings are locked.
+
+The deterministic audit seed is supplied by the maintainer/product owner or independent reviewer — **never by the implementer** — only after the complete held-out raw run artifact and eligible-rejection population have been frozen and hashed. Record the artifact hash, seed provider, seed, and sampling-script revision before opening the sampled items to raters.
 
 Use **two independent human raters** for every sampled item. Each rater locks their rating before seeing the other rater's output. Raters receive the claim and the exact evidence supplied to the checker, but not:
 - checker decision/reason;
@@ -156,6 +183,19 @@ For every biomedical semantic rejection in the held-out run, record a content-fr
 
 Report counts and denominators. Categories 1–3 test the #495/#536 abstract-depth and claim-specificity hypotheses quantitatively. Preserve examples only in a restricted review artifact if needed; Admin/telemetry remains content-free.
 
+## Infrastructure-failure rerun policy
+
+A held-out question receives **at most one retry** only when the first attempt ends before a semantic verification decision because of a clearly classified infrastructure/transport failure (for example checker transport error, endpoint timeout/unavailability, or equivalent provider transport failure). Grounding rejection, `CLAIM_UNSUPPORTED`, language-policy rejection, retrieval/evidence insufficiency, malformed model/checker content, or an `OK_THIN` usefulness failure is **not** retry-eligible.
+
+For a retry-eligible row:
+- preserve both attempt records and the original failure code/timings;
+- retry the identical frozen question and candidate/config once, with no intervention or tuning between attempts;
+- the second attempt is the row's product outcome for the primary gate;
+- if the retry is also an infrastructure/transport failure, the row is a fail-closed non-success in the denominator; no third attempt;
+- report first-attempt and final timeout/transport counts per domain/language next to verified-answer rates.
+
+If infrastructure failures show a systemic pattern rather than isolated noise, stop the round for review instead of repeatedly consuming the one-retry allowance.
+
 ## Cache and run integrity
 
 Measured acceptance runs MUST have verified-result cache disabled at the deployed staging configuration **and** verified disabled immediately before the first measured request. The benchmark-window staging config PR must set `RESEARCH_VERIFIED_RESULT_CACHE_ENABLED = "false"`; the post-benchmark rollback restores its prior staging value.
@@ -187,10 +227,18 @@ Before execution:
 
 After the Golden Set v1/#579 measurement window:
 1. teardown the checker endpoint;
-2. restore the staging hard ceiling to 100 **and restore the pre-benchmark staging verified-result-cache setting** through the normal reviewed path;
+2. complete the mandatory rollback tracked in **#583**: restore the staging hard ceiling to 100 **and restore the pre-benchmark staging verified-result-cache setting** through the normal reviewed path;
 3. verify the effective runtime limit no longer exceeds the restored ceiling and verify the cache setting matches the pre-benchmark state.
 
 The 500 ceiling is headroom, not a target. Stop the run after the frozen work completes; unused capacity must not be consumed.
+
+## Capacity parity and acceptance interpretation
+
+The pilot capacity boundary in #399 is **2 x ml.m5.large / 300 supportCheck invocations per UTC day**. Golden Set v1 acceptance MUST therefore run with the Fresh-Checker endpoint at the same **2 x ml.m5.large** instance shape if the results are to support #399 pilot-scope authorization directly.
+
+If the reviewed staging lifecycle cannot deploy/verify that exact 2-instance shape, do **not** reinterpret a 1-instance acceptance run as pilot-parity evidence. A 1-instance run may be retained only as diagnostic evidence; pilot-scope acceptance must be re-confirmed on the 2-instance shape under the same frozen candidate/protocol (or a separately preregistered successor if another material candidate/config change is required).
+
+Record endpoint instance type/count in the candidate fingerprint and run artifact. The temporary staging 500/day ceiling is benchmark headroom and does not alter the production/pilot 300/day boundary.
 
 ## Combined #579 + golden-set staging window
 
@@ -236,8 +284,9 @@ A limited-domain pilot is a legitimate outcome, not a failed project.
 4. question-construction/diversity QA record;
 5. exact candidate/config fingerprint;
 6. frozen harness and raw-results schema;
-7. human-audit sampling script/spec, two-rater assignment/blinding record, and rating form;
+7. human-audit sampling script/spec, rater qualification statements, two-rater assignment/blinding record, seed-custody record template, and rating form;
 8. daily call-budget/shard plan;
-9. reviewer sign-off that no held-out results were inspected before freeze.
+9. endpoint-shape evidence showing the acceptance run will use 2 x ml.m5.large, or an explicit diagnostic-only designation if parity is unavailable;
+10. reviewer sign-off that no held-out results were inspected before freeze.
 
 No held-out execution and no production authorization is implied by merging this design document.
