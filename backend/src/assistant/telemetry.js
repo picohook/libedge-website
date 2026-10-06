@@ -63,7 +63,7 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
     environment: String(env?.ENVIRONMENT || 'unknown')
   };
   const timings = stageTimings && typeof stageTimings === 'object' ? stageTimings : {};
-  for (const key of ['discover_ms', 'evidence_pack_ms', 'model_ms', 'grounding_ms', 'support_check_ms']) {
+  for (const key of ['discover_ms', 'evidence_pack_ms', 'model_ms', 'grounding_ms', 'support_check_ms', 'support_check_call_ms_total', 'support_check_call_ms_max', 'support_check_queue_wait_ms_total', 'support_check_queue_wait_ms_max']) {
     const value = Number(timings[key]);
     if (Number.isFinite(value) && value >= 0) payload[key] = Math.round(value);
   }
@@ -114,7 +114,11 @@ export async function recordAssistantOutcome(env, { code, durationMs, errorClass
       ['evidence_pack_ms', 'assistant_evidence_pack_ms_total'],
       ['model_ms', 'assistant_model_ms_total'],
       ['grounding_ms', 'assistant_grounding_ms_total'],
-      ['support_check_ms', 'assistant_support_check_ms_total']
+      ['support_check_ms', 'assistant_support_check_ms_total'],
+      ['support_check_call_ms_total', 'assistant_support_check_call_ms_total'],
+      ['support_check_call_ms_max', 'assistant_support_check_call_ms_max_total'],
+      ['support_check_queue_wait_ms_total', 'assistant_support_check_queue_wait_ms_total'],
+      ['support_check_queue_wait_ms_max', 'assistant_support_check_queue_wait_ms_max_total']
     ]) {
       if (Object.hasOwn(payload, field)) timingMetrics.push([metric, payload[field]]);
     }
