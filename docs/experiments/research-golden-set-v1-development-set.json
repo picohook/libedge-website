@@ -1,0 +1,21 @@
+{
+  "schema_version": "research-golden-v1-development-set-v1",
+  "purpose": "Pre-freeze #579 latency calibration only; never part of held-out acceptance denominators.",
+  "cases": [
+    {"id":"hum-en-01","domain":"humanities","language":"en","query":"How did cheap print and expanding literacy change political pamphlet culture in eighteenth-century Britain?"},
+    {"id":"hum-en-02","domain":"humanities","language":"en","query":"What evidence links railway expansion to changes in nineteenth-century European travel writing?"},
+    {"id":"hum-en-03","domain":"humanities","language":"en","query":"How have historians interpreted the role of coffeehouses in early modern public debate?"},
+    {"id":"hum-tr-01","domain":"humanities","language":"tr","query":"Tanzimat döneminde gazete ve dergilerin kamusal tartışma kültürünün gelişimine etkisi nasıl değerlendirilmiştir?"},
+    {"id":"hum-tr-02","domain":"humanities","language":"tr","query":"Erken Cumhuriyet döneminde Halkevlerinin kültürel modernleşmedeki rolü üzerine akademik literatür ne söylüyor?"},
+    {"id":"bio-en-01","domain":"biomedical","language":"en","query":"What clinical evidence supports GLP-1 receptor agonists for reducing cardiovascular events in adults with type 2 diabetes?"},
+    {"id":"bio-en-02","domain":"biomedical","language":"en","query":"What are the main efficacy and safety findings for CAR-T therapy in relapsed or refractory multiple myeloma?"},
+    {"id":"bio-en-03","domain":"biomedical","language":"en","query":"What evidence supports wastewater surveillance as an early indicator of community respiratory virus activity?"},
+    {"id":"bio-tr-01","domain":"biomedical","language":"tr","query":"Tip 2 diyabetli yetişkinlerde sürekli glukoz izleminin glisemik kontrol üzerindeki etkisine ilişkin klinik kanıtlar nelerdir?"},
+    {"id":"bio-tr-02","domain":"biomedical","language":"tr","query":"mRNA aşılarında lipid nanopartikül bileşiminin bağışıklık yanıtı ve güvenlilik üzerindeki etkileri hakkında hangi kanıtlar vardır?"},
+    {"id":"soc-en-01","domain":"social-science","language":"en","query":"What does empirical research show about four-day workweeks and employee well-being without reducing pay?"},
+    {"id":"soc-en-02","domain":"social-science","language":"en","query":"How does access to high-quality early childhood education affect later educational outcomes?"},
+    {"id":"soc-en-03","domain":"social-science","language":"en","query":"What evidence links algorithmic management in platform work to worker autonomy and job satisfaction?"},
+    {"id":"soc-tr-01","domain":"social-science","language":"tr","query":"Üniversite öğrencilerinde çevrim içi eğitimin akademik katılım üzerindeki etkisi hakkında ampirik çalışmalar ne gösteriyor?"},
+    {"id":"soc-tr-02","domain":"social-science","language":"tr","query":"Esnek çalışma saatlerinin çalışanların iş-yaşam dengesi üzerindeki etkisine ilişkin araştırma bulguları nelerdir?"}
+  ]
+}
