@@ -206,7 +206,11 @@ describe('grounding validator', () => {
       checked_count: 4,
       truncated_count: 2,
       support_check_limit: 4,
-      support_check_ms: expect.any(Number)
+      support_check_ms: expect.any(Number),
+      support_check_call_ms_total: expect.any(Number),
+      support_check_call_ms_max: expect.any(Number),
+      support_check_queue_wait_ms_total: expect.any(Number),
+      support_check_queue_wait_ms_max: expect.any(Number)
     });
   });
 
