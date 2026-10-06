@@ -52,7 +52,9 @@ The held-out questions MUST NOT be exposed to retrieval/generation/checker tunin
 
 The 90 held-out questions MUST be authored/curated by people who did **not** implement or tune Research retrieval, generation, grounding, checker behavior, thresholds, or the #536 diagnostic cases. The implementer may provide the frozen schema/template but may not select, rewrite, substitute, or remove held-out questions after seeing system behavior.
 
-Prefer authentic pilot-user information needs supplied by the intended university-library context (for example, library/user research needs collected without running them through Research). Where a domain/language quota requires supplemental authoring, use an independent subject-informed author who has not participated in system tuning. Record question provenance class and author role in the sealed manifest without exposing answer-bearing expectations.
+Before held-out authoring starts, the product owner/reviewer freezes a **provenance plan** stating which questions, if any, come from authentic intended-pilot library/user information needs collected without running them through Research, and which quota cells require independent subject-informed authoring. Once frozen, the implementer may not change those provenance allocations.
+
+Use authentic pilot-user needs wherever they are actually available; do not fabricate or relabel synthetic questions as user-sourced. Any remaining domain/language quota is filled by an independent subject-informed author who has not participated in system tuning. The final report gives provenance-class counts by domain/language and explicitly states the representativeness limitation if no or few authentic pilot-user questions were available. Record provenance class and author role in the sealed manifest without exposing answer-bearing expectations.
 
 Turkish held-out questions must be authored naturally by a Turkish-competent author; they must not be machine translations or translations of previously executed English questions.
 
@@ -284,8 +286,8 @@ A limited-domain pilot is a legitimate outcome, not a failed project.
 
 1. this independently reviewed preregistration;
 2. development-set manifest;
-3. sealed held-out question manifest and hash;
-4. question-construction/diversity QA record;
+3. reviewer/product-owner-frozen held-out provenance plan, followed by the sealed held-out question manifest and hash;
+4. question-construction/diversity QA and author-independence record;
 5. exact candidate/config fingerprint;
 6. frozen harness and raw-results schema;
 7. human-audit sampling script/spec, rater qualification statements, two-rater assignment/blinding record, seed-custody record template, and rating form;
