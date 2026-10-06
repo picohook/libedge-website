@@ -48,6 +48,11 @@ on:
         required: true
         type: boolean
         default: false
+      run_golden_dev_latency:
+        description: 'Run Golden Set v1 15-question development latency calibration'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -88,6 +93,7 @@ jobs:
           RUN_ASSISTANT: ${{ inputs.run_assistant }}
           RUN_SPARSE_BENCHMARK: ${{ inputs.run_sparse_benchmark }}
           RUN_RETRIEVAL_BENCHMARK: ${{ inputs.run_retrieval_benchmark }}
+          RUN_GOLDEN_DEV_LATENCY: ${{ inputs.run_golden_dev_latency }}
           LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
           LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
           LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
@@ -102,12 +108,12 @@ jobs:
             fi
           }
 
-          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_RESEARCH" = "true" ] || [ "$RUN_ASSISTANT" = "true" ] || [ "$RUN_SPARSE_BENCHMARK" = "true" ] || [ "$RUN_RETRIEVAL_BENCHMARK" = "true" ]; then
+          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_RESEARCH" = "true" ] || [ "$RUN_ASSISTANT" = "true" ] || [ "$RUN_SPARSE_BENCHMARK" = "true" ] || [ "$RUN_RETRIEVAL_BENCHMARK" = "true" ] || [ "$RUN_GOLDEN_DEV_LATENCY" = "true" ]; then
             require_secret LIBEDGE_SMOKE_EMAIL
             require_secret LIBEDGE_SMOKE_PASSWORD
           fi
 
-          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_SPARSE_BENCHMARK" = "true" ] || [ "$RUN_RETRIEVAL_BENCHMARK" = "true" ]; then
+          if [ "$RUN_AUTH" = "true" ] || [ "$RUN_FILES" = "true" ] || [ "$RUN_SPARSE_BENCHMARK" = "true" ] || [ "$RUN_RETRIEVAL_BENCHMARK" = "true" ] || [ "$RUN_GOLDEN_DEV_LATENCY" = "true" ]; then
             require_secret LIBEDGE_SMOKE_ADMIN_EMAIL
             require_secret LIBEDGE_SMOKE_ADMIN_PASSWORD
           fi
@@ -153,7 +159,7 @@ jobs:
         run: npm run smoke:assistant
 
       - name: Grant temporary Research entitlement for benchmark
-        if: inputs.run_sparse_benchmark || inputs.run_retrieval_benchmark
+        if: inputs.run_sparse_benchmark || inputs.run_retrieval_benchmark || inputs.run_golden_dev_latency
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -199,8 +205,18 @@ jobs:
           LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
         run: node scripts/research-retrieval-benchmark.mjs
 
+      - name: Run Golden Set v1 development latency calibration
+        if: inputs.run_golden_dev_latency
+        env:
+          LIBEDGE_SMOKE_BASE_URL: ${{ inputs.base_url }}
+          LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+          LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+          LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+          LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+        run: node scripts/research-golden-v1-dev-latency.mjs
+
       - name: Remove temporary Research entitlement for benchmark
-        if: always() && (inputs.run_sparse_benchmark || inputs.run_retrieval_benchmark)
+        if: always() && (inputs.run_sparse_benchmark || inputs.run_retrieval_benchmark || inputs.run_golden_dev_latency)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
