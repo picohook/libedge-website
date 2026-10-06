@@ -7,8 +7,8 @@ describe('Research query language pilot boundary', () => {
     expect(requiresEnglishQueryNormalization('Esnek çalışma saatlerinin iş-yaşam dengesi üzerindeki etkisi nedir?')).toBe(true);
   });
 
-  it('leaves clear English queries on the existing path', () => {
-    expect(researchQueryLanguage('How do flexible work hours affect work-life balance?')).toBe('en');
+  it('leaves non-Turkish queries on the existing path', () => {
+    expect(researchQueryLanguage('How do flexible work hours affect work-life balance?')).toBe('und');
     expect(requiresEnglishQueryNormalization('How do flexible work hours affect work-life balance?')).toBe(false);
   });
 
