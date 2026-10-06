@@ -211,7 +211,9 @@ Do not alter production cache behavior. This is a staging benchmark condition on
 
 Repository configuration at preregistration time has separate ceilings: **staging = 100 supportCheck invocations per UTC day** and **production = 300/day**. The runtime KV limit may only lower the environment ceiling; it cannot raise it.
 
-The held-out set can require up to 90 × 4 = 360 supportCheck invocations, before the bounded #579 latency sample and smoke/error margin. To complete the frozen benchmark promptly, the product owner authorizes a **temporary staging-only hard ceiling of 500 supportCheck invocations per UTC day for the Golden Set v1 measurement window**.
+The held-out set can require up to 90 × 4 = 360 supportCheck invocations on first attempts, before the bounded #579 latency sample and smoke/error margin. The one-retry infrastructure policy can add calls, so **500 is not asserted to cover every theoretical retry case**. To complete the frozen benchmark promptly without removing a cost bound, the product owner authorizes a **temporary staging-only hard ceiling of 500 supportCheck invocations per UTC day for the Golden Set v1 measurement window**.
+
+If the remaining daily budget cannot safely cover the next frozen row (including its possible retry), stop before that row, teardown the endpoint, and resume the untouched remainder in a later UTC-day checker-on window. Do not raise the 500 ceiling, drop rows, reorder based on observed outcomes, or consume partial rows merely to finish in one day.
 
 This authorization does **not** change:
 - production's 300/day ceiling;
@@ -235,6 +237,8 @@ The 500 ceiling is headroom, not a target. Stop the run after the frozen work co
 ## Capacity parity and acceptance interpretation
 
 The pilot capacity boundary in #399 is **2 x ml.m5.large / 300 supportCheck invocations per UTC day**. Golden Set v1 acceptance MUST therefore run with the Fresh-Checker endpoint at the same **2 x ml.m5.large** instance shape if the results are to support #399 pilot-scope authorization directly.
+
+At preregistration time, the repository's staging lifecycle deploy workflow sets `SAGEMAKER_INITIAL_INSTANCE_COUNT='1'`. Therefore acceptance execution is blocked until a separate reviewed **staging-only lifecycle change** makes the deploy/verify path explicitly create and verify 2 x ml.m5.large for this acceptance window. That infrastructure change must not alter production capacity and must be included in the exact-candidate/run evidence.
 
 If the reviewed staging lifecycle cannot deploy/verify that exact 2-instance shape, do **not** reinterpret a 1-instance acceptance run as pilot-parity evidence. A 1-instance run may be retained only as diagnostic evidence; pilot-scope acceptance must be re-confirmed on the 2-instance shape under the same frozen candidate/protocol (or a separately preregistered successor if another material candidate/config change is required).
 
