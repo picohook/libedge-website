@@ -345,8 +345,10 @@ export async function orchestrateResearchAnswer({
   const supportingEvidenceIds = new Set(
     grounding.acceptedClaims.flatMap((claim) => Array.isArray(claim?.evidence_ids) ? claim.evidence_ids : [])
   );
-  if (Number.isFinite(Number(grounding?.diagnostics?.support_check_ms))) {
-    diagnosticTimings.support_check_ms = Math.max(0, Math.trunc(Number(grounding.diagnostics.support_check_ms)));
+  for (const key of ['support_check_ms', 'support_check_call_ms_total', 'support_check_call_ms_max', 'support_check_queue_wait_ms_total', 'support_check_queue_wait_ms_max']) {
+    if (Number.isFinite(Number(grounding?.diagnostics?.[key]))) {
+      diagnosticTimings[key] = Math.max(0, Math.trunc(Number(grounding.diagnostics[key])));
+    }
   }
   const diagnosticGrounding = {
     ...groundingDiagnosticSummary(grounding.rejectedClaims, claims.length),
