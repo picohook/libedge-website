@@ -160,5 +160,5 @@ function applyCookies(response, jar) {
     if (match?.[2]) jar.set(match[1], match[2]);
   }
 }
-function split(value) { return value ? value.split(/,(?=\\s*[^;,=]+=[^;,]+)/g).map((x) => x.trim()) : []; }
+function split(value) { return value ? value.split(/,(?=\s*[^;,=]+=[^;,]+)/g).map((x) => x.trim()) : []; }
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
