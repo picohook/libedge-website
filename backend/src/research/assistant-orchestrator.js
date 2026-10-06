@@ -123,14 +123,17 @@ function restoreCachedResult(cached, evidencePack, diagnostics) {
   };
 }
 
-async function cacheIdentityFor({ task, env, cacheScope, cacheIdentityContext, evidencePack }) {
+async function cacheIdentityFor({ task, retrievalTask, env, cacheScope, cacheIdentityContext, evidencePack }) {
   const secret = String(env?.RESEARCH_VERIFIED_RESULT_CACHE_HMAC_SECRET || '');
   const queryDigest = await verifiedResultQueryDigest(task, secret);
+  const retrievalQueryDigest = await verifiedResultQueryDigest(retrievalTask, secret);
   const evidence = await verifiedResultEvidenceIdentity(evidencePack);
-  if (!queryDigest || !evidence || !cacheScope || !cacheIdentityContext) return null;
+  if (!queryDigest || !retrievalQueryDigest || !evidence || !cacheScope || !cacheIdentityContext) return null;
   return canonicalVerifiedResultIdentity({
     user_scope: cacheScope,
     query_digest: queryDigest,
+    retrieval_query_digest: retrievalQueryDigest,
+    query_normalization_version: QUERY_NORMALIZATION_VERSION,
     evidence,
     ...cacheIdentityContext
   });
@@ -186,7 +189,8 @@ export async function orchestrateResearchAnswer({
     evidence_languages: ['en'],
     answer_language: 'en',
     query_normalization_version: QUERY_NORMALIZATION_VERSION,
-    query_normalized: false
+    query_normalized: false,
+    retrieval_query: null
   };
 
   if (requiresEnglishQueryNormalization(task)) {
@@ -205,6 +209,7 @@ export async function orchestrateResearchAnswer({
       normalizationUsage = normalized?.usage || null;
       diagnosticCosts.normalization_cost_usd = Number(normalizationUsage?.llm_cost_usd) || 0;
       diagnosticLanguage.query_normalized = true;
+      diagnosticLanguage.retrieval_query = retrievalTask;
     } catch (error) {
       diagnosticTimings.normalization_ms = Date.now() - normalizationStartedAt;
       return { ok: false, code: 'QUERY_NORMALIZATION_FAILED', diagnostic_timings: diagnosticTimings, diagnostic_costs: diagnosticCosts, diagnostic_language: diagnosticLanguage, diagnostic_error_class: safeErrorClass(error), claims: [] };
@@ -271,7 +276,7 @@ export async function orchestrateResearchAnswer({
     };
   }
 
-  const cacheIdentity = await cacheIdentityFor({ task, env, cacheScope, cacheIdentityContext, evidencePack });
+  const cacheIdentity = await cacheIdentityFor({ task, retrievalTask, env, cacheScope, cacheIdentityContext, evidencePack });
   if (cacheIdentity) {
     const cached = await readVerifiedResultCache({ env, identity: cacheIdentity });
     if (cached.hit) {
