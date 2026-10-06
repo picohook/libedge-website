@@ -32,6 +32,18 @@ Exactly 90 previously unused questions:
 - 30 biomedical;
 - 30 social-science.
 
+### Frozen language strata
+
+Because the intended pilot is a Turkish university-library setting, language behavior is part of acceptance evidence rather than a later UI-only concern.
+
+Within **each 30-question domain block** freeze:
+- **20 English queries**;
+- **10 Turkish queries**.
+
+Thus the 90-question held-out contains exactly **60 English + 30 Turkish queries**, with Turkish represented equally across humanities, biomedical and social science. Questions must be authored naturally in the target language; the Turkish stratum must not be produced by mechanically translating an already-executed English question.
+
+The existing domain gate remains primary and unchanged. In addition, report verified-answer numerator/denominator separately for English and Turkish within every domain, plus language-policy rejection counts. **No language stratum may be hidden by an aggregate domain result.** Golden Set v1 does not add a post-hoc language-specific pass threshold; the language breakdown is mandatory evidence for #399 pilot-scope and Turkish-UI decisions.
+
 The held-out questions MUST NOT be exposed to retrieval/generation/checker tuning before candidate freeze. They must not reuse the three diagnostic queries from #536 or questions used in earlier retrieval experiments.
 
 Within each domain, question construction must deliberately vary topic, wording, answer shape, specificity, and expected evidence availability. The construction manifest must record only non-answer-bearing strata needed to prove diversity. No question may be selected because its result is already known.
@@ -183,6 +195,16 @@ To minimize endpoint uptime and teardown risk, each checker-on window follows:
 Do not leave the endpoint running between shards/days.
 
 #579 latency interpretation must distinguish individual call duration from application-level concurrency wait. If evidence supports a concurrency or instance/capacity change, stop and reconcile the proposal with #399's fixed 2 × ml.m5.large / 300 supportCheck invocations per UTC day boundary and recalculate cost before any authorization.
+
+## Pilot UX linkage
+
+The later pilot UI/polish work MUST consume Golden Set/#399 scope evidence rather than inventing examples or coverage claims:
+
+- clickable example questions may be selected only from questions/use cases demonstrated as supported by the accepted evidence and authorized pilot scope; do not feature an unvalidated humanities/biomedical/engineering example merely because it reads well;
+- retain a small, truthful `Pilot` / `Experimental` maturity label and a concise declared-scope statement while Research remains pre-1.0;
+- remove developer-facing fixture/safe-boundary prose from the pilot UI, but preserve the fail-safe behavior that does not show fixture content when no real verified answer exists;
+- the same UI review MUST include the #399 item-13 rejected-query experience, distinguishing at minimum an evidence/verification rejection from a system/service failure without implying that a rejected claim is false;
+- Turkish interface copy and Turkish-query behavior must be reviewed against the frozen Turkish strata before pilot authorization.
 
 ## Decision matrix
 
