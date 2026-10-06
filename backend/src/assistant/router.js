@@ -19,7 +19,7 @@ import { deleteAssistantHistory, getAssistantHistory, listAssistantHistory, sani
 const app = new Hono();
 const DEFAULT_ASSISTANT_USER_LIMIT = 10;
 const DEFAULT_ASSISTANT_USER_WINDOW_SECONDS = 300;
-const VERIFIED_CACHE_GENERATION_CONTRACT_VERSION = 'bedrock-claims-v1';
+const VERIFIED_CACHE_GENERATION_CONTRACT_VERSION = 'bedrock-claims-en-v2';
 const VERIFIED_CACHE_DECISION_CONTRACT_VERSION = 'd023-path-b-v1';
 const VERIFIED_CACHE_EVIDENCE_POLICY_VERSION = 'evidence-pack-v1';
 const VERIFIED_CACHE_LANGUAGE_POLICY_VERSION = 'text-detected-en-v2';
@@ -222,6 +222,7 @@ app.post('/api/assistant/ask', async (c) => {
   }
 
   result.research_summary = publicResearchSummary(result);
+  if (result?.diagnostic_language) result.language = result.diagnostic_language;
   if (result?.code === 'OK') {
     await saveAssistantHistory(c.env, auth.user?.user_id, query, result);
   }
