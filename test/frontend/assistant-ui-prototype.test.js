@@ -19,7 +19,8 @@ describe('Research Assistant live boundary', () => {
         expect(html).toContain('data-mode="summarize"');
         expect(html).toContain('data-mode="gaps"');
         expect(html).toContain('data-mode="brief"');
-        expect(js).toContain("if (button.dataset.mode !== 'ask') markComingSoon(button)");
+        expect(js).toContain("if (button.dataset.mode === 'gaps') markBoundaryBadge(button, 'Fixture-only', 'Fixture-only')");
+        expect(js).toContain("else if (button.dataset.mode !== 'ask') markBoundaryBadge(button)");
         expect(js).toContain("if (button.dataset.mode === 'gaps')");
         expect(js).toContain("if (button.dataset.mode !== 'ask') showToast");
         expect((js.match(/fetch\('\/api\/assistant\/ask'/g) || []).length).toBe(1);
@@ -82,12 +83,14 @@ describe('Research Assistant live boundary', () => {
         expect(js).toContain('function setInitialLiveState()');
         expect(js).toContain("title: 'Araştırmaya hazır'");
         expect(js).toContain("state: 'ready-live'");
+        expect(js).toContain('answerCard.hidden = true');
         expect(js).toContain('bindFindingEvidenceInteractions(); setInitialLiveState();');
     });
 
     it('keeps loading and non-success presentation explicit', () => {
         expect(js).toContain("status.setAttribute('aria-busy', tone === 'loading' ? 'true' : 'false')");
         expect(js).toContain("answerCard?.classList.toggle('is-unavailable', !isSuccess)");
+        expect(js).toContain('answerCard.hidden = !isSuccess');
         expect(js).toContain('clearEvidenceFocus();');
         expect(js).toContain('closeSourceDetails();');
         expect(js).toContain('closeSources();');
