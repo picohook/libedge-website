@@ -1,3 +1,9 @@
+# Historical handoff notice
+
+Status: `HISTORICAL`
+
+> This queue records the May 2026 RA/proxy workflow and is retained for audit/history only. It is **not** the current task queue. For current LibEdge Research work, start with `docs/research/MASTER_STATE.md` and follow the linked live issue/PR. Do not resume `Scopus-01` or other entries below merely because they are marked active/open here.
+
 # Task Queue
 *Owned by Architect. Builder and Reviewer read only the Active Step.*
 
