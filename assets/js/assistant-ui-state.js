@@ -14,6 +14,24 @@ export const ASSISTANT_UI_STATES = Object.freeze({
 });
 
 const CODE_MAP = Object.freeze({
+  ASSISTANT_RATE_LIMITED: {
+    state: ASSISTANT_UI_STATES.GENERIC_ERROR,
+    title: 'Çok fazla istek gönderildi', titleEn: 'Too many requests',
+    message: 'Kısa süreli istek sınırına ulaşıldı. Birkaç dakika sonra yeniden deneyin.', messageEn: 'The short-term request limit has been reached. Please try again in a few minutes.',
+    tone: 'warning'
+  },
+  ASSISTANT_USAGE_SCOPE_PAUSED: {
+    state: ASSISTANT_UI_STATES.GENERIC_ERROR,
+    title: 'Research Assistant geçici olarak duraklatıldı', titleEn: 'Research Assistant is temporarily paused',
+    message: 'Bu kullanım kapsamı için yeni Assistant istekleri geçici olarak duraklatıldı. Daha sonra yeniden deneyin.', messageEn: 'New Assistant requests are temporarily paused for this usage scope. Please try again later.',
+    tone: 'notice'
+  },
+  ASSISTANT_USAGE_SCOPE_QUOTA_EXHAUSTED: {
+    state: ASSISTANT_UI_STATES.GENERIC_ERROR,
+    title: 'Günlük Assistant kotasına ulaşıldı', titleEn: 'Daily Assistant quota reached',
+    message: 'Bu kullanım kapsamının günlük Assistant kotası doldu. Kota yenilendiğinde yeniden deneyebilirsiniz.', messageEn: 'The daily Assistant quota for this usage scope has been reached. You can try again after the quota resets.',
+    tone: 'notice'
+  },
   PROVIDER_PRIVACY_GATE_REQUIRED: {
     state: ASSISTANT_UI_STATES.GATE_BLOCKED,
     title: 'Gizlilik doğrulaması tamamlanmayı bekliyor',
