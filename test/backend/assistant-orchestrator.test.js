@@ -485,7 +485,7 @@ describe('assistant orchestration boundary', () => {
       evidence_languages: ['en'],
       answer_language: 'en',
       query_normalized: true,
-      query_normalization_version: 'query-en-normalization-v1',
+      query_normalization_version: 'query-en-normalization-v2',
       retrieval_query: 'flexible work hours work-life balance'
     });
     expect(result.diagnostic_costs.normalization_cost_usd).toBe(0.001);
