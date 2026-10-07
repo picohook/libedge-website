@@ -18,7 +18,6 @@ Open Research work at the verified SHA/date:
 - [#536](https://github.com/picohook/libedge-website/issues/536) — Golden Set/domain-quality closure and grounding/support-check diagnosis.
 - [#583](https://github.com/picohook/libedge-website/issues/583) — mandatory staging rollback after the Golden Set measurement window.
 - [#591](https://github.com/picohook/libedge-website/issues/591) — bounded Turkish-question pilot path before Golden v1 freeze.
-- [PR #593](https://github.com/picohook/libedge-website/pull/593) — Turkish-query normalization implementation; follow the PR for current review/CI status.
 
 Closed historical work remains closed unless a documented reopening condition is met; this page does not duplicate those issue histories.
 
