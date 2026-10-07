@@ -1,0 +1,55 @@
+{
+  "schema_version": "research-golden-v1-turkish-dev-normalization-audit-v1",
+  "purpose": "Pre-freeze development-only blind audit of Turkish query normalization fidelity. Not held-out acceptance evidence.",
+  "blinding": "Do not disclose application outcome, checker decision/reason, verified-claim count, latency, or aggregate/domain success while rating.",
+  "items": [
+    {
+      "id": "hum-tr-01",
+      "domain": "humanities",
+      "original_query_tr": "Tanzimat döneminde gazete ve dergilerin kamusal tartışma kültürünün gelişimine etkisi nasıl değerlendirilmiştir?",
+      "actual_retrieval_query": "How have newspapers and periodicals during the Tanzimat period been assessed in relation to the development of public debate culture?",
+      "query_language": "tr",
+      "query_normalized": true
+    },
+    {
+      "id": "hum-tr-02",
+      "domain": "humanities",
+      "original_query_tr": "Erken Cumhuriyet döneminde Halkevlerinin kültürel modernleşmedeki rolü üzerine akademik literatür ne söylüyor?",
+      "actual_retrieval_query": "role of Halkevleri (People's Houses) in cultural modernization during the early Republican period in Turkey",
+      "query_language": "tr",
+      "query_normalized": true
+    },
+    {
+      "id": "bio-tr-01",
+      "domain": "biomedical",
+      "original_query_tr": "Tip 2 diyabetli yetişkinlerde sürekli glukoz izleminin glisemik kontrol üzerindeki etkisine ilişkin klinik kanıtlar nelerdir?",
+      "actual_retrieval_query": "clinical evidence of continuous glucose monitoring on glycemic control in adults with type 2 diabetes",
+      "query_language": "tr",
+      "query_normalized": true
+    },
+    {
+      "id": "bio-tr-02",
+      "domain": "biomedical",
+      "original_query_tr": "mRNA aşılarında lipid nanopartikül bileşiminin bağışıklık yanıtı ve güvenlilik üzerindeki etkileri hakkında hangi kanıtlar vardır?",
+      "actual_retrieval_query": "evidence on the effects of lipid nanoparticle composition in mRNA vaccines on immune response and safety",
+      "query_language": "tr",
+      "query_normalized": true
+    },
+    {
+      "id": "soc-tr-01",
+      "domain": "social-science",
+      "original_query_tr": "Üniversite öğrencilerinde çevrim içi eğitimin akademik katılım üzerindeki etkisi hakkında ampirik çalışmalar ne gösteriyor?",
+      "actual_retrieval_query": "empirical studies on the effects of online education on academic engagement among university students",
+      "query_language": "tr",
+      "query_normalized": true
+    },
+    {
+      "id": "soc-tr-02",
+      "domain": "social-science",
+      "original_query_tr": "Esnek çalışma saatlerinin çalışanların iş-yaşam dengesi üzerindeki etkisine ilişkin araştırma bulguları nelerdir?",
+      "actual_retrieval_query": "effects of flexible working hours on employee work-life balance",
+      "query_language": "tr",
+      "query_normalized": true
+    }
+  ]
+}
