@@ -7,7 +7,8 @@ const PASSWORD = process.env.LIBEDGE_SMOKE_PASSWORD;
 const ADMIN_EMAIL = process.env.LIBEDGE_SMOKE_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.LIBEDGE_SMOKE_ADMIN_PASSWORD;
 const MANIFEST = 'docs/experiments/research-golden-set-v1-development-set.json';
-const OUTPUT = String(process.env.GOLDEN_TR_DEV_OUTPUT || 'golden-v1-turkish-dev-rerun.jsonl');
+const RUN_STAMP = new Date().toISOString().replace(/[:.]/g, '-');
+const OUTPUT = String(process.env.GOLDEN_TR_DEV_OUTPUT || `golden-v1-turkish-dev-rerun-${RUN_STAMP}.jsonl`);
 const REQUEST_SPACING_MS = Number(process.env.GOLDEN_TR_DEV_REQUEST_SPACING_MS || 31000);
 const EXPECTED_IDS = ['hum-tr-01','hum-tr-02','bio-tr-01','bio-tr-02','soc-tr-01','soc-tr-02'];
 if (!Number.isFinite(REQUEST_SPACING_MS) || REQUEST_SPACING_MS < 30000) throw new Error('GOLDEN_TR_DEV_REQUEST_SPACING_MS must be >=30000');
@@ -17,7 +18,8 @@ const manifestBytes = fs.readFileSync(MANIFEST);
 const manifestSha256 = crypto.createHash('sha256').update(manifestBytes).digest('hex');
 const parsed = JSON.parse(manifestBytes.toString('utf8'));
 const runStartedAt = new Date().toISOString();
-fs.writeFileSync(OUTPUT, '');
+if (fs.existsSync(OUTPUT)) throw new Error(`Refusing to overwrite existing rerun artifact: ${OUTPUT}`);
+fs.writeFileSync(OUTPUT, '', { flag: 'wx' });
 emit({ record_type: 'run_start', schema_version: 'golden-v1-tr-dev-rerun-v2', run_started_at: runStartedAt, manifest_path: MANIFEST, manifest_sha256: manifestSha256, expected_ids: EXPECTED_IDS });
 const allCases = Array.isArray(parsed?.cases) ? parsed.cases : [];
 const cases = allCases.filter((item) => item?.language === 'tr');
@@ -52,8 +54,21 @@ for (let index = 0; index < cases.length; index += 1) {
     throw new Error(`${candidate.id}: HTTP ${response.status}; terminal row recorded; stop rerun`);
   }
 
-  const request = await latestNewRequest(userId, beforeRequestId);
-  const afterTelemetry = await telemetrySnapshot();
+  let request;
+  let afterTelemetry;
+  try {
+    request = await latestNewRequest(userId, beforeRequestId);
+    afterTelemetry = await telemetrySnapshot();
+  } catch (error) {
+    emit({
+      record_type: 'row', schema_version: 'golden-v1-tr-dev-rerun-v2', row_index: index,
+      case_id: candidate.id, domain: candidate.domain, original_language: candidate.language,
+      http_status: response.status, result_code: body?.code ?? null, row_valid: false,
+      invalid_reason: 'ADMIN_LOOKUP_FAILED', admin_error_class: safeErrorClass(error),
+      run_started_at: runStartedAt, manifest_sha256: manifestSha256
+    });
+    throw new Error(`${candidate.id}: post-request admin lookup failed; terminal row recorded; stop rerun`);
+  }
   const verification = body?.research_summary?.verification || {};
   const language = body?.language || {};
   const requestDelta = metricDelta(beforeTelemetry, afterTelemetry, 'assistant_requests');
@@ -122,6 +137,7 @@ async function latestNewRequest(userId,before){ const b=await adminJson(`/api/ad
 async function telemetrySnapshot(){ const b=await adminJson('/api/admin/system-health'); const m=b?.research_telemetry?.snapshot?.metrics; if(!m||typeof m!=='object') throw new Error('research telemetry unavailable'); return m; }
 function metricDelta(before,after,key){ const a=Number(before?.[key]||0),b=Number(after?.[key]||0); return Number.isFinite(a)&&Number.isFinite(b)&&b>=a?b-a:null; }
 async function adminJson(path){ const r=await fetch(`${BASE_URL}${path}`,{headers:{'content-type':'application/json',cookie:cookieHeader(adminCookies)},redirect:'manual'}); const b=await r.json().catch(()=>({})); if(!r.ok) throw new Error(`${path} failed: ${r.status}`); return b; }
+function safeErrorClass(error){ const name=String(error?.name||'Error'); return /^[A-Za-z][A-Za-z0-9_]{0,79}$/.test(name)?name:'Error'; }
 function countOrNull(v){ return Number.isSafeInteger(v)&&v>=0?v:null; }
 function safeRejectionCounts(v){ if(!v||typeof v!=='object'||Array.isArray(v)) return {}; return Object.fromEntries(Object.entries(v).filter(([k,n])=>/^[A-Z][A-Z0-9_]{0,79}$/.test(k)&&Number.isSafeInteger(n)&&n>0)); }
 function cookieHeader(j){ return [...j].map(([k,v])=>`${k}=${v}`).join('; '); }
