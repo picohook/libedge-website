@@ -66,7 +66,7 @@ npx wrangler d1 migrations list libedge-db --remote --env staging
 
 - Staging ve production D1'in aynı migration seviyesinde olduğu **asla varsayılmaz**.
 - Her apply öncesi `migrations list` okunur.
-- Repository migration zinciri `0052_research_usage_token_counts.sql` seviyesindedir. `0048`–`0052`; Research telemetry counters, notification deletion policy, Research subscription seats, content-free usage events ve token-count alanlarını ekler.
+- Repository migration zinciri şu anda `0058_research_usage_lexical_fallback_mode.sql` dosyasına kadar gider. Bu repository durumu staging veya production üzerinde hangi migration'ların uygulanmış olduğunu kanıtlamaz; gerçek remote seviye her operasyon öncesinde `migrations list` ile ayrıca doğrulanır.
 - Staging/production üzerindeki gerçek uygulanmış seviye her operasyon öncesinde `migrations list` ile ayrıca doğrulanır.
 - Production migration seviyesi production preflight gününde ayrıca doğrulanır.
 - Production'a bu stabilizasyon çalışması sırasında migration uygulanmamıştır.
