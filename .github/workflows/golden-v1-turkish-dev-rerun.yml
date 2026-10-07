@@ -49,7 +49,7 @@ jobs:
           const email = String(process.env.LIBEDGE_SMOKE_EMAIL || '').trim().toLowerCase();
           if (!email) throw new Error('LIBEDGE_SMOKE_EMAIL is required');
           const quoted = email.replaceAll("'", "''");
-          fs.writeFileSync('/tmp/grant-golden-tr-entitlement.sql', \`
+          fs.writeFileSync('/tmp/grant-golden-tr-entitlement.sql', `
           INSERT INTO subscriptions (user_id, product_slug, status, start_date, end_date)
           SELECT id, 'research', 'active', '2000-01-01 00:00:00', '2099-12-31 23:59:58'
           FROM users
@@ -60,7 +60,7 @@ jobs:
                 AND (s.start_date IS NULL OR date(s.start_date) <= date('now'))
                 AND (s.end_date IS NULL OR date(s.end_date) >= date('now'))
             );
-          \`);
+          `);
           NODE
           npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --file /tmp/grant-golden-tr-entitlement.sql
 
@@ -83,12 +83,12 @@ jobs:
           const email = String(process.env.LIBEDGE_SMOKE_EMAIL || '').trim().toLowerCase();
           if (!email) throw new Error('LIBEDGE_SMOKE_EMAIL is required');
           const quoted = email.replaceAll("'", "''");
-          fs.writeFileSync('/tmp/revoke-golden-tr-entitlement.sql', \`
+          fs.writeFileSync('/tmp/revoke-golden-tr-entitlement.sql', `
           DELETE FROM subscriptions
           WHERE product_slug = 'research' AND status = 'active'
             AND start_date = '2000-01-01 00:00:00' AND end_date = '2099-12-31 23:59:58'
             AND user_id IN (SELECT id FROM users WHERE lower(email) = '${quoted}');
-          \`);
+          `);
           NODE
           npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --file /tmp/revoke-golden-tr-entitlement.sql
 
