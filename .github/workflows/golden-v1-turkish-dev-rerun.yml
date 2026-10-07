@@ -37,11 +37,60 @@ jobs:
           test -f scripts/research-golden-v1-turkish-dev-rerun.mjs
           test -f docs/experiments/research-golden-set-v1-development-set.json
 
+      - name: Grant temporary Research entitlement for measurement
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const email = String(process.env.LIBEDGE_SMOKE_EMAIL || '').trim().toLowerCase();
+          if (!email) throw new Error('LIBEDGE_SMOKE_EMAIL is required');
+          const quoted = email.replaceAll("'", "''");
+          fs.writeFileSync('/tmp/grant-golden-tr-entitlement.sql', \`
+          INSERT INTO subscriptions (user_id, product_slug, status, start_date, end_date)
+          SELECT id, 'research', 'active', '2000-01-01 00:00:00', '2099-12-31 23:59:58'
+          FROM users
+          WHERE lower(email) = '${quoted}'
+            AND NOT EXISTS (
+              SELECT 1 FROM subscriptions s
+              WHERE s.user_id = users.id AND s.product_slug = 'research' AND s.status = 'active'
+                AND (s.start_date IS NULL OR date(s.start_date) <= date('now'))
+                AND (s.end_date IS NULL OR date(s.end_date) >= date('now'))
+            );
+          \`);
+          NODE
+          npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --file /tmp/grant-golden-tr-entitlement.sql
+
       - name: Run sealed Turkish development rerun
         shell: bash
         run: |
           set -euo pipefail
           node scripts/research-golden-v1-turkish-dev-rerun.mjs 2>&1 | tee golden-v1-turkish-dev-rerun.log
+
+      - name: Remove temporary Research entitlement
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const email = String(process.env.LIBEDGE_SMOKE_EMAIL || '').trim().toLowerCase();
+          if (!email) throw new Error('LIBEDGE_SMOKE_EMAIL is required');
+          const quoted = email.replaceAll("'", "''");
+          fs.writeFileSync('/tmp/revoke-golden-tr-entitlement.sql', \`
+          DELETE FROM subscriptions
+          WHERE product_slug = 'research' AND status = 'active'
+            AND start_date = '2000-01-01 00:00:00' AND end_date = '2099-12-31 23:59:58'
+            AND user_id IN (SELECT id FROM users WHERE lower(email) = '${quoted}');
+          \`);
+          NODE
+          npx --yes wrangler@4.131.1 d1 execute libedge-db --remote --env staging --file /tmp/revoke-golden-tr-entitlement.sql
 
       - name: Upload sealed measurement evidence
         if: always()
