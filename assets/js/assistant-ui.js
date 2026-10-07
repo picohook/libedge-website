@@ -582,9 +582,9 @@ requireResearchLogin().then((authorized) => {
 
     markResearchGapsFixtureOnly(); addFindingContextualFollowUps(); bindFindingEvidenceInteractions(); setInitialLiveState();
     document.querySelectorAll('.assistant-mode').forEach((button) => { if (button.dataset.mode === 'gaps') markBoundaryBadge(button, 'Fixture-only', 'Fixture-only'); else if (button.dataset.mode !== 'ask') markBoundaryBadge(button); });
-    document.querySelectorAll('.assistant-filter').forEach(markComingSoon);
-    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(#assistantHistoryBtn):not(.assistant-primary-btn)').forEach(markComingSoon);
-    document.querySelectorAll('.finding-context-followup, .source-context-followup').forEach(markComingSoon);
+    document.querySelectorAll('.assistant-filter').forEach((button) => markBoundaryBadge(button));
+    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(#assistantHistoryBtn):not(.assistant-primary-btn)').forEach((button) => markBoundaryBadge(button));
+    document.querySelectorAll('.finding-context-followup, .source-context-followup').forEach((button) => markBoundaryBadge(button));
     document.querySelectorAll('.citation-chip[data-source]').forEach((button) => button.addEventListener('click', () => highlightSource(button.dataset.source)));
     document.getElementById('viewSourcesBtn')?.addEventListener('click', openSources);
     document.getElementById('assistantHistoryBtn')?.addEventListener('click', openHistory);
