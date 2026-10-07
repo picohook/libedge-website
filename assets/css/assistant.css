@@ -4,8 +4,7 @@
 .live-source-links a:focus-visible { text-decoration: underline; outline: none; }
 
 :root {
-    --assistant-primary: #220f60;
-    --assistant-accent: #2563eb;
+      --assistant-accent: #2563eb;
     --assistant-border: #e2e8f0;
     --assistant-muted: #64748b;
     --assistant-bg: #f8fafc;
