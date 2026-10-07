@@ -1,3 +1,9 @@
+# Historical handoff notice
+
+Status: `HISTORICAL`
+
+> This is the May 2026 W-02 review request retained as historical evidence. It is not an active review target. Current review targets must be verified from live GitHub PR state and the current control plane in `docs/research/MASTER_STATE.md`.
+
 # Review Request — W-02: Website → Production sync
 *Written by Bob. Read by Richard.*
 

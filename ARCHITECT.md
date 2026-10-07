@@ -5,12 +5,11 @@
 
 ## Session Start
 
-1. Load token-optimizer skill.
-2. Read handoff/CONTEXT-ROUTER.md.
-3. Read handoff/TASK-QUEUE.md.
-4. Check handoff/SESSION-CHECKPOINT.md — if active, read it. Stop if it covers what you need.
-5. If no checkpoint: read handoff/BUILD-LOG.md then handoff/ARCHITECT-BRIEF.md. Nothing else until needed.
-6. Report status to Project Owner in one paragraph — what's done, what's next, what needs a decision.
+1. Verify the live `staging` branch and open GitHub issue/PR state.
+2. For LibEdge Research work, read `docs/research/MASTER_STATE.md` as the navigation index, then follow the linked live issue/PR and only the canonical records needed for that task.
+3. Treat `handoff/TASK-QUEUE.md` and `handoff/REVIEW-REQUEST.md` as historical unless a future reviewed change explicitly reactivates that handoff system.
+4. Do not require `BUILDER.md` or `REVIEWER.md`; those files are not present in the current repository.
+5. Report status to Project Owner in one paragraph — what's done, what's next, what needs a decision.
 
 Do not ask the Project Owner to summarize the project. Read the files.
 
@@ -77,8 +76,9 @@ Nothing goes to production without your sign-off and the Project Owner's go-ahea
 
 ## Briefing Bob
 
-Update `handoff/TASK-QUEUE.md`, then write to `handoff/ARCHITECT-BRIEF.md`.
-Tight — decisions, constraints, build order. No prose.
+The legacy Bob/Richard handoff protocol below is historical guidance, not the current Research control plane. Do not update or execute it unless a future reviewed change explicitly reactivates that workflow.
+
+For current work, scope the task in the live issue/PR and use the canonical records linked from `docs/research/MASTER_STATE.md`.
 
 ```
 ## Step N — [What is being built]
@@ -87,9 +87,7 @@ Tight — decisions, constraints, build order. No prose.
 ```
 
 Spin up Bob:
-> You are Bob on this project. Load token-optimizer skill first.
-> Then read BUILDER.md, handoff/CONTEXT-ROUTER.md, handoff/TASK-QUEUE.md, then handoff/ARCHITECT-BRIEF.md.
-> Your task is Step [N]. Confirm the brief is complete before writing any code.
+> Legacy example only. `BUILDER.md` is not present in the current repository; do not use this sequence as a current startup protocol.
 
 To run Bob on a specific model, pass `model: "[model-id]"` in the Agent tool call, or switch to that model before pasting manually. Available IDs: `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`.
 
@@ -98,15 +96,15 @@ To run Bob on a specific model, pass `model: "[model-id]"` in the Agent tool cal
 ## Briefing Richard
 
 When Bob writes handoff/REVIEW-REQUEST.md, runs Execution Monitor, and signals done:
-> You are Richard on this project. Load token-optimizer skill first.
-> Then read REVIEWER.md, handoff/CONTEXT-ROUTER.md, handoff/TASK-QUEUE.md, handoff/EXECUTION-REPORT.md, then handoff/REVIEW-REQUEST.md, then only the files Bob listed.
-> Write findings to handoff/REVIEW-FEEDBACK.md.
+> Legacy example only. `REVIEWER.md` is not present in the current repository; current review must start from the exact live PR/head and its governing canonical records.
 
 To run Richard on a specific model, pass `model: "[model-id]"` in the Agent tool call, or switch to that model before pasting manually.
 
 ---
 
 ## The Deploy Gate
+
+> **Legacy Bob/Richard workflow:** The handoff-file steps in this section and the Anti-Drift Rules below are historical unless a future reviewed change explicitly reactivates them. They do not supersede live GitHub, the current Research Master State, or current production authorization gates.
 
 When Richard signals "Step N is clear":
 1. Tell Project Owner what was built, what Richard found, how it was resolved.
