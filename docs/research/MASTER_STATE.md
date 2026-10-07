@@ -18,8 +18,6 @@ Open Research work at the verified SHA/date:
 - [#536](https://github.com/picohook/libedge-website/issues/536) — Golden Set/domain-quality closure and grounding/support-check diagnosis.
 - [#583](https://github.com/picohook/libedge-website/issues/583) — mandatory staging rollback after the Golden Set measurement window.
 - [#591](https://github.com/picohook/libedge-website/issues/591) — bounded Turkish-question pilot path before Golden v1 freeze.
-- [#592](https://github.com/picohook/libedge-website/issues/592) — post-pilot multilingual retrieval/evidence/answer roadmap.
-- [#594](https://github.com/picohook/libedge-website/issues/594) — Research Admin person-name request drill-down UX.
 - [PR #593](https://github.com/picohook/libedge-website/pull/593) — Turkish-query normalization implementation; follow the PR for current review/CI status.
 
 Closed historical work remains closed unless a documented reopening condition is met; this page does not duplicate those issue histories.
@@ -72,7 +70,7 @@ There is **no `0059` migration in the repository at this snapshot**. Any `0059` 
 
 Two durable roadmap tracks complement the current Golden v1 work:
 
-- [Multilingual Research roadmap — #592](https://github.com/picohook/libedge-website/issues/592): language-specific retrieval, evidence verification and answer rendering after independent validation.
+- [Multilingual Research roadmap](../architecture/research-multilingual-roadmap.md), originating from [#592](https://github.com/picohook/libedge-website/issues/592): language-specific retrieval, evidence verification and answer rendering after independent validation.
 - [Evidence-depth / full-text roadmap](../architecture/p05-research-evidence-depth-roadmap.md), originating from closed [#495](https://github.com/picohook/libedge-website/issues/495): narrow authorized full-text acquisition, passage grounding, benchmark growth and eventual research-workspace capabilities.
 
 Neither roadmap authorizes production changes or weakens the current verification/fail-closed boundary.
