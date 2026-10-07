@@ -73,10 +73,14 @@ test('fixture evidence is absent and live evidence/counts are rendered in a real
   await expect(page.getByText('Sample fixture record representing hydrogen permeability')).toHaveCount(0);
   await expect(page.locator('.evidence-overview')).toHaveCount(0);
   await expect(page.locator('.source-count')).toHaveText('0');
+  await expect(page.locator('.assistant-answer-card')).toBeHidden();
 
   await page.locator('#assistantQuery').fill('new production smoke query');
+  const requestPromise = page.waitForRequest((request) => request.url().endsWith('/api/assistant/ask') && request.method() === 'POST');
   await page.locator('#assistantDemoSearch').click();
+  await requestPromise;
 
+  await expect(page.locator('.assistant-answer-card')).toBeVisible();
   await expect(page.getByText('Live supported finding')).toBeVisible();
   await expect(page.getByText('Live evidence title')).toBeVisible();
   await expect(page.getByText('Second evidence title')).toBeVisible();
