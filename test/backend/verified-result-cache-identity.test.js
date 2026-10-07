@@ -9,7 +9,7 @@ const identity = () => ({
   user_scope: 'user:7',
   query_digest: 'hmac:abc',
   retrieval_query_digest: 'hmac:def',
-  query_normalization_version: 'query-en-normalization-v1',
+  query_normalization_version: 'query-en-normalization-v2',
   evidence: [{ evidence_id: 'e2', fingerprint: 'f2' }, { evidence_id: 'e1', fingerprint: 'f1' }],
   generation_model_id: 'model',
   generation_contract_version: 'g1',
