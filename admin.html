@@ -902,16 +902,16 @@
   </div>
             <div class="border-t border-gray-100 pt-4">
                 <div class="flex items-center gap-1 mb-3" role="tablist" aria-label="Research usage breakdown">
-                    <button type="button" id="researchUsageInstitutionsTab" role="tab" aria-controls="researchUsageInstitutionsPanel" tabindex="0" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kurum Bazlı Kullanım</button>
-                    <button type="button" id="researchUsageUsersTab" role="tab" aria-controls="researchUsageUsersPanel" tabindex="-1" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kişi Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageUsersTab" role="tab" aria-controls="researchUsageUsersPanel" tabindex="0" class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium" aria-selected="true">Kişi Bazlı Kullanım</button>
+                    <button type="button" id="researchUsageInstitutionsTab" role="tab" aria-controls="researchUsageInstitutionsPanel" tabindex="-1" class="px-3 py-2 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-100" aria-selected="false">Kurum Bazlı Kullanım</button>
                 </div>
-                <div id="researchUsageInstitutionsPanel" role="tabpanel" aria-labelledby="researchUsageInstitutionsTab">
+                <div id="researchUsageInstitutionsPanel" role="tabpanel" aria-labelledby="researchUsageInstitutionsTab" class="hidden" hidden>
                     <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Seat, kota ve durum dahil</span></div>
                     <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[1120px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kurum</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right">Research seat</th><th class="text-right">Bugünkü ortak havuz</th><th class="text-right px-3">Durum</th></tr></thead><tbody id="researchUsageInstitutions"><tr><td colspan="11" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
                 </div>
-                <div id="researchUsageUsersPanel" role="tabpanel" aria-labelledby="researchUsageUsersTab" class="hidden" hidden>
+                <div id="researchUsageUsersPanel" role="tabpanel" aria-labelledby="researchUsageUsersTab">
                     <div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Research içeriği gösterilmez</span></div>
-                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right">Maliyet</th><th class="text-right px-3">Detay</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="10" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
+                    <div class="overflow-x-auto border rounded-lg"><table class="w-full min-w-[980px] text-sm"><thead><tr><th class="text-left py-2 px-3">Kişi</th><th class="text-left">Kurum / scope</th><th class="text-right">İstek</th><th class="text-right">Verified</th><th class="text-right">Boş</th><th class="text-right">Hata</th><th class="text-right">Latency</th><th class="text-right">Token</th><th class="text-right px-3">Maliyet</th></tr></thead><tbody id="researchUsageUsers"><tr><td colspan="9" class="py-3 px-3 text-gray-400">Yükleniyor...</td></tr></tbody></table></div>
                 </div>
             </div>
 
@@ -4973,7 +4973,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     }
 
     function researchUsageRows(rows, kind) {
-        const cols = kind === 'institution' ? 11 : 10;
+        const cols = kind === 'institution' ? 11 : 9;
         if (!rows?.length) return `<tr><td colspan="${cols}" class="py-4 px-3 text-gray-400">Bu dönemde kullanım kaydı yok.</td></tr>`;
         return rows.map((row) => {
             const label = kind === 'user' ? (row.full_name || row.email || `Kullanıcı #${row.user_id}`) : (row.institution_name || (row.institution_id ? `Kurum #${row.institution_id}` : 'Bireysel / kurumsuz'));
@@ -4983,7 +4983,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
             const cost = Number(row.llm_cost_usd || 0) + Number(row.discovery_cost_usd || 0);
             const outcomeCells = `<td class="text-right text-emerald-700">${Number(row.successes || 0).toLocaleString('tr-TR')} <span class="text-xs text-gray-400">(${researchUsagePercent(row.successes, row.requests)})</span></td><td class="text-right text-amber-700">${Number(row.valid_empty || 0).toLocaleString('tr-TR')}</td><td class="text-right text-red-700">${Number(row.failures || 0).toLocaleString('tr-TR')}</td>`;
             const common = `<td class="text-right">${Number(row.requests || 0).toLocaleString('tr-TR')}</td>${outcomeCells}<td class="text-right">${Number(row.avg_latency_ms || 0).toLocaleString('tr-TR')} ms</td><td class="text-right">${(Number(row.input_tokens || 0) + Number(row.output_tokens || 0)).toLocaleString('tr-TR')}</td><td class="text-right">$ ${cost.toFixed(6)}</td>`;
-            if (kind === 'user') return `<tr class="border-t border-gray-100"><td class="py-2 px-3">${escapeHtml(label)}${identity}</td>${userScopeCell}${common}<td class="text-right px-3"><button type="button" class="text-indigo-700 hover:underline text-xs" data-research-request-user="${Number(row.user_id)}">İstekler</button></td></tr><tr id="researchRequestDrilldown-${Number(row.user_id)}" class="hidden bg-gray-50"><td colspan="10" class="px-4 py-3"></td></tr>`;
+            if (kind === 'user') return `<tr class="border-t border-gray-100"><td class="py-2 px-3"><button type="button" class="text-left text-indigo-700 hover:underline font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded" data-research-request-user="${Number(row.user_id)}" aria-expanded="false" aria-controls="researchRequestDrilldown-${Number(row.user_id)}">${escapeHtml(label)}</button>${identity}</td>${userScopeCell}${common}</tr><tr id="researchRequestDrilldown-${Number(row.user_id)}" class="hidden bg-gray-50"><td colspan="9" class="px-4 py-3"></td></tr>`;
             const seats = row.seat_limit == null ? '—' : `${Number(row.assigned_seats || 0)} / ${Number(row.seat_limit || 0)}`;
             const quota = !scope || scope.daily_limit == null ? '—' : `${Number(scope.used_today || 0).toLocaleString('tr-TR')} / ${Number(scope.daily_limit).toLocaleString('tr-TR')} (${Math.round(Number(scope.percent_used_today || 0) * 100)}%)`;
             const state = !scope ? '—' : escapeHtml(scope.state || (scope.active ? 'active' : scope.state_reason || 'unavailable'));
@@ -5057,8 +5057,14 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     async function toggleResearchRequestDrilldown(userId) {
         const row = document.getElementById(`researchRequestDrilldown-${userId}`);
         if (!row) return;
-        if (!row.classList.contains('hidden')) { row.classList.add('hidden'); return; }
+        const trigger = document.querySelector(`[data-research-request-user="${userId}"]`);
+        if (!row.classList.contains('hidden')) {
+            row.classList.add('hidden');
+            trigger?.setAttribute('aria-expanded', 'false');
+            return;
+        }
         row.classList.remove('hidden');
+        trigger?.setAttribute('aria-expanded', 'true');
         const cell = row.querySelector('td');
         cell.innerHTML = '<span class="text-sm text-gray-500">İstekler yükleniyor...</span>';
         const days = Math.min(30, Number(document.getElementById('researchUsageDays')?.value || 30));
@@ -5389,7 +5395,7 @@ document.getElementById('productsList')?.addEventListener('click', function(e) {
     [researchUsageInstitutionTab, researchUsageUserTab].forEach((button) => button?.addEventListener('keydown', (event) => {
         if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
         event.preventDefault();
-        const showUsers = event.currentTarget === researchUsageInstitutionTab ? event.key === 'ArrowRight' : event.key !== 'ArrowLeft';
+        const showUsers = event.key === 'ArrowLeft';
         setResearchUsageBreakdownTab(showUsers ? 'users' : 'institutions');
         (showUsers ? researchUsageUserTab : researchUsageInstitutionTab)?.focus();
     }));
