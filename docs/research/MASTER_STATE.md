@@ -2,7 +2,7 @@
 
 > **Index, not authority:** this document is a short navigation layer. For mutable gates, limits, acceptance criteria, and execution details, follow the linked issue or canonical document rather than copying values from this page.
 
-Verified against `staging` at `d9ac025e8df0d119e37c01f333c15a2fb14ff174` on **2026-10-07**.
+Verified against `staging` at `7378c638f3bf9ca1a40cc3faa4b983557e3a2bf5` on **2026-10-07**.
 
 ## Authority rule
 
@@ -41,9 +41,9 @@ Retrieval relevance, language effects, evidence depth, and `authorized_relevant_
 
 Current dependency order:
 
-1. resolve [PR #593](https://github.com/picohook/libedge-website/pull/593), including its independent-review blocker;
-2. amend the preregistration wording before candidate freeze;
-3. in that amendment, define the bounded Turkish-supported contract and require a blind two-independent-rater on-topic / normalization-fidelity check for every Turkish `OK` row before it can count;
+1. [PR #593](https://github.com/picohook/libedge-website/pull/593) is merged; its reviewed Turkish-query normalization path is part of the current staging candidate lineage.
+2. independently review and merge the preregistration amendment before candidate freeze;
+3. the amendment must define the bounded Turkish-supported contract and require a blind two-independent-rater on-topic / normalization-fidelity check for every qualifying Turkish `OK` row before it can count;
 4. re-measure the six Turkish development questions only in an authorized bounded window;
 5. freeze the candidate with the remaining independent sign-offs, including manifest/hash, rater/seed plan, benchmark code and fingerprint;
 6. execute the held-out run;
@@ -52,7 +52,7 @@ Current dependency order:
 9. carry accepted domain/language/UX evidence into [#399](https://github.com/picohook/libedge-website/issues/399);
 10. production remains blocked until separate explicit authorization.
 
-The two-rater on-topic / normalization-fidelity requirement above is a **pending preregistration amendment at this snapshot**, not an already-active Golden v1 gate.
+The two-rater on-topic / normalization-fidelity requirement above remains **pending independent review and merge of its preregistration amendment** at this snapshot; it is not yet an active Golden v1 gate.
 
 ## Migrations and production state
 
