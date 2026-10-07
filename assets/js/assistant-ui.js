@@ -391,6 +391,23 @@ requireResearchLogin().then((authorized) => {
             overview.appendChild(metric);
         };
         const summary = result.research_summary;
+        const language = result.language;
+        if (language?.query_language === 'tr' && language?.answer_language === 'en') {
+            const languageNote = document.createElement('p');
+            languageNote.className = 'evidence-support-note';
+            markTranslatable(
+                languageNote,
+                'Bu pilot Türkçe soruyu kabul eder; doğrulama İngilizce literatür/kanıt ve İngilizce doğrulama iddialarıyla yapılır. Yanıt dili şu anda İngilizcedir.',
+                'This pilot accepts the Turkish question; verification uses English-language literature/evidence and English verification claims. The answer is currently in English.'
+            );
+            overview.appendChild(languageNote);
+            if (language.retrieval_query) {
+                const searchedFor = document.createElement('p');
+                searchedFor.className = 'evidence-support-note';
+                searchedFor.textContent = `${t('Aranan İngilizce sorgu', 'Searched for')}: ${language.retrieval_query}`;
+                overview.appendChild(searchedFor);
+            }
+        }
         const literature = summary?.literature;
         const verification = summary?.verification;
         const supportingEvidenceIds = new Set(

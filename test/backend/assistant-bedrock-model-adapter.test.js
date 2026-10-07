@@ -46,6 +46,7 @@ describe('Bedrock assistant adapter boundary', () => {
     const prompt = body.messages[0].content[0].text;
     expect(prompt).toContain('hydrogen membrane');
     expect(prompt).toContain('p1:e1');
+    expect(prompt).toContain('Write every verification claim in English');
     expect(prompt).not.toContain('"ak"');
     expect(prompt).not.toContain('"sk"');
   });
@@ -72,6 +73,25 @@ describe('Bedrock assistant adapter boundary', () => {
 
     const prose = { content: [{ type: 'text', text: ['Here is the JSON:', '```json', '{"claims":[]}', '```'].join('\n') }] };
     expect(() => __test.parseClaimsPayload(prose)).toThrowError(expect.objectContaining({ diagnostic_reason: 'MODEL_OUTPUT_NOT_JSON' }));
+  });
+
+  it('normalizes a Turkish query with temperature zero and returns only the English retrieval query', async () => {
+    const send = vi.fn(async () => ({
+      body: new TextEncoder().encode(JSON.stringify({
+        content: [{ type: 'text', text: JSON.stringify({ query: 'flexible work hours work-life balance' }) }],
+        usage: { input_tokens: 10, output_tokens: 5 }
+      }))
+    }));
+    const adapter = createBedrockModelAdapter({
+      AWS_ACCESS_KEY_ID: 'ak',
+      AWS_SECRET_ACCESS_KEY: 'sk'
+    }, { clientFactory: () => ({ send }) });
+
+    const result = await adapter.normalizeQueryToEnglish({ task: 'Esnek çalışma saatlerinin iş-yaşam dengesi üzerindeki etkisi nedir?' });
+    expect(result.query).toBe('flexible work hours work-life balance');
+    const body = JSON.parse(new TextDecoder().decode(send.mock.calls[0][0].input.body));
+    expect(body.temperature).toBe(0);
+    expect(body.messages[0].content[0].text).toContain('Do not answer the question');
   });
 
 });

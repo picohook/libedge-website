@@ -42,6 +42,14 @@ const CODE_MAP = Object.freeze({
     message: 'Devam etmek için araştırmak istediğiniz konuyu yazın.', messageEn: 'Enter the topic you want to research to continue.',
     tone: 'warning'
   },
+  QUERY_NORMALIZATION_FAILED: {
+    state: ASSISTANT_UI_STATES.RETRIEVAL_ERROR,
+    title: 'Türkçe soru güvenli arama sorgusuna dönüştürülemedi',
+    titleEn: 'The Turkish question could not be converted into a safe search query',
+    message: 'İngilizce literatür araması için gereken sorgu güvenli biçimde oluşturulamadığı için doğrulanmamış bir yanıt gösterilmiyor. Lütfen daha sonra yeniden deneyin.',
+    messageEn: 'No unverified answer is shown because a safe query for the English-language literature search could not be produced. Please try again later.',
+    tone: 'warning'
+  },
   DISCOVER_FAILED: {
     state: ASSISTANT_UI_STATES.RETRIEVAL_ERROR,
     title: 'Kaynak araması tamamlanamadı', titleEn: 'Source search could not be completed',
