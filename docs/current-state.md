@@ -1,7 +1,11 @@
 # LibEdge — Current State
 
-Status: `ACTIVE`
+Status: `HISTORICAL`
 
+> **CURRENT-STATE ROUTING — 2026-10-07**
+>
+> This file preserves the September 2026 AI Assistant / provider / D-022 state and evidence trail. It is no longer the current Research work queue or current-state index. For current LibEdge Research state, start with [`docs/research/MASTER_STATE.md`](research/MASTER_STATE.md), then follow its linked live issue/PR or canonical record. Historical evidence and durable decisions below remain usable in their stated scope; do not infer current execution status from the old `ACTIVE`, `NEXT`, or workstream language below.
+>
 > CONTROL-PLANE INVARIANT
 > This file is written only from the main engineering thread, under human gatekeeper authority.
 > Reviewer and blind-evaluator threads produce findings only; their outputs must return to the main thread before any project-state change is recorded.
