@@ -1,6 +1,6 @@
 # LibEdge Research Version Governance
 
-Status: `PROPOSED / PRE-1.0 — becomes canonical when this PR is independently approved and merged`
+Status: `CANONICAL / PRE-1.0`
 
 Date: 2026-10-06
 
