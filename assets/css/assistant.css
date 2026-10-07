@@ -1,7 +1,9 @@
 .live-source-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
 .live-source-links a { color: #2563eb; font-size: .68rem; font-weight: 700; text-decoration: none; }
 .live-source-links a:hover,
-.live-source-links a:focus-visible { text-decoration: underline; outline: none; }:root {
+.live-source-links a:focus-visible { text-decoration: underline; outline: none; }
+
+:root {
     --assistant-primary: #220f60;
     --assistant-accent: #2563eb;
     --assistant-border: #e2e8f0;
