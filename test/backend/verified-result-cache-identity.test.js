@@ -126,7 +126,7 @@ describe('verified-result cache identity', () => {
     const base = { ...source, evidence: source.evidence.map((item) => ({ ...item })) };
     const key = canonicalVerifiedResultIdentity(base);
     expect(canonicalVerifiedResultIdentity({ ...base, retrieval_query_digest: 'hmac:other' })).not.toBe(key);
-    expect(canonicalVerifiedResultIdentity({ ...base, query_normalization_version: 'query-en-normalization-v2' })).not.toBe(key);
+    expect(canonicalVerifiedResultIdentity({ ...base, query_normalization_version: 'query-en-normalization-v3' })).not.toBe(key);
   });
 
 });
