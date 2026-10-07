@@ -41,7 +41,7 @@ requireResearchLogin().then((authorized) => {
         node.textContent = t(tr, en);
     }
 
-    function markComingSoon(button) {
+    function markBoundaryBadge(button, trLabel = 'Yakında', enLabel = 'Coming soon') {
         if (!button || button.dataset.comingSoon === 'true') return;
         button.dataset.comingSoon = 'true';
         button.setAttribute('aria-disabled', 'true');
@@ -49,7 +49,7 @@ requireResearchLogin().then((authorized) => {
         button.style.cursor = 'not-allowed';
         const badge = document.createElement('span');
         badge.className = 'assistant-coming-soon-badge';
-        badge.textContent = t('Yakında', 'Coming soon');
+        badge.textContent = t(trLabel, enLabel);
         badge.style.marginInlineStart = '0.4rem';
         badge.style.fontSize = '0.68em';
         badge.style.fontWeight = '700';
@@ -210,7 +210,7 @@ requireResearchLogin().then((authorized) => {
     function setInitialLiveState() {
         resetLiveResult();
         answerCard?.classList.add('is-unavailable');
-        if (answerCard) answerCard.style.opacity = '.58';
+        if (answerCard) { answerCard.style.opacity = '.58'; answerCard.hidden = true; }
         setStatus({
             title: 'Araştırmaya hazır',
             titleEn: 'Ready to research',
@@ -439,13 +439,14 @@ requireResearchLogin().then((authorized) => {
         answerCard.appendChild(overview);
         answerCard.classList.remove('is-unavailable');
         answerCard.style.opacity = '1';
+        answerCard.hidden = false;
         return true;
     }
 
     function renderMappedState(result) {
         const mapped = mapAssistantResult(result);
         setStatus({ title: mapped.title, titleEn: mapped.titleEn, message: mapped.message, messageEn: mapped.messageEn, tone: mapped.tone, marker: mapped.evidencePackId ? 'EvidencePack hazır' : '', markerEn: mapped.evidencePackId ? 'EvidencePack ready' : '', state: mapped.state });
-        const isSuccess = mapped.state === 'success'; answerCard?.classList.toggle('is-unavailable', !isSuccess); if (answerCard) answerCard.style.opacity = isSuccess ? '1' : '.58'; if (!isSuccess) { resetLiveResult(); clearEvidenceFocus(); closeSourceDetails(); closeSources(); } return mapped;
+        const isSuccess = mapped.state === 'success'; answerCard?.classList.toggle('is-unavailable', !isSuccess); if (answerCard) { answerCard.style.opacity = isSuccess ? '1' : '.58'; answerCard.hidden = !isSuccess; } if (!isSuccess) { resetLiveResult(); clearEvidenceFocus(); closeSourceDetails(); closeSources(); } return mapped;
     }
 
     async function runLiveResearch() {
@@ -580,10 +581,10 @@ requireResearchLogin().then((authorized) => {
     }
 
     markResearchGapsFixtureOnly(); addFindingContextualFollowUps(); bindFindingEvidenceInteractions(); setInitialLiveState();
-    document.querySelectorAll('.assistant-mode').forEach((button) => { if (button.dataset.mode !== 'ask') markComingSoon(button); });
-    document.querySelectorAll('.assistant-filter').forEach(markComingSoon);
-    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(#assistantHistoryBtn):not(.assistant-primary-btn)').forEach(markComingSoon);
-    document.querySelectorAll('.finding-context-followup, .source-context-followup').forEach(markComingSoon);
+    document.querySelectorAll('.assistant-mode').forEach((button) => { if (button.dataset.mode === 'gaps') markBoundaryBadge(button, 'Fixture-only', 'Fixture-only'); else if (button.dataset.mode !== 'ask') markBoundaryBadge(button); });
+    document.querySelectorAll('.assistant-filter').forEach((button) => markBoundaryBadge(button));
+    document.querySelectorAll('.assistant-answer-actions button:not(#viewSourcesBtn):not(#assistantHistoryBtn):not(.assistant-primary-btn)').forEach((button) => markBoundaryBadge(button));
+    document.querySelectorAll('.finding-context-followup, .source-context-followup').forEach((button) => markBoundaryBadge(button));
     document.querySelectorAll('.citation-chip[data-source]').forEach((button) => button.addEventListener('click', () => highlightSource(button.dataset.source)));
     document.getElementById('viewSourcesBtn')?.addEventListener('click', openSources);
     document.getElementById('assistantHistoryBtn')?.addEventListener('click', openHistory);
