@@ -1,0 +1,55 @@
+name: Golden v1 Turkish Development Rerun
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: golden-v1-turkish-development-rerun
+  cancel-in-progress: false
+
+jobs:
+  rerun:
+    name: Run six-question Turkish development rerun
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      LIBEDGE_SMOKE_BASE_URL: https://staging.libedge-website.pages.dev
+      LIBEDGE_SMOKE_EMAIL: ${{ secrets.LIBEDGE_SMOKE_EMAIL }}
+      LIBEDGE_SMOKE_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_PASSWORD }}
+      LIBEDGE_SMOKE_ADMIN_EMAIL: ${{ secrets.LIBEDGE_SMOKE_ADMIN_EMAIL }}
+      LIBEDGE_SMOKE_ADMIN_PASSWORD: ${{ secrets.LIBEDGE_SMOKE_ADMIN_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Assert staging ref and reviewed inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "staging"
+          test -f scripts/research-golden-v1-turkish-dev-rerun.mjs
+          test -f docs/experiments/research-golden-set-v1-development-set.json
+
+      - name: Run sealed Turkish development rerun
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/research-golden-v1-turkish-dev-rerun.mjs 2>&1 | tee golden-v1-turkish-dev-rerun.log
+
+      - name: Upload sealed measurement evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-v1-turkish-dev-rerun-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            golden-v1-turkish-dev-rerun-*.jsonl
+            golden-v1-turkish-dev-rerun.log
+          if-no-files-found: warn
+          retention-days: 30
