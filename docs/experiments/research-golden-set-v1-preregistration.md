@@ -4,6 +4,8 @@ Status: `PROPOSED / INDEPENDENT REVIEW REQUIRED BEFORE QUESTION AUTHORING OR EXE
 
 Prepared: 2026-10-06
 
+Amended prospectively: 2026-10-07 — Turkish-query normalization/on-topic gate added after #593 implementation review and **before** candidate freeze or held-out execution.
+
 Related: #536, #399, #495, #579. This protocol borrows the repository's D-022 discipline: freeze the evaluation contract before measured results, isolate development material from a fresh holdout, preserve blind judgments, and close/re-version rather than tune a failed frozen round in place.
 
 ## Decision owner and purpose
@@ -44,7 +46,7 @@ Thus the 90-question held-out contains exactly **60 English + 30 Turkish queries
 
 The existing 30-question domain gate remains primary and unchanged. In addition, report verified-answer numerator/denominator separately for English and Turkish within every domain, plus language-policy rejection counts. **No language stratum may be hidden by an aggregate domain result.**
 
-Because the intended pilot UI is Turkish, a domain may be declared **Turkish-supported** only if its frozen Turkish stratum independently reaches **>=70% (at least 7/10)**. This language gate is frozen before results and uses the same outward `ok: true, code: OK` numerator contract. A domain can therefore pass the 21/30 domain gate yet still be excluded from Turkish-supported pilot scope if it fails 7/10 Turkish. Report a two-sided 95% Wilson interval for the small 10-query language stratum as uncertainty context; do not present 7/10 as a precise estimate of language-wide reliability.
+Because the intended pilot UI is Turkish, a domain may be declared **Turkish-supported** only if its frozen Turkish stratum independently reaches **>=70% (at least 7/10)**. This language gate is frozen before results and begins from the same outward `ok: true, code: OK` numerator contract, but a Turkish `OK` row is numerator-eligible only after it also passes the frozen two-rater on-topic/normalization-fidelity gate below. A domain can therefore pass the 21/30 domain gate yet still be excluded from Turkish-supported pilot scope if it fails 7/10 Turkish. Report a two-sided 95% Wilson interval for the small 10-query language stratum as uncertainty context; do not present 7/10 as a precise estimate of language-wide reliability.
 
 The held-out questions MUST NOT be exposed to retrieval/generation/checker tuning before candidate freeze. They must not reuse the three diagnostic queries from #536 or questions used in earlier retrieval experiments.
 
@@ -61,6 +63,21 @@ Turkish held-out questions must be authored naturally by a Turkish-competent aut
 Within each domain, question construction must deliberately vary topic, wording, answer shape, specificity, and expected evidence availability. The construction manifest must record only non-answer-bearing strata needed to prove diversity. No question may be selected because its result is already known.
 
 Question bundle, IDs, provenance class, author-role independence attestation, domain/language allocation, rubric, exact candidate/config fingerprint, and this acceptance contract are frozen and independently reviewed before the first held-out execution.
+
+## Turkish-query normalization and on-topic gate
+
+The reviewed #593 pilot preserves the original user question while a conservatively detected Turkish query may be normalized to an English retrieval query. The classifier is intentionally heuristic: ASCII-typed Turkish without sufficiently strong language cues may remain `und` and bypass normalization. This is a known pilot limitation, not permission to add benchmark-specific vocabulary or mappings.
+
+Before candidate freeze, re-run **only the six existing Turkish development questions** from the 15-question development set. This is development calibration, not acceptance evidence and not held-out execution. For every row preserve at minimum the original frozen question ID plus content-free `query_language` and `query_normalized` state, and preserve the normalized retrieval query in the sealed evaluation artifact for audit. Report rows that remain `und`/unnormalized explicitly; do not silently reinterpret them as successful Turkish normalization.
+
+For every Turkish held-out row that otherwise qualifies as `OK` and satisfies the verified-claim/source usefulness floor, require **two independent Turkish-competent raters** to judge the response against the original Turkish question and the sealed normalized retrieval query. Each rater locks both judgments before seeing the other rater's output or the domain/language acceptance result:
+
+- `ON_TOPIC`: the verified answer materially addresses the information need expressed by the original Turkish question; or `OFF_TOPIC`.
+- `NORMALIZATION_FAITHFUL`: the normalized retrieval query preserves the material topic, entities, relationships, qualifiers, polarity/negation, and requested scope of the original Turkish question without adding a materially different proposition; or `NORMALIZATION_DRIFT`.
+
+A Turkish row counts toward the frozen 7/10 Turkish-supported numerator **only if both raters independently return `ON_TOPIC` and `NORMALIZATION_FAITHFUL`**. Any disagreement, `OFF_TOPIC`, or `NORMALIZATION_DRIFT` makes the row a non-success for the Turkish-support numerator while preserving its raw application outcome and usefulness metrics. There is no post-hoc adjudication that can promote the row inside Golden Set v1. Report disagreement/drift counts separately.
+
+These raters must not be the implementer who tuned #593 or the measured candidate. They must be blind to checker decisions/reasons and aggregate pass/fail status while rating. This gate audits semantic preservation and topical relevance; it does not permit raters to override checker support decisions, change thresholds/pins, or treat translated evidence as source evidence.
 
 ## Pre-freeze development latency calibration
 
