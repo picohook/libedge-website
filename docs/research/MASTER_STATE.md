@@ -2,7 +2,7 @@
 
 > **Index, not authority:** this document is a short navigation layer. For mutable gates, limits, acceptance criteria, and execution details, follow the linked issue or canonical document rather than copying values from this page.
 
-Verified against `staging` at `d9ac025e8df0d119e37c01f333c15a2fb14ff174` on **2026-10-07**.
+Verified against `staging` at `7378c638f3bf9ca1a40cc3faa4b983557e3a2bf5` on **2026-10-07**.
 
 ## Authority rule
 
@@ -18,9 +18,6 @@ Open Research work at the verified SHA/date:
 - [#536](https://github.com/picohook/libedge-website/issues/536) — Golden Set/domain-quality closure and grounding/support-check diagnosis.
 - [#583](https://github.com/picohook/libedge-website/issues/583) — mandatory staging rollback after the Golden Set measurement window.
 - [#591](https://github.com/picohook/libedge-website/issues/591) — bounded Turkish-question pilot path before Golden v1 freeze.
-- [#592](https://github.com/picohook/libedge-website/issues/592) — post-pilot multilingual retrieval/evidence/answer roadmap.
-- [#594](https://github.com/picohook/libedge-website/issues/594) — Research Admin person-name request drill-down UX.
-- [PR #593](https://github.com/picohook/libedge-website/pull/593) — Turkish-query normalization implementation; follow the PR for current review/CI status.
 
 Closed historical work remains closed unless a documented reopening condition is met; this page does not duplicate those issue histories.
 
@@ -44,9 +41,9 @@ Retrieval relevance, language effects, evidence depth, and `authorized_relevant_
 
 Current dependency order:
 
-1. resolve [PR #593](https://github.com/picohook/libedge-website/pull/593), including its independent-review blocker;
-2. amend the preregistration wording before candidate freeze;
-3. in that amendment, define the bounded Turkish-supported contract and require a blind two-independent-rater on-topic / normalization-fidelity check for every Turkish `OK` row before it can count;
+1. [PR #593](https://github.com/picohook/libedge-website/pull/593) is merged; its reviewed Turkish-query normalization path is part of the current staging candidate lineage.
+2. independently review and merge the preregistration amendment before candidate freeze;
+3. the amendment must define the bounded Turkish-supported contract and require a blind two-independent-rater on-topic / normalization-fidelity check for every qualifying Turkish `OK` row before it can count;
 4. re-measure the six Turkish development questions only in an authorized bounded window;
 5. freeze the candidate with the remaining independent sign-offs, including manifest/hash, rater/seed plan, benchmark code and fingerprint;
 6. execute the held-out run;
@@ -55,7 +52,7 @@ Current dependency order:
 9. carry accepted domain/language/UX evidence into [#399](https://github.com/picohook/libedge-website/issues/399);
 10. production remains blocked until separate explicit authorization.
 
-The two-rater on-topic / normalization-fidelity requirement above is a **pending preregistration amendment at this snapshot**, not an already-active Golden v1 gate.
+The two-rater on-topic / normalization-fidelity requirement above remains **pending independent review and merge of its preregistration amendment** at this snapshot; it is not yet an active Golden v1 gate.
 
 ## Migrations and production state
 
@@ -72,7 +69,7 @@ There is **no `0059` migration in the repository at this snapshot**. Any `0059` 
 
 Two durable roadmap tracks complement the current Golden v1 work:
 
-- [Multilingual Research roadmap — #592](https://github.com/picohook/libedge-website/issues/592): language-specific retrieval, evidence verification and answer rendering after independent validation.
+- [Multilingual Research roadmap](../architecture/research-multilingual-roadmap.md), originating from [#592](https://github.com/picohook/libedge-website/issues/592): language-specific retrieval, evidence verification and answer rendering after independent validation.
 - [Evidence-depth / full-text roadmap](../architecture/p05-research-evidence-depth-roadmap.md), originating from closed [#495](https://github.com/picohook/libedge-website/issues/495): narrow authorized full-text acquisition, passage grounding, benchmark growth and eventual research-workspace capabilities.
 
 Neither roadmap authorizes production changes or weakens the current verification/fail-closed boundary.
