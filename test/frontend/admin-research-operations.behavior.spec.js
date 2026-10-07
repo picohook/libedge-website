@@ -57,6 +57,10 @@ test('Research operations center renders outcome, pipeline and account controls 
   await research.locator('#researchUsageDays').selectOption('7');
   await expect(research.locator('#researchUsageExactCost')).toHaveText('$0.013579');
   await expect(research.locator('#researchUsageFunnel [role="progressbar"]')).toHaveCount(5);
+  await expect(research.locator('#researchUsageUsersPanel')).toBeVisible();
+  await expect(research.locator('#researchUsageInstitutionsPanel')).toBeHidden();
+  await research.locator('#researchUsageInstitutionsTab').click();
+  await expect(research.locator('#researchUsageInstitutionsPanel')).toBeVisible();
   await expect(research.locator('#researchUsageUsersPanel')).toBeHidden();
   await research.locator('#researchUsageUsersTab').click();
   await expect(research.locator('#researchUsageUsersPanel')).toBeVisible();
