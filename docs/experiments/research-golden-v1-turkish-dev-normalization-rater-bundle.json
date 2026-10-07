@@ -1,0 +1,37 @@
+{
+  "schema_version": "research-golden-v1-turkish-dev-normalization-rater-bundle-v1",
+  "purpose": "Blind development-only normalization-fidelity rating material. Not held-out acceptance evidence.",
+  "blinding_notice": "Do not open LibEdge repository issues, pull requests, workflow artifacts, evaluation results, or other materials about these items until FINAL / LOCKED. They may reveal system outcomes.",
+  "items": [
+    {
+      "item_id": "T01",
+      "original_query_tr": "mRNA aşılarında lipid nanopartikül bileşiminin bağışıklık yanıtı ve güvenlilik üzerindeki etkileri hakkında hangi kanıtlar vardır?",
+      "actual_retrieval_query": "evidence on the effects of lipid nanoparticle composition in mRNA vaccines on immune response and safety"
+    },
+    {
+      "item_id": "T02",
+      "original_query_tr": "Tanzimat döneminde gazete ve dergilerin kamusal tartışma kültürünün gelişimine etkisi nasıl değerlendirilmiştir?",
+      "actual_retrieval_query": "How have newspapers and periodicals during the Tanzimat period been assessed in relation to the development of public debate culture?"
+    },
+    {
+      "item_id": "T03",
+      "original_query_tr": "Esnek çalışma saatlerinin çalışanların iş-yaşam dengesi üzerindeki etkisine ilişkin araştırma bulguları nelerdir?",
+      "actual_retrieval_query": "effects of flexible working hours on employee work-life balance"
+    },
+    {
+      "item_id": "T04",
+      "original_query_tr": "Tip 2 diyabetli yetişkinlerde sürekli glukoz izleminin glisemik kontrol üzerindeki etkisine ilişkin klinik kanıtlar nelerdir?",
+      "actual_retrieval_query": "clinical evidence of continuous glucose monitoring on glycemic control in adults with type 2 diabetes"
+    },
+    {
+      "item_id": "T05",
+      "original_query_tr": "Üniversite öğrencilerinde çevrim içi eğitimin akademik katılım üzerindeki etkisi hakkında ampirik çalışmalar ne gösteriyor?",
+      "actual_retrieval_query": "empirical studies on the effects of online education on academic engagement among university students"
+    },
+    {
+      "item_id": "T06",
+      "original_query_tr": "Erken Cumhuriyet döneminde Halkevlerinin kültürel modernleşmedeki rolü üzerine akademik literatür ne söylüyor?",
+      "actual_retrieval_query": "role of Halkevleri (People's Houses) in cultural modernization during the early Republican period in Turkey"
+    }
+  ]
+}
