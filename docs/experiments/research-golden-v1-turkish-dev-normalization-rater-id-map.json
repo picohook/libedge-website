@@ -1,0 +1,30 @@
+{
+  "schema_version": "research-golden-v1-turkish-dev-normalization-rater-map-v1",
+  "handling": "Do not give this mapping to raters before both ratings are FINAL / LOCKED.",
+  "map": [
+    {
+      "item_id": "T01",
+      "case_id": "bio-tr-02"
+    },
+    {
+      "item_id": "T02",
+      "case_id": "hum-tr-01"
+    },
+    {
+      "item_id": "T03",
+      "case_id": "soc-tr-02"
+    },
+    {
+      "item_id": "T04",
+      "case_id": "bio-tr-01"
+    },
+    {
+      "item_id": "T05",
+      "case_id": "soc-tr-01"
+    },
+    {
+      "item_id": "T06",
+      "case_id": "hum-tr-02"
+    }
+  ]
+}
