@@ -10,14 +10,13 @@ Canonical working branch: `staging`.
 
 ## Control-plane documents
 
-Two documents have distinct roles:
+> **Research routing — 2026-10-07:** For current LibEdge Research work, live `staging` + live GitHub issue/PR state are authoritative for current execution, with `docs/research/MASTER_STATE.md` as the navigation index. `docs/current-state.md` is a historical September snapshot and must not be used or maintained as the current Research work queue. `docs/decisions.md` remains the durable decision ledger in its stated scope.
 
-- `docs/current-state.md` answers **where the project is now**: active tracks, blockers, pending external inputs, recently completed milestones, next safe work, and explicit do-not-do boundaries.
-- `docs/decisions.md` answers **why the project is in that state**: durable architectural, privacy, product, and process decisions recorded as D-XXX entries. It is not a changelog and does not need an entry for every PR.
+For non-Research legacy context, `docs/current-state.md` may still be read as historical evidence, but it no longer answers where current Research work is now. `docs/decisions.md` answers **why durable decisions were made**: architectural, privacy, product, and process decisions recorded as D-XXX entries. It is not a changelog and does not need an entry for every PR.
 
 ### Continuity rule
 
-At every real milestone closure or materially state-changing decision, the implementer must check whether `docs/current-state.md` and/or `docs/decisions.md` require an update. If required, the update is made in the same PR when appropriate or in an immediately following documentation-only PR. The implementer does not wait for the reviewer to request this check.
+At every real milestone closure or materially state-changing decision, the implementer must check whether the current canonical navigation/state record and/or `docs/decisions.md` require an update. For current Research work, that navigation record is `docs/research/MASTER_STATE.md`; do **not** synchronize the historical `docs/current-state.md` as a live Research state file. If an update is required, make it in the same PR when appropriate or in an immediately following documentation-only PR. The implementer does not wait for the reviewer to request this check.
 
 Small UI/CSS/refactor PRs do not by themselves require control-plane updates unless they materially change project state, an invariant, a boundary, or a durable decision.
 
@@ -31,9 +30,9 @@ This protocol is not exempt from normal governance. If `docs/ai-handoff.md` itse
 
 When starting a new implementer session:
 
-1. Read `docs/current-state.md` in full.
-2. Read `docs/decisions.md` in full.
-3. Follow the canonical records referenced by those documents as needed to understand active work.
+1. Verify live `staging` and open GitHub issue/PR state. For current Research work, read `docs/research/MASTER_STATE.md` as the navigation index; read `docs/current-state.md` only when historical September context is specifically needed.
+2. Read `docs/decisions.md` as needed for durable decisions governing the task.
+3. Follow the canonical records referenced by the live issue/PR, Master State, or decisions ledger as needed.
 4. Verify that every referenced repository file relied upon for orientation actually exists on the canonical branch. Do not assume a listed path is valid merely because a control-plane document names it. Use the repository/Git object equivalent of `git cat-file -e <ref>:<path>` when available.
 5. Independently inspect the real `staging` state. Do not rely solely on conversation memory, summaries, prior assistant claims, or stale/local branches.
 6. Before modifying code, opening a PR, deploying, probing, or otherwise executing work, produce a startup checkpoint covering:
@@ -43,7 +42,7 @@ When starting a new implementer session:
    - the most recently completed material milestone;
    - the next safe work;
    - actions that are explicitly not authorized now;
-   - any discrepancy between `current-state.md` / `decisions.md` and the verified repository state.
+   - any discrepancy between the applicable current navigation/canonical records and the verified repository state.
 7. Stop after the checkpoint until the user authorizes the next task.
 
 ### Implementer operating rule
@@ -54,9 +53,9 @@ At each real milestone closure, independently perform the control-plane continui
 
 When starting a new reviewer session:
 
-1. Read `docs/current-state.md` in full.
-2. Read `docs/decisions.md` in full.
-3. Follow the canonical records referenced for active work as needed.
+1. Verify live `staging` and the exact review target. For current Research work, read `docs/research/MASTER_STATE.md` as the navigation index; use `docs/current-state.md` only as historical September evidence when relevant.
+2. Read `docs/decisions.md` as needed for durable decisions governing the review.
+3. Follow the live issue/PR and canonical records referenced for active work as needed.
 4. Verify that every referenced repository file relied upon for review context actually exists on the canonical branch. Do not trust the reference list alone. Use the repository/Git object equivalent of `git cat-file -e <ref>:<path>` when available.
 5. Independently inspect the real `staging` state. Prior conversation memory, implementer descriptions, reviewer memory, summaries, and stale/local branches are not evidence.
 6. Before issuing any PR classification, produce a startup checkpoint covering:
@@ -81,7 +80,7 @@ For every review:
 - Independently verify scope claims, referenced files, relevant commit ancestry, and byte/content identity when such identity is claimed.
 - Treat `ACCEPTED`, `ACCEPTED WITH MODIFICATION`, and `FAIL` as evidence-based classifications, not narrative continuations from an earlier chat.
 - Keep code/config review separate from authorization to execute production deploys, probes, reruns, or observation windows.
-- At material milestone closure, check whether `docs/current-state.md` / `docs/decisions.md` require synchronization.
+- At material milestone closure, check whether the applicable current navigation/state record (for Research, `docs/research/MASTER_STATE.md`) and/or `docs/decisions.md` require synchronization; do not update historical `docs/current-state.md` as current Research state.
 
 ### Reviewer-input neutrality
 
