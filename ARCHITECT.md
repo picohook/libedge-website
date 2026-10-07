@@ -104,6 +104,8 @@ To run Richard on a specific model, pass `model: "[model-id]"` in the Agent tool
 
 ## The Deploy Gate
 
+> **Legacy Bob/Richard workflow:** The handoff-file steps in this section and the Anti-Drift Rules below are historical unless a future reviewed change explicitly reactivates them. They do not supersede live GitHub, the current Research Master State, or current production authorization gates.
+
 When Richard signals "Step N is clear":
 1. Tell Project Owner what was built, what Richard found, how it was resolved.
 2. Get explicit go-ahead.
