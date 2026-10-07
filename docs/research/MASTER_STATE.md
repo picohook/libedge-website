@@ -20,7 +20,7 @@ Open Research work at the verified SHA/date:
 - [#591](https://github.com/picohook/libedge-website/issues/591) — bounded Turkish-question pilot path before Golden v1 freeze.
 - [#592](https://github.com/picohook/libedge-website/issues/592) — post-pilot multilingual retrieval/evidence/answer roadmap.
 - [#594](https://github.com/picohook/libedge-website/issues/594) — Research Admin person-name request drill-down UX.
-- [PR #593](https://github.com/picohook/libedge-website/pull/593) — Turkish-query normalization implementation; **not merge-ready at this snapshot** because independent review still has a blocking English-path classifier regression.
+- [PR #593](https://github.com/picohook/libedge-website/pull/593) — Turkish-query normalization implementation; follow the PR for current review/CI status.
 
 Closed historical work remains closed unless a documented reopening condition is met; this page does not duplicate those issue histories.
 
