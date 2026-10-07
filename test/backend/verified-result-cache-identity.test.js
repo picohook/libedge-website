@@ -122,7 +122,8 @@ describe('verified-result cache identity', () => {
     expect(await verifiedResultEvidenceIdentity(unauthorized)).toBeNull();
   });
   it('changes identity when normalized retrieval query or normalization version changes', () => {
-    const base = { ...identity, evidence: [{ ...identity.evidence[0] }] };
+    const source = identity();
+    const base = { ...source, evidence: source.evidence.map((item) => ({ ...item })) };
     const key = canonicalVerifiedResultIdentity(base);
     expect(canonicalVerifiedResultIdentity({ ...base, retrieval_query_digest: 'hmac:other' })).not.toBe(key);
     expect(canonicalVerifiedResultIdentity({ ...base, query_normalization_version: 'query-en-normalization-v2' })).not.toBe(key);
